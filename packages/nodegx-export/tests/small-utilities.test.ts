@@ -386,8 +386,10 @@ describe('EXP-011 §38 §C — tests/fixtures/mood-desk', () => {
   const app = emitApp(ir, catalog);
   const page = app.files['src/pages/Mood.tsx'];
 
-  it('exports whole — the only note is the scaffold’s own', () => {
-    expect(app.notes.filter((n) => !n.startsWith('App:'))).toEqual([]);
+  it('exports whole — beyond the scaffold’s own note, the only notes are §74’s four "typed-in Value … is never written" sentences (pinned by name in object-store.test.ts F8)', () => {
+    const rest = app.notes.filter((n) => !n.startsWith('App:'));
+    expect(rest).toHaveLength(4);
+    expect(rest.every((n) => n.includes(' is never written — the wire from '))).toBe(true);
   });
 
   it('renders both calls', () => {

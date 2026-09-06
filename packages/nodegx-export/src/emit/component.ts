@@ -2755,12 +2755,14 @@ export function emitComponent(
       // nothing gets nothing (COMPONENT-OUTPUTS-TARGET §3).
       case 'output-signal':
         return `${action.prop}?.()`;
+      // EXP-011 §74. `fallback` is the value typed into the Set's port under the wire: printed as `expr ?? typed`, the
+      // runtime's "the wire's last defined delivery, else the typed-in value" (plan.ts `typedInUnderWire`).
       case 'store-set':
-        return `${variableByName.get(action.variableName)!.exportName}.set(${exprCode(action.expr, 'handler')})`;
+        return `${variableByName.get(action.variableName)!.exportName}.set(${withFallback(exprCode(action.expr, 'handler'), action.fallback)})`;
       case 'globalstore-set': {
         const store = storeByName.get(action.storeName)!;
         const key = /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(action.key) ? action.key : JSON.stringify(action.key);
-        return `${store.exportName}.set({ ${key}: ${exprCode(action.expr, 'handler')} })`;
+        return `${store.exportName}.set({ ${key}: ${withFallback(exprCode(action.expr, 'handler'), action.fallback)} })`;
       }
       /**
        * `Set Object Properties` (EXP-011 §47) — one patch carrying every wired property, in the
@@ -2775,7 +2777,7 @@ export function emitComponent(
         const entries = action.entries
           .map(
             (e) =>
-              `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${exprCode(e.expr, 'handler')}`
+              `${/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(e.key) ? e.key : JSON.stringify(e.key)}: ${withFallback(exprCode(e.expr, 'handler'), e.fallback)}`
           )
           .join(', ');
         return `${store.exportName}.set({ ${entries} })`;
@@ -6919,6 +6921,15 @@ function jsxAttr(name: string, value: string | number | boolean): string {
 function jsxText(text: string): string {
   if (/[{}<>]/.test(text)) return `{${JSON.stringify(text)}}`;
   return text;
+}
+
+/**
+ * EXP-011 §74. `code ?? typed` — the value typed into a Set's port under a wire whose source may read `undefined`.
+ * Parenthesised unless the code is a bare reference or call: `??` may not sit unparenthesised beside `&&`/`||`.
+ */
+function withFallback(code: string, fallback: string | number | boolean | undefined): string {
+  if (fallback === undefined) return code;
+  return `${SIMPLE_REF.test(code) ? code : `(${code})`} ?? ${tsLiteral(fallback)}`;
 }
 
 function memberExpr(object: string, field: string): string {

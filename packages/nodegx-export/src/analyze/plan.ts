@@ -1934,15 +1934,22 @@ export type HandlerAction =
       failThen: HandlerAction[];
     }
   | { kind: 'emit'; channelName: string; payload: Array<{ key: string; expr: ValueExpr }> }
-  | { kind: 'store-set'; variableName: string; expr: ValueExpr }
-  | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr }
+  /**
+   * EXP-011 §74. `fallback`: the value typed into the Set's own port UNDER the wire `expr` came from, kept only when
+   * `expr` may read `undefined` — the runtime writes the wire's last defined delivery, else the typed-in value
+   * (measured: `exp-011-s96-a-literal-under-a-wire.test.ts`), so the handler prints `expr ?? fallback`. Absent when
+   * nothing is typed in, or when the wire's source always carries a value (the typed-in value is then never written,
+   * in the runtime or here — a note says so).
+   */
+  | { kind: 'store-set'; variableName: string; expr: ValueExpr; fallback?: string | number | boolean }
+  | { kind: 'globalstore-set'; storeName: string; key: string; expr: ValueExpr; fallback?: string | number | boolean }
   /**
    * `Set Object Properties` on a named Object (EXP-011 §47): one patch over every wired property
    * the node's list admits — `profile.set({ name: …, city: … })` — then its Done chain as
    * following statements. No failure arm: with a literal Id the runtime's only failure (no
    * object bound) is unreachable, because `Model.get` creates the object on read.
    */
-  | { kind: 'object-set'; storeName: string; entries: Array<{ key: string; expr: ValueExpr }>; then: HandlerAction[] }
+  | { kind: 'object-set'; storeName: string; entries: Array<{ key: string; expr: ValueExpr; fallback?: string | number | boolean }>; then: HandlerAction[] }
   /**
    * EXP-011 §60. `Set Component Object Properties` (`parent: false`) — `<local>.set({ … })`, then Done, then Completed, as
    * following statements (one arm, always taken: the self variant cannot miss its own record). `Set Parent Component
@@ -13731,7 +13738,7 @@ function planComponent(
         return { defer: 'the value wire carries a logic truth value — only truthiness sinks take one in this slice' };
       }
       return {
-        action: { kind: 'globalstore-set', storeName: store.name, key, expr },
+        action: { kind: 'globalstore-set', storeName: store.name, key, expr, ...typedInUnderWire(node, 'value', wire, expr) },
         consumes: [wire.key, ...ctx.consumes],
         collapses: ctx.logicNodeIds,
         subscribes: ctx.subscriberIds
@@ -13863,7 +13870,7 @@ function planComponent(
       return { defer: 'the value wire carries a logic truth value — only truthiness sinks take one in this slice' };
     }
     return {
-      action: { kind: 'store-set', variableName, expr },
+      action: { kind: 'store-set', variableName, expr, ...typedInUnderWire(node, 'value', wire, expr) },
       consumes: [wire.key, ...ctx.consumes],
       collapses: ctx.logicNodeIds,
       subscribes: ctx.subscriberIds
@@ -13988,6 +13995,35 @@ function planComponent(
    * a wire there, and unlike a wire leaves nothing to drop. The two acting selectors act on a
    * literal string exactly as on a wired one, so the same refusal stands in front of both.
    */
+  /**
+   * EXP-011 §74. A value typed into a Set's port that ALSO has a wire — the shape five registers (§67.5 #1 … §71.5 #1)
+   * called "shadowed". Measured in the runtime (`noodl-runtime/test/corpus/exp-011-s96-a-literal-under-a-wire.test.ts`):
+   * `nodescope.ts` queues the typed-in parameter at creation, `connectInput` queues the wire's CURRENT value over it only
+   * when that value is defined, and every later delivery lands over it too — so at any Do the node holds the wire's
+   * last defined delivery, else the typed-in value. A source that always carries a value (a text input, which emits at
+   * mount; a String/Number/Boolean constant, delivered at boot) has landed before the first Do, and the typed-in value
+   * is never written — in the runtime or here; a note says so, because a value the author typed and nothing reads is
+   * worth a sentence. A source this export reads as possibly `undefined` (a Variable nothing wrote, an optional store
+   * key, a component input, …) is the runtime's "delivers nothing until written" — the handler prints `expr ?? typed`.
+   * One residual, registered: the runtime keeps the wire's LAST value once its source goes back to `undefined`; a live
+   * read here falls back to the typed-in value instead.
+   */
+  const typedInUnderWire = (
+    node: NodeIR,
+    port: string,
+    wire: ConnectionIR,
+    expr: ValueExpr
+  ): { fallback?: string | number | boolean } => {
+    const typed = literalParam(node, port);
+    if (typed === undefined) return {};
+    if (maybeUndefinedExpr(expr)) return { fallback: typed };
+    const label = port === 'value' ? 'Value' : `"${port.slice('prop-'.length)}" value`;
+    const trigger = node.type === 'net.noodl.GlobalStore.Set' ? 'Set' : 'Do';
+    notes.push(
+      `node ${node.id} (${node.type}): its typed-in ${label} ${JSON.stringify(typed)} is never written — the wire from ${wire.fromId}:${wire.fromProperty} always carries a value, so every ${trigger} writes the wire's value, in the runtime and here`
+    );
+    return {};
+  };
   const compileSetObjectProperties = (node: NodeIR): CompiledSink => {
     if (
       literalParam(node, 'idSource') === 'foreach' ||
@@ -14025,7 +14061,7 @@ function planComponent(
       if (isBooleanExpr(expr)) {
         return { defer: `its "${key}" is fed a logic truth value — only truthiness sinks take one in this slice` };
       }
-      entries.push({ key, expr });
+      entries.push({ key, expr, ...typedInUnderWire(node, `prop-${key}`, wires[0], expr) });
       consumes.push(wires[0].key);
     }
     if (entries.length === 0) return { defer: 'nothing is wired into any of its properties, so Do writes nothing' }; // §68: nor authored
@@ -15285,11 +15321,11 @@ function planComponent(
       // EXP-011 §47. The patch's values are read where the handler is; one arm, always taken, so
       // the chain carries the map onward — `popup-show`'s treatment.
       case 'object-set': {
-        const entries: Array<{ key: string; expr: ValueExpr }> = [];
+        const entries: Array<{ key: string; expr: ValueExpr; fallback?: string | number | boolean }> = [];
         for (const entry of action.entries) {
           const e = snapExpr(entry.expr, snap);
           if ('defer' in e) return e;
-          entries.push({ key: entry.key, expr: e });
+          entries.push({ ...entry, expr: e });
         }
         const then = snapActionList(action.then, snap);
         if (!Array.isArray(then)) return then;

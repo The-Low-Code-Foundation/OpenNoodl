@@ -479,12 +479,15 @@ describe('§E — EXP-011 §68: a value typed into a listed, unwired property is
     expect(handlerOf(home(emitApp(bool, catalog)), 'Save profile')).toContain('since: true }');
   });
 
-  test('E3 a literal under a wire is shadowed — the wire’s value is written, the literal is not mentioned', () => {
+  test('E3 a literal under a wire from a text input is never written — the wire’s value is written, and (§74) a note says the typed-in value is dead in the runtime too', () => {
     const ir = cloneIr();
     wire(ir, HOME, 'nameInput', 'onTextChanged', 'saveProfile', 'prop-since');
     const built = emitApp(ir, catalog);
     expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: name }); status.set('Saved.'); }}");
     expect(home(built)).not.toContain("'2026'");
+    expect(built.notes).toContain(
+      'Pages/Home: node saveProfile (SetModelProperties): its typed-in "since" value "2026" is never written — the wire from nameInput:onTextChanged always carries a value, so every Do writes the wire\'s value, in the runtime and here'
+    );
     expect(module_(built)).toContain('  since?: string;');
     // The wire governs the type too: a number typed under a string wire does not demote the key.
     setParam(nodeOf(ir, HOME, 'saveProfile'), 'prop-since', lit(2026));
@@ -559,13 +562,16 @@ describe('§F — EXP-011 §69: a value typed into the Set Variable with nothing
     expect(handlerOf(home(emitApp(bool, catalog)), 'Save profile')).toContain('status.set(true); }}');
   });
 
-  test('F3 a literal under a wire is shadowed — the wire is written, the literal is not mentioned, and the wire governs the type (a number under a string wire does not demote)', () => {
+  test('F3 a literal under a wire from a text input is never written — the wire is written, (§74) a note says so, and the wire governs the type (a number under a string wire does not demote)', () => {
     const ir = cloneIr();
     wire(ir, HOME, 'nameInput', 'onTextChanged', 'setStatus', 'value');
     setParam(nodeOf(ir, HOME, 'setStatus'), 'value', lit(7));
     const built = emitApp(ir, catalog);
     expect(handlerOf(home(built), 'Save profile')).toBe("onClick={() => { profile.set({ name: name, city: city, since: '2026' }); status.set(name); }}");
     expect(home(built)).not.toContain('status.set(7)');
+    expect(built.notes).toContain(
+      "Pages/Home: node setStatus (Set Variable): its typed-in Value 7 is never written — the wire from nameInput:onTextChanged always carries a value, so every Do writes the wire's value, in the runtime and here"
+    );
     expect(variables(built)).toContain('export const status = value<string | undefined>(undefined);');
   });
 
@@ -674,12 +680,25 @@ describe('§F — EXP-011 §69: a value typed into the Set Variable with nothing
     expect(typecheckEmittedApp(built)).toEqual([]);
   });
 
-  test('F8 the corpus’s only typed-in Set Variable values (mood-desk, four) all sit under a wire — shadowed, so §69 moves nothing there', () => {
+  test('F8 the corpus’s only typed-in Set Variable values (mood-desk, four) all sit under a wire from a constant — never written in the runtime, so (§74) each is a note and the handlers write the constants', () => {
     const mood = parseProject(path.join(__dirname, 'fixtures', 'mood-desk'), catalog);
     const page = mood.components.find((c: ComponentIR) => c.path === 'Pages/Mood')!;
     const typedIn = page.nodes.filter((n: NodeIR) => n.type === 'Set Variable' && n.parameters.some((p) => p.name === 'value'));
     expect(typedIn.map((n: NodeIR) => n.id).sort()).toEqual(['setAngry', 'setCalm', 'setClosed', 'setOpen']);
     for (const n of typedIn) expect(page.connections.some((c) => c.toId === n.id && c.toProperty === 'value')).toBe(true);
+    const built = emitApp(mood, catalog);
+    const never = (id: string, value: string, from: string) =>
+      `Pages/Mood: node ${id} (Set Variable): its typed-in Value ${value} is never written — the wire from ${from}:savedValue always carries a value, so every Do writes the wire's value, in the runtime and here`;
+    expect(built.notes.filter((n) => !n.startsWith('App:'))).toEqual([
+      never('setOpen', 'true', 'trueConst'),
+      never('setClosed', 'false', 'falseConst'),
+      never('setCalm', '0.5', 'calmConst'),
+      never('setAngry', '1.5', 'angryConst')
+    ]);
+    const moodPage = built.files['src/pages/Mood.tsx'];
+    expect(moodPage).toContain('onClick={() => isOpen.set(true)}');
+    expect(moodPage).toContain('onClick={() => mood.set(1.5)}');
+    expect(moodPage).not.toContain('??');
   });
 });
 

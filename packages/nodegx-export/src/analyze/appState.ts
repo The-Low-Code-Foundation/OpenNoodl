@@ -106,6 +106,8 @@ export function isGlobalStoreFamily(type: string): boolean {
 
 /** `Object` — displayed "Object", stored as `Model2` (modelnode2.ts). */
 export const OBJECT_TYPE = 'Model2';
+/** EXP-011 §74. The four value Variables (plan.ts `VALUE_VARIABLES`) — constants delivered at boot, or a row mirror. */
+const VALUE_VARIABLE_TYPES = new Set(['String', 'Number', 'Boolean', 'Color']);
 /** `Set Object Properties` (setmodelpropertiesnode.ts, over modelcrudbase.ts). */
 export const SET_OBJECT_PROPERTIES_TYPE = 'SetModelProperties';
 
@@ -374,6 +376,13 @@ interface SourceRef {
   fromProperty: string;
   /** EXP-011 §67. An authored literal standing where a wire's source node would — no node, one value. */
   literal?: string | number | boolean;
+  /**
+   * EXP-011 §74. Set when `literal` was typed into a port that ALSO has a wire: the wire's own ref. The literal is a
+   * source of the variable/key only when that wire's source may read `undefined` (`sourceMayBeUndefined`) — the plan
+   * prints `expr ?? literal` exactly then, and the type must admit what the handler can write. Under a source that
+   * always carries a value the literal is never written (in the runtime or the export) and types nothing.
+   */
+  underWire?: SourceRef;
 }
 
 export function collectAppState(ir: ExportIR): AppStateRegistry {
@@ -725,6 +734,12 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
         if (literalString(toNode, 'setWith') === 'emptyString') continue;
         ensureVariable(name);
         variableSources.get(name)!.push(fromRef);
+        // EXP-011 §74. A value typed in UNDER the wire is what Do writes while the wire's source has
+        // delivered nothing — a source too, live only when that source may read `undefined`.
+        const typedUnder = literalPrimitive(toNode, 'value');
+        if (typedUnder !== undefined && literalString(toNode, 'setWith') !== 'boolean') {
+          variableSources.get(name)!.push({ component, fromNode: undefined, fromProperty: 'value', literal: typedUnder, underWire: fromRef });
+        }
       }
       if (toNode.type === GLOBAL_STORE_SET && connection.toProperty === 'value') {
         const storeName = storeNameOf(toNode, wiredPortsOf(component));
@@ -733,6 +748,11 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           ensureStoreKey(ensureStore(storeName), key);
           const mapKey = `${storeName}\u0000${key}`;
           storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), fromRef]);
+          // EXP-011 §74. The value typed in under the wire — see the Set Variable case above.
+          const typedUnder = literalPrimitive(toNode, 'value');
+          if (typedUnder !== undefined) {
+            storeKeySources.set(mapKey, [...storeKeySources.get(mapKey)!, { component, fromNode: undefined, fromProperty: 'value', literal: typedUnder, underWire: fromRef }]);
+          }
         }
       }
       // EXP-011 §47. A Set Object Properties' wired property is a writer of that key — typed
@@ -745,6 +765,11 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
           ensureStoreKey(ensureObjectStore(id), key);
           const mapKey = `${id}\u0000${key}`;
           storeKeySources.set(mapKey, [...(storeKeySources.get(mapKey) ?? []), fromRef]);
+          // EXP-011 §74. The value typed in under the wire — see the Set Variable case above.
+          const typedUnder = literalPrimitive(toNode, connection.toProperty);
+          if (typedUnder !== undefined) {
+            storeKeySources.set(mapKey, [...storeKeySources.get(mapKey)!, { component, fromNode: undefined, fromProperty: connection.toProperty, literal: typedUnder, underWire: fromRef }]);
+          }
         }
       }
       if (toNode.type === 'Event Sender') {
@@ -756,6 +781,35 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     }
   }
 
+  /**
+   * EXP-011 §74. Whether a wire's source may deliver `undefined` — the mirror, for every source this file types as
+   * `string`, of the emitter's `maybeUndefined` table (component.ts) and plan.ts's `maybeUndefinedExpr`: a text
+   * input emits at mount (`input-text`, never undefined); a String/Number/Boolean/Color constant is delivered at boot
+   * (`literal` / a `state-get` with no `maybeUndefined`); `Now` is a value from the first read (`now-out`). A Variable
+   * (`store-get`), an Object key (`store-key-get`, never `required`), a Global Store key without an initial state, a
+   * component input (`prop`), a payload key, an HTTP error, a Date To String (`date-call`) all may be undefined —
+   * and so is anything this file cannot name: an unclassified source WIDENS the type, which the built app survives
+   * (an `unknown` read is coerced at its sink); the other direction — a fallback printed into a type that refuses
+   * it — is TS2345 in the built app.
+   */
+  const sourceMayBeUndefined = (ref: SourceRef): boolean => {
+    const node = ref.fromNode;
+    if (!node) return true;
+    if (isTextInputType(node.type) && ref.fromProperty === 'onTextChanged') return false;
+    if (VALUE_VARIABLE_TYPES.has(node.type) && (ref.fromProperty === 'savedValue' || ref.fromProperty === 'length')) return false;
+    if (node.type === 'net.noodl.Now') return false;
+    if (node.type === GLOBAL_STORE_SUBSCRIBE && ref.fromProperty === 'value') {
+      const storeName = storeNameOf(node, wiredPortsOf(ref.component));
+      const keys = subscribeKeysOf(node);
+      if (storeName === undefined || keys.length !== 1) return true;
+      return !(stores.get(storeName)?.keys.find((k) => k.key === keys[0])?.required ?? false);
+    }
+    return true;
+  };
+  /** The sources that can actually write: a literal typed under a wire counts only while that wire may deliver nothing. */
+  const liveSources = (refs: SourceRef[]): SourceRef[] =>
+    refs.filter((ref) => ref.underWire === undefined || sourceMayBeUndefined(ref.underWire));
+
   // Type inference, with a cycle guard: a self-fed variable resolves to 'unknown', never loops.
   const variableTypes = new Map<string, 'string' | 'unknown'>();
   const typeOfVariable = (name: string, visiting: Set<string>): 'string' | 'unknown' => {
@@ -764,7 +818,7 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     const guard = `v:${name}`;
     if (visiting.has(guard)) return 'unknown';
     visiting.add(guard);
-    const sources = variableSources.get(name) ?? [];
+    const sources = liveSources(variableSources.get(name) ?? []);
     // EXP-011 §72. A variable with NO statically-known source — nothing wired into any Variable's
     // or Set Variable's `value`, no authored literal, or only writers the plan refuses (an
     // expression parameter, a Logic Builder's block write) — is `unknown`, not `string`:
@@ -810,7 +864,7 @@ export function collectAppState(ir: ExportIR): AppStateRegistry {
     const guard = `s:${mapKey}`;
     if (visiting.has(guard)) return 'unknown';
     visiting.add(guard);
-    const sources = storeKeySources.get(mapKey) ?? [];
+    const sources = liveSources(storeKeySources.get(mapKey) ?? []);
     // EXP-011 §47. An Object key exists because a wire *reads* it, so it can have no writer at
     // all — and `[].every(…)` is true, which would type "nothing wrote this" as `string`. A key
     // with zero statically-known writers is `unknown`: the honest type, and the one whose read

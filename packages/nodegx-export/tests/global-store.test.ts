@@ -426,14 +426,16 @@ describe('EXP-011 §70 — a value typed into the Global Store Set with nothing 
     expect(reasonFor(withQuote(cloneIr(), lit70(true)), 'setStormy')).toBeUndefined();
   });
 
-  test('H4 a literal under a wire is shadowed — the wire is compiled, the literal never printed, and the wire governs the type (a number under a string wire does not demote)', () => {
+  test('H4 a literal under a wire from a text input is never written — the wire is compiled, the literal never printed, (§74) a note says so, and the wire governs the type (a number under a string wire does not demote)', () => {
     const shadowed = cloneIr();
     wire70(shadowed, 'noteInput', 'onTextChanged', 'setStormy', 'value');
     const built = emitApp(shadowed, catalog);
     expect(page(built)).not.toContain("'stormy'");
     expect(page(built)).toContain('useState<string>'); // a text input into a Set fired from a button — §48 G2's idiom
     expect(page(built)).toMatch(/onClick=\{\(\) => mood\.set\(\{ theme: \w+ \}\)\}/);
-    expect(built.notes.join('\n')).not.toContain('setStormy');
+    expect(built.notes).toContain(
+      "Pages/Mood: node setStormy (net.noodl.GlobalStore.Set): its typed-in Value \"stormy\" is never written — the wire from noteInput:onTextChanged always carries a value, so every Set writes the wire's value, in the runtime and here"
+    );
     // The type under a wire: a number typed in beneath a string wire on a non-initial key stays `string`.
     const typed = withQuote(cloneIr(), lit70(7));
     wire70(typed, 'noteInput', 'onTextChanged', 'setStormy', 'value');
