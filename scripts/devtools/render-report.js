@@ -101,8 +101,13 @@ const {
 /**
  * The strings a visual node shows when nobody told it what to say.
  *
- * Currently `Text` (Text.text), `Label` (six control nodes) and `Type here...`
- * (two text inputs). A page full of them is the signature of a component whose
+ * Currently `Text` (Text.text) and `Label` (six control nodes). `Type here...`
+ * was a third until REL-002a: both text inputs defaulted `Placeholder` to it,
+ * so the product manufactured the exact string this hunt looks for. That
+ * default is now empty, and because the set is derived from the catalog rather
+ * than listed here, it shrank without anyone editing this function.
+ *
+ * A page full of them is the signature of a component whose
  * instances set parameters that reach no input — the same defect
  * `interfaceless-instance` reports from the graph side, seen from the render
  * side, which is why {@link summarise} names that code in the finding.
@@ -316,7 +321,8 @@ function listProbes(projectDir) {
  * AWP-004 §3 — the placeholders the catalog cannot know about.
  *
  * `placeholderStrings` covers the strings a *node type* shows when nobody set it:
- * `Text`, `Label`, `Type here...`. Kimi K3's page showed **Title / Body / Got
+ * `Text` and `Label` — and `Type here...` too, at the time this was measured,
+ * until REL-002a emptied the text inputs' default. Kimi K3's page showed **Title / Body / Got
  * it**, `placeholders.count` was 0, and the reason is that none of the three is a
  * node-type default. Measured 2026-08-09: zero catalog defaults match any of
  * them. They are text the model hardcoded inside its own `NoticeDialog`
@@ -1230,8 +1236,93 @@ const PAGE_NAV_MS = 2000;
  * @returns {Promise<T>}
  * @template T
  */
+/**
+ * The profile-directory prefix every drive's Chrome is given, and the string the
+ * reaper below matches on. One constant so the two cannot drift.
+ */
+const RENDER_PROFILE_PREFIX = 'nodegx-render-';
+
+/**
+ * Kill the children a *previous* drive leaked, before this one spawns its own.
+ *
+ * 🔴 **Why this exists, measured.** `cleanup()` runs in a `finally`, which covers
+ * a normal return and a thrown error and **nothing else**. A drive that is
+ * SIGKILLed — an OOM, a `TaskStop`, a tool timeout, a `pkill` aimed at something
+ * else — never runs it, and both children are reparented to init and **stay
+ * there**. On 2026-09-02 that had accumulated two headless Chromes and a server
+ * holding ~520MB between them; free pages went from 5,355 to 75,714 when they
+ * were reaped. The suites they were starving were the ones being blamed.
+ *
+ * A `finally` cannot be made to survive SIGKILL, so the fix is not a better
+ * handler — it is that **the next drive cleans up after the last one**. That
+ * makes the harness self-healing with no configuration, in CI as much as on a
+ * laptop, and it is why this runs at start rather than at exit.
+ *
+ * ⚠️ **`PPID === 1` is the whole safety of it.** A live drive's server and
+ * Chrome are children of a running Node process; only an orphan has been
+ * reparented to init. Matching on the command alone would kill a **concurrent**
+ * drive — this repo routinely has several sessions running one — so the parent
+ * check is not a refinement, it is the difference between a reaper and a
+ * saboteur.
+ */
+function reapOrphanedRenderProcesses() {
+  const reaped = [];
+  try {
+    const ps = require('child_process').execFileSync('ps', ['-Ao', 'pid=,ppid=,command='], {
+      encoding: 'utf8',
+      maxBuffer: 8 * 1024 * 1024
+    });
+    for (const line of ps.split('\n')) {
+      const m = line.match(/^\s*(\d+)\s+(\d+)\s+(.*)$/);
+      if (!m) continue;
+      const [, pid, ppid, command] = m;
+      // Only orphans. See the warning above — this is load-bearing.
+      if (ppid !== '1') continue;
+      const isOurServer = command.includes(RENDER_SCRIPT);
+      const isOurChrome = command.includes(`--user-data-dir=`) && command.includes(RENDER_PROFILE_PREFIX);
+      if (!isOurServer && !isOurChrome) continue;
+      try {
+        process.kill(Number(pid), 'SIGKILL');
+        reaped.push(`${pid} ${isOurServer ? 'render-from-disk' : 'chrome'}`);
+      } catch {
+        /* already gone, or not ours to kill */
+      }
+    }
+  } catch {
+    // No `ps` (or an unexpected platform): the reaper is an optimisation, never
+    // a prerequisite. A drive must still run on a machine where it cannot look.
+    return [];
+  }
+
+  // The abandoned profile directories too — each is a few MB and they never
+  // expire on their own. Only ones with no live owner are left by the loop above.
+  try {
+    for (const name of fs.readdirSync(os.tmpdir())) {
+      if (!name.startsWith(RENDER_PROFILE_PREFIX)) continue;
+      const dir = path.join(os.tmpdir(), name);
+      try {
+        // A profile still being written to belongs to a live drive; an hour is
+        // far longer than any drive in this repo takes.
+        if (Date.now() - fs.statSync(dir).mtimeMs < 60 * 60 * 1000) continue;
+        fs.rmSync(dir, { recursive: true, force: true });
+      } catch {
+        /* raced with its owner, or not ours */
+      }
+    }
+  } catch {
+    /* tmpdir unreadable — nothing to do */
+  }
+
+  if (reaped.length) console.error(`[render] reaped ${reaped.length} orphaned process(es): ${reaped.join(', ')}`);
+  return reaped;
+}
+
 async function withRenderedPage(options, fn) {
   const { projectDir, backendPort, editorTokens = false } = options;
+
+  // Before anything else: take down what a killed drive left behind. See
+  // `reapOrphanedRenderProcesses` for why this is at the start and not the end.
+  reapOrphanedRenderProcesses();
 
   const pre = checkPrerequisites(projectDir);
   if (!pre.ok) {
@@ -1275,7 +1366,10 @@ async function withRenderedPage(options, fn) {
     { stdio: 'ignore' }
   );
 
+  let cleanedUp = false;
   const cleanup = (client) => {
+    if (cleanedUp) return;
+    cleanedUp = true;
     try {
       if (client) client.close();
     } catch {
@@ -1284,6 +1378,34 @@ async function withRenderedPage(options, fn) {
     chrome.kill();
     server.kill();
     fs.rm(profile, { recursive: true, force: true }, () => {});
+  };
+
+  /**
+   * The signals a `finally` does not see.
+   *
+   * ⚠️ **This does not cover SIGKILL and cannot** — nothing can. It closes the
+   * gap for every *graceful* kill (Ctrl-C, a test runner shutting a worker down,
+   * a `kill` with no `-9`), which is most of them; the reaper at the top of this
+   * function is what covers the rest, one drive later. Two mechanisms because
+   * the failure has two shapes, and neither alone leaves the machine clean.
+   *
+   * `once` per signal, and the handlers are removed in `finally`, so a caller
+   * that runs many drives in one process does not accumulate listeners — that
+   * would be this function leaking a different resource to fix a leak.
+   */
+  const onSignal = (signal) => () => {
+    cleanup(undefined);
+    process.exit(signal === 'SIGINT' ? 130 : 143);
+  };
+  const handlers = [
+    ['SIGINT', onSignal('SIGINT')],
+    ['SIGTERM', onSignal('SIGTERM')],
+    ['SIGHUP', onSignal('SIGHUP')],
+    ['exit', () => cleanup(undefined)]
+  ];
+  for (const [event, handler] of handlers) process.once(event, handler);
+  const releaseHandlers = () => {
+    for (const [event, handler] of handlers) process.removeListener(event, handler);
   };
 
   let client;
@@ -1351,6 +1473,7 @@ async function withRenderedPage(options, fn) {
     });
   } finally {
     cleanup(client);
+    releaseHandlers();
   }
 }
 
@@ -1632,6 +1755,9 @@ async function renderReport(options) {
 
 module.exports = {
   renderReport,
+  // Exported so a session-teardown hook, a CI step or a spec can reap without
+  // starting a drive — the leak outlives the run that caused it.
+  reapOrphanedRenderProcesses,
   routedPages,
   resolvePageRequest,
   reachableComponents,

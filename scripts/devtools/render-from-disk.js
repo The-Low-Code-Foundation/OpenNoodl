@@ -399,6 +399,56 @@ function tokenCss(cb) {
   req.setTimeout(3000, () => { req.destroy(); fallback(); });
 }
 
+/**
+ * REL-002a — the product's own host stylesheet, verbatim.
+ *
+ * 🔴 **This harness used to emit `html,body{margin:0;padding:0}` and nothing else, and that one
+ * omission made it blind to a whole class of defect.** Both product hosts
+ * (`noodl-viewer-react/static/viewer/index.html` and `.../static/deploy/index.html`, identical on
+ * every rule that matters) pin `#root` to the viewport:
+ *
+ * ```
+ *   #root { display:flex; width:100%; height:100%; overflow:clip; position:fixed }
+ *   .body-scroll > #root { height:auto; min-height:100vh; overflow:initial; position:initial }
+ * ```
+ *
+ * The viewer adds `.body-scroll` to `<body>` only when `settings.bodyScroll` is true
+ * (`viewer.jsx`), and wraps the app in its own `overflow: clip` div when it is not. So on a
+ * project that has not set it, **everything below the fold is unreachable** — `clip` creates no
+ * scroll container, so neither the user nor the browser can scroll to it.
+ *
+ * Measured 2026-09-01 on `templates/members-area` at 988x313, the editor preview's own default:
+ * `/setup` clipped **539px**, putting six of its seven fields and its submit button out of reach.
+ * On this harness's old host page the same render read **fully scrollable and every control
+ * reachable** — the defect was invisible to the instrument, not absent from the product.
+ *
+ * ✅ Read from the product file rather than restated here, so the two cannot drift. `VIEWER_DIR`
+ * is gitignored build output; the tracked `static/` copy is the fallback for a worktree that has
+ * not built. If neither is readable the harness says so loudly rather than quietly measuring a
+ * page the product never serves.
+ */
+function productHostStyle() {
+  const candidates = [
+    path.join(VIEWER, 'index.html'),
+    path.join(HARNESS_PATHS.CHECKOUT_ROOT, 'packages/noodl-viewer-react/static/deploy/index.html')
+  ];
+  for (const file of candidates) {
+    try {
+      const m = /<style>([\s\S]*?)<\/style>/.exec(fs.readFileSync(file, 'utf8'));
+      if (m) return `<style>${m[1]}</style>`;
+    } catch {
+      /* try the next candidate */
+    }
+  }
+  console.error(
+    '[render] WARNING: no product host stylesheet found (probed ' +
+      candidates.join(', ') +
+      '). Falling back to a bare reset — this page does NOT clip at the viewport the way the ' +
+      'product does, so any reading about the fold taken here is void.'
+  );
+  return '<style>html,body{margin:0;padding:0}</style>';
+}
+
 const MIME = {
   '.js': 'application/javascript', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg',
   '.svg': 'image/svg+xml', '.json': 'application/json', '.woff2': 'font/woff2', '.woff': 'font/woff', '.ttf': 'font/ttf'
@@ -448,7 +498,7 @@ function buildHtml(cb) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>${projectData.name}</title>
 ${tokens}
-<style>html,body{margin:0;padding:0}</style>
+${productHostStyle()}
 </head><body><div id="root"></div>
 <script src="/react19/react.production.min.js"></script>
 <script src="/react19/react-dom.production.min.js"></script>
