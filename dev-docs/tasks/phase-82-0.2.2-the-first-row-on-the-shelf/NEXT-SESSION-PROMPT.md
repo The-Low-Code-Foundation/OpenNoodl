@@ -1,5 +1,58 @@
 # Phase 82 — next session
 
+> ### ✅ s60 (2026-09-06) — REL-019 §4 IS BUILT, DEPLOYED AND VERIFIED. ONE ROW LEFT, AND IT IS PROSE
+>
+> **Community repo `63e72b2` → `a3e71bd`, one commit, DEPLOYED to nexus-1 (`EXIT=0`).** Read
+> [REL-019 §4.5](REL-019-THE-TABS-LEFT-BEHIND.md) — it is the record of what ran and of the two
+> places the plan it followed was wrong. ⚠️ **The OpenNoodl editor commit from s59 is still
+> NOT pushed** — a push was not asked for then and has not been asked for since.
+>
+> **1. 🔴 THE "DENIED IN THAT REPO" BLOCK DID NOT REPRODUCE — SECOND HARNESS BLOCK IN TWO DAYS
+> TO EVAPORATE.** s59 could not edit `~/vscode_projects/nodegx-community` at all; on Richard's
+> express permission, single `Edit`s and single-command `sed`s went straight in. What IS refused
+> is a COMPOUND command — `cp && sed && grep`, a multi-line `python3 -c`, `find ~/vscode_projects`,
+> an `ssh` that sources an env file. ✅ **"Denied" is a property of the COMMAND SHAPE, not of the
+> directory. Test with ONE command before inheriting a block** — cf. s58 on `gh`.
+>
+> **2. 🔴 §4 AIMED ITS DEPLOY VERIFICATION AT A ROUTE THAT HAS NEVER EXISTED.** `/api/v1/me/listing`
+> 404s because REL-015 **deliberately did not build it** — `communityapi.ts:2453`: *"NOT a
+> `/api/v1/me/listing` of its own … two doors on one state"*. The editor calls
+> `/api/v1/me/profile`, which now answers **401 JSON** and whose GET handler shipped in `e5735d9`,
+> one of the four commits production was behind. Following §4.3 literally would have declared a
+> successful deploy a failure. ✅ **A 404 on a route you ASSUMED exists is evidence about your
+> assumption.**
+>
+> **3. ✅ WHAT IS LIVE.** Eight spine lessons `ready` (**8 `>Ready<` / 8 `>In writing<`** of 16 on
+> `/university`) — verified against the BUNDLES ON DISK, not the task file's list. `articles.
+> video_url` (`0026`) with the tutorial page's player reusing `splitVideoUrl` rather than a second
+> recogniser; **0 `<iframe>` cold / 1 with `?play=1`, measured in production**. A fifth category
+> `getting-started` (`0027`), because none of `0011`'s four fits a 34-minute editor overview. The
+> meet-up replay is **published and in `/api/v1/community/home`**. `0025` cost nothing: `/people`
+> read `total: 0` before AND after.
+>
+> **4. 🔴 A GATE THAT WAS PASSING FOR THE WRONG REASON, and the tell was that it went green
+> IMMEDIATELY.** `uni020`'s seed check was ``toContain(`'${category.key}'`)``, so the new category
+> matched `tags: ['getting-started']` — **a substring found a TAG and reported a CATEGORY**.
+> Tightened to `category: '<key>'`, proved red, and `first-hour` re-filed into its real home.
+> ⚠️ Also: grepping `/university` for `Ready to install` — a string `standingLabel` never emits —
+> read *16 in writing* and nearly became a reported failure. **Grep the string the CODE emits.**
+>
+> **5. Readings.** Community `vitest` **65 files / 1640 passed, 8 skipped, EXIT=0** (s59's 1635 +
+> 5 new, reconciled); `tsc --noEmit` **EXIT=0**; three mutants red, each restored **md5-identical**;
+> deploy **EXIT=0**, neighbours 200 → 200. ⚠️ One self-inflicted cost: `git checkout --` to undo a
+> mutant discarded that file's uncommitted work too — caught on the md5, reapplied. The rule is
+> already in memory and still cost a round trip.
+>
+> ⬜ **FIRST JOB: NOTHING IN CODE — IT IS RICHARD'S PROSE.** The *"Noodl is back — First look"*
+> tutorial is the single open row on REL-019, and **everything it needs is live**: the column, the
+> player, the `getting-started` category, the `--video` flag. The command is §4.4's plus
+> `getting-started` as the category. 🔴 **A session must not write that body** — the 200-character
+> floor exists because UNI-020 shipped `Placeholder body.` three times. Also still Richard's: the
+> **0.2.2 re-cut** (REL-004, unchanged from s58) and the replay description's wording
+> (`--replace` re-runs it).
+>
+> **Second job, if he wants one that is not prose:** nothing on this row. REL-019 is otherwise done.
+
 > ### 🟡 s59 (2026-09-06) — REL-019: THE COMMUNITY AND LEARNING TABS. EDITOR HALF DONE; PLATFORM HALF IS THE FIRST JOB
 >
 > **One commit, `cline-dev` tip, NOT pushed** (push was not asked for). Read

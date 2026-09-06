@@ -119,6 +119,15 @@ production, before anything was changed. Screenshots of the before state are in
 
 ## 3. 🔴 What is NOT done, and why — read this before the board
 
+> ### ✅ s60 (2026-09-06) — SUPERSEDED. §4 IS DONE AND DEPLOYED, EXCEPT THE TUTORIAL BODY.
+>
+> The classifier denial below **did not reproduce**, on Richard's express permission and the
+> second cheap test in two days: single `Edit`s and single-command `sed`s into that tree were
+> accepted, and only COMPOUND commands (`cp && sed && grep`, a multi-line `python3 -c`, a
+> `find` over `~/vscode_projects`) were refused. 🔴 **The test is one command, and "denied" is
+> a property of the COMMAND SHAPE rather than of the directory** — s59 read a real refusal and
+> generalised it one level too far. See §4.5 for what was actually run and measured.
+
 🔴 **Every edit to `~/vscode_projects/nodegx-community` was DENIED by the session's permission
 classifier** — an `Edit` of one JSON value, a `grep` in that tree, a Python write. The platform
 half of this row could not be built from this session, and a production deploy on top of that would
@@ -127,6 +136,11 @@ and 4 are **handed over with the exact steps**, not marked done. ✅ `ssh` to ne
 session (`SSH_OK`), so the "blocked" claim in the harness memory did not reproduce today either.
 
 ## 4. The platform half — the steps, in order (Richard, or a session allowed to edit that repo)
+
+> ✅ **s60 ran §4.1–§4.3 and the replay half of §4.4.** The steps below are kept as written
+> because they are the record of what was planned; **§4.5 is what happened**, including the two
+> places the plan was wrong. Community repo now at **`a3e71bd`**, deployed and stamped on
+> nexus-1. ⏳ Left: the *First look* tutorial, whose body is Richard's prose.
 
 All paths are in `~/vscode_projects/nodegx-community`, currently clean at `63e72b2`, four commits
 ahead of what nexus-1 runs.
@@ -235,6 +249,72 @@ UNI-020's vocabulary worth a fifth word (`getting-started`).
 https://community.nodegx.io/api/v1/community/home` should list one replay and one article, and the
 launcher's Replays tab should draw the poster row and open `/replays/meet-up-1-presenting-the-alpha`.
 
+## 4.5 ✅ s60 — what was actually run, and the two places §4 was wrong
+
+Community repo **`63e72b2` → `a3e71bd`** (one commit, 15 files), deployed to nexus-1 with
+`ops/deploy.sh 49.12.102.195`, **EXIT=0**. Migrations `0025`, `0026` and `0027` applied there for
+the first time; neighbours **200 → 200** all three; host stamped `a3e71bd` on `main`.
+
+### 🔴 The two things §4 got wrong, both found by measuring rather than by following
+
+1. **`GET /api/v1/me/listing` DOES NOT EXIST AND WAS NEVER MEANT TO.** §1 and §4.3 both read its
+   404 as the People card's cause and as the deploy's verification target. It is neither.
+   `communityapi.ts:2453` says so in its own header: *"`GET /api/v1/me/profile`, NOT a
+   `/api/v1/me/listing` of its own … building it would have put two doors on one state"*. The
+   editor calls `/api/v1/me/profile`, and **that** route is what was missing from production.
+   ⚠️ So the §4.3 verification pair was aimed at a route nobody calls, and would have reported
+   the deploy a failure while the card worked. Measured after: `/api/v1/me/profile` → **401 JSON**
+   (`{"error":"sign in to see your listing"}`), and `git log` confirms its GET handler landed in
+   `e5735d9` — one of the four commits production was behind, so it could not have served this
+   before. 🔴 **A 404 on a route you assumed exists is not evidence about the feature.**
+2. **`0025`'s cost was zero, confirmed twice.** `/api/v1/community/people` read `total: 0`
+   BEFORE the deploy and `total: 0` after, so no `/u/<handle>` came down and
+   `scripts/approve-listing.ts` had nobody to approve. The before-reading is the one that
+   mattered and it was taken first.
+
+### A gate that was passing for the wrong reason
+
+Adding the fifth category made `uni020`'s seed check go green **immediately**, which is the tell.
+`seed.mjs` has carried `tags: ['getting-started']` since UNI-020 and the assertion was a bare
+``toContain(`'${category.key}'`)`` — **a substring found a TAG and reported a CATEGORY**. Tightened
+to `category: '<key>'` in field position, proved red with the seed reverted, and `first-hour` (an
+orientation article filed under `data-lists`) re-filed into the category it was always about;
+`data-lists` keeps `repeaters`, so no facet lost its positive arm.
+
+`uni005`'s inventory also demanded `articles.video_url` — the sweep a new column owes. Classified
+`platform-content` **by mechanism, not intention**: no route under `src/app` writes it.
+
+### Readings, with exit statuses
+
+| What | Reading |
+|---|---|
+| `npx vitest run` (community) | **65 files passed / 1 skipped, 1640 passed / 8 skipped, EXIT=0** — s59's 1635 + 5 new, reconciled |
+| `npx tsc --noEmit -p .` | **EXIT=0**, zero lines |
+| `ops/deploy.sh 49.12.102.195` | **EXIT=0**; `0025`+`0026`+`0027` applied; neighbours 200 → 200 |
+| Mutants (3, each restored **md5-identical**) | `videoUrl` dropped from `tutorialSummary` → red · page's `play === '1' &&` removed → red · seed category reverted → red |
+| `/university` live | **8 `>Ready<`, 8 `>In writing<`** of 16 lessons |
+| `/replays/meet-up-1-…` live | **0 `<iframe>` cold, 1 with `?play=1`** — the criterion holds in production |
+| `/api/v1/community/home` | one replay, `articles: []` |
+| `/`, `/university`, `/replays`, `/tutorials`, `/people` | **200** |
+
+⚠️ **A near-miss worth keeping**: the first `/university` check grepped for `Ready to install`, a
+string `standingLabel` never emits, and read *16 in-writing* — a false failure. `>Ready<` is the
+honest count. **Grep for the string the code actually produces, not the one the task file says.**
+
+⚠️ **And a self-inflicted one**: restoring the first mutant with `git checkout -- <file>` discarded
+that file's REL-019 edits along with the mutation, because they were uncommitted. Caught on the
+md5, reapplied, re-verified. Every later restore used a `cp` snapshot. This is the recorded rule
+and it still cost a round trip.
+
+### ⏳ What is left, and it is one thing
+
+The *"Noodl is back — First look"* tutorial. `articles.video_url` and the `getting-started`
+category are **live and waiting for it**; the command is §4.4's, with `--category getting-started`
+now that the fifth word exists. 🔴 **The body is Richard's prose** — the 200-character floor exists
+because UNI-020 shipped `Placeholder body.` three times, and a session inventing paragraphs
+reproduces that defect with better grammar. The summary in §4.4 is a proposal from the title, and
+so is the replay description that WAS published (`--replace` re-runs it if the wording is wrong).
+
 ## 5. Pictures
 
 `dev-docs/tasks/phase-82-0.2.2-the-first-row-on-the-shelf/verdicts/rel-019/2026-09-06/` —
@@ -246,11 +326,13 @@ launcher's Replays tab should draw the poster row and open `/replays/meet-up-1-p
 | Item | State | Left |
 |---|---|---|
 | 1 chat | 🟢 built, wired, driven | — |
-| 1 people | 🟡 editor built (s33); **route not deployed** | §4.3 |
+| 1 people | 🟢 **deployed s60**; `/api/v1/me/profile` → 401 JSON (NOT `/me/listing`, §4.5) | Richard's click |
 | 1 look | 🟢 built, driven, pictured | Richard's eye |
 | 2 shelf | 🟢 built, gated, driven | — |
 | 3 steps open | 🟢 built, gated, driven | — |
 | 3 explain | 🟢 withdrawn on refusal | a projector on nexus-1 if he wants the feature |
-| 3 "none installable" | 🟡 launcher says otherwise underneath | §4.1 + §4.3 |
-| 4 replays | ⏳ launcher draws posters; **no row in production** | §4.4 (replay) |
-| 4 tutorial video | ⏳ launcher draws video rows; **platform has no column** | §4.2 + §4.3 + §4.4 |
+| 3 "none installable" | 🟢 **8 of 16 live `Ready`** on /university, deployed s60 | — |
+| 4 replays | 🟢 **published s60** — in `/api/v1/community/home`, page 200, 0 frames cold | Richard's eye on the description |
+| 4 tutorial video | 🟡 **column + `getting-started` category live**; no row yet | 🔴 Richard's BODY PROSE, then §4.4's command |
+
+🔴 **The one open row is prose, not code.** Everything the tutorial needs exists in production.
