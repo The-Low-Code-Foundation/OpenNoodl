@@ -19,7 +19,7 @@ import { AiProviderId, AiRole } from '@noodl-models/AiAssistant/client/types';
  * Prices below were correct on this date. They are used only for the cost
  * readout; a stale price never breaks a request.
  */
-export const PRICING_AS_OF = '2026-07-26';
+export const PRICING_AS_OF = '2026-08-31';
 
 /**
  * Prompt-cache rate multipliers, applied to a model's *input* price.
@@ -223,10 +223,7 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     tier: 'balanced',
     contextWindow: 1_000_000,
     maxOutputTokens: 128_000,
-    // MAINTENANCE: introductory pricing, $2/$10, ends 2026-08-31 — after that
-    // this entry reverts to the standard $3/$15. A stale price here does not
-    // break requests, it only misreports cost.
-    pricing: { inputPerMTok: 2.0, outputPerMTok: 10.0 },
+    pricing: { inputPerMTok: 3.0, outputPerMTok: 15.0 },
     capabilities: claudeFrontier,
     // AIX-007: the default moved here from `claude-opus-4-8` on measurement,
     // not on tier. Over the 8-prompt authoring corpus both reached 8/8
