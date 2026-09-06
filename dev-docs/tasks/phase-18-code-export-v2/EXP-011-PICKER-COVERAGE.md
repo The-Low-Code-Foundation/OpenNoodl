@@ -10359,7 +10359,7 @@ session 93 hand-off.
   `internal.value`, written on `Set`; the export's `net.noodl.GlobalStore.Set` case refuses *nothing is wired into value* one screen above
   the Set Variable case, with the same shape and the same fix (a clause + a literal `SourceRef` under `storeKeySources`). Owner NONE — a
   one-session job, the natural next.
-- **`setWith` with a typed-in value** — every non-string coercion is refused by name in front (F5), as it was for a wire; `emptyString`
+- ✅ **Built as §73 (session 95)** — the register UNDERSTATED it: four of the seven non-string enums convert nothing, and the gate refused the runtime's no-op. Was: **`setWith` with a typed-in value** — every non-string coercion is refused by name in front (F5), as it was for a wire; `emptyString`
   writes `''` with no Value at all and is refused as a conversion. Each is one clause. Owner NONE.
 - **A variable whose only writer is a REFUSED Set with a typed-in value is still typed by the literal** — discovery registers the source
   regardless of the plan's refusal, the same convention the wired path has had since §47. Owner NONE.
@@ -10455,7 +10455,7 @@ expression is not a literal; H9 discovery registers the literal regardless of th
 1. ⚠️ **A hard-coded list of "every naming node" is a pin on the fixture's node COUNT** — the naming-node test dropped `storeName`
    from five ids by name; a sixth naming node left a second store standing. The row is honest and now lists six, but any fixture growth
    on that page will red it again. Owner NONE (a `nodes.filter(isGlobalStoreFamily)` would make it count-proof — one line, not this slice's).
-2. ⚠️ **The ledger is ASCII-escaped and one line is not** — `coverage-ledger.json` writes `§` everywhere except session 93's
+2. ✅ **CLOSED by measurement (session 95, §73.0)** — the file has 0 non-ASCII characters today; lane vartype's `1f0e11a9` rewrote it escaped. Was: ⚠️ **The ledger is ASCII-escaped and one line is not** — `coverage-ledger.json` writes `§` everywhere except session 93's
    §69 note, which is raw. `json.dump(ensure_ascii=True)` re-escapes that line (a two-line diff for a one-line change);
    `ensure_ascii=False` un-escapes the whole file (128 KB of diff). The §70 note was patched textually in the file's own convention.
    Owner NONE — a normalisation is one `python -c` for whoever next touches the file.
@@ -10472,7 +10472,7 @@ expression is not a literal; H9 discovery registers the literal regardless of th
 - **A store key whose only writer is a REFUSED Set with a typed-in value is still typed by the literal** (H9) — discovery ignores the
   plan's refusal, the wired path's convention since §47. Owner NONE.
 - **The cascade sentence on the node in front** (§69.4 #1, seen again in §70.0). Owner NONE (EXP-004's report).
-- **The naming-node list pin** (§70.4 #1). Owner NONE.
+- ✅ **Built as §73 (session 95)** — `nodes.filter(isGlobalStoreFamily)` with the six ids asserted. Was: **The naming-node list pin** (§70.4 #1). Owner NONE.
 - §69.5 row 2 (this section) CLOSED. §67.5 #2 / §67.5 #1 / §68.5 #1 unchanged.
 
 ### §70.6 The drive — the built export, headless (session 94)
@@ -10724,7 +10724,7 @@ tests, exit 0** (79 spec files on disk reconciled; the sweep for the negative pi
 
 ### §72.5 What this leaves (owner NONE unless named)
 
-- **`typeOfPayloadKey`'s vacuous `every`** — an Event Sender's listed payload key nothing wires reads `string`; corpus 1 key, 0 unwired.
+- ✅ **Built as §73 (session 95)** — measured in `eventsender.ts` first: a listed key nothing wires never enters `inputValues`. Was: **`typeOfPayloadKey`'s vacuous `every`** — an Event Sender's listed payload key nothing wires reads `string`; corpus 1 key, 0 unwired.
   One line, §47's rule a fourth time. Owner NONE.
 - **A `number`-typed Id** (a record column typed number wired into a record Id) is bound bare into a `string` parameter — the same
   TS2345, a different type; no fixture wires one. Owner NONE.
@@ -10747,3 +10747,105 @@ the verbs' own caught-failure reports (`record/storage-op-failed`, `AddDbModelRe
 `console.error` wrap collects; no `error:` / `rejection:` entry, nothing uncaught. **A sheet mistake about the instrument, not the app**
 — §43's verbs report a failure to the console as the runtime does, and the sheet forgot the wrap collects it. Teardown: 0 listeners on
 4372 / 9372.
+
+## §73 The one-liners four registers left — the `Set Variable` Set as table, a payload key nothing wires, the naming-node pin, the ledger's `§` (session 95, 2026-09-06)
+
+Four register rows, one commit, no new node: §69.5 #3 (`setWith` with a typed-in value), §72.5 #1 (`typeOfPayloadKey`'s vacuous
+`every`), §70.4 #1 (the naming-node list pin) and §70.4 #2 (the ledger's `§`). **Picker 117/127 unchanged** — every one is inside a
+translated node. Two of the four were not what the register said: one was UNDERSTATED, one was ALREADY CLOSED.
+
+### §73.0 What the analysis did, measured before a line of code
+
+- **§69.5 #3 — the runtime's Set as table**, read in `setvariablenode.ts` `scheduleStore`: `emptyString` ⇒ `value = ''` before anything
+  reads Value (the editor's `_updatePorts` removes the port; a wire that survives is ignored); `object`/`array` with a STRING value ⇒
+  `Model.get(id)` / `Collection.get(id)` — an id lookup into a store; `boolean` ⇒ `!!value`; **`string`, `number`, `date` and `*` (the
+  default — what an unset parameter means) do nothing** — the enum names the Value port's declared type (`_updatePorts` sends it as the
+  port type) and the runtime's `connectInput` coerces nothing. The register said *every non-string coercion is refused by name*; the
+  gate `setWith !== undefined && setWith !== 'string'` refused four values that convert nothing, and a refused Set drops the trigger
+  wire in front (§69.0's cascade) — the cost of refusing a no-op is the button. Corpus walk over 39 fixtures: the ONLY `setWith` is
+  cheer's `storeCheer` = `string`; the five typed-in non-string values (mood-desk's four, F8's shadowed Sets) carry no `setWith`. No
+  presence anywhere ⇒ the rows are profile-desk mutations, as F2–F7 are.
+- **§72.5 #1 — a listed payload key nothing wires**, read in `noodl-viewer-react`'s `eventsender.ts`: `registerInputIfNeeded` stores a
+  key into `_internal.inputValues` only when a value ARRIVES; `sendEvent` sends `inputValues` as they are ⇒ a listed, unwired key is
+  absent from the event and the Receiver's `payload[name]` getter reads `undefined`. `typeOfPayloadKey` (`appState.ts:777`) had
+  `sources.every(…)` with no length guard — `[].every` is `true` ⇒ `string`. §47's rule (variables §47, store keys §47/§48, variables
+  again §72) a fourth time. Corpus: ONE Event Sender (cheer `cheerSend`, payload `message`), wired ⇒ the row is a wire-drop mutation.
+- **§70.4 #1** — six ids by name in `global-store.test.ts`; `isGlobalStoreFamily` already exported from `appState.ts` (three types).
+- **§70.4 #2 — ALREADY CLOSED**: `coverage-ledger.json` has **0 non-ASCII characters** today (`python -c` over the file, 72 lines carry
+  `\u00a7`); `git log -- coverage-ledger.json` names `1f0e11a9` (lane vartype, §72) as the last writer — its `json.dump` re-escaped
+  §69's raw line as a side effect. The register was one commit stale. No change; closed by measurement.
+
+### §73.1 What is built
+
+- **`plan.ts` — the Set Variable case** (`compileSink`, the un-dispatched tail): the gate is the runtime's table. `object`/`array` ⇒
+  the old sentence (an id lookup, not translated); `emptyString` ⇒ a literal `store-set` of `''` whether Value is typed, empty or wired
+  (the wire's key is consumed, its source never resolved — the runtime never reads it); `boolean` under a wire ⇒ the old sentence (the
+  wire path has no `!!` in this slice, §73.5); `boolean` with no wire ⇒ `Boolean(literalParam(node,'value'))` — **and nothing typed in is
+  `!!undefined`, a write of `false` on every Do**, where the old code would have said *nothing is wired into value*; `string` / `number`
+  / `date` / `*` / unset ⇒ fall through to §69's literal path and the wire path untouched.
+- **`appState.ts` — discovery, the typing mirror** (the two-files rule, fifth time): the Set's literal source is the COERCED value —
+  `''` under `emptyString` (registered with or without a wire), `Boolean(typed)` under `boolean` when unwired, the literal itself
+  otherwise; and the wire-registration loop SKIPS a wire into a Set whose `setWith` is `emptyString` — a wire the runtime never reads is
+  not a source (it would demote the variable to `unknown` through a non-string source). `typeOfPayloadKey` gains `sources.length > 0 &&`.
+- **`global-store.test.ts`** — the naming row filters `Pages/Mood` by `isGlobalStoreFamily` and asserts the six ids, so a fixture that
+  grows or shrinks moves the row by name instead of silently keeping a second store.
+
+### §73.2 The fixtures — none changed
+
+profile-desk carries no `setWith`, cheer's is `string`: every golden in the whole-package run is the byte-identical proof (§D the
+fixture whole, F1's `SAVE`, `GOLDEN_CHEER_BANNER`, `GOLDEN_EVENTS`).
+
+### §73.3 Gates and arms
+
+`object-store.test.ts` §F: F5 rewritten (Boolean typed in ⇒ `status.set(true)`, `value<unknown>`, the app typechecks; `false` ⇒
+`false`), F9 (Boolean, nothing typed ⇒ `status.set(false)`), F10 (Empty string typed / bare / wired from the self-fed `statusVar` ⇒
+`status.set('')`, `value<string | undefined>`, no note), F11 (Number / Date / Any: `7` stays `7` and types `unknown`, `"Saved."` stays
+`SAVE`), F12 (Object / Array refused typed-in and under a wire), F13 (Boolean under a wire refused). `stores-events.test.ts`: the
+`number` refusal pin rewritten as *CheerBanner.tsx is the golden byte for byte* under `number`/`date`/`*`; Object / Array / Boolean-
+under-a-wire still refused; the payload row (drop the `cheerSend:message` wire ⇒ `message?: unknown;`, control `message?: string;` on
+the base). 90 rows in the two specs, all green on the first run — so the arms are the evidence:
+
+| arm | mutant | rows expected red | read |
+|---|---|---|---|
+| M1 | plan: `emptyString` branch dead (`'emptyString!'`) | F10 | 1 failed / 90 ✓ |
+| M2 | plan: Boolean literal written uncoerced (`?? false`) | F5 (`"Saved."` ⇒ `true`) | 1 / 90 ✓ |
+| M3 | plan: Boolean with nothing typed falls to the refusal | F9 | 1 / 90 ✓ |
+| M4 | plan: Object/Array refusal dead | F12 + stores-events | 2 / 90 ✓ |
+| M5 | plan: Boolean-under-wire refusal dead | F13 + stores-events | 2 / 90 ✓ |
+| M6 | appState: `''` not registered under `emptyString` | F10 bare (`unknown`) | 1 / 90 ✓ |
+| M7 | appState: Boolean source uncoerced | F5 (`string`) | 1 / 90 ✓ |
+| M8 | appState: the wire under `emptyString` still a source | F10 wired (`statusVar` ⇒ `unknown`) | 1 / 90 ✓ |
+| M9 | appState: `typeOfPayloadKey` vacuous `every` restored | the payload row | 1 / 90 ✓ |
+| M10 | plan: `number` refused again | F11 + stores-events | 2 / 90 ✓ |
+
+10/10 killed (`mut.py`, s95 scratchpad `a7351a26-…`; every arm restored from the `post/` snapshot by md5). Each arm's red count matches
+its prediction; the row NAMES were predicted, not read back (the summary's name capture missed jest's ANSI) — the counts discriminate
+M4/M5/M10 (two rows) from the rest (one).
+
+`gates.sh` (s95 scratchpad `a7351a26-…`): **whole pkg jest 79 files (79 on disk) 2997/2997 exit 0** (10:26–10:28) · **editor tsc exit 0, empty log** (10:31, sub-minute) · **`export-ledger:check` OK — 176 types, 124 translated** · **picker 117/127 exit 0** · **editor `test:ci` 2943 specs, 5 failures = the floor BY NAME** (AIX-006 ×4 + SB-017 acceptance 6; seed 23215; `test-results.json` fresh 10:33, 3340 bytes; `.webpack-cache` cleared first; exit 1 as always on the floor; HEAD `0b603a23` = a peer's commit mid-session). No drive this session: the emitted text is §69's shape with a different literal, and F5 typechecks the emitted app; the family row's drive (mood-desk) is where these shapes get driven.
+
+### §73.4 What building it found
+
+1. 🔴 **A register can UNDERSTATE by calling a no-op a coercion.** *Every non-string coercion is refused by name* read as safe; four of
+   the seven enums coerce nothing, and refusing them cost the button in front (§69.0's cascade). ✅ Read the runtime's TABLE, enum by
+   enum, before believing a gate's sentence about "conversions".
+2. 🔴 **A register can be one commit STALE** — §70.4 #2 was closed by a sibling lane's `json.dump` the same session it was registered.
+   ✅ Re-measure (`python -c` over the file, `git log -- <file>`) before inheriting; the hand-off's "one `python -c`" was already done.
+3. ⚠️ **The payload/store key separator is a NUL, printed as a space.** `${channel}\u0000${key}` reads `${channel} ${key}` in a
+   terminal; an exact-string edit matched 0 times. ✅ `cat -e` (`^@`) before an exact-string replace on a line with a template key.
+4. 🔴 **A string wire cannot arm "the wire is not a source"** — under `emptyString` a `nameInput` wire types `string` with or without
+   the skip. The discriminating source is the self-fed `statusVar` (the cycle guard reads `unknown`): M8 is a kill only through it.
+   A control pair proves what you varied — vary the TYPE of the source, not its presence.
+5. ⚠️ **Boolean with nothing typed in is a write, not an absence.** `!!undefined` is `false` on every Do; the old sentence *nothing is
+   wired into value* would have been a refusal of a write the runtime performs. F9 pins it.
+
+### §73.5 What this leaves (owner NONE unless named)
+
+- **Boolean under a wire** — `!!` on the wire path needs an expression the printer spells `Boolean(x)` that `isBooleanExpr` does not
+  refuse as a logic truth value; refused by the old sentence today (F13). Owner NONE.
+- **`date`** — the export passes a typed-in Date through as the editor stored it; NDA-012 says what `Date` should even produce is an
+  open runtime decision. Owner NONE (a runtime ruling first).
+- **`object`/`array` with a NON-string value** — the runtime passes it through untouched (the lookup is `typeof value === 'string'`
+  only); the export refuses the enum whole. No fixture; a typed-in object cannot be authored in the panel. Owner NONE.
+- §67.5 #1 / §68.5 #1 / §69.5 #1 / §70.5 #1 (a literal under a wire) unchanged — the next family row. §69.4 #1 (the cascade sentence)
+  unchanged. §71.5 (the hidden `Model2` port) unchanged — Richard's ruling.
