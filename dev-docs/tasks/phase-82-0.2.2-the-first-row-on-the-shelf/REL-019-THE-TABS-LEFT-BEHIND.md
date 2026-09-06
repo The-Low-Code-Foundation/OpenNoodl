@@ -306,14 +306,41 @@ that file's REL-019 edits along with the mutation, because they were uncommitted
 md5, reapplied, re-verified. Every later restore used a `cp` snapshot. This is the recorded rule
 and it still cost a round trip.
 
-### ⏳ What is left, and it is one thing
+### ✅ s61 — nothing is left. The tutorial is published, and the prose is Richard's
 
-The *"Noodl is back — First look"* tutorial. `articles.video_url` and the `getting-started`
-category are **live and waiting for it**; the command is §4.4's, with `--category getting-started`
-now that the fifth word exists. 🔴 **The body is Richard's prose** — the 200-character floor exists
-because UNI-020 shipped `Placeholder body.` three times, and a session inventing paragraphs
-reproduces that defect with better grammar. The summary in §4.4 is a proposal from the title, and
-so is the replay description that WAS published (`--replace` re-runs it if the wording is wrong).
+**Richard supplied the body himself** (his YouTube description, pasted into the session) and it
+went up verbatim: `/tutorials/first-look-at-the-new-editor`, `getting-started` · `beginner` ·
+34 min, **1596 chars**, `--publish`. The 200-character floor was never in danger and, more to the
+point, **no session wrote a word of it** — which is the whole reason the floor exists.
+
+**Verified on the live site, not from the script's own success line**: `/api/v1/community/home`
+lists **1 replay + 1 article**, the article carries
+`videoUrl: https://www.youtube.com/watch?v=fqmHH36ndc0`, the page is **200** with the title
+present, it is **listed on `/tutorials`**, and there are **0 `<iframe>` cold** — the player does
+not touch YouTube until a reader presses play, which is the property `0026`'s `splitVideoUrl`
+reuse was for.
+
+⚠️ **Three things a session did NOT decide, left for Richard's eye** (`--replace` re-runs any of
+them cheaply):
+
+1. **The summary is composed from his own two opening sentences**, not from §4.4's proposal —
+   §4.4's *"building a first screen"* was invented from the title and the timestamps show the
+   video does no such thing. It is a tour of what changed.
+2. **`--minutes 34` is the measured `lengthSeconds`; his prose says "30-minute tour".** The
+   measurement is kept and the discrepancy recorded rather than silently reconciled.
+3. **Formatting**: the timestamp block became a markdown list under a `## Timestamps` heading and
+   the trailing YouTube hashtags were dropped. Nothing else was touched. The `claude.ai/code/artifact`
+   "full change list" link is his and went up as written — 🔴 **artifacts are private by default,
+   so that link may 404 for readers**; worth a check, and it is the one line in the body a reader
+   is most likely to click.
+
+⚠️ **`publish-tutorial.ts` warned "No `--node` chips … unfindable that way".** Left deliberately:
+the node filter on `/tutorials` exists to find tutorials ABOUT a node, and an editor overview is
+about none of them. It is listed on the index and reachable; the warning is correct in general and
+wrong for this row.
+
+The replay description that WAS published in s60 is still a proposal from its title
+(`--replace` re-runs it if the wording is wrong).
 
 ## 5. Pictures
 
@@ -333,6 +360,6 @@ so is the replay description that WAS published (`--replace` re-runs it if the w
 | 3 explain | 🟢 withdrawn on refusal | a projector on nexus-1 if he wants the feature |
 | 3 "none installable" | 🟢 **8 of 16 live `Ready`** on /university, deployed s60 | — |
 | 4 replays | 🟢 **published s60** — in `/api/v1/community/home`, page 200, 0 frames cold | Richard's eye on the description |
-| 4 tutorial video | 🟡 **column + `getting-started` category live**; no row yet | 🔴 Richard's BODY PROSE, then §4.4's command |
+| 4 tutorial video | 🟢 **PUBLISHED s61** — Richard supplied the prose, §4.4's command ran | Richard's eye on the summary (`--replace`) |
 
 🔴 **The one open row is prose, not code.** Everything the tutorial needs exists in production.
