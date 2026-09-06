@@ -179,3 +179,71 @@ describe('P79 D2 — a node is called what the editor calls it', () => {
     );
   });
 });
+
+/**
+ * P79 L4 — a graded PORT is called what the property panel calls it.
+ *
+ * `snacks` step 2's refusal read *"csv set on “Pantry”"*. `csv` is the port's name; the panel
+ * says **CSV**. D2 fixed the TYPE in this sentence and left the port, so the learner was still
+ * being shown a word that appears nowhere in the editor.
+ */
+describe('P79 L4 — a port is called what the panel calls it', () => {
+  const PANTRY = '/Pages/Home:#Pantry';
+  const MENU = '/Pages/Home:#Home:#Page shell:#Board:#Menu';
+  // The library's answer, stubbed: only the ports the panel really renames.
+  const panel = (type: string, port: string): string | undefined => {
+    const names: Record<string, Record<string, string>> = {
+      'Static Data': { csv: 'CSV', items: 'Items' },
+      'For Each': { items: 'Items', template: 'Template' }
+    };
+    return names[type]?.[port];
+  };
+
+  it('🔴 hasParams shows the panel name when a sibling hasType says what the node is', () => {
+    expect(
+      describeStepCheck([{ path: PANTRY, hastype: 'Static Data' }, { path: PANTRY, hasparams: 'csv' }], undefined, panel)
+    ).toBe('Looking for a Static Data called “Pantry” on Home and CSV set on “Pantry”.');
+  });
+
+  it('paramsEqual names the port the same way, and keeps naming the value (J4)', () => {
+    expect(
+      describeStepCheck(
+        [{ path: MENU, hastype: 'For Each' }, { path: MENU, paramseq: { template: '/Snack' } }],
+        undefined,
+        panel
+      )
+    ).toBe('Looking for a For Each called “Menu” on Home and “Menu” with Template set to "/Snack".');
+  });
+
+  it('a connection resolves each end against ITS OWN node type', () => {
+    expect(
+      describeStepCheck(
+        [
+          { path: PANTRY, hastype: 'Static Data' },
+          { path: MENU, hastype: 'For Each' },
+          { from: PANTRY, to: MENU, hasconnection: 'items,items' }
+        ],
+        undefined,
+        panel
+      )
+    ).toBe('Looking for a Static Data called “Pantry” on Home, a For Each called “Menu” on Home and Pantry wired to Menu (Items → Items).');
+  });
+
+  it('falls back to the port name without a resolver, without a sibling hasType, or for a port the library does not know', () => {
+    // The control: the same conditions, the old sentence. Without this, the assertions above
+    // would pass against a resolver that is never consulted.
+    expect(describeStepCheck([{ path: PANTRY, hastype: 'Static Data' }, { path: PANTRY, hasparams: 'csv' }])).toBe(
+      'Looking for a Static Data called “Pantry” on Home and csv set on “Pantry”.'
+    );
+    expect(describeStepCheck([{ path: PANTRY, hasparams: 'csv' }], undefined, panel)).toBe(
+      'Looking for csv set on “Pantry”.'
+    );
+    expect(
+      describeStepCheck([{ path: PANTRY, hastype: 'Static Data' }, { path: PANTRY, hasparams: 'wibble' }], undefined, panel)
+    ).toBe('Looking for a Static Data called “Pantry” on Home and wibble set on “Pantry”.');
+  });
+
+  it('describeCondition alone still answers with the raw port — the join is the step’s, not the condition’s', () => {
+    expect(describeCondition({ path: PANTRY, hasparams: 'csv' })).toBe('csv set on “Pantry”');
+  });
+});

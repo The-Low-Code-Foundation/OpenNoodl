@@ -84,6 +84,21 @@ function where(path: string | undefined): string {
 export type TypeNameResolver = (typeName: string) => string | undefined;
 
 /**
+ * P79 L4 — the same thing for a PORT: `csv` on a `Static Data` node is **CSV** in the panel.
+ *
+ * Injected for the same reason as {@link TypeNameResolver}, and it takes the node's *type*
+ * because a `hasParams` or `paramsEqual` condition names a path and a port and nothing else —
+ * the type is supplied by a sibling `hasType` on the same path, which is how every shipped
+ * lesson writes the pair, and {@link describeStepCheck} makes that join. Without a sibling, or
+ * without a resolver, the port name is shown as written: the fallback degrades the copy and
+ * never the grading, which is this module's contract.
+ */
+export type PortLabelResolver = (typeName: string, portName: string) => string | undefined;
+
+/** `(path, port) → label`, already joined to the step's own `hasType` conditions. */
+type PortLabelForPath = (path: string | undefined, portName: string) => string;
+
+/**
  * The node's name as a learner sees it on the canvas.
  *
  * 🔴 P79 D2 — `poke-it` step 1 rendered *"Looking for a **net.noodl.controls.button** called
@@ -136,7 +151,8 @@ function joinPhrases(phrases: readonly string[]): string {
  */
 export function describeCondition(
   condition: Record<string, unknown>,
-  resolveTypeName?: TypeNameResolver
+  resolveTypeName?: TypeNameResolver,
+  portLabel: PortLabelForPath = (_path, port) => port
 ): string | null {
   const path = typeof condition.path === 'string' ? condition.path : undefined;
   const name = nodeName(path);
@@ -162,7 +178,8 @@ export function describeCondition(
       .map((p) => p.trim())
       .filter(Boolean);
     if (!params.length || !name) return null;
-    return `${params.join(' and ')} set on “${name}”`;
+    // P79 L4 — `csv set on “Pantry”` named the port; the panel says CSV.
+    return `${params.map((p) => portLabel(path, p)).join(' and ')} set on “${name}”`;
   }
   if ('paramseq' in condition) {
     const values = condition.paramseq as Record<string, unknown>;
@@ -172,14 +189,20 @@ export function describeCondition(
     // learner was told WHICH parameters are graded and not WHAT they must equal, which is
     // the only half they can act on. The single-key arm had said the value all along, so
     // this was a step asking a harder question the more it asked for.
-    const parts = keys.map((key) => `${key} set to ${formatParamValue(values[key])}`);
+    const parts = keys.map((key) => `${portLabel(path, key)} set to ${formatParamValue(values[key])}`);
     return `“${name}” with ${joinPhrases(parts)}`;
   }
   if ('hasconnection' in condition) {
     const from = nodeName(condition.from as string);
     const to = nodeName(condition.to as string);
     const ports = String(condition.hasconnection).split(',');
-    if (from && to) return `${from} wired to ${to}${ports.length === 2 ? ` (${ports[0].trim()} → ${ports[1].trim()})` : ''}`;
+    const fromPath = typeof condition.from === 'string' ? condition.from : undefined;
+    const toPath = typeof condition.to === 'string' ? condition.to : undefined;
+    if (from && to) {
+      const wire =
+        ports.length === 2 ? ` (${portLabel(fromPath, ports[0].trim())} → ${portLabel(toPath, ports[1].trim())})` : '';
+      return `${from} wired to ${to}${wire}`;
+    }
     return 'the two nodes wired together';
   }
   if ('isvisualroot' in condition) {
@@ -215,12 +238,27 @@ export function describeCondition(
  */
 export function describeStepCheck(
   conditions: readonly Record<string, unknown>[] | undefined,
-  resolveTypeName?: TypeNameResolver
+  resolveTypeName?: TypeNameResolver,
+  resolvePortLabel?: PortLabelResolver
 ): string | null {
   if (!conditions || conditions.length === 0) return null;
 
+  // P79 L4 — the step's own `hasType` conditions say what each path IS, which is
+  // what a port's panel name depends on. Joined once here rather than looked up
+  // in a live project, so the copy stays gradeable in plain Node.
+  const typeByPath = new Map<string, string>();
+  for (const condition of conditions) {
+    if ('hastype' in condition && typeof condition.path === 'string') {
+      typeByPath.set(condition.path, String(condition.hastype));
+    }
+  }
+  const portLabel: PortLabelForPath = (path, port) => {
+    const type = path ? typeByPath.get(path) : undefined;
+    return (type && resolvePortLabel?.(type, port)) || port;
+  };
+
   const phrases = conditions
-    .map((condition) => describeCondition(condition, resolveTypeName))
+    .map((condition) => describeCondition(condition, resolveTypeName, portLabel))
     .filter((phrase): phrase is string => Boolean(phrase));
   if (!phrases.length) return 'Looking for the changes this step asks for.';
 

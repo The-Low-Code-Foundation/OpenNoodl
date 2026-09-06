@@ -22,6 +22,20 @@ function resolveTypeName(typeName) {
   return type ? getItemLabel(type) : undefined;
 }
 
+/*
+ * P79 L4 — and the name the learner reads for a PORT is the name on the panel.
+ *
+ * `snacks` step 2 asked for `csv set on “Pantry”`; the property panel says **CSV**. Same
+ * authority as above — the node library's own port list — and the same fallback: a port the
+ * library does not declare (one minted at runtime, or by what the learner typed) keeps its name.
+ */
+function resolvePortLabel(typeName, portName) {
+  const type = NodeLibrary.instance && NodeLibrary.instance.getNodeTypeWithName(typeName);
+  const ports = type && Array.isArray(type.ports) ? type.ports : [];
+  const port = ports.find((p) => p && p.name === portName);
+  return port && port.displayName ? port.displayName : undefined;
+}
+
 require('./LessonLayerView.css');
 
 function LessonLayerView({ steps, currentStepIndex, check, completion }) {
@@ -121,7 +135,10 @@ function LessonLayerView({ steps, currentStepIndex, check, completion }) {
           evaluator grades, so the control appears exactly when it can do something.
         */}
         {check && currentStep && currentStep.conditions && currentStep.conditions.length ? (
-          <LessonCheckControl check={check} looking={describeStepCheck(currentStep.conditions, resolveTypeName)} />
+          <LessonCheckControl
+            check={check}
+            looking={describeStepCheck(currentStep.conditions, resolveTypeName, resolvePortLabel)}
+          />
         ) : null}
       </div>
       <div className="lesson-layer-progressbar">
