@@ -238,3 +238,29 @@ dev-docs/tasks/phase-16-runtime-deploy-health/uba-e2e/*.cjs
 # bundles `deploy-from-disk.entry.ts` into a 6 MB CJS file beside it. The .ts
 # source is tracked; the bundle is regenerated on demand.
 scripts/devtools/deploy-from-disk.cjs
+
+# ── Look-verdict screenshots, 2026-09-06, at Richard's instruction ────────────
+# A render drive photographs every page of a project at three widths in two
+# states and writes the PNGs beside its text dumps. One run is 10–50 MB; the
+# six runs uncommitted on 2026-09-06 came to ~116 MB, against a 412 MB .git.
+#
+# ⚠️ 201 MB of these are ALREADY TRACKED from before this rule, and an ignore
+# rule does not untrack anything — those stay in history and in the working
+# tree. This only stops NEW ones entering.
+#
+# ✅ The .txt and .json dumps beside them are deliberately NOT ignored: they are
+# small, and they are what a later session diffs to say "113 of 120 identical".
+# The pictures are for a person to look at once and rule on.
+#
+# 🔴 A picture that genuinely has to travel — one a task file argues from — can
+# still be committed with `git add -f <path>`. Nothing in packages/ or scripts/
+# reads these paths; measured 2026-09-06, the only reference anywhere is a
+# comment in `sb006PublicSite.test.ts`.
+dev-docs/tasks/**/verdicts/**/*.png
+dev-docs/tasks/**/verdicts/**/*.jpg
+dev-docs/tasks/**/verdicts/**/*.jpeg
+dev-docs/tasks/**/verdicts/**/*.webp
+dev-docs/tasks/**/notes/**/*.png
+dev-docs/tasks/**/notes/**/*.jpg
+dev-docs/tasks/**/notes/**/*.jpeg
+dev-docs/tasks/**/notes/**/*.webp

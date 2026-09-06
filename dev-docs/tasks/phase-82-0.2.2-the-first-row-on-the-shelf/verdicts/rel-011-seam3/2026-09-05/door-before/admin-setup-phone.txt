@@ -1,0 +1,9 @@
+Claim this site
+Create the owner account and enter the setup token from your backend configuration.
+Email
+Password
+Setup token
+Claim this site
+This site cannot be claimed.
+That account could not be created.
+Already set up? Sign in.

@@ -1,0 +1,65 @@
+Site admin
+Pages
+Theme & settings
+Messages
+View site
+Sign out
+Editing · Welcome
+Published
+Preview
+Save page
+Title
+Slug
+Search description
+Navigation order
+Show in navigation
+Sections
+Kind
+Rich text
+Hero
+Gallery
+Call to action
+Rich text
+Contact
+Add section
+Hero
+Move up
+Move down
+Heading
+Body
+Drop an image here
+Choose image
+Save
+Delete
+Rich text
+Move up
+Move down
+Heading
+Body
+Drop an image here
+Choose image
+Save
+Delete
+Gallery
+Move up
+Move down
+Heading
+Body
+2 pictures
+Drop an image here
+Choose image
+Remove last picture
+Save
+Delete
+Call to action
+Move up
+Move down
+Heading
+Body
+Button label
+Button goes to (a page slug, or an https:// address)
+Drop an image here
+Choose image
+Save
+Delete
+Back to pages
