@@ -24,8 +24,13 @@
  *   node scripts/devtools/cdp.js type "<selector>" "text"
  *   node scripts/devtools/cdp.js dropfile "<selector|x,y>" <file>[,<file>...]
  *   node scripts/devtools/cdp.js reload
- *   node scripts/devtools/cdp.js network <offline|online>
- *   node scripts/devtools/cdp.js blockurl "<url-pattern>"
+ *   node scripts/devtools/cdp.js network <offline|online> [--eval="<expr>"] [--hold=<seconds>]
+ *   node scripts/devtools/cdp.js blockurl "<url-pattern>" [--eval="<expr>"] [--hold=<seconds>]
+ *       ⚠️ Network emulation is scoped to the CDP SESSION that set it and is torn
+ *       down the moment this command exits (P79 K2). `network offline` in one
+ *       command and a fetch in the next measures the ONLINE app. Measure inside
+ *       the same session with --eval, or keep it open with --hold while other
+ *       cdp.js commands run.
  *   node scripts/devtools/cdp.js unblockurl
  *
  * Options (any position):
@@ -684,7 +689,7 @@ const commands = {
    * does not expect a network call to fail. Prefer `blockurl`/`unblockurl` to
    * fail a specific host instead of the whole renderer's network.
    */
-  async network(mode) {
+  async network(mode, ...rest) {
     if (mode !== 'offline' && mode !== 'online') throw new Error('usage: cdp.js network <offline|online>');
     const client = await connect(await appTarget());
     await client.send('Network.enable');
@@ -695,7 +700,7 @@ const commands = {
       uploadThroughput: mode === 'offline' ? 0 : -1
     });
     console.log(`network: ${mode}`);
-    client.close();
+    await holdEmulation(client, `network ${mode}`, rest, mode === 'online');
   },
 
   /**
@@ -704,13 +709,13 @@ const commands = {
    * renderer offline. Safer than `network offline` for exercising one
    * subsystem's fetch-failure path without disturbing unrelated app logic.
    */
-  async blockurl(pattern) {
+  async blockurl(pattern, ...rest) {
     if (!pattern) throw new Error('usage: cdp.js blockurl "<url-pattern>"');
     const client = await connect(await appTarget());
     await client.send('Network.enable');
     await client.send('Network.setBlockedURLs', { urls: [pattern] });
     console.log(`blocked: ${pattern}`);
-    client.close();
+    await holdEmulation(client, `blockurl ${pattern}`, rest, false);
   },
 
   async unblockurl() {
@@ -721,6 +726,43 @@ const commands = {
     client.close();
   }
 };
+
+/**
+ * P79 K2 — an emulation that reads as armed and is not.
+ *
+ * `Network.emulateNetworkConditions` and `Network.setBlockedURLs` are scoped to
+ * the CDP session that set them; `client.close()` tears them down. Measured:
+ * `network offline` then `eval "fetch(...)"` as two commands came back
+ * `REACHED THE NETWORK`, so any offline claim written the obvious way measured
+ * the ONLINE app and passed. There is nothing to set that outlives the
+ * connection, so the fix keeps the session open: `--eval=<expr>` measures inside
+ * it and prints the value; `--hold=<seconds>` keeps it open while other cdp.js
+ * commands (their own sessions, same renderer) run against the emulated state.
+ * With neither, the command says so on stderr rather than printing a line that
+ * looks like a lasting change. `online`/`unblockurl` are resets and need no hold.
+ */
+async function holdEmulation(client, label, rest, isReset) {
+  const evalArg = rest.find((a) => typeof a === 'string' && a.startsWith('--eval='));
+  const holdArg = rest.find((a) => typeof a === 'string' && a.startsWith('--hold='));
+  const expression = evalArg ? evalArg.slice('--eval='.length) : null;
+  const holdMs = holdArg ? Number(holdArg.slice('--hold='.length)) * 1000 : 0;
+
+  if (expression) {
+    const value = await evaluate(client, expression);
+    console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+  }
+  if (holdMs > 0) {
+    console.log(`holding ${label} for ${holdMs / 1000}s — run other cdp.js commands now; Ctrl-C ends it early`);
+    await new Promise((resolve) => setTimeout(resolve, holdMs));
+  }
+  if (!expression && !(holdMs > 0) && !isReset) {
+    console.error(
+      `note: ${label} lasts only while this command's CDP session is open, and it is closing now. ` +
+        'Pass --eval="<expr>" to measure inside it, or --hold=<seconds> to keep it armed.'
+    );
+  }
+  client.close();
+}
 
 /**
  * Everything above is also a library. Scripts that drive the editor for longer
