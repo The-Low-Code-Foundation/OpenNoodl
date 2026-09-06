@@ -135,7 +135,8 @@ export async function scoreLesson(manifest: LessonManifest, options: ScoreLesson
     starter: buildLessonEvalContext(starterSource, { catalog: kits.catalog }),
     solution: buildLessonEvalContext(solutionSource, { catalog: kits.catalog }),
     ...(wholeSolution ? { wholeSolution } : {}),
-    verify: { vocabulary: kits.vocabulary }
+    verify: { vocabulary: kits.vocabulary },
+    catalog: kits.catalog
   });
 
   // The producer holds itself to the same table the installer will apply. A

@@ -126,8 +126,11 @@ import type {
   LessonVerificationReport,
   VerifyLessonOptions
 } from './lessonverify';
-import { evalConditionsWithContext, isCollectionCondition } from '../views/lessons/lessonevalconditions';
+import { evalConditionsWithContext, findNodeWithPath, isCollectionCondition } from '../views/lessons/lessonevalconditions';
 import type { LessonCondition, LessonEvalContext } from '../views/lessons/lessonevalconditions';
+import type { CatalogIndex } from '../validation/CatalogIndex';
+import { loadDefaultCatalog } from '../validation/catalog';
+import { portTypeShape } from '../validation/parameterValues';
 
 // ─── Findings ───────────────────────────────────────────────────────────────
 
@@ -148,6 +151,14 @@ export type LessonBundleFindingCode =
   | 'solution-invalid'
   /** A condition threw while being evaluated — malformed past what the compiler catches. */
   | 'condition-error'
+  /**
+   * P79 D1 — a `paramsEqual` grades a dimension in a unit that is not the port's
+   * `defaultUnit`, and the step body never says so. The panel commits the default
+   * unit unless the learner changes the dropdown, so a learner typing the number
+   * the prose gives them sets the wrong unit and the step refuses correct work —
+   * while F2 replays green, because the solution was written by a tool.
+   */
+  | 'unit-unsaid'
   /** Not a defect: something could not be checked, and the scorecard says which. */
   | 'not-checked'
   /**
@@ -215,6 +226,73 @@ export interface VerifyLessonBundleOptions {
   wholeSolution?: WholeSolutionGrader;
   /** Passed through to the static check. */
   verify?: VerifyLessonOptions;
+  /** The catalog the D1 unit check reads `defaultUnit` from; defaults to the bundled one. */
+  catalog?: CatalogIndex;
+}
+
+// ─── P79 D1: a unit the learner can never type ──────────────────────────────
+
+/** `{ value, unit }`, or `undefined` for anything else. */
+function asDimension(value: unknown): { value: number; unit: string } | undefined {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  const d = value as { value?: unknown; unit?: unknown };
+  return typeof d.value === 'number' && typeof d.unit === 'string' ? { value: d.value, unit: d.unit } : undefined;
+}
+
+/**
+ * Every `paramsEqual` on this step whose dimension unit is not the port's
+ * default, and whose body does not name that unit.
+ *
+ * ⚠️ **A warning, deliberately.** Lesson 2 grades `maxWidth` as `560px` on a port
+ * whose default is `%`, and that is correct — the lesson is about the unit. What
+ * makes it correct is the body saying *"with its unit set to **px**"*, so the
+ * check is on the prose, not the condition, and a refusal would reject the one
+ * shipped lesson that does this right. Only `body` counts: `detail` is
+ * collapsible and a learner who never opens it types the number and moves on.
+ */
+function unitFindings(step: StepConditions, solution: LessonEvalContext, catalog: CatalogIndex): LessonBundleFinding[] {
+  const out: LessonBundleFinding[] = [];
+  const body = typeof step.step.body === 'string' ? step.step.body : '';
+
+  for (const condition of step.checkable) {
+    const cond = condition as unknown as Record<string, unknown>;
+    if (!('paramseq' in cond) || typeof cond.path !== 'string') continue;
+    const values = (cond.paramseq as Record<string, unknown>) ?? {};
+    const node = findNodeWithPath(cond.path, solution.components);
+    if (!node) continue;
+
+    for (const [key, raw] of Object.entries(values)) {
+      const dimension = asDimension(raw);
+      if (!dimension) continue;
+      const port = catalog.getPort(node.type.name, 'input', key);
+      const shape = portTypeShape(port);
+      const defaultUnit = shape?.defaultUnit;
+      if (!defaultUnit || defaultUnit.toLowerCase() === dimension.unit.toLowerCase()) continue;
+      // The panel only offers a dropdown when the port declares more than one
+      // unit; with one unit there is nothing the learner could get wrong.
+      if ((shape?.units ?? []).length < 2) continue;
+
+      const escaped = dimension.unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const unitWord = new RegExp(`(^|[^A-Za-z])${escaped}([^A-Za-z]|$)`, 'i');
+      if (unitWord.test(body)) continue;
+
+      const label = port?.displayName || key;
+      out.push({
+        code: 'unit-unsaid',
+        severity: 'warning',
+        failureClass: 'F2',
+        where: step.where,
+        step: step.index,
+        message:
+          `This step grades ${label} as ${dimension.value}${dimension.unit}, but the panel commits ${label} in its ` +
+          `default unit "${defaultUnit}" unless the learner changes the dropdown — a learner who types ${dimension.value} ` +
+          `sets ${dimension.value}${defaultUnit}, and the step refuses correct work. The replay cannot see this: the ` +
+          `solution was written by a tool. Say the unit in the step's body (not detail), e.g. "with its unit set to ` +
+          `${dimension.unit}".`
+      });
+    }
+  }
+  return out;
 }
 
 // ─── Condition partitioning ─────────────────────────────────────────────────
@@ -433,6 +511,9 @@ export async function verifyLessonBundle(
           message: `One condition was not replayed: ${skipped.reason}.`
         });
       }
+
+      // P79 D1 — green against a tool-written solution, refused against a learner's panel.
+      findings.push(...unitFindings(s, options.solution, options.catalog ?? loadDefaultCatalog()));
 
       // F2′ — the same conditions, against the starter.
       if (options.starter) {
