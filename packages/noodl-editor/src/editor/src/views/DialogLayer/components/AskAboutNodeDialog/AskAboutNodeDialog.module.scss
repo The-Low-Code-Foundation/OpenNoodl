@@ -1,6 +1,30 @@
+/**
+ * 🔴 THE BACKGROUND IS HERE BECAUSE `BaseDialog`'S DOES NOT REACH THE BOTTOM OF A TALL ONE.
+ *
+ * `BaseDialog` paints its surface with `.VisibleDialog::after`, absolutely positioned at
+ * `inset: 0`. An absolutely-positioned box resolves against the **padding box**, not the
+ * scrollable content, so on a dialog that overflows its `max-height` the paint stops at the
+ * visible height and the scrolled remainder sits on nothing. Measured 2026-08-19 with the
+ * capture enabled: `::after` 700.9px against 858px of content, `overflow-y: auto` — the last
+ * ~157px was see-through, showing the canvas and the white preview pane behind it.
+ *
+ * ⚠️ THE COMPOSER IS THE DIALOG THAT NOTICES because it is the tall one; its siblings
+ * (`GitHubDeviceCodeDialog`, `ReportProblemDialog`) set no background either and get away
+ * with it by fitting. So this is a LOCAL fix to a SHARED defect, chosen deliberately over
+ * editing `noodl-core-ui` mid-session — moving the paint onto `.VisibleDialog` itself would
+ * cover the scroll extent and fix every dialog at once, but it changes a component every
+ * dialog in the app renders through and wants a visual pass across all of them.
+ *
+ * ⚠️ `--theme-color-bg-4` is not a guess: it is the value `BaseDialog`'s own `--background`
+ * resolves to here (`#2c3540`), read off the live element. If that token moves, this moves.
+ */
 .Root {
   width: 620px;
   max-width: 90vw;
+  background: var(--theme-color-bg-4);
+  /* The chrome's rounding is on the element whose paint falls short; match it or the
+     corners square off against the shadow. */
+  border-radius: inherit;
 }
 
 /**
