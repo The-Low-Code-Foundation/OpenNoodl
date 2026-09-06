@@ -163,6 +163,26 @@ export function projectSecurity(store: ProjectStore): FunctionSecurityPolicy | n
 }
 
 /**
+ * REL-002a — the project's `settings.bodyScroll`, in the three states
+ * `checkPageScroll` distinguishes.
+ *
+ * Never `undefined` from this client, for the same reason `projectSecurity` is never undefined:
+ * this server always knows the project root, so "cannot read the project file" is not a state it
+ * is in. A missing or unreadable `nodegx.project.json` therefore reads as `null` — the project has
+ * not set it — which is the honest answer for a directory with no project file to decide in.
+ */
+export function projectBodyScroll(store: ProjectStore): boolean | null {
+  try {
+    const raw = fs.readFileSync(path.join(store.projectDir, 'nodegx.project.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { settings?: Record<string, unknown> };
+    const value = parsed?.settings?.bodyScroll;
+    return typeof value === 'boolean' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * DEF-013 — component names that resolve although no component exists for them
  * yet, over and above the ones `views` carries.
  *
@@ -182,6 +202,8 @@ export function preconditionDiagnostics(
     component: legacyName,
     // DEF-009 — null means "no policy file", never undefined: see projectSecurity.
     security: projectSecurity(store),
+    // REL-002a — null means "the project has not set it", never undefined: see projectBodyScroll.
+    bodyScroll: projectBodyScroll(store),
     nodes: authoredNodes(candidate.nodes.nodes),
     components: [...views.map((v) => v.name), legacyName, ...alsoResolvable],
     urlPaths: declaredUrlPaths(views),

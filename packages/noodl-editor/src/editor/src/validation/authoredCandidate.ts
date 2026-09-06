@@ -65,6 +65,7 @@ import {
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
 import { checkImageSources } from './imageSource';
 import { checkUnrealisedMeasure } from './unrealisedMeasure';
+import { checkPageScroll } from './pageScroll';
 import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
@@ -475,6 +476,16 @@ export interface AuthoredPreconditionOptions {
    */
   derived?: DerivedPortIndex;
   /**
+   * REL-002a — the project's `settings.bodyScroll`, in three states.
+   *
+   * **`undefined` means "do not check"; `null` means "the project file was read and the setting
+   * is absent"** — the same undefined/null distinction `security` carries just below, and for the
+   * same reason. A caller that cannot read project settings cannot tell an app that chose a fixed
+   * viewport from one whose author never met the setting, and reporting the first is the false
+   * positive that gets a rule turned off. `true`/`false` are decisions and are silent.
+   */
+  bodyScroll?: boolean | null;
+  /**
    * DEF-009 — the `functions` block of the project's `nodegx.security.json`.
    * **`undefined` means "do not check"; `null` means "the project has no policy
    * file"** — the two must stay distinct, because a caller that cannot read the
@@ -529,8 +540,20 @@ export interface AuthoredPreconditionOptions {
  * consequence of this one.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend, interfaces, connections, wires, derived, security } =
-    options;
+  const {
+    component,
+    nodes,
+    components,
+    urlPaths,
+    catalog,
+    backend,
+    interfaces,
+    connections,
+    wires,
+    derived,
+    security,
+    bodyScroll
+  } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
@@ -605,7 +628,11 @@ export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOpt
     // because everything it reads is already here: the component's runtime is
     // its name and the catalog carries `availableIn`. Unknown types are skipped
     // inside the check — `UnknownNodeType`/`NodeUncheckable` own those.
-    ...checkRuntimeContext(nodes, { component, catalog })
+    ...checkRuntimeContext(nodes, { component, catalog }),
+    // REL-002a — the app has no way to scroll, so this page's content below the fold is
+    // unreachable. A project fact rather than a node one, which is why it arrives as an option
+    // and not out of `nodes`; guarded on the undefined/null distinction inside the check.
+    ...checkPageScroll(nodes, { component, bodyScroll })
   ];
 }
 

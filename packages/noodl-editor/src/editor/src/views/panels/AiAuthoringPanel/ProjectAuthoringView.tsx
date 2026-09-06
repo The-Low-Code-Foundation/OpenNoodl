@@ -733,6 +733,11 @@ export function ProjectAuthoringView({ isConfigured, hasProject, isEmbedded }: P
         // stricter check — dropping the backend and keeping the pages that need
         // it is exactly the combination worth catching here.
         backend: appliedBackendFacts(project, operations),
+        // REL-002a — `null` is "the project has not set it", which is the finding; a real
+        // `true`/`false` is a decision and is silent. Supplied here because this caller holds the
+        // ProjectModel; without it the editor gate reports one fewer diagnostic than the MCP one
+        // on the same candidate.
+        bodyScroll: typeof project.getSettings().bodyScroll === 'boolean' ? !!project.getSettings().bodyScroll : null,
         plannedComponents
       });
       if (!validation.ok) {

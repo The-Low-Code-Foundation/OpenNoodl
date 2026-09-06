@@ -304,6 +304,46 @@ export enum DiagnosticCode {
    */
   UnrealisedMeasure = 'unrealised-measure',
   /**
+   * REL-002a (phase 82; carried from P81's register) — a routed page in a project that has **not
+   * decided about `bodyScroll`**, which means the app cannot scroll and everything below the fold
+   * is out of reach.
+   *
+   * 🔴 **This is a reachability defect, not a look one.** When `settings.bodyScroll` is falsy the
+   * viewer wraps the whole app in a `width/height: 100%` div at `overflow: clip`
+   * (`noodl-viewer-react/src/viewer.jsx`, the else-branch of `render`; its own comment reads
+   * *"this div is pinned to the viewport and routinely holds taller content"*). `clip` creates no
+   * scroll container at all — by design, NDA-008 — so neither the user nor the browser can reach
+   * what is below it.
+   *
+   * Measured on `templates/members-area` at HEAD, varying the setting and nothing else. The
+   * numbers are controls a user can actually click, counted by walking the page and hit-testing:
+   *
+   * ```
+   *                988x313   1280x900   390x844
+   *   /setup        0 / 7      4 / 7      3 / 7     unset  — the submit button unreachable at all three
+   *   /join         0 / 6      5 / 6      6 / 6     unset
+   *   /setup        7 / 7      7 / 7      7 / 7     bodyScroll: true
+   *   /join         6 / 6      6 / 6      6 / 6     bodyScroll: true
+   * ```
+   *
+   * 🔴 **No node parameter substitutes for the setting.** Measured one at a time on the product's
+   * own host CSS, on a 20-row page: `scrollEnabled: true` on the page's root Group leaves the last
+   * row unreachable (the Group grows to its content, so it has nothing to scroll, and the clip is
+   * two ancestors above it); so does `sizeMode: contentHeight`; so does `clip: true` or its
+   * absence. Only the project setting changes the answer.
+   *
+   * ✅ **Firing on "unset" rather than on "false" is the whole point, and the corpus says so.**
+   * Over 187 projects (both corpora, 143 of them carrying a `Page`): **76 set `bodyScroll: true`,
+   * 67 leave it unset, and NOT ONE sets it to `false`.** Nobody has ever chosen a fixed viewport;
+   * the unset state is an author who never met the setting, which is why it is worth a sentence at
+   * the door. A project that has genuinely decided — either way — is silent.
+   *
+   * A warning rather than an error, on this file's standing convention: promotion into
+   * `AUTHORED_BLOCKING_WARNINGS` is earned on evidence of firing correctly against authored
+   * output, and 67 hand-authored corpus projects would go red the day it refused.
+   */
+  PageCannotScroll = 'page-cannot-scroll',
+  /**
    * A bare number on a units-typed port that is read as a **percentage** —
    * `width`, `height`, `maxWidth`, `minWidth`. `{ value, unit }` is the form
    * real content uses: across the whole repository these ports are written in

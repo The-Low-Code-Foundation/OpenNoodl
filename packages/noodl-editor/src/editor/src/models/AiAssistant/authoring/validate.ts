@@ -132,6 +132,20 @@ export interface ValidateCandidateOptions {
    */
   backend?: ProjectBackendFacts;
   /**
+   * REL-002a — the project's `settings.bodyScroll`, in three states.
+   *
+   * **Omitted means "do not check"; `null` means "the project has read its settings and this one
+   * is absent".** The same convention `backend` follows above, and the distinction matters for the
+   * same reason: a caller that cannot read project settings cannot tell an app that deliberately
+   * chose a fixed viewport from one whose author never met the setting.
+   *
+   * ⚠️ The MCP write gate always supplies it (`projectBodyScroll`), so a caller here that leaves it
+   * out makes the two gates report differently on the same candidate — the divergence AAQ-005
+   * closed and `gateParity.test.ts` exists to keep closed. The editor's authoring panel binds it
+   * from `ProjectModel.getSettings()`.
+   */
+  bodyScroll?: boolean | null;
+  /**
    * AAQ-001 — component names a plan in flight will create, on top of the ones
    * the graph already has.
    *
@@ -272,7 +286,10 @@ function preconditionDiagnostics(
     // half of what this checks.
     wires: files.connections.connections,
     catalog: loadDefaultCatalog(),
-    backend: options.backend
+    backend: options.backend,
+    // REL-002a — threaded rather than read here: this module is pure over an ExplainGraph and has
+    // no project root. Omitted by a caller that does not know, which reads as "do not check".
+    bodyScroll: options.bodyScroll
   });
 }
 

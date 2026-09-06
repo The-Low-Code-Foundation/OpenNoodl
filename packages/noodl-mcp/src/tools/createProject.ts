@@ -176,7 +176,27 @@ export function writeProjectSkeleton(projectDir: string, name: string): Skeleton
     runtimeVersion: 'react19',
     created: now,
     modified: now,
-    settings: { htmlTitle: name, navigationPathType: 'path' },
+    // REL-002a — `bodyScroll: true` is written for every NEW project, deliberately.
+    //
+    // 🔴 It is not a preference, it is whether the app can be used. With `bodyScroll` falsy
+    // the viewer wraps the whole app in a `width/height: 100%` div at `overflow: clip`
+    // (`noodl-viewer-react/src/viewer.jsx`, the else-branch of `render`) — its own comment says
+    // "this div is pinned to the viewport and routinely holds taller content". Nothing below the
+    // fold is reachable: `clip` creates no scroll container, so there is nothing for the user or
+    // the browser to scroll. Measured on `templates/members-area` at 988x313, the editor
+    // preview's own default size: `/setup` clips **539px** and puts six of its seven fields and
+    // its submit button out of reach; `/join` clips 393px and takes "Send my request" with it.
+    //
+    // 🔴 And no node parameter substitutes for it. Measured, one variable at a time, on the
+    // product's own host CSS: `scrollEnabled: true` on the page's root Group changes nothing
+    // (the Group grows to its content, so it has nothing to scroll, and the clip is two
+    // ancestors above it); neither does `sizeMode`, nor `clip`. The setting is the only door.
+    //
+    // ⚠️ Existing projects are untouched — this is what a new one starts with, not a change to
+    // the runtime default, so an app deliberately built as a fixed viewport keeps its `false`.
+    // A dashboard that wants the old behaviour turns it off; a form that needs to be filled in
+    // no longer ships unusable.
+    settings: { htmlTitle: name, navigationPathType: 'path', bodyScroll: true },
     structure: { componentsDir: 'components', assetsDir: 'assets' },
     // The Router node, not a component id. See the module header.
     rootNodeId: routerId

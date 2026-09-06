@@ -113,6 +113,7 @@ export type {
 // nothing is the recipe named for its image shipping without one.
 export { checkImageSources } from './imageSource';
 export { checkUnrealisedMeasure } from './unrealisedMeasure';
+export { checkPageScroll } from './pageScroll';
 export type { CheckImageSourcesOptions, ImageSourceNode } from './imageSource';
 // LAS-007 — the recipe that fixes a rejection, attached to the rejection. Lives
 // beside the checks that produce the diagnostics so both clients read one table.

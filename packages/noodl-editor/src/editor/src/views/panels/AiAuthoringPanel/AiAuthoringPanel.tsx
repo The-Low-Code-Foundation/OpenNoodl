@@ -974,7 +974,9 @@ export function AiAuthoringPanel({ width = 'panel' }: AiAuthoringPanelProps = {}
     // already had cannot block the accept of a revision that correctly left it
     // alone (see `ValidateCandidateOptions.baseline`).
     const validation = validateCandidateComponent(fromProjectModel(project), session.legacyName, files, {
-      ...(session.baseComponentFiles ? { baseline: session.baseComponentFiles } : {})
+      ...(session.baseComponentFiles ? { baseline: session.baseComponentFiles } : {}),
+      // REL-002a — see ProjectAuthoringView: `null` means the project has not decided.
+      bodyScroll: typeof project.getSettings().bodyScroll === 'boolean' ? !!project.getSettings().bodyScroll : null
     });
     if (!validation.ok) {
       const lines = validation.errors.slice(0, 3).map(formatDiagnosticLine);
