@@ -6,7 +6,7 @@
 | **Effort** | M |
 | **Surface** | `project-examples/lessons/poke-it` |
 | **Rules** | [R1](RICHARD-RULINGS-2026-08-28.md#r1--the-pet-spine-stands-as-written) (the chain), R3 via [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) (`detail`), [LESSON-VOICE.md](LESSON-VOICE.md) |
-| **State** | 🟢 **Built and gated 2026-09-05.** ⬜ **NOT DRIVEN.** ⬜ **The prose is a draft awaiting Richard.** |
+| **State** | 🟢 **Built, gated and DRIVEN 2026-09-05** — control pair in a running editor, see [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md). ⬜ **The prose is a draft awaiting Richard.** |
 
 ## What it is
 
@@ -168,3 +168,22 @@ wiring is this lesson's entire subject and it is the one mechanism the bundle ga
 edits** when R2's insert is made: `needs` moves from `your-creature-on-screen` to
 `it-breaks-on-a-phone`, and `nodes` gains `Switch`. Neither gates shipping; the editor's Learning
 shelf seeds from the repo directory, so this lesson already reaches every install.
+
+## ✅ Driven 2026-09-05 — including the row this lesson existed to answer
+
+Full method and caveats: [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md).
+
+| §6 asked | answer |
+|---|---|
+| 🔴 **can a learner actually draw a signal wire to `flip`?** | ✅ **the runner grades one.** All three of this lesson's `connection` conditions evaluate true on the solved copy and it completes — `onClick → flip` among them. ⚠️ That a **person** can produce the wire by dragging is a separate question this drive did not ask |
+| **does the runner resolve a 5-segment node path?** | ✅ **YES** — `…:#Home:#Page shell:#Board:#Poke` |
+| **the negative control** | ✅ **YES, observed on screen** — the untouched starter does not tick |
+
+🔴 **This lesson is where the five-session-old question was settled: the runner grades a `connection`.**
+
+**Two defects it surfaced**, both the runner's rather than this lesson's:
+[J1](DEFECTS-THE-RUNNER-DRIVE-FOUND.md#j1--a-blockquote-renders-as-a-literal--in-the-line-carrying-the-lessons-whole-idea)
+(the intro's blockquote renders as a literal `>`) and
+[J2](DEFECTS-THE-RUNNER-DRIVE-FOUND.md#j2--check-my-work-on-an-incomplete-step-removes-the-instructions).
+It also gave [D2](DEFECTS-LESSON-2-FOUND.md) its first on-screen sighting: step 1 says
+*"Looking for a **net.noodl.controls.button**"*.

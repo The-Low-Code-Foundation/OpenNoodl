@@ -40,10 +40,55 @@ Relatedly, two assumptions a reactive library would make by default are also fal
 does not coalesce queued values, and it does not skip an identical write. Both are C2, both are
 tested against the interpreter, and both are why `Value.set` has no equality check.
 
-**Left open, deliberately:** ownership of the `@nodegx` npm scope and the first publish are
-human-gated; and re-render-on-change through a real DOM commit is not covered here, because the
-repository carries no `jest-environment-jsdom` by an existing documented decision. EXP-002's first
-generated app is where that gets looked at.
+## Published 2026-09-01 — `@nodegx/core@0.1.0` is on npm, and the export's `npm install` is now true
+
+Richard claimed the `@nodegx` scope and published from his own account with 2FA
+(`richard-digitalbricks`), which is what the "human-gated" note below meant. The registry now
+serves `@nodegx/core@0.1.0`, MIT, **no runtime dependencies**, React an optional peer.
+
+**Measured, not assumed.** The published tarball's shasum (`0c872625…`) is the one
+`npm pack --dry-run` reported, so what shipped is the artefact that was inspected: `dist` in both
+ESM and CJS with declarations, plus `README.md` and `CONTRACT.md`. Installed from the registry into
+an empty directory, it reproduces the two contract clauses this task corrected — an identical write
+is **not** skipped (`set(2); set(2)` → two notifications, C2) and every pulse fires (`emit(); emit()`
+→ two, C4).
+
+**The end-to-end proof, which is the one that matters.** `Deadline Desk` exported through
+`scripts/emit-app.ts`, then `npm install && npm run build` **against the public registry, with no
+workspace link and no local path** — install resolved `@nodegx/core@0.1.0`, and `tsc -b && vite
+build` exited **0**. Until this publish that instruction — printed into every exported app by
+[`readme.ts`](../../../packages/nodegx-export/src/emit/readme.ts) and
+[`report.ts`](../../../packages/nodegx-export/src/emit/report.ts) — 404'd for any project whose
+output imported the library.
+
+🔴 **Four things this publish did *not* carry, and 0.1.0 cannot be amended.** A published version is
+immutable, so each is a `0.1.1` row, owned by **EXP-001** (this task):
+
+1. **No `LICENSE` file.** `package.json` declares MIT and npm renders that, but the tarball carries
+   no licence text — for the one file that lands inside every user's exported app.
+2. **No `repository` / `homepage` / `bugs` fields.** The npm page has no link back, and
+   `npm publish --provenance` from CI *requires* `repository`.
+3. **No `prepublishOnly`.** `dist/` is gitignored (`.gitignore:117`) and `files` is
+   `["dist", "README.md", "CONTRACT.md"]` — a publish from a clean checkout would ship a package
+   with **no code in it, and no error**. This one held only because the local `dist/` happened to be
+   newer than `src/`.
+4. **Nothing in CI knows the registry exists.**
+   [`typecheckApp.ts:110`](../../../packages/nodegx-export/tests/helpers/typecheckApp.ts#L110)
+   maps `@nodegx/core` to `packages/nodegx-core/src` **deliberately**, so the whole export suite
+   stays green against a package that is missing, stale, or empty on npm. The 404 above lived
+   through 504 passing tests. The gate that would have caught it is the pack-and-install run done by
+   hand here.
+
+⚠️ **The version pin is a literal.** [`emitApp.ts:256`](../../../packages/nodegx-export/src/emit/emitApp.ts#L256)
+writes `"@nodegx/core": "^0.1.0"` into the emitted `package.json` with nothing tying it to
+`packages/nodegx-core/package.json`. That range covers every `0.1.x`, so the metadata fixes above
+reach new installs on their own once `0.1.1` is out — including apps already exported. The drift is
+at the **minor**: publish `0.2.0` and every new export still pins `^0.1.0` and silently installs the
+old library, because the pin is a literal in the emitter. Derive it from the package's own version.
+
+**Left open from the original build:** re-render-on-change through a real DOM commit is not covered
+here, because the repository carries no `jest-environment-jsdom` by an existing documented decision.
+EXP-002's first generated app is where that gets looked at.
 
 ## Objective
 
@@ -82,7 +127,7 @@ With semantics verifiably matching the interpreted runtime, since EXP-003's trac
 ## Scope
 
 ### In Scope
-- [x] Package scaffolding, build, and publishing setup — partial — scope ownership + publish human-gated
+- [x] Package scaffolding, build, and publishing setup — **published 2026-09-01 as `@nodegx/core@0.1.0`**; four metadata/CI gaps carried to `0.1.1` (see Published above)
 - [x] Value primitive with subscription and update semantics
 - [x] Signal primitive with Noodl's per-frame de-duplication behaviour — **the runtime has no such behaviour** — see the correction above; implemented as edge-triggered, every pulse fires
 - [x] Derived/computed values
@@ -163,4 +208,9 @@ With semantics verifiably matching the interpreted runtime, since EXP-003's trac
 - [x] Implement values, signals, derived, stores, event bus, React bindings
 - [x] Parity tests against the interpreted runtime
 - [x] Docs for a Noodl-unaware developer; bundle budget in CI
-- [ ] CHANGELOG; npm scope + first publish (human-gated)
+- [x] npm scope + first publish — **`@nodegx/core@0.1.0`, 2026-09-01**, verified by installing from
+      the registry and building an exported app (exit 0)
+- [x] CHANGELOG — [`packages/nodegx-core/CHANGELOG.md`](../../../packages/nodegx-core/CHANGELOG.md)
+- [ ] `0.1.1`: LICENSE file, `repository`/`homepage`/`bugs`, `prepublishOnly`
+- [ ] A CI gate that installs the published package into a generated app — the one check the current
+      504 green tests structurally cannot make

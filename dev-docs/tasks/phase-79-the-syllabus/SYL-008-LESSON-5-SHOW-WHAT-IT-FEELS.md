@@ -6,7 +6,7 @@
 | **Effort** | M |
 | **Surface** | `project-examples/lessons/show-what-it-feels` |
 | **Rules** | [R1](RICHARD-RULINGS-2026-08-28.md#r1--the-pet-spine-stands-as-written) (the chain), R3 via [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) (`detail`), [LESSON-VOICE.md](LESSON-VOICE.md) |
-| **State** | 🟢 **Built and gated 2026-09-05.** ⬜ **NOT DRIVEN.** ⬜ **The prose is a draft awaiting Richard.** |
+| **State** | 🟢 **Built, gated and DRIVEN 2026-09-05** — control pair in a running editor, see [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md). ⬜ **The prose is a draft awaiting Richard.** |
 
 ## What it is
 
@@ -152,3 +152,18 @@ Lesson 5 also introduces two things a drive would answer that no earlier lesson 
    coupling lesson 4 has on `Rest`'s caption.
 5. **The expression**, currently `min(96 + pokes * 8, 200)`. Same coupling.
 6. ⬜ **Lesson 4's outro**, per the rule above. Free to change.
+
+## ✅ Driven 2026-09-05 — both of §6's "no earlier lesson could answer this" rows
+
+Full method and caveats: [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md).
+
+| question | answer |
+|---|---|
+| **a port minted by what the learner TYPED** | ✅ **YES, both kinds** — `{count}` in a `String Format`'s format string, and `pokes` in an `Expression`, each grade as a `connection` target |
+| **`paramsEqual` round-tripping a string with `{braces}`** | ✅ **YES** — `format: "Nibbles has been poked {count} times"` grades, and the condition prose renders the braces intact |
+| **`Expression.result`** | ✅ **YES** — step 5's wire into `…:#Card:#Creature .size` |
+| **the negative control** | ✅ **YES** — the untouched starter holds at step 1's format condition and refuses |
+
+⚠️ **[G1](DEFECTS-LESSON-5-FOUND.md) is untouched by this.** The drive confirms `result` is graded
+correctly; it says nothing about the `As Number` / `As String` outputs that never update, because
+this lesson deliberately does not use them.

@@ -180,7 +180,7 @@ Also **not** verified here, and each one needs a renderer or a live drive:
 
 | # | Finding | State |
 |---|---|---|
-| L10 | The AWP-006 tool-surface budget had 37 tokens of headroom (7,963 of 8,000), so **any** new authored field broke it. One declared node field costs ~45 tokens × 3 renderings of the node schema. Raised to 8,200 by this lane; needs AWP-006's owner | 🔴 open decision |
+| L10 | The AWP-006 tool-surface budget had 37 tokens of headroom (7,963 of 8,000), so **any** new authored field broke it. One declared node field costs ~45 tokens × 3 renderings of the node schema. Raised to 8,200 by this lane; needs AWP-006's owner | ✅ **superseded 2026-08-15** — raised again to **8,280** by P67 / UNI-010, which had already spent 56 of this lane's 58 banked tokens. Measured 8,223, 57 free, **no third raise**: the `$ref`ed node schema this row's reasoning implies is now the sanctioned fix |
 | L11 | `aaq-005`'s no-phantom-fields check would have called `comment` a phantom. Resolved with `storedAs` on `VocabField` rather than by weakening the check or inventing a storage field — the mapping is now declared data, not an implementation detail | ✅ built |
 | L12 | The fold must run **after** `CARRIED_NODE_FIELDS`. Reversed, the carry skips `metadata` because the fold already set it, and every other key in the bag — `merge.soureCodePorts` included — is dropped with no error anywhere | ⚠️ standing trap |
 | L13 | `noodl-mcp`'s `tsc --noEmit` has been red in four test files since before `fc36d61a` (8 errors: a missing `CreateProjectResponse`, a missing `../src/types`, `.text` on `ToolCallResult`). Nobody is running it | 🔴 filed, not fixed |

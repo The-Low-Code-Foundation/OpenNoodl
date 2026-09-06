@@ -29,7 +29,9 @@ what simply is not available. And **nothing** presents an outage as an empty com
 3. Cached content **says it is cached and says when from**. A three-day-old thread presented as
    current is worse than no thread.
 4. Every write path degrades honestly. A reply typed offline is **kept**, and the user is told it
-   did not send. Nothing is silently queued into a thing with no drainer.
+   did not send. Nothing is silently queued into a thing with no drainer — ⚠️ note that until
+   **[NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** lands, *every* mail path on the
+   platform is such a thing, so "offline" is not the only state this criterion is about.
 5. The editor **starts, opens a project and works normally with the community unreachable**. Driven
    with the network actually down — not with a mocked failure, because a mock cannot reproduce a
    hang, and a hang is the failure mode that makes an app feel broken.

@@ -7,7 +7,7 @@
 | **Surface** | `project-examples/lessons/it-breaks-on-a-phone` |
 | **Rules** | [R1](RICHARD-RULINGS-2026-08-28.md#r1--the-pet-spine-stands-as-written) (the chain), [R2](RICHARD-RULINGS-2026-08-28.md#r2--responsive-layout-becomes-a-new-spine-lesson) (this lesson exists), R3 via [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) (`detail`) |
 | **Commit** | `d656b714` |
-| **State** | 🟢 **Built and gated 2026-09-05.** ⬜ **NOT DRIVEN** — see §6. ⬜ **The prose is a draft awaiting Richard.** |
+| **State** | 🟢 **Built, gated and DRIVEN 2026-09-05** — control pair in a running editor, see [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md). ⬜ **The prose is a draft awaiting Richard.** |
 
 ## What it is
 
@@ -171,3 +171,16 @@ is what puts it on the served `/university` page.
 - ⚠️ **`cd` persists between tool calls**, and a later relative path silently resolved inside the
   lesson directory rather than the repo root. It happened to be correct; verify with `git status`
   rather than assuming.
+
+## ✅ Driven 2026-09-05 — §6's open rows are now closed
+
+Full method and caveats: [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md).
+
+| §6 asked | answer |
+|---|---|
+| **does the runner grade a 6-deep node path in a live project?** | ✅ **YES.** Step 3 grades `…:#Home:#Page shell:#Board:#Care:#Feed` (and `#Play`, `#Sleep`) and the solved copy completes |
+| **the negative control** — does the untouched starter refuse to tick? | ✅ **YES, observed on screen.** Five empty circles, no completion |
+| **`paramsEqual` against a `{value, unit}` object** | ✅ **YES** — `maxWidth 560px` and `smallBreakpoint 480px` both grade |
+
+⚠️ **A defect this lesson's step 1 surfaced**: the condition prose names the parameters it grades but
+not the values they must equal — [J4](DEFECTS-THE-RUNNER-DRIVE-FOUND.md#j4--a-condition-names-the-parameters-it-grades-but-not-the-values).

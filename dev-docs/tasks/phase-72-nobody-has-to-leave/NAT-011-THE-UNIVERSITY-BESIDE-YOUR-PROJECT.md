@@ -33,6 +33,17 @@ Bring the syllabus and the tutorial body into the editor, readable **beside** th
    Nothing drawn. Permitted control beside it in the spec.
 6. Offline: an opened tutorial stays readable. Learning material is the strongest case in the phase
    for local caching, and the strongest argument for a tool that promises local development.
+7. **Filed by FB-004 (2026-08-22), on Richard's word — read it before starting.** *"I'm also
+   confused about the difference between 'your path' which only exists in the launcher, and
+   'university' which only exists in the community web page. I feel like they're gunning for the
+   same thing, can they be reconciled and made universally accessible?"* He is right that they
+   look like one thing, and they are two views of one curriculum: **Your path** is the
+   personalised projection (intake → `pathFor`), **University** is the full syllabus (D17: a view,
+   never the install route). So they must present as **one surface — the syllabus with *your* path
+   marked on it** — not as two sibling lists in two different apps. The path must also be visible
+   on the web, not only in the launcher; the platform already serves it (`GET /v1/me/path`).
+   ⚠️ FB-004 has already split the launcher's Learning tab into `Installed lessons` / `Your path`
+   (`views/learningTabs.ts`), which is the shape this AC has to stay consistent with.
 
 ## Traps
 
@@ -41,6 +52,12 @@ Bring the syllabus and the tutorial body into the editor, readable **beside** th
   **UNI-006's assign/grade bridge** is **phase 67b**; **phase 68 (Learnbook)** owns learning
   content in the editor from another direction. Read all three before writing a line. If this task
   finds itself building a lesson *runner*, it has walked into 67b or 68 and should stop.
+- 🔴 **But this task builds the client those two will need, so build it to be built on.** 67b's own
+  ordering says UNI-006 and UNI-007 must be one tranche *because they share a client and a
+  transport* — and this task gets there first. The community API client, auth handling and error
+  states belong in a module the assignment bridge can import, not inside a University panel. A
+  second community client in this editor is the drift failure UNI-011 already paid for once.
+  ⚠️ This is a *shape* obligation, not a licence to build 67b's features here.
 - 🔴 **A finding here may already be another task's acceptance criterion.** Grep the phase-67b and
   phase-68 task files for the *behaviour* — not the task number — before claiming anything is new.
 - ⚠️ **Tutorial bodies are the longest user-authored content in the phase** and the most likely to

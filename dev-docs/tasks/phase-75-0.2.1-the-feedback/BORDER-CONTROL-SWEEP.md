@@ -871,7 +871,205 @@ and the spec failed to **parse** — `Tests: 0 total`, reported as a kill. Every
 read as "killed" while nothing ran. The runner now **refuses a run that failed to RUN** before
 reporting reds. (Filed under the standing "a failed install reads as a failed test" trap.)
 
-## ⬜ What is left — 38 sites, and that number is a FLOOR
+## What session 68 fixed — the property editor's Style section, and a divider hidden inside a function
+
+**Unit of work: one surface family** — the `VariantSelector` / `SizePicker` pair that
+`propertyeditor.ts:144` mounts through `ElementStyleSectionHost`, the `SuggestionBanner` rendered
+beneath them, and `TokenPicker`, which is the last `noodl-core-ui` entry on the list below.
+
+**Five controls fixed across four stylesheets, and only TWO were on the list:**
+
+- `.VariantSelector-trigger` — **ON the list**. A `bg-3` dropdown trigger on the `bg-1` property
+  panel: **1.26:1 dark / 1.27:1 light**. Its fill step is 1.36 / 1.22, so the ring is load-bearing.
+- `.SizePicker-group` — **on no list**. The segmented control rendered *directly beside* the trigger
+  by the same parent, with the same numbers. Invisible to the inventory because the **group** sets
+  no `cursor` — its options do, and they have no border.
+- `.DismissButton` (SuggestionBanner) — **ON the list**. Paints no fill at all, so its edge was the
+  only thing marking it: **1.07 / 1.15** on the banner's `bg-2` card.
+- `.TokenPicker-trigger` — **ON the list**, and see the finding on grounds below.
+- `.TokenPicker-search` — **on no list**. A native `<input>`; the `.TemplateFilter-search` blind spot
+  for the **third** time in this sweep.
+
+All five now measure **3.05–4.17:1** on both sides in both themes.
+
+**Deliberately left on `border-default`** (five sites, asserted as such): `.Banner`, the two dropdown
+panels, `.TokenPicker-searchRow` and `.ElementStyleSection`. Every one is a region boundary; the two
+dropdowns are told apart from what is behind them by a popup shadow, which is asserted rather than
+merely claimed.
+
+Pinned by `tests-unit/border-sweep/style-section-control-borders.test.ts` — **35 rows**, both themes.
+
+### 🔴 The finding: a divider tone can hide inside a `color-mix`, where BOTH the fix and the reader miss it
+
+`.TokenPicker-trigger--hasValue` was:
+
+```scss
+border-color: color-mix(in srgb, var(--theme-color-primary) 40%, var(--theme-color-border-default));
+```
+
+Raising the resting edge and stopping there would have made **selecting a token WEAKEN the
+boundary** — 4.17 → **2.37** on `bg-1` in dark, 3.72 → **2.08** in light. That is session 61's hover
+trap exactly, but this occurrence **cannot be found by the grep this document prescribes for it**
+(`border-color: var(--theme-color-border-{strong,hover,highlight})`): the divider is not the *value*
+of `border-color`, it is an *argument* to the function that is.
+
+🔴 **And the instrument had the same hole.** `tokenOf`, the helper every earlier file in this sweep
+uses, returns the **first** `var()` in a declaration. On this rule that is `--theme-color-primary`,
+so it would have scored **5.60:1** — a number that passes comfortably, for a colour the browser
+never paints. A spec built on it would have reported the fix as unnecessary. `paintOf` /
+`resolvePaint` in the new file parse the mix and blend it (sRGB `color-mix` of two opaque colours is
+a straight per-channel blend, so this stays answerable without a renderer).
+
+Re-anchored on `border-control`, the state is **4.63 / 4.22** on `bg-1` — stronger than resting,
+which is what "highlight subtly" was always meant to mean. ✅ **A state's colour can be a FUNCTION of
+the token you are replacing. Read the whole value, not the first token in it.**
+
+### 🔴 The ground is in another PACKAGE, and three links in the chain paint nothing
+
+Every earlier family read its ground out of a `.module.scss` beside the control. Here
+`VariantSelector`, `SizePicker` and their parent `ElementStyleSection` are all in `noodl-core-ui`
+and **none of them paints a fill**. What these controls are actually seen against is `.sidebar-panel`
+in the **editor's** `src/assets/css/style.css` (PAR-002: *"panels sit on bg-1; inputs/cards read bg-2
+on top"*), reached only by following `propertyeditor.ts` → `ElementStyleSectionHost` → the component.
+
+The ground is pinned by name across that boundary, **and the three unpainted links are asserted
+unpainted** — the moment any of them paints a fill, that becomes the ground and every ratio above is
+measured against the wrong surface. Same defect shape session 67 caught with a modal, arrived at
+from the opposite direction: there the ground was *nearer* than the file's own comment claimed, here
+it is **further away and in another package**.
+
+### 🔴 A control that is NOT PLACED has no ground, and inventing one measures nothing
+
+`TokenPicker`'s only reference outside its own directory is a **comment** in
+`TokenCategorySection.tsx` reserving it for future inline editing. There is no placement, so there is
+no ground to read.
+
+It is graded against **every panel step it could be placed on** (`bg-1` 4.17 / 3.72, `bg-2` 3.57 /
+3.37, `bg-3` 3.08 / 3.05) rather than against a guessed one — a weaker premise carrying a stronger
+claim. **And the premise is itself a row**: the spec walks both source packages, strips comments, and
+asserts nothing references `TokenPicker`. Place it and that row reddens, asking for the real ground
+to be read out of the placement instead of leaving a stale assumption behind.
+
+⚠️ **A comment is not a placement** — and the first search for one said *zero call sites for all
+three components*, which was wrong. It had been run from the wrong working directory, so `grep`
+searched a path that did not exist and the error was swallowed by `2>/dev/null`. **An absence
+reported by a query that never ran is the register's known trap**; the second search, with each
+component's own directory excluded individually, found the real chain.
+
+### ⚠️ What this family REFUSES to grade, and says so in a row
+
+`.TokenPicker-swatch` and `.TokenPicker-optionSwatch` draw `1px solid rgba(255,255,255,0.15)` over a
+colour **the user picked**. There is no second operand, so any ratio would be invented —
+`themeTokens`' own header says a caller that cannot name what is underneath must refuse rather than
+guess. They are asserted to name **no theme token**, so if one is ever changed to a token it stops
+being exempt and has to be measured.
+
+### ⚠️ Found while reading, pinned rather than fixed: an inert hover
+
+`.CloseButton:hover` paints `background-color: var(--theme-color-bg-2)` — and the banner it sits on
+is **already `bg-2`**, so the hover background is **1.00:1** against its own ground and draws
+literally nothing. It is not a 1.4.11 failure (hover feedback carries no contrast requirement) and
+not this sweep's to fix, so it is pinned by number; what *does* give feedback is the glyph moving
+`fg-default-shy` → `fg-default`, and that is asserted so the button is not left with no hover
+affordance at all.
+
+### 🔴 The suffix guard, a THIRD outcome: REACHED and still inert
+
+Sessions 66 and 67 disagreed about session 66's `.Option` / `.Options` guard — live there,
+**unreachable** in the folder tree because the queried selector was the longer of the pair. This
+family gives the third case. Candidates **do** arrive in the hazardous direction
+(`.TokenPicker-trigger` is a strict prefix of the real rule `.TokenPicker-triggerText`, and
+`.TokenPicker-search` of `.TokenPicker-searchRow`), so the guard is genuinely **exercised** — and it
+still changes no row, because the state loop only grades a candidate that declares a `border-color`
+or a fill, and neither helper declares either.
+
+✅ **"Reached" and "load-bearing" are two different questions, and only a mutant separates them.**
+Recorded as reached-but-inert rather than reported as the file's strength.
+
+### 🔴 A hole in this session's OWN spec, found before it ran
+
+The first draft of the borderless-controls row listed its token names as **literals** and measured
+those — which is precisely the hole this file's header warns about one rule up: *a palette assertion
+passes on a build where these rules no longer name those tones.* Rewritten, every one of the eight
+pairs resolves **both ends out of the stylesheet**, so changing a label's colour reddens it.
+
+### ✅ The mutants — TWELVE run plus TWO controls, and the freeze lifted the same session
+
+Richard cleared the freeze, so everything below was **run**, not predicted. Suite:
+**8 suites / 271 passed / exit 0**, and 271 − 236 = **35**, exactly this session's rows, reconciling
+with s67's count. The harness mutates **by line number** (this session's comments contain
+`border-control` and every ratio, so a string replace would have edited the explanation instead of
+the code) and **refuses to score reds from a run that failed to RUN** — s67's `Tests: 0 total` trap.
+
+| # | mutant | result |
+|---|---|---|
+| 1 | revert `.VariantSelector-trigger` | ✅ KILLED — 2 reds |
+| 2 | revert `.SizePicker-group` | ✅ KILLED — 2 reds |
+| 3 | revert `.DismissButton` | ✅ KILLED — 2 reds |
+| 4 | revert `.TokenPicker-trigger` | ✅ KILLED — 2 reds |
+| 5 | revert `.TokenPicker-search` | ✅ KILLED — 2 reds |
+| 6 | re-anchor `--hasValue` on `border-default`, **resting left fixed** | ✅ KILLED — **4 reds** |
+| 7 | raise the shared `border-default` to a 3:1 tone, both themes | ✅ KILLED — 2 reds (the negative control) |
+| 8 | over-fix: sweep the REGION edges to `border-control` | ✅ KILLED — 2 reds |
+| 9a | break `own()` **alone** | ⬜ survived — **as predicted** |
+| 9b | **two-part**: break `own()` **and** revert mutant 1 | ⬜ **survived** — the sabotage BLINDS the spec |
+| 9c | **control for 9b**: revert mutant 1, `own()` **intact** | ✅ KILLED — 2 reds |
+| 10 | remove the suffix guard | ⬜ survived — **as predicted** |
+| 11 | change `.SizePicker-option`'s label tone | ✅ KILLED — 2 reds |
+| 12a | **first draft** of the borderless row (literal tokens) + mutant 11 | ⬜ **survived** |
+| 12b | **control for 12a**: first draft, stylesheet unchanged | ⬜ green, as it must be |
+
+**Mutant 6 taking 4 reds is the finding confirmed**: the `color-mix` state is a *separate* defect
+from the resting edge, and it reddens both the FINDING 1 row and the state row while the resting
+edge is still correct. A session that had fixed only the resting declaration would have shipped it.
+
+🔴 **9b + 9c are a CONTROL PAIR, and they are how `own()` was proved rather than assumed.** Both arms
+carry the *same* real defect; they differ in one thing only — whether `own()` is intact. Intact, the
+defect is caught (2 reds); sabotaged, it goes through silently. Sessions 65–67 each had to establish
+`own()`'s status separately and by argument; this is the first time it has been settled by varying
+exactly one thing. ⚠️ **9a alone proves nothing** — an instrument sabotage with no defect present
+has nothing to fail to reveal, which is why it survives and why it is not evidence either way.
+
+🔴 **12a proves this session's OWN correction was load-bearing.** The write-up claimed the first
+draft of the borderless row "would have passed"; that was a claim about a version that no longer
+existed, and the register's standing warning is that measuring only after a fix reports the fix as
+unnecessary. Restored and re-run, the first draft **misses the label defect that the rewrite kills**,
+with 12b confirming the draft was otherwise green. The claim is now a measurement.
+
+✅ **Mutant 10 confirms the third outcome**: the suffix guard is reached and still kills nothing.
+
+### 🔴 The gate I told the next session to run FIRST does not grade the thing it was supposed to protect
+
+The handoff said to run `tsc -p packages/noodl-editor --noEmit` before anything else, *because*
+`ts-jest` typechecks `tests-unit/` and a type error would make the new spec fail **to run**. It
+exits **0** — and `--listFiles` shows it includes **zero** files under `tests-unit/`. The project
+excludes the whole directory, so its exit code was never capable of saying anything about the spec.
+
+**The only typecheck a spec in `tests-unit/` ever gets is `ts-jest`'s, at run time** — which means
+the jest run *is* the typecheck, and a green `tsc` beforehand is not a safety net. Recorded because
+the reasoning was sound and the instrument was still the wrong one: *a gate can be right about the
+risk and wrong about the population*.
+
+### The rest of the queue, measured
+
+| gate | result |
+|---|---|
+| `npx jest tests-unit/border-sweep/` | ✅ **8 suites / 271 passed / exit 0** |
+| editor `test:main` (owed from s67) | ⚠️ **375 suites, 6253 passed, 1 failed** — and the failure is **NOT this lane's**, see below. All 8 border-sweep suites PASS inside it |
+| `noodl-core-ui` suite | ✅ **28 suites / 527 passed / exit 0** |
+| `npm run tokens:css` | ✅ exit 0 — 322 stylesheets, every `var(--…)` names a defined property |
+| `npm run typecheck:core-ui` | 🔴 exit 2, **44 errors — ALL 44 in `packages/noodl-editor`, ZERO in core-ui**, and pre-existing: they are `TS2307` on the unbuilt `@noodl-viewer-cloud/execution-history` types, on files last touched **2026-08-06**. Not a regression; the script simply has no `pretypecheck` build step |
+
+⚠️ **The single `test:main` red is a peer's in-flight work, attributed by MTIME rather than by
+`git status`.** `tests-unit/sb-007/site-template.test.ts` fails because `docs/THEME.md` now lands in
+every site-builder project; `site-builder.template.ts` was edited at **16:17** and that spec at
+**16:42**, one minute before this run at 16:43 — a peer mid-**SBR-003**, whose own deliberately
+exhaustive `toEqual` caught their new file exactly as designed. Left alone, and **they updated the
+pin at ~16:47 and re-ran green** — so the red is already gone from the tree. ✅ **The number above is
+reported as it was measured at 16:43, not silently refreshed**: `test:main` is green now, and it was
+6253/6254 then.
+
+## ⬜ What is left — 35 sites, and that number is a FLOOR
 
 🔴 **The inventory is bounded by its own query and reports that bound.** It selects blocks
 containing both `border-default` and `cursor: pointer` — so it **misses native `<input>`,
@@ -889,7 +1087,11 @@ clickable.
 a count of `border-default` declarations rather than of sites. Both are floors either way, and the
 discrepancy is unexplained rather than resolved; **the count is not the artefact, the files are.**
 
-By package (43 left):
+⚠️ **Session 68 closed the last three `noodl-core-ui` entries (38 → 35) while fixing SIX
+declarations** — the ratio of found-to-listed is now roughly 2:1 across the whole sweep, which is
+the clearest statement yet that the list is a floor rather than a work queue.
+
+By package (43 left at session 63; **35 now**):
 
 - **`noodl-core-ui`** (13): ~~`.Button` (CodeHistoryButton), `.CancelButton` (CodeHistoryDiffModal),
   `.PreviewButton` (CodeHistoryDropdown), `.SaveButton` / `.CloseButton` (JavaScriptEditor)~~ —
@@ -903,7 +1105,11 @@ By package (43 left):
   declarations fixed plus two graded** rather than one: the two `<input>`s
   (`.RenameInputField` / `.CreateFolderInputField`) are on no list because neither sets `cursor`,
   `.DeleteConfirmationDeleteButton` is a **known-open platform defect pinned by number**, and
-  `.NewFolderButton` is graded by its LABEL rather than added to an exclusion list. **3 left.**
+  `.NewFolderButton` is graded by its LABEL rather than added to an exclusion list.
+  ~~**3 left.**~~ — ✅ **DONE, session 68**, and it was **five** controls rather than three:
+  `.SizePicker-group` and `.TokenPicker-search` are on no list and were both real defects, and
+  `.TokenPicker-trigger--hasValue` was a sixth declaration — a divider tone hidden inside a
+  `color-mix`. **0 left in `noodl-core-ui`.**
   ~~, `.Option` / `.Ghost` (LearnerPathSection)~~ — ✅ **DONE, session 66**, and it was **three**
   controls rather than two: `.Primary` is not on this list, is not a defect, and is now GRADED by
   its fill step rather than excused as a false positive. ~~**4 left.**~~ **3 left after session 67.**

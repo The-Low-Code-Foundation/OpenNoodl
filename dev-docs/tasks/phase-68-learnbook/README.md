@@ -6,7 +6,29 @@ is **scoped now, built after phase 67's Tier 1 + UNI-004 land** — it consumes 
 profiles, offers, roster and assignment machinery, none of which exists yet. Like phase 67's
 platform tasks, almost nothing here lives in this repo: **the surface is the platform repo**
 ([The-Low-Code-Foundation/nodegx-community](https://github.com/The-Low-Code-Foundation/nodegx-community),
-D1 stack — Next.js + Postgres + Drizzle, Docker on Hetzner). No editor-side code, no bridge.
+D1 stack — Next.js + Postgres + Drizzle, Docker on Hetzner). No editor-side code, no bridge **in v1**.
+
+> ⚠️ **AMENDED 2026-08-15 — "no editor-side code" now means "none in v1".** Phase 67's **D14** ruled
+> that the web platform is canonical and **the editor mirrors it against the same API**; the D13
+> amendment extends that to LearnBook. **A later tranche of this phase adds an editor client** —
+> not a second build, a second front end onto the same schema.
+>
+> 🔴 **The reason is LB-006, and it is the strongest argument in either phase.** An assignment already
+> demands *"coachee replies, coach validates"*. Inside the editor, a submission can carry **evidence
+> from the actual project** — UNI-007's grading runner already evaluates completion conditions
+> against a live graph
+> ([`lessonevalconditions.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts),
+> sidecar-safe split at `.live.ts`). The coach sees what the learner built rather than a description
+> of it, which is the difficulty of coaching a builder. The web client cannot do this at any price.
+>
+> **Three things this does NOT change:** L1 stands verbatim — the server, schema and media stay on
+> the platform, for D13's three unchanged reasons. **L5/E3 still hold in both clients**: org-minor
+> accounts stay out of coaching spaces until E3 is ruled. And the client is **sequenced after this
+> phase's web v1** — two clients against a schema that has never run gets both rebuilt.
+>
+> ⚠️ **Do not conflate it with L2's second act.** That is a NodeGX-*built* coachee frontend (an
+> exported app proving the node library). This is editor-*native* chrome. Both are now on the
+> roadmap; if only one survives, say which.
 
 ## The premise, in one paragraph
 

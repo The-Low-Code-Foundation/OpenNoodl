@@ -410,15 +410,36 @@ forum). The second is new here and structural: a body may contain links, which
 elements. The way into a thread is a control in the row's foot — and it is **absent inside the
 thread pane**, because there it would point at the page it is already on.
 
-🔒 **DEFERRED, and this is the honest half of C4: there is no composer.** You can read the river,
-filter it, and open a thread; you cannot post or reply from the launcher. Two reasons, and the
-second is the real one:
+✅ **BUILT — the launcher composer, session 34 (0.2.2 tree, phase-82).** R-chat-mod was ruled B on
+2026-08-28 (§8) and C5 shipped session 59, so both reasons the composer was withheld are resolved:
 
-1. Scope: adding both writes turns an S–M slice into an L one.
-2. 🔴 **Posting is where R-chat-mod actually bites.** C5 is listed as blocked on that ruling, but a
-   *composer* is what creates the messages a moderation posture is about — shipping "anyone can
-   post from the editor" before deciding whether anybody can take a message down is the ordering
-   the ruling exists to prevent. **So the composer belongs with C5, not before it.**
+1. `CommunityApiClient.postChat`/`.replyChat` — `communityapi.ts`, unwrapping the routes' `item`
+   envelope, matching `chat()`/`chatThread()`'s existing guard against a payload that fails to
+   parse.
+2. `chatwrites.ts` (new) — `composeChatComposer`/`composeChatReplyBox`, mirroring
+   `threadwrites.ts`'s two-arm shape (`handoff` for signed-out, `composer` for D5's session
+   parity) verbatim. The reply box reuses `CommunityReplyBox`, the bench's own type, rather than
+   inventing a second identical one; the starter gets a new `CommunityChatComposerBox` for its one
+   extra field, the channel.
+3. `CommunityChatView.tsx` — a `ChatStarter` above the river (channel `<select>` + body,
+   "under the head and above the bar", the web's own placement) and a reply block under an open
+   thread's replies, both built from the same `.Reply*` CSS vocabulary `CommunityListingCard`
+   and the bench's `ThreadReply` already use.
+4. `useCommunityChat.ts` — draft/channel/sending state for both writes, a `loadThread(id, {silent})`
+   that re-pulls an open thread without blanking it after a reply posts, and `refresh()` bumping
+   the river's generation after either write (FIX-025's lesson: the row's `replyCount` is a
+   different hook's state).
+
+⚠️ **Not built: delete-own from the launcher.** AC1 asks for post + reply; the web's
+`ChatMessageControls` (delete) is a separate control this session left out to keep scope to what
+was asked. `POST`/`DELETE` on the platform route are otherwise unchanged, so adding it later is a
+client-only addition — no new route.
+
+**Readings**: `tests-unit/fb-013/chatwrites.test.ts` (new, mirrors `threadwrites.test.ts`),
+`tests-unit/fb-013/chat-composer-render.test.tsx` (new, mirrors `thread-write-render.test.tsx`) —
+both green. Full editor `test:main`: 7069 passed, the same 8 pre-existing failures (`sb-007`,
+`vfn-011`, both §A1's) unchanged. `typecheck:editor` 0 errors; `typecheck:core-ui` the same 50
+pre-existing errors, none in a touched file.
 
 ⚠️ **And the platform half is not deployed.** `/api/v1/community/chat` answers **404** on
 production while `/api/v1/community/threads` answers **200** and an invented path answers 404 —

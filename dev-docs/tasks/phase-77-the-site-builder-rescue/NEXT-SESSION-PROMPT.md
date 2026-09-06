@@ -16,7 +16,7 @@
 |---|---|
 | SBR-001 | ✅ closed s2 — owns **D49**, **D50** (neither blocking) |
 | SBR-002 | ✅ closed s4 — owns **D40**, fixed s47, confirmed s48 |
-| SBR-003 | 🟡 built s4 — owes the `var(--token)` dimension-port probe; owns **D38** |
+| SBR-003 | 🟡 built s4 — **AC5 CLOSED s51** (the probe is a gate: `sb008` §7, 31/31); owns **D38** |
 | SBR-004 | ✅ built s5, driven s8b, re-driven on the deploy s47 |
 | SBR-005 | 🟡 built s36 — every AC 🟢 **except AC1's LOOK**, which is Richard's |
 | SBR-006 | ✅ closed s33 |
@@ -24,7 +24,7 @@
 | SBR-008 | ✅ AC1–AC5 met; driven end to end on the DEPLOYED artefact s47 |
 | SBR-009 | 🟡 built s37 — AC1's live half driven s47. **D54 is FIXED** (P82 REL-011b) |
 | SBR-010 | ✅ built s38, driven s46 |
-| SBR-011 | 🟢 AC1, AC3, AC4 driven s47. ⬜ **AC2 and AC5**; **D46**'s drive still owed |
+| SBR-011 | ✅ **ALL FIVE ACs MET s50** — AC2 and AC5 read, **D46's owed drive taken and D46 CLOSED**. ⬜ AC2/AC5 have no *deployed-artefact* reading (coverage gap, not an unmet AC) |
 | SBR-012 | ✅ built s35 |
 | SBR-013 | ✅ closed s41 |
 | SBR-014 | ✅ **CLOSED s47** — all 8 steps |
@@ -76,7 +76,90 @@ breaks the runtime's depth counter** — is **[D55](DEFECTS-THE-SITE-BUILDER-FOU
 
 ---
 
-## 🔴 FIRST JOB — **SBR-011 AC2 and AC5**, the last two ⬜ ACs in the phase
+> ### ✅ DONE s50, 2026-09-05 — SBR-011 is closed and D46 with it
+>
+> **All five ACs met.** `sbr011-live-preview-drive` **10/10 EXIT=0 twice** (AC1–AC4, the cardinality
+> trap and the mutant), `sbr011-hub-unreachable-drive` **3/3** for AC5 re-read against the pooled
+> transport, `sbr011LivePreview` **6/6**, `realtime-transports` **88/88**, both tsc clean.
+> **D46 is CLOSED**: streams for three subscribing queries went **6/15 → 2**, registration POSTs
+> **3-across-four-cycles → 1**, and that POST **`queued 15007ms` → `queued 0ms`**.
+>
+> 🔴 **The first job below was aimed at the wrong thing, and the mis-aim is the lesson.** AC2 was
+> never unmet — it passed in s39 and passes now. And AC3's blocker was **not D46**: the drive's
+> warm-up POSTed a *second* `Theme` row while `buildThemeApplierScript` reads `rows[0]` and
+> `claimSite` seeds a deliberately-empty singleton there. Every event had been delivered correctly
+> the whole time. **No product change was needed for AC3 — only the drive changed.**
+>
+> 🔴 **The pool fix is what exposed it.** While all three collections were dead this was invisible;
+> s40 read `{Page: false, Section: false, Theme: false}` and concluded *"there is nothing
+> `Theme`-specific here"* — right about D46, wrong about the theme. When `Page` and `Section` came
+> alive and `Theme` did not, it fit *"one dead subscription"* perfectly, which is a defect with the
+> **opposite fix**. ✅ **Drive the product's own path** — the panel saves the singleton through
+> `theme.firstItemId`, so the drive now does too, with `toHaveLength(1)` as the guard.
+>
+> ⬜ **The one real gap left**: AC2 and AC5 are measured only on the **in-process** drive. s47 drove
+> AC1/AC3/AC4 on the **deployed** artefact; these two have no deployed reading. That is what the
+> `⬜ AC2 / AC5` on the old board was actually pointing at.
+>
+> Full record: [SBR-011 §s50](SBR-011-LIVE-PREVIEW-OVER-THE-REALTIME-HUB.md).
+
+> ### 🟢 THE TOKEN LANE, 2026-09-05 (s51) — added beside the other lanes, not over them
+>
+> **SBR-003 AC5 is closed: the `var(--token)` dimension-port probe is a GATE.** `sb008` §7, seven
+> specs, **31/31 EXIT=0** (24 pre-existing readings unchanged), `typecheck:mcp` **0**. Committed
+> `1e415037` + `c21c9df0`.
+>
+> | arm, 1280×900, anonymous, enforcement on | `--site-measure` | shell `max-width` | shell | frame |
+> |---|---|---|---|---|
+> | shipped graph | `44rem` | **`704px`** | **704** | 1280 |
+> | `var(--sbr003-no-such-token)` | `44rem` | **`none`** | 1232 | 1280 |
+>
+> The clamp **binds** (704 inside 1280, not a box that was that size anyway), and the token is
+> **defined on `:root` in both arms** — the control varies what the port *references*, never what
+> the token *is*, which is what makes it a probe of the port.
+>
+> 🔴 **THE READING WAS NOT NEW AND THIS SESSION BELIEVED IT WAS.** s5 took it on 2026-08-28
+> (`SBR-004` §140–141, and `TASKS.md`'s s5 entry says *"✅ SBR-003's carried probe answered"*).
+> **SBR-003 §5 still said "still owed" and was never updated; this session read §5 and not
+> `TASKS.md`.** The re-measure check WAS run — against *"does a spec exist?"*, which was the wrong
+> question. ✅ **When two files in a phase disagree about whether something is owed, the task file's
+> status section is the one most likely to be stale.** What was genuinely missing is what AC5
+> actually asks for — a standing spec with a control — and that is now what exists.
+>
+> 🔴 **[D57](DEFECTS-THE-SITE-BUILDER-FOUND.md#d57) — REGISTERED, OWNER `NONE`, and it fooled the
+> probe first.** §7's opening run read `max-width: none` in **both** arms, which fits *"the
+> dimension port drops `var(--token)`"* perfectly — the exact defect being hunted. It is a
+> **fixture** fact: `authorSiteTemplate` never performs the editor's design-token install, and
+> `render-from-disk` takes CUSTOM tokens from `metadata.designTokens` alone. So every token the
+> template **overrides** still resolves (the page looks correctly themed) and only the one it
+> **mints** — `--site-measure` — is absent. `applyTemplateDesignTokens` was **private to
+> `vib001-site.look.ts` and that was its only caller**: the look harness's photographs were right,
+> and the thirteen drives beside it were not looking at the same page.
+> ✅ **Fixed at the seam** — exported from `helpers/site-drive.ts`, the look file imports it, no
+> second copy. ⬜ **The other twelve drives are untouched**, deliberately: folding the install into
+> `authorSiteTemplate` moves readings in all of them at once (`customTokens` carries the whole
+> Studio palette, not just the minted token), so it is a sweep with its own before/after.
+> ⚠️ **Do not restate D57 as "the drives are wrong"** — for every claim they actually make the
+> missing token changes nothing. The row is that **no drive but the look harness can see a width,
+> a gap or a measure.**
+>
+> ⚠️ **Two assertions were PREDICTED wrong and RECONCILED, not edited to fit**: the control was
+> predicted to fill the frame at 1280 and measures **1232**, the pair at 576px and is **528**.
+> `shell` states `width: 100%`, so unclamped it fills its parent's *content* box and `frame` carries
+> 48px padding. The probe gained `framePaddingX` and the control now asserts the equation
+> `shell = frame − padding` rather than a literal a later session could quietly re-fit.
+>
+> ⚠️ **NOT committed by this lane, and both carry a peer's uncommitted hunks**:
+> `DEFECTS-THE-SITE-BUILDER-FOUND.md` (D57 is appended there, alongside two SBR-011 hunks that are
+> not this lane's) and this file. **A pathspec commit on either would sweep the peer's edit.**
+> Whoever commits them next is carrying D57 and this lane block with them.
+>
+> ⚠️ **Not run**: `typecheck:backend-tests` (unrunnable on this box) — and ts-jest here is
+> `isolatedModules: true`, **so a green suite is NOT a typecheck** of the two backend-test files
+> this touched. `vib001-site.look.ts` loads and collects its 2 tests after the refactor, but its
+> **photographs were not re-taken**; the change is import-only, which is an argument, not a render.
+
+## ~~🔴 FIRST JOB — **SBR-011 AC2 and AC5**~~ ✅ DONE s50 — kept below for the reasoning, not as a queue
 
 Owner **SBR-011**. AC2 is *a section edited in one browser appears in another without a reload*;
 AC5 is *the hub unreachable, and the app says so rather than going quiet*. **D46**'s owed drive sits
@@ -90,8 +173,8 @@ fixes. s47 proved the subscription alive FIRST (`POST /realtime/subscriptions`, 
 
 ### After that, in order
 
-- **SBR-005 AC3**'s failure-line control · **SBR-003**'s `var(--token)` dimension-port probe ·
-  SBR-002 AC4's other two states on a *deploy* (✅ against the preview — a coverage gap, not an
+- **SBR-005 AC3**'s failure-line control · ~~**SBR-003**'s `var(--token)` dimension-port probe~~
+  ✅ **done s51** · SBR-002 AC4's other two states on a *deploy* (✅ against the preview — a coverage gap, not an
   unmet AC).
 - **[D56](DEFECTS-THE-SITE-BUILDER-FOUND.md#d56)** wants ONE drive: *does a project the WIZARD
   creates deploy?* s49 measured that an **MCP-door-built** project has no `rootNodeId` and

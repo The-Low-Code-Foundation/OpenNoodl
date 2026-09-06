@@ -6,7 +6,7 @@
 | **Effort** | M |
 | **Surface** | `project-examples/lessons/it-forgets-you` |
 | **Rules** | [R1](RICHARD-RULINGS-2026-08-28.md#r1--the-pet-spine-stands-as-written) (the chain), R3 via [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) (`detail`), [LESSON-VOICE.md](LESSON-VOICE.md) |
-| **State** | 🟢 **Built and gated 2026-09-05.** ⬜ **NOT DRIVEN.** ⬜ **The prose is a draft awaiting Richard.** |
+| **State** | 🟢 **Built, gated and DRIVEN 2026-09-05** — control pair in a running editor, see [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md). ⬜ **The prose is a draft awaiting Richard.** |
 
 ## What it is
 
@@ -139,3 +139,17 @@ one lesson ago because it is load-bearing for every remaining lesson in the spin
 3. **The badge**, currently `It Remembers`.
 4. **The second button's caption**, currently `Rest`. It is graded with `paramsEqual`, so changing
    the word is a `body` **and** `completeWhen` edit — the one prose change that costs a re-derive.
+
+## ✅ Driven 2026-09-05
+
+Full method and caveats: [DRIVE-2026-09-05-THE-LESSON-RUNNER.md](DRIVE-2026-09-05-THE-LESSON-RUNNER.md).
+
+| question | answer |
+|---|---|
+| **a runtime-minted SIGNAL input** | ✅ **YES** — `Counter.increase` and `Counter.reset` both grade as connection targets |
+| **a runtime-minted OUTPUT** | ✅ **YES** — `Counter.currentCount` into `…:#Card:#Score .text` |
+| **the negative control** | ✅ **YES** — the untouched starter holds at *"Looking for a Counter called “Pokes” on Home."* and refuses |
+
+🔴 **This lesson's negative arm is one of the two sharpest in the drive.** Its starter already
+contains lessons 1–3's finished work, so a runner that simply ticked what it was shown would have
+completed it. It refused on exactly the step this lesson adds.

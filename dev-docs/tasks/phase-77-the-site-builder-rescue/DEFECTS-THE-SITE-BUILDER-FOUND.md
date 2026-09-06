@@ -2415,7 +2415,31 @@ visible; a longer one would only make the same wait silent.
 
 ---
 
-## D46 — 🟡 SIX realtime subscriptions on one origin SILENCE the app. FIXED s42, drive owed
+## D46 — ✅ CLOSED s50. SIX realtime subscriptions on one origin SILENCED the app; fixed s42, driven s50
+
+> ✅ **CLOSED 2026-09-05 (s50) — the browser reading this row was held open for is taken.**
+> `sbr011-live-preview-drive.test.ts`, **10/10 EXIT=0 twice**, against the built viewer bundle
+> (`uncomparable` present, and no `noodl-runtime` source newer than it — the precondition this row
+> named). **Streams for three subscribing queries: 6 then 15 → 2** (one shared browser stream plus
+> the drive's own anonymous probe). **Registration POSTs: 3 across four cycles → 1 POST of the
+> union**, and on the browser's own clock `queued 15007ms, waited 5ms` → **`queued 0ms, waited
+> 2ms`**. `liveCollections` `{Page: false, Section: false, Theme: false}` → **all three true**.
+> Both re-pointed instruments are read: `expect(openStreams).toBeLessThan(3)` executed and passed,
+> and `sbr011LivePreview.test.ts` (6/6) now describes a re-query budget rather than a connection one.
+>
+> 🔴 **This row did NOT block AC3, and that was believed for three sessions.** AC3 was blocked by
+> the drive's own warm-up POSTing a **second `Theme` row** while `buildThemeApplierScript` reads
+> `rows[0]` and `claimSite` seeds a deliberately-empty singleton there. See
+> [SBR-011 §s50.2](SBR-011-LIVE-PREVIEW-OVER-THE-REALTIME-HUB.md). **No product change was needed
+> for AC3.**
+>
+> ✅ **And this row explains [D45](#d45).** The drive's runs are now byte-identical on every logged
+> number (135.3s and 134.6s, one of them against a peer's seven-worker `test:main`). D45's
+> *"unpredictable between runs of identical code"* **was** this race; with one shared stream there is
+> no race left to lose, and the drive is a stable gate for the first time.
+>
+> ⚠️ **Not re-taken here:** the reverted control for the 11 arms (*"10 of the 11 go red against
+> committed HEAD"*) stands as **s42's** measurement, cited rather than re-measured.
 
 **Product, `packages/noodl-runtime/src/api/backends/realtime/SseTransport.ts`.** The delay half of
 [D45](#d45), measured, and it is larger than the row it came out of.
@@ -2540,17 +2564,22 @@ filter engine to keep in step with `nodegx-backend/src/realtime/filter.ts`. Subs
 subscriptions on one origin still reaches the ceiling** — recorded here rather than papered over,
 and it is the shape of any future report that looks like D46 and is not fixed by this.
 
-### What was NOT closed
+### What was NOT closed — ✅ all of it closed s50
 
-⬜ **The drive.** `sbr011-live-preview-drive` has not been run against the fix. Until it is, AC3 is
-open and **this row is not closed**. Two of its instruments were re-pointed for the fix and both are
-now unread: the drive's `expect(openStreams).toBeGreaterThanOrEqual(3)` was inverted to `< 3` —
-🔴 **it is the arm the un-fixed code cannot satisfy, so it is the drive's own reading of D46** — and
-`sbr011LivePreview.test.ts`'s header, one arm title and two comments claimed a *connection* budget
-that is now a *re-query* budget. ⚠️ **A drive needs the viewer rebuilt**: it renders from
-`packages/noodl-editor/src/external/`, which is a built artefact, so an unrebuilt bundle measures the
-old transport twice and reports it as a control. Grep the built bundle for `uncomparable` — the one
-string literal unique to `SseConnectionPool` that survives minification — before believing an arm.
+⬜ ~~**The drive.**~~ ✅ **Taken s50.** `sbr011-live-preview-drive` ran against the fix, **10/10
+EXIT=0 twice**. Both re-pointed instruments are now read: `expect(openStreams).toBeLessThan(3)`
+(inverted from `>= 3`, and the arm the un-fixed code cannot satisfy) **executed and passed at 2**,
+and `sbr011LivePreview.test.ts` **6/6** with its header, arm title and comments correctly naming a
+*re-query* budget rather than a *connection* budget.
+
+✅ **The viewer-rebuild precondition was checked before the drive, not after.** `uncomparable` — the
+one literal unique to `SseConnectionPool` that survives minification — is present in the `viewer`,
+`deploy` and `ssr` bundles, and `find packages/noodl-runtime/src -newer noodl.viewer.js` returned
+**empty**, so the bundle post-dates every realtime source file. 🔴 **Keep both halves of that check:
+the grep alone passes on a bundle that also carries newer unbuilt sources beside it.**
+
+🔴 **AC3 was NOT what this row was blocking** — see the closing note at the head of the row. The
+fix here was necessary and is measured; it simply was not what kept AC3 red.
 
 ---
 

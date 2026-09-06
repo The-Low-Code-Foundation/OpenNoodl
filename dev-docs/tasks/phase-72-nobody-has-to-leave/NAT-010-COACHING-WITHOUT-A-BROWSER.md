@@ -28,7 +28,8 @@ time. That moment happens in the editor, in front of the graph that is not worki
 4. Reaching a session — a call link, a calendar file — is where leaving the editor is **correct**
    and the UI says so plainly. P1's "footnote, not mechanism" rule cuts both ways: a video call is
    not something the editor should host, and pretending otherwise is worse than an honest hand-off.
-5. Booking notifications actually send (same drainer trap as NAT-009).
+5. Booking notifications actually **send**, verified against the deployed platform — blocked on
+   **[NAT-014](NAT-014-THE-QUEUE-THAT-NOTHING-EMPTIES.md)** exactly as NAT-009 AC5 is.
 6. D15, and the standard four states.
 
 ## Traps

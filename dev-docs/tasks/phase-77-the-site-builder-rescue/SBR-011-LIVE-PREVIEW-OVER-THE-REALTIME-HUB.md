@@ -270,3 +270,114 @@ product's own path before calling a difference a defect.**
 - **AC2** — a section edit on the currently-viewed page updating live was not separately driven.
 - **AC5** — the hub-unreachable degradation arc is undriven.
 - **D46**'s drive is still owed.
+
+---
+
+## 🟢 s50, 2026-09-05 — D46's owed drive TAKEN, AC2 and AC5 read, and AC3's blocker was the instrument
+
+**All five ACs are now met on the in-process drive, and the drive is a stable gate for the first
+time.** Three runs of `sbr011-live-preview-drive.test.ts`: run 1 **8/10**, runs 2 and 3 **10/10,
+EXIT=0**, with runs 2 and 3 byte-identical on every logged number.
+
+### 1. 🔴 D46 is fixed, and this is the browser reading its row was held open for
+
+The row said *"still owed: the browser reading… until it is, AC3 is open and this row is not
+closed."* Taken, on this drive's own Resource Timing and the hub's own `connectionCount`:
+
+| | D46 as measured (s39/s40) | now |
+|---|---|---|
+| open SSE streams for three subscribing queries | **6**, then **15** | **2** — one shared browser stream + this drive's own anonymous probe |
+| subscription registration POSTs | **3**, repeated over four cycles | **1** POST of the union |
+| that POST on the browser's clock | `queued 15007ms, waited 5ms` — **never sent** | **`queued 0ms, waited 2ms`** |
+| `liveCollections` | `{Page: false, Section: false, Theme: false}` | `{Page: true, Section: true, Theme: true}` |
+
+✅ **The re-pointed arm is what carries it.** `expect(openStreams).toBeLessThan(3)` is the assertion
+the un-fixed code cannot satisfy — one `EventSource` per subscription put the floor at three. Both
+instruments D46 recorded as *"re-pointed for the fix and both now unread"* are read: this arm, and
+`sbr011LivePreview.test.ts`'s header/title/comments, which do now describe a **re-query** budget
+rather than a **connection** budget (6/6).
+
+🔴 **On run 1 that assertion never executed** — the arm bailed one line earlier on `liveCollections`,
+so `openStreams: 1` was a **logged number and not a passed gate**. Worth saying because the number
+was right and would have been quoted as a result.
+
+### 2. 🔴 AC3's blocker was never D46. It was this drive writing to a row the site does not read
+
+**`buildThemeApplierScript` reads `rows[0]` and skips every falsy token** (`siteTheme.ts:316`), and
+`claimSite` seeds a `Theme` singleton whose twelve tokens are **deliberately empty**
+(`sb004Components.ts`, `seedTheme` — *"an empty set is exactly the palette the site already
+ships"*). The warm-up **POSTed a second `Theme` row** carrying `colorPrimary`. Every change event
+was delivered and every re-query ran; `rows[0]` stayed the blank seeded row, and `--primary` was
+never set — `""` at rest and `""` after the save, on all three earlier runs.
+
+🔴 **It read as a dead `Theme` subscription, which is a defect with the opposite fix.** And the
+pool fix is what exposed it: while all three collections were dead it was invisible, and s40
+concluded from `{Page: false, Section: false, Theme: false}` that *"there is nothing `Theme`-specific
+here"*. That was right about D46 and wrong about the theme. When `Page` and `Section` came alive and
+`Theme` did not, the fit to *"one dead subscription"* was perfect.
+
+✅ **Fixed by taking the product's own path** — the panel's `Save theme` writes the singleton through
+`theme.firstItemId`, so the drive now `GET`s the collection, asserts **`toHaveLength(1)`**, and
+`PUT`s that row. The cardinality assertion is the guard: a template that ever seeds a second `Theme`
+row reddens this arm instead of silently measuring the wrong one again.
+
+⚠️ **Nothing in the product changed for AC3.** The only edit is in the drive.
+
+### 3. The verdicts, on runs 2 and 3
+
+| | run 2 | run 3 | verdict |
+|---|---|---|---|
+| AC1 — publish a page, the nav grows the link | 🟢 | 🟢 | **MET** |
+| **AC2 — a section edit reaches the open page** | 🟢 | 🟢 | **MET** |
+| AC3 — a theme save repaints the open site | 🟢 | 🟢 | **MET** — `#1d7a4f` → `#b5127c`, a change and not an arrival |
+| AC4 — draft not delivered, twin proves the wire | 🟢 | 🟢 | **MET** |
+| §4 trap 2 — one event, one re-query | `{Page: 1, Section: 1}` | same | **held** |
+| MUTANT — subscriptions stripped, nothing moves | 🟢 | 🟢 | **held** |
+| the stamp, every arm | `open-and-never-reloaded` | same | **no reload** |
+
+**AC5 — 🟢 MET, re-read against the pooled transport** (`sbr011-hub-unreachable-drive.test.ts`,
+**3/3, EXIT=0, 28s**). This needed re-taking rather than carrying forward: the cap is one realtime
+connection and the test holds it, so when this was written the page opened **three** streams and all
+three were refused — it now opens **one**. Same cap, different shape.
+
+| | |
+|---|---|
+| control — the cap is real | second stream refused, `stream status 503` |
+| not a broken page | nav and title render, **`errors: []`** |
+| refresh-to-see | `inPlace: unchanged` → `afterReload: UPDATED` |
+
+### 4. ✅ The drive is a stable gate now — and D45's unpredictability WAS D46
+
+§5.2 reported the runs as a pair because *"the timing of a subscription is unpredictable between
+runs of identical code"*, and said *"this drive is not yet a stable gate"*. Runs 2 and 3 came back
+**identical on every number** — `openStreams: 2`, `queuedMs: 0`, `#1d7a4f → #b5127c`, fetches
+`{Page: 1, Section: 1}` — in 135.3s and 134.6s.
+
+🔴 **That is not a coincidence and it is the explanation D45 was missing.** The unpredictability was
+the race between streams holding the connection pool and the POSTs those streams were waiting for;
+with one shared stream there is no race left to lose. ⚠️ **Run 3 spent part of its span against a
+peer's seven-worker `test:main`** and did not move, which is a stronger reading than a quiet box
+would have given.
+
+### 5. ⬜ What is still open, stated as a gap rather than left to be inferred
+
+- **AC2 and AC5 have no DEPLOYED-artefact reading.** s47 drove AC1/AC3/AC4 on the deploy; these two
+  are measured only on the in-process drive — one browser, one backend, over a loopback proxy. Three
+  greens here do not close that, and the board's `⬜ AC2 / AC5` was pointing at this coverage gap
+  even though it described them as unmet ACs.
+- **The reverted control for D46's 11 arms is s42's, not this session's** — *"10 of the 11 go red
+  against committed HEAD"*, cited and not re-taken.
+
+### 6. The gates
+
+| gate | reading |
+|---|---|
+| `sbr011-live-preview-drive.test.ts` | **10/10, EXIT=0** ×2 (run 1: 8/10 before the warm-up fix) |
+| `sbr011-hub-unreachable-drive.test.ts` | **3/3, EXIT=0** |
+| `sbr011LivePreview.test.ts` (structural) | **6/6, EXIT=0** |
+| `realtime-transports.test.ts` | **88/88, EXIT=0** — 77 pre-existing + D46's 11, reconciled |
+| `tsc --noEmit -p packages/noodl-runtime` | **0 errors, EXIT=0** |
+| `tsc --noEmit -p packages/nodegx-backend/tsconfig.json` | **0 errors, EXIT=0** |
+
+⚠️ **A background task reported `exit code 0` for run 1 while the log's own line read `EXIT=1`.**
+The wrapper's status is not the suite's; every reading above is off the log.
