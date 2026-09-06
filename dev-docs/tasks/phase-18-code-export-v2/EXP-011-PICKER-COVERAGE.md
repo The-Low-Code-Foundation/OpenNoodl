@@ -10171,7 +10171,9 @@ Set's value, so the wire gate hid the arm; C6 disconnects the wire first.
 
 ### §67.5 What this leaves (owner NONE unless named)
 
-- **An authored Value under a wire into Value** is refused by name; the runtime's actual order (parameter at creation, then the wire's
+- ✅ **Measured and CLOSED as §74 (session 96)** — for a `Variable` the row was NOT a seed-plus-wire: the one wire the export translates (a text
+  input's `onTextChanged`) fires at mount (`TextInput.tsx` `componentDidMount` → `setText(startValue)` → `onTextChanged`), so the seed is
+  dead in the runtime too and the refusal stands (§74 D1). The Do-Sets got the fallback. Was: **An authored Value under a wire into Value** is refused by name; the runtime's actual order (parameter at creation, then the wire's
   arrivals) means the authored value shows until the source first fires. Translating it is the seed effect PLUS the wire — only
   after pass 3 grows past text inputs. Owner NONE.
 - ✅ **Built as §72 (session 94)** — and it forced the record-Id coercion open. Was: **A variable with no statically-known writer is typed `string`** (finding 1) — the honest answer is `unknown`, as store keys read
@@ -10258,7 +10260,8 @@ text (E7), an unlisted key typed (E4). Whole package, editor tsc, ledger, picker
 
 ### §68.5 What this leaves (owner NONE unless named)
 
-- **A literal under a wire** is shadowed in the export; in the runtime the literal shows in the record until the wire's source first
+- ✅ **Built as §74 (session 96)** — `since: draft.get() ?? '2026'` where the wire's source may read `undefined`; a note where it always carries a
+  value. Was: **A literal under a wire** is shadowed in the export; in the runtime the literal shows in the record until the wire's source first
   delivers (creation-time queue, then arrivals). The same residual as §67.5's first row, one construct over. Owner NONE.
 - ✅ **`Set Component Object Properties`** (§60) already read the literal; **`Set Variable`'s authored Value** (§67.5) did not —
   the third sibling with the same runtime rule and no clause. **Built as §69 (session 93).** The fourth, `Global Store Set`, is §69.5's.
@@ -10353,7 +10356,8 @@ session 93 hand-off.
 
 ### §69.5 What this leaves (owner NONE unless named)
 
-- **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
+- ✅ **Built as §74 (session 96)** — `status.set(draft.get() ?? 'Saved.')`; mood-desk's four sit under CONSTANTS, which deliver at boot, so the
+  typed-in values are never written in the runtime either — four notes, the handlers unchanged (F8 moved). Was: **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
   mood-desk's four Sets are exactly this shape. The same residual as §67.5 #1 and §68.5 #1. Owner NONE.
 - ✅ **Built as §70 (session 94)** — the refusal had dropped the button in front. Was: **`Global Store Set`'s typed-in Value — the FOURTH sibling.** `globalstoresetnode.ts` has a STATIC `value` input whose setter stores
   `internal.value`, written on `Set`; the export's `net.noodl.GlobalStore.Set` case refuses *nothing is wired into value* one screen above
@@ -10466,7 +10470,7 @@ expression is not a literal; H9 discovery registers the literal regardless of th
 
 ### §70.5 What this leaves (owner NONE unless named)
 
-- **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
+- ✅ **Built as §74 (session 96)** — `mood.set({ theme: visitorName.get() ?? 'stormy' })`; H4's "no note" pin moved to the note. Was: **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
   The same residual as §67.5 #1, §68.5 #1, §69.5 #1. Owner NONE.
 - **`merge: true` with a typed-in object** — the runtime shallow-merges; the export refuses `merge` by name in front (H7). Owner NONE.
 - **A store key whose only writer is a REFUSED Set with a typed-in value is still typed by the literal** (H9) — discovery ignores the
@@ -10586,8 +10590,9 @@ forgetting the seeds (G9), the seed line demoted (3). Whole package: **79 files 
 
 ### §71.5 What this leaves (owner NONE unless named)
 
-- **A literal under a wire on the same port** — refused whole by §47's sentence; the runtime shows the literal until the wire's source
-  first delivers. The same residual as §67.5 #1 / §68.5 #1 / §69.5 #1, one construct over. Owner NONE.
+- **A literal under a wire on the same port** — refused whole by §47's sentence (a wire INTO an Object's own `prop-*` is not translated at
+  all, so there is no wire path to seed beside — §74 built the Do-Sets and left this one with the §47 refusal); the runtime writes the
+  literal at creation and the wire over it (measured, §74.0 M1/M2). Owner NONE — it opens only when a write through the Object node translates.
 - **The `connection-only-parameter` sentence is false for `Model2`'s `prop-*`** (and for any node whose `registerInputIfNeeded` accepts a
   parameter on a connection-only port): "discarded" ≠ written at creation. Today unreachable (dynamic ports are `dynamicSkips`); the day
   the validator learns dynamic ports it will tell agents to delete a working value. Owner NONE (editor validation, not EXP-011).
@@ -10849,3 +10854,123 @@ M4/M5/M10 (two rows) from the rest (one).
   only); the export refuses the enum whole. No fixture; a typed-in object cannot be authored in the panel. Owner NONE.
 - §67.5 #1 / §68.5 #1 / §69.5 #1 / §70.5 #1 (a literal under a wire) unchanged — the next family row. §69.4 #1 (the cascade sentence)
   unchanged. §71.5 (the hidden `Model2` port) unchanged — Richard's ruling.
+
+## §74 A value typed into a Set's port that ALSO has a wire — the family row five registers named, built (session 96, 2026-09-06)
+
+**The shape.** §67.5 #1, §68.5 #1, §69.5 #1, §70.5 #1 and §71.5 #1 said one sentence about five nodes: *a literal under a wire is
+shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.* The hand-off called the honest
+translation "the seed PLUS the wire". Measured first, it is two different rows, and only one of them is a build.
+
+### §74.0 What the runtime does, measured before a line of code
+
+`packages/noodl-runtime/test/corpus/exp-011-s96-a-literal-under-a-wire.test.ts` (11 rows, the s94 instrument's shape; the readout is in
+the s96 scratchpad's `runtime.log`). The mechanism is `nodescope.ts` + `node.ts`, not any node's own code: `setNodeParameters` queues
+every authored parameter at creation (`queueInput`); `addConnection` → `connectInput` queues the wire's CURRENT output value over it
+**only when that value is defined** (`sendValue` returns on `undefined`; first-update consolidation keeps the last queued value); every
+later delivery lands over it too. So:
+
+| construct | source = a `Variable` nothing wrote | source = a `String` constant |
+|---|---|---|
+| `Set Variable` (R1–R3) | Do ⇒ `"typed"`; source written ⇒ Do ⇒ `"wired"`; source back to `undefined` ⇒ Do ⇒ **`"wired"`** (the last value stands; the literal never returns) | `_internal.value` after boot = `"const"`; Do ⇒ `"const"` — the typed-in value is never written |
+| `Global Store Set` (G1–G2) | Set ⇒ `"typed"`; written ⇒ `"wired"` | Set ⇒ `"const"` |
+| `Set Object Properties` (O1–O2) | Do ⇒ `"typed"`; written ⇒ `"wired"` | Do ⇒ `"const"` |
+| `Variable` Value (V1–V2) | at boot `"seed"`, written ⇒ `"wired"`; write sequence `["seed","wired"]` | final `"const"`; write sequence **`["const"]`** — the seed is never even written |
+| `Object` own `prop-*` (M1–M2) | at boot `"seed"`, written ⇒ `"wired"`; `["seed","wired"]` | `["const"]` |
+
+So for a **Do-triggered Set** the node holds *the wire's last defined delivery, else the typed-in value* — a fallback, exactly where the
+wire's source can have delivered nothing. For a **creation-time writer** the typed-in value is written first and the wire over it — but
+the one wire into a `Variable`'s Value the export translates is a text input's `onTextChanged`, and `TextInput.tsx`'s `componentDidMount`
+calls `setText(startValue)`, which fires `onTextChanged` **at mount** (code-read, viewer-react; the corpus harness cannot host a React
+control). The seed is overwritten before anyone sees it, in the runtime too: §67's refusal is the honest answer and it stands (D1). An
+`Object`'s own `prop-*` under a wire is refused whole by §47 (a write through the Object node is not translated at all) — nothing to seed
+beside; the row stays in §71.5, reworded.
+
+**The corpus**: mood-desk's four Sets (the only literal-under-a-wire presence in 39 fixtures) sit under `Boolean`/`Number` constants —
+the right-hand column. In the runtime those four values are never written. The export had said nothing about them (F8 pinned the
+shape and "moves nothing"); now it says so, once per node.
+
+### §74.1 What is built
+
+**The write (`plan.ts` `typedInUnderWire`, one helper the three Set sites call):** under a wire with a value typed in, `maybeUndefinedExpr(expr)`
+decides — the emitter's own nullability table, the one that already governs every `?? ''` in a template. May be `undefined` (a `store-get`,
+a non-`required` `store-key-get`, a `prop`, a `payload`, a `date-call`, an `http-out`, …) ⇒ the action carries `fallback: typed` and the
+emitter prints **`expr ?? typed`** (`withFallback`, parenthesised unless the code is a bare reference or call — `??` may not sit beside
+`&&`/`||` unparenthesised, and `mood.get().theme` is not `SIMPLE_REF`). Never `undefined` (`input-text`, a `literal` constant, a `required`
+key, `now-out`, …) ⇒ no fallback and a **note**: *node setStatus (Set Variable): its typed-in Value 7 is never written — the wire from
+nameInput:onTextChanged always carries a value, so every Do writes the wire's value, in the runtime and here* ("every Set" for a Global
+Store Set; `"since" value` for a property). `fallback?` lives on `store-set`, `globalstore-set` and an `object-set` entry; the snap
+walker that rebuilds `object-set` entries carries it (`{ ...entry, expr }` — M13 showed it IS on the path).
+
+**The type (`appState.ts`):** the literal under a wire is registered as a `SourceRef` with `underWire: <the wire's ref>`; `liveSources`
+keeps it only while `sourceMayBeUndefined(underWire)` — the mirror, for every source this file types `string`, of the emitter's table:
+a text input, a `String`/`Number`/`Boolean`/`Color` `savedValue`/`length`, `net.noodl.Now` ⇒ never; a Subscribe of a `required` key ⇒
+never; a `Variable`, an Object key, a component input, a payload key, an HTTP error, a Date To String, and anything unclassified ⇒ may.
+The safe direction is stated in the code: an unclassified source WIDENS (an `unknown` read is coerced at its sink); the other direction
+— a fallback printed into a type that refuses it — is TS2345 in the built app (A3 pins the app typechecking with `7` under a string wire).
+
+```tsx
+onClick={() => { profile.set({ name: name, city: city, since: draft.get() ?? '2026' }); status.set(draft.get() ?? 'Saved.'); }}
+onClick={() => mood.set({ theme: visitorName.get() ?? 'stormy' })}
+onClick={() => echo.set((mood.get().theme) ?? 'fallback')}
+```
+
+### §74.2 The fixtures — none changed
+
+profile-desk, cheer and mood-desk carry every row by IR mutation (an added `Variable` `draft` nothing writes; `nameInput` wired into it for
+the string-typed arm; `moodStore`'s initial state without `theme` for the non-required key). mood-desk's output is **byte-identical** in the
+page and gains four notes.
+
+### §74.3 Gates and arms
+
+Spec `tests/literal-under-a-wire.test.ts`, **15 rows**: §A Set Variable — A1 `status.set(draft.get() ?? 'Saved.')`, `status` `unknown`, no
+note, **the app typechecks**; A2 `?? 7`; A3 the string-typed source (`draft` written by `nameInput`): `'Saved.'` keeps `status` a string,
+`7` makes it `unknown` **and the app typechecks** (M10's kill — without the registration the handler is TS2345); A4 a text-input wire: no
+`??`, the note, `7` does not demote; A5 the absence control (nothing typed in: no `??`, no note); A6 Set as Boolean stays refused with no
+§74 note; A7 Empty string writes `''`, no note. §B Global Store Set — B1 `visitorName.get() ?? 'stormy'` + typecheck; B2 a Subscribe of a
+`required` key: no fallback, the note says "every Set"; B3 the parenthesised form on a non-required key + `theme?: string` + typecheck; B4
+`quote?: unknown` for `7` under the string wire, `quote?: string` for a string. §C Set Object Properties — C1 `since: draft.get() ?? '2026'`,
+`since?: unknown`; C2 `since?: string` / `since?: unknown` (2026); C3 the property note. §D D1 a `Variable`'s seed under a wire keeps §67's
+refusal, no §74 note. **Pins moved**: object-store E3, F3 (the note asserted), F8 (the four notes by name, the handlers unchanged, no `??`);
+global-store H4 (`not.toContain('setStormy')` → the note); small-utilities §C (mood-desk "no notes" → exactly four `is never written`).
+
+**Arms 13/13 killed** (`mut.py`, s96 scratchpad, value-level, sources md5-restored): M1 fallback never attached (8 rows); M2 attached whatever
+the source (A4/B2/C3); M3 the note misstates the source; M4 Set Object Properties never asks; M5 Global Store Set never asks; M6 `withFallback`
+ignores the fallback; M7 no parentheses (B3 alone); M8 `liveSources` keeps every literal (A4 + object-store F3); M9 a `Variable` source reads
+as never undefined (A3/B4/C2 — the type side); M10/M11/M12 each registration removed (A3 / C2 / B4, one each — the three sites are three
+arms); M13 the snap walker drops an entry's fallback (C1/C2).
+
+Gates on this tree: **whole pkg jest 80 files (80 on disk) 3012/3012 exit 0** (11:15–11:17) · **editor tsc exit 0, empty log** (11:19) · **`export-ledger:check` OK — 176 types, 124 translated** · **picker 117/127 exit 0** · **editor `test:ci` 2943 specs, 4 failures = the floor BY NAME** (AIX-006 ×4; seed 53136; `test-results.json` fresh 11:21, 3112 bytes; `.webpack-cache` cleared first; exit 1 as always on the floor; HEAD `d43dcbe0`). No drive: the emitted text is §69's handler with a `??`, and A1/A3/B1/B3 typecheck the emitted app.
+
+### §74.4 What building it found
+
+1. **The register's sentence was one rule for two different rows.** "Seed PLUS wire" is right for a Do-Set and WRONG for a `Variable`: the
+   translated wire fires at mount, so the seed is dead in the runtime too. Measuring the runtime AND reading the one translated source's
+   mount path is what separated them. A hand-off that names the fix before the measurement carries the same risk §73 did.
+2. **A constant is a delivery.** mood-desk's four "shadowed" literals were never a divergence — the runtime never writes them. What the
+   export owed was a sentence, not a fallback: an author who typed `true` AND wired `true` is told the typed one is dead.
+3. **The type side needed its own classifier** (`sourceMayBeUndefined`) because discovery runs before the plan and cannot resolve an
+   expression; it mirrors the emitter's table for every string-typed source and defaults to the widening direction. Two files, again —
+   M9–M12 are the type side's arms, M1–M7/M13 the write side's, M8 the seam.
+4. 🔴 **A pre-existing hole, found by the probe, controlled on this tree**: an `unknown`-typed `Variable` (nothing wrote it) wired into a
+   Global Store Set whose key the initial state types `string` emits `mood.set({ theme: ghost.get() })` — **TS2322 in the built app**,
+   with or without §74's `?? 'stormy'` (the control dropped the literal and read the same TS2322). §72 coerced the record-Id sink; this
+   sink was never coerced or refused. Registered §74.5, not this row's.
+5. **`not.toContain('??')` on a whole page is a pin on the page, not the handler** — the page's own reads already print `?? ''`. Three rows
+   pinned the wrong population before they pinned the handler (fixed the same minute; recorded because it is the trap the memory names).
+6. **A `Subscribe` read prints `mood.get().note` in a handler and `note` in render** — B2's first expectation was the render local.
+
+### §74.5 What this leaves (owner NONE unless named)
+
+- 🔴 **An `unknown` Variable into a `required`-string Global Store key is TS2322 in the built app** (finding 4) — the sink needs §72's
+  treatment (`String(x ?? '')` where the key is `string`, or a refusal by name). The same for an `object-set` entry on a typed key? (untested).
+  Owner NONE — the natural next small row, one session.
+- **The sticky last value**: the runtime keeps the wire's LAST delivered value once its source goes back to `undefined` (R1, third step); a
+  live `expr ?? typed` falls back to the typed-in value. The same class as every live read in this export vs the runtime's "undefined never
+  crosses a wire". Owner NONE.
+- **An unclassified always-defined source widens the type** where the plan prints no fallback (e.g. a `jsfun-out` with a fold): harmless
+  to the build, a wider interface than needed. Owner NONE.
+- **A `Variable`'s Value under an UNTRANSLATED wire** still meets §67's sentence (the wire is dropped by pass 3's note; the seed is not
+  emitted). Under a wire from a `Variable` nothing wrote the runtime WOULD show the seed (V1) — but that wire has no translation to seed
+  beside. Opens with pass 3. Owner NONE.
+- §71.5 #1 reworded (an Object's own `prop-*` under a wire — opens only with a write through the Object node). §69.4 #1 (the cascade sentence)
+  unchanged — the next job. §71.5 (the hidden `Model2` port) unchanged — Richard's ruling.
