@@ -335,8 +335,30 @@ function tokensCss(ir: ExportIR): string {
 }
 
 function baseCss(): string {
-  // Deliberately minimal (TARGET-OUTPUT §3): box-sizing and the body font. Element resets are
-  // per-class in the generated CSS modules, not global surprises.
+  // Deliberately minimal (TARGET-OUTPUT §3): box-sizing, the body font and the colour floor.
+  // Element resets are per-class in the generated CSS modules, not global surprises.
+  //
+  // EXP-016. The two body declarations are the runtime's own, transcribed from
+  // `StyleTokensModel/TokenResolver.ts` `generateCss`, which appends exactly this block after the
+  // `:root` token list. They were `font-family: system-ui, sans-serif` and no `color` at all, and
+  // that literal is why an exported app downloaded four Inter faces, linked their stylesheet,
+  // defined `--font-sans` naming Inter first — and then rendered every word in the platform UI
+  // font. The token is the only name for the typeface; a project that overrides `--font-sans`
+  // re-fonts the whole app, which is the behaviour the token exists for.
+  //
+  // ⚠️ **The bare `var()` is safe here, and it was worth measuring rather than assuming.** A bare
+  // `var()` naming a token nothing defines is invalid at computed-value time, and for `font-family`
+  // that means the body falls through to the browser's serif — so this only works if every exported
+  // project defines `--font-sans`. It does: `parseProject`'s `effectiveTokens` merges the shipped
+  // `DEFAULT_TOKENS` under a project's overrides, and both `--font-sans` and `--foreground` are in
+  // that set, so `tokens.css` carries them whether or not the author ever opened the token editor.
+  // `the-typeface.test.ts` §D pins that on a fixture with no overrides of its own.
+  //
+  // `font: inherit` on the form controls is not a reset for its own sake. A `<button>` does not
+  // inherit `font-family` from `body`, so before this the exported buttons landed on the UA default
+  // (measured: `Arial`) while everything else landed on the wrong-but-deliberate `system-ui` — two
+  // different wrong fonts on one page. A node's own class still wins: a class selector outranks
+  // these element selectors whatever the sheet order.
   return (
     GENERATED_CSS +
     `*,
@@ -347,7 +369,15 @@ function baseCss(): string {
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-sans);
+  color: var(--foreground);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 `
   );

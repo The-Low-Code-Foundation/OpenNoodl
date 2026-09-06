@@ -1,0 +1,291 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "t46de5c0-0000-4000-8000-000000000003",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "tdPage",
+      "type": "Page",
+      "label": "Tag",
+      "parameters": {
+        "title": "Tag Desk",
+        "urlPath": "tag",
+        "as": "section"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Main landmark",
+      "parent": "tdPage",
+      "parameters": {
+        "as": "main",
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)"
+      },
+      "children": [
+        "banner",
+        "hero",
+        "sidebar",
+        "plainGroup",
+        "offEnum",
+        "voidGroup"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "banner",
+      "type": "Group",
+      "label": "Header",
+      "parent": "shell",
+      "parameters": {
+        "as": "header",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)"
+      },
+      "children": [
+        "bar"
+      ],
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "bar",
+      "type": "Group",
+      "label": "Nav",
+      "parent": "banner",
+      "parameters": {
+        "as": "nav"
+      },
+      "children": [
+        "navLink"
+      ],
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "navLink",
+      "type": "Text",
+      "label": "Nav link",
+      "parent": "bar",
+      "parameters": {
+        "as": "span",
+        "text": "Home"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "hero",
+      "type": "Group",
+      "label": "Hero section",
+      "parent": "shell",
+      "parameters": {
+        "as": "section",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "children": [
+        "h1Text",
+        "h2Text",
+        "h3Text",
+        "pText",
+        "plainText",
+        "offEnumText",
+        "divText"
+      ],
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "h1Text",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "hero",
+      "parameters": {
+        "as": "h1",
+        "text": "The tag the author chose",
+        "fontSize": "var(--text-6xl)"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "h2Text",
+      "type": "Text",
+      "label": "Section heading",
+      "parent": "hero",
+      "parameters": {
+        "as": "h2",
+        "text": "What it does"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "h3Text",
+      "type": "Text",
+      "label": "Sub heading",
+      "parent": "hero",
+      "parameters": {
+        "as": "h3",
+        "text": "And how"
+      },
+      "x": 100,
+      "y": 580
+    },
+    {
+      "id": "pText",
+      "type": "Text",
+      "label": "Paragraph",
+      "parent": "hero",
+      "parameters": {
+        "as": "p",
+        "text": "A paragraph the author spelled out."
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "plainText",
+      "type": "Text",
+      "label": "Untagged text",
+      "parent": "hero",
+      "parameters": {
+        "text": "No tag was chosen here."
+      },
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "offEnumText",
+      "type": "Text",
+      "label": "Off-enum text",
+      "parent": "hero",
+      "parameters": {
+        "as": "figure",
+        "text": "A tag Text does not offer."
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "divText",
+      "type": "Text",
+      "label": "Explicit div text",
+      "parent": "hero",
+      "parameters": {
+        "as": "div",
+        "text": "An explicitly chosen div."
+      },
+      "x": 100,
+      "y": 820
+    },
+    {
+      "id": "sidebar",
+      "type": "Group",
+      "label": "Aside",
+      "parent": "shell",
+      "parameters": {
+        "as": "aside"
+      },
+      "children": [
+        "asideText"
+      ],
+      "x": 100,
+      "y": 880
+    },
+    {
+      "id": "asideText",
+      "type": "Text",
+      "label": "Aside text",
+      "parent": "sidebar",
+      "parameters": {
+        "text": "Beside the article."
+      },
+      "x": 100,
+      "y": 940
+    },
+    {
+      "id": "plainGroup",
+      "type": "Group",
+      "label": "Untagged group",
+      "parent": "shell",
+      "parameters": {
+        "backgroundColor": "var(--surface)"
+      },
+      "children": [
+        "plainGroupText"
+      ],
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "plainGroupText",
+      "type": "Text",
+      "label": "Untagged group text",
+      "parent": "plainGroup",
+      "parameters": {
+        "text": "No tag here either."
+      },
+      "x": 100,
+      "y": 1060
+    },
+    {
+      "id": "offEnum",
+      "type": "Group",
+      "label": "Off-enum group",
+      "parent": "shell",
+      "parameters": {
+        "as": "marquee"
+      },
+      "children": [
+        "offEnumChild"
+      ],
+      "x": 100,
+      "y": 1120
+    },
+    {
+      "id": "offEnumChild",
+      "type": "Text",
+      "label": "Off-enum group text",
+      "parent": "offEnum",
+      "parameters": {
+        "text": "A tag Group does not offer."
+      },
+      "x": 100,
+      "y": 1180
+    },
+    {
+      "id": "voidGroup",
+      "type": "Group",
+      "label": "Void group",
+      "parent": "shell",
+      "parameters": {
+        "as": "img"
+      },
+      "children": [
+        "voidGroupText"
+      ],
+      "x": 100,
+      "y": 1240
+    },
+    {
+      "id": "voidGroupText",
+      "type": "Text",
+      "label": "Void group text",
+      "parent": "voidGroup",
+      "parameters": {
+        "text": "An element that cannot take children."
+      },
+      "x": 100,
+      "y": 1300
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "g20undde-5c00-4000-8000-000000000003",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "gdPage",
+      "type": "Page",
+      "label": "Ground",
+      "parameters": {
+        "title": "Ground Desk",
+        "urlPath": "ground"
+      },
+      "children": [
+        "hero",
+        "panels"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hero",
+      "type": "Group",
+      "label": "Hero",
+      "parent": "gdPage",
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)",
+        "backgroundGradient": "var(--gradient-deep)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-coffee-shop.webp",
+        "backgroundSize": "contain",
+        "backgroundPosition": "top center"
+      },
+      "children": [
+        "headline"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "hero",
+      "parameters": {
+        "text": "The ground the headline sits on",
+        "color": "#FFFFFF",
+        "fontSize": "var(--text-6xl)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "panels",
+      "type": "Group",
+      "label": "Panels",
+      "parent": "gdPage",
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "children": [
+        "gradientOnly",
+        "pictureOnly",
+        "frosted",
+        "flat",
+        "blurZero",
+        "blurBare",
+        "blurToken",
+        "absoluteImage",
+        "emptyGradient"
+      ],
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "gradientOnly",
+      "type": "Group",
+      "label": "Gradient only",
+      "parent": "panels",
+      "parameters": {
+        "backgroundGradient": "var(--gradient-brand)"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "pictureOnly",
+      "type": "Group",
+      "label": "Picture only",
+      "parent": "panels",
+      "parameters": {
+        "backgroundImage": "noodl_modules/starter-imagery/food-grocer.webp"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "frosted",
+      "type": "Group",
+      "label": "Frosted",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface-glass)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        }
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "flat",
+      "type": "Group",
+      "label": "Flat",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "backgroundSize": "contain",
+        "backgroundPosition": "top center"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "blurZero",
+      "type": "Group",
+      "label": "Blur zero",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "backdropBlur": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "x": 100,
+      "y": 580
+    },
+    {
+      "id": "blurBare",
+      "type": "Group",
+      "label": "Blur bare number",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "backdropBlur": 8
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "blurToken",
+      "type": "Group",
+      "label": "Blur token",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "backdropBlur": "var(--blur-panel)"
+      },
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "absoluteImage",
+      "type": "Group",
+      "label": "Absolute picture",
+      "parent": "panels",
+      "parameters": {
+        "backgroundImage": "https://cdn.example.com/hero.jpg"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "emptyGradient",
+      "type": "Group",
+      "label": "Empty gradient",
+      "parent": "panels",
+      "parameters": {
+        "backgroundColor": "var(--surface)",
+        "backgroundGradient": "   "
+      },
+      "x": 100,
+      "y": 820
+    }
+  ]
+}

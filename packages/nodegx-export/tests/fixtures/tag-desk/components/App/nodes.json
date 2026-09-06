@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "t46de5c0-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "tag-desk-router",
+      "type": "Router",
+      "label": "Main Router",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Tag",
+          "routes": [
+            "/Pages/Tag"
+          ]
+        }
+      }
+    }
+  ],
+  "visualRoots": [
+    "tag-desk-router"
+  ]
+}

@@ -221,7 +221,7 @@
     {
       "typeName": "Group",
       "status": "translated",
-      "note": "flex group \u2192 div"
+      "note": "flex group \u2192 the element its Tag port names, div by default (EXP-015); background gradient, picture and backdrop blur fold into the ground the runtime paints (EXP-014)"
     },
     {
       "typeName": "Gyroscope",
@@ -483,7 +483,7 @@
     {
       "typeName": "Text",
       "status": "translated",
-      "note": "text role"
+      "note": "text role \u2192 the element its Tag port names, p by default (EXP-015)"
     },
     {
       "typeName": "Text Input",

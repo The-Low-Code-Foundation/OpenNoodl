@@ -278,6 +278,11 @@ export const WIRED_STYLE_SINKS: Record<string, { css: string; sink: 'number' | '
  * `flexDirection` is consumed by the flex base; the `boxShadow*` family folds into `box-shadow`.
  */
 const CONSUMED = new Set([
+  // EXP-015. The author's element choice ("Advanced HTML → Tag") — read by `component.ts`'s
+  // `tagOf`, which is neither a CSS declaration nor a JSX attribute, so it belongs to neither
+  // table here. Before it was read at all this port was 61 of one landing-page template's
+  // "no style/content mapping" notes.
+  'as',
   'sizeMode',
   'clip',
   'flexDirection',
@@ -340,6 +345,11 @@ const PROPERTY_ORDER = [
   'fill',
   'accent-color',
   'background-color',
+  // EXP-014. The ground, in the order the runtime's `_updateBackgroundLayers` writes it.
+  'background-image',
+  'background-size',
+  'background-position',
+  'background-repeat',
   'border',
   'border-width',
   'border-style',
@@ -366,6 +376,9 @@ const PROPERTY_ORDER = [
   'border-bottom-right-radius',
   'border-bottom-left-radius',
   'box-shadow',
+  // EXP-014. Both spellings, always together — see `backdropFilterDecls`.
+  '-webkit-backdrop-filter',
+  'backdrop-filter',
   'overflow',
   'padding',
   'padding-top',
@@ -591,6 +604,62 @@ export function computeNodeStyle(node: NodeIR, role: StyleRole, catalog: Catalog
       )} ${piece('boxShadowSpreadRadius')} ${color}`
     });
   }
+
+  // ---- EXP-014. The ground the headline sits on -------------------------------------------
+  //
+  // `backgroundGradient` and `backgroundImage` are two ports that compose into **one**
+  // `background-image` declaration, gradient FIRST. That order is the CSS scrim idiom — the
+  // gradient paints *over* the picture — and it is the whole reason a headline can sit on a
+  // photograph and stay legible. The rule is transcribed from the runtime's
+  // `node-shared-port-definitions.ts` `_updateBackgroundLayers` rather than reinvented, including
+  // the two companion defaults and the unported `background-repeat: no-repeat`.
+  //
+  // 🔴 **Not in `PASSTHROUGH`, and the set's own comment says why**: two ports folding into one
+  // declaration with defaults is fold semantics, and a 1:1 camelCase → kebab-case pass would emit
+  // `background-gradient`, which is not a CSS property.
+  //
+  // With neither layer set the runtime *removes* all four properties rather than emitting empty
+  // ones, so an authored `backgroundSize` with nothing to size emits nothing here either — and is
+  // still consumed, because the runtime drops it just as silently.
+  const backgroundLayers: string[] = [];
+  const gradient = literal('backgroundGradient');
+  if (typeof gradient === 'string' && gradient.trim() !== '') backgroundLayers.push(gradient.trim());
+  const backgroundImage = literal('backgroundImage');
+  if (typeof backgroundImage === 'string' && backgroundImage.trim() !== '') {
+    backgroundLayers.push(`url("${cssUrl(backgroundImage.trim())}")`);
+  }
+  if (backgroundLayers.length > 0) {
+    decls.push({ prop: 'background-image', value: backgroundLayers.join(', ') });
+    // One value applies to every layer, which is what is wanted: a gradient scrim should cover
+    // exactly what the picture covers. The port defaults are the catalog's, read rather than
+    // restated — an unset port never reaches its setter in the runtime either, so `|| 'cover'`
+    // there and the catalog default here are the same effective value.
+    decls.push({
+      prop: 'background-size',
+      value: cssParam('backgroundSize') ?? String(catalogDefault('backgroundSize') ?? 'cover')
+    });
+    decls.push({
+      prop: 'background-position',
+      value: cssParam('backgroundPosition') ?? String(catalogDefault('backgroundPosition') ?? 'center')
+    });
+    // Tiling a hero ground is never the intent and is the ugliest default the browser has here,
+    // so the runtime does not offer it as a port and neither does this.
+    decls.push({ prop: 'background-repeat', value: 'no-repeat' });
+  }
+  for (const name of ['backgroundGradient', 'backgroundImage', 'backgroundSize', 'backgroundPosition']) {
+    consumed.add(name);
+  }
+
+  // `backdropBlur` is a separate, simpler rule (same file, `addBackgroundInputs`): both spellings
+  // or neither. A zero or absent value emits nothing rather than `blur(0px)`, which would still
+  // promote the element to its own compositing layer for no visible gain — the case the runtime
+  // went out of its way to handle.
+  const blur = blurLength(params.get('backdropBlur'));
+  if (blur !== undefined) {
+    decls.push({ prop: '-webkit-backdrop-filter', value: `blur(${blur})` });
+    decls.push({ prop: 'backdrop-filter', value: `blur(${blur})` });
+  }
+  consumed.add('backdropBlur');
 
   // The stack's clip is decided with its defaults above (its declared default is true, and the class states it).
   if (role !== 'stack' && literal('clip') === true) decls.push({ prop: 'overflow', value: 'hidden' });
@@ -866,6 +935,43 @@ export function cssValue(value: ParamValue): string {
       // is allowed to fail on content).
       return JSON.stringify('source' in value ? value.source : value.value);
   }
+}
+
+/**
+ * EXP-014. A `backgroundImage` port value as it must read inside `url(…)` in a generated CSS
+ * module.
+ *
+ * 🔴 **The leading slash is the whole function.** The port holds a project-relative path
+ * (`noodl_modules/starter-imagery/people-coffee-shop.webp`) and the asset travels through the
+ * `copies` channel to `public/<same path>`, which the bundler serves from the site root. A
+ * *relative* `url()` in CSS resolves against the stylesheet's own URL, not the document's, so the
+ * verbatim value would be resolved at build time against `src/pages/` and fail there. Root-
+ * absolute is the same shape `scaffold.ts` gives a module stylesheet's `<link href>`, and for the
+ * same reason.
+ *
+ * Anything already absolute — an http(s) URL, a protocol-relative one, a `data:` URI, or a path
+ * that already starts at the root — passes through untouched.
+ */
+export function cssUrl(value: string): string {
+  const absolute = /^(https?:)?\/\//.test(value) || /^[a-z][a-z0-9+.-]*:/i.test(value) || value.startsWith('/');
+  const url = absolute ? value : `/${value}`;
+  // `"` would close the url() string and `\` would escape the next character; both are legal in a
+  // filename and neither is legal here unescaped.
+  return url.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+/**
+ * EXP-014. `backdropBlur` as a CSS length, or `undefined` where the filter must not be emitted at
+ * all — the runtime's `cssLength` followed by its zero gate, transcribed. A `{value, unit}` from
+ * the editor and a bare number from a parameter are both lengths in px; a token reference is a
+ * string that is not a number, is not zero, and paints.
+ */
+export function blurLength(value: ParamValue | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const text = value.kind === 'dimension' ? `${value.value}${value.unit || 'px'}` : cssValue(value).trim();
+  if (text === '') return undefined;
+  const length = /^[+-]?(\d+\.?\d*|\.\d+)$/.test(text) ? `${text}px` : text;
+  return parseFloat(length) === 0 ? undefined : length;
 }
 
 /** Catalog defaults for shadow lengths are bare numbers meaning px; zero stays unitless. */

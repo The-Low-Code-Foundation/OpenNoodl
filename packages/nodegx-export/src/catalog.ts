@@ -8,6 +8,8 @@
 export interface CatalogPortType {
   name?: string;
   codeeditor?: string;
+  /** EXP-015. Present on `name: 'enum'` ports — the editor's own dropdown, read by `enumValues`. */
+  enums?: Array<{ label?: string; value: unknown }>;
 }
 
 export interface CatalogPort {
@@ -71,6 +73,24 @@ export class CatalogIndex {
    */
   inputDefault(typeName: string, portName: string): unknown {
     return this.byTypeName.get(typeName)?.inputs?.find((p) => p.name === portName)?.default;
+  }
+
+  /**
+   * EXP-015. The values an enum-typed input port offers, in catalog order, or `undefined` where the
+   * catalog does not describe the port as an enum.
+   *
+   * 🔴 **This exists so that nothing hand-writes a second copy of an enum.** The `as` (Tag) port
+   * offers a different element list on `Text` than on `Group`, both lists are the editor's own
+   * dropdown, and a hand-written mirror of either drifts the moment somebody adds `<figure>` — the
+   * `a-second-copy-of-a-palette-drifts-silently` shape. The catalog artifact is the authority.
+   */
+  enumValues(typeName: string, portName: string): string[] | undefined {
+    const port = this.byTypeName.get(typeName)?.inputs?.find((p) => p.name === portName);
+    const type = port?.type;
+    if (typeof type !== 'object' || type === null || type.name !== 'enum') return undefined;
+    const enums = type.enums;
+    if (!Array.isArray(enums)) return undefined;
+    return enums.map((entry) => String(entry.value));
   }
 
   /**

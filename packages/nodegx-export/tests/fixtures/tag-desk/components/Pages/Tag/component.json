@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "t46de5c0-0000-4000-8000-000000000003",
+  "name": "Tag",
+  "path": "/Pages/Tag",
+  "type": "page",
+  "modified": "2026-09-06T12:00:00.000Z",
+  "description": "EXP-015 fixture: every Group landmark and Text heading the two Tag enums offer, a Group whose tag rides the page collapse onto the page div, an untagged Text and Group as the byte-identical regression guard, a value outside each enum, an explicit div restating the default, and an `as` on a Page — a node type whose catalog has no Tag port at all."
+}

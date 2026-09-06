@@ -99,6 +99,90 @@ const EVENT_ATTRS: Record<string, string> = {
   onBlur: 'onBlur'
 };
 
+/**
+ * EXP-015. Elements that cannot take children, so an author who names one is asking for an element
+ * this exporter would have to render empty.
+ *
+ * Neither `as` enum can currently reach one — this is a guard with a spec rather than a live path,
+ * and it exists because the alternative to a guard is `<img className={styles.hero}>Sign up</img>`
+ * in somebody's repo the first time a `<hr>` joins the Group list.
+ */
+const VOID_ELEMENTS: ReadonlySet<string> = new Set([
+  'area',
+  'base',
+  'br',
+  'col',
+  'embed',
+  'hr',
+  'img',
+  'input',
+  'link',
+  'meta',
+  'param',
+  'source',
+  'track',
+  'wbr'
+]);
+
+/**
+ * EXP-015. The element an author asked a node to render as, validated, with the sentence to report
+ * when the answer is "not that one".
+ *
+ * The port is real, shipped and documented as mattering — `Text.tsx` renders `props.as || 'div'`
+ * and `Group.tsx` destructures `const { as = 'div' }` — and until this function existed the
+ * exporter never read it. One landing-page template set it 61 times and the export lost all 61,
+ * shipping a site with no heading of any level and no landmark of any kind.
+ *
+ * 🔴 **Validated against the catalog's own enum for this node type, never a list written here.**
+ * `Text` offers `div h1…h6 p span`; `Group` offers `div section article aside nav header footer
+ * main span`; the two lists differ and both are the editor's own dropdown. A hand-written mirror
+ * drifts the moment somebody adds `<figure>` to one of them — `a-second-copy-of-a-palette-drifts-
+ * silently` — so the catalog artifact is the authority and this function only reads it.
+ *
+ * Three ways to be told no — in this order, each reported rather than silently ignored, because a
+ * silently ignored authored value is the defect this exists to fix:
+ *
+ * 1. **The value is a void element**, which cannot take children. Checked FIRST and without
+ *    consulting the catalog, so that it is a real outer gate rather than dead code behind the enum
+ *    test: neither shipped enum contains one today, and the whole point of the guard is the day one
+ *    does. Its absence is `<img className={…}>Sign up</img>` in somebody's repo.
+ * 2. **The catalog does not describe an `as` port on this type at all.** Only `Text` and `Group`
+ *    carry one, so this is a parameter written by hand or by a tool onto a node whose port set has
+ *    no such port — the export has no authority to invent an element for it.
+ * 3. **The value is outside the port's enum.** The editor cannot produce one; a hand-authored
+ *    project or a future catalog change can.
+ */
+export function authoredTag(
+  node: NodeIR,
+  fallback: string,
+  catalog: CatalogIndex
+): { tag: string; refusal?: { nodeId: string; reason: string } } {
+  const value = node.parameters.find((p) => p.name === 'as')?.value;
+  if (value?.kind !== 'literal' || typeof value.value !== 'string') return { tag: fallback };
+  const authored = value.value.trim();
+  if (authored === '' || authored === fallback) return { tag: fallback };
+  const refuse = (why: string) => ({
+    tag: fallback,
+    refusal: { nodeId: node.id, reason: `is ${JSON.stringify(authored)}, ${why} — the element stays <${fallback}>` }
+  });
+  // Void first, and unconditionally: this is the outer gate, so it still fires the day a void
+  // element joins one of the enums, which is the only way it ever becomes reachable.
+  if (VOID_ELEMENTS.has(authored)) return refuse('an element that cannot take children');
+  const allowed = catalog.enumValues(node.type, 'as');
+  if (allowed === undefined) return refuse(`but ${node.type} has no Tag port`);
+  if (!allowed.includes(authored)) return refuse(`which ${node.type} does not offer (${allowed.join(', ')})`);
+  return { tag: authored };
+}
+
+/**
+ * The element each role renders as **when the author has not chosen one** — EXP-015 made this the
+ * default rather than the answer. `as` (Text and Group, "Advanced HTML → Tag") is the author's
+ * choice and wins; see `tagOf`.
+ *
+ * ⚠️ `text: 'p'` is deliberately not the port's own default, which is `div`. It is what this
+ * exporter has always emitted for a Text nobody gave a tag, and a node with no `as` staying
+ * byte-identical is EXP-015's regression guard for the whole corpus.
+ */
 const TAGS: Record<string, string> = {
   group: 'div',
   page: 'div',
@@ -4915,6 +4999,33 @@ export function emitComponent(
     ...droppedChildMarkers(parentId, indent)
   ];
 
+  /**
+   * EXP-015. The element this node renders as: the author's `as` ("Advanced HTML → Tag"), else the
+   * role's default — and, for a page div, the collapsed Group's choice before the Page's own.
+   *
+   * 🔴 **The page collapse reads the Group's tag.** A Page whose sole visual child is a Group
+   * renders as one element carrying both nodes' parameters (§4b), so a Group set to `main` that
+   * happens to sit directly under a Page must still emit `<main>` — otherwise the one placement an
+   * author is most likely to use for a landmark is the one that loses it.
+   */
+  const tagOf = (id: string, role: string): string => {
+    const fallback = TAGS[role];
+    const nodes: NodeIR[] = [nodeById.get(id)!];
+    if (id === plan.rootId && plan.collapsedGroupId) nodes.push(nodeById.get(plan.collapsedGroupId)!);
+    for (const node of nodes) {
+      const chosen = authoredTag(node, fallback, catalog);
+      if (chosen.refusal !== undefined) {
+        notes.push(`${plan.path}: parameter as on ${chosen.refusal.nodeId} ${chosen.refusal.reason}, reported`);
+        // EXP-013's rule: the refusal is said where the node is placed, not only in the report. The
+        // marker lands on `id` — the element that renders — which for a collapsed Group is the page
+        // div, exactly as the collapsed Group's unmapped parameters already do.
+        defer(id, 'the authored "as" parameter', chosen.refusal.reason);
+      }
+      if (chosen.tag !== fallback) return chosen.tag;
+    }
+    return fallback;
+  };
+
   const renderCore = (id: string, indent: number, radioCtx?: RadioCtx): string[] => {
     const node = nodeById.get(id)!;
     const role = plan.roleOf[id];
@@ -4933,7 +5044,7 @@ export function emitComponent(
       return element(target.symbol, attrs, blocks.length > 0 ? blocks : null, indent, blocks.length > 0);
     }
 
-    const tag = TAGS[role];
+    const tag = tagOf(id, role);
     const attrs: string[] = [];
     const className = classOf(id);
     const classAttr = classAttrOf(id, className);

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "g20undde-5c00-4000-8000-000000000003",
+  "name": "Ground",
+  "path": "/Pages/Ground",
+  "type": "page",
+  "modified": "2026-09-06T12:00:00.000Z",
+  "description": "EXP-014 fixture: a hero carrying both background layers with authored size/position, and a column of panels isolating each half of the fold — gradient alone, picture alone, a backdrop blur, the companions with nothing to size, a zero blur, a bare-number blur, a token blur, an already-absolute picture URL and a whitespace-only gradient."
+}

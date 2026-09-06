@@ -1,0 +1,24 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "g20undde-5c00-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ground-desk-router",
+      "type": "Router",
+      "label": "Main Router",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Ground",
+          "routes": [
+            "/Pages/Ground"
+          ]
+        }
+      }
+    }
+  ],
+  "visualRoots": [
+    "ground-desk-router"
+  ]
+}
