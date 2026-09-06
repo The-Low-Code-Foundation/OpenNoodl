@@ -29,7 +29,11 @@
     },
     "it-gets-demanding": {
       "needs": "moods",
-      "why": "Spine lesson 7. The last spine lesson built so far; `snacks` is lesson 8 and has no bundle yet."
+      "why": "Spine lesson 7."
+    },
+    "snacks": {
+      "needs": "it-gets-demanding",
+      "why": "Spine lesson 8. The first lesson with a second component (`/Snack`); the starter is still exactly lesson 7's solution, because the learner creates that component."
     },
     "log-a-thing": {
       "needs": null,

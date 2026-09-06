@@ -688,3 +688,106 @@ moves position in `package.json`: that is npm alphabetising during the install, 
 
 `DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
 modified `SYL-00[5-8].md` are still session 8's uncommitted edits — left exactly as found, again.
+
+---
+---
+
+# Session 13 — lesson 8, "Snacks" (2026-09-06, appended)
+
+WARNING: **Sessions 8–12 above are left intact.** This section supersedes session 12's **FIRST JOB**
+list at item 1: lesson 8 is built. The list now reads H1, SB-017, K1/L1, lesson 9, the remainder.
+
+Richard's instruction was *"let's continue phase 79"*. Session 12 had built (SYL-003), so the
+standing rule was not armed; lesson 8 was the top of the list and the only build lane, and it was
+built, gated and driven. **Eight of thirteen spine lessons ship.**
+
+## The board — re-derived from the task FILES
+
+| task | state |
+|---|---|
+| [SYL-001](SYL-001-THE-HAND-HOLDING-HALF.md) | ✅ done, driven |
+| [SYL-002](SYL-002-THE-CHAIN-THAT-CANNOT-DRIFT.md) | 🟢 built s10, in CI — **and it earned its keep this session** (see L1) |
+| [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) | 🟢 built s12, driven |
+| [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) … [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) | 🟢 seven spine lessons built, gated, driven |
+| **[SYL-011](SYL-011-LESSON-8-SNACKS.md) — lesson 8** | 🟢 **BUILT s13 — 6 steps, 15 conditions, F1–F4 pass, chain holds, both runner arms cold-opened, browser drive with a control.** ⬜ Prose awaits Richard |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 §3 and §6 are Richard's |
+| the registers | **21 open across eight files**, every one owner `NONE` (15 lesson + K1, K2 + **L1–L4 new**) — recounted, not inherited |
+
+## 🟢 What lesson 8 is, in one paragraph
+
+`Pantry` (**Static Array**, three snacks as CSV), a learner-created `Snack` component (a row, a
+`Name` Text, a **Component Inputs** port `name`, a **Component Outputs** port `eaten`), and `Menu`
+(**Repeater**) inside `Board` placing `Snack` once per item. `eaten` comes back up through the
+Repeater as `itemOutputSignal-eaten` and goes to `Ignored.off` + `Patience.restart`, so clicking a
+snack does to the nag what a poke does. Full account in [SYL-011](SYL-011-LESSON-8-SNACKS.md).
+
+## 🔴 The four things to carry, each of which cost something
+
+1. **`derive_starter` cannot subtract a component** ([L1](DEFECTS-LESSON-8-FOUND.md)). It leaves an
+   empty `/Snack` and the chain gate rightly refuses. Finished by hand: delete the directory, restore
+   lesson 7's `_registry.json`. **Lesson 9 adds records, and if it adds a component it hits this
+   again.**
+2. **`create_lesson` on the bound MCP server still cannot find the render harness** ([L3](DEFECTS-LESSON-8-FOUND.md)),
+   as in session 3. ✅ The way round it that does not use `allow_unrendered`: run
+   `writeLessonBundle` from source with `NODEGX_RENDER_CLI` set —
+   `scratchpad/create-snacks.ts` pattern, `npx ts-node -T -P packages/noodl-mcp/tsconfig.json -O
+   '{"module":"commonjs","moduleResolution":"node"}'`. F4 passed in one run.
+3. **The catalog's `category` is not the picker's category** ([L2](DEFECTS-LESSON-8-FOUND.md)). Two
+   `detail` sentences written from `get_node_type` were wrong (`Data`, `Visual`); the picker says
+   **Read & Write Data**. ✅ **Drive the picker before shipping any `detail` that names a section.**
+   Five chrome sentences changed after the drive; the table is in SYL-011.
+4. **The Repeater's item signal is `itemOutputSignal-<name>`**, minted at runtime, shown as `<name>`
+   under **Item Signals**; the runner grades the long name from `connections.json`, and the live
+   model confirms the port. A Component Outputs port added from the panel is `*` and takes its type
+   from the wire — measured on a learner-made port.
+
+## FIRST JOB — the list
+
+1. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` sorts a `stringlist`; deferred five times;
+   **ask Richard** rather than defer a sixth.
+2. **P77's SB-017 literal** — unchanged since session 11, red for every peer until someone acts.
+3. **[L1](DEFECTS-LESSON-8-FOUND.md)** — before lesson 9 if lesson 9 adds a component; otherwise
+   after it. Same family as D4.
+4. **Lesson 9 — `a-cupboard-that-remembers`** (`DbModel2`, `Create Record`, `Query Records`,
+   `Delete Record`), the first spine lesson with a backend. 🔴 Read all six registers first;
+   `get_node_type` every node **and drive the picker for its category**; the chain gate will refuse
+   a starter that is not lesson 8's solution, and `spine.json` must gain the row. ⚠️ `log-a-thing`
+   is the precedent for records in a lesson (its own database, `collectionExists` / `rowCountAtLeast`
+   conditions, `check_lesson` with `backend_id`).
+5. The remainder: K1, K2, L2, L3, L4, E3, E1, E4/H3 (narrowed, other repo), D1, D3, D4, D5, G2, G3,
+   G4, H2, I1, I2.
+
+## Traps this session paid for
+
+- 🔴 **Voice §10's pressure runs one way and this lesson chose the weak side on purpose.** The CSV is
+  `hasParams` because `paramsEqual` on a string is an exact compare and would refuse correct work;
+  the load-bearing word is graded on the *other* side of the join (`hasPort: "name"`). The sabotage
+  arm (port renamed) reads `placeholders: 3`, so at least the failure is visible. Written up in
+  SYL-011 so nobody "tightens" it into a D1.
+- ⚠️ **A card's button says `Continue` once a lesson has been opened**, not `Start`; a stamp that
+  walks up from `Start` finds nothing and reads like a missing card.
+- ⚠️ **The `Choose component` menu is a `MenuDialog` inside a `BaseDialog`** — the ghost-copy trap
+  from session 12 again: a click on the visible item read as reachable and set nothing. Stamp the
+  copy that `elementFromPoint` returns; if the value did not move, click again.
+- ⚠️ **`cdp eval` takes a bare expression** (no `return`), unlike `drive-page.js eval` which wraps in
+  an IIFE and *requires* one. The same word, opposite contracts.
+- ⚠️ **`zsh` does not word-split `$C="npm run cdp --"`** — every call read *command not found*. Use
+  a function.
+- ⚠️ **A `cd` into a package persists into the next call**, and `npm run cdp` from inside
+  `packages/noodl-editor` fails with a workspace error that looks like a broken script.
+
+## Gates
+
+`lessons:check` **exit 0** (9 bundles) · `lessons:chain` **exit 0** (7 pairs, 0 diverged) ·
+`create_lesson` from source **F1–F4 pass**. **`test:ci` and `typecheck` not run** — no TypeScript
+changed; `spine.json` is data. The editor stack was launched on a fresh profile
+(`NOODL_USER_DATA_DIR`) and **stopped** (`dev:stop`, 26 processes, nothing left).
+
+## Still Richard's, unchanged
+
+Step prose for lessons 2–8, the `description`s and badges, `LESSON-VOICE.md` §3 and §6, the
+`state: in-writing` lines, the "fifteen lessons" comments in the community repo, and now the
+**lesson 8 / lesson 11 overlap** on Component Inputs and Outputs (SYL-011).
+
+`DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
+modified `SYL-00[5-8].md` are still session 8's uncommitted edits — left exactly as found, again.

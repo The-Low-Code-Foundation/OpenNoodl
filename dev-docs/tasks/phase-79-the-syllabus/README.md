@@ -44,7 +44,7 @@ second authoring path.
   the recommender cannot be built until the content carries the tags. See
   [RICHARD-RULINGS-2026-08-28.md](../phase-75-0.2.1-the-feedback/RICHARD-RULINGS-2026-08-28.md) §6.
 
-## The board — re-derived from the task files, 2026-09-05
+## The board — re-derived from the task files, 2026-09-06
 
 | task | state |
 |---|---|
@@ -53,10 +53,12 @@ second authoring path.
 | [SYL-003](SYL-003-THE-CREATURE-YOU-CHOSE.md) — the avatar picker | ⬜ open, independent |
 | [SYL-004](SYL-004-LESSON-1-YOUR-CREATURE-ON-SCREEN.md) — lesson 1 | 🟢 built, gated, **driven**. Prose awaits Richard |
 | [SYL-005](SYL-005-LESSON-2-IT-BREAKS-ON-A-PHONE.md) — lesson 2 | 🟢 built, gated (`d656b714`). ⬜ **not driven**. Prose awaits Richard |
+| [SYL-006](SYL-006-LESSON-3-POKE-IT.md) … [SYL-010](SYL-010-LESSON-7-IT-GETS-DEMANDING.md) — lessons 3–7 | 🟢 built, gated, driven (session 8). Prose awaits Richard |
+| [SYL-011](SYL-011-LESSON-8-SNACKS.md) — lesson 8, `snacks` | 🟢 **BUILT, gated and DRIVEN 2026-09-06 (session 13).** First lesson with a second component; six steps, 15 conditions; both runner arms cold-opened. ⬜ Prose awaits Richard. Register: [DEFECTS-LESSON-8-FOUND.md](DEFECTS-LESSON-8-FOUND.md), 4 rows, all `NONE` |
 | [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 written and **measured** across all three bundles; two calls are ⬜ Richard's |
 | [DEFECTS-LESSON-2-FOUND.md](DEFECTS-LESSON-2-FOUND.md) | 5 rows, **all owner `NONE`**. D1 is the one that matters |
 
-**Seven of thirteen spine lessons ship** (R2 made it thirteen). All are seeded onto the Learning shelf automatically — the
+**Eight of thirteen spine lessons ship** (R2 made it thirteen; lesson 8 landed 2026-09-06). All are seeded onto the Learning shelf automatically — the
 seed enumerates `project-examples/lessons` directories and is ledgered per folder, so a new bundle
 reaches existing installs on their next launch with no allowlist to edit.
 
