@@ -114,8 +114,10 @@ describe('the shipped bundles', () => {
     .readdirSync(LESSONS_DIR)
     .filter((d) => fs.existsSync(path.join(LESSONS_DIR, d, 'lesson.json')));
 
-  it('finds the eight shipped lessons', () => {
-    expect(bundles.length).toBe(8);
+  // The count is the population; the claim is the `it.each` below. Nine since
+  // 2026-09-06, when spine lesson 8 (`snacks`, SYL-011) joined the eight.
+  it('finds the nine shipped lessons', () => {
+    expect(bundles.length).toBe(9);
   });
 
   it.each(bundles)('%s renders no literal markdown marker', (bundle) => {
