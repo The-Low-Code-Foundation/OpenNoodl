@@ -75,6 +75,52 @@ export class ProjectStructureService {
   /** Content hash (minus volatile fields) of each project-level file on disk. */
   private readonly projectLevelHashes = new Map<ProjectLevelKey, string>();
 
+  /**
+   * The project directory the current baselines describe, or undefined if none.
+   *
+   * 🔴 **THIS EXISTS BECAUSE BASELINES USED TO OUTLIVE THEIR PROJECT, AND THE
+   * COST WAS A NEW PROJECT THAT COULD NOT SAVE AT ALL.** `diskHashes` is keyed by
+   * component path, and `App` / `Pages/Home` are paths that every project has. On
+   * the module singleton the map is cleared only by `seedFromProject`, so after
+   * opening project A the entries for those paths survived into project B —
+   * describing A's content, under B's names.
+   *
+   * A newly created project is exactly the case that never re-seeds:
+   * `LocalProjectsModel.newProject` builds it from a legacy template, saves it
+   * legacy, then converts it in place with `ProjectMigrator.migrate()`, which
+   * writes the v2 files straight to disk and tells the saver nothing. So B's
+   * first save was diffed against A's baselines, `findExternallyChanged` saw a
+   * file that matched neither the baseline nor the pending write, and refused —
+   * every save, on a project nothing external had ever touched. The user got
+   * *"Not saved: App, Pages/Home changed on disk outside the editor"* on every
+   * edit and lost the lot on reopen (Richard, 2026-09-06, on 0.2.2).
+   *
+   * ⚠️ **The guard is the DIRECTORY, not a flag someone must remember to set.**
+   * A `clearBaselines()` call added to the create path would fix that path and
+   * leave the next one to rediscover this; a baseline that knows which project it
+   * describes cannot be stale for a different one.
+   */
+  private seededProjectDir: string | undefined;
+
+  /**
+   * Drops baselines that describe a different project, so a save is never diffed
+   * against another project's files.
+   *
+   * ⚠️ **Absent is the safe state and that is what makes this correct rather than
+   * merely convenient.** `findExternallyChanged` skips a path with no baseline —
+   * *"the saver has never seen this path on disk, nothing to clobber"* — so
+   * forgetting means the first save writes, which is what an editor that has just
+   * created a project should do. It does NOT weaken REL-009a for the project
+   * actually open: within one directory every baseline is still exact, and a real
+   * external write is still caught.
+   */
+  private forgetBaselinesForOtherProject(projectDir: string): void {
+    if (this.seededProjectDir === projectDir) return;
+    this.saver.forgetBaselines();
+    this.projectLevelHashes.clear();
+    this.seededProjectDir = projectDir;
+  }
+
   constructor(private readonly fs: ProjectStructureFilesystem) {
     this.loader = new ComponentLoader(fs);
     this.saver = new ComponentSaver(fs);
@@ -136,9 +182,11 @@ export class ProjectStructureService {
       components
     });
 
-    // Seed baselines so the first save only writes genuine edits.
+    // Seed baselines so the first save only writes genuine edits, and record
+    // WHICH project they describe — see `seededProjectDir`.
     this.saver.seedFromProject(project);
     this.seedProjectLevelHashes(project);
+    this.seededProjectDir = projectDir;
     this.loader.invalidate();
 
     return { project, warnings };
@@ -205,6 +253,10 @@ export class ProjectStructureService {
    * last load/save, atomically, with an incremental registry update.
    */
   async saveProject(projectDir: string, project: LegacyProject): Promise<SaveResult> {
+    // Before anything is diffed: baselines describing some other project are not
+    // evidence about this one. See `seededProjectDir`.
+    this.forgetBaselinesForOtherProject(projectDir);
+
     const fullChangeSet = this.saver.getChangedComponents(project);
 
     // REL-009a arm C. `getChangedComponents` diffs memory against `diskHashes`,

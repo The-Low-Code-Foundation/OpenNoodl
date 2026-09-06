@@ -162,6 +162,20 @@ export class ComponentSaver {
   }
 
   /**
+   * Forgets every baseline, so the next save treats all components as unseen.
+   *
+   * ⚠️ **This is NOT `seedFromProject(emptyProject)` and the difference matters.**
+   * Seeding says "disk looks like this"; forgetting says "I do not know what disk
+   * looks like", and `findExternallyChanged` is built to treat the second as the
+   * safe state — an absent baseline means nothing is clobbered, so the save
+   * proceeds. Called when the baselines describe a different project than the one
+   * being saved; see `ProjectStructureService.seededProjectDir`.
+   */
+  forgetBaselines(): void {
+    this.diskHashes.clear();
+  }
+
+  /**
    * Snapshots the current baselines so a caller can roll back after a failed
    * multi-file save. Without this, a save that writes some component files then
    * fails on the registry would leave those components' baselines advanced — a
