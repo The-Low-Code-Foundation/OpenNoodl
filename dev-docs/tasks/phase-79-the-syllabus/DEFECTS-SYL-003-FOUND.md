@@ -11,8 +11,8 @@ The rows below are the ones that are still open.
 
 | row | severity | surface | owner | state |
 |---|---|---|---|---|
-| **K1** | 🔴 high | MCP `delete_component` | `NONE` | OPEN |
-| **K2** | ⚠️ medium | `scripts/devtools/cdp.js` | `NONE` | OPEN |
+| **K1** | 🔴 high | MCP `delete_component` | ✅ **FIXED 2026-09-06 (s14)** `2a0d29d9` | CLOSED |
+| **K2** | ⚠️ medium | `scripts/devtools/cdp.js` | ✅ **FIXED 2026-09-06 (s14)** | CLOSED |
 
 ---
 
@@ -82,3 +82,33 @@ session 12 is a worked example, and its output is quoted in
 **Where.** `scripts/devtools/cdp.js:687` (`network`) and `:707` (`blockurl`). A fix has to keep the
 session open — a `--then=<expr>` argument, or a persistent mode — because there is nothing to set
 that outlives the connection.
+
+
+---
+
+## ✅ K1 — FIXED 2026-09-06 (session 14), `2a0d29d9`
+
+**Blast radius measured first, as the row asked.** Lesson 1's solution with `/Pages/Ghost` appended
+to the App router's routes, rendered on the harness beside an untouched control: both arms boot and
+draw the start page, `consoleErrors: []` on every viewport, `placeholders: 0`; asking the harness for
+the ghost route itself is refused by name. So a dangling route is a **silent accumulation**, not a
+crash — the kind nobody finds. What a *runtime navigation* to the ghost route does was not measured.
+
+**The fix reuses the editor's decision** — `pagesAfterComponentRemoved` (REL-009b, kept import-free
+for exactly a second caller) — through `editor-deps`, applied per route spelling with the same
+`isSamePage` tolerance `registerPages` has; a start page naming the deleted component is cleared.
+Reported as `unregisteredPages` on the delete result. 4 specs in `tests/pageRegistration.test.ts`,
+three red with the call disabled; the control (a non-listed component) stays green.
+
+⚠️ Found on the way: `tools/author.ts` held **six raw NUL bytes** in a template literal, which made
+`grep` skip the whole file as binary for everyone (`grep -a` finds it). They are `\u0000` now.
+
+## ✅ K2 — FIXED 2026-09-06 (session 14)
+
+`network` and `blockurl` take `--eval="<expr>"` (measured inside the same session, value printed)
+and `--hold=<seconds>` (session kept open so other `cdp.js` commands run against the emulated
+state); with neither, a stderr note says the emulation is closing with the command. **Measured
+live on `dev:debug`, four arms**: two commands → `REACHED` (the symptom, unchanged, now warned);
+`--eval` → `BLOCKED`; `--hold=20` with a separate `eval` inside the window → `BLOCKED`, and
+`REACHED` after the hold ended; `network online` resets. The `blockurl` half is the same code
+path and was **not** driven separately.

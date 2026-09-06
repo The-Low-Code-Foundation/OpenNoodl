@@ -14,7 +14,7 @@ the tasks, not farm the defects. The earlier registers are
 |---|---|---|---|
 | G1 | 🔴 high | ✅ **FIXED 2026-09-05 (s9)** | an **Expression**'s `As Number` / `As String` / `As Boolean` outputs never update |
 | G2 | ⚠️ medium | `NONE` | the render report's `distinctAccents` reads `0` for a page drawing a `--primary` circle |
-| G3 | ⚠️ medium | `NONE` | `derive_starter` reports a wrong port name and a benign cascade with the *same* sentence |
+| G3 | ⚠️ medium | ✅ **FIXED 2026-09-06 (s14)** `0b603a23` | `derive_starter` reports a wrong port name and a benign cascade with the *same* sentence |
 | G4 | low | `NONE` | nothing checks that a spine lesson's outro promises something the next lesson can deliver |
 
 ---
@@ -189,3 +189,14 @@ So an **exported** app would have animated the creature that the editor's own ru
 the two implementations of one node had disagreed, and the shipped one was the one that was wrong.
 Worth a thought for whoever owns the export/runtime parity question; not registered as a row,
 because after this fix they agree.
+
+
+---
+
+## ✅ G3 — FIXED 2026-09-06 (session 14), `0b603a23`
+
+The three absences are three sentences now. A wire whose endpoint an earlier `hasType` removed:
+*"went when Step N removed "<path>" — nothing left to remove"* (kind `remove-connection`). A port
+that matches no wire between two nodes that are wired: *"no X → Y wire exists … the wires that do:
+a → b … probably a typo"*. Two nodes not wired at all: *"not wired to each other at all"*. Seen on
+lesson 8's own derivation: all six of its inherited wires now name the step that took them.

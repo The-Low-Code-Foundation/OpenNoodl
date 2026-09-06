@@ -10,10 +10,10 @@ the tasks, not farm the defects.
 
 | # | severity | owner | one line |
 |---|---|---|---|
-| D1 | 🔴 high | `NONE` | the gate cannot see a condition whose **unit** a learner can never type |
+| D1 | 🔴 high | ✅ **FIXED 2026-09-06 (s14)** `bfb5d950` | the gate cannot see a condition whose **unit** a learner can never type |
 | D2 | ⚠️ medium | ✅ **FIXED 2026-09-05 (s9)** | a condition's prose shows the learner a raw type name |
 | D3 | ⚠️ medium | `NONE` | a Columns node silently overflows its parent by `marginX` |
-| D4 | low | `NONE` | `derive_starter` leaves `_registry.json` counting the solution's nodes |
+| D4 | low | ✅ **FIXED 2026-09-06 (s14)** `0b603a23` | `derive_starter` leaves `_registry.json` counting the solution's nodes |
 | D5 | low | `NONE` | `Columns.justifyContent` is inert for auto-height items |
 
 ---
@@ -178,3 +178,24 @@ namespace and nothing else: it cannot recover `Animate To Value` from `animateto
 not guess at `Circle`, whose real name shares no letters with it. Consistent with the module's
 standing contract — degrade the copy, never break grading — and pinned by its own spec row so
 nobody later mistakes the fallback for the answer.
+
+
+---
+
+## ✅ D4 — FIXED 2026-09-06 (session 14), `0b603a23`
+
+`starterWriter` now read-modify-writes `_registry.json`: dropped components' entries removed
+(L1), per-component `nodeCount`/`connectionCount` and the `stats` re-derived from the files it
+actually wrote, every other key left as the solution had it. **And the shipped bundles were
+recounted** — ten registries carried wrong counts, including three *solutions*
+(`it-forgets-you`, `poke-it`, `show-what-it-feels`), because a solution is usually the previous
+starter edited by hand. `lessons:check` and `lessons:chain` exit 0 over the recounted files.
+
+## ✅ D1 — FIXED 2026-09-06 (session 14), `bfb5d950`
+
+Exactly the row's fix: a new F2-class **warning** `unit-unsaid` in `verifyLessonBundle` fires when
+a `paramsEqual` grades a `{value, unit}` whose unit is not the port's `defaultUnit`, the port offers
+more than one unit, and the step **body** (not `detail`) does not name the unit. Lesson 2 says *"with
+its unit set to **px**"* and stays silent — run over all nine shipped bundles: 0 warnings, and lesson 2
+is the only manifest grading a dimension. `create_lesson` passes its kit catalog through.
+5 specs (`tests-unit/syl-l1/unit-unsaid.test.ts`), three red with the check disabled.

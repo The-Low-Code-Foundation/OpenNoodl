@@ -794,3 +794,107 @@ Step prose for lessons 2–8, the `description`s and badges, `LESSON-VOICE.md` �
 
 `DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
 modified `SYL-00[5-8].md` are still session 8's uncommitted edits — left exactly as found, again.
+
+
+---
+---
+
+# Session 14 — the defect sweep, second pass (2026-09-06, appended)
+
+WARNING: **Sessions 8–13 above are left intact.** This section supersedes session 13's **FIRST JOB**
+list: items 2 (SB-017) and 3 (L1) are done, and so are seven more rows. The list now reads H1, lesson 9,
+the remainder.
+
+Richard's instruction was *"let's attack any defects we found recently, especially in the tutorial
+lesson creation phase."* That is a direct instruction to farm defects, so the standing rule's
+ordering was set aside for this session by the person who wrote it. Nothing was built; **eight
+defects were fixed, every one gated, mutant-checked and committed by pathspec**, plus P77's SB-017.
+
+## The board — re-derived from the task FILES
+
+| task | state |
+|---|---|
+| SYL-001 … SYL-003, SYL-004 … SYL-011 | 🟢 unchanged — eight of thirteen spine lessons ship |
+| [LESSON-VOICE.md](LESSON-VOICE.md) | 🟡 §3 and §6 are Richard's |
+| the registers | **13 open** across eight files (was 21), every one owner `NONE` — recounted, not inherited |
+
+## What shipped — nine commits
+
+| row | commit | what |
+|---|---|---|
+| **L1** 🔴 | `0b603a23` | `derive_starter` drops a component the learner creates (nothing refers to it) or keeps it empty and says why (something does). Lesson 8's starter now derives **byte-equal** to the hand-finished one |
+| **D4** | `0b603a23` | `_registry.json` recounted from the files written; **ten shipped registries recounted**, three of them solutions |
+| **G3** | `0b603a23` | three absences, three sentences: *went when Step N removed X* / *the wires that do: …* / *not wired at all* |
+| **K1** 🔴 | `2a0d29d9` | `delete_component` un-lists the page in every router (the editor's own `pagesAfterComponentRemoved`). Blast radius measured first: silent accumulation, not a crash |
+| **L3** | `ce4ee49a` | **re-diagnosed** — see below. Plain-Node sidecar on a packaged install now finds the harness inside `app.asar` and runs it with the app binary; F4 note carries `probed` |
+| **L4** | `67f67990` | *"CSV set on Pantry"*, *"(Items → Items)"* — port names resolve through the node library like D2's type names |
+| **K2** | `db9a8e4a` | `cdp.js network`/`blockurl` take `--eval` and `--hold`; measured live, four arms |
+| **D1** 🔴 | `bfb5d950` | verifier warns `unit-unsaid` when a graded dimension's unit is not the port default and the body does not say it; lesson 2 stays silent (control) |
+| **SB-017** (P77) | `c6f277a8` | literal 38 → 39; the claim beneath measured on the JSON: 39 browser Functions, 0 with dynamic ports. `test:ci` not run |
+
+## 🔴 L3's diagnosis was wrong, and the way it was found is the thing to carry
+
+The row said *"the bound MCP `create_lesson` cannot find the render harness from `dist/`"*. It
+could not have: `dist/` resolves `../../../scripts/devtools/measure-from-disk.js`, which exists.
+**Calling `render_report` on the bound server returned the refusal with its `probed` list**, and the
+list began `/Applications/NodeGX.app/…`. The server every session has been calling
+`nodegx-puppy-test-3` is the **installed 0.2.0 app's sidecar**, registered in `~/.claude.json` by
+Connect as `node <path>` — and `app.asar` **lists the harness**. Plain Node cannot read inside an asar.
+
+- 🔴 **A bound MCP server is not necessarily this checkout's.** `ps` showed three `dist/noodl-mcp.cjs`
+  servers — none of them was the one this session's tools talk to. Read `~/.claude.json` before
+  attributing a server's behaviour to source you can see.
+- 🔴 **A refusal that carries `probed` is a bug report; one that does not is a rumour.** Sessions 3
+  and 13 each lost a round trip to a message whose list was never surfaced. It is surfaced now.
+- ⚠️ **Two decisions contradict on every packaged install**: BST-004 prefers `node <path>` for the
+  registration, and the harness ships asar-only. The fix makes the sidecar cope; the registration
+  is unchanged. **The installed app keeps the old bundle until the next release**, and the three
+  running checkout servers keep their old `dist/` until restarted — `dist/` was rebuilt here.
+
+## FIRST JOB — the list
+
+1. **[H1](DEFECTS-LESSON-6-FOUND.md)** — `paramsEqual` sorts a `stringlist`; **deferred six times**; a
+   format decision (an ordered form touching compiler, evaluator, copy module, verifier). **Ask
+   Richard.** It was not taken here because it is a decision, not a defect with one right fix.
+2. **Lesson 9 — `a-cupboard-that-remembers`** (`DbModel2`, `Create Record`, `Query Records`,
+   `Delete Record`). ✅ L1 no longer bites if it adds a component. 🔴 Read all registers first;
+   `get_node_type` every node **and drive the picker for its category** (L2 is still open).
+3. The remainder, all owner `NONE`: **L2** (catalog `category` ≠ picker), **E3** (a new wire does not
+   pull its source's value), **E1** (a Button cannot go on the design system from the panel),
+   **E4/H3** (narrowed, other repo), **D3**, **D5**, **G2**, **G4**, **H2**, **I1**, **I2**.
+
+## Traps this session paid for
+
+- 🔴 **`grep` skipped `tools/author.ts` as binary** — six raw NUL bytes in a template literal.
+  `grep -rn deleteComponent` found only the store; `grep -a` found the handler. They are
+  `\u0000` now. If a symbol you can call has no caller, `grep -a` before concluding.
+- 🔴 **The MCP jest config runs ts-jest with `diagnostics: false`** — a green suite there is not a
+  typecheck. `npx tsc -p packages/noodl-mcp/tsconfig.json --noEmit` is (~1 min), and it pulls in
+  every editor module `editor-deps` re-exports under a stricter config: re-exporting
+  `routerRouteRemoval.ts` surfaced a strict-null error in a file that compiles fine in the editor.
+  The editor's ts-jest keeps diagnostics on, so its green run *is* a typecheck.
+- ⚠️ **A python `bytes` literal cannot hold an em dash.** One SyntaxError aborted a multi-file edit
+  script before any file was written — which is the good outcome; the bad one is a script that writes
+  three files and asserts on the fourth. Both happened. Edit one file per script, or assert every
+  anchor before writing any.
+- ⚠️ **`cd packages/x &&` persists**, third session running: a `sed` and a `jest --verbose` both
+  read "no such file"/nothing from the wrong directory. `cd <abs> && pwd &&` every time.
+- ⚠️ **A `--verbose` grep for `✓` prints nothing on a non-verbose run** — the 44-passed line was
+  the only readout; re-run with `--verbose` to see the names.
+- ⚠️ **Component-drop needed a control the existing suite already held**: *"leaves no dangling
+  reference behind when it removes a subtree"* asserts an emptied page **stays**. The first design
+  (refuse when referenced) would have broken it; the reference decides drop-vs-keep instead.
+
+## Gates
+
+Editor `tests-unit/{uni-010,syl-l1,fix-025,rel-009b}` all green (uni-010 130, syl-l1 15, fix-025 58,
+rel-009b 7). `noodl-mcp` suites touched: starterWriter 13, pageRegistration 12, tools+store, renderCli
+7, bundle suites 34. `noodl-mcp` **tsc 0 errors** (run four times, after each lane).
+`lessons:check` 9 bundles exit 0; `lessons:chain` 7 pairs 0 diverged exit 0. **`test:ci` and the
+editor `tsc` were not run** — nothing in `tests/` changed except the SB-017 literal, and the editor
+modules changed are typechecked by the MCP `tsc` (lessonstarter, routerRouteRemoval,
+lessonbundleverify) or by the editor's ts-jest (lessonconditioncopy). The editor stack was launched
+once (`dev:debug`, fresh) for K2 and **stopped** (25 processes, nothing left).
+
+`DRIVE-2026-09-05-THE-LESSON-RUNNER.md` is **still untracked and is session 8's**, and the four
+modified `SYL-00[5-8].md` are still session 8's uncommitted edits — left exactly as found, again.
