@@ -779,7 +779,10 @@ snack does to the nag what a poke does. Full account in [SYL-011](SYL-011-LESSON
 ## Gates
 
 `lessons:check` **exit 0** (9 bundles) · `lessons:chain` **exit 0** (7 pairs, 0 diverged) ·
-`create_lesson` from source **F1–F4 pass**. **`test:ci` and `typecheck` not run** — no TypeScript
+`create_lesson` from source **F1–F4 pass** · editor `tests-unit/{rel-012,tut-004,syl-j1}` **133/133
+after `326bb50b`** — 🔴 **`syl-j1/lessonProse.test.ts` is a literal count gate on the shipped
+bundles** (`toBe(8)` → `9`); its claim ran on all nine before the literal moved. **Every new lesson
+bumps it**, and it is in `test:main`, which nobody watches. **`test:ci` and `typecheck` not run** — no TypeScript
 changed; `spine.json` is data. The editor stack was launched on a fresh profile
 (`NOODL_USER_DATA_DIR`) and **stopped** (`dev:stop`, 26 processes, nothing left).
 
