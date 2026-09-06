@@ -27,7 +27,13 @@ import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { withAuthoredScriptPorts } from '../scriptPorts';
-import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
+import {
+  componentIsPage,
+  registerPages,
+  registrationSummary,
+  unregisterPages,
+  unregistrationSummary
+} from '../project/pageRegistration';
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import type { ProjectBinding } from '../project/ProjectBinding';
@@ -345,10 +351,10 @@ export function carryConnectionPresentation(
   if (!baseline.length) return incoming as ConnectionV2[];
 
   const previous = new Map<string, ConnectionV2>();
-  for (const c of baseline) previous.set(`${c.fromId} ${c.fromProperty} ${c.toId} ${c.toProperty}`, c);
+  for (const c of baseline) previous.set(`${c.fromId}\u0000${c.fromProperty}\u0000${c.toId}\u0000${c.toProperty}`, c);
 
   return incoming.map((c) => {
-    const was = previous.get(`${c.fromId} ${c.fromProperty} ${c.toId} ${c.toProperty}`);
+    const was = previous.get(`${c.fromId}\u0000${c.fromProperty}\u0000${c.toId}\u0000${c.toProperty}`);
     if (!was) return c;
 
     let out = c;
@@ -753,11 +759,17 @@ export function registerAuthorTools(
       }
       const brokenRefs = usages.length > 0 ? validateDeletion(store, stored.key) : [];
       const { removed } = store.deleteComponent(stored.key);
+      // P79 K1 — the create side lists a page in the router; the delete side
+      // un-lists it, or every created-then-deleted page leaves a route aimed at
+      // files that are gone. Reported, because it writes a component the caller
+      // did not name.
+      const unregistered = unregisterPages(store, stored.legacyName);
       ledger.invalidate();
       const payload: DeleteComponentResponse = {
         deleted: stored.key,
         removedFiles: removed,
         registry: 'updated',
+        ...unregistrationSummary(unregistered),
         ...(brokenRefs.length > 0 ? { brokenReferences: brokenRefs, note: 'force-deleted while still referenced' } : {})
       };
       return jsonResult(payload);

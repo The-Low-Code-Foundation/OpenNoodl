@@ -195,6 +195,12 @@ export type {
   RouterLocation,
   RouterPagesValue
 } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/pageRegistration';
+// P79 K1 — the other direction. What a Router's `pages` becomes when a component
+// is removed is the editor's `RouterAdapter.componentRemoved` decision, kept in
+// an import-free module (REL-009b) precisely so a second client can call it.
+// `delete_component` used to unregister the component from the registry and
+// leave its route in every router that listed it.
+export { pagesAfterComponentRemoved } from '../../noodl-editor/src/editor/src/models/NodeTypeAdapters/routerRouteRemoval';
 
 // ─── The layout pass (FIX-014) ────────────────────────────────────────────────
 // Fills the position gaps a model left and separates exact collisions — never

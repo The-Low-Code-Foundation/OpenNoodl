@@ -169,3 +169,76 @@ describe('AAQ-005 — page registration through the MCP door', () => {
     expect(applied.data.registeredPages).toBeUndefined();
   });
 });
+
+// ─── P79 K1: the other direction ────────────────────────────────────────────
+
+describe('P79 K1 — delete_component un-lists the page the create side listed', () => {
+  let dir: string;
+  let session: TestSession;
+
+  beforeEach(async () => {
+    dir = copyFixture();
+    session = await connect(dir);
+  });
+
+  afterEach(async () => {
+    await session.close();
+  });
+
+  interface DeleteResponse {
+    deleted: string;
+    registry: 'updated';
+    unregisteredPages?: Array<{ router: string; removed: string[]; startPageCleared?: true }>;
+  }
+
+  it('removes the route a create-then-delete used to leave behind, and says so', async () => {
+    await call(session, 'create_component', { path: 'Pages/Settings', nodes: PAGE_NODES('st', 'Settings') });
+    // The arm that makes the next one mean something: the create side listed it.
+    expect(routerPages(dir)?.routes).toContain('/Pages/Settings');
+
+    const res = await call<DeleteResponse>(session, 'delete_component', { path: 'Pages/Settings' });
+    expect(res.isError).toBe(false);
+
+    // 🔴 The row: the registry said "updated" and the route stayed. It is gone now.
+    expect(routerPages(dir)?.routes ?? []).not.toContain('/Pages/Settings');
+    expect(res.data.unregisteredPages).toEqual([
+      expect.objectContaining({ router: '/App', removed: ['/Pages/Settings'] })
+    ]);
+  });
+
+  it('clears a start page that named the deleted component — the editor rule, not a second one', async () => {
+    // The fixture's router has no start page, so the first page created becomes it.
+    await call(session, 'create_component', { path: 'Pages/Settings', nodes: PAGE_NODES('st', 'Settings') });
+    expect(routerPages(dir)?.startPage).toBe('/Pages/Settings');
+
+    const res = await call<DeleteResponse>(session, 'delete_component', { path: 'Pages/Settings' });
+    expect(res.isError).toBe(false);
+    expect(routerPages(dir)?.startPage).toBeUndefined();
+    expect(res.data.unregisteredPages?.[0]?.startPageCleared).toBe(true);
+  });
+
+  it('leaves every router alone, and claims nothing, when nothing listed the component', async () => {
+    await call(session, 'create_component', { path: 'Pages/Settings', nodes: PAGE_NODES('st', 'Settings') });
+    await call(session, 'create_component', {
+      path: 'Widgets/Badge',
+      nodes: [{ id: 'b_label', type: 'Text', parameters: { text: 'Badge' } }]
+    });
+    const before = routerPages(dir);
+
+    const res = await call<DeleteResponse>(session, 'delete_component', { path: 'Widgets/Badge' });
+    expect(res.isError).toBe(false);
+    expect(res.data.unregisteredPages).toBeUndefined();
+    expect(routerPages(dir)).toEqual(before);
+  });
+
+  it('keeps the other pages listed when one of several is deleted', async () => {
+    await call(session, 'create_component', { path: 'Pages/Settings', nodes: PAGE_NODES('st', 'Settings') });
+    await call(session, 'create_component', { path: 'Pages/About', nodes: PAGE_NODES('ab', 'About') });
+    expect(routerPages(dir)?.routes).toEqual(expect.arrayContaining(['/Pages/Settings', '/Pages/About']));
+
+    await call(session, 'delete_component', { path: 'Pages/Settings' });
+    const routes = routerPages(dir)?.routes ?? [];
+    expect(routes).toContain('/Pages/About');
+    expect(routes).not.toContain('/Pages/Settings');
+  });
+});

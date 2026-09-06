@@ -430,7 +430,19 @@ export interface ListProjectsResponse {
   searched?: string[];
 }
 
-export interface DeleteComponentResponse {
+/** P79 K1 — routers that stopped listing a deleted component. */
+export interface PageUnregistrationSummary {
+  unregisteredPages?: Array<{
+    /** Legacy name of the component holding the router that was written. */
+    router: string;
+    /** The route strings removed, as they were spelled in `routes`. */
+    removed: string[];
+    /** Present when the router's start page named the deleted component and is now unset. */
+    startPageCleared?: true;
+  }>;
+}
+
+export interface DeleteComponentResponse extends PageUnregistrationSummary {
   deleted: string;
   removedFiles: string[];
   registry: 'updated';

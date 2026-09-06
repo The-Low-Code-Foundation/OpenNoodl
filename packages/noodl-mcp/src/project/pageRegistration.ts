@@ -38,9 +38,17 @@
  */
 
 import type { NodeV2, PageRegistration, RegistrationComponent, RegistrationNode } from '../editor-deps';
-import { PAGE_NODE_TYPE, describePageRegistration, looksLikePageComponent, resolvePageRegistration } from '../editor-deps';
+import {
+  PAGE_NODE_TYPE,
+  describePageRegistration,
+  findRoutersInComponents,
+  isSamePage,
+  looksLikePageComponent,
+  pagesAfterComponentRemoved,
+  resolvePageRegistration
+} from '../editor-deps';
 import type { ComponentFiles } from '../graph';
-import type { PageRegistrationSummary } from '../tools/responses';
+import type { PageRegistrationSummary, PageUnregistrationSummary } from '../tools/responses';
 import type { ProjectStore } from './ProjectStore';
 
 /**
@@ -182,6 +190,93 @@ export function registerPages(
   const registration = resolveRegistration(store, pages, overlay);
   if (!registration) return undefined;
   return applyRegistration(store, registration);
+}
+
+/** One router that stopped listing a deleted component. */
+export interface PageUnregistration {
+  /** Legacy name of the component holding the router that was written. */
+  router: string;
+  nodeId: string;
+  /** The route strings removed from `routes` — as they were spelled there. */
+  removed: string[];
+  /** True when the router's start page named the deleted component and was cleared. */
+  startPageCleared: boolean;
+}
+
+/**
+ * P79 K1 — stop every router listing a component that is being deleted.
+ *
+ * The create side owns the router edit (`registerPages`), so the delete side has
+ * to as well: before this, `create_component` then `delete_component` on a page
+ * left a route aimed at three files that no longer existed, and the delete
+ * result said `registry: "updated"` — which read as complete. Measured on the
+ * render harness before it was fixed: the app still boots and draws its start
+ * page with the dangling route in place (see the K1 row for the arms), so this
+ * is a silent accumulation rather than a crash — the kind that is never found.
+ *
+ * The decision is the editor's own `pagesAfterComponentRemoved`, applied per
+ * spelling: the editor matches exactly, this door tolerates `Pages/X` for
+ * `/Pages/X` the way `registerPages` does, so each route `isSamePage` matches is
+ * handed to the editor's rule under its own spelling.
+ *
+ * Called AFTER the store has deleted the component, and reads the routers off
+ * disk, so it sees exactly the project the deletion left.
+ */
+export function unregisterPages(store: ProjectStore, legacyName: string): PageUnregistration[] {
+  const done: PageUnregistration[] = [];
+
+  for (const router of findRoutersInComponents(registrationComponents(store))) {
+    const matching = router.pages.routes.filter((route) => isSamePage(route, legacyName));
+    const startNamesIt = router.pages.startPage !== undefined && isSamePage(router.pages.startPage, legacyName);
+    if (matching.length === 0 && !startNamesIt) continue;
+
+    const resolved = store.resolve(router.component);
+    if (!resolved) continue;
+    const stored = store.readComponent(resolved.key);
+    const node = stored.files.nodes.nodes.find((n) => n.id === router.nodeId);
+    if (!node) continue;
+
+    let pages = (node.parameters?.['pages'] ?? undefined) as { routes?: string[]; startPage?: string } | undefined;
+    const spellings = new Set([...matching, ...(startNamesIt ? [router.pages.startPage as string] : [])]);
+    let changed = false;
+    for (const spelling of spellings) {
+      const next = pagesAfterComponentRemoved(pages, spelling);
+      if (next !== null) {
+        pages = next;
+        changed = true;
+      } else if (pages?.startPage !== undefined && isSamePage(pages.startPage, legacyName)) {
+        // The editor's rule only touches `startPage` while removing a route. A
+        // start page naming a component no route lists is the state a delete
+        // must not leave either.
+        pages = { ...pages, startPage: undefined };
+        changed = true;
+      }
+    }
+    if (!changed) continue;
+
+    const startPageCleared = router.pages.startPage !== undefined && pages?.startPage === undefined;
+    const written: { routes: string[]; startPage?: string } = { routes: pages?.routes ?? [] };
+    if (pages?.startPage !== undefined) written.startPage = pages.startPage;
+    node.parameters = { ...(node.parameters ?? {}), pages: written };
+    stored.files.component.modified = new Date().toISOString();
+    stored.files.component.modifiedBy = 'noodl-mcp';
+    store.writeComponent(stored.key, stored.files);
+    done.push({ router: router.component, nodeId: router.nodeId, removed: matching, startPageCleared });
+  }
+
+  return done;
+}
+
+/** The unregistration, in the shape a tool response carries it — `{}` when no router listed the component. */
+export function unregistrationSummary(unregistered: readonly PageUnregistration[]): PageUnregistrationSummary {
+  if (unregistered.length === 0) return {};
+  return {
+    unregisteredPages: unregistered.map((u) => ({
+      router: u.router,
+      removed: u.removed,
+      ...(u.startPageCleared ? { startPageCleared: true as const } : {})
+    }))
+  };
 }
 
 /**

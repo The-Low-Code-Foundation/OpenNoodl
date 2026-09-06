@@ -50,8 +50,10 @@ export function pagesAfterComponentRemoved(
   const idx = pages.routes.indexOf(componentName);
   if (idx === -1) return null;
 
-  const next: RouterPages = JSON.parse(JSON.stringify(pages));
-  next.routes.splice(idx, 1);
+  // Same clone as before; `routes` is rebuilt rather than spliced because the
+  // stricter compile `noodl-mcp` runs this under (P79 K1 re-exports it) cannot
+  // see through the `undefined` check above.
+  const next: RouterPages = { ...JSON.parse(JSON.stringify(pages)), routes: pages.routes.filter((_, i) => i !== idx) };
   if (next.startPage === componentName) next.startPage = undefined;
   return next;
 }
