@@ -25,6 +25,19 @@
  * this exact bundle successfully (measured: a 16 GB machine defaults to 4144 MB
  * of heap). A larger number would be one nothing has ever built with.
  *
+ * ✅ **CONFIRMED BY RUNNING IT, on macOS arm64, as a control pair** — the same
+ * webpack config, the same tree, one variable changed:
+ *
+ * | `--max-old-space-size` | reading |
+ * |---|---|
+ * | 2048 (what the runner gives) | **EXIT=134**, `FATAL ERROR: Reached heap limit` |
+ * | 4096 (this ceiling) | **EXIT=0**, compiled in 57 s, peak RSS **3404 MB** |
+ *
+ * So the diagnosis is reproduced rather than inferred, and the fix is measured
+ * rather than argued. ⚠️ **Peak RSS is not the heap** — it counts everything the
+ * process mapped — so read 3404 MB as "comfortably above 2048 and below 4096",
+ * not as the old-space high-water mark.
+ *
  * ⚠️ **This is a module, not a constant inside `build.ts`, for two reasons.**
  * `build.ts` is a top-level IIFE that starts a real build on import, so nothing
  * in it can be graded; and a workflow-level `env:` would have fixed CI while
