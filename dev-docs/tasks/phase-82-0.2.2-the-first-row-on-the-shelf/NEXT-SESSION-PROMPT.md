@@ -1,5 +1,86 @@
 # Phase 82 — next session
 
+> ### 🟢 s57 (2026-09-06) — 0.2.2 IS PUBLISHED AND TAGGED. THE PHASE'S CLOSE CONDITION IS MET EXCEPT ITS LAST HALF-LINE
+>
+> **17 commits.** The phase opened to prep a launch and this session ran it: the shelf work
+> that was still sitting uncommitted went in, the branch was pushed, the members' area was
+> published to the community shelf by Richard, and `v0.2.2` was tagged at `10a6c147`.
+>
+> **1. 🔴 THE BLOCKER WAS NOT ON THE BOARD — IT WAS THE WORKING TREE.** Every REL row read
+> *"Richard's"*, and the honest reading of the phase was that nothing buildable was left. But
+> `HELD_TEMPLATE_IDS` still held `site-builder` at HEAD and `landing-pages.template.ts` was
+> **untracked**, so a tag cut that morning would have shipped **an empty template shelf** under
+> release notes whose first headline is *"templates you can start from"*. The board said
+> *"Left: the commit"* on REL-017 and no session had read that as a blocker. ✅ **A row whose
+> remaining work is "commit it" is indistinguishable on a board from a row that is done** —
+> `git status` is the only instrument that separates them, and it is not part of re-deriving
+> a board from task files.
+>
+> **2. ✅ WHAT WENT IN (15 commits of it), all of it work other sessions had finished and not
+> committed**: the landing-pages template + the site-builder unhold (87 files, `9da450b0`),
+> SBR-008's wire-declared ports, SBR-011's SSE connection pool, FB-013's chat writes,
+> REL-002a's body-scroll diagnostic, the phase-75 border sweep, REL-007's pricing, REL-012's
+> `NOODL_USER_DATA_DIR`, DEF-007's comment, the devtools reaper, and every lane's session
+> records. **Gated on the settled tree afterwards**: `typecheck:editor`/`:runtime`/`:mcp` all
+> **EXIT=0, 0 errors**; `test:main` **432 suites / 7218 tests, EXIT=0**. ⚠️ **The P77 handoff's
+> floor of "3 failed suites, owner NONE" is gone** — do not carry it forward; re-measure.
+> ⚠️ `typecheck:core-ui` exits 2 on 50 unowned `noodl-editor` files. Structural, pre-existing,
+> **in no gate** — `dev-docs/tasks/NEXT-SESSION.md` has said so since phase 12.
+>
+> **3. 🔴 THE PUBLISH CREDENTIAL DID NOT EXIST WHERE EVERY DOCUMENT SAID IT DID.**
+> `REL-001-SUBMISSION.md` gives the command with `DATABASE_URL=<the community DB url>` and
+> Richard did not have it either. Measured: `~/nodegx-community-deploy.env` holds the OAuth,
+> Brevo and S3 secrets and **no DATABASE_URL**; `ops/provision.sh` generates the password **on
+> the box** and writes `postgres://…@127.0.0.1:5432/…` — the *server's* loopback. **So no
+> connection string typed on a laptop could ever have worked**, and the publisher cannot run on
+> the server either, because it reads the 100-file bundle off local disk. The answer is a
+> tunnel: [`publish-members-area.sh`](../release-0.2.2/publish-members-area.sh).
+> ⚠️ **This session could not run it** — `ssh`, `gh` and `api.github.com` are all blocked by the
+> harness here. Richard ran it.
+>
+> **4. ✅ THE ROW WAS VERIFIED ON THE LIVE SHELF, NOT ASSUMED.** *"I think it's done"* is not a
+> measurement, and the publish-before-tag ordering rests entirely on the row existing.
+> `GET https://community.nodegx.io/api/v1/community/templates` → `total: 1`, one row,
+> `members-area` / *Members' area* / `starter` / **`fileCount: 100`** — the same figure
+> `tpl001Template.test.ts` §1 asserts about the bundle on disk, so it is a row **of the artefact
+> we gated**, not merely a row with the right name. 🔴 **Read the content, never the status
+> code** — the standing nexus-1 note that *"a 308 proves nothing"* is the same trap.
+>
+> **5. 🔴 THE SCREENSHOTS ARE GITIGNORED NOW, AND THE TEXT BESIDE THEM IS NOT.** Richard's call:
+> six uncommitted drive runs were ~116 MB against a 412 MB `.git`. The rule covers images under
+> `verdicts/` and `notes/` in the task tree; the `.txt`/`.json` dumps — **407 KB for those same
+> six runs** — are committed, because they are what a later session diffs when it says *"113 of
+> 120 identical"*. ⚠️ **201 MB of pictures stay tracked**: an ignore rule does not untrack.
+> ✅ A picture a task file argues from still goes in with `git add -f`. Checked before writing
+> the rule that nothing in `packages/` or `scripts/` reads those paths.
+>
+> ⬜ **WHAT IS ACTUALLY LEFT, and none of it is the cut.**
+>
+> - 🔴 **NOBODY HAS READ THE RELEASE WORKFLOW.** The tag push triggers a ~16-minute run that
+>   builds and notarizes **15 assets**, and this session could not watch it. Per the runbook,
+>   *do not read a published artifact as evidence a job was green* — electron-builder uploads
+>   as it goes. `verify-release-assets` runs `if: always()`; `latest-mac.yml` must list all four
+>   mac files under one `version: 0.2.2`. **First job: read that run.** If it failed, the
+>   recovery order is release first, then tag ([`PUBLISH-0.2.2.md`](../release-0.2.2/PUBLISH-0.2.2.md) §3).
+> - ⬜ **The GitHub release body** is drafted at
+>   [`GITHUB-RELEASE-0.2.2.md`](../release-0.2.2/GITHUB-RELEASE-0.2.2.md) with two deliberate
+>   blanks: the asset names, and the commit count (**851** at the tag; re-derive, it moved four
+>   times during this session alone).
+> - ⏳ **REL-015 AC9/AC11.** Richard gave one video and a channel on 09-06. **AC9 asked for two
+>   videos**, and a **channel URL is not a video** — `splitVideoUrl` would store a provider id
+>   that renders a broken player. The channel has **no slot anywhere on the platform**; it is
+>   linked from the release notes and the changelog instead. Commands in
+>   [REL-015 §6.8](REL-015-THE-SHELVES-YOU-CAN-FILL.md), **unrun — both write to the deployed
+>   database**. AC11 needs prose a session must not invent.
+> - ⏳ **REL-016** is Richard's call on the dead `devMode` flag — un-gating exposes two panels
+>   nobody has driven, and it is two gates, not one.
+> - ⏳ **REL-002c** closes on WORTHY, which is the V2 brief and needs a seam named by him.
+> - 📋 **The registers still carry rows.** [TESTING-PASS §2.3](TESTING-PASS-2026-09-04.md) and
+>   [NOTES-UNOWNED-NODE-WORK](NOTES-UNOWNED-NODE-WORK.md) — s55's finding stands: *"the board"
+>   in a phase with a register is more than the task table*, and the remaining `NONE` rows there
+>   are decisions rather than builds.
+
+
 > ### 🟢 s56 (2026-09-05) — A SECOND ROW FOR THE SHELF: TPL-003, THE LANDING PAGES, BUILT IN ONE SESSION
 >
 > Richard asked for *"one more template to ship with 0.2.2 … no backend … a few different pages
