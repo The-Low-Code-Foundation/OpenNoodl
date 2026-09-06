@@ -17,7 +17,8 @@ import {
   decodeOptionsList,
   encodeFromEditor,
   encodeOptionsList,
-  slugForOption,
+  derivedValueForOption,
+  optionsListJsonForMode,
   LIST_PORT_TYPES
 } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
 
@@ -36,8 +37,8 @@ describe('optionslist §2 — 🔴 typing a label is enough', () => {
   it('mints a Label and a Value from a bare string', () => {
     // The exact input a beginner writes, and the shape `Select.tsx` needs back.
     expect(ok(encodeOptionsList(['Small', 'Large']))).toEqual([
-      { Label: 'Small', Value: 'small' },
-      { Label: 'Large', Value: 'large' }
+      { Label: 'Small', Value: 'Small' },
+      { Label: 'Large', Value: 'Large' }
     ]);
   });
 
@@ -48,17 +49,25 @@ describe('optionslist §2 — 🔴 typing a label is enough', () => {
     }
   });
 
-  it('falls back to the label when a slug would be empty', () => {
-    // All-punctuation and non-Latin labels slug to nothing. A derived value is a convenience and
-    // is never allowed to be worse than the label it came from.
-    expect(slugForOption('日本語')).toBe('日本語');
-    expect(slugForOption('!!!')).toBe('!!!');
+  /**
+   * 🔴 Richard, 2026-09-06: *"The 'value' set if you only use the easy JSON editor mode must be
+   * exactly the same as the label, so the simple mode users won't get confused."* This replaces
+   * the slug (`Extra Large` → `extra-large`), which invented a second string per option that the
+   * author never typed and — with values hidden in Easy mode — could not see.
+   */
+  it('🔴 derives the value as the label VERBATIM, not as a slug', () => {
+    expect(derivedValueForOption('Extra Large')).toBe('Extra Large');
+    expect(ok(encodeOptionsList(['Extra Large']))).toEqual([{ Label: 'Extra Large', Value: 'Extra Large' }]);
   });
 
-  it('slugs the ordinary way', () => {
-    expect(slugForOption('Large')).toBe('large');
-    expect(slugForOption('Extra Large')).toBe('extra-large');
-    expect(slugForOption('  Mixed_Case Thing  ')).toBe('mixed-case-thing');
+  it('trims, so a stray space cannot make two values differ invisibly', () => {
+    expect(derivedValueForOption('  Mixed Case  ')).toBe('Mixed Case');
+    expect(ok(encodeOptionsList(['  Mixed Case  ']))).toEqual([{ Label: '  Mixed Case  ', Value: 'Mixed Case' }]);
+  });
+
+  it('keeps non-Latin and punctuation labels intact, where a slug erased them', () => {
+    expect(derivedValueForOption('日本語')).toBe('日本語');
+    expect(derivedValueForOption('!!!')).toBe('!!!');
   });
 });
 
@@ -82,12 +91,23 @@ describe('optionslist §3 — 🔴 the author can override the value', () => {
     expect(r.error).toContain('"x"');
   });
 
-  it('🔴 but DISAMBIGUATES a derived collision rather than refusing', () => {
-    // "A B" and "A-B" both slug to `a-b`. That is an accident of the convenience, not a statement,
-    // and refusing here would block an author from typing two perfectly ordinary labels.
+  it('no longer collides on labels that merely slugged the same', () => {
+    // "A B" and "A-B" used to both slug to `a-b`, and the second was silently renamed. With the
+    // value mirroring the label there is nothing to collide.
     expect(ok(encodeOptionsList(['A B', 'A-B']))).toEqual([
-      { Label: 'A B', Value: 'a-b' },
-      { Label: 'A-B', Value: 'a-b-2' }
+      { Label: 'A B', Value: 'A B' },
+      { Label: 'A-B', Value: 'A-B' }
+    ]);
+  });
+
+  it('🔴 DISAMBIGUATES two identical labels rather than refusing mid-edit', () => {
+    // The only derived collision left. Two options a reader cannot tell apart is a mistake worth
+    // surfacing, but blocking Save while somebody is still typing is not how to surface it — and
+    // because the suffixed row's Value no longer equals its Label, the editor expands it to the
+    // object form, which is the author seeing it.
+    expect(ok(encodeOptionsList(['Option 1', 'Option 1']))).toEqual([
+      { Label: 'Option 1', Value: 'Option 1' },
+      { Label: 'Option 1', Value: 'Option 1 (2)' }
     ]);
   });
 
@@ -121,7 +141,7 @@ describe('optionslist §4 — ⚠️ it reads the shape it used to be stored in'
   });
 
   it('reads bare strings, and gives each one a value', () => {
-    expect(decodeOptionsList(['Small'])).toEqual([{ Label: 'Small', Value: 'small' }]);
+    expect(decodeOptionsList(['Small'])).toEqual([{ Label: 'Small', Value: 'Small' }]);
   });
 
   it('reads an entry that has only a Value, rather than dropping it', () => {
@@ -142,8 +162,8 @@ describe('optionslist §5 — 🔴 the editor shows the shortest form that round
     // This is what makes it a beginner mode: an author who has typed nothing special never meets
     // a two-field object.
     const decoded = decodeForEditor('optionslist', [
-      { Label: 'Small', Value: 'small' },
-      { Label: 'Large', Value: 'large' }
+      { Label: 'Small', Value: 'Small' },
+      { Label: 'Large', Value: 'Large' }
     ]);
     expect(JSON.parse(decoded.json)).toEqual(['Small', 'Large']);
     expect(decoded.expectedType).toBe('array');
@@ -151,7 +171,7 @@ describe('optionslist §5 — 🔴 the editor shows the shortest form that round
 
   it('🔴 expands to the object the moment a value is customised', () => {
     const decoded = decodeForEditor('optionslist', [
-      { Label: 'Small', Value: 'small' },
+      { Label: 'Small', Value: 'Small' },
       { Label: 'Large', Value: 'l' }
     ]);
     expect(JSON.parse(decoded.json)).toEqual(['Small', { Label: 'Large', Value: 'l' }]);
@@ -159,7 +179,7 @@ describe('optionslist §5 — 🔴 the editor shows the shortest form that round
 
   it('🔴 round-trips: what the editor shows encodes back to what was stored', () => {
     const stored = [
-      { Label: 'Small', Value: 'small' },
+      { Label: 'Small', Value: 'Small' },
       { Label: 'Large', Value: 'l' }
     ];
     const shown = decodeForEditor('optionslist', stored).json;
@@ -182,5 +202,68 @@ describe('optionslist §5 — 🔴 the editor shows the shortest form that round
 
   it('is an empty list, not an empty object, for an unset parameter', () => {
     expect(JSON.parse(decodeForEditor('optionslist', undefined).json)).toEqual([]);
+  });
+});
+
+/**
+ * 🔴 Richard, 2026-09-06: *"I had imagined the simple mode as it is at the moment, maybe hiding the
+ * values and making them identical to the labels by default, but that in advanced mode you'd still
+ * see the values to be able to tweak them (for database compatibility for example)."*
+ *
+ * ⚠️ Every row here grades the ONE JSON STRING the editor holds, because that is where the defect
+ * lived: `JSONEditor` keeps a single draft and both modes rendered it, so Easy mode's collapsed
+ * spelling silently became Advanced mode's too and the Value field an author needed had nowhere to
+ * appear.
+ */
+describe('optionslist §6 — 🔴 Easy mode hides the value, Advanced mode shows it', () => {
+  const EASY = JSON.stringify(['Small', 'Large'], null, 2);
+  const ADVANCED = JSON.stringify(
+    [
+      { Label: 'Small', Value: 'Small' },
+      { Label: 'Large', Value: 'Large' }
+    ],
+    null,
+    2
+  );
+
+  it('expands the collapsed rows when switching to Advanced', () => {
+    expect(optionsListJsonForMode(EASY, 'advanced')).toBe(ADVANCED);
+  });
+
+  it('collapses them again when switching back to Easy', () => {
+    expect(optionsListJsonForMode(ADVANCED, 'easy')).toBe(EASY);
+  });
+
+  it('🔴 keeps a value the author actually customised, in BOTH directions', () => {
+    // The whole reason Advanced mode has to show the field: `l` must survive a trip through Easy
+    // mode, where it is the one row that stays an object.
+    const customised = JSON.stringify([{ Label: 'Large', Value: 'l' }], null, 2);
+    expect(JSON.parse(optionsListJsonForMode(customised, 'easy'))).toEqual([{ Label: 'Large', Value: 'l' }]);
+    expect(JSON.parse(optionsListJsonForMode(customised, 'advanced'))).toEqual([{ Label: 'Large', Value: 'l' }]);
+  });
+
+  it('encodes to the same stored value from either spelling', () => {
+    // The switch is a re-spelling, not an edit — the parameter written must not depend on which
+    // mode happened to be open when Save was pressed.
+    expect(ok(encodeFromEditor('optionslist', EASY))).toEqual(ok(encodeFromEditor('optionslist', ADVANCED)));
+  });
+
+  it('⚠️ hands back text it cannot read VERBATIM, because Advanced mode is where it gets fixed', () => {
+    for (const broken of ['[{"Label": "Small",', 'not json at all', '{"a":1}']) {
+      expect(optionsListJsonForMode(broken, 'advanced')).toBe(broken);
+      expect(optionsListJsonForMode(broken, 'easy')).toBe(broken);
+    }
+  });
+
+  it('⚠️ refuses to re-spell a list it would SHRINK — a dropped row is data loss', () => {
+    // `decodeOptionsList` skips a nested array and an object with neither key. Re-spelling would
+    // silently delete those rows from the author's draft on a mode switch.
+    const withUnreadableRow = JSON.stringify(['Small', ['nested'], {}], null, 2);
+    expect(optionsListJsonForMode(withUnreadableRow, 'advanced')).toBe(withUnreadableRow);
+  });
+
+  it('is empty-safe, so an untouched new list survives a switch', () => {
+    expect(JSON.parse(optionsListJsonForMode('[]', 'advanced'))).toEqual([]);
+    expect(JSON.parse(optionsListJsonForMode('', 'advanced'))).toEqual([]);
   });
 });

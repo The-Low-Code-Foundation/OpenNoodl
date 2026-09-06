@@ -25,6 +25,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { platform } from '@noodl/platform';
+
 import { CommunityApiClient, type Paged, type Read, type TutorialSummary } from '@noodl-models/community/communityapi';
 import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
 import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
@@ -38,6 +40,13 @@ export type TutorialsPane = {
   view: TutorialsView;
   /** The one action. A no-op for a row that is busy or already installed. */
   onInstall: (slug: string) => void;
+  /**
+   * The action for a tutorial with no bundle: open the page it is published to.
+   *
+   * 🔴 Measured 2026-09-06 — every tutorial the platform serves today is `installable: false`, so
+   * without this the whole section was rows that ignored the click. See `TutorialAction`.
+   */
+  onRead: (slug: string) => void;
   onRetry: () => void;
 };
 
@@ -150,10 +159,17 @@ export function useTutorialInstall(): TutorialsPane {
     [busySlug, client, installed, note]
   );
 
+  // ⚠️ `/tutorials/<slug>`, which is the route the web actually has (`src/app/tutorials/[slug]`) —
+  // the same builder the launcher's article rows use. `/articles/<slug>` never existed and was
+  // the shape this reached for once already.
+  const onRead = useCallback((slug: string) => {
+    platform.openExternal(`${COMMUNITY_URL}/tutorials/${slug}`);
+  }, []);
+
   const view = useMemo(
     () => composeTutorials(read, { busySlug, installedSlugs: installed, notes }),
     [read, busySlug, installed, notes]
   );
 
-  return { view, onInstall, onRetry: () => setNonce((n) => n + 1) };
+  return { view, onInstall, onRead, onRetry: () => setNonce((n) => n + 1) };
 }

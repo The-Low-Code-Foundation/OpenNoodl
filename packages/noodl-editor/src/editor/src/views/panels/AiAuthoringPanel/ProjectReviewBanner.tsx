@@ -29,6 +29,8 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
 
+import { openSettingsPanel } from '../SettingsPanel';
+
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-core-ui/components/inputs/PrimaryButton';
 import { HStack, VStack } from '@noodl-core-ui/components/layout/Stack';
@@ -109,8 +111,19 @@ export function useShouldOfferReview(): boolean {
 }
 
 export interface ProjectReviewBannerProps {
-  /** Start the review. The banner never does this by itself. */
-  onStart: () => void;
+  /**
+   * Start the review. The banner never does this by itself.
+   *
+   * 🔴 **Optional, and omitting it is a real state rather than a degraded one.** Richard,
+   * 2026-09-06: *"instead of having a 'write project docs' button, it advises the user to hook up
+   * Claude Code or another coding software to write the docs if they want them AI generated, don't
+   * link to the Build panel (unless the user has it turned on)."* The review runs **inside the
+   * Build panel** — that is where its progress feed and its diff live — so an offer to start one
+   * from a surface where Build is switched off is an offer to jump into a panel that is not there.
+   * Without `onStart` the banner still says the project has no context docs, and points at the
+   * thing that can write them today: an outside coding agent, connected in Editor settings.
+   */
+  onStart?: () => void;
   /** Hidden while a review is already running from the other surface. */
   isBusy?: boolean;
 }
@@ -136,7 +149,11 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
           different offers and only one of them is true after this task.
         */}
         <Text textType={TextType.Shy}>
-          This project has no AI context docs. I'll ask you a few things first, then draft them.
+          {onStart
+            ? "This project has no AI context docs. I'll ask you a few things first, then draft them."
+            : 'This project has no AI context docs. Connect a coding agent — Claude Code, or another ' +
+              'that speaks MCP — and ask it to write them; it can read the project and edit the files ' +
+              'directly. You can also write them here by hand.'}
         </Text>
         {/*
           Wraps because the two labels do not fit side by side in the panel this
@@ -151,14 +168,25 @@ export function ProjectReviewBanner({ onStart, isBusy }: ProjectReviewBannerProp
           `AiAuthoringPanel`'s header for the full measurement.
         */}
         <HStack UNSAFE_style={{ height: 'auto', gap: 6, flexWrap: 'wrap' }}>
-          <PrimaryButton
-            label={isBusy ? 'Reviewing…' : 'Write the project docs'}
-            icon={IconName.MagicWand}
-            size={PrimaryButtonSize.Small}
-            isDisabled={isBusy}
-            isFitContent
-            onClick={onStart}
-          />
+          {onStart ? (
+            <PrimaryButton
+              label={isBusy ? 'Reviewing…' : 'Write the project docs'}
+              icon={IconName.MagicWand}
+              size={PrimaryButtonSize.Small}
+              isDisabled={isBusy}
+              isFitContent
+              onClick={onStart}
+            />
+          ) : (
+            // Not a link to the Build panel, and not dead advice either: this is the section that
+            // hands over the MCP command, so the sentence above has somewhere to go.
+            <PrimaryButton
+              label="Connect an AI agent"
+              size={PrimaryButtonSize.Small}
+              isFitContent
+              onClick={() => openSettingsPanel('editor')}
+            />
+          )}
           <PrimaryButton
             label="Not for this project"
             size={PrimaryButtonSize.Small}

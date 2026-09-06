@@ -28,9 +28,15 @@ interface DrivableNode {
   props: Record<string, unknown>;
 }
 
+/**
+ * ⚠️ Value mirrors Label since 2026-09-06 — Richard: *"the default value when placing a dropdown
+ * node is 'option-1' even though the label is 'Option 1' which will further confuse the user."*
+ * The rows below grade the seeding, not the spelling, but the literals have to agree with
+ * `options.ts` or they would grade a stale one.
+ */
 const DEFAULT_ITEMS = [
-  { Label: 'Option 1', Value: 'option-1' },
-  { Label: 'Option 2', Value: 'option-2' }
+  { Label: 'Option 1', Value: 'Option 1' },
+  { Label: 'Option 2', Value: 'Option 2' }
 ];
 
 async function makeDropdowns(ids: string[]) {
@@ -158,7 +164,7 @@ describe('the first default item is selected when the node is placed', () => {
         components: [
           {
             name: '/root',
-            nodes: [{ id: 'dropdown', type: OptionsModule.node.name, parameters: { value: 'option-2' } }]
+            nodes: [{ id: 'dropdown', type: OptionsModule.node.name, parameters: { value: 'Option 2' } }]
           }
         ]
       } as never
@@ -171,6 +177,6 @@ describe('the first default item is selected when the node is placed', () => {
 
     const dropdown = graph.node('dropdown') as unknown as DrivableNode;
 
-    expect(dropdown.props.value).toBe('option-2');
+    expect(dropdown.props.value).toBe('Option 2');
   });
 });

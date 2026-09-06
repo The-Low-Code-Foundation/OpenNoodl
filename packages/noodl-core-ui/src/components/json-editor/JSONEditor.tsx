@@ -29,7 +29,8 @@ export function JSONEditor({
   expectedType = 'any',
   disabled = false,
   height,
-  placeholder
+  placeholder,
+  transformForMode
 }: JSONEditorProps) {
   // Current editor mode
   const [currentMode, setCurrentMode] = useState<EditorMode>(forcedMode || defaultMode);
@@ -77,6 +78,16 @@ export function JSONEditor({
   const handleModeChange = (newMode: EditorMode) => {
     if (forcedMode) return; // Can't change if forced
     setCurrentMode(newMode);
+
+    // The host may spell the same value differently per mode — see `transformForMode`. Emitted
+    // through `onChange` as well as stored, or the host would save the pre-switch spelling.
+    if (transformForMode) {
+      const respelled = transformForMode(jsonString, newMode);
+      if (respelled !== jsonString) {
+        setJsonString(respelled);
+        onChange(respelled);
+      }
+    }
 
     // Save preference to localStorage
     try {

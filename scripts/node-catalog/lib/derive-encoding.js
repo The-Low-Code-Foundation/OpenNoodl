@@ -102,7 +102,17 @@ const RETYPES_DECLARED_PORTS = {
     'This node mints no port names. Its two value ports are declared `\'*\'` above and are ' +
     'republished per instance with a narrowed type — `number` when the `type` parameter is ' +
     '`number`, `string` otherwise — so the port list above is complete and only the `type` field ' +
-    'moves.'
+    'moves.',
+  // Dropdown is the second, and the same shape: `value` is declared `string` above and is
+  // republished per instance as an `enum` over this node's own `items`, so an author picks an
+  // option by its Label and stores its Value (Richard, 2026-09-06). The name never moves — which
+  // is the claim `retypesEncoding` below actually checks against a headless drive.
+  'net.noodl.controls.options':
+    'This node mints no port names. Its `value` input is declared `string` above and is ' +
+    'republished per instance as an `enum` whose choices are this node\'s own `items` — labels ' +
+    'from each option\'s `Label`, values from its `Value` — so the port list above is complete ' +
+    'and only the `type` field moves. A value that matches no option is offered back as a choice ' +
+    'of its own rather than being dropped.'
 };
 
 /**

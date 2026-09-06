@@ -345,21 +345,29 @@ export function encodePropList(entries: unknown, previous: unknown): EncodeResul
 /* -------------------------------------------------------------------------- */
 
 /**
- * A URL-ish value derived from a label — lowercase, spaces to hyphens.
+ * The value an option carries when its author has not written one: **the label itself**.
  *
- * ⚠️ Falls back to the trimmed label when a label is all punctuation or non-Latin, because an
- * empty `Value` is exactly the `<option value="">` this port type exists to prevent. A derived
- * value is a convenience; it is never allowed to be worse than the label itself.
+ * 🔴 **It used to be a slug** (`"Extra Large"` → `extra-large`), and Richard, 2026-09-06, is
+ * why it is not any more:
+ *
+ * > *"the default value when placing a dropdown node is 'option-1' even though the label is
+ * > 'Option 1' which will further confuse the user … The 'value' set if you only use the easy JSON
+ * > editor mode must be exactly the same as the label, so the simple mode users won't get
+ * > confused. If the user goes advanced and edits the JSON value fields manually, then they take
+ * > the responsibility of knowing how to hook up external data."*
+ *
+ * A slug is only a convenience for an author who already knows what a value *is* — and it invents
+ * a second string per option that they never typed and cannot see in Easy mode. Mirroring the
+ * label invents nothing: what the Value port sends is exactly what the reader picked, which is the
+ * one mapping a beginner can predict without opening Advanced mode. The moment somebody needs
+ * `"Large"` to send `l`, they write it in Advanced mode and own the difference.
+ *
+ * ⚠️ Trimmed, and never empty — an empty `Value` is the `<option value="">` defect this port
+ * type exists to prevent, which is why an all-whitespace label is refused outright by
+ * {@link encodeOptionsList} rather than being allowed to derive one.
  */
-export function slugForOption(label: string): string {
-  const slug = label
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-  return slug === '' ? label.trim() : slug;
+export function derivedValueForOption(label: string): string {
+  return label.trim();
 }
 
 /**
@@ -390,7 +398,7 @@ export function decodeOptionsList(stored: unknown): OptionEntry[] {
     if (item === null || item === undefined) continue;
     if (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean') {
       const label = String(item);
-      out.push({ Label: label, Value: slugForOption(label) });
+      out.push({ Label: label, Value: derivedValueForOption(label) });
       continue;
     }
     if (typeof item !== 'object' || Array.isArray(item)) continue;
@@ -403,7 +411,7 @@ export function decodeOptionsList(stored: unknown): OptionEntry[] {
     const labelText = String(label !== undefined ? label : value);
     out.push({
       Label: labelText,
-      Value: value !== undefined ? String(value) : slugForOption(labelText)
+      Value: value !== undefined ? String(value) : derivedValueForOption(labelText)
     });
   }
   return out;
@@ -475,9 +483,15 @@ export function encodeOptionsList(entries: unknown): EncodeResult<OptionEntry[] 
     }
 
     // Derived: disambiguate rather than refuse.
-    const base = slugForOption(label);
+    //
+    // ⚠️ Since a derived value is now the label verbatim, the only way to reach this is to type the
+    // SAME LABEL TWICE — the old slug collisions ("A B" and "A-B") no longer exist. Two options a
+    // reader cannot tell apart is a mistake worth surfacing, but not one worth blocking a save
+    // over mid-edit; and because the suffixed row's Value no longer equals its Label, Easy mode
+    // expands it to `{ Label, Value }` on the next open, which is the author seeing it.
+    const base = derivedValueForOption(label);
     let value = base;
-    for (let n = 2; used.has(value); n++) value = `${base}-${n}`;
+    for (let n = 2; used.has(value); n++) value = `${base} (${n})`;
     used.add(value);
     out.push({ Label: label, Value: value });
   }
@@ -492,12 +506,52 @@ export function encodeOptionsList(entries: unknown): EncodeResult<OptionEntry[] 
  *
  * 🔴 **This is what makes the beginner mode a beginner mode.** Richard asked for "click plus and
  * type"; if the editor always showed `{ "Label": …, "Value": … }` the author would meet a
- * two-field object before they had done anything. A row whose value is exactly its label's slug
- * carries no information the label does not, so it is shown as the bare label — and the moment an
- * author needs "Large" to send `l`, the row expands to the object that says so.
+ * two-field object before they had done anything. A row whose value is exactly its label carries
+ * no information the label does not, so it is shown as the bare label.
+ *
+ * ⚠️ It is the spelling of ONE MODE, not of the value — see {@link optionsListJsonForMode}.
  */
 function shortestOptionForm(entry: OptionEntry): string | OptionEntry {
-  return entry.Value === slugForOption(entry.Label) ? entry.Label : entry;
+  return entry.Value === derivedValueForOption(entry.Label) ? entry.Label : entry;
+}
+
+/**
+ * The two spellings of an options list, and which mode is allowed to see which.
+ *
+ * 🔴 **Richard, 2026-09-06 — collapsing every row in BOTH modes was the defect:**
+ *
+ * > *"The 'simplified' way of adding options now removes the users option to actually change the
+ * > value and label to be different. I had imagined the simple mode as it is at the moment, maybe
+ * > hiding the values and making them identical to the labels by default, but that in advanced
+ * > mode you'd still see the values to be able to tweak them (for database compatibility for
+ * > example)."*
+ *
+ * `shortestOptionForm` is the right answer for the visual tree and the wrong one for the text
+ * editor: Advanced mode exists precisely to show what is stored, and a bare `"Small"` where the
+ * parameter holds `{ Label: "Small", Value: "Small" }` leaves an author who needs it to send `s`
+ * with nothing to edit and no hint that a Value field exists at all.
+ *
+ * ⚠️ **It runs on the editor's DRAFT TEXT, not on the stored parameter.** A mode switch has to
+ * carry unsaved edits across, so it re-reads whatever is in the box.
+ *
+ * ⚠️ **Text it cannot read is handed back verbatim.** Advanced mode is where an author fixes
+ * broken JSON; rewriting it under them while they do is how the fix gets lost. Same rule for a
+ * list the decoder would shrink — a row it drops would vanish from the text on a mode switch,
+ * which is data loss dressed up as a re-spelling.
+ */
+export function optionsListJsonForMode(json: string, mode: 'easy' | 'advanced'): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json && json.trim() !== '' ? json : '[]');
+  } catch {
+    return json;
+  }
+  if (!Array.isArray(parsed)) return json;
+
+  const decoded = decodeOptionsList(parsed);
+  if (decoded.length !== parsed.length) return json;
+
+  return canonical(mode === 'advanced' ? decoded : decoded.map(shortestOptionForm));
 }
 
 /* -------------------------------------------------------------------------- */

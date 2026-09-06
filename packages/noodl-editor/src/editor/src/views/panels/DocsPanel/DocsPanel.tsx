@@ -57,6 +57,7 @@ import { ExperimentalFlag } from '@noodl-core-ui/components/sidebar/Experimental
 import { Text, TextType } from '@noodl-core-ui/components/typography/Text';
 
 import { AiAuthoringPanel_ID } from '../AiAuthoringPanel/AiAuthoringPanel';
+import { useBuildPanelEnabled } from '../AiAuthoringPanel/useBuildPanelEnabled';
 import { ProjectReviewBanner } from '../AiAuthoringPanel/ProjectReviewBanner';
 import { ReviewCoverageSummary } from '../AiAuthoringPanel/ProjectReviewView';
 import css from './DocsPanel.module.scss';
@@ -120,6 +121,8 @@ export function DocsPanel() {
   const [draft, setDraft] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ text: string; type: FeedbackType } | null>(null);
   const [proposals, setProposals] = useState<readonly DocProposal[]>(() => DocProposalStore.instance.list());
+  // Live, because the Editor settings toggle is live — see the hook.
+  const buildPanelEnabled = useBuildPanelEnabled();
   // BLD-007: the new-doc form. Inline rather than a dialog — the panel is
   // already the place you make docs, and a modal to create a markdown file
   // would be heavier than the thing it creates.
@@ -347,14 +350,26 @@ export function DocsPanel() {
     <BasePanel title="Docs" isFill>
       <ExperimentalFlag />
       {/* AIX-010: surface two of two. Same component, same dismissal, same
-          per-project memory as the one in the Build panel. */}
+          per-project memory as the one in the Build panel.
+
+          🔴 **The offer to draft them is only made when the Build panel is switched on.**
+          Richard, 2026-09-06: *"instead of having a 'write project docs' button, it advises the
+          user to hook up Claude Code or another coding software to write the docs if they want
+          them AI generated, don't link to the Build panel (unless the user has it turned on)."*
+          Build is `experimental`, so it is off by default — and the review's progress feed and
+          diff render *in that panel*, which is why this hands the job over rather than running it
+          here. Omitting `onStart` is what turns the banner into the advice; see its prop. */}
       <ProjectReviewBanner
-        onStart={() => {
-          // The run and its progress feed live in the Build panel; duplicating
-          // them here would be two renderings of one job. Request, then go.
-          ProjectReviewStore.instance.requestReview();
-          SidebarModel.instance.switch(AiAuthoringPanel_ID);
-        }}
+        onStart={
+          buildPanelEnabled
+            ? () => {
+                // The run and its progress feed live in the Build panel; duplicating
+                // them here would be two renderings of one job. Request, then go.
+                ProjectReviewStore.instance.requestReview();
+                SidebarModel.instance.switch(AiAuthoringPanel_ID);
+              }
+            : undefined
+        }
       />
       <div className={css['Root']}>
         <div className={css['FileList']}>

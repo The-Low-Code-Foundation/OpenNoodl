@@ -6,8 +6,10 @@ import { JSONEditor } from '@noodl-core-ui/components/json-editor';
 import {
   decodeForEditor,
   encodeFromEditor,
+  optionsListJsonForMode,
   type ListPortType
 } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+import type { EditorMode } from '@noodl-core-ui/components/json-editor/utils/types';
 
 import css from './ListValueEditor.module.scss';
 
@@ -98,6 +100,13 @@ export function ListValueEditor({
         // it would render as empty and one click would replace the original.
         mode={decoded.unparseable ? 'advanced' : undefined}
         defaultMode="easy"
+        // 🔴 Easy mode hides a Value that only mirrors its Label; Advanced mode must still show
+        // it, or an author who needs "Large" to send `l` has nothing to edit. Richard,
+        // 2026-09-06 — see `optionsListJsonForMode`. Only `optionslist` spells itself two ways;
+        // every other list port shows one text in both modes, so it passes nothing.
+        transformForMode={
+          portType === 'optionslist' ? (json: string, mode: EditorMode) => optionsListJsonForMode(json, mode) : undefined
+        }
         expectedType={decoded.expectedType}
         disabled={disabled}
         height={340}

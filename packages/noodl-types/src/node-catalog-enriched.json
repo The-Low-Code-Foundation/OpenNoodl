@@ -48363,14 +48363,14 @@
           "default": [
             {
               "Label": "Option 1",
-              "Value": "option-1"
+              "Value": "Option 1"
             },
             {
               "Label": "Option 2",
-              "Value": "option-2"
+              "Value": "Option 2"
             }
           ],
-          "description": "Options to offer. Type a label per option — the value is derived from it — or give an option its own Value when it must send something different"
+          "description": "Options to offer. Type a label per option — the value it sends is the label — or switch the editor to Advanced and give an option its own Value when it must send something different"
         },
         {
           "name": "label",
@@ -48943,7 +48943,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 6,
           "description": "Space inside the element's bottom edge, between it and its content",
           "index": 67,
           "allowVisualStates": true
@@ -48962,7 +48962,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 8,
           "description": "Space inside the element's left edge, between it and its content",
           "index": 64,
           "allowVisualStates": true
@@ -48981,7 +48981,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 8,
           "description": "Space inside the element's right edge, between it and its content",
           "index": 65,
           "allowVisualStates": true
@@ -49000,7 +49000,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 6,
           "description": "Space inside the element's top edge, between it and its content",
           "index": 66,
           "allowVisualStates": true
@@ -49058,6 +49058,19 @@
           "default": "relative",
           "description": "How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space",
           "index": 11
+        },
+        {
+          "name": "showChevron",
+          "displayName": "Show Chevron",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Draws the small downward arrow at the end of the control that marks it as a dropdown",
+          "allowVisualStates": true
         },
         {
           "name": "sizeMode",
@@ -49313,7 +49326,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "option-1",
+          "default": "Option 1",
           "description": "Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed"
         },
         {
@@ -49600,9 +49613,10 @@
       ],
       "dynamicPorts": {
         "mechanisms": [
-          "declared-port-groups"
+          "declared-port-groups",
+          "runtime-discovered"
         ],
-        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
+        "description": "The port list above is complete — this node mints no ports. It republishes its own `value` input per instance as an `enum` built from this node's `items`: one choice per option, labelled with the option's `Label` and carrying its `Value`, plus the currently stored value when that matches no option. It is declared `string` statically because nothing outside a connected editor can know the instance's options.",
         "declaredPortGroups": [
           {
             "condition": "sizeMode = explicit OR sizeMode = contentHeight",
@@ -49707,7 +49721,7 @@
         "known": true,
         "patterns": [],
         "seededBy": [],
-        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+        "notes": "This node mints no port names. Its `value` input is declared `string` above and is republished per instance as an `enum` whose choices are this node's own `items` — labels from each option's `Label`, values from its `Value` — so the port list above is complete and only the `type` field moves. A value that matches no option is offered back as a choice of its own rather than being dropped."
       },
       "enrichment": {
         "typeName": "net.noodl.controls.options",

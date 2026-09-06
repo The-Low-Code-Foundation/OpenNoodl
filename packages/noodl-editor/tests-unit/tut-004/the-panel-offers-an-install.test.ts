@@ -43,8 +43,12 @@ const paged = (items: TutorialSummary[]): Read<Paged<TutorialSummary>> => ({
   value: { items, page: { limit: 20, offset: 0, total: items.length, nextOffset: null } }
 });
 
-function paneFor(view: TutorialsView, onInstall: (slug: string) => void = () => undefined) {
-  return { view, onInstall, onRetry: () => undefined };
+function paneFor(
+  view: TutorialsView,
+  onInstall: (slug: string) => void = () => undefined,
+  onRead: (slug: string) => void = () => undefined
+) {
+  return { view, onInstall, onRead, onRetry: () => undefined };
 }
 
 // ─── The view model ─────────────────────────────────────────────────────────
@@ -57,11 +61,30 @@ describe('which tutorials offer to install', () => {
     expect(view.section.items[0]).toMatchObject({ slug: 'log-a-thing', action: 'install' });
   });
 
-  it('🔴 offers NOTHING for a tutorial with no bundle — a download link is not an install', () => {
+  /**
+   * 🔴 **This row used to assert `none`, and `none` is what Richard hit.** 2026-09-06: *"in the
+   * community tab in the editor, you can't click on a tutorial item, it does nothing."* Measured
+   * against the live platform the same day, `/api/v1/community/tutorials` serves exactly one row
+   * and it is `installable: false` — so every tutorial anybody can see took this branch, and the
+   * branch drew no action word and ignored the click.
+   *
+   * ⚠️ **The rule that produced `none` is still kept, and this row still guards it**: a missing
+   * bundle must never be advertised as an install. What changed is that "cannot be installed" was
+   * being read as "cannot be done anything with", and a tutorial can always be READ.
+   */
+  it('🔴 offers a READ, never an install, for a tutorial with no bundle', () => {
     const view = composeTutorials(paged([row({ installable: false })]));
     if (view.surface !== 'present' || view.section.state !== 'items') throw new Error('expected items');
-    expect(view.section.items[0].action).toBe('none');
-    expect(actionLabel('none')).toBeNull();
+    expect(view.section.items[0].action).toBe('read');
+    expect(view.section.items[0].action).not.toBe('install');
+    expect(actionLabel('read')).toBe('Read on the web');
+  });
+
+  it('⚠️ and the word says where the click goes, because it leaves the editor', () => {
+    // D6 removed the reading SECTION from this panel precisely because its rows opened a browser.
+    // One row that can only be read is a different thing, but it still owes the user that fact
+    // before they click rather than after.
+    expect(actionLabel('read')).toContain('web');
   });
 
   it('🔴 says INSTALLED rather than offering to overwrite work in progress', () => {
@@ -165,16 +188,57 @@ describe('the tutorials section, drawn', () => {
     expect(clicked).toEqual(['log-a-thing']);
   });
 
-  it('🔴 a tutorial with no bundle is drawn with NO handler — not a disabled-looking live button', () => {
+  /**
+   * 🔴 **The row this replaces asserted the defect.** It read *"a tutorial with no bundle is drawn
+   * with NO handler"* and it passed, every time, while the only tutorial the platform serves is
+   * exactly that shape — so the section a user opens was a list of rows that ignored the click,
+   * with a green spec over it. Richard found it by clicking one.
+   *
+   * ⚠️ The rule the old row was protecting is not dropped, and the second and third assertions
+   * below are it: no install word, and the click must be the READ and not the install.
+   */
+  it('🔴 a tutorial with no bundle opens the page it is published to — the click is not dead', () => {
+    const read: string[] = [];
+    const installed: string[] = [];
     const tree = render(
       React.createElement(Tutorials, {
-        pane: paneFor(composeTutorials(paged([row({ installable: false })])))
+        pane: paneFor(
+          composeTutorials(paged([row({ installable: false })])),
+          (slug) => installed.push(slug),
+          (slug) => read.push(slug)
+        )
       })
     );
+
     expect(text(tree)).toContain('Log a thing');
+    // The `0011` rule, unchanged: never advertise an install this row cannot perform.
     expect(text(tree)).not.toContain('Install');
-    const withHandlers = walk(tree).filter((n) => typeof n.props.onClick === 'function');
-    const onTheRow = withHandlers.filter((n) => String(n.props['aria-label'] ?? n.props.ariaLabel ?? '').includes('Log a thing'));
+
+    const onTheRow = walk(tree).filter(
+      (n) =>
+        typeof n.props.onClick === 'function' &&
+        String(n.props['aria-label'] ?? n.props.ariaLabel ?? '').includes('Log a thing')
+    );
+    expect(onTheRow.length).toBe(1);
+
+    (onTheRow[0].props.onClick as () => void)();
+    expect(read).toEqual(['log-a-thing']);
+    expect(installed).toEqual([]);
+  });
+
+  it('⚠️ a row already installed still has nothing to offer, so the click stays absent', () => {
+    // The control for the row above: `walk(...).length === 1` there has to be able to read 0
+    // somewhere, or it is not measuring the handler — it is measuring that rows exist.
+    const tree = render(
+      React.createElement(Tutorials, {
+        pane: paneFor(composeTutorials(paged([row()]), { installedSlugs: new Set(['log-a-thing']) }))
+      })
+    );
+    const onTheRow = walk(tree).filter(
+      (n) =>
+        typeof n.props.onClick === 'function' &&
+        String(n.props['aria-label'] ?? n.props.ariaLabel ?? '').includes('Log a thing')
+    );
     expect(onTheRow).toEqual([]);
   });
 

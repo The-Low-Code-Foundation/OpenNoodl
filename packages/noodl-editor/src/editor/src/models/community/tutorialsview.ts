@@ -32,8 +32,23 @@ import type { CommunitySectionState } from '@noodl-core-ui/components/community'
 
 import type { Paged, Read, TutorialSummary } from './communityapi';
 
-/** What the row offers. `none` draws no action at all — `0011`'s honest pair, one surface over. */
-export type TutorialAction = 'install' | 'installing' | 'installed' | 'none';
+/**
+ * What the row offers.
+ *
+ * 🔴 **`read` replaced `none`, which drew no action and did nothing when clicked.** Richard,
+ * 2026-09-06: *"in the community tab in the editor, you can't click on a tutorial item, it does
+ * nothing at the moment."* Measured against the live platform the same day:
+ * `/api/v1/community/tutorials` returns exactly one row — *"Noodl is back — First look at the new
+ * editor"* — with `installable: false`. So **every** tutorial anyone can see today took the `none`
+ * branch, and the whole section was a list of rows that ignored the click.
+ *
+ * ⚠️ The old branch was not a bug in its own terms: `0011`'s rule is that a missing bundle must
+ * not be advertised as an install, and a disabled button would have been exactly that. What it
+ * got wrong is that *installing* is not the only thing you can do with a tutorial — it can be
+ * READ, on the page it is published to, and that is a real action this row was withholding.
+ * The `0011` rule survives: the row still never offers an install it cannot perform.
+ */
+export type TutorialAction = 'install' | 'installing' | 'installed' | 'read';
 
 export type TutorialRowView = {
   slug: string;
@@ -139,9 +154,10 @@ export function composeTutorials(
 function actionFor(row: TutorialSummary, installed: ReadonlySet<string>, busySlug: string | null): TutorialAction {
   if (busySlug === row.slug) return 'installing';
   if (installed.has(row.slug)) return 'installed';
-  // 🔴 Not `projectUrl !== null` — the editor never sees that field, deliberately. A tutorial
-  // with a download link and no bundle offers nothing here, and that is the honest pair.
-  return row.installable ? 'install' : 'none';
+  // 🔴 Not `projectUrl !== null` — the editor never sees that field, deliberately. A tutorial with
+  // a download link and no bundle cannot be installed from here; it can still be read, which is
+  // what `read` says and what `none` used to withhold.
+  return row.installable ? 'install' : 'read';
 }
 
 /** The words on the row's action. Kept here so the panel has no vocabulary of its own. */
@@ -153,6 +169,12 @@ export function actionLabel(action: TutorialAction): string | null {
       return 'Installing…';
     case 'installed':
       return 'Installed';
+    case 'read':
+      // ⚠️ Names the destination, because it is the browser. D6 took the *reading section* out of
+      // this panel — reading is a home activity and a whole shelf of it here duplicated the
+      // launcher. One row that can only be read is a different thing, and a word that does not
+      // say where the click goes is how a panel surprises somebody.
+      return 'Read on the web';
     default:
       return null;
   }

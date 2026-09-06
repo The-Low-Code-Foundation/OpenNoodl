@@ -38,6 +38,19 @@ const NOTES = {
     'ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the ' +
     '`type` parameter is `number`, `string` for every other Type. They are declared `*` statically ' +
     'because nothing outside a connected editor can narrow them.',
+  /**
+   * The second node of that shape, and the same correction. Dropdown republishes `value` — one of
+   * its own declared inputs — as an `enum` over the options in its `items` parameter, so an author
+   * picks the Value port's setting from the list they typed instead of retyping a string that has
+   * to match one (Richard, 2026-09-06). It mints nothing, and the generic sentence would tell a
+   * reader the port list cannot be trusted when it is exactly right.
+   */
+  'net.noodl.controls.options':
+    'The port list above is complete — this node mints no ports. It republishes its own `value` ' +
+    'input per instance as an `enum` built from this node\'s `items`: one choice per option, ' +
+    'labelled with the option\'s `Label` and carrying its `Value`, plus the currently stored ' +
+    'value when that matches no option. It is declared `string` statically because nothing ' +
+    'outside a connected editor can know the instance\'s options.',
   Expression:
     'Input ports are created for each free variable referenced in the "expression" parameter (e.g. the expression "a + b" yields number inputs named "a" and "b"). The "result" output and its type follow the expression.',
   JavaScriptFunction:

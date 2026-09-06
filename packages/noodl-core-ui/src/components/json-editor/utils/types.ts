@@ -54,6 +54,22 @@ export interface JSONEditorProps {
   /** Force a specific mode (no toggle shown) */
   mode?: EditorMode;
 
+  /**
+   * Re-spell the JSON for the mode being switched to, before that mode renders it.
+   *
+   * 🔴 **The two modes may legitimately show the same value differently.** `optionslist` is the
+   * case this exists for: Easy mode shows an option whose Value mirrors its Label as the bare
+   * label, and Advanced mode shows `{ Label, Value }` so the value can be edited (Richard,
+   * 2026-09-06). Without this hook the editor holds ONE json string and Easy mode's spelling
+   * silently became Advanced mode's too.
+   *
+   * Receives the current draft text — not the `value` prop — so unsaved edits survive the switch,
+   * and its result is emitted through `onChange` so the host's draft stays in step. Return the
+   * input unchanged to say "nothing to re-spell"; that is also what an implementation must do for
+   * text it cannot read.
+   */
+  transformForMode?: (json: string, mode: EditorMode) => string;
+
   /** Type constraint for validation */
   expectedType?: 'array' | 'object' | 'any';
 

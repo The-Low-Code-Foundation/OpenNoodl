@@ -431,6 +431,21 @@ export default {
       }
     });
   },
+  /**
+   * ⚠️ **`applyDefault` is per-port and depends on whether a caller supplied that side.**
+   *
+   * Every padding port was hard-coded `applyDefault: false`, which is right for the 0 that is
+   * only a placeholder: emitting `padding-left: 0px` on every node would beat any stylesheet rule
+   * the node relies on (`Button`'s, for one). But it also meant a node that *asked* for padding
+   * could not get it — NDA-012's Icon defect was exactly that, the panel showing a 5 no element
+   * ever received, and the remedy there was to delete the declaration because Icon did not want
+   * the padding after all.
+   *
+   * Dropdown does. Richard, 2026-09-06: *"The initial rendering of the dropdown has no padding at
+   * all between the input border and contained option."* So a side a caller names is applied, and
+   * a side nobody named keeps the old inert 0 — the panel and the element agree either way, which
+   * is the property that defect was about.
+   */
   addPaddingInputs(definition: ReactNodeDefinition, args?: PaddingInputsOptions) {
     args = args || {};
     const defaults: Record<string, any> = args.defaults ? args.defaults : {};
@@ -470,7 +485,7 @@ export default {
         index: 64,
         group: 'Margin and padding',
         default: defaults.paddingLeft || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingLeft !== undefined,
         displayName: 'Pad Left',
         description: 'Space inside the element\'s left edge, between it and its content',
         type: {
@@ -486,7 +501,7 @@ export default {
         index: 65,
         group: 'Margin and padding',
         default: defaults.paddingRight || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingRight !== undefined,
         displayName: 'Pad Right',
         description: 'Space inside the element\'s right edge, between it and its content',
         type: {
@@ -504,7 +519,7 @@ export default {
         displayName: 'Pad Top',
         description: 'Space inside the element\'s top edge, between it and its content',
         default: defaults.paddingTop || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingTop !== undefined,
         type: {
           name: 'number',
           units: ['px'],
@@ -520,7 +535,7 @@ export default {
         displayName: 'Pad Bottom',
         description: 'Space inside the element\'s bottom edge, between it and its content',
         default: defaults.paddingBottom || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingBottom !== undefined,
         type: {
           name: 'number',
           units: ['px'],

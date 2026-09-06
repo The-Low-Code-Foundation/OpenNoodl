@@ -69,8 +69,18 @@ export function Tutorials({ pane }: { pane: TutorialsPane }) {
                   detail={row.detail}
                   ariaLabel={label ? `${row.title} — ${label}` : row.title}
                   // 🔴 `undefined`, not a no-op handler: `CommunityRow` is a real button and a
-                  // handler that does nothing is a button that looks live and is not.
-                  onClick={row.action === 'install' ? () => pane.onInstall(row.slug) : undefined}
+                  // handler that does nothing is a button that looks live and is not. Which is
+                  // what every row was, until 2026-09-06 — the only tutorials the platform serves
+                  // are `installable: false`, so the whole section took the fall-through. A row
+                  // with no bundle now opens the page it is published to; only `installing` (busy)
+                  // and `installed` (already on your shelf) have nothing left to offer.
+                  onClick={
+                    row.action === 'install'
+                      ? () => pane.onInstall(row.slug)
+                      : row.action === 'read'
+                        ? () => pane.onRead(row.slug)
+                        : undefined
+                  }
                 />
                 {row.note && (
                   <Box hasXSpacing>
