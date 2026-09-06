@@ -115,7 +115,18 @@ export type MirrorReplay = {
   description: string | null;
 };
 
-export type MirrorArticle = { slug: string; title: string; summary: string | null; kind: string };
+export type MirrorArticle = {
+  slug: string;
+  title: string;
+  summary: string | null;
+  kind: string;
+  /**
+   * A video tutorial's recording. ⚠️ OPTIONAL — the platform build serving today predates the
+   * column, and `sectionFrom` passes rows through as they arrive, so an absent field is a written
+   * guide and not a defect. See `CommunityArticleRow.videoUrl`, which is the same shape on purpose.
+   */
+  videoUrl?: string | null;
+};
 
 // ───────────────────────────────────────────────────────────────────────────────
 // TUT-004 — tutorials, and the bundles the editor can install

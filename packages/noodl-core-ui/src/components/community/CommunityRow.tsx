@@ -49,7 +49,22 @@ export interface CommunityRowProps {
   density?: CommunityDensity;
   /** What a screen reader hears instead of the visible title, when the title alone is thin. */
   ariaLabel?: string;
+  /** A drawn poster beside the words — the media lists. See {@link CommunityRowPoster}. */
+  poster?: CommunityRowPoster | null;
 }
+
+/**
+ * 2026-09-06 — a poster beside a row, for the media lists (Replays, video Tutorials).
+ *
+ * 🔴 DRAWN, NEVER FETCHED. The obvious version of this is the host's thumbnail
+ * (`i.ytimg.com/vi/<id>/hqdefault.jpg`), and it is refused for the reason the platform's own
+ * replay page refuses it: *"a thumbnail URL looks like an image and behaves like a tracker"*.
+ * Opening the Community tab must not ask a video host for anything. So the poster is a gradient
+ * with a mark on it, and the mark is what says which kind of thing this is: a play triangle for a
+ * recording, a page for a written guide, a dimmed play mark for a call whose recording is not
+ * posted yet. A written tutorial and a video one then line up in the same list.
+ */
+export type CommunityRowPoster = { kind: 'video' | 'guide' | 'pending' };
 
 export function CommunityRow({
   title,
@@ -57,18 +72,33 @@ export function CommunityRow({
   detail,
   onClick,
   density = CommunityDensity.Page,
-  ariaLabel
+  ariaLabel,
+  poster
 }: CommunityRowProps) {
   return (
     <button
       type="button"
-      className={`${css['Row']} ${css[`is-density-${density}`]}`}
+      className={`${css['Row']} ${css[`is-density-${density}`]}${poster ? ` ${css['is-media']}` : ''}`}
       onClick={onClick}
       aria-label={ariaLabel}
     >
-      <span className={css['RowTitle']}>{title}</span>
-      {meta ? <span className={css['RowMeta']}>{meta}</span> : null}
-      {detail ? <span className={css['RowDetail']}>{detail}</span> : null}
+      {poster ? (
+        <span className={`${css['Poster']} ${css[`is-poster-${poster.kind}`]}`} aria-hidden="true">
+          {poster.kind === 'guide' ? (
+            <svg className={css['PosterMark']} viewBox="0 0 24 24" width="18" height="18">
+              <path d="M6 3h9l5 5v13H6z" />
+              <path d="M9 12h7M9 16h7" />
+            </svg>
+          ) : (
+            <span className={css['PosterPlay']} />
+          )}
+        </span>
+      ) : null}
+      <span className={css['RowWords']}>
+        <span className={css['RowTitle']}>{title}</span>
+        {meta ? <span className={css['RowMeta']}>{meta}</span> : null}
+        {detail ? <span className={css['RowDetail']}>{detail}</span> : null}
+      </span>
     </button>
   );
 }

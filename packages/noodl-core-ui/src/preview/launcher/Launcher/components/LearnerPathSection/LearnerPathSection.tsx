@@ -109,6 +109,72 @@ export interface LearnerPathSectionProps {
    * button beside it are controls, not decoration.
    */
   showTitle?: boolean;
+  /**
+   * 2026-09-06 — the shelf's copy of each step, keyed by the step's slug.
+   *
+   * Richard: *"you can't actually click any of the spine steps to open the tutorial."* The
+   * platform's steps and the launcher's installed lessons carry the same slugs, and the host
+   * (`Learning.tsx`) is the one place both are in hand — so it passes the join in and this
+   * section draws a step that HAS an installed copy as something you can open, with the copy's
+   * own state (started, done) where the platform's standing would otherwise sit.
+   *
+   * 🔴 The installed copy OUTRANKS the platform's standing on screen. The deployed curriculum
+   * still says *In writing* for lessons this very build ships, and a step that says "in writing"
+   * next to a button that opens it is a contradiction a learner cannot resolve. Absent ⇒ the
+   * standing is drawn as before, which is what every existing spec renders.
+   */
+  installed?: Record<string, LauncherPathInstalledStep>;
+  /** Open the installed copy of a step. Absent ⇒ no step is a control. */
+  onOpenStep?: (slug: string) => void;
+}
+
+export interface LauncherPathInstalledStep {
+  /** The Learning-folder id, what `onOpen` takes. */
+  id: string;
+  state: 'not-started' | 'in-progress' | 'completed';
+  progressPercent: number;
+  missing?: boolean;
+}
+
+/** How many of a path's steps the shelf holds a copy of. */
+export function installedOnPath(
+  steps: readonly { slug: string }[],
+  installed: Record<string, LauncherPathInstalledStep> | undefined
+): number {
+  if (!installed) return 0;
+  return steps.filter((step) => Boolean(installed[step.slug])).length;
+}
+
+/**
+ * The shelf, keyed by slug, in the shape a step needs. Pure, so the walker can grade it.
+ *
+ * ⚠️ Only cards WITH a slug take part — a slug is the chain's word that this card is a lesson
+ * the path can name. Two copies of one lesson (a shipped one and a hand-installed one) resolve
+ * to whichever is further along, so a learner who started the local copy is sent back to it.
+ */
+export function installedStepsFrom(
+  lessons: readonly {
+    id: string;
+    slug?: string;
+    state: 'not-started' | 'in-progress' | 'completed';
+    progressPercent: number;
+    missing?: boolean;
+  }[]
+): Record<string, LauncherPathInstalledStep> {
+  const rank = { 'not-started': 0, 'in-progress': 1, completed: 2 } as const;
+  const out: Record<string, LauncherPathInstalledStep> = {};
+  for (const lesson of lessons) {
+    if (!lesson.slug) continue;
+    const held = out[lesson.slug];
+    if (held && rank[held.state] >= rank[lesson.state]) continue;
+    out[lesson.slug] = {
+      id: lesson.id,
+      state: lesson.state,
+      progressPercent: lesson.progressPercent,
+      ...(lesson.missing ? { missing: true } : {})
+    };
+  }
+  return out;
 }
 
 export function LearnerPathSection({
@@ -120,7 +186,9 @@ export function LearnerPathSection({
   onProject,
   projecting,
   projectionNote,
-  showTitle = true
+  showTitle = true,
+  installed,
+  onOpenStep
 }: LearnerPathSectionProps) {
   // 🔴 `hidden` is D15 and draws NOTHING — not a heading, not an empty state, not a sign-in.
   // A pupil whose school switched the community off must not learn from this screen that
@@ -238,49 +306,122 @@ export function LearnerPathSection({
             </p>
           )}
 
+          {/*
+            🔴 The truth above is the PLATFORM'S sentence, verbatim, and today it says "none of
+            them can be installed yet" over a list this build ships eight of. That sentence stays
+            (it is the platform's to change, and it is graded verbatim); this one is the
+            launcher's own, because the launcher is the one that can see the shelf. Drawn only
+            when the two disagree — a platform that knows what shipped needs no correction.
+          */}
+          {surface.ready === 0 && installedOnPath(surface.steps, installed) > 0 && (
+            <p className={css['Muted']} data-test="learner-path-installed-note">
+              {installedOnPath(surface.steps, installed) === 1
+                ? 'One of these lessons is already installed on this machine — open it from the list below.'
+                : `${installedOnPath(surface.steps, installed)} of these lessons are already installed on this machine — open them from the list below.`}
+            </p>
+          )}
+
           <ol className={css['Steps']}>
-            {surface.steps.map((step) => (
-              <li
-                key={step.slug}
-                className={css['Step']}
-                data-test={`learner-path-step-${step.slug}`}
-                data-installable={step.installable ? 'yes' : 'no'}
-              >
-                <span className={css['Position']}>{step.position}</span>
-                <div className={css['StepBody']}>
-                  <div className={css['StepHead']}>
-                    <h3 className={css['StepTitle']}>{step.title}</h3>
-                    <span className={css['Standing']} data-test={`learner-path-standing-${step.slug}`}>
-                      {step.standing}
-                    </span>
-                    <span className={css['Minutes']}>{step.minutes} min</span>
-                  </div>
-                  <p className={css['StepDescription']}>{step.description}</p>
-                  <p className={css['Reason']} data-test={`learner-path-reason-${step.slug}`}>
-                    {step.reason}
-                  </p>
-
-                  {step.projection && (
-                    <p className={css['Projection']} data-test={`learner-path-projection-${step.slug}`}>
-                      {step.projection}
+            {surface.steps.map((step) => {
+              const copy = installed?.[step.slug];
+              const openable = Boolean(copy && onOpenStep && !copy.missing);
+              const open = () => onOpenStep?.(step.slug);
+              return (
+                <li
+                  key={step.slug}
+                  className={css['Step']}
+                  data-test={`learner-path-step-${step.slug}`}
+                  data-installable={step.installable ? 'yes' : 'no'}
+                  data-installed={copy ? 'yes' : 'no'}
+                  data-lesson-state={copy?.state}
+                >
+                  <span className={css['Position']}>{step.position}</span>
+                  <div className={css['StepBody']}>
+                    <div className={css['StepHead']}>
+                      {/*
+                        The title is the control when there is a copy to open — a step you can
+                        only open from a small button under two paragraphs is a step most people
+                        never open. The button below stays for the eye that looks for one.
+                      */}
+                      {openable ? (
+                        <button
+                          type="button"
+                          className={css['StepTitleButton']}
+                          onClick={open}
+                          data-test={`learner-path-open-title-${step.slug}`}
+                        >
+                          <h3 className={css['StepTitle']}>{step.title}</h3>
+                        </button>
+                      ) : (
+                        <h3 className={css['StepTitle']}>{step.title}</h3>
+                      )}
+                      {copy ? (
+                        <span
+                          className={css['Standing']}
+                          data-test={`learner-path-lesson-state-${step.slug}`}
+                          data-state={copy.state}
+                        >
+                          {copy.state === 'completed'
+                            ? 'Completed'
+                            : copy.state === 'in-progress'
+                              ? `In progress · ${Math.round(copy.progressPercent)}%`
+                              : 'Installed'}
+                        </span>
+                      ) : (
+                        <span className={css['Standing']} data-test={`learner-path-standing-${step.slug}`}>
+                          {step.standing}
+                        </span>
+                      )}
+                      <span className={css['Minutes']}>{step.minutes} min</span>
+                    </div>
+                    <p className={css['StepDescription']}>{step.description}</p>
+                    <p className={css['Reason']} data-test={`learner-path-reason-${step.slug}`}>
+                      {step.reason}
                     </p>
-                  )}
 
-                  {step.projectable && onProject && (
-                    <button
-                      type="button"
-                      className={css['Ghost']}
-                      disabled={projecting === step.slug}
-                      onClick={() => onProject(step.slug)}
-                      data-test={`learner-path-project-${step.slug}`}
-                      title="Ask for this concept explained against what you already know"
-                    >
-                      {projecting === step.slug ? 'Writing…' : 'Explain this for me'}
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
+                    {step.projection && (
+                      <p className={css['Projection']} data-test={`learner-path-projection-${step.slug}`}>
+                        {step.projection}
+                      </p>
+                    )}
+
+                    <div className={css['StepActions']}>
+                      {openable && (
+                        <button
+                          type="button"
+                          className={css['Primary']}
+                          onClick={open}
+                          data-test={`learner-path-open-${step.slug}`}
+                        >
+                          {copy!.state === 'not-started'
+                            ? 'Start this lesson'
+                            : copy!.state === 'completed'
+                              ? 'Open again'
+                              : 'Continue'}
+                        </button>
+                      )}
+                      {copy?.missing && (
+                        <span className={css['Muted']} data-test={`learner-path-missing-${step.slug}`}>
+                          Its folder is no longer on disk — reset it from Installed lessons.
+                        </span>
+                      )}
+                      {step.projectable && onProject && (
+                        <button
+                          type="button"
+                          className={css['Ghost']}
+                          disabled={projecting === step.slug}
+                          onClick={() => onProject(step.slug)}
+                          data-test={`learner-path-project-${step.slug}`}
+                          title="Ask for this concept explained against what you already know"
+                        >
+                          {projecting === step.slug ? 'Writing…' : 'Explain this for me'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
           </ol>
 
           {/*

@@ -465,14 +465,36 @@ function readLedger(store: SeedStore): SeedLedgerRecord[] {
 export function defaultSeedDeps(): SeedDeps {
   /* eslint-disable @typescript-eslint/no-var-requires */
   const Store = require('electron-store');
-  const { platform } = require('@noodl/platform');
-  const nodeFs = require('node:fs');
-  const nodePath = require('node:path');
   /* eslint-enable @typescript-eslint/no-var-requires */
 
   // The register's own store, under a different key. One file, two facts: the lessons a person
   // has, and the shipped bundles this module has already acted on.
   const store = new Store({ name: 'learning_folder' });
+  const { fs, root, probed } = defaultShippedPorts();
+
+  return {
+    register: LearningFolderModel.instance as SeedRegister,
+    store: { get: (key) => store.get(key), set: (key, value) => store.set(key, value) },
+    fs,
+    root,
+    probed,
+    now: () => new Date().toISOString()
+  };
+}
+
+/**
+ * The filesystem and the resolved shipped-lessons root, on their own.
+ *
+ * Split out of {@link defaultSeedDeps} on 2026-09-06 so `lessonchain.ts` can read `spine.json`
+ * from the same root the seed installs from, without constructing the register's store to do
+ * it. Same `require`-inside-the-function rule, same reason.
+ */
+export function defaultShippedPorts(): { fs: SeedFs; root: string | null; probed: string[] } {
+  /* eslint-disable @typescript-eslint/no-var-requires */
+  const { platform } = require('@noodl/platform');
+  const nodeFs = require('node:fs');
+  const nodePath = require('node:path');
+  /* eslint-enable @typescript-eslint/no-var-requires */
 
   const fs: SeedFs = {
     exists: (p) => nodeFs.existsSync(p),
@@ -507,14 +529,7 @@ export function defaultSeedDeps(): SeedDeps {
     override: process.env.NODEGX_SHIPPED_LESSONS
   });
 
-  return {
-    register: LearningFolderModel.instance as SeedRegister,
-    store: { get: (key) => store.get(key), set: (key, value) => store.set(key, value) },
-    fs,
-    root,
-    probed,
-    now: () => new Date().toISOString()
-  };
+  return { fs, root, probed };
 }
 
 /**

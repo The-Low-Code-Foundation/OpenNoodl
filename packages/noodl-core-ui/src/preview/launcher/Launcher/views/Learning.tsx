@@ -27,11 +27,14 @@
  * @module noodl-core-ui/preview/launcher
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { Tabs, TabsVariant } from '@noodl-core-ui/components/layout/Tabs';
-import { LearnerPathSection } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
-import { LearningSection } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
+import {
+  LearnerPathSection,
+  installedStepsFrom
+} from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
+import { LearningSection, type LearningFilter } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 import { learningTabs, type LearningTabId } from '@noodl-core-ui/preview/launcher/Launcher/views/learningTabs';
 
@@ -68,9 +71,24 @@ export function Learning({}: LearningViewProps) {
    */
   const [chosen, setChosen] = useState<LearningTabId | null>(null);
 
+  /**
+   * 2026-09-06 — the shelf's filter. Held here for `LearningSection`'s reason: that component is
+   * walked by `tests-unit` and may not hold state. Resets with the tab, like `chosen`.
+   */
+  const [filter, setFilter] = useState<LearningFilter>('all');
+
   const lessons = learning ?? [];
   const plan = learningTabs({ installedLessonCount: lessons.length, pathState: learnerPath?.state, chosen });
   const hasPathTab = plan.tabs.includes('path');
+
+  /**
+   * 2026-09-06 — THE JOIN. The platform's path steps and the shelf's cards carry the same slugs
+   * (`spine.json` on this side, `curriculum.json` on that one), and this view is the one place
+   * both lists are in hand. So a step whose lesson is installed opens the installed copy — the
+   * thing Richard could not do: *"you can't actually click any of the spine steps to open the
+   * tutorial."* See `installedStepsFrom` for what the map carries.
+   */
+  const installedSteps = useMemo(() => installedStepsFrom(lessons), [lessons]);
 
   const shelf = (
     <LearningSection
@@ -81,6 +99,8 @@ export function Learning({}: LearningViewProps) {
       // The tab label already says "Installed lessons"; with no strip, the
       // section's own heading is the only thing naming the page.
       showTitle={!hasPathTab}
+      filter={filter}
+      onFilterChange={setFilter}
     />
   );
 
@@ -131,6 +151,15 @@ export function Learning({}: LearningViewProps) {
                 // the deliberate behaviour rather than the bug.
                 onSignIn={community?.onSignIn}
                 showTitle={false}
+                installed={installedSteps}
+                onOpenStep={
+                  onOpenLearningLesson
+                    ? (slug) => {
+                        const copy = installedSteps[slug];
+                        if (copy) onOpenLearningLesson(copy.id);
+                      }
+                    : undefined
+                }
               />
             )
         }))}

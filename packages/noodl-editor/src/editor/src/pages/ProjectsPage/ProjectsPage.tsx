@@ -51,6 +51,7 @@ import {
 import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
 import { LearningFolderModel } from '../../models/learningfolder';
+import { shippedChainOnStartup } from '../../models/lessonchain';
 import type { ResetLessonOutcome } from '../../models/learningfolder';
 import { resetLessonFromPlatform } from '../../models/lessonplatforminstall';
 import { stagingFs, stagingRoot } from '../../models/lessonplatformstaging';
@@ -460,7 +461,11 @@ export function ProjectsPage(props: ProjectsPageProps) {
     const group = {};
     const model = LearningFolderModel.instance;
 
-    const rebuild = () => setLearning(toLearningCards(model.list()));
+    // 2026-09-06 — the spine's order, read once from the shipped artefact. The register sorts by
+    // install time, which put spine lesson 8 first; `toLearningCards` puts the chain first, in
+    // chain order, and leaves everything else as the register gave it. See `models/lessonchain.ts`.
+    const chain = shippedChainOnStartup();
+    const rebuild = () => setLearning(toLearningCards(model.list(), chain));
 
     model.on('learningFolderChanged', rebuild, group);
     rebuild();
@@ -1654,9 +1659,19 @@ export function ProjectsPage(props: ProjectsPageProps) {
             onOpenThread: communityChat.openThread,
             onBack: communityChat.closeThread,
             onRetry: communityChat.refresh,
-            onOpenLink: (href) => platform.openExternal(href)
+            onOpenLink: (href) => platform.openExternal(href),
+            // 🔴 FB-013's WRITE half. `useCommunityChat` has composed these since the
+            // composer landed, and `CommunityChatView` has drawn them since the same
+            // commit — and this object never carried them across. Two green gates on the
+            // ends of a chain, and a river nobody could write to from the launcher.
+            // Richard, 2026-09-06: *"STILL doesn't have the ability to add chat"*.
+            composer: communityChat.composer,
+            reply: communityChat.reply
           },
-          onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/articles/${slug}`),
+          // ⚠️ `/tutorials/<slug>`, which is the route the web has (`src/app/tutorials/[slug]`).
+          // This said `/articles/` — a path the site has never served — so every guide anybody
+          // clicked opened a 404. Same shape as `/bench/undefined` before NAT-007.
+          onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/tutorials/${slug}`),
           onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
           onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)
         }}

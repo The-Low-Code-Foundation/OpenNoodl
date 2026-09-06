@@ -47,7 +47,8 @@ export type LearnerPathHost = {
   onChoose: (questionKey: string, value: string) => void;
   onSubmit: () => void;
   onRetake: () => void;
-  onProject: (concept: string) => void;
+  /** Absent once the community has answered `unavailable`/`refused` — no dead button. */
+  onProject?: (concept: string) => void;
   projecting: string | null;
   projectionNote: string | null;
 };
@@ -121,6 +122,8 @@ export function useLearnerPath(): LearnerPathHost {
   const [projecting, setProjecting] = useState<string | null>(null);
   const [lastProjection, setLastProjection] = useState<ProjectionOutcome | null>(null);
   const [projectionError, setProjectionError] = useState<string | null>(null);
+  /** The community said it cannot project for this viewer — see `onProject`. Sticks for the session. */
+  const [projectionOff, setProjectionOff] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
 
@@ -250,6 +253,15 @@ export function useLearnerPath(): LearnerPathHost {
           return;
         }
         setLastProjection(write.value.outcome);
+        // 🔴 2026-09-06 — `unavailable` and `refused` are decisions about THIS COMMUNITY and
+        // THIS ACCOUNT, not about this step: no projector is configured on the server, or D10
+        // switched it off for the org. Every other step's button would answer the same way,
+        // and a button that says the same "not switched on" sentence eleven times is what
+        // Richard met — *"'explain this to me' that doesn't work"*. So the offer is withdrawn
+        // from every step at once; the note stays so the withdrawal is explained once.
+        if (write.value.outcome.kind === 'unavailable' || write.value.outcome.kind === 'refused') {
+          setProjectionOff(true);
+        }
         // ⚠️ D10's refusal arrives inside a 200 — the route succeeded and the projection was
         // declined — so re-reading on anything but `ready` would poll a decision that will not
         // change. Only a fresh projection changes the path.
@@ -268,7 +280,9 @@ export function useLearnerPath(): LearnerPathHost {
     onChoose,
     onSubmit,
     onRetake,
-    onProject,
+    // Absent once the community has said it cannot project — the section then draws no button
+    // (its own "no dead button" rule), rather than one that will be refused.
+    onProject: projectionOff ? undefined : onProject,
     projecting,
     // ⚠️ The transport sentence WINS when there is one: it is the more recent event, and the
     // two cannot both be true — `projectionError` is only ever set on a request that did not

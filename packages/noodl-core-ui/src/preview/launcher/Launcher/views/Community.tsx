@@ -107,7 +107,18 @@ export type { CommunitySectionState };
   out of it and opened `/bench/undefined`.
 */
 
-export type CommunityArticleRow = { slug: string; title: string; summary: string | null; kind: string };
+export type CommunityArticleRow = {
+  slug: string;
+  title: string;
+  summary: string | null;
+  kind: string;
+  /**
+   * A video tutorial's recording, when the platform carries one. ⚠️ OPTIONAL, not nullable-required:
+   * the deployed platform predates the column, and a row without the field is a written guide,
+   * not an error. The launcher draws a poster only when it is present.
+   */
+  videoUrl?: string | null;
+};
 
 export type CommunityReplayRow = {
   slug: string;
@@ -316,6 +327,16 @@ export interface LauncherCommunityHostState {
    */
   activeTab?: CommunityTabId | null;
   onSelectTab?: (id: CommunityTabId) => void;
+  /**
+   * 2026-09-06 — the door for a signed-out reader.
+   *
+   * 🔴 The head used to say *"sign in below to post"* and there was nothing below: the account
+   * card lives on the Projects tab. A sentence that points at a control on another page is a
+   * dead end dressed as a hint. The same device flow the account card and the learner path use;
+   * absent in Storybook and in a host with no account hook, in which case the head names the
+   * state and offers nothing — the honest screen, not the bug.
+   */
+  onSignIn?: () => void;
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -372,7 +393,8 @@ export function CommunityTab({
   onSelectBenchFilter,
   onOpenArticle,
   onOpenReplay,
-  onOpenCommunity
+  onOpenCommunity,
+  onSignIn
 }: LauncherCommunityHostState) {
   // 🔴 D15: the platform said this surface does not exist for this viewer — an org-minor whose
   // school has the community switched off. Draw NOTHING. `apiviewer.ts` answers them with a 404
@@ -443,14 +465,29 @@ export function CommunityTab({
     );
   }
 
-  const who =
+  /*
+    2026-09-06 — the head is an identity card, not a status line.
+
+    Richard, on the launcher: *"it still looks like shit compared to the rest of the launcher"*.
+    The Projects tab draws the account as a card with the same 28px avatar the header uses; this
+    page drew `@handle · 0 points` as 13px muted text with "Refresh" floating at the far right. Same
+    person, two pages, two languages — NAT-005's whole complaint, one page over. The head now uses
+    the account card's shape: avatar, handle, a line under it, and the actions in a row.
+  */
+  const handle = view.viewer ? view.viewer.handle : null;
+  const signedOut = view.viewer === false;
+  const who = view.viewer === null ? '…' : signedOut ? 'Reading as a guest' : handle ? `@${handle}` : 'Signed in';
+  const whoLine =
     view.viewer === null
-      ? '…'
-      : view.viewer === false
-        ? 'Reading as a guest — sign in below to post'
-        : view.viewer.handle
-          ? `@${view.viewer.handle}`
-          : 'Signed in';
+      ? 'Checking who you are'
+      : signedOut
+        ? 'Sign in to ask on the Bench, reply, and chat. Reading needs no account.'
+        : view.standing
+          ? `${view.standing.points} ${view.standing.points === 1 ? 'point' : 'points'} · ${view.standing.badges} ${
+              view.standing.badges === 1 ? 'badge' : 'badges'
+            }`
+          : 'Signed in to the NodeGX community';
+  const initials = handle ? handle.slice(0, 2).toUpperCase() : null;
 
   /**
    * 🔴 The three list kinds are wired **unconditionally** because the shown view declares all
@@ -470,14 +507,36 @@ export function CommunityTab({
 
   return (
     <LauncherPage title="Community">
-      <div className={css['Head']}>
-        <span className={css['HeadLine']}>
-          {who}
-          {view.standing ? `  ·  ${view.standing.points} points` : ''}
-        </span>
-        <button type="button" className={css['GhostButton']} onClick={onRefresh} disabled={isRefreshing}>
-          {isRefreshing ? 'Refreshing…' : 'Refresh'}
-        </button>
+      <div className={css['Head']} data-test="community-head">
+        <div className={css['HeadIdentity']}>
+          <span className={classNames(css['HeadAvatar'], !initials && css['is-anonymous'])} aria-hidden="true">
+            {initials ?? (
+              // The neutral glyph the account card uses for a session with no handle — never
+              // invented initials (PAR-001).
+              <svg width="14" height="14" viewBox="0 0 24 24">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" />
+              </svg>
+            )}
+          </span>
+          <div className={css['HeadText']}>
+            <span className={css['HeadHandle']}>{who}</span>
+            <span className={css['HeadLine']}>{whoLine}</span>
+          </div>
+        </div>
+        <div className={css['HeadActions']}>
+          {signedOut && onSignIn && (
+            <button type="button" className={css['PrimaryButton']} onClick={onSignIn} data-test="community-sign-in">
+              Sign in
+            </button>
+          )}
+          <button type="button" className={css['GhostButton']} onClick={onRefresh} disabled={isRefreshing}>
+            {isRefreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button type="button" className={css['OutlineButton']} onClick={() => onOpenCommunity?.()}>
+            Open community.nodegx.io
+          </button>
+        </div>
       </div>
 
       {!alone && (
@@ -569,8 +628,11 @@ export function CommunityTab({
               <CommunityRow
                 key={article.slug}
                 title={article.title}
-                meta={kindLabel(article.kind)}
+                meta={article.videoUrl ? metaLine([kindLabel(article.kind), 'Video']) : kindLabel(article.kind)}
                 detail={article.summary}
+                // A recording gets a poster; a written guide gets the row it always had. The
+                // poster is drawn, not fetched — see `CommunityRow.poster`.
+                poster={article.videoUrl ? { kind: 'video' } : { kind: 'guide' }}
                 onClick={() => onOpenArticle?.(article.slug)}
               />
             ))
@@ -595,6 +657,10 @@ export function CommunityTab({
                 // "9 days ago" is what tells you whether you have already seen it.
                 meta={metaLine([absoluteDate(replay.heldOn), relativeTime(replay.heldOn)])}
                 detail={replay.description}
+                // ⚠️ A DRAWN poster, never the host's thumbnail: `i.ytimg.com` is an image that
+                // behaves like a tracker, and the platform's own replay page refuses it for that
+                // reason. A play mark on a gradient says "recording" without asking anybody.
+                poster={{ kind: replay.videoUrl ? 'video' : 'pending' }}
                 onClick={() => onOpenReplay?.(replay.slug)}
               />
             ))
@@ -662,36 +728,47 @@ export function CommunityTab({
             <div className={css['SectionHead']}>
               <h3 className={css['SectionTitle']}>How the community is doing</h3>
             </div>
-            <ul className={css['HealthList']}>
-              <li className={css['HealthLine']}>
-                {view.health.threads.value} of {view.health.threads.required} threads
+            {/*
+              Three tiles rather than three sentences: the number is the thing, and a number in a
+              paragraph is a number nobody sees. ⚠️ The WORDS are unchanged — "4 of 30 threads",
+              "(n=3, 1 unreplied)", "target under 24h" — because D21's readout is graded on them,
+              and because a value with no `required` beside it is the threshold-by-rounding D16
+              warned about. Only the typography moved.
+            */}
+            <ul className={css['HealthTiles']}>
+              <li className={css['HealthTile']}>
+                <span className={css['HealthValue']}>{view.health.threads.value}</span>
+                <span className={css['HealthLabel']}>of {view.health.threads.required} threads</span>
               </li>
-              <li className={css['HealthLine']}>
-                {view.health.weeksWithCall.value} of {view.health.weeksWithCall.required} consecutive weeks with a
-                call
+              <li className={css['HealthTile']}>
+                <span className={css['HealthValue']}>{view.health.weeksWithCall.value}</span>
+                <span className={css['HealthLabel']}>
+                  of {view.health.weeksWithCall.required} consecutive weeks with a call
+                </span>
               </li>
-              <li className={css['HealthLine']}>
-                {view.health.reply.medianHours === null
-                  ? 'no replies yet'
-                  : `${view.health.reply.medianHours.toFixed(1)}h median first reply`}{' '}
-                (n={view.health.reply.n}
-                {view.health.reply.unreplied > 0 ? `, ${view.health.reply.unreplied} unreplied` : ''}), target under{' '}
-                {view.health.reply.requiredBelowHours}h
+              <li className={css['HealthTile']}>
+                <span className={css['HealthValue']}>
+                  {view.health.reply.medianHours === null
+                    ? 'no replies yet'
+                    : `${view.health.reply.medianHours.toFixed(1)}h`}
+                </span>
+                <span className={css['HealthLabel']}>
+                  {view.health.reply.medianHours === null ? '' : 'median first reply '}(n={view.health.reply.n}
+                  {view.health.reply.unreplied > 0 ? `, ${view.health.reply.unreplied} unreplied` : ''}), target
+                  under {view.health.reply.requiredBelowHours}h
+                </span>
               </li>
             </ul>
           </div>
         </section>
       )}
 
-      <button type="button" className={css['OutlineButton']} onClick={() => onOpenCommunity?.()}>
-        Open community.nodegx.io
-      </button>
     </LauncherPage>
   );
 }
 
 export function Community() {
-  const { communityMirror: community } = useLauncherContext();
+  const { communityMirror: community, community: account } = useLauncherContext();
 
   /**
    * FB-006 — `null` until the reader picks a tab, and then it sticks.
@@ -712,5 +789,14 @@ export function Community() {
     );
   }
 
-  return <CommunityTab {...community} activeTab={chosen} onSelectTab={setChosen} />;
+  return (
+    <CommunityTab
+      {...community}
+      activeTab={chosen}
+      onSelectTab={setChosen}
+      // The account card's own device flow, so a guest has a door on the page that names the
+      // state. See `LauncherCommunityHostState.onSignIn`.
+      onSignIn={account?.onSignIn}
+    />
+  );
 }

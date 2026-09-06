@@ -17,10 +17,21 @@
  * @module noodl-editor/views/projectsview.learningstate
  */
 
-import { isShippedLessonId } from '../models/lessonseed';
+import { EMPTY_CHAIN, type LessonChain } from '../models/lessonchain';
+import { isShippedLessonId, SHIPPED_LESSON_ID_PREFIX } from '../models/lessonseed';
+import { slugifyLessonId } from '../models/learningfolder';
 import type { LearningEntryView, LessonProvenance } from '../models/learningfolder';
 
 export type LearningCardState = 'not-started' | 'in-progress' | 'completed';
+
+/**
+ * Where a lesson sits on the shelf — 2026-09-06.
+ *
+ *  - `spine`: one of the chain `spine.json` describes; it has a `position`.
+ *  - `standalone`: shipped beside the spine, not in it (`log-a-thing`).
+ *  - `other`: anything a person installed that the chain does not name.
+ */
+export type LearningChapter = 'spine' | 'standalone' | 'other';
 
 /** Structurally identical to core-ui's `LauncherLearningData`. See the module note. */
 export interface LearningCardData {
@@ -35,6 +46,15 @@ export interface LearningCardData {
   gradedBy?: 'runner' | 'human';
   checkUnavailable?: boolean;
   missing?: boolean;
+  /**
+   * The bundle's slug — `your-creature-on-screen` — when this card is one the chain names.
+   * ⚠️ It is the JOIN to the learner path: the platform's steps carry the same slugs, so the
+   * path tab can open the installed copy. Absent for a lesson the chain does not know.
+   */
+  slug?: string;
+  chapter: LearningChapter;
+  /** 1-based place in the spine. Only on `chapter: 'spine'`. */
+  position?: number;
 }
 
 /**
@@ -93,9 +113,35 @@ export function badgeProvenance(entry: LearningEntryView): LessonProvenance {
   return entry.provenance;
 }
 
+/**
+ * The chain slug an entry answers to, or `undefined`.
+ *
+ * 🔴 TWO WITNESSES, and the second is not a nicety. A shipped lesson's id is
+ * `shipped_<dirName>`, so the slug is right there. But the seed STANDS DOWN when a copy with
+ * the same title is already on the shelf (`lessonseed.ts`, AC3) — Richard's own shelf has
+ * *Log a thing* and *Your creature, on screen* installed by hand, "Written locally", and no
+ * shipped copy beside them. Those are the same lessons, at the same place in the spine, and a
+ * shelf that numbered only the `shipped_` ids would leave lesson 1 unnumbered on exactly the
+ * machine of the person who asked for the numbers. The title slug is what the seed itself
+ * compares (`slugifyLessonId`), so it is the same rule, not a looser one.
+ */
+export function chainSlugOf(entry: Pick<LearningEntryView, 'id' | 'title'>, chain: LessonChain): string | undefined {
+  const known = new Set([...chain.spine, ...chain.standalone]);
+  if (isShippedLessonId(entry.id)) {
+    const slug = entry.id.slice(SHIPPED_LESSON_ID_PREFIX.length);
+    if (known.has(slug)) return slug;
+  }
+  const byTitle = slugifyLessonId(entry.title);
+  return known.has(byTitle) ? byTitle : undefined;
+}
+
 /** One entry, as its card reads it. */
-export function toLearningCard(entry: LearningEntryView): LearningCardData {
+export function toLearningCard(entry: LearningEntryView, chain: LessonChain = EMPTY_CHAIN): LearningCardData {
   const grade = entry.grade;
+  const slug = chainSlugOf(entry, chain);
+  const spineIndex = slug ? chain.spine.indexOf(slug) : -1;
+  const chapter: LearningChapter =
+    spineIndex >= 0 ? 'spine' : slug && chain.standalone.includes(slug) ? 'standalone' : 'other';
 
   return {
     id: entry.id,
@@ -109,10 +155,33 @@ export function toLearningCard(entry: LearningEntryView): LearningCardData {
     // Carried through as the flag it is stored as. The sentence names a
     // filesystem and never reaches a card.
     ...(grade?.wholeSolution?.unavailable ? { checkUnavailable: true } : {}),
-    ...(entry.missing ? { missing: true } : {})
+    ...(entry.missing ? { missing: true } : {}),
+    ...(slug ? { slug } : {}),
+    chapter,
+    ...(spineIndex >= 0 ? { position: spineIndex + 1 } : {})
   };
 }
 
-export function toLearningCards(entries: LearningEntryView[]): LearningCardData[] {
-  return entries.map(toLearningCard);
+/**
+ * Every card, in the order the shelf draws them.
+ *
+ * 🔴 SPINE FIRST, IN CHAIN ORDER; then the standalone lessons; then everything else in the
+ * order the register already gave (newest install first — still right for a shelf a person
+ * fills by hand). `entries` arrives sorted by `installedAt` and that order is kept INSIDE each
+ * group, so the sort is stable and a chain the artefact does not carry (`EMPTY_CHAIN`) draws
+ * the shelf exactly as it was drawn before 2026-09-06.
+ */
+export function toLearningCards(entries: LearningEntryView[], chain: LessonChain = EMPTY_CHAIN): LearningCardData[] {
+  const rank = (card: LearningCardData): number =>
+    card.chapter === 'spine' ? 0 : card.chapter === 'standalone' ? 1 : 2;
+  return entries
+    .map((entry) => toLearningCard(entry, chain))
+    .map((card, index) => ({ card, index }))
+    .sort((a, b) => {
+      const byChapter = rank(a.card) - rank(b.card);
+      if (byChapter !== 0) return byChapter;
+      if (a.card.chapter === 'spine') return (a.card.position ?? 0) - (b.card.position ?? 0);
+      return a.index - b.index;
+    })
+    .map(({ card }) => card);
 }
