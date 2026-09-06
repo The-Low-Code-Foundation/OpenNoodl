@@ -59,7 +59,14 @@
   font-size: 11px;
   color: var(--theme-color-fg-default-shy);
   background: transparent;
-  border: 1px solid var(--theme-color-border-default);
+  /* Phase-75 border sweep. This button paints NO fill, so its edge is the only
+     thing that says it is a button — and `border-default` is a divider tone:
+     1.07:1 dark / 1.15:1 light against the `bg-2` card it sits on, i.e. nothing.
+     `border-control` (POL-016) is 3.57 / 3.37 there and clears 1.4.11's 3:1.
+     ⚠️ Its sibling `.AcceptButton` is deliberately NOT touched: that one is a
+     `primary` fill at 4.80 / 4.14 on the card, so its object is carried by its
+     fill and a ring would be decoration. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-sm, 3px);
   cursor: pointer;
   transition: color 0.15s;

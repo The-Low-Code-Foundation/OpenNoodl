@@ -24,7 +24,13 @@
   display: flex;
   gap: 2px;
   background: var(--theme-color-bg-3);
-  border: 1px solid var(--theme-color-border-default);
+  /* Phase-75 border sweep, and this one is on NO inventory: the segmented
+     group is what a reader must identify as a control, but it sets no
+     `cursor` (its options do), so the sweep's query could never surface it.
+     Same numbers as its neighbour `.VariantSelector-trigger`: `bg-3` is
+     1.36 / 1.22 on the `bg-1` panel, the old `border-default` 1.26 / 1.27,
+     `border-control` 4.17 / 3.72 on the panel and 3.08 / 3.05 on the fill. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-default);
   padding: 2px;
 }
