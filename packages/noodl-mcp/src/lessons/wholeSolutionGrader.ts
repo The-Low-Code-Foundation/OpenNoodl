@@ -178,7 +178,13 @@ function defaultProbeValidity(projectDir: string, strict: boolean): ValidationRe
 }
 
 function reason(e: unknown): string {
-  if (e instanceof ToolError) return e.message;
+  if (e instanceof ToolError) {
+    // P79 L3 — the resolver's `probed` list IS the bug report when the harness
+    // is not found, and the F4 note used to drop it. Two lessons lost a round
+    // trip each to a refusal that named no path.
+    const probed = Array.isArray(e.data?.probed) ? (e.data.probed as unknown[]).map(String) : [];
+    return probed.length ? `${e.message} Probed: ${probed.join(', ')}` : e.message;
+  }
   return e instanceof Error ? e.message : String(e);
 }
 

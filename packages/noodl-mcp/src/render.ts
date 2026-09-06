@@ -140,8 +140,122 @@ export function automaticRenderDisabled(): boolean {
  * in a repo checkout the fallback exists and spawns a real Chrome. The spec that
  * meant to assert "no harness at all" instead waited eight seconds for one.
  */
-export function resolveRenderCli(): { entry: string | null; probed: string[]; overrideMissing?: string } {
+export interface ResolvedRenderCli {
+  entry: string | null;
+  /**
+   * The runtime to spawn the harness with. `process.execPath` — unless the
+   * harness was found inside an `app.asar` this process cannot read, in which
+   * case it is the app's own Electron binary (see `viaElectron`).
+   */
+  exec: string;
+  probed: string[];
+  overrideMissing?: string;
+  /**
+   * P79 L3 — set when this sidecar is plain Node on a packaged install. The
+   * harness ships inside `app.asar`, which only Electron's `fs` can read, and
+   * BST-004's registration prefers `node <path>` whenever the machine has Node —
+   * so on exactly the install most people have, `render_report` and every F4
+   * refused with "could not be located" while the file was there. The harness
+   * is run with the app binary under `ELECTRON_RUN_AS_NODE=1` instead.
+   */
+  viaElectron?: string;
+  /** The asar held the harness but no app binary could be found beside it. */
+  electronMissing?: true;
+}
+
+/**
+ * Does this asar archive list `relative` (posix, no leading slash)?
+ *
+ * Plain Node's `fs` cannot see inside an asar, and `existsSync` answers false
+ * for a file that is there. The archive header is a length-prefixed JSON
+ * directory, so the question can be answered without Electron and without
+ * the `asar` package: 16 bytes of pickle framing, then the header string.
+ */
+export function asarLists(archive: string, relative: string): boolean {
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(archive, 'r');
+    const framing = Buffer.alloc(16);
+    fs.readSync(fd, framing, 0, 16, 0);
+    const headerLength = framing.readUInt32LE(12);
+    if (!(headerLength > 0 && headerLength < 64 * 1024 * 1024)) return false;
+    const header = Buffer.alloc(headerLength);
+    fs.readSync(fd, header, 0, headerLength, 16);
+    let node = JSON.parse(header.toString('utf8')) as { files?: Record<string, unknown> } | undefined;
+    for (const part of relative.split('/').filter(Boolean)) {
+      const next = node?.files?.[part] as { files?: Record<string, unknown> } | undefined;
+      if (!next) return false;
+      node = next;
+    }
+    return node !== undefined && node.files === undefined;
+  } catch {
+    return false;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
+
+/** `<archive>.asar/<inner>` split at the archive, or `null` when the path names no asar. */
+function splitAsarPath(candidate: string): { archive: string; inner: string } | null {
+  const marker = `.asar${path.sep}`;
+  const idx = candidate.indexOf(marker);
+  if (idx === -1) return null;
+  return {
+    archive: candidate.slice(0, idx + 5),
+    inner: candidate.slice(idx + marker.length).split(path.sep).join('/')
+  };
+}
+
+/**
+ * The app's own Electron binary, for a sidecar started with plain Node on a
+ * packaged install — `<app>/Contents/MacOS/<name>` on macOS, `<app>/<name>.exe`
+ * on Windows, `<app>/<name>` on Linux, all relative to `<Resources>/noodl-mcp`.
+ */
+export function findAppElectronBinary(fromDir: string): string | null {
+  const isExecutableFile = (p: string): boolean => {
+    try {
+      const st = fs.statSync(p);
+      if (!st.isFile()) return false;
+      if (process.platform === 'win32') return true;
+      fs.accessSync(p, fs.constants.X_OK);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const macOS = path.resolve(fromDir, '..', '..', 'MacOS');
+  try {
+    const found = fs
+      .readdirSync(macOS)
+      .map((name) => path.join(macOS, name))
+      .find(isExecutableFile);
+    if (found) return found;
+  } catch {
+    /* not a macOS bundle */
+  }
+
+  const appRoot = path.resolve(fromDir, '..', '..');
+  try {
+    const found = fs
+      .readdirSync(appRoot)
+      .filter((name) => {
+        const lower = name.toLowerCase();
+        if (lower.startsWith('uninstall')) return false;
+        return process.platform === 'win32' ? lower.endsWith('.exe') : !lower.includes('.') && lower.includes('nodegx');
+      })
+      .map((name) => path.join(appRoot, name))
+      .find(isExecutableFile);
+    if (found) return found;
+  } catch {
+    /* not an app root */
+  }
+  return null;
+}
+
+export function resolveRenderCli(fromDir: string = __dirname): ResolvedRenderCli {
   const probed: string[] = [];
+  const exec = process.execPath;
   const push = (p: string): string | null => {
     probed.push(p);
     return fs.existsSync(p) ? p : null;
@@ -150,12 +264,12 @@ export function resolveRenderCli(): { entry: string | null; probed: string[]; ov
   const override = process.env.NODEGX_RENDER_CLI;
   if (override) {
     const found = push(override);
-    return found ? { entry: found, probed } : { entry: null, probed, overrideMissing: override };
+    return found ? { entry: found, exec, probed } : { entry: null, exec, probed, overrideMissing: override };
   }
   const candidates = [
     // From src/, and from dist/ or src/tools/.
-    path.resolve(__dirname, '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
-    path.resolve(__dirname, '..', '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
+    path.resolve(fromDir, '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
+    path.resolve(fromDir, '..', '..', '..', '..', 'scripts', 'devtools', 'measure-from-disk.js'),
     /**
      * UNI-012 — the packaged install.
      *
@@ -171,17 +285,35 @@ export function resolveRenderCli(): { entry: string | null; probed: string[]; ov
      * under `ELECTRON_RUN_AS_NODE=1`, which reads and executes inside an asar.
      * Plain Node does not — see `harness-paths.js` for the four measurements.
      */
-    path.resolve(__dirname, '..', 'app.asar', 'render-harness', 'measure-from-disk.js'),
-    path.resolve(__dirname, '..', '..', 'app.asar', 'render-harness', 'measure-from-disk.js')
+    path.resolve(fromDir, '..', 'app.asar', 'render-harness', 'measure-from-disk.js'),
+    path.resolve(fromDir, '..', '..', 'app.asar', 'render-harness', 'measure-from-disk.js')
   ];
   for (const candidate of candidates) {
     const found = push(candidate);
-    if (found) return { entry: found, probed };
+    if (found) return { entry: found, exec, probed };
   }
-  return { entry: null, probed };
+
+  // P79 L3 — plain Node cannot see into an asar, so `existsSync` above answered
+  // false for a harness that is there. Read the archive's own directory instead,
+  // and run the harness with the app binary, which can.
+  if (!process.versions.electron) {
+    for (const candidate of candidates) {
+      const asar = splitAsarPath(candidate);
+      if (!asar || !fs.existsSync(asar.archive) || !asarLists(asar.archive, asar.inner)) continue;
+      const electron = findAppElectronBinary(fromDir);
+      if (!electron) return { entry: null, exec, probed, electronMissing: true };
+      return { entry: candidate, exec: electron, probed, viaElectron: electron };
+    }
+  }
+  return { entry: null, exec, probed };
 }
 
-function spawnRender(entry: string, args: string[], timeoutMs: number): Promise<{ stdout: string; stderr: string }> {
+function spawnRender(
+  exec: string,
+  entry: string,
+  args: string[],
+  timeoutMs: number
+): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     /**
      * 🔴 `ELECTRON_RUN_AS_NODE` is set explicitly rather than inherited.
@@ -192,8 +324,12 @@ function spawnRender(entry: string, args: string[], timeoutMs: number): Promise<
      * it the same binary boots as a full Electron *app*, with a dock icon and an
      * event loop that never exits, and the render would hang rather than fail.
      * In a checkout `process.execPath` is plain `node`, which ignores it.
+     *
+     * `exec` is `process.execPath` except on the P79 L3 path, where a plain-Node
+     * sidecar runs a harness that lives inside `app.asar` with the app's own
+     * Electron binary — the variable is what makes that binary a Node.
      */
-    const child = spawn(process.execPath, [entry, ...args], {
+    const child = spawn(exec, [entry, ...args], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' }
     });
@@ -234,7 +370,7 @@ export async function runRenderReport(
   projectDir: string,
   options: RenderOptions = {}
 ): Promise<{ report: RenderReportPayload; screenshots: RenderScreenshot[] }> {
-  const { entry, probed, overrideMissing } = resolveRenderCli();
+  const { entry, exec, probed, overrideMissing, electronMissing } = resolveRenderCli();
   if (overrideMissing) {
     throw new ToolError(
       'io-error',
@@ -256,11 +392,16 @@ export async function runRenderReport(
      */
     throw new ToolError(
       'io-error',
-      'The render harness could not be located, so the page cannot be rendered or measured. On a packaged ' +
-        'install it ships inside the app and this means the installation is incomplete — reinstall NodeGX. ' +
-        'From a source checkout, run this server from the checkout or set NODEGX_RENDER_CLI to ' +
-        'scripts/devtools/measure-from-disk.js. If you only need the write and not the picture, ' +
-        'allow_unrendered writes the bundle with the render check deliberately unanswered.',
+      electronMissing
+        ? 'The render harness is inside this install\'s app.asar, which this sidecar (started with plain node) ' +
+          'cannot read, and no app binary was found beside it to run it with. Register the server with the ' +
+          'app\'s own binary and ELECTRON_RUN_AS_NODE=1 (the Electron form in Settings → Connect), or set ' +
+          'NODEGX_RENDER_CLI to an unpacked measure-from-disk.js.'
+        : 'The render harness could not be located, so the page cannot be rendered or measured. On a packaged ' +
+          'install it ships inside the app and this means the installation is incomplete — reinstall NodeGX. ' +
+          'From a source checkout, run this server from the checkout or set NODEGX_RENDER_CLI to ' +
+          'scripts/devtools/measure-from-disk.js. If you only need the write and not the picture, ' +
+          'allow_unrendered writes the bundle with the render check deliberately unanswered.',
       { probed }
     );
   }
@@ -272,7 +413,7 @@ export async function runRenderReport(
   if (options.backendPort) args.push('--backend-port', String(options.backendPort));
   if (options.page) args.push('--page', options.page);
 
-  const { stdout, stderr } = await spawnRender(entry, args, options.timeoutMs ?? RENDER_TIMEOUT_MS);
+  const { stdout, stderr } = await spawnRender(exec, entry, args, options.timeoutMs ?? RENDER_TIMEOUT_MS);
 
   let parsed: (RenderReportPayload & { screenshots?: RenderScreenshot[] }) | { error: RenderCliError };
   try {
