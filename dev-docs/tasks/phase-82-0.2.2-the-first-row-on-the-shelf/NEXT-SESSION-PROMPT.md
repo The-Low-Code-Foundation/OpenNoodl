@@ -1,5 +1,59 @@
 # Phase 82 — next session
 
+> ### 🟡 s59 (2026-09-06) — REL-019: THE COMMUNITY AND LEARNING TABS. EDITOR HALF DONE; PLATFORM HALF IS THE FIRST JOB
+>
+> **One commit, `cline-dev` tip, NOT pushed** (push was not asked for). Read
+> [REL-019](REL-019-THE-TABS-LEFT-BEHIND.md) — §1 is the measured cause table, §4 is the hand-off.
+>
+> **1. Richard, third time of asking: *"the community and learning tabs are sad"*.** Four items;
+> every cause was READ off the running editor and off production before a line changed. The two
+> he had named before (chat, the People button) were exactly the two a session had "handed to
+> another phase" — cf. s33's *"He noticed all eight"*.
+>
+> **2. 🔴 THE CHAT WIRE WAS NEVER CONNECTED.** `useCommunityChat` composed `composer`/`reply`
+> (`66b5f1df`, this morning), `CommunityChatView` drew them (`e39393c1`), and `ProjectsPage`'s host
+> object carried neither. Two green gates on the ends of a chain — `chatwrites` and
+> `chat-composer-render` — and the launcher could not post. Wired; `rel-019/launcher-wiring` now
+> reads the wire at the source and goes red when the line is deleted (mutant run, restored by md5).
+>
+> **3. 🔴 "ADD YOURSELF AS A PERSON" IS A DEPLOY, NOT A BUG.** nexus-1 stamps `91d8b0c` (28 Aug);
+> `GET /api/v1/me/listing` (REL-015) answers **404 HTML** there and the card draws it as
+> *"unreachable"*. The editor half was built in s33 and is green. **Nothing was deployed by this
+> session** — and could not have been: 🔴 **every edit in `~/vscode_projects/nodegx-community` was
+> DENIED by the permission classifier** (an `Edit` of one JSON value, a `grep`, a heredoc). The
+> working-dir half was built in full; the platform half is written as exact steps in §4.
+>
+> **4. ✅ THE SHELF, THE PATH, THE LOOK.** `spine.json` ships beside the bundles and nothing read
+> it; `models/lessonchain.ts` reads it (never declares it) and the shelf is numbered in chain
+> order with *Next on the spine* and five filters. A path step whose slug is on the shelf opens the
+> installed copy; *Explain this for me* is withdrawn from every step once the community answers
+> `unavailable` (no projector on nexus-1). `/articles/<slug>` never existed — `/tutorials/`. The
+> head is an identity card with a **Sign in** door; the readout is tiles with D21's words intact;
+> media rows carry a **drawn** poster (never `i.ytimg.com`). Before/after pictures under
+> `verdicts/rel-019/2026-09-06/`.
+>
+> **5. Readings.** `rel-019` **6 files / 51**; neighbours **26 / 487**; `test:main` **439 / 7287,
+> 0 failed, "Ran all test suites."** (s58 read 433 / 7228); renderer webpack 0 `tsl` errors; two
+> mutants red and restored byte-identical; driven via CDP signed in (draft enables Send — nothing
+> was posted; explain buttons 11 → 0). ✅ `ssh` to nexus-1 worked (`SSH_OK`); the "blocked" claim
+> did not reproduce.
+>
+> ⬜ **FIRST JOB: REL-019 §4, in the community repo — and it needs a session that can edit that
+> tree, or Richard.** In order: §4.1 flip the eight shipped lessons to `ready` and revise the two
+> tests that were written to fail that day (`uni022:215`, `uni007:261`) · §4.2 `video_url` on
+> `articles` (migration `0026`, schema, `articles.ts`, `apisurfaces.ts`, `mirror.ts`, the tutorial
+> page's player, `publish-tutorial.ts --video`, a `uni020` row) · §4.3 `ops/deploy.sh 49.12.102.195`
+> (0025 + 0026 run for the first time; **count public profiles first** — D4 takes their pages down
+> until approved; `/people` is already empty in production so nobody comes off the directory) ·
+> §4.4 publish the meet-up replay and the *First look* tutorial through the tunnel — commands with
+> the YouTube facts (titles, dates, durations) are in the file. 🔴 **The tutorial BODY is prose
+> Richard writes** (the 200-char floor exists because UNI-020 shipped `Placeholder body.` ×3); the
+> replay description and tutorial summary in §4.4 are proposals from the titles, not from watching.
+> ⚠️ Test the classifier with one `Edit` in that repo before planning a session around it.
+>
+> **Second job, only if the first is blocked again:** nothing on this row — the editor half is
+> complete. The re-cut (REL-004) is still Richard's.
+
 > ### 🔴 s58 (2026-09-06) — THE CUT FAILED. IT IS FIXED, PROVEN AND ROLLED BACK; THE RE-CUT IS RICHARD'S
 >
 > **Three commits: `c09fc8d0`, `134777d3`, `f4816c4a` — all PUSHED, `cline-dev` at `f4816c4a`.**
