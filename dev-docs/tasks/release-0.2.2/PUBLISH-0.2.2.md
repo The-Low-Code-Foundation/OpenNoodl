@@ -150,6 +150,41 @@ Both mac arches (`mac-arm64.dmg/.zip`, `mac-x64.dmg/.zip` + blockmaps), `win-x64
   `verify-release-assets` runs `if: always()` and names what is missing;
   `node scripts/check-release-assets.js --self-test` self-tests its rules.
 
+### 🔴 What the 2026-09-06 cut actually did — read this before re-cutting
+
+The tag went up and the run **failed**. Run
+[`34030632269`](https://github.com/The-Low-Code-Foundation/NodeGX/actions/runs/34030632269):
+linux ✅, win32 ✅, **darwin-arm64 ✗**, **darwin-x64 ✗**, `merge mac update feed` ✗,
+`verify draft release is complete` ✗. The draft holds **6 of 15 assets** — the three linux files
+and the three windows ones — and **no macOS build at all**.
+
+🔴 **Both mac legs died with `FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap
+out of memory` in `webpack.renderer.production.js`.** Not signing, not notarisation: that step runs
+*before* both, and windows — which signs — passed. V8 sizes its default old-space from system RAM,
+the `macos-26-arm64` runners give node 2048 MB, and the renderer bundle grew past 2 GB during
+0.2.x. See **REL-018**; the fix is `scripts/webpackHeapCeiling.ts`.
+
+⚠️ **The failure is invisible from the two platforms most people build on.** Linux and Windows
+runners have 16 GB and a ~4 GB default heap, so they built the identical bundle green. The nightly
+was green on both mac legs that same morning **because it builds `main`, 1823 commits behind**.
+Nothing local reproduces this; only a mac CI build grades it.
+
+🔴 **`verify-release-assets` did its job and nobody was there to read it.** This is F73's lesson
+recurring: a draft with files in it is not evidence of a green run. **Read the run, not the draft.**
+
+**Recovery — release first, then tag, then re-cut:**
+
+```bash
+gh release delete v0.2.2 --yes          # the release BEFORE the tag, or it references nothing
+git push --delete origin v0.2.2
+git tag -d v0.2.2
+# ... land the REL-018 fix, then re-cut per §3 above
+```
+
+⚠️ **Re-publishing the members' area is NOT part of this.** REL-001 is a separate moment: the
+community shelf row is live and independent of the tag, and it was confirmed still serving
+`fileCount: 100` after the failed run.
+
 ---
 
 ## 4. The notes

@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 
+import { withHeapCeiling } from './webpackHeapCeiling';
 import { valueToBoolean } from '../../../scripts/helper';
 import { BuildTarget, getDistPlatform } from './platform/build-platforms';
 
@@ -26,7 +27,7 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   console.log("--- Run webpack 'webpack.renderer.production.js' ...");
   execSync('npx webpack --config=webpackconfigs/webpack.renderer.production.js', {
     stdio: 'inherit',
-    env: process.env
+    env: withHeapCeiling(process.env)
   });
   console.log('--- done!');
 
@@ -34,7 +35,7 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   console.log("--- Run webpack 'webpack.main.production.js' ...");
   execSync('npx webpack --config=webpackconfigs/webpack.main.production.js', {
     stdio: 'inherit',
-    env: process.env
+    env: withHeapCeiling(process.env)
   });
   console.log('--- done!');
 

@@ -1,8 +1,14 @@
 # GitHub release body — v0.2.2
 
-_Paste everything below the rule into the release description. Written 2026-09-06 against
-`848` commits since `v0.2.0`; **re-derive the count at tag time** (`git rev-list --count v0.2.0..HEAD`)
-— it has moved on every previous reading of it._
+_Paste everything below the rule into the release description. **`852` commits since `v0.2.0`**,
+re-derived 2026-09-06 at the tag itself: `git rev-list --count v0.2.0..v0.2.2` — **count the TAG, not
+`HEAD`**, which is the ref this instrument used to name and is why the figure kept moving._
+
+🔴 **851 was this count taken one commit early.** REL-004 recorded *"851 commits since `v0.2.0`"*,
+which is the reading at `91b942df` — the commit **before** the one that was tagged. `10a6c147` was
+then committed and tagged, and the count went with it. A count is a property of the ref it was
+taken at, so name the ref beside the number: 849 at `613ee349`, 850 at `b1008698`, 851 at
+`91b942df`, **852 at `10a6c147` = `v0.2.2`**, 853 at `a767e1f9`.
 
 ⚠️ **The "Installing" section needs the real asset names** once the draft has its 15 assets. The
 0.2.0 release body is the model.

@@ -32,6 +32,12 @@
     "src/main",
     "tests-main",
     "tests-unit",
+    // REL-004: `scripts/webpackHeapCeiling.ts` is the same shape as the entries
+    // below — import-free by design, so the plain-Node runner can grade it. It is
+    // the only part of the editor's build script that CAN be graded: `build.ts`
+    // is a top-level IIFE that starts a real build on import, which is precisely
+    // why the heap ceiling was lifted out of it into a module of its own.
+    "scripts/webpackHeapCeiling.ts",
     "src/editor/src/utils/provenance",
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
     // SPR-003 §1: `portConnectivity.ts` is the third of these — the shared
