@@ -9922,7 +9922,7 @@ arms (mut.py, mut.log + mut-summary.txt; sources restored md5-identical after ea
 
 ### §66.5 What this leaves (owner NONE unless named)
 
-- **Enabled wired from a Variable nothing has written** reads `!!undefined` ⇒ OFF in the export; whether the runtime delivers an
+- ✅ **MEASURED and BUILT in session 94 (the §66.5 #1 section after §66.6): the runtime says ON — `node.ts` `sendValue` drops an `undefined` before it crosses a wire, so the setter never runs; the export read OFF; fixed at `has()` in all four stream libs.** Was: **Enabled wired from a Variable nothing has written** reads `!!undefined` ⇒ OFF in the export; whether the runtime delivers an
   undefined Variable into the setter at boot (⇒ the same) or never runs it (⇒ ON) is UNMEASURED. The fixture leaves Enabled
   untouched for that reason; A6/E8 grade the authored and wired forms. Owner NONE — measure in the runtime before a fixture wires it.
 - **An authored Filter is refused by name** (B3). Translating it means the runtime's `convertVisualFilter` (the Parse `$` grammar)
@@ -9959,6 +9959,127 @@ created/updated/deleted), the log shows `closed c1` ✓ · **T6** create r2 on c
 raise, no console.error ✓. Teardown: 0 listeners on 4366 / 9367 / 8584. Every row matched the sheet written before the drive.
 
 ---
+
+## §66.5 #1 — Enabled wired from a Variable nothing has written: MEASURED in the runtime (ON), the export brought to the runtime's rule; the rule generalised to every stream lib (session 94, lane enabled, 2026-09-05)
+
+### §66.5#1.0 The measurement — the runtime, headlessly, before a line of export code
+
+The register's question: `Enabled` wired from a `Variable` nothing has written — does the runtime deliver `undefined` into the setter
+at boot (`!!undefined` ⇒ OFF, what the export did) or never run it (⇒ ON, the `!== false` reading of an untouched node)?
+
+**The rule is the scheduler's, not the node's** (`packages/noodl-runtime/src`): `node.ts:806` `sendValue`: `if (value === undefined)
+return;` — an undefined never crosses a wire; `node.ts:818-821` `flagOutputDirty` goes through it; `node.ts:544-556` `connectInput`
+delivers at connect time only `if (outputValue !== undefined)`. The Variable's `name` setter (`variablenode2.ts:174-180` →
+`setVariableName` :252-257) flags `value` dirty at the first update, and the getter (:156-161) answers `variablesModel.get(name)` —
+`undefined` for a name nothing wrote — so the flag sends nothing; at connect time the name is still QUEUED (`nodescope.ts:157-214`,
+the connections at :424-437) so the getter answers `undefined` regardless. The `enabled` setter is never entered;
+`subscribetochanges.ts:323-330` `isEnabled` reads `!== false` ⇒ ON, and `reconfigure` (:402-406) subscribes. **Corollary**: a
+Variable written back to `undefined` later also delivers nothing — the last delivered value stands.
+
+**The instrument** — `packages/noodl-runtime/test/corpus/exp-011-s66-5-an-unwritten-variable-never-reaches-a-setter.test.ts` (9 rows,
+`createCorpusGraph`: a real GraphModel + NodeScope, `updateDirtyNodes` as the frame; a spy on the definition's setter AND an observable
+beside it — headlessly `NoodlRuntime.instance` is undefined, so an enabled node's boot reconfigure reports the CAPABILITY_UNAVAILABLE
+fatal: `realtimeFailure` pulsed, `subscribe-to-changes/realtime-failed` raised — which happens ONLY past `if (!this.isEnabled()) return;`).
+Readout (`$SCRATCH/runtime.log`): **R1** unwritten ⇒ setter calls `[]`; pre-written `'seeded'` ⇒ `['seeded']` · **R1b** written
+`false` after boot ⇒ `[false]`; then `undefined` ⇒ unchanged · **S1** unwritten → Enabled: `setEnabled` 0 calls, `_internal.enabled`
+undefined, `isEnabled()` true, raises 1, signals `['realtimeFailure']` — **ON** · **S2** pre-written false ⇒ `[false]`, raises 0 ·
+**S3** pre-written true ⇒ `[true]`, raises 1 · **S4** authored false/true ⇒ 0/1 raises · **S5** boot raises 1; false ⇒ `[false]`,
+teardown; then `undefined` ⇒ no call, `enabled` stays false, raises still 1 · **G1** SSE `autoReconnect` unwritten ⇒ 0 calls, internal
+stays `true` (the runtime default) · **G2** WebSocket `autoConnect` unwritten ⇒ 0 calls, internal `true`. 9/9, exit 0.
+**It generalises**: the rule is on every wire, so every config option of every translated stream node inherits it.
+
+### §66.5#1.1 What the export did, and what it does now
+
+Reverted arm (`probe-reverted.log`, the fixture wired by IR mutation): 0 refusals, the page prints `const enabledValue =
+useValue(enabled);` and `{ collection: 'Contact', enabled: enabledValue }`, the store `value<string | undefined>(undefined)` — and
+`realtime.ts`'s `has(options, key)` = `hasOwnProperty` ⇒ `!!undefined` ⇒ `internal.enabled = false` ⇒ **OFF at boot. A divergence
+inside a translated node**, and the same hole in `sse.ts` (`autoReconnect` true ⇒ false), `websocket.ts` (`autoConnect` true ⇒ false,
+`reconnectDelay` ⇒ `NaN`) and `streaming.ts` (the parser's 1 MiB ⇒ 0, the accumulator's `'\n'` ⇒ `''`, 1000 ⇒ 0).
+
+**The fix, at the rule**: in all four emitted libs `has(options, key)` is now `hasOwnProperty && options[key] !== undefined`, with a
+comment naming `node.ts sendValue`; an option passed as `undefined` is not a delivery and the internal keeps what it holds. And the
+hooks decide "did an input change" from the APPLIED values, never the raw options — realtime `{ collection: s.internal.name, enabled:
+s.internal.enabled }`, sse `{ url: s.internal.url, autoConnect: s.internal.autoConnect }`, websocket `{ url: s.internal.config.url,
+protocols: (s.internal.config.protocols ?? []).join(','), autoConnect: s.internal.autoConnect }` — so a Variable written back to `undefined`
+schedules nothing, as a setter that never ran schedules nothing (S5). For sse/websocket the comparison change is observably
+equivalent (their passes already return on an unchanged URL / identity); for realtime it is not (`reconfigure` tears down and
+resubscribes) — E19 pins it. The page and the plan are unchanged: the wire prints its render read as §66 said.
+
+### §66.5#1.2 The fixture — `tests/fixtures/live-desk`
+
+`enabledVar` (`Variable2`, label *Enabled*, name `enabled`, x 200 y 300) → `feed.enabled`; nothing writes `enabled` anywhere in the
+project — **the shape the register said a fixture may wire only after the measurement**. Emitted: the same 17 files, the same two
+notes, 0 refusals; `pre.json`/`post.json` differ in exactly three files — `realtime.ts` (the rule), `Home.tsx` (the import, the
+render read, the option), `stores/variables.ts` (`export const enabled = value<string | undefined>(undefined);` — typed `string` by
+`all([])`, the §72 lane's row; NOT pinned by this lane).
+
+### §66.5#1.3 Gates and arms
+
+```
+runtime instrument (noodl-runtime, ONE spec): 9/9, exit 0 — runtime.log · reverted-arm probe: probe-reverted.log (0 refusals, OFF in the lib) ·
+  corpus walk: corpus.log (116 fixtures, 0 stream configs from an unwritten Variable — the corpus is blind to the shape)
+pkg tsc 0 (exit 0, twice — after the build and after the one typecheck-emitted red below) ·
+subscribe-to-changes.test.ts 45/45 (41 → 45: A9, C4, E18, E19; A2/A3/A6/A7/B4 re-pinned to the wired base, `unwireEnabled` restores the
+  unwired rows' intent) · sse.test.ts 36/36 (+E12) · websocket.test.ts 38/38 (+E13) · streaming-trio.test.ts 60/60 (+ one §D row)
+export-ledger:check OK 124 translated · picker --check 117/127 (92.1 %) exit 0 (the floor does not move — a divergence inside a translated node)
+whole package jest ONCE (load 4.98): 79 files (79 on disk), 2934/2935, exit 1 — the ONE red `typecheck-emitted › socket-desk`:
+  TS18048 `s.internal.config.protocols` is possibly undefined (the applied-values line in websocket.ts; `protocols?` is optional on the
+  connection config) — fixed as `(s.internal.config.protocols ?? []).join(',')`; then pkg tsc 0, websocket 38/38, typecheck-emitted 43/43,
+  subscribe 45/45 re-run green (the whole run is NOT repeated — the fix is one emitted line, and typecheck-emitted is the gate that saw it;
+  §66.4 #1's lesson a fourth time: run typecheck-emitted before the arms).
+arms (mut.py, mut.log + mut-summary.txt; every source restored md5-identical): 11 armed — 10 KILLED, 1 SURVIVED-as-equivalent:
+  M1 realtime has() counts undefined as delivered (3: C4 E18 E19) · M2 has() drops null not undefined (3) · M3 the realtime effect compares
+  the RAW Enabled — true→undefined reconfigures (2: C4 E19) · M5 sse has() reverted (E12) · M6 websocket has() reverted (E13) · M7 streaming
+  has() reverted (the §D row) · M8 the fixture wire removed (5: A2 A3 A6 A7 A9) · M9 isEnabled === true (18) · M10 Enabled coerced whether
+  or not delivered (20) · M11 websocket reconnectDelay guarded by presence alone ⇒ NaN — SURVIVED: the emitted nextReconnectDelay (§66 D1,
+  the contract) normalises a non-finite base to the default before any timer, as the runtime's does — equivalent, not a hole ·
+  M12 has() without hasOwnProperty — EQUIVALENT by construction, killed by C4's text pin alone (recorded as such).
+```
+
+### §66.5#1.4 What building it found
+
+1. 🔴 **The export's `has()` treated "passed as undefined" as "delivered" in all four stream libs** — one helper, copied four
+   times, each carrying the same hole; a rule the runtime keeps in ONE place (`sendValue`) was transcribed nowhere. The
+   measurement was the whole cost: the fix is one line per lib.
+2. ⚠️ **The corpus is blind to this shape** (`corpus.log`, 116 fixtures): 6 stream nodes, 7 wired config inputs, 2 from a
+   Variable — both DATA ports written by a text input; 10 unwritten Variables in the corpus feed Texts and controls, none a
+   stream config. The runtime rule, not a corpus count, ranked it (RANK BY THE PRODUCT SURFACE).
+3. ⚠️ **The instrument needs `category`** on a corpus module (`NodeDefinitionOptions` requires it) — a TS2741 on the first run, not
+   a behaviour.
+4. ⚠️ **`insert before the describe's close` found a helper's `});`** between §C and §D of the spec (the harness functions live
+   there) — C4 landed inside `makeTimers` and read as a TS1005 cascade. Anchor on the helper comment that follows the describe.
+5. ⚠️ **Two pins the base shape moved were not in EXPECTED.md**: A7 (`{}` ⇒ `{ enabled: enabledValue }` — the option object is never
+   empty while the wire exists) and B4's handler-only arm (a second wire on Enabled hits "two wires" first). Both honest:
+   `unwireEnabled(ir)` restores the rows' intent and A7 pins both shapes.
+
+### §66.5#1.5 What this leaves (owner NONE unless named)
+
+- The `enabled` store is typed `string` (`all([])` in `typeOfVariable`) — the **vartype lane (§72)** moves it to `unknown`; the hook's
+  option is `unknown` so the page compiles either way. Owner: §72's lane.
+- sse/websocket's raw-vs-applied comparison is equivalent today because their passes guard on URL/identity; if a pass ever loses
+  that guard the applied comparison is what keeps a Variable-to-undefined from reconnecting. Owner NONE (pinned by C4's text).
+- `hasOwnProperty` in `has()` is now redundant (an absent key reads `undefined`); kept for prototype safety — M12 is the equivalent
+  mutant, killed by the text pin alone. Owner NONE.
+- The runtime instrument lives in `test/corpus/` (the NDA-001 corpus dir) rather than a P18 dir — it is a runtime rule with a runtime
+  harness; if the corpus README ever indexes rows by phase, this one is EXP-011's. Owner NONE.
+- The drive (`EXPECTED-DRIVE.md`, `drive.sh`) is prepared and NOT run — the orchestrator's, serially after the merge.
+
+### §66.5#1.6 The drive — the built export, headless, two arms against the fake `/realtime` (session 94)
+
+`EXPECTED-DRIVE.md` FIRST, then `drive66.sh` (the lane's script with the emitter repointed at the MERGED tree). **Arm A, first run — an
+instrument fault**: `fakert.js` was launched WITHOUT the log-path argument it requires and crashed on the page's first `GET /realtime`
+(`ERR_INVALID_ARG_TYPE` in `fakert.log`), so T1 read `["Live Desk","false","interrupted",…]` and no `__state` line. Even that reading
+separated the arms: `interrupted` means the page TRIED to connect (Enabled ON) where the OFF arm reads an empty status. **Arm A re-run**
+(`drive66A.sh`, the same `live-desk-out` build — `tsc -b && vite build` exit 0, 0 `error TS`; `Home.tsx` `const enabledValue =
+useValue(enabled);` and `{ collection: 'Contact', enabled: enabledValue }`; `realtime.ts` the `[key] !== undefined` line; `vite preview`
+4366, Chrome CDP 9367): **T1 boot** `["Live Desk","true","subscribed","","","","[]","","",""]`, errs `[]`, `__state` one stream `c1`
+subs `[Contact]`; the fake saw ONE `GET /realtime` with no `Authorization` and ONE `POST /realtime/subscriptions`
+`{"clientId":"c1","subscriptions":[{"collection":"Contact"}]}` — the node the runtime boots ON boots ON ✓. **T2** create r1 ⇒ `create`,
+`r1`, the record, `[{"objectId":"r1","name":"Ada"}]`, last `created`, pulse `changed` ✓. **T3** update ⇒ `Ada B`, `updated` ✓. **T4**
+delete ⇒ the pre-delete record, `deleted` ✓. **T5** errs `[]` ✓. **Arm C** (the REVERTED emitter, a detached worktree at `a16c2c82`
+with `node_modules` symlinked, over the SAME fixture; `realtime.ts` 0 `[key] !== undefined` lines; preview 4367, CDP 9368): **T1**
+`["Live Desk","false","","","","","[]","","",""]` — `__state` no stream: the same page boots OFF ✓. **T2** create r9 ⇒ unchanged ✓.
+Teardown: 0 listeners on 4366 / 4367 / 9367 / 9368 / 8584. Every row matched the sheet once the instrument was armed.
 
 ## §67 A `Variable`'s authored `Value` is the runtime's per-mount write — the §60.5 register's first EXP-011-owned row, built (session 91, 2026-09-05)
 
@@ -10053,7 +10174,7 @@ Set's value, so the wire gate hid the arm; C6 disconnects the wire first.
 - **An authored Value under a wire into Value** is refused by name; the runtime's actual order (parameter at creation, then the wire's
   arrivals) means the authored value shows until the source first fires. Translating it is the seed effect PLUS the wire — only
   after pass 3 grows past text inputs. Owner NONE.
-- **A variable with no statically-known writer is typed `string`** (finding 1) — the honest answer is `unknown`, as store keys read
+- ✅ **Built as §72 (session 94)** — and it forced the record-Id coercion open. Was: **A variable with no statically-known writer is typed `string`** (finding 1) — the honest answer is `unknown`, as store keys read
   since §47; changing it moves every fixture whose variables are written only by refused logic. Owner NONE.
 - ✅ **A `Set Variable` with an authored Value** (no wire) was refused by the export (*nothing is wired into value*, §60.4 finding 7) where
   the runtime writes the literal on the pulse. C6 pins that it is at least NOT a seed. **Built as §69 (session 93)** — and the refusal
@@ -10141,7 +10262,7 @@ text (E7), an unlisted key typed (E4). Whole package, editor tsc, ledger, picker
   delivers (creation-time queue, then arrivals). The same residual as §67.5's first row, one construct over. Owner NONE.
 - ✅ **`Set Component Object Properties`** (§60) already read the literal; **`Set Variable`'s authored Value** (§67.5) did not —
   the third sibling with the same runtime rule and no clause. **Built as §69 (session 93).** The fourth, `Global Store Set`, is §69.5's.
-- **The `Object` node's own `prop-*` inputs** as authored literals (a write through the Object itself at creation) — refused by name
+- ✅ **Built as §71 (session 94)** — the runtime writes them at creation, per mount; the export had dropped them SILENTLY. Was: **The `Object` node's own `prop-*` inputs** as authored literals (a write through the Object itself at creation) — refused by name
   since §47 (`objectNodeGate` refuses a WIRED prop input; an authored one is silently not written). Registered here. Owner NONE.
 
 ### §68.6 The drive — the built export, headless (session 92)
@@ -10234,7 +10355,7 @@ session 93 hand-off.
 
 - **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
   mood-desk's four Sets are exactly this shape. The same residual as §67.5 #1 and §68.5 #1. Owner NONE.
-- **`Global Store Set`'s typed-in Value — the FOURTH sibling.** `globalstoresetnode.ts` has a STATIC `value` input whose setter stores
+- ✅ **Built as §70 (session 94)** — the refusal had dropped the button in front. Was: **`Global Store Set`'s typed-in Value — the FOURTH sibling.** `globalstoresetnode.ts` has a STATIC `value` input whose setter stores
   `internal.value`, written on `Set`; the export's `net.noodl.GlobalStore.Set` case refuses *nothing is wired into value* one screen above
   the Set Variable case, with the same shape and the same fix (a clause + a literal `SourceRef` under `storeKeySources`). Owner NONE — a
   one-session job, the natural next.
@@ -10255,3 +10376,374 @@ listeners on 4369 / 9370. **C1, the control**: the SAME fixture emitted by the r
 `node_modules` symlinked) — 4 refusals, `<button className={styles.saveButton}>Save profile</button>` with **no `onClick`**, the two
 dropped-wire notes exactly as the sheet predicted ✓ (read from the emitted text; C2, driving that build, was not run — a button with no
 handler needs no drive). Every row matched the sheet written before the drive.
+
+## §70 A `Global Store Set`'s typed-in `Value` is written on every Set — the fourth sibling of §67/§68/§69, built (session 94, lane gss, 2026-09-05)
+
+**Picker 117/127 unchanged** — `Set Global Store` has been a translated node since the named-stores slice; this closes §69.5's second
+row, a **divergence inside a translated node** for the fourth session running, and the same size as §69's: the refused Set did not
+lose a value, it lost the button in front of it.
+
+### §70.0 What the runtime does, read before a line of code
+
+`globalstoresetnode.ts`: `value` is a STATIC input, `type: '*'`, whose setter stores `this._internal.value`. `nodescope.ts` (the
+parameter pass) `registerInputIfNeeded`s and `queueInput`s every authored parameter into the node **at creation**, so a value typed
+into the node lands in `_internal.value` before any signal. On `set` (`valueChangedToTrue`) `scheduleWrite` coalesces one frame's
+pulses and `doSet` calls `globalStoreManager.setKey(storeName, key, this._internal.value, { merge })`. So *"write `stormy` into
+`theme`"* typed straight into the node is written on every Set, from the first; a wire into `value` lands over it. No `setWith`
+coercion exists on this node — nothing stands between the literal and the write but the node's own gates (no key ⇒ `Key is required`).
+**Measured first** (`probe.ts`, session 94's scratch: cheer/Pages/Mood with a button firing a Set whose `value: 'stormy'` is typed in):
+the Set was refused *nothing is wired into value* (plan.ts, the FIRST hit for the sentence) and the refusal **cascaded**: `Pages/Mood:
+wire stormyButton:onClick->setStormy:set dropped: nothing is wired into value`, the button emitted as `<button>Make it stormy</button>`
+with **no `onClick`** and an in-code marker wearing the Set's sentence, and the report blamed the Button (*"the export has no rule for
+this node yet … one node is left out only because this one fires it"*) — §69.4 #1's cascade sentence, seen a fourth time. A string
+literal into a key the initial state does not carry read `quote?: unknown` and `String(quote ?? '')` — §48 G1's vacuous-`every`
+path: the literal was not a source.
+
+**The corpus** (`corpus.log`, a walk over every `nodes.json` for the PARAMETER): **two** `Global Store Set` nodes in the whole corpus
+(cheer's `setNote`, `setTheme`), both wired, **zero** carry a `value` parameter — neither the shadowed shape nor the common one had
+any presence, which is why it sat green.
+
+### §70.1 What is emitted
+
+`plan.ts`, the `GLOBAL_STORE_SET` case: with no wire into `value`, `literalParam(node, 'value')` ⇒ `{ kind: 'globalstore-set',
+storeName, key, expr: { kind: 'literal', value } }` with nothing to consume, collapse or subscribe. Every gate that stood in front of
+the wired path stands in front of this one — store name literal, `merge`, `transaction`, `key` literal, and *key "<k>" is
+number-typed/boolean-typed by the initial state; only string writes translate in this slice*. A literal under a wire is shadowed
+(the wire compiles, the literal is never read); an `expression` parameter is not a literal and meets the old sentence; nothing wired
+AND nothing typed is the old sentence too. `appState.ts`, discovery: a literal `SourceRef` is registered under `storeKeySources` at
+`<store> <key>` beside the Set's writer entry, unwired only, so **the literal types the key** where the initial state does not —
+`'Keep going'` ⇒ `quote?: string` read bare, `7` ⇒ `quote?: unknown` read through `String()`; an initial-state key keeps its
+initial-state type (`entry.required` wins before sources are read).
+
+```tsx
+<button className={styles.stormyButton} onClick={() => mood.set({ theme: 'stormy' })}>
+```
+
+— predicted in `EXPECTED.md` before the change and read back to the character. The store module gains one provenance line
+(*Written by "Write stormy" …*); `MoodState` is unchanged. `post-diff.log`: of cheer's 34 emitted files exactly three differ from the
+base emit — Mood.tsx (+ the button), mood.ts (+ the line), Mood.module.css (+ `.stormyButton`) — and the notes are equal.
+
+### §70.2 The fixture — `tests/fixtures/cheer`, Pages/Mood, grown by two nodes
+
+`setTheme` is fed by a Variable (`visitorName`), not a constant, so re-authoring it typed-in would have changed what the page does;
+instead the page gained `stormyButton` ("Make it stormy", last in the shell so no existing element moves) and `setStormy` (`mood`,
+`theme`, `value: "stormy"` typed in, a `metadata.comment` saying why), one wire `onClick → set`. The fixture is now the corpus's only
+typed-in Global Store Set — the presence control for the shape the corpus lacked. **Pins moved, all in `global-store.test.ts`**:
+`GOLDEN_MOOD_STORE` (+1 "Written by" line), `GOLDEN_MOOD_PAGE` (+ the button) — the goldens describe the fixture and the fixture grew;
+and *every naming node defaulted* (a hard-coded list of five naming nodes gained a sixth). That last red carried a reading of its own:
+with every `storeName` dropped, `setStormy` alone left a store `mood` with `theme?: string` — **the literal typing a key with no
+initial state, seen on the fixture**. The ~40 other specs that load cheer pin Mood by `toContain` and by note lists; the four that
+name Mood text (boolean-logic, logic, navigate-to-path, in-code-markers) were run singly and are green; the whole-package run is the
+sweep for the negatives.
+
+### §70.3 Gates and arms
+
+Spec `tests/global-store.test.ts`, **32 rows** (+10, §70 H1–H10): H1 the fixture's typed-in value with no wire — the handler, the
+provenance line, `theme: string` unchanged, nothing dropped, the two wired Sets untouched, the app typechecks; H2 a string literal into
+a non-initial key types it `string`, read bare, written as the literal, typechecks; H3 a number writes as a number and types `unknown`
+(`String()` read) and typechecks, a boolean likewise and is not refused as a logic truth value; H4 a literal under a wire is shadowed —
+the wire's `useState` idiom, the literal never printed, and a number under a string wire does not demote; H5 neither wire nor literal
+⇒ the old sentence, the button loses its handler (the absence beside H1) — and §48 **G1**, which pins the same sentence on a Set with
+no wire and nothing typed, holds verbatim; H6 the initial-state number/boolean gate in front of the literal path, both sentences, the
+wire dropped with them; H7 `merge`, `transaction` and a blank key each refused by their own sentence with the value typed in; H8 an
+expression is not a literal; H9 discovery registers the literal regardless of the plan's refusal (a merge-refused Set still types
+`quote` string — the §47/§69.5 convention, now pinned for the store); H10 the corpus control (the two wired Sets carry no `value`;
+`setStormy` is the only typed-in one). Pkg tsc 0. **12 arms, 12 killed** (`mut.py`, md5-restored): the compiler blind to the parameter (5 red, the goldens too), the literal preferred under a wire (H4), the initial-state number/boolean gate skipped for a literal (H6), printed as a string whatever it is (H3), nothing typed in writes `''` instead of refusing (G1 H5 H8), an expression as its text (H8), the merge gate skipped for a literal (H7 H9), the source never registered (H2 H9), registered under a wire (H4), a literal always `string` — the line shared with §67/§68/§69 (H3), the key typed from the wrong parameter (G1 H3 — the key NAME is a string, so §48's unwired Set would have typed `quote` string), registered under a neighbouring map key (H2 H9).
+
+### §70.4 What building it found
+
+1. ⚠️ **A hard-coded list of "every naming node" is a pin on the fixture's node COUNT** — the naming-node test dropped `storeName`
+   from five ids by name; a sixth naming node left a second store standing. The row is honest and now lists six, but any fixture growth
+   on that page will red it again. Owner NONE (a `nodes.filter(isGlobalStoreFamily)` would make it count-proof — one line, not this slice's).
+2. ⚠️ **The ledger is ASCII-escaped and one line is not** — `coverage-ledger.json` writes `§` everywhere except session 93's
+   §69 note, which is raw. `json.dump(ensure_ascii=True)` re-escapes that line (a two-line diff for a one-line change);
+   `ensure_ascii=False` un-escapes the whole file (128 KB of diff). The §70 note was patched textually in the file's own convention.
+   Owner NONE — a normalisation is one `python -c` for whoever next touches the file.
+3. ⚠️ **The typing rule and the write rule live in two files** for the fourth time — M8–M12 (`appState.ts`) and M1–M7 (`plan.ts`) are
+   different kills; H2/H3/H9 read the store module, not the handler, and are what catch the appState half.
+4. ⚠️ **Byte-identical output was not available as the pin proof this time** (the fixture grew rather than re-authored), so the pre/post
+   snapshot's job was inverted: enumerate every file that moved (three) and show the notes did not.
+
+### §70.5 What this leaves (owner NONE unless named)
+
+- **A literal under a wire** is shadowed in the export; in the runtime the typed-in value shows until the wire's source first delivers.
+  The same residual as §67.5 #1, §68.5 #1, §69.5 #1. Owner NONE.
+- **`merge: true` with a typed-in object** — the runtime shallow-merges; the export refuses `merge` by name in front (H7). Owner NONE.
+- **A store key whose only writer is a REFUSED Set with a typed-in value is still typed by the literal** (H9) — discovery ignores the
+  plan's refusal, the wired path's convention since §47. Owner NONE.
+- **The cascade sentence on the node in front** (§69.4 #1, seen again in §70.0). Owner NONE (EXP-004's report).
+- **The naming-node list pin** (§70.4 #1). Owner NONE.
+- §69.5 row 2 (this section) CLOSED. §67.5 #2 / §67.5 #1 / §68.5 #1 unchanged.
+
+### §70.6 The drive — the built export, headless (session 94)
+
+`EXPECTED-DRIVE.md` FIRST, then `drive70.sh` on the built cheer export emitted from the MERGED tree (34 files, one pre-existing
+note; `tsc -b && vite build` exit 0, 0 `error TS`, 244.46 kB; `vite preview` 4370, Chrome headless CDP 9371, route `/mood`).
+**P1 boot**: `["Mood board","","Feeling sunny today"]`, errs `[]` — a write on Set, not a seed ✓. **P2** `Make it stormy` ⇒
+`"Feeling stormy today"` — the typed-in value ✓. **P3** type `hi` ⇒ `["Mood board","hi","Feeling stormy today"]` — the wired
+write-through untouched, the literal kept ✓. **P4** click again ⇒ unchanged ✓. **P5** errs `[]` ✓. Teardown: 0 listeners on 4370 /
+9371. **C1, the control**: the SAME fixture emitted by base `a16c2c82` (a detached worktree, `node_modules` symlinked, removed after)
+⇒ refusals 2 (`Write stormy — nothing is wired into value`), `<button className={styles.stormyButton}>Make it stormy</button>` with
+**no `onClick`** under a `TODO(export)` marker wearing the Set's sentence, the note `Pages/Mood: wire stormyButton:onClick->setStormy:set
+dropped: nothing is wired into value`, and `mood.ts` still listing `Write stormy` as a writer — exactly as the sheet predicted ✓ (C2, driving
+that build, was not run — a button with no handler needs no drive). Every row matched the sheet written before the drive.
+
+## §71 An `Object` node's OWN typed-in `prop-<key>` values are the runtime's per-mount write — §68.5's third row, built (session 94, lane objlit, 2026-09-05)
+
+**Picker 117/127 unchanged** — `Model2` has been a translated node since Tier 1.1 (§47 for the explicit form); this closes a
+**divergence inside a translated node**, the fourth of the §60.5/§67.5/§68.5 family and the only one that was SILENT: §69's refusal
+dropped a chain, §68's dropped a key with no note — this one dropped the values with no note, no refusal and a green report.
+
+### §71.0 What the runtime does, measured before a line of code
+
+`$SCRATCH/runtime.log` (a ten-row runtime spec, `runtime-probe.test.ts`, run once in `noodl-runtime`'s own harness and moved out of the
+repo): `nodescope.ts:203-211` registers and queues every authored parameter at node creation; `modelnode2.ts:461-470`
+`registerInputIfNeeded` registers ANY `prop-*` input on demand (a typed-in parameter has an input to land in — not an "obsolete
+parameter"); `userInputSetter` (479-490) marks the key dirty and `scheduleStore` (307-332) writes `model.set(key, value)` in the same
+pass once a model is bound. So an Object `board` with `prop-headline: 'Welcome'` typed in writes `{ headline: 'Welcome' }` into
+`Model.get('board')` **on every creation of the node — every mount of its component** (Q2: a second creation rewrote a value a Set had
+changed in between), in either parameter order (Q1/Q1b), for numbers and booleans as themselves (Q1c), for a key the Properties list does
+NOT name (Q1d — the Object never consults its list on the write path, unlike §68's Set) and with no list at all (Q1e); a Set Object
+Properties' Do lands over it afterwards (Q2b); a wired Id holds the value and writes it when the Id arrives (Q3 — refused by §47 anyway).
+
+**Who can author it.** The port is `type: { name: '*', allowConnectionsOnly: true }` (modelnode2.ts:503-506) — the editor's property
+panel HIDES it (`Ports.ts:1075-1081`), so a person cannot type it in; the MCP (the agent authoring path) ACCEPTS it: the catalog holds only
+static ports, `Model2` is `runtime-discovered`, so `checkParameterValues` files the parameter under `dynamicSkips` — one
+`dynamic-port-skipped` notice, severity **info** (parameterValues.ts:947-979, 1197-1220), which `noodl-mcp/validate.ts` never blocks on.
+The `connection-only-parameter` ERROR ("this value is discarded and the node renders as if it were never set") cannot fire for a dynamic
+port — and its sentence is false for this node: the runtime writes the value. Registered §71.5.
+
+**Measured first, the export side** (`$SCRATCH/probe-reverted.log`, profile-desk with `prop-motto: 'Hello'` typed into the Object):
+no note, no refusal, no `useEffect`, `motto?: unknown`, `String(motto ?? '')` — the literal vanished with a green report. **The corpus**
+(`corpus.log`, a walk over all 432 fixture json files): 3 `Model2` nodes, **0** with a `prop-*` parameter, 0 under a wire.
+
+### §71.1 What is emitted
+
+`appState.ts`: one exported `objectSeedsOf(node, wiredPorts)` — the typed-in `prop-<key>` primitives with nothing wired over the same
+port, in **parameter order** (the order the runtime queues them and writes `dirtyValues` in; `parseProject` keeps `Object.entries`
+order) — used by BOTH files so the interface and the patch cannot disagree. Discovery pushes the Object as a **writer** carrying
+`seeds` (a new optional field on `VariableWriter`) and registers each literal as a `SourceRef` under `storeKeySources`, so **the literal
+types the key** — `'Welcome'` ⇒ `headline?: string`, `2` ⇒ `priority?: unknown` — and earns it (no list needed, as the runtime).
+`plan.ts`: `ObjectSeedPlan { nodeId, storeName, entries, comment }` on `ComponentPlan.objectSeeds`, filled in the Model2 pre-pass right
+after the node collapses into its module (so every §47 gate — a wired prop input, a wired Fetch, a consumed signal, a wired or blank Id,
+the collision — stands in front, sentences unchanged); `objectSeedAction(seed)` is the `object-set` action it prints, `then: []`. A
+value that is not a string, number or boolean literal is named in a note (*its authored "x" property value is not a string, number or
+boolean literal — not written into "board" at mount*) while the node's reads still translate. `component.ts`: the seeds join
+`allActions` (the module import is earned by the write alone), `useEffect` is imported for a seed alone, and the effect prints with
+§67's variable seeds, before the §60 mirrors. `state.ts`: the provenance line.
+
+```tsx
+  // Board object — its authored property values are stored on every mount of this component (modelnode2.ts: each prop-* setter runs at node creation and schedules a store).
+  useEffect(() => {
+    board.set({ headline: 'Welcome', priority: 2 });
+  }, []);
+```
+```ts
+ * Seeded with { headline: 'Welcome', priority: 2 } by "Board object" (Model2 `board` on /Pages/Home) on every mount of its component.
+```
+
+### §71.2 The fixture — `tests/fixtures/notice-desk`, NEW (profile-desk untouched)
+
+profile-desk's shape, smaller: a page with an Object `board` (`prop-headline: 'Welcome'`, `prop-priority: 2` typed in, nothing wired
+over them), a Set Object Properties writing `headline` from an input on a button, three Texts reading `headline`/`priority`/`footer`, and
+a `NoticeBadge` component whose own Object seeds `footer` — two effects in two files, one module. A new fixture rather than a
+re-authoring because typing a value into profile-desk's Object would move §47's writer-less-key rows (A3, B4), the golden module and D4;
+**profile-desk's emit is byte-identical to session 93's `post69.json`** (`snap.ts`, `cmp` equal) — no pin moved anywhere.
+
+### §71.3 Gates and arms
+
+Spec `tests/object-store.test.ts`, **63 rows** (+12, §G): G1 the fixture whole (the effect text exactly, once, after the state hooks and
+before the render, the imports, the module's types and seed line, the reads — bare and `String()` — the Set's write untouched, nothing
+refused, the plan row, **the app typechecks**); G2 the literal types the key (a boolean ⇒ `unknown`, a string on the number key ⇒
+`string` and the read binds bare, both typecheck); G3 **parameter order, not list order**; G4 a wire into the same port ⇒ §47's sentence
+unchanged, no effect, the literal does NOT type the key (`headline?: unknown`, the badge's read through `String()`) beside the presence
+control (wire gone ⇒ `string`); G5 an unlisted key is written and earned, no note, typechecks; G6 an `expression` and a `json` value ⇒ the
+note, not written, the node still collapsed and its reads translating, the other key still seeded; G7 the control — literals gone ⇒ no
+effect, no `useEffect` import, no seed line, `priority`/`footer` fall to `unknown`; G8 two components ⇒ two effects, writer lines in
+component order; G9 a component that only seeds still imports the module; G10 the §47 refusals stand with the literals typed in; G11
+profile-desk carries no effect and the corpus no other carrier; G12 deterministic, the ledger row names the write. Pkg tsc 0. Ledger
+`OK — 176 types, 124 translated`; picker 117/127. **13 arms, 13 killed** (`mut.py`, md5-restored, every arm compiled — 63 total on
+each): the helper blind to the parameter (8 rows), the source registered as a string (3), the writer without its seeds (3), the key never
+ensured (G5 — TS2353 in the built app), registered under a wire (G4), the pass never plans (7), the note dropped (G6), key order instead
+of parameter order (G3 G5), the action printing strings (5), the effect never printed (7), `useEffect` not imported (4), the import sweep
+forgetting the seeds (G9), the seed line demoted (3). Whole package: **79 files (79 on disk, no new spec file), 2958/2958, exit 0** — run once at load 5.17 after a 6½-minute wait; no pin outside this spec moved (profile-desk byte-identical).
+
+### §71.4 What building it found
+
+1. 🔴 **A silent divergence has no sentence to grep.** §68 and §69 each left a note or a refusal a probe could read; this one left
+   nothing — a green report, a typed key, a value gone. Only typing the value in and asserting the effect sees it (G1 vs the reverted
+   probe). The four-sibling family's last member was the quietest.
+2. 🔴 **The editor's own diagnostic would tell an agent the opposite of the truth.** `connection-only-parameter` says the value "is
+   discarded and the node renders as if it were never set"; for `Model2`'s `prop-*` the runtime writes it. The rule cannot reach these
+   ports today (dynamic), so nobody has read the false sentence yet — registered §71.5.
+3. ⚠️ **A refused node's other literal still types the key and still prints "Seeded with"** — discovery is blind to the plan's refusal,
+   §47's convention for a refused Set's "Written by" line and §69.5's for a refused Set Variable. G4 pins it as it is. Registered §71.5.
+4. ⚠️ **The typing rule and the write rule live in two files — for the fourth time — and a shared helper does not make them one arm.**
+   `objectSeedsOf` is one function, but M2/M3/M4/M5 (discovery) and M6–M9 (plan) are different kills; a spec that only reads the handler
+   text sees half of them, exactly as §68.4 #1 and §69.4 #2 said.
+5. ⚠️ **Parameter order is the write order here, not list order.** §68 transcribed the Set's `_pushInputValues` (the list); the Object
+   writes `dirtyValues` in insertion order (the queued parameter order). G3 pins the difference; on the page it is invisible (one patch).
+
+### §71.5 What this leaves (owner NONE unless named)
+
+- **A literal under a wire on the same port** — refused whole by §47's sentence; the runtime shows the literal until the wire's source
+  first delivers. The same residual as §67.5 #1 / §68.5 #1 / §69.5 #1, one construct over. Owner NONE.
+- **The `connection-only-parameter` sentence is false for `Model2`'s `prop-*`** (and for any node whose `registerInputIfNeeded` accepts a
+  parameter on a connection-only port): "discarded" ≠ written at creation. Today unreachable (dynamic ports are `dynamicSkips`); the day
+  the validator learns dynamic ports it will tell agents to delete a working value. Owner NONE (editor validation, not EXP-011).
+- **A provenance line for a refused node** ("Seeded with … on every mount" while the export prints no effect) — the §47 convention
+  ("Written by" for a refused Set) extended, not changed. Owner NONE.
+- **`''` and `null` literals** — the runtime writes both (Q5); `''` is a string literal and IS seeded; `null` is not a `ParamValue`
+  literal the parser carries. Owner NONE.
+- **The editor cannot author this shape at all** (the panel hides connection-only ports); an author who wants a default on an Object
+  today reaches for a Set on a mount pulse. Not a divergence — a product surface question. Owner NONE.
+- StrictMode's dev double-mount writes the seed twice (idempotent); `vite preview` is production. Owner NONE (§67.5's row).
+- §67.5 #2 (a no-source variable typed `string`) — lane vartype's row this session.
+
+### §71.6 The drive — the built export, headless (session 94)
+
+`EXPECTED-DRIVE.md` FIRST, then `build71.sh` + `drive71.sh` on notice-desk emitted from the MERGED tree (15 files, 0 refusals;
+`tsc -b && vite build` exit 0, 0 `error TS`, 237.20 kB; `vite preview` 4371, Chrome headless CDP 9372). **P1 boot**: `["Notice
+Desk","Welcome","2","Posted by the desk","Welcome"]`, errs `[]` — the two mount effects wrote the record and every reader re-rendered;
+`2` is `String(priority ?? '')` ✓. **P2** type `Sale` ⇒ unchanged ✓. **P3** Post notice ⇒ `["Notice Desk","Sale","2","Posted by the
+desk","Sale"]` — the Set's Do lands OVER the seed, priority and footer untouched ✓. **P4** `location.reload()` ⇒ P1 again — the
+per-mount rewrite ✓. **P5** errs `[]` ✓. Teardown: 0 listeners on 4371 / 9372. **C1, the control**: the SAME fixture emitted by base
+`a16c2c82` (a detached worktree) ⇒ refusals 0, `Home.tsx` has **0 `useEffect`**, `board.ts` `headline?: string` (from the Set's wire
+alone) and `priority?: unknown`, no `Seeded with` — the divergence was silent, as the sheet said ✓ (C2, driving that build, was not run).
+Every row matched the sheet written before the drive.
+
+## §72 A variable with NO statically-known source is `unknown`, not `string` — §67.5's second row, built; and the record-Id hole it forced open (session 94, 2026-09-05)
+
+**Picker 117/127 unchanged** — nothing new translates; this is the type a translated construct claims, and one build the honest type
+forced: a record Id read from an `unknown` variable had no `unknown`-safe form in the emitted app (the built app was TS2345), a hole
+every HTTP-written variable already fell through and the type change would have widened to every variable nothing writes.
+
+### §72.0 What the analysis did, measured before a line of code
+
+`appState.ts` `typeOfVariable` asked `sources.every(isString)` over the variable's `variableSources`, and `[].every(…)` is true — so a
+variable with **no statically-known source** read `value<string | undefined>` and bound BARE at every sink. §47 closed the identical hole
+for Object keys, §48 for Global Store keys, and §67.4 finding 1 registered it for variables. Three shapes have zero sources: a `Variable`
+node nothing wires into and no Value typed in (a pure reader); a `Set Variable` whose Value is neither wired nor a primitive literal (an
+`expression` — refused by the plan, its writer still listed); a Logic Builder's block write (`noodl_set_variable` — a writer with no typed
+source, refused whole). **Measured on the reverted rule** (`probe-post.ts` under M1): a zero-source variable wired into a text input's
+`maxLength` printed `maxLength={noteValue}` and the built app read `TS2322 'string | undefined' is not assignable to 'number | undefined'`
+— the vacuous `string` was not a label, it was a red build.
+
+**The corpus** (`corpus.ts`, a walk that replicates discovery's four source rules and is cross-checked against the post-change `tsType`):
+39 fixtures, 79 variables, source-count histogram `[1:58, 2:14, 3:5, 4:2]` — **0 variables with zero sources, 0 fixtures affected**;
+the pre/post snapshot of every emitted file of every fixture is **byte-identical** (`pre/*.json` = `post/*.json`, 39 of 39). The product
+surface — 36 `nodegx.project.json` projects (the members-area template, 16 lessons, 8 P81 demos, editor test projects) — holds **0
+`Variable2` / `Set Variable` nodes on disk** (a validated grep: 3 on panel-desk, 0 there) and exactly ONE variable, minted by the
+`log-a-thing` solution's Logic Builder census (`lastEntryTitle`: a writer, 0 sources): it moves from `string | undefined` to `unknown`,
+and its only reads are the transcribed-workspace comment and the VF facade's `get lastEntryTitle(): any` — nothing live changes.
+The sibling hole in `typeOfPayloadKey` (the same vacuous `every` for an Event Sender's listed key nothing wires): 1 listed payload
+key in the corpus, 0 unwired — registered, not built.
+
+**probe.ts — the §69 rule as the oracle.** An unwired NUMBER Set makes a variable `unknown` today, the type §72 gives a zero-source one;
+so today's emitter, fed that, answers what each sink WILL print. Random Bytes' length/encoding (browser-utilities E1), a Subscribe's
+Enabled (A6), a Drag's Mounted (C13): text identical for `string` and `unknown`, typecheck `[]` — none moves. **The relation pair's
+target Id (relation-pair C2): text identical, typecheck 3× `TS2345 Argument of type '{}' is not assignable to parameter of type
+'string'`** — the Record fetch's `puppyRecordId`, `linkTargetId`, `unlinkTargetId`. A local bound from an `unknown` read narrows to `{}`
+under `if (!local)`, never to `string`. Pre-existing for every `unknown` variable (an HTTP body, a Function output — §10's own
+population); C2 typechecks the shape with a variable nothing writes, so §72 alone turned an existing green gate red.
+
+### §72.1 What is built
+
+`appState.ts` `typeOfVariable`: `sources.length > 0 && sources.every(…) ? 'string' : 'unknown'` — §47's rule, one construct over, with
+the comment naming §72 and the measured TS2322. Every consumer already had the `unknown` road (the 21 `unknown` variables in the corpus
+walk it): `state.ts` prints `value<unknown>`; plan.ts 16806 marks the binding `untyped` so the sink table coerces (`String(x ?? '')` at a
+text sink, `!!x` at a boolean one, a number sink refused by name — *reads variable "note", which has no statically-typed writer, into a
+sink this slice cannot coerce it to*); `exprTsType` answers `unknown` for the read, so a store key the read feeds is `unknown` too.
+
+**The record-family coercion** (the build the type forced). Type in `plan.ts`, print in `component.ts` — two files, both armed:
+`api-call` gains `coerceId?: 'string'` (set by the record verbs when `exprTsType(idExpr) === 'unknown'`), its `guards` entries gain
+`coerce?: 'string'` (the relation pair, per argument), `record-fetch` gains `coerceId?: 'string'`; the three emitters print
+`String(<read> ?? '')` at the bind. The runtime keys `Model.get(id?: string | number)` by the value and the client
+`encodeURIComponent`s it, so `String()` transcribes both; `?? ''` keeps an unwritten variable on the runtime's own failure road — `''`
+meets `Missing Record Id` / `Missing Id.` / *No target record Id … specified* exactly as `undefined` did. A `string` source binds bare as
+before (F2 is the control). A new `ValueExpr` kind was considered and refused: every expression walker (imports, hook locals, validity)
+would have to learn it, and a walker that misses a case renders nothing silently; a flag is consumed at exactly three emitters and the
+inner `store-get` stays visible to every walker.
+
+```tsx
+const puppyRecordId = String(puppyId.get() ?? '');
+if (puppyRecordId === undefined || puppyRecordId === null || puppyRecordId === '') return;
+…
+const linkTargetId = String(puppyId.get() ?? '');
+if (!linkTargetId) throw new Error('No target record Id (the record to add a relation to) specified');
+```
+
+### §72.2 The fixtures — none changed
+
+No fixture on disk has a zero-source variable, so none was re-authored: the byte-identical corpus snapshot is the pin proof, and the
+reverted arm (M1) is the evidence of change. Every row builds its shape by mutation — panel-desk's `noteVar` with its Value dropped (a
+Variable nothing writes), link-desk with the Record's Id from such a Variable (C2's shape), puppy-test-3's update/delete fed the same.
+`$SCRATCH/fixtures/link-desk-72` is the C2 shape authored on disk for the drive.
+
+### §72.3 Gates and arms
+
+`tests/variable-seed.test.ts` **§E, 10 rows** (§72's type): E1 zero sources ⇒ `value<unknown>` under *No statically-known writer*; E2 a
+refused expression-Value Set is a writer with no source — the writer line stays, the type is `unknown`; E3 the seed alone is one string
+source (control); E4 the two unknowns told apart by the comment (a number seed vs no source); E5 the type propagates — `PanelStateRecord`'s
+`note?: unknown` and `String(panelState.value.note ?? '')`, the seeded control `note?: string` and bare; E6 the app typechecks; E7 a zero-
+source variable into a number sink is refused by name (bound bare and TS2322 on the reverted rule); E8 mixed sources ⇒ `unknown` (kills
+`some`); E9 two string sources stay `string`; E10 straight into a Text: `String(noteValue ?? '')`, the seeded control `{noteValue}` bare.
+**§F, 5 rows** (the coercion): F1 C2's shape — three coerced binds, the `unknown` store line, typecheck `[]`; F2 the string-variable
+control binds bare; F3 the verb's own Id; F4 the record verbs' `guardId` path on puppy-test-3 (guard AND call coerced, typecheck `[]`);
+F5 the guard still follows the coerced bind. **One pin moved outside this spec**: relation-pair C2's two locals (`linkTargetId`,
+`unlinkTargetId`) now read `String(puppyId.get() ?? '')` — honest because `puppyId` has no writer in that row; its typecheck row, which
+went red under the type alone, is green again. Every other pin predicted in `EXPECTED.md` stayed (twelve specs re-run before the sweep:
+browser-utilities, subscribe-to-changes, drag, navigate-to-path, untyped-variable, visual-function, page-inputs, object-store,
+stores-events, date-family; then the api-call family: record, record-verbs, relation-verbs, file-record, user-family,
+set-user-properties-magic-link, logic — all green). Package tsc 0.
+
+**14 arms, 14 killed** (`mut.py`, md5-restored, value level, four files): appState.ts — M1 the vacuous `every` restored (10 red: E1 E2 E4 E5
+E7 E10 …), M2 `> 1` (7 — A4 C1 E3 E5 E10 F2), M3 `some` for `every` (E8), M4 a literal always `string` (B1 B2 E4 E8), M5 the memo poisoned
+(13); state.ts — M6 prints `string | undefined` whatever the plan typed (7); plan.ts — M7 a variable binding never `untyped` (E7 E10), M8
+`exprTsType` answers `string` for every `store-get` (8 — E5 E6 E7 F1 F3 …), M9 the relation guards never coerce (F1 F3 F5), M10 the record
+fetch never coerces (F1 F5), M11 the verbs never coerce (F4); component.ts — M12 the guard bind INVERTS the flag (F1 F2 F3 F5), M13 the
+coercion prints `String(x)` without `?? ''` (F4), M14 the fetch INVERTS the flag (F1 F2 F3 F5). ⚠️ M12/M14 first read **NO-COMPILE**: a
+`=== 'never'` comparison against `'string' | undefined` is TS2367, not a mutant — re-armed by inverting the ternary.
+
+**Gates**: package tsc 0 · `variable-seed.test.ts` 33/33 · the twenty specs above green · `export-ledger:check` exit 0 (176 types, 124
+translated) · picker `--check` exit 0 (117/127 holds) · **the whole package ONCE, load 4.16, no peer suite running: 79/79 suites, 2943/2943
+tests, exit 0** (79 spec files on disk reconciled; the sweep for the negative pins no grep can find — none surfaced).
+
+### §72.4 What building it found
+
+1. 🔴 **A record Id read from an `unknown` source had no `unknown`-safe form** — three emitters (`record-fetch`, the verbs' `guardId`, the
+   relation pair's `guards`) bound the read and narrowed it, and an `unknown` narrows to `{}`. Pre-existing for every HTTP-written
+   variable since §43/§62; found only because §72 put a zero-source variable through C2's typecheck. Built here (§72.1).
+2. ⚠️ **A number sink took a `string | undefined` variable bare** — `maxLength={noteValue}`, TS2322 in the built app — because the
+   binding was not `untyped`. §72's type routes it to the refusal sentence §10 wrote for exactly this; the reverted arm is the proof.
+3. ⚠️ **The corpus cannot see this row** — 0 of 79 variables; the product surface has 0 Variable nodes. The measurement that priced the
+   job was the probe with the §69 rule as an oracle, not the corpus (RANK BY THE PRODUCT SURFACE: the surface here is the picker's
+   Variable node with nothing wired, which no fixture authors).
+4. ⚠️ **`git checkout -- <file>` to restore an arm discarded the lane's own edit** — caught by `git diff --stat` reading empty;
+   re-applied from the python patch, and every later arm restored from a `cp` snapshot with an md5 check.
+
+### §72.5 What this leaves (owner NONE unless named)
+
+- **`typeOfPayloadKey`'s vacuous `every`** — an Event Sender's listed payload key nothing wires reads `string`; corpus 1 key, 0 unwired.
+  One line, §47's rule a fourth time. Owner NONE.
+- **A `number`-typed Id** (a record column typed number wired into a record Id) is bound bare into a `string` parameter — the same
+  TS2345, a different type; no fixture wires one. Owner NONE.
+- **A Logic Builder-minted variable is `unknown`** (`lastEntryTitle`) — the block write is refused whole, so nothing types it; the VF
+  facade reads it `any`. Correct today; when EXP-003 translates the write, the source registers and the type is earned. Owner NONE.
+- **The `enabled` lane's measurement (§66.5 #1)**: a Variable nothing wrote into a Subscribe's `enabled` prints `enabled: enabledValue`
+  bare for `string` AND `unknown` (probe A6) — §72 changes neither the text nor the boot semantics of that shape. Owner: the enabled lane.
+- §67.5 #1 / §68.5 #1 / §69.5 #1 (a literal under a wire) unchanged.
+
+### §72.6 The drive — the built export, headless (session 94)
+
+`EXPECTED-DRIVE.md` FIRST, then `drive72.sh` on `link-desk-72` (the lane's scratch fixture: link-desk with the Record's Id from a
+Variable nothing writes) emitted from the MERGED tree: refusals 0, the three binds print `String(puppyId.get() ?? '')`, the store
+`puppyId = value<unknown>(undefined)`; **step 0** `tsc -b && vite build` exit 0, 0 `error TS` — the app BUILDS where the type change
+alone was 3× TS2345 ✓ (`vite preview` 4372, Chrome headless CDP 9372). **P1 boot** `["Link Desk","","","",""]`, errs `[]` — the Record
+returns silently on an empty Id, no request ✓. **P2** type `inq-1` ⇒ unchanged ✓. **P3** Link the puppy ⇒ the link Error row reads
+*No target record Id (the record to add a relation to) specified*, status `''` — the runtime's own failure road, before any request ✓.
+**P4** Unlink ⇒ the sibling sentence in the unlink row ✓. **P5** errs: the sheet predicted `[]`; the drive read TWO `console:` entries —
+the verbs' own caught-failure reports (`record/storage-op-failed`, `AddDbModelRelation` / `RemoveDbModelRelation`), which the harness's
+`console.error` wrap collects; no `error:` / `rejection:` entry, nothing uncaught. **A sheet mistake about the instrument, not the app**
+— §43's verbs report a failure to the console as the runtime does, and the sheet forgot the wrap collects it. Teardown: 0 listeners on
+4372 / 9372.

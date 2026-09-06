@@ -12,7 +12,7 @@ The fixture is the **Cheer** project extended with a second page
 `packages/nodegx-export/tests/fixtures/cheer`). The addition:
 
 ```
-Pages/Mood                 page > shell > [heading, noteInput, noteEcho, themeText, themeButton]
+Pages/Mood                 page > shell > [heading, noteInput, noteEcho, themeText, themeButton, stormyButton]
   moodStore                (net.noodl.GlobalStore "mood", initialState {"note":"","theme":"sunny"})
   noteInput  onTextChanged → setNote  value      (net.noodl.GlobalStore.Set "mood" key "note")
   noteInput  textChanged   → setNote  set        (the write-through pair — value + pulse)
@@ -20,6 +20,7 @@ Pages/Mood                 page > shell > [heading, noteInput, noteEcho, themeTe
   subTheme   value         → themeText text      (Subscribe "mood" keys "theme")
   readVisitor-2 value      → setTheme  value     (Variable2 "visitorName" — the step-5 store)
   themeButton onClick      → setTheme  set       (Set "mood" key "theme")
+  stormyButton onClick     → setStormy set       (Set "mood" key "theme", Value "stormy" TYPED IN, nothing wired — EXP-011 §70)
 ```
 
 The runtime semantics were read from the source, not assumed (`globalstore.ts`,
@@ -59,6 +60,7 @@ export interface MoodState {
  * Declared by "mood store" (net.noodl.GlobalStore `moodStore` on /Pages/Mood).
  * Written by "Write note" (net.noodl.GlobalStore.Set `setNote` on /Pages/Mood).
  * Written by "Write theme" (net.noodl.GlobalStore.Set `setTheme` on /Pages/Mood).
+ * Written by "Write stormy" (net.noodl.GlobalStore.Set `setStormy` on /Pages/Mood).
  */
 export const mood = store<MoodState>('mood', {
   note: '',
@@ -122,6 +124,9 @@ export function MoodPage() {
 
       <button className={styles.themeButton} onClick={() => mood.set({ theme: visitorName.get() })}>
         Steal the visitor's name
+      </button>
+      <button className={styles.stormyButton} onClick={() => mood.set({ theme: 'stormy' })}>
+        Make it stormy
       </button>
     </div>
   );
