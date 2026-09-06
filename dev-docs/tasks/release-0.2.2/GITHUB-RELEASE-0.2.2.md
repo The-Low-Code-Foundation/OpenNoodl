@@ -1,7 +1,7 @@
 # GitHub release body — v0.2.2
 
 _Paste everything below the rule into the release description. Written 2026-09-06 against
-`847` commits since `v0.2.0`; **re-derive the count at tag time** (`git rev-list --count v0.2.0..HEAD`)
+`848` commits since `v0.2.0`; **re-derive the count at tag time** (`git rev-list --count v0.2.0..HEAD`)
 — it has moved on every previous reading of it._
 
 ⚠️ **The "Installing" section needs the real asset names** once the draft has its 15 assets. The
