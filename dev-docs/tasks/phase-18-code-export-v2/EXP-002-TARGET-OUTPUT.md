@@ -505,7 +505,7 @@ are stub-with-report territory like `DbCollection2`, and none of which change th
 | Controls | Native elements unless a wire demands state or behaviour; no wrappers for unwired inputs |
 | Pages | Route entry + React 19 hoisted `<title>`/`<meta>`; no head-manager dependency |
 | Dependencies | Computed from generated imports; `@nodegx/core` only when earned |
-| Semantic HTML | Not guessed deterministically; `<div>`/`<p>` with authored class names; the semantic-tag channel belongs to EXP-006 (open question recorded there) |
+| Semantic HTML | The author's choice is honoured, and only an **absent** one defaults. `Text` and `Group` each carry an `as` port ("Advanced HTML → Tag"), validated against the catalog's own per-type enum; `<div>`/`<p>` remain the default and the class names are still the authored ones. ⚠️ **This row read "Not guessed deterministically; `<div>`/`<p>` with authored class names" until 2026-09-06**, which was correct about *guessing* and was written before the `as` port existed — nothing here guesses, the author picked from an enum. See [EXP-015](./EXP-015-THE-TAG-THE-AUTHOR-CHOSE.md) |
 
 The inheritance test stands as EXP-001 posed it: a React developer who has never heard of NodeGX
 reads `PuppyCard.tsx` and `Landing.tsx` and sees an ordinary, slightly conservative React app with
