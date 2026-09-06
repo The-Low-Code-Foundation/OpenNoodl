@@ -172,7 +172,15 @@ Nothing local reproduces this; only a mac CI build grades it.
 🔴 **`verify-release-assets` did its job and nobody was there to read it.** This is F73's lesson
 recurring: a draft with files in it is not evidence of a green run. **Read the run, not the draft.**
 
-**Recovery — release first, then tag, then re-cut:**
+✅ **THE ROLLBACK HAS BEEN RUN (2026-09-06, s58, on Richard's instruction).** The draft release,
+the remote tag and the local tag are all gone, and all three were verified absent afterwards rather
+than inferred from exit codes. `cline-dev` is at `134777d3` with the REL-018 fix at the tip and
+`package.json` reading `0.2.2`. **What remains is the re-cut**, below.
+
+⚠️ **REL-001 is NOT part of the re-cut.** The community shelf row is independent of the tag and was
+confirmed still serving `fileCount: 100` after the failed run. Do not re-publish the members' area.
+
+**Recovery — release first, then tag, then re-cut (this is what was run):**
 
 ```bash
 gh release delete v0.2.2 --yes          # the release BEFORE the tag, or it references nothing
