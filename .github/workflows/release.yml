@@ -77,6 +77,91 @@ jobs:
       - name: Build packaged sidecars
         run: npm run build:sidecars
 
+      # ─────────────────────────────────────────────────────────────────────────
+      # 🔴 THE 0.2.2 RELEASE COULD NOT SIGN ON ARM64, AND NOTHING ABOUT THE
+      # FAILURE MENTIONED THE RUNNER IMAGE.
+      #
+      # Both attempts died in electron-builder's own temp-keychain flow:
+      #
+      #   ⨯ /usr/bin/security set-key-partition-list … failed 1
+      #   security: SecKeychainUnlock: The user name or passphrase you entered
+      #   is not correct.
+      #
+      # ✅ The certificate and password were never in doubt — the darwin-x64 leg
+      # signed and notarised with the SAME secrets minutes earlier, identity
+      # `Developer ID Application: Osborne Solutions`, hash EADD3AB8…. Two
+      # candidate causes were eliminated by measurement rather than argued away:
+      #
+      #   - electron-builder version: 26.15.3 in the run that worked (v0.2.0,
+      #     2026-08-21) and 26.15.3 in the one that failed. Not it.
+      #   - the OS major: v0.2.0 signed on `macos-26-arm64` too, so this is not
+      #     macOS 26 vs macOS 15, and pinning to `macos-15` would have been a fix
+      #     aimed at the wrong variable.
+      #
+      # 🔴 What actually differs is the runner image PATCH: image release
+      # `20260728.0273` signed, `20260831.0337` does not. GitHub does not let a
+      # workflow pin an image patch, so the fix cannot be "use the old one".
+      #
+      # ✅ So we stop depending on the part that broke. electron-builder creates
+      # a temp keychain, imports the .p12 and then unlocks it — and it is that
+      # unlock that now disagrees with itself. Doing it here means the password
+      # used to create the keychain is the same variable used to unlock it, in
+      # one shell, and there is nothing left to disagree.
+      #
+      # ⚠️ `CSC_LINK` is therefore NOT passed to the build step any more. Left in
+      # place it would send electron-builder straight back through the flow this
+      # step exists to avoid; `CSC_KEYCHAIN` + `CSC_NAME` tell it to use what we
+      # prepared instead. The .p12 is written to RUNNER_TEMP and deleted in the
+      # same step, and the keychain password is generated per-run and never
+      # leaves it.
+      - name: Prepare the signing keychain (macOS)
+        if: startsWith(matrix.platform, 'darwin-')
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          KEYCHAIN="$RUNNER_TEMP/nodegx-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          CERT="$RUNNER_TEMP/certificate.p12"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          # -lut 21600: no auto-lock for six hours. A keychain that re-locks
+          # mid-notarisation fails exactly like a bad password.
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+
+          printf '%s' "$CSC_LINK" | base64 --decode > "$CERT"
+          security import "$CERT" -k "$KEYCHAIN" -P "$CSC_KEY_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$CERT"
+
+          # The exact call that failed under electron-builder. Here the password
+          # is the one this shell just created the keychain with.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+
+          # find-identity searches the SEARCH LIST, not a path, so the keychain
+          # has to be in it — prepended, keeping the runner's existing entries.
+          security list-keychains -d user -s "$KEYCHAIN" \
+            $(security list-keychains -d user | tr -d '"')
+
+          # 🔴 Fail here, loudly, rather than let electron-builder discover an
+          # empty keychain later and fall back to an UNSIGNED build — which the
+          # draft gate would happily accept.
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No 'Developer ID Application' identity in the keychain after import." >&2
+            security find-identity -v -p codesigning "$KEYCHAIN" >&2
+            exit 1
+          fi
+          echo "Imported a Developer ID Application identity."
+
+          echo "CSC_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          echo "CSC_NAME=$IDENTITY" >> "$GITHUB_ENV"
+
       - name: Build, sign, and publish the editor
         run: npm run build:editor:_editor
         env:
@@ -88,9 +173,9 @@ jobs:
           # Token electron-builder uses to create/update the draft GitHub Release.
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # --- macOS signing (Developer ID) + notarisation ---
-          # CSC_LINK: base64-encoded .p12, CSC_KEY_PASSWORD: its password.
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          # ⚠️ No CSC_LINK / CSC_KEY_PASSWORD here on purpose — see the keychain
+          # step above. CSC_KEYCHAIN and CSC_NAME reach this step through
+          # GITHUB_ENV and are set only on the darwin legs.
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
