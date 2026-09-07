@@ -193,6 +193,59 @@ git tag -d v0.2.2
 community shelf row is live and independent of the tag, and it was confirmed still serving
 `fileCount: 100` after the failed run.
 
+### 🔴 The 2026-09-07 re-cut: the mac legs could not SIGN, and the cause was the runner image
+
+The heap fix worked — both mac legs got through webpack and died later, at electron-builder:
+
+```
+⨯ /usr/bin/security set-key-partition-list … failed 1
+security: SecKeychainUnlock: The user name or passphrase you entered is not correct.
+```
+
+🔴 **Two candidate causes were eliminated by measurement, and BOTH were the obvious answer.**
+
+| candidate | reading | verdict |
+|---|---|---|
+| the certificate/secret | `darwin-x64` signed and notarised with the SAME secrets minutes earlier, identity hash `EADD3AB8…` | not it |
+| electron-builder version | **26.15.3** in the run that worked (v0.2.0, 08-21) *and* in the one that failed | not it |
+| the OS major (`macos-latest` vs `macos-15-intel`) | **v0.2.0 signed on `macos-26-arm64` too** | **not it** |
+| the runner image **patch** | `20260728.0273` signed · `20260831.0337` does not | ✅ this |
+
+⚠️ **A session proposed pinning the matrix to `macos-15` and was wrong.** It would probably have
+gone green, and the lesson learned would have been false. What falsified it was reading v0.2.0's
+own log for the image line rather than reasoning about which label looked newer. **`macos-latest`
+and `macos-15-intel` differ in more than one variable; the image line is the one that answers it.**
+
+🔴 **GitHub does not let a workflow pin an image PATCH**, so "use the old one" was never available.
+The fix is to stop depending on the part that broke: `release.yml` now has a darwin-only
+**"Prepare the signing keychain"** step that creates the keychain, imports the `.p12`, runs
+`set-key-partition-list` with the password that same shell just used, and puts it in the search
+list. One shell, one variable, nothing left to disagree.
+
+### ⚠️ Three things that bit AFTER the keychain step started working
+
+Each was self-inflicted and each cost a full run. They are recorded because the shape repeats.
+
+1. **`CSC_NAME` must NOT carry the certificate-type prefix.** `security find-identity` prints
+   `Developer ID Application: Acme (TEAM)`; electron-builder refuses it — *"Please remove prefix
+   … appropriate certificate will be chosen automatically"* — because it picks the type from the
+   build target. The presence assertion still matches the FULL string, since that is what proves a
+   Developer ID cert was imported; only the value handed on is stripped.
+2. **Removing `CSC_LINK` from the build step regressed `darwin-x64`, which had been GREEN.** Both
+   mac legs share the step, so a change made for arm64 broke its sibling. ⚠️ **A matrix fix is a
+   fix to every leg that matches the condition** — check the ones that were already passing.
+3. 🔴 **`build/macos-notarize.js` failed a build that had just signed.** Its guard used
+   `CSC_LINK`'s presence as a proxy for *"a certificate exists"*, and its own comment carried the
+   premise — *"on CI the only source of a Developer ID is CSC_LINK"* — which the keychain step made
+   false. The log said `• signing … identityName=Developer ID Application` and `• notarization
+   successful` two lines above the throw. **A guard that tests for a MECHANISM rather than for the
+   CONDITION it cares about fails the moment a second mechanism appears.** It now accepts
+   `CSC_LINK` *or* `CSC_KEYCHAIN` + `CSC_NAME`, each checked by its own evidence.
+
+✅ **The sweep that should have come first**: the only other code reading these variables is
+`build.ts` (strips empties, scopes by platform, never tests presence), and `afterSign` is the only
+electron-builder hook. Done after the second self-inflicted failure rather than before the first.
+
 ---
 
 ## 4. The notes
