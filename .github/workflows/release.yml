@@ -159,8 +159,23 @@ jobs:
           fi
           echo "Imported a Developer ID Application identity."
 
+          # ⚠️ CSC_NAME TAKES THE NAME WITHOUT THE CERTIFICATE-TYPE PREFIX.
+          # `security find-identity` prints the full subject — "Developer ID
+          # Application: Acme (TEAMID)" — and handing that straight to
+          # electron-builder is refused outright:
+          #
+          #   ⨯ Please remove prefix "Developer ID Application:" from the
+          #     specified name — appropriate certificate will be chosen
+          #     automatically
+          #
+          # It picks the certificate type itself from the build target, so the
+          # prefix is not merely redundant, it is a conflict. The assertion above
+          # deliberately still matches on the FULL string: that is what proves a
+          # Developer ID cert was imported rather than some other identity.
+          CSC_NAME="${IDENTITY#Developer ID Application: }"
+
           echo "CSC_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
-          echo "CSC_NAME=$IDENTITY" >> "$GITHUB_ENV"
+          echo "CSC_NAME=$CSC_NAME" >> "$GITHUB_ENV"
 
       - name: Build, sign, and publish the editor
         run: npm run build:editor:_editor
