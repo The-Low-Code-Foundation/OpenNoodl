@@ -16,6 +16,17 @@ import * as path from 'path';
 // has to be installable on its own, and a relative path into `noodl-editor/src` made that
 // impossible. Pure data, no editor runtime involved.
 import { DEFAULT_TOKENS } from '@nodegx/project-contract/tokens';
+// HLS-003 — the graph the author saw. `applyPatches` runs NDA-017's migration on every editor
+// open, rewriting stored parameters; `parseProject` reads the files as written, so without this
+// the exporter reads a graph the canvas never showed. The migration lives in the shared contract
+// package for exactly this reason: one copy, both readers. See `settleComponent`.
+import {
+  applyRunOnValueChangeMigration,
+  type MigrationComponentLike,
+  type MigrationConnectionLike,
+  type MigrationNodeLike,
+  type RunOnChangeWrite
+} from '@nodegx/project-contract/run-on-value-change-migration';
 import {
   Catalog,
   CatalogIndex,
@@ -75,9 +86,13 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
     ? findComponentDirs(cloudDir).map((dir) => path.relative(componentsDir, dir).split(path.sep).join('/'))
     : [];
 
+  // HLS-003. Filled by `settleComponent` as each component is read; carried into the IR so the
+  // report can say what the file did not, rather than the export quietly reading a better graph.
+  const settled: RunOnChangeWrite[] = [];
+
   const components = findComponentDirs(componentsDir)
     .filter((dir) => !path.relative(componentsDir, dir).split(path.sep).includes('__cloud__'))
-    .map((dir) => parseComponent(dir, index))
+    .map((dir) => parseComponent(dir, index, settled))
     // D1: components sort by path, codepoint order.
     .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
@@ -85,6 +100,7 @@ export function parseProject(projectDir: string, catalog: Catalog): ExportIR {
     name: projectFile.name ?? path.basename(projectDir),
     catalogFormatVersion: index.catalogFormatVersion,
     exporterVersion: EXPORTER_VERSION,
+    settledRunOnValueChange: settled,
     designTokens: effectiveTokens(projectFile.metadata?.designTokens?.customTokens ?? []),
     collections: (projectFile.metadata?.dbCollections ?? []).map((c: any) => ({
       name: c.name,
@@ -162,13 +178,73 @@ function findComponentDirs(root: string): string[] {
   return found;
 }
 
-function parseComponent(dir: string, catalog: CatalogIndex): ComponentIR {
+/**
+ * HLS-003 — settle one component's stored parameters the way an editor load would.
+ *
+ * ## Why the exporter has to do this at all
+ *
+ * `applyPatches` runs NDA-017's migration immediately before `ProjectModel.fromJSON`, and
+ * `fromJSON` does not apply patches. So the graph on the canvas is the migrated one, while every
+ * reader that goes to the files — this one, and the editor's own export, which reaches
+ * `parseProject` rather than the loaded model — sees the file as written. On a node whose control
+ * signal is wired and whose governed input is unstated, those two readings disagree: absence means
+ * *ticked* to a file reader and *false* to the editor, because the migration wrote it.
+ *
+ * 🔴 **The disagreement costs translation, not just fidelity.** Measured on the `cheer` fixture:
+ * with `runOnChange-condition` absent, two `Condition` nodes report "Run On Value Change is
+ * ticked", which the analyser has no rule for, and the export drops from *nothing left over (9)*
+ * to *(7)* — two pages and four cascade nodes refused over a parameter the author never chose.
+ * Reading the file as written does not ship a subtly different app; it refuses work it could do.
+ *
+ * ## Why the flat node list can be handed over as `roots`
+ *
+ * The migration walks `roots`, recursing into `children` only when the child is an object. In the
+ * v2 files `children` is an array of **id strings**, and every node in the component is already in
+ * the flat `nodes` array — so passing that array as `roots` visits each node exactly once and
+ * recurses into nothing. No unflattening, and no second opinion about the tree shape.
+ *
+ * ## What this deliberately does not do
+ *
+ * ⚠️ **Nothing is written back to the project.** The settle is in memory, for this read only. A
+ * reader that repaired the user's files as a side effect of exporting them would be a far worse
+ * defect than the one this closes.
+ *
+ * ⚠️ It is the migration's own population and no wider — `applyRunOnValueChangeMigration` is
+ * imported, not reimplemented, so a family added there is settled here on the same day.
+ */
+function settleComponent(
+  componentName: string,
+  rawNodes: RawNode[],
+  connections: unknown[]
+): RunOnChangeWrite[] {
+  // `RawNode` and `MigrationNodeLike` overlap in every field the migration reads — id, type,
+  // parameters, ports, dynamicports — without either being assignable to the other (`children`
+  // is ids here, nodes there). One cast at the seam, rather than widening `RawNode` to suit a
+  // consumer of it.
+  const component: MigrationComponentLike = {
+    name: componentName,
+    graph: {
+      roots: rawNodes as unknown as MigrationNodeLike[],
+      connections: connections as MigrationConnectionLike[]
+    }
+  };
+  return applyRunOnValueChangeMigration({ components: [component] }).writes;
+}
+
+function parseComponent(dir: string, catalog: CatalogIndex, settled: RunOnChangeWrite[]): ComponentIR {
   const meta = readJson(path.join(dir, 'component.json'));
   const nodesFile = readJson(path.join(dir, 'nodes.json'));
   const connectionsPath = path.join(dir, 'connections.json');
   const connectionsFile = fs.existsSync(connectionsPath) ? readJson(connectionsPath) : { connections: [] };
 
   const rawNodes: RawNode[] = nodesFile.nodes ?? [];
+
+  // 🔴 Before anything reads a parameter. `parseNode` copies the bag into the IR, so a settle
+  // after this line would be invisible to every consumer of it.
+  settled.push(
+    ...settleComponent(String(meta.path ?? meta.name ?? ''), rawNodes, connectionsFile.connections ?? [])
+  );
+
   const nodes = rawNodes.map((raw) => parseNode(raw, catalog));
   const nodeById = new Map(rawNodes.map((raw) => [raw.id, raw]));
 

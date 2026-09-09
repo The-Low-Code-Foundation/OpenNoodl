@@ -31,10 +31,37 @@ export interface ExportIR {
   components: ComponentIR[];
 }
 
+/**
+ * One stored parameter the export had to settle to read the graph the author saw (HLS-003).
+ *
+ * Structurally the migration's own `RunOnChangeWrite`, restated here rather than imported so the
+ * IR — the shared contract with EXP-003/005 — does not take a dependency on the editor's patch
+ * pass to describe its own shape. The producer imports the real one and assigns it.
+ */
+export interface SettledParameterIR {
+  /** Component path, as the report prints it. */
+  component: string;
+  nodeId: string;
+  nodeType: string;
+  /** The governed input, full port name — `in-amount`, not `amount`. */
+  input: string;
+  /** Always `runOnChange-<input>`, and always settled to `false`. */
+  parameter: string;
+}
+
 export interface ProjectIR {
   name: string;
   catalogFormatVersion: string;
   exporterVersion: string;
+  /**
+   * HLS-003 — what an editor load would have written that the files did not say, applied to this
+   * read so the export sees the canvas's graph rather than the file's.
+   *
+   * 🔴 **Empty is not the same as "the seam is closed."** It means this project does not exercise
+   * it: no node of the fifteen NDA-017 families with its control signal wired and a governed input
+   * left unstated. A project with no such node reads empty however open the seam is.
+   */
+  settledRunOnValueChange: SettledParameterIR[];
   /** Source order preserved — these render as tokens.css in that order. */
   designTokens: TokenIR[];
   /** From nodegx.project.json metadata.dbCollections; typed API stubs are generated from these. */

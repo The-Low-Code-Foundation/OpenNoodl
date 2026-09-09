@@ -36,7 +36,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { PROJECT_LOAD_SITES } from '../src/editor/src/models/ProjectPatches/projectLoadSeam';
+import { GRAPH_READER_SITES, PROJECT_LOAD_SITES } from '../src/editor/src/models/ProjectPatches/projectLoadSeam';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..');
 
@@ -170,5 +170,98 @@ describe('DEF-007 AC4 — the project-load seam is registered, not remembered', 
       'packages/noodl-editor/src/editor/src/models/projectmodel.editor.ts'
     ]);
     expect(skips.length).toBeGreaterThan(applies.length);
+  });
+});
+
+/**
+ * HLS-003 — the second scan, and the hole it closes.
+ *
+ * 🔴 The block above says of itself: *"It cannot see a reader that never constructs a
+ * `ProjectModel`"*. That was not a small gap. The three readers most likely to be wrong — the
+ * exporter, the MCP server and template generation — are all in exactly that blind spot, and were
+ * carried as prose in `NON_FROMJSON_READERS` where nothing could fail on them. The exporter sat on
+ * the wrong side of the seam for as long as the row describing it was a sentence, and HLS-003
+ * measured what that cost: on a project the editor had not opened-and-saved, two `Condition` nodes
+ * and four cascade nodes were refused over a parameter the author never chose.
+ *
+ * A scan cannot be written for "reads a project somehow". It **can** be written for the thing that
+ * puts a reader on the seam at all: opening a component's graph file. That is this scan.
+ */
+const GRAPH_SCANNED_PACKAGES = [
+  'noodl-editor',
+  'noodl-preview',
+  'noodl-mcp',
+  'noodl-git',
+  'nodegx-export',
+  'noodl-viewer-react',
+  'noodl-viewer-cloud'
+];
+
+/** A read of a component's graph file, as every v2 reader spells it. */
+const GRAPH_FILE = /['"`]nodes\.json['"`]/;
+
+function findGraphReaders(): string[] {
+  const found: string[] = [];
+  for (const pkg of GRAPH_SCANNED_PACKAGES) {
+    for (const file of walk(path.join(REPO_ROOT, 'packages', pkg, 'src'))) {
+      if (GRAPH_FILE.test(stripComments(fs.readFileSync(file, 'utf8')))) {
+        found.push(path.relative(REPO_ROOT, file).split(path.sep).join('/'));
+      }
+    }
+  }
+  return found.sort();
+}
+
+describe('HLS-003 — every reader of a project graph has a disposition', () => {
+  /**
+   * 🔴 The same rule the block above follows: validate the extractor against an answer known by
+   * hand before trusting a single absence it reports. These two are known — the exporter, which
+   * settles, and the headless preview, which does not.
+   */
+  test('the scan finds the readers known by hand', () => {
+    const found = findGraphReaders();
+
+    expect(found).toContain('packages/nodegx-export/src/parse/parseProject.ts');
+    expect(found).toContain('packages/noodl-mcp/src/project/ProjectStore.ts');
+    expect(found.length).toBeGreaterThanOrEqual(10);
+  });
+
+  /**
+   * The gate, and the whole point of the exercise. A fourth headless reader appearing on the wrong
+   * side of the seam makes this red.
+   *
+   * ⚠️ **If you are here because this failed, you are being asked to make a decision.** Which of
+   * the four dispositions is true of the reader you added? `does-not-apply` is an admission that
+   * it reads a graph the editor would have rewritten — not a default to reach for because the
+   * other three need justifying.
+   */
+  test('every graph reader is registered with a disposition', () => {
+    const found = findGraphReaders();
+    const registered = new Set(GRAPH_READER_SITES.map((site) => site.file));
+    const unregistered = found.filter((f) => !registered.has(f));
+
+    expect(unregistered).toEqual([]);
+  });
+
+  /** The other direction: a row for a reader that no longer exists is a list already decaying. */
+  test('every registered graph reader still exists', () => {
+    const found = new Set(findGraphReaders());
+    const vanished = GRAPH_READER_SITES.map((site) => site.file).filter((f) => !found.has(f));
+
+    expect(vanished).toEqual([]);
+  });
+
+  /**
+   * 🔴 The count that has to shrink. It is asserted rather than merely reported so that a reader
+   * *added* on the wrong side cannot hide behind one being fixed — the two would cancel and the
+   * gate above would still pass, because both files are registered.
+   */
+  test('the readers still on the wrong side of the seam are the ones we know about', () => {
+    const open = GRAPH_READER_SITES.filter((s) => s.disposition === 'does-not-apply').map((s) => s.file);
+
+    expect(open).toEqual([
+      'packages/noodl-preview/src/loader.ts',
+      'packages/noodl-mcp/src/project/ProjectStore.ts'
+    ]);
   });
 });

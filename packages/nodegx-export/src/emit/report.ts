@@ -112,6 +112,20 @@ export interface ExportReportData {
   httpModule: boolean;
   /** EXP-011 §41. Whether `src/api/functions.ts` was emitted — one function per `Cloud Function` node. Optional so a report built by hand before §41 still types. */
   functionsModule?: boolean;
+  /**
+   * HLS-003 — stored parameters this export read the editor's way rather than the file's.
+   *
+   * Absent when the project has no node that exercises the seam, which is the common case and is
+   * why this is optional rather than a zeroed record. 🔴 **Absent means "nothing here exercises
+   * it", never "the seam is closed"** — a project with no wired control signal on one of the
+   * fifteen NDA-017 families reads absent however open the seam is.
+   */
+  settled?: {
+    parameters: number;
+    nodes: number;
+    /** Component paths, sorted — where an author would go to look. */
+    components: string[];
+  };
 }
 
 /**
@@ -613,6 +627,42 @@ export function renderReport(data: ExportReportData): string {
       '— which is worth testing, exactly as you would test code you wrote yourself.'
   );
   out.push('');
+  /*
+   * HLS-003 — the one place this report says the export did not read the files literally.
+   *
+   * 🔴 It sits in the claims section rather than the attention list on purpose. The settle is not
+   * a gap and not a refusal; it is the export declining to read a graph the author never saw. But
+   * it is still a difference between the files on disk and what was generated, and an author who
+   * diffs the two has to be able to find out why. Silence here is the ordinary case and says only
+   * that nothing in the project exercised the seam.
+   */
+  if (data.settled) {
+    const { parameters, nodes, components } = data.settled;
+    out.push('### Where this export did not read your files literally');
+    out.push('');
+    out.push(
+      `${parameters === 1 ? 'One stored parameter' : `${parameters} stored parameters`} on ` +
+        `${nodes === 1 ? 'one node' : `${nodes} nodes`} ` +
+        `${parameters === 1 ? 'was' : 'were'} read the way the editor reads ` +
+        `${parameters === 1 ? 'it' : 'them'}, rather than the way your project files spell ` +
+        `${parameters === 1 ? 'it' : 'them'} out.`
+    );
+    out.push('');
+    out.push(
+      'Each one is a *Run on value change* box on a node whose control signal is wired. Opening the ' +
+        'project in the editor unticks those boxes (NDA-017) — so the graph on your canvas and the ' +
+        'graph in the files disagree until the project is saved again. **This export followed the ' +
+        'canvas**, which is the graph you built and looked at.'
+    );
+    out.push('');
+    out.push(
+      `In ${components.map((c) => '`' + c + '`').join(', ')}. Nothing was written back to your ` +
+        'project — the difference was applied to this read only, and opening and saving the project ' +
+        'in the editor is what settles the files themselves.'
+    );
+    out.push('');
+  }
+
   out.push('### Finding the marked places in the code');
   out.push('');
   out.push('Most of what is listed above also leaves a marker in the code, where it would have been:');

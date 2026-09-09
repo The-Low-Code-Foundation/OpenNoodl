@@ -106,6 +106,15 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    */
   const projectNotes: string[] = [];
 
+  /*
+   * HLS-003 — the export says what the files did not.
+   *
+   * 🔴 This is the half that keeps the settle from being a silent improvement. The exporter now
+   * reads the graph an editor load produces rather than the one the files spell out, and an author
+   * comparing the export against the file has to be able to find out why they differ. Reported
+   * whenever it is non-empty; **silence here means the project has no node that exercises the
+   * seam**, never that the seam is closed.
+   */
   if (ir.project.cloudComponents.length > 0) {
     const cloud = `${ir.project.cloudComponents.length} cloud function component(s) skipped — they run on the backend's interpreter, not in the frontend export: ${ir.project.cloudComponents.join(', ')}`;
     notes.push(cloud);
@@ -353,6 +362,25 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
    * the number of files they can see in the folder; leaving the report out of its own total would
    * be off by one against `ls`, which is the first thing anyone checks.
    */
+  /*
+   * HLS-003 — provenance, not attention.
+   *
+   * 🔴 **Deliberately NOT in `projectNotes`.** That channel is "what needs your attention", and it
+   * flips the report's `nothingToReport` verdict and earns a numbered next step. The settle needs
+   * neither: the export did the right thing without being asked, and telling an author to go and
+   * fix it would be the report inventing work. It belongs with the other statements about how this
+   * export read the project — see the claims section of `renderReport`.
+   */
+  const settledWrites = ir.project.settledRunOnValueChange;
+  const settled =
+    settledWrites.length === 0
+      ? undefined
+      : {
+          parameters: settledWrites.length,
+          nodes: new Set(settledWrites.map((w) => `${w.component}/${w.nodeId}`)).size,
+          components: [...new Set(settledWrites.map((w) => stripScope(w.component, w.component)))].sort()
+        };
+
   const report: ExportReportData = {
     projectName: ir.project.name,
     // ⚠️ Both generated files are in their own count. Neither exists as a key yet — they are
@@ -362,6 +390,7 @@ export function emitApp(ir: ExportIR, catalog: Catalog): EmittedApp {
     components: reportComponents,
     modules: moduleFailures,
     project: projectNotes,
+    ...(settled ? { settled } : {}),
     backendEndpoint: ir.project.cloudservices?.endpoint ?? null,
     usesBackend: api.usesBackend,
     httpModule: api.files.some(([path]) => path === 'src/api/http.ts'),
