@@ -83,8 +83,8 @@ the calendar. A weekly nudge guards against "whenever" becoming "never": routine
 `trig_01MFceQCDiZvLy7cuSyeU877`, Fridays 09:00 Europe/Paris, first fire 2026-09-11. It reads this
 README and `STUDIED-APPS.md`, reports where the loop stands in five lines, and says plainly when the
 newest ledger row is over a month old. It is read-only and never does the work.
-⚠️ It reads the **GitHub checkout** — until this folder is committed and pushed, it can only report
-"still uncommitted".
+It reads the **GitHub checkout**; this folder was pushed to `cline-dev` at `b0ad5c8a` on
+2026-09-09, so the first fire has a ledger to read.
 
 ### 3.2 🔴 Keeping the measurement honest
 

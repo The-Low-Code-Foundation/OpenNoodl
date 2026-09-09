@@ -18,17 +18,12 @@ Read `README.md` first — it carries the loop, the cadence and the four defects
 | **Written, not built** | CMP-001 (playbook, 9 patterns, 3 floors), CMP-004 (the shelf) |
 | **Measured, not written** | CMP-003 — the logic-component finding; the numbers are in README §2 row 3 |
 | **NEXT** | CMP-002 — the graded baseline build, from its own brief, in a clean session |
-| **Committed?** | 🔴 **No.** The whole folder is untracked on `cline-dev`. The weekly nudge routine reads the GitHub checkout, so until this is pushed it can only report "still uncommitted" |
+| **Committed?** | ✅ Pushed to `cline-dev` at `b0ad5c8a`, 2026-09-09. The instrument is in the repo, so both arms of any grading can use it |
 | **Weekly nudge** | `trig_01MFceQCDiZvLy7cuSyeU877`, Fridays 09:00 Paris, first fire 2026-09-11 |
 
 ## The first job
 
-**Commit and push this folder**, unless Richard has said otherwise. Everything else here is
-downstream of it: the ledger, the nudge, and CMP-002's grading all assume the instrument is in the
-repo. `measure-interfaces.py` must be committed **before** any arm is graded, or the two arms get
-measured by two scripts.
-
-After that, in order of leverage:
+In order of leverage:
 
 1. **CMP-004 AC1** — one sentence putting the shelf in the authoring order. ⚠️ The resident surface
    has 6 tokens of headroom; this rides in `get_project_info`'s doctrine channel, not
