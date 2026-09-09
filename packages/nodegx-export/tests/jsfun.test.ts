@@ -133,7 +133,12 @@ describe('the fixture translation (EXP-003 §4 A1 — asserted piecewise; the by
   const home = app.files['src/pages/Home.tsx'];
 
   test('the Function body is re-hosted verbatim in a typed wrapper above the component', () => {
-    expect(home).toContain('function formatShout(Inputs: { name?: string }): { text?: any } {');
+    // HLS-004. `name` is wire-fed, so the property always arrives and the value may still be
+    // undefined; the body then reads it through the runtime's own untyped scope, which is what
+    // lets an author's arithmetic compile (issue #24). The three input classes and the reason
+    // they type differently are `hls004-an-export-that-builds.test.ts`.
+    expect(home).toContain('function formatShout(__inputs: { name: string | undefined }): { text?: any } {');
+    expect(home).toContain('const Inputs = __inputs as { [K in keyof typeof __inputs]: any };');
     expect(home).toContain("const name = Inputs.name || 'friend';\nOutputs.text = name.toUpperCase() + '!';");
     expect(home).toContain('return Outputs;');
   });
@@ -156,7 +161,12 @@ describe('the fixture translation (EXP-003 §4 A1 — asserted piecewise; the by
   test('the runtime mints a port for `.length` after a paren — the wrapper carries it, unfed', () => {
     // parsePorts strips the string, then matches `length` as a fresh identifier; the runtime
     // registers that port too, it just never receives. Faithfulness includes the odd ports.
-    expect(home).toContain('function hasLongName({ name, length }: { name?: string; length?: any }) {');
+    //
+    // 🔴 HLS-004 makes that faithfulness visible in the type: `length` is the mined-but-unfed
+    // class and is the *only* one of the two still optional, because nothing ever passes it.
+    // `name` arrives by wire, so it is required and merely possibly-undefined in value.
+    expect(home).toContain('function hasLongName(__inputs: { name: string | undefined; length?: any }) {');
+    expect(home).toContain('const { name, length } = __inputs as { [K in keyof typeof __inputs]: any };');
   });
 
   test('both nodes collapse — no JS deferral notes on the untouched fixture', () => {

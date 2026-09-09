@@ -330,7 +330,10 @@ describe('the re-host: the body is verbatim and the shims are supplied (§3.2–
 
   test('the wrapper is named from the authored label and returns the Outputs record', () => {
     const source = homeSource(built());
-    expect(source).toContain('function CheckEntry(Inputs: { entry?: string }): { message?: string } {');
+    // HLS-004: `entry` is wire-fed, so the property is required and its value possibly-undefined,
+    // and the block program's verbatim body reads it through the runtime's own scope.
+    expect(source).toContain('function CheckEntry(__inputs: { entry: string | undefined }): { message?: string } {');
+    expect(source).toContain('const Inputs = __inputs as { [K in keyof typeof __inputs]: any };');
     expect(source).toContain('return Outputs;');
   });
 

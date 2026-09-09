@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c7e41a90-0000-4000-8000-000000000012",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "gaugeInputs",
+      "fromProperty": "months",
+      "toId": "projected",
+      "toProperty": "months"
+    },
+    {
+      "fromId": "projected",
+      "fromProperty": "result",
+      "toId": "gaugeTotal",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "gaugeInputs",
+      "fromProperty": "months",
+      "toId": "withDrift",
+      "toProperty": "months"
+    },
+    {
+      "fromId": "withDrift",
+      "fromProperty": "result",
+      "toId": "driftTotal",
+      "toProperty": "text"
+    }
+  ]
+}

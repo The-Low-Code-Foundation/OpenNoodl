@@ -115,7 +115,8 @@ import { visitorName } from '../stores/variables';
 import styles from './Home.module.css';
 
 // From the Function node "formatShout" — the body is preserved verbatim (EXP-003 §4).
-function formatShout(Inputs: { name?: string }): { text?: any } {
+function formatShout(__inputs: { name: string | undefined }): { text?: any } {
+  const Inputs = __inputs as { [K in keyof typeof __inputs]: any };
   const Outputs: { text?: any } = {};
   try {
     (() => {
@@ -129,7 +130,8 @@ Outputs.text = name.toUpperCase() + '!';
 }
 
 // From the Expression node "hasLongName" — the expression is preserved verbatim (EXP-003 §4).
-function hasLongName({ name, length }: { name?: string; length?: any }) {
+function hasLongName(__inputs: { name: string | undefined; length?: any }) {
+  const { name, length } = __inputs as { [K in keyof typeof __inputs]: any };
   try {
     return ((name || '').length > 1);
   } catch (e) {

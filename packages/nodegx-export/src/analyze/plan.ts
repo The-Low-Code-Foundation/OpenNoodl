@@ -18756,10 +18756,12 @@ function planComponent(
             fillMaterialize(action.whenTrue);
             fillMaterialize(action.whenFalse);
             break;
-          case 'collection-clear':
-            fillMaterialize(action.then);
-            fillMaterialize(action.unchangedThen);
-            break;
+          // C43. A second `case 'collection-clear':` stood here — unreachable, because the one
+          // beside `collection-add` above matches first, and a strict subset of it: it walked
+          // `then` and `unchangedThen` but not `minted?.failThen`. Deleting it changes no
+          // behaviour; keeping it invited the wrong one to be read as the live arm. Found by
+          // esbuild the moment HLS-001 gave this package a bundler — nothing in 86 suites or
+          // three clean `tsc`s had ever mentioned it.
           case 'collection-remove':
             fillMaterialize(action.then);
             break;

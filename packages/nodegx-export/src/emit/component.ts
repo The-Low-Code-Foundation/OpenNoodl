@@ -85,6 +85,16 @@ const SESSION_LOCAL = 'session';
 /** EXP-011 Tier 2.5 — `useParams()`, this page's matched path segments. */
 const PAGE_PARAMS_LOCAL = 'pageParams';
 
+/**
+ * HLS-004 — the parameter a re-hosted JS wrapper takes, before its names enter the author's body.
+ *
+ * The body reads `Inputs` (Function, Visual Function) or the bare input names (Expression), so the
+ * *parameter* has to be called something else: the wrapper binds `Inputs` from it one line in,
+ * through the scope cast in `jsWrapperLines`. Underscored to match the `__p`/`__s` probes the
+ * Visual Function wrapper already declares alongside it.
+ */
+const INPUTS_PARAM = '__inputs';
+
 /** EXP-011 Tier 2.5 — the `URLSearchParams` half of `useSearchParams()`. */
 const PAGE_QUERY_LOCAL = 'pageQuery';
 
@@ -5806,8 +5816,64 @@ export function emitComponent(
    */
   const jsWrapperLines = (def: JsFunctionPlan): string[] => {
     const fieldKey = (name: string) => (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name));
-    const inputFields = def.inputs.map((i) => `${fieldKey(i.name)}?: ${i.tsType}`);
+    /**
+     * HLS-004 — **optional exactly when the graph says nothing feeds it**, and required otherwise.
+     *
+     * Every field here used to be `?:` unconditionally, which is what issue #24 reported as
+     * `TS18048: 'k' is possibly 'undefined'` on the exporter's own output: an author's `k * 2`
+     * over a wire-fed input does not compile under the `strict` the scaffold writes. The
+     * reporter read it as one expression needing a default. It is the wrapper's whole contract.
+     *
+     * **Three classes, and `def.inputs` already distinguishes them** — the plan's own comment
+     * above `inputs` is the contract, this only stops flattening it:
+     *
+     * - **`expr === undefined` — mined but never fed.** No wire, no parameter: the call site
+     *   passes nothing and the body reads `undefined`. Genuinely absent, so genuinely `?:`.
+     * - **`expr.kind === 'literal'` — a constant folded in at the call.** It cannot be absent and
+     *   it cannot be undefined. Required, exact type.
+     * - **wire-fed — the property always arrives, the value may still be `undefined`.** The call
+     *   site splices the resolved source in unconditionally (`hasLongName({ name })`), so `?:`
+     *   was wrong about *absence*; but the source can be an unset Variable
+     *   (`value<string | undefined>(undefined)`), an output nothing has pushed, or a url
+     *   parameter the route did not carry. Required property, `| undefined` value.
+     *
+     * 🔴 **`| undefined` here is NDA-017 §2 made visible, and the reason nothing is defaulted.**
+     * `registerInputIfNeeded` seeds every discovered input to `undefined` rather than `0`
+     * deliberately: an `a + b` whose producers have not landed must answer `NaN` — visibly
+     * absent — rather than a `0` no downstream branch can tell from a real one. An emitted app
+     * that defaulted these would reinstate exactly the defect NDA-017 removed, in generated code
+     * nobody would think to look at. So the type admits the absence and the value keeps it.
+     */
+    const inputFields = def.inputs.map((i) =>
+      i.expr === undefined
+        ? `${fieldKey(i.name)}?: ${i.tsType}`
+        : `${fieldKey(i.name)}: ${i.tsType}${i.expr.kind === 'literal' ? '' : ' | undefined'}`
+    );
     const inputsType = inputFields.length > 0 ? `{ ${inputFields.join('; ')} }` : 'Record<string, never>';
+    /**
+     * 🔴 **The body's own view of those names, and the whole of issue #24.**
+     *
+     * The type above is what the *call site* is held to, and it is checked. The body below is a
+     * different thing entirely: it is **the author's JavaScript, preserved verbatim** (EXP-003
+     * §4), and it runs in the runtime's scope — `this._internal.scope[name]`, an untyped bag.
+     * Strict-null-checking it is checking a contract that never existed, and the report was the
+     * proof: `TS18048: 'k' is possibly 'undefined'` on `k * 2` in a freshly exported app, from a
+     * body the runtime evaluates happily to `NaN`.
+     *
+     * There are only three ways out and two are worse. Rewriting the body breaks the verbatim
+     * promise. Defaulting the inputs breaks NDA-017 §2 above. So the names enter the body as the
+     * runtime has them — `any` — and the value is untouched, so `undefined * 2` is still `NaN`
+     * in the exported app exactly as it is in the editor.
+     *
+     * ⚠️ **Mapped over `keyof`, deliberately, and not `Record<string, any>`.** The keys stay
+     * exactly the mined set, so a read of a name that was never an input is still
+     * `Cannot find name` / `does not exist` — the class `tests/typecheck-emitted.test.ts` exists
+     * to catch. What this loosens is the *type* of the author's own declared inputs inside the
+     * author's own body, and nothing else. The same reasoning, and the same bounded loosening,
+     * that `scriptFileSource` states for its `// @ts-nocheck`.
+     */
+    const scopeCast = (paramName: string) => `${paramName} as { [K in keyof typeof ${paramName}]: any }`;
+    const hasInputs = def.inputs.length > 0;
     const lines: string[] = [];
     if (def.kind === 'function') {
       const outputFields = [
@@ -5817,7 +5883,8 @@ export function emitComponent(
       const outputsType = outputFields.length > 0 ? `{ ${outputFields.join('; ')} }` : 'Record<string, never>';
       const seeds = def.signals.map((s) => `${fieldKey(s)}: () => {}`);
       lines.push(`// From the Function node "${def.fnName}" — the body is preserved verbatim (EXP-003 §4).`);
-      lines.push(`function ${def.fnName}(Inputs: ${inputsType}): ${outputsType} {`);
+      lines.push(`function ${def.fnName}(${hasInputs ? INPUTS_PARAM : 'Inputs'}: ${inputsType}): ${outputsType} {`);
+      if (hasInputs) lines.push(`  const Inputs = ${scopeCast(INPUTS_PARAM)};`);
       lines.push(`  const Outputs: ${outputsType} = {${seeds.length > 0 ? ` ${seeds.join(', ')} ` : ''}};`);
       lines.push('  try {');
       lines.push('    (() => {');
@@ -5863,7 +5930,8 @@ export function emitComponent(
           '// the block editor generates as a literal `null` — so the type admits one.'
         );
       }
-      lines.push(`function ${def.fnName}(Inputs: ${inputsType}): ${outputsType} {`);
+      lines.push(`function ${def.fnName}(${hasInputs ? INPUTS_PARAM : 'Inputs'}: ${inputsType}): ${outputsType} {`);
+      if (hasInputs) lines.push(`  const Inputs = ${scopeCast(INPUTS_PARAM)};`);
       lines.push(`  const Outputs: ${outputsType} = {};`);
       // A `send signal` whose output nobody wired is a no-op in the runtime too
       // (`_createExecutionContext` registers the port on demand precisely so it can be one), and
@@ -5916,9 +5984,13 @@ export function emitComponent(
       lines.push('  return Outputs;');
       lines.push('}');
     } else {
-      const params = def.inputs.length > 0 ? `{ ${def.inputs.map((i) => i.name).join(', ')} }: ${inputsType}` : '';
       lines.push(`// From the Expression node "${def.fnName}" — the expression is preserved verbatim (EXP-003 §4).`);
-      lines.push(`function ${def.fnName}(${params}) {`);
+      lines.push(`function ${def.fnName}(${hasInputs ? `${INPUTS_PARAM}: ${inputsType}` : ''}) {`);
+      // The destructure moved off the parameter list so the names can enter the body in the
+      // runtime's scope rather than the call site's types — see `scopeCast` above.
+      if (hasInputs) {
+        lines.push(`  const { ${def.inputs.map((i) => i.name).join(', ')} } = ${scopeCast(INPUTS_PARAM)};`);
+      }
       for (const alias of def.mathAliases) {
         lines.push(alias === 'pi' ? '  const pi = Math.PI;' : `  const ${alias} = Math.${alias};`);
       }

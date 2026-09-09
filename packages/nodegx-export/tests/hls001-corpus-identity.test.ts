@@ -59,6 +59,25 @@
  *  - after regenerating under jest: **3** hashes changed, and jest and `ts-node` now agree on
  *    **all 840**, where they disagreed about 3 before. The convergence is the evidence that what
  *    was fixed was the realm sensitivity rather than the wording.
+ *
+ * ✅ **Regenerated a second time by HLS-004, and here is what was counted first.**
+ *
+ * HLS-004 changed the re-hosted JS wrapper's input contract (`jsWrapperLines` in
+ * `src/emit/component.ts`), so unlike HLS-001 it *is* allowed to move bytes — which makes the
+ * count the whole of the evidence, not a formality. Against the pre-HLS-004 golden:
+ *
+ *  - **2 of 840** hashes differ: `batch-desk/src/pages/Home.tsx` and `cheer/src/pages/Home.tsx`.
+ *    They are the only two corpus projects with a re-hosted `Function` or `Expression`, and the
+ *    diff in each is confined to the wrapper's signature line and the scope binding beneath it.
+ *  - **0** files appeared or vanished in any project that already existed.
+ *  - **1** project was added — `budget-desk`, minted by HLS-004 because the corpus had no
+ *    fixture doing arithmetic on a component input, which is why a green gate had never once
+ *    compiled issue #24's shape. 🔴 It is a fixture minted for a task, which §1 above warns
+ *    about: it bounds nothing on its own, and the 42 projects around it are what keep this gate
+ *    honest. Its own claims are graded in `hls004-an-export-that-builds.test.ts`.
+ *
+ * ⚠️ The `42` above is left as written: it is the count HLS-001 took, and the row below now
+ * asserts 43 because a project was deliberately added. The two numbers disagreeing is the record.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -78,7 +97,7 @@ describe('HLS-001 AC3 — emitApp over the corpus is byte-identical', () => {
 
   it('the corpus is the one the golden was taken over', () => {
     // Arming the instrument: a corpus that shrank to nothing would make the comparison vacuous.
-    expect(corpusProjects().length).toBe(42);
+    expect(corpusProjects().length).toBe(43);
     expect(Object.keys(golden).sort()).toEqual(corpusProjects());
   });
 

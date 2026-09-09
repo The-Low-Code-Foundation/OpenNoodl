@@ -1,0 +1,121 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c7e41a90-0000-4000-8000-000000000012",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "gaugeGroup",
+      "type": "Group",
+      "label": "Gauge",
+      "children": [
+        "gaugeLabel",
+        "gaugeTotal",
+        "driftLabel",
+        "driftTotal"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "alignItems": "flex-start"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "gaugeLabel",
+      "type": "Text",
+      "label": "Gauge label",
+      "parent": "gaugeGroup",
+      "parameters": {
+        "text": "Projected spend",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "gaugeTotal",
+      "type": "Text",
+      "label": "Gauge total",
+      "parent": "gaugeGroup",
+      "parameters": {
+        "fontSize": "var(--text-2xl)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "driftLabel",
+      "type": "Text",
+      "label": "Drift label",
+      "parent": "gaugeGroup",
+      "parameters": {
+        "text": "With drift (nothing feeds it)",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "driftTotal",
+      "type": "Text",
+      "label": "Drift total",
+      "parent": "gaugeGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "gaugeInputs",
+      "type": "Component Inputs",
+      "label": "Gauge properties",
+      "ports": [
+        {
+          "name": "months",
+          "plug": "output",
+          "type": "number",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "projected",
+      "type": "Expression",
+      "label": "projected",
+      "parameters": {
+        "expression": "months * rate",
+        "rate": 250
+      },
+      "metadata": {
+        "comment": "HLS-004: arithmetic straight onto a component input - the shape issue #24 reported as TS18048. `months` is wire-fed, `rate` is a literal parameter on this node."
+      },
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "withDrift",
+      "type": "Expression",
+      "label": "withDrift",
+      "parameters": {
+        "expression": "months + drift"
+      },
+      "metadata": {
+        "comment": "HLS-004: `drift` is mined out of the expression text and nothing feeds it. NDA-017 \u00a72 seeds it undefined rather than 0, so this abstains as NaN rather than answering `months` - and the emitted app must do the same."
+      },
+      "x": 350,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "gaugeGroup"
+  ]
+}
