@@ -5,7 +5,7 @@
  *
  * Two generated `TODO(export)` markers have ended with *"See the export report"* since EXP-002,
  * and there was no report. Everything the export dropped or refused went to `EmittedApp.notes`,
- * which `scripts/emit-app.ts` printed to **stderr** — so an author who ran the export and opened
+ * which the runner printed to **stderr** — so an author who ran the export and opened
  * the repo saw markers pointing at a document that did not exist, and a scrollback they no longer
  * had. This is that document, written into the app beside the code it is about.
  *

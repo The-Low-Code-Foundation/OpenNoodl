@@ -22,6 +22,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { Catalog, loadCatalog } from '../src/catalog';
+import { errorMessage } from '../src/errorMessage';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 
@@ -59,7 +60,7 @@ export function corpusHashes(): CorpusHashes {
     } catch (err) {
       // A project the exporter refuses is still a reading: the refusal has to survive the change
       // byte-for-byte too, and swallowing it here would hide a project dropping out of the corpus.
-      entry['@threw'] = sha(String(err instanceof Error ? err.message : err));
+      entry['@threw'] = sha(errorMessage(err));
     }
     out[name] = entry;
   }

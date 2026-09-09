@@ -39,3 +39,12 @@ export { README_PATH, renderReadme, ReadmeBackend } from './emit/readme';
 export { emitKits, EmittedCopy, EmittedKits, KitBinding } from './emit/kits';
 export { parseModules } from './parse/parseModules';
 export { runKitSource, KitRunResult, KitRunOutcome } from './parse/kitSource';
+export {
+  checkTarget,
+  writeExport,
+  ExportOutput,
+  FsLike,
+  TargetVerdict,
+  WriteResult
+} from './write/writeExport';
+export { errorMessage } from './errorMessage';

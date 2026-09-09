@@ -1,16 +1,23 @@
 /**
- * EXP-012 — the disk half of the editor's code export, graded against a real temp directory.
+ * EXP-012 — the disk half of the code export, graded against a real temp directory.
  *
  * Two of these rows exist because of failures already recorded elsewhere in P18: the asset
  * copy channel that a runner once dropped (§19.6), and the project-directory target that the
  * loader would read straight back (P82, `readBundleDirectory` has no skip list).
+ *
+ * ⚠️ **HLS-002 moved the module under test into `@nodegx/export`** — the export has two front
+ * doors now, and one write loop between them. This spec is kept here rather than moved with it,
+ * for the reason HLS-001 kept the runtime's `logic-builder-*` suites pointed at their re-export:
+ * the alias resolves to the same source, and `test:main` is a job that actually runs in CI. The
+ * package's own suite runs there too as of HLS-002, but a gate is worth what it is wired into,
+ * and this one was already wired in.
  */
 
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { checkTarget, writeExport } from '../../src/editor/src/utils/codeExport/writeExport';
+import { checkTarget, writeExport } from '@nodegx/export';
 
 function tmp(prefix: string): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), prefix));

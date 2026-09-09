@@ -238,12 +238,18 @@
     // `rejectionExamples.test.ts` over stdio. Neither asserted the node-choice copy, so session
     // 43's edit to it was, in its own words, caught by nothing.
     "src/editor/src/models/AiAssistant/authoring/prompts",
-    // EXP-012: `utils/codeExport/writeExport.ts` is the same shape — the disk half of the
-    // editor's React code export, taking `fs` as an argument and typed against the emitted
-    // app's structure rather than importing `@nodegx/export`. The renderer flow beside it
-    // (`exportReactCode.ts`) reaches ProjectModel, the popup layer and Electron's dialog, and is
-    // deliberately not reached from here.
-    "src/editor/src/utils/codeExport/writeExport.ts",
+    // HLS-002: `utils/codeExport/exportSequence.ts` is the same shape — the editor's export as an
+    // ordered sequence, with every editor singleton (ProjectModel, the popup layer, the toast
+    // layer, Electron's directory dialog) taken as a function rather than imported. EXP-012's
+    // `writeExport.ts` used to be the entry here; it now lives in `@nodegx/export`, because
+    // HLS-002 gave the export a second front door and two copies of the write loop is the
+    // cheapest way to make "both doors agree" untrue.
+    //
+    // 🔴 Reachable here is the whole point, not a convenience. This phase's subject is that
+    // everything which ships an app is behind a click; a sequence only a mouse can start is one
+    // only a mouse can grade. `exportReactCode.ts` beside it is the wiring that supplies the real
+    // singletons and is deliberately not reached from here.
+    "src/editor/src/utils/codeExport/exportSequence.ts",
     // EXP-013: the "Not exportable yet" decision (`exportBadge.ts`, whose only import is the
     // exporter's ledger reader — a JSON read), the badge component it feeds (no hooks, no `Icon`,
     // so `renderElements` can evaluate it), and the pre-flight modal (no hooks either; graded on

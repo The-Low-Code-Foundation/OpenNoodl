@@ -9,6 +9,9 @@
     "url": "git+https://github.com/The-Low-Code-Foundation/NodeGX.git",
     "directory": "packages/nodegx-export"
   },
+  "bin": {
+    "nodegx": "./dist/cli.mjs"
+  },
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",

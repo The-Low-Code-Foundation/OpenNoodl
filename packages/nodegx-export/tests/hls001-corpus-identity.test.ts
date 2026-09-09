@@ -34,15 +34,31 @@
  * edit — 42 projects, 840 hashes, zero differing, with the token mutant moving 42 of them in both
  * directions. This file is the *forward* net: it keeps the corpus honest from here on.
  *
- * 🔴 The two runners disagree about exactly three hashes, all in the `kits` project, and the
- * disagreement is a **product defect rather than a test artefact**: `kitSource.ts:188` and
- * `parseModules.ts:98` both narrow with `error instanceof Error ? error.message : String(error)`,
+ * ✅ **C41 is fixed, and this golden was regenerated once, deliberately, because of it.**
+ *
+ * HLS-001 left the two runners disagreeing about exactly three hashes, all in the `kits` project,
+ * and filed the disagreement as a product defect rather than a test artefact: `kitSource.ts` and
+ * `parseModules.ts` both narrowed with `error instanceof Error ? error.message : String(error)`,
  * which is **false for an error that crossed a realm boundary** — jest's context, and in the
- * product the `vm` context a kit's own source is executed in. So a kit that throws is reported as
- * `(SyntaxError: Unexpected token 'export')` and one that fails to be read as
- * `(Unexpected token 'export')`, and which wording a user gets depends on where the error came
- * from. Filed as C41 against HLS-005, whose subject is what the report says. Not fixed here: this
- * task is a packaging change and a fix would move these hashes.
+ * product the `vm` context a kit's own source is executed in. The same failure was reported as
+ * `(SyntaxError: Unexpected token 'export')` or `(Unexpected token 'export')` depending on where
+ * the error was constructed.
+ *
+ * HLS-002 hit it from the other end and could not proceed past it: its AC1 compares the editor's
+ * export against `nodegx export` byte for byte, and the two trees agreed on all eighteen files
+ * **except `EXPORT-REPORT.md`**, differing by exactly that prefix. A defect that blocks an
+ * acceptance criterion is the task that finds it. Both sites now call `src/errorMessage.ts`,
+ * which asks the value what it has rather than which constructor made it.
+ *
+ * 🔴 **What was counted before the golden was touched**, because a red count gate is answered by
+ * counting the artefact and never by bumping the literal:
+ *
+ *  - `scripts/corpus-hashes.ts` under `ts-node`, after the fix, against the pre-fix golden:
+ *    **3 of 840** hashes differ — `kits/@notes`, `kits/@report`, `kits/EXPORT-REPORT.md`. The
+ *    same three HLS-001 recorded, and no others: the fix moved what it was supposed to move.
+ *  - after regenerating under jest: **3** hashes changed, and jest and `ts-node` now agree on
+ *    **all 840**, where they disagreed about 3 before. The convergence is the evidence that what
+ *    was fixed was the realm sensitivity rather than the wording.
  */
 import * as fs from 'fs';
 import * as path from 'path';

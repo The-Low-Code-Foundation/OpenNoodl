@@ -1,21 +1,32 @@
 /**
- * EXP-012 — the half of the editor's code export that touches the disk.
+ * The half of the code export that touches the disk — every file written, every asset copied,
+ * and the one refusal that has to happen before any of it.
  *
- * `@nodegx/export`'s `emitApp` is pure: it returns generated strings (`files`) and a list of
- * project assets to copy byte-for-byte (`copies`), and writes nothing. This module is the
- * caller that writes — kept import-free (Node's `fs`/`path` only, injected) so the plain-Node
- * runner in `tests-unit/` grades it against a real temp directory rather than a mock, and so
- * the renderer flow in `exportReactCode.ts` stays a thin sequence of user-facing steps.
+ * `emitApp` is pure: it returns generated strings (`files`) and a list of project assets to copy
+ * byte-for-byte (`copies`), and writes nothing. This module is the caller that writes. It takes
+ * `fs` as an argument rather than importing it, which is what lets the same code run under the
+ * editor's renderer, under a plain-Node CLI, and against a real temp directory in a spec.
  *
- * 🔴 **`copies` is a second channel and the shipped script runner once dropped it on the
- * floor** (P18 §19.6): an author's fonts silently absent from their repo, every gate green.
- * `writeExport` writes both and reports both counts, and the spec asserts the copy arrived
- * byte-identical.
+ * ## Why it lives in the package (HLS-002)
  *
- * 🔴 **The target may not be inside the project.** The editor's loader reads every file under
- * the project directory with no skip list (P82: `readBundleDirectory`), and the MCP server's
- * scanner walks it too — an export dropped into the project would be read back as project
- * content on the next open. `checkTarget` refuses that before anything is written.
+ * It was written for EXP-012 inside `noodl-editor`, as the disk half of the editor's menu item.
+ * HLS-002 gives the export a second front door — `nodegx export` — and the whole point of that
+ * task is that the two doors produce the *same* export. Two copies of the write loop is the
+ * cheapest way to make that untrue, and the copy that would drift is the one nobody clicks:
+ * `scripts/emit-app.ts` had its own write loop and dropped `copies` on the floor for a whole
+ * phase (P18 §19.6) while every gate stayed green. So there is one write loop now, here, and
+ * both doors call it.
+ *
+ * 🔴 **`copies` is a second channel.** `files` are strings and `copies` are bytes — a kit's
+ * script, an icon set's `.woff2`, Inter's four `.ttf`. They are separate precisely *because* a
+ * font is not a string: reading one into UTF-8 to put it in `files` corrupts it silently, and the
+ * failure renders as blank glyphs rather than as an error. Both counts are reported so a caller
+ * can say what it did.
+ *
+ * 🔴 **The target may not be inside the project.** The editor's loader reads every file under the
+ * project directory with no skip list (P82: `readBundleDirectory`), and the MCP server's scanner
+ * walks it too — an export dropped into the project would be read back as project content on the
+ * next open. `checkTarget` refuses that before anything is written.
  */
 
 import type * as fsType from 'fs';

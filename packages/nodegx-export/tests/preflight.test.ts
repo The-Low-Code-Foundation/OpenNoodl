@@ -20,7 +20,7 @@
  * point of asserting a **disagreement** rather than asserting the number this session measured.
  */
 
-import { execFileSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -213,27 +213,33 @@ describe("the framing rules, which are what EXP-004 is actually about", () => {
 });
 
 /*
- * 🔴 **These rows drive `scripts/emit-app.ts` itself, and that is the point of them.**
+ * 🔴 **These rows drive the shipped runner itself, and that is the point of them.**
  *
- * §19.6 records a defect that lived in this runner while every gate stayed green, for one reason:
- * *no test drives this script.* The `--preflight` mode's entire promise is a negative — that it
- * writes nothing — and a negative about the filesystem cannot be checked anywhere except against
- * the filesystem. Asserting that `preflightOnly` is `true` would be asserting the mechanism; what
+ * §19.6 records a defect that lived in a runner while every gate stayed green, for one reason:
+ * *no test drove it.* The `--dry-run` mode's entire promise is a negative — that it writes
+ * nothing — and a negative about the filesystem cannot be checked anywhere except against the
+ * filesystem. Asserting that a `dryRun` flag is `true` would be asserting the mechanism; what
  * matters is the consequence, which is that no directory appears.
  *
- * ⚠️ `ts-node` starts this script in about 1.5s here, measured rather than assumed — the phase's
- * inherited note claiming "well over two minutes" does not reproduce.
+ * ⚠️ **The runner changed under these rows in HLS-002, and two of them changed with it.**
+ * `scripts/emit-app.ts` is gone: it had its own write loop, which is the duplicate that dropped
+ * `copies` in the first place, and the mode flag it dispatched on was read positionally. The
+ * runner is now `src/cli/main.ts` — the `nodegx` binary — and `--preflight` is kept as an alias
+ * for `--dry-run` so the invocation in anybody's notes still works. The one row whose *verdict*
+ * changed is the second: an output folder passed alongside `--dry-run` used to be accepted and
+ * silently ignored, and is now a usage error. The consequence being asserted is the same one
+ * either way — nothing is written — and it is asserted the same way. The fuller exit-code and
+ * equivalence rows live in `tests/hls002-cli.test.ts`.
  */
 describe('the shipped runner, driven', () => {
-  const SCRIPT = path.join(__dirname, '..', 'scripts', 'emit-app.ts');
+  const CLI = path.join(__dirname, '..', 'src', 'cli', 'main.ts');
   const TS_NODE = path.join(__dirname, '..', '..', '..', 'node_modules', '.bin', 'ts-node');
   const TSCONFIG = path.join(__dirname, '..', 'tsconfig.json');
 
-  const run = (args: string[]): string =>
-    execFileSync(TS_NODE, ['-P', TSCONFIG, SCRIPT, ...args], {
+  const run = (args: string[]) =>
+    spawnSync(TS_NODE, ['-P', TSCONFIG, CLI, ...args], {
       cwd: path.join(__dirname, '..'),
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe']
+      encoding: 'utf8'
     });
 
   let tmp: string;
@@ -244,32 +250,42 @@ describe('the shipped runner, driven', () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
-  test('--preflight prints the summary and creates nothing', () => {
+  test('--dry-run prints the summary and creates nothing', () => {
     const out = path.join(tmp, 'app');
-    const stdout = run(['--preflight', path.join(FIXTURE_DIR, 'reading-shelf')]);
+    const result = run(['export', '--dry-run', path.join(FIXTURE_DIR, 'reading-shelf')]);
 
-    expect(stdout).toContain('# Before you export — Reading Shelf');
-    expect(stdout).toContain('**Nothing has been written yet.**');
+    expect(result.stdout).toContain('# Before you export — Reading Shelf');
+    expect(result.stdout).toContain('**Nothing has been written yet.**');
     // The consequence, not the mechanism: nothing was passed as an output directory, and nothing
     // that looks like one exists afterwards.
     expect(fs.existsSync(out)).toBe(false);
     expect(fs.readdirSync(tmp)).toEqual([]);
   });
 
-  test('--preflight given an output directory still writes nothing into it', () => {
-    // The argument is ignored in this mode; a runner that quietly honoured it would write an app
-    // while printing that it had not.
+  test('--preflight is still the same mode, because it is the name in the old notes', () => {
+    const result = run(['export', '--preflight', path.join(FIXTURE_DIR, 'reading-shelf')]);
+    expect(result.stdout).toContain('**Nothing has been written yet.**');
+    expect(fs.readdirSync(tmp)).toEqual([]);
+  });
+
+  test('--dry-run given an output directory is refused, and still writes nothing into it', () => {
+    // The old runner accepted and dropped this argument. A person who typed an output folder
+    // believes they asked for an export, and will not read a summary as a refusal to do one — so
+    // it is a usage error now. What has not changed is that nothing appears on disk.
     const out = path.join(tmp, 'app');
-    run(['--preflight', path.join(FIXTURE_DIR, 'reading-shelf'), out]);
+    const result = run(['export', '--dry-run', path.join(FIXTURE_DIR, 'reading-shelf'), out]);
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain('takes a project folder and no output folder');
     expect(fs.existsSync(out)).toBe(false);
   });
 
-  test('without --preflight it still writes the app, its report and its copied assets', () => {
-    // The control for the two rows above: the same runner, the same fixture, and this time files
+  test('without --dry-run it still writes the app, its report and its copied assets', () => {
+    // The control for the rows above: the same runner, the same fixture, and this time files
     // must appear. Without it, "nothing was written" would pass on a runner that writes nothing
     // in either mode.
     const out = path.join(tmp, 'app');
-    run([path.join(FIXTURE_DIR, 'kits'), out]);
+    const result = run(['export', path.join(FIXTURE_DIR, 'kits'), out]);
+    expect(result.status).toBe(0);
 
     expect(fs.existsSync(path.join(out, REPORT_PATH))).toBe(true);
     expect(fs.existsSync(path.join(out, 'src'))).toBe(true);

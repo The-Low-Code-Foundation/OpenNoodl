@@ -1,7 +1,7 @@
 # Phase 83 — Everything That Ships It Is Behind A Click
 
 **Scoped:** 2026-09-09, from two community issues and a scoping sweep against `cline-dev` HEAD.
-**Status: OPEN. HLS-001 built (session 2, 2026-09-09) — see [HLS-001-WHAT-WAS-BUILT.md](HLS-001-WHAT-WAS-BUILT.md). HLS-012's replies are drafted and await Richard.** **Prefix: `HLS`.** **Release: ⬜ NOT RULED** (see §2; R2–R5 are now ruled).
+**Status: OPEN. HLS-001 built (session 2) and HLS-002 built (session 3), both 2026-09-09 — see [HLS-001-WHAT-WAS-BUILT.md](HLS-001-WHAT-WAS-BUILT.md) and [HLS-002-WHAT-WAS-BUILT.md](HLS-002-WHAT-WAS-BUILT.md). `nodegx export` exists and both front doors are proved byte-identical. HLS-012's replies are drafted and await Richard.** **Prefix: `HLS`.** **Release: ⬜ NOT RULED** (see §2; R2–R5 are now ruled).
 
 Everything that *makes* an app in NodeGX is already headless and, by the reporter's own account,
 better than in tools designed for it: create, author, validate, render, preview. Everything that

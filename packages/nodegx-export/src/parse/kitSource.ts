@@ -41,6 +41,8 @@
 
 import * as vm from 'vm';
 
+import { errorMessage } from '../errorMessage';
+
 /**
  * What running a kit's source turned out to be.
  *
@@ -185,7 +187,9 @@ export function runKitSource(code: string): KitRunResult {
   try {
     new vm.Script(code, { filename: 'kit-index.js' }).runInContext(context, { timeout: 5000 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
+    // 🔴 Realm-safe on purpose: this code runs the kit's source in a `vm` context, so the error
+    // it catches is frequently not `instanceof` this realm's `Error`. See `errorMessage`.
+    const message = errorMessage(error);
     const looksLikeEsm =
       /Unexpected token ['"`]?export['"`]?/i.test(message) ||
       /Cannot use import statement outside a module/i.test(message) ||

@@ -25,6 +25,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { errorMessage } from '../errorMessage';
 import { ModuleIR, ModuleStatus } from '../ir/types';
 import { runKitSource } from './kitSource';
 
@@ -94,9 +95,9 @@ export function parseModules(projectDir: string): ModuleIR[] {
       code = fs.readFileSync(path.join(projectDir, 'noodl_modules', entry.name, main), 'utf8');
     } catch (error) {
       module.status = 'unreadable';
-      module.message = `"${displayName}" names "${main}" as its main, which could not be read: ${
-        error instanceof Error ? error.message : String(error)
-      }`;
+      module.message = `"${displayName}" names "${main}" as its main, which could not be read: ${errorMessage(
+        error
+      )}`;
       modules.push(module);
       continue;
     }

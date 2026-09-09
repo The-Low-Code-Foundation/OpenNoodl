@@ -19,9 +19,10 @@
  * deliberately worse predictor so that a margin exists to measure.**
  *
  * `emitApp` is pure: it reads nothing, writes nothing, and returns the files as strings. Writing
- * them to disk is the caller's separate act (`scripts/emit-app.ts`). So the cost of knowing the
- * real answer is the cost of running the generator — about a tenth of a second on every project in
- * the corpus — and there is no reason whatever to approximate a number you can simply compute.
+ * them to disk is the caller's separate act (`write/writeExport.ts`, which both front doors call).
+ * So the cost of knowing the real answer is the cost of running the generator — about a tenth of a
+ * second on every project in the corpus — and there is no reason whatever to approximate a number
+ * you can simply compute.
  * A margin here would be a defect, not a tolerance.
  *
  * ⚠️ **The cheap alternative was measured before this was written, because it is the one a future

@@ -21,7 +21,7 @@
  * `dist/` being absent cannot break a build in this repo. It is a publishing artefact only.
  */
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, globSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { chmodSync, copyFileSync, existsSync, globSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { isBuiltin } from 'node:module';
 import { dirname, relative, resolve } from 'node:path';
 import esbuild from 'esbuild';
@@ -77,6 +77,46 @@ const esmBanner = {
 for (const entry of ['index', 'ledger']) {
   await esbuild.build({ ...shared, entryPoints: [`src/${entry}.ts`], format: 'esm', banner: esmBanner, outfile: `dist/${entry}.mjs` });
   await esbuild.build({ ...shared, entryPoints: [`src/${entry}.ts`], format: 'cjs', outfile: `dist/${entry}.cjs` });
+}
+
+/**
+ * HLS-002 — the `nodegx` binary is a third entry point, and it is the one that is *executed*
+ * rather than imported.
+ *
+ * Two things about it are load-bearing and neither is checked by anything upstream of the file
+ * system:
+ *
+ *  - **The shebang has to be the first bytes of the file, and there has to be exactly one.**
+ *    🔴 Measured, not assumed: the first version of this entry put `#!/usr/bin/env node` in the
+ *    banner *as well as* in `src/cli/main.ts`, because a banner is prepended verbatim and the
+ *    shebang has to come first. esbuild hoists the source shebang above the banner, so the bundle
+ *    began with two of them — and a `#!` on line 2 is a syntax error, which the build reported as
+ *    a clean success and 86 green suites never touched. So the shebang lives in the source only,
+ *    and the assertion below is what says so from here on.
+ *  - **The mode bit.** `npm pack` records the file's permissions in the tarball; a bin without
+ *    the execute bit installs as a link the shell refuses with `EACCES`, and nothing in a green
+ *    repo can see that, because in the repo nobody ever executes `dist/`.
+ *
+ * `tests/hls002-pack-and-run.test.ts` packs this and runs it from an install outside the repo,
+ * which is the instrument that grades both of those against the real artefact (register row C44).
+ * These two lines are the cheap net in front of it.
+ */
+await esbuild.build({
+  ...shared,
+  entryPoints: ['src/cli/main.ts'],
+  format: 'esm',
+  banner: esmBanner,
+  outfile: 'dist/cli.mjs'
+});
+chmodSync('dist/cli.mjs', 0o755);
+
+const cliText = readFileSync('dist/cli.mjs', 'utf8');
+const shebangs = cliText.split('\n').filter((line) => line.startsWith('#!')).length;
+if (!cliText.startsWith('#!/usr/bin/env node\n') || shebangs !== 1) {
+  throw new Error(
+    `dist/cli.mjs must begin with exactly one shebang and does not (found ${shebangs}). ` +
+      'A `#!` anywhere but the first line is a syntax error, and the bundle still builds cleanly.'
+  );
 }
 
 // Declarations come from tsc, which esbuild does not emit. `tsconfig.build.json` sets an explicit
