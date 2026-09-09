@@ -11,9 +11,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-// The shipped default token set, read from the editor module that owns it (the Rise lesson:
-// never restate content the artifact already carries). Pure data, no editor runtime involved.
-import { DEFAULT_TOKENS } from '../../../noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens';
+// The shipped default token set, read from the package that owns it (the Rise lesson: never
+// restate content the artifact already carries). HLS-001 moved it out of the editor: this package
+// has to be installable on its own, and a relative path into `noodl-editor/src` made that
+// impossible. Pure data, no editor runtime involved.
+import { DEFAULT_TOKENS } from '@nodegx/project-contract/tokens';
 import {
   Catalog,
   CatalogIndex,

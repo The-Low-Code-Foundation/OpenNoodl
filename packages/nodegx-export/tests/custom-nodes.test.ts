@@ -16,16 +16,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { runKitSource } from '../src/parse/kitSource';
 import { ExportIR } from '../src/ir/types';
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'kits');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const ir: ExportIR = parseProject(FIXTURE, catalog);
 const app = emitApp(ir, catalog);
 

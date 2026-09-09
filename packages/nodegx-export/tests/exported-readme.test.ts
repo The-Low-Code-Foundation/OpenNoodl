@@ -35,15 +35,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { README_PATH, renderReadme } from '../src/emit/readme';
 import { alphaNotice, exportCoverage } from '../src/ledger';
 import { ExportReportData, REPORT_PATH, nextSteps, renderSteps } from '../src/emit/report';
 import { parseProject } from '../src/parse/parseProject';
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 const FIXTURES = fs.readdirSync(path.join(__dirname, 'fixtures')).sort();
 

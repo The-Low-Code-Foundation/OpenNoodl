@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 
@@ -24,8 +24,7 @@ import { parseProject } from '../src/parse/parseProject';
  * that) — it is the floor beneath it, and it fails in one second rather than one minute.
  */
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 const FIXTURES = fs
   .readdirSync(path.join(__dirname, 'fixtures'), { withFileTypes: true })

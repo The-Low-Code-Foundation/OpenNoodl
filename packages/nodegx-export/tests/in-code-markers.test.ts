@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { Catalog, CatalogIndex } from '../src/catalog';
+import { Catalog, CatalogIndex, loadCatalog } from '../src/catalog';
 import { planProject } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
@@ -22,8 +22,7 @@ import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/
  * wire, losing a marker on the way out, and emitting one that does not parse.
  */
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const index = new CatalogIndex(catalog);
 
 /** The plans behind an emitted app — the emitter does not hand them back, so they are re-derived. */

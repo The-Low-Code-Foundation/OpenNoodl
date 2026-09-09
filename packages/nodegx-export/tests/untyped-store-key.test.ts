@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { typecheckEmittedApp } from './helpers/typecheckApp';
@@ -28,9 +28,8 @@ import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/
  */
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'cheer');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const baseIr = parseProject(FIXTURE, catalog);
 
 const literal = (value: string | number | boolean | Record<string, unknown>): ParamValue =>

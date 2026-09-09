@@ -30,7 +30,7 @@
  * being a complete description of the body.
  */
 
-import { detectIO, type DetectedIO } from '../../../noodl-runtime/src/nodes/std-library/logic-builder-io';
+import { detectIO, type DetectedIO } from '@nodegx/project-contract/logic-builder-io';
 import { NodeIR } from '../ir/types';
 
 export const LOGIC_BUILDER = 'Logic Builder';

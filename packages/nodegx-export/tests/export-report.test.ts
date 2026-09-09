@@ -36,13 +36,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { ExportReportData, REPORT_PATH, renderReport, stripScope } from '../src/emit/report';
 import { parseProject } from '../src/parse/parseProject';
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 const exportOf = (fixture: string) => {
   const dir = path.join(__dirname, 'fixtures', fixture);

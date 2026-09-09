@@ -20,15 +20,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { Catalog, CatalogIndex } from '../src/catalog';
+import { Catalog, CatalogIndex, loadCatalog } from '../src/catalog';
 import { planProject } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { typecheckEmittedApp } from './helpers/typecheckApp';
 import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const PROFILE = parseProject(path.join(__dirname, 'fixtures', 'profile-desk'), catalog);
 const CHEER = parseProject(path.join(__dirname, 'fixtures', 'cheer'), catalog);
 

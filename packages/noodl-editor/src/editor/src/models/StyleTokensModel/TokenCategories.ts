@@ -7,21 +7,14 @@
 
 // ─── Token Category Types ─────────────────────────────────────────────────────
 
-export type TokenCategory =
-  | 'color-semantic'
-  | 'color-palette'
-  | 'spacing'
-  | 'typography-size'
-  | 'typography-weight'
-  | 'typography-leading'
-  | 'typography-tracking'
-  | 'typography-family'
-  | 'border-radius'
-  | 'border-width'
-  | 'shadow'
-  | 'gradient'
-  | 'animation-duration'
-  | 'animation-easing';
+// ─── Token Category Types ─────────────────────────────────────────────────────
+
+// 🔴 `TokenCategory` and `StyleTokenRecord` moved to `@nodegx/project-contract` with the token
+// vocabulary that uses them (HLS-001): the exporter needs all three and cannot import them from
+// the editor. Re-exported here so every existing import in the editor keeps working.
+export type { TokenCategory, StyleTokenRecord } from '@nodegx/project-contract/tokens';
+import type { StyleTokenRecord, TokenCategory } from '@nodegx/project-contract/tokens';
+
 
 export const TOKEN_CATEGORIES: Record<
   TokenCategory,
@@ -136,13 +129,6 @@ export type StyleTokenMap = Map<string, StyleToken>;
 
 // ─── Serializable storage format (for project.json) ─────────────────────────
 
-export interface StyleTokenRecord {
-  name: string;
-  value: string;
-  category: TokenCategory;
-  isCustom: boolean;
-  description?: string;
-}
 
 export interface StyleTokensData {
   /** Version for future migration support */

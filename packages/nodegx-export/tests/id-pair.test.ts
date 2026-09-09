@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { idLibSource } from '../src/emit/idLib';
@@ -33,10 +33,9 @@ import { ExportIR, ComponentIR, ConnectionIR, NodeIR } from '../src/ir/types';
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'cheer');
 const BADGE_DESK = path.join(__dirname, 'fixtures', 'badge-desk');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 const RUNTIME_SRC = path.join(__dirname, '..', '..', 'noodl-runtime', 'src');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const baseIr = parseProject(FIXTURE, catalog);
 
 // ---- §A the emitted module, against the interpreter it has to agree with --------------------

@@ -15,16 +15,15 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { ExportIR } from '../src/ir/types';
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 const GOLDENS = path.join(__dirname, 'goldens', 'exp009');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const baseIr = parseProject(FIXTURE, catalog);
 const app = emitApp(baseIr, catalog);
 

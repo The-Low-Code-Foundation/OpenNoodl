@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog, CatalogIndex } from '../src/catalog';
+import { Catalog, CatalogIndex, loadCatalog } from '../src/catalog';
 import { planProject } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
@@ -31,10 +31,9 @@ import { ComponentIR, ExportIR, NodeIR } from '../src/ir/types';
  * could not see the sentence had gone false.
  */
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 const FIXTURE = path.join(__dirname, 'fixtures', 'puppy-test-3');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const index = new CatalogIndex(catalog);
 const baseIr = parseProject(FIXTURE, catalog);
 

@@ -32,7 +32,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { preflight, renderPreflight, summarizePreflight, PreflightSummary } from '../src/emit/preflight';
 import { README_PATH } from '../src/emit/readme';
@@ -41,8 +41,7 @@ import { parseProject } from '../src/parse/parseProject';
 import { isPathwayType } from '../src/analyze/plan';
 import { RefusedNode } from '../src/ir/types';
 
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const FIXTURE_DIR = path.join(__dirname, 'fixtures');
 const FIXTURES = fs.readdirSync(FIXTURE_DIR).filter((f) => fs.statSync(path.join(FIXTURE_DIR, f)).isDirectory());
 

@@ -1,16 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { ComponentIR, ExportIR } from '../src/ir/types';
 
 const CHEER = path.join(__dirname, 'fixtures', 'cheer');
 const PUPPY = path.join(__dirname, 'fixtures', 'puppy-test-3');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
 
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const cheerIr = parseProject(CHEER, catalog);
 const puppyIr = parseProject(PUPPY, catalog);
 

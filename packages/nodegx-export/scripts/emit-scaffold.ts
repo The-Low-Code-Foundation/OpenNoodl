@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitScaffold } from '../src/emit/scaffold';
 import { parseProject } from '../src/parse/parseProject';
 
@@ -21,8 +21,7 @@ if (!projectDir || !outDir) {
   process.exit(1);
 }
 
-const catalogPath = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 const ir = parseProject(path.resolve(projectDir), catalog);
 const files = emitScaffold(ir);

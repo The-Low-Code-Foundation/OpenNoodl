@@ -14,14 +14,13 @@ import * as path from 'path';
 
 import * as ts from 'typescript';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { typecheckEmittedApp } from './helpers/typecheckApp';
 
 const FIXTURES = path.join(__dirname, 'fixtures');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 /**
  * Read from disk rather than listed, so a fixture added later is compiled without anyone

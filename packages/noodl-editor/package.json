@@ -172,6 +172,7 @@
     "@nodegx/kit-catalog": "*",
     "@nodegx/kit-scaffold": "*",
     "@nodegx/module-inject": "*",
+    "@nodegx/project-contract": "file:../nodegx-project-contract",
     "@nodegx/render-measure": "*",
     "@noodl/backend-contract": "file:../nodegx-backend-contract",
     "@noodl/git": "file:../noodl-git",

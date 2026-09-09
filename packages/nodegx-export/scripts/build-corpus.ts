@@ -28,7 +28,7 @@ import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { Catalog } from '../src/catalog';
+import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 
@@ -51,8 +51,7 @@ if (!fs.existsSync(tsc)) {
   process.exit(2);
 }
 
-const catalogPath = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+const catalog: Catalog = loadCatalog();
 
 type Result = { project: string; files: number; errors: string[] };
 const results: Result[] = [];

@@ -1,5 +1,5 @@
 export * from './ir/types';
-export { Catalog, CatalogIndex, CatalogNode, CatalogPort } from './catalog';
+export { Catalog, CatalogIndex, CatalogNode, CatalogPort, catalogPath, loadCatalog } from './catalog';
 export { parseProject, EXPORTER_VERSION } from './parse/parseProject';
 export { emitScaffold, routedPages, ScaffoldPage } from './emit/scaffold';
 export { planProject, parseIdentityMapping, ComponentPlan, ProjectPlan } from './analyze/plan';

@@ -3,7 +3,7 @@ import * as path from 'path';
 
 import * as ts from 'typescript';
 
-import { Catalog, CatalogIndex } from '../src/catalog';
+import { Catalog, CatalogIndex, loadCatalog } from '../src/catalog';
 import { ComponentPlan, planProject, RUN_TASKS_OUTPUTS } from '../src/analyze/plan';
 import { emitApp } from '../src/emit/emitApp';
 import { summarizePreflight } from '../src/emit/preflight';
@@ -35,8 +35,7 @@ import { ComponentIR, ConnectionIR, ExportIR, NodeIR, ParamValue } from '../src/
  */
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'batch-desk');
-const CATALOG_PATH = path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog.json');
-const catalog: Catalog = JSON.parse(fs.readFileSync(CATALOG_PATH, 'utf8'));
+const catalog: Catalog = loadCatalog();
 const index = new CatalogIndex(catalog);
 const baseIr = parseProject(FIXTURE, catalog);
 const app = emitApp(baseIr, catalog);
