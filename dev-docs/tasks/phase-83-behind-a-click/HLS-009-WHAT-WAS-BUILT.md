@@ -3,14 +3,15 @@
 **Session 10, 2026-09-09.** `open_in_editor` over MCP: an agent asks the editor the person already
 has open to open a project, and the editor does it.
 
-**2 of 4 acceptance criteria closed, 2 left undriven** — and §6 says exactly why, and what it costs.
+**4 of 4 acceptance criteria closed.** The two driven ones were driven late in the session, after a
+peer freed the box — §6 is the drive, including the reverted arm that makes AC2 mean something.
 
 ## 1. The acceptance criteria
 
 | # | criterion | state |
 |---|---|---|
-| AC1 | (person) With the editor open on the projects screen, ask an agent to create a project. It appears — no click, no restart, no hand-edited file | ⬜ **NOT DRIVEN** — see §6 |
-| AC2 | Opening a project the person already has open does not open it twice, and does not lose unsaved work. Driven, not reasoned about | 🟡 **HALF** — the decision is graded (13 assertions); the drive is not |
+| AC1 | (person) With the editor open on the projects screen, ask an agent to create a project. It appears — no click, no restart, no hand-edited file | ✅ **CLOSED — DRIVEN** (§6). 79 → 80 projects, one row |
+| AC2 | Opening a project the person already has open does not open it twice, and does not lose unsaved work. Driven, not reasoned about | ✅ **CLOSED — DRIVEN, with a reverted arm** (§6) |
 | AC3 | The recent-projects store has one writer after this task, not two. Cardinality | ✅ **CLOSED** — a two-sided gate, and it found a third reference I had missed |
 | AC4 | #28's symptom is either fixed or explicitly still open with a reason | ✅ **CLOSED** — fixed, with the reason stated |
 
@@ -90,34 +91,77 @@ ask, and #28 read as a missing entry because there was no door to notice.
 The bind result of `create_project` **and** `open_project` now names `open_in_editor` and the
 `find_tools` query that reveals it. Said in a per-call payload, not the instructions, because of §4.
 
-## 6. 🔴 What is NOT closed, and the honest reason
+## 6. 🔴 The drive, and the arm that makes AC2 mean anything
 
-**AC1 and AC2's drives were not run, and the reason is not that they are hard.** A peer session held
-the box for the whole of this session: its `scripts/start.ts` stack, three webpack builds, an editor
-holding `127.0.0.1:8574` and CDP port 9222, working on phase-84's `Columns.tsx`. **Driving would
-have opened a project in their window, mid-build.** A second editor is possible (`NOODLPORT` +
-`NOODL_REMOTE_DEBUG_PORT` + its own user-data dir) but it is a second heavy job on a shared box.
+**Run 2026-09-09 late in the session**, after a peer session tore down the stack it had held all
+evening. Editor launched with `npm run dev:debug`, relay on `127.0.0.1:8574`. Driven through the
+**MCP client**, not the tool function — the door a model actually has, `find_tools` included
+(`packages/noodl-mcp/tests/hls009-drive.ts`, kept as a re-runnable instrument).
 
-🔴 **Do not read the 20 green assertions as the drive.** They grade the decision and the protocol.
-What no test here has seen is the editor actually routing, the window actually coming forward, and
-`.mcp.json`/`CLAUDE.md` actually appearing in the opened project.
+⚠️ **This launch used the default user-data directory, so C70's second clause did not bite.** It is
+real — the peer's editor an hour earlier had `--user-data-dir=<scratchpad>/userdata` — and the drive
+script reads the token off the **running editor's argv** rather than the default path for that
+reason. 🔴 Its first run still failed on that parse: `--user-data-dir=(\S+)` truncated
+`…/Library/Application Support/NodeGX` at the space and reported `ENOENT` on a path that has never
+existed, which reads as *"no token"* rather than as *"bad parse"*.
 
-### The recipe, so the next session pays minutes and not an hour
+### AC1 — observed **before**, then read as consequences
 
-1. Confirm the box is free: `ps -eo pid,etime,command | grep -E "start\.ts|webpack"` and
-   `lsof -nP -iTCP:8574 -sTCP:LISTEN`.
-2. Launch the editor (`/run-editor`). 🔴 **It will use its own `--user-data-dir`, so its relay token
-   is NOT at `~/Library/Application Support/NodeGX/relay-token`** — that is **C70**, and the
-   default-path token will be a *stale* one that produces "the relay rejected this token".
-   Export `NODEGX_RELAY_TOKEN` from the launched editor's user-data dir, and `NOODLPORT` if it is
-   not 8574.
-3. AC1: with the editor on the projects screen, call `open_in_editor` with a **copy** of a real
-   project. Expect `disposition: "open"`, the window forward, the project on screen, and a new row
-   in Recent projects. Then check `git status` in the copy for `.mcp.json` and `CLAUDE.md` — the
-   tool's note promises them and nothing has watched it keep that promise.
-4. AC2: call it **again** with the same directory. Expect `disposition: "already-open"` and, above
-   all, **no reload**. Then make an edit, call within the one-second save debounce with a *different*
-   project, and confirm the first project's edit reached disk (`disposition: "switch"`).
+| | |
+|---|---|
+| before | projects screen, `Recent projects`, **79** projects, `HLS-009 Drive` **not** among them. `.mcp.json` and `CLAUDE.md` **deleted from the copy**, so the backfill has work to do |
+| the call | `open_in_editor` → `ok: true`, `disposition: "open"`, `projectName: "Reading Shelf"` |
+| after — screen | node graph present, `Reading Shelf` on screen, `document.hasFocus() === true` |
+| after — launcher | **80** projects, **exactly one** row for the directory, written by the editor |
+| after — disk | `.mcp.json` and `CLAUDE.md` **appeared** — the two files the tool's note promises |
+
+🔴 **`ok: true` was read as the tool's report and not as the outcome.** Every row below the call is
+a separate reading of the artefact — HLS-013's `res.ok` lesson applied rather than quoted.
+
+### AC2 first half — the second ask does nothing
+
+`disposition: "already-open"`, and the two things that must **not** have happened did not:
+
+- **still exactly one row**, not two;
+- **`latestAccessed` byte-identical** (`1788984823926` before and after) — the branch skips
+  `touchProject`, so a store rewrite is the fingerprint of a reload, and there was none;
+- a `window` marker set before the call **survived**, so the renderer never reloaded.
+
+### AC2 second half — the flush, and 🔴 the reverted arm
+
+**The obvious arm is worthless and it took a control to see it.** `scheduleProjectSave()` debounces
+by **one second**. A drive that pays `ts-node`'s startup between the edit and the switch arrives
+after the autosave has already written — the file would hold the edit **with the flush deleted**.
+Self-healing, invisible to any arm that completes.
+
+**Control first**, so the instrument is known to distinguish: `setMetaData` at T0, then read
+`nodegx.project.json` — **absent at +0.3s** (the debounce is real), **present at +2.3s** (the
+autosave fires). A control that reads zero at both times would have made everything below
+meaningless.
+
+Then the client was **armed before the edit** and released by a trigger file written from inside
+the renderer, in the same `eval` as the edit, so the gap is milliseconds and not seconds:
+
+| arm | edit → release | disposition | reported | project A's file |
+|---|---|---|---|---|
+| **as built** | `…983235` → `…983239` — **4 ms** | `switch`, `leaving: HLS-009 Drive` | `ok: true` | ✅ **edit present** |
+| **flush disabled** | `…114226` → `…114229` — **3 ms** | `switch`, `leaving: HLS-009 Drive` | `ok: true` | 🔴 **edit GONE** |
+
+**Same timing, same disposition, same success note. The report cannot see the difference; only the
+file can.** That is HLS-010's finding met again in a new place, and it is why `await
+flushPendingProjectSave()` now carries the measurement in a comment beside it rather than a claim.
+
+The switch also survived the thing `router.tsx` warns about: after editor → projects → editor the
+window showed `Deadline Desk` with `reactMounted: true` and a live graph — no white screen, and both
+projects registered exactly once (**81** rows).
+
+### What the drive did **not** cover
+
+- **`--user-data-dir` on a non-default install** (C70's second clause) — real, measured on a peer's
+  editor, not exercised here.
+- **Two windows on one relay.** Unreachable by design (single-instance lock; a second editor needs
+  its own `NOODLPORT` and therefore its own relay), so the fan-out's multi-window branch is
+  argued, not driven. The *silent-peer* branch is driven, in the suite.
 
 ## 7. Suites
 

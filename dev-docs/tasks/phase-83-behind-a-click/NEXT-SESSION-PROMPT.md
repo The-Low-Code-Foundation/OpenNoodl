@@ -1,9 +1,11 @@
 # Phase 83 — next session
 
-**Session 10 (2026-09-09) built HLS-009.** `open_in_editor` over MCP: an agent asks the editor the
-person already has open to open a project, and the editor does it — no hand-edited JSON, no CDP
-click. **2 of 4 ACs closed, 1 half.** Read [HLS-009-WHAT-WAS-BUILT.md](HLS-009-WHAT-WAS-BUILT.md) §6
-before anything else: **the two driven ACs are undriven, and §6 carries the recipe.**
+**Session 10 (2026-09-09) built HLS-009 and drove it.** `open_in_editor` over MCP: an agent asks the
+editor the person already has open to open a project, and the editor does it — no hand-edited JSON,
+no CDP click. **4 of 4 ACs.** §6 of
+[HLS-009-WHAT-WAS-BUILT.md](HLS-009-WHAT-WAS-BUILT.md#6--the-drive-and-the-arm-that-makes-ac2-mean-anything)
+is worth reading for the arm, not the result: **both arms report `ok: true` and the identical
+`disposition: "switch"`, and only one of them keeps the user's edit.**
 
 🔴 **Re-derive the board from the task FILES, not from this table.** `ls` the directory and look for
 `*-WHAT-WAS-BUILT.md`; that is the only claim of "built" that costs nothing to check.
@@ -29,14 +31,14 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
 | HLS-006 | `nodegx serve`, on loopback, with a token | 🟢 **BUILT, 2/4 ACs + 2 halves** — [what was built](HLS-006-WHAT-WAS-BUILT.md) |
 | HLS-013 | Cloud functions deploy without a window | 🟢 **BUILT, 4/4 ACs** — [what was built](HLS-013-WHAT-WAS-BUILT.md) |
 | HLS-010 | The deploy spike | 🟢 **ANSWERED s9, 3/3 ACs** — [what was built](HLS-010-WHAT-WAS-BUILT.md) · [the verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9) |
-| HLS-009 | 🆕 Something other than a mouse opens a project | 🟢 **BUILT s10, 2/4 ACs + 1 half** — [what was built](HLS-009-WHAT-WAS-BUILT.md) · ⬜ **the drive is owed** |
+| HLS-009 | 🆕 Something other than a mouse opens a project | 🟢 **BUILT + DRIVEN s10, 4/4 ACs** — [what was built](HLS-009-WHAT-WAS-BUILT.md) |
 | HLS-007 | `nodegx render` | ⬜ never built |
 | HLS-008 | `export_react` over MCP | ⬜ never built |
 | HLS-015 | `nodegx deploy` — the task HLS-010 produced | ⬜ never built, ⚠️ **gated on R4** |
 | HLS-014 | The second deploy (⚠️ gated on R4 + HLS-010) | ⬜ never built |
 | HLS-011 | The drive | ⬜ never built |
 
-**10 of 15 built. 32 acceptance criteria closed, 3 half-closed.** The ratchet in
+**10 of 15 built. 34 acceptance criteria closed, 2 half-closed.** The ratchet in
 [PHASE-EXECUTION.md §2](../../guidelines/PHASE-EXECUTION.md) is not tripped.
 
 ## 2. 🧭 Waiting on Richard — none of it blocks the next build
@@ -53,33 +55,24 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
    listens on `*:8574`/`*:8575` and hands out its relay token to the LAN. HLS-006 fixed the source;
    **a source fix is not a shipped fix**, and R1 is still unruled.
 
-## 3. The next task: **finish HLS-009's drive first, then build HLS-008**
+## 3. The next task: **HLS-008**
 
-🔴 **The drive is twenty minutes and it is the first job**, because it is the only thing standing
-between HLS-009 and 4/4 and because it decays: the recipe in
-[§6](HLS-009-WHAT-WAS-BUILT.md#6--what-is-not-closed-and-the-honest-reason) is written against this
-week's launcher. It was not run because **a peer session held the box for the whole of session 10** —
-`scripts/start.ts`, three webpacks, an editor on `127.0.0.1:8574` and CDP 9222, working phase-84's
-`Columns.tsx`. Check the box is free before you start:
+**`export_react` over MCP** — the agent half of HLS-002's core, and the natural pair to what s10
+built: authoring, exporting and showing all become one conversation.
 
-```
-ps -eo pid,etime,command | grep -E "start\.ts|webpack" ; lsof -nP -iTCP:8574 -sTCP:LISTEN
-```
+🔴 **Check the resident surface budget BEFORE choosing a placement.** It is at **8273 / 8280 — 7
+tokens** (C65), and the bar carries a written *"there should not be a third"* renegotiation.
+HLS-009 spent **zero** only because appending to an already-deferred group is free — the only
+resident trace of a deferred group is `find_tools`' `(N tools)`, and *"5 tools"* and *"6 tools"* are
+the same length. A new resident tool cannot fit. [HLS-009 §4](HLS-009-WHAT-WAS-BUILT.md#4-what-was-built)
+has the arithmetic and the measured before/after.
 
-🔴 **The trap that will cost you the drive if you skip it (C70):** a dev-launched editor gets its
-own `--user-data-dir`, so its relay token is **not** at
-`~/Library/Application Support/NodeGX/relay-token`. The token sitting there is a *stale* one, and
-presenting it produces *"the relay rejected this token"* — a true sentence that sends you off
-restarting an editor when you are talking to a different install. Export `NODEGX_RELAY_TOKEN` from
-the launched editor's own user-data directory.
+⚠️ **And say what the placement costs.** A deferred tool is not named in its group's `purpose`, so a
+model browsing purposes never meets it. Keywords are the door — add them, then write the test that
+opens it.
 
-### Then
+### The alternatives
 
-- **HLS-008 (`export_react` over MCP)** — the agent half of HLS-002's core, and the natural pair to
-  what s10 just built: authoring, exporting and showing all become one conversation.
-  ⚠️ **Check the resident surface budget first.** It is at **8273 / 8280 — 7 tokens** (C65), and
-  HLS-009 spent none of it only because appending to a deferred group is free. A new resident tool
-  cannot fit. Read HLS-009's §4 for the arithmetic before choosing a placement.
 - **HLS-007 (`nodegx render`)** — the smallest remaining CLI row. ⚠️ Check register row **C40**
   first.
 - **HLS-015**, *if R4 comes back yes*. 🔴 The biggest remaining row; do not start it on a guess.
@@ -95,9 +88,22 @@ the launched editor's own user-data directory.
 - **C70 and C71 filed.** C71 is the sharpest: the app registers `nodegx://` and drops every URI.
 - **A cardinality gate over the recent-projects store** that failed on its first run and was right
   to — see §5.
+- **[`hls009-drive.ts`](../../../packages/noodl-mcp/tests/hls009-drive.ts) — a re-runnable drive.**
+  Goes through the MCP client, not the tool function, so `find_tools` and the argument schema are
+  driven too. `HLS009_WAIT_FOR=<file>` arms it before the edit; that is what puts the call inside
+  the save debounce. It reads the token off the **running editor's argv**, not the default
+  user-data path (C70).
 
 ## 5. 🔴 Standing warnings — one is new
 
+- 🔴 **THE OBVIOUS ARM WAS WORTHLESS AND ONLY A CONTROL SHOWED IT.** AC2's flush protects an edit
+  inside a **one-second** save debounce. A drive that pays `ts-node`'s startup between the edit and
+  the switch arrives *after the autosave has already written* — so the file holds the edit **with
+  the fix deleted**, and the arm is green for a reason that has nothing to do with the fix.
+  ✅ **What made it real:** a control that read the debounce (absent at +0.3s, present at +2.3s), a
+  client **armed before the edit** and released from inside the renderer so the gap was 3–4ms, and
+  a **reverted arm**. Both arms report `ok: true` and the identical `disposition: "switch"`; only
+  the file differs. 🔴 **Ask what your metric cannot see, then build the arm that would show it.**
 - 🔴 **THE GATE FOUND WHAT MY OWN GREP HAD EXCLUDED BY REFLEX.** The AC3 scan failed first time on
   `noodl-mcp/tests/listProjects.test.ts:130`, which my hand grep had filtered out with `grep -v
   tests` without thinking. **A grep with your exclusions baked in agrees with itself.** Write the

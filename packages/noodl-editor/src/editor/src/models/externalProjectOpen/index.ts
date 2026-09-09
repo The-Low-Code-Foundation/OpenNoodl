@@ -117,6 +117,11 @@ export async function performExternalOpen(directory: unknown, router: AppRouter)
   }
 
   if (disposition.action === 'switch') {
+    // 🔴 **Measured, not assumed** (session 10's drive, both arms inside the debounce window).
+    // With this line, a `setMetaData` released 4ms before the switch survives in the leaving
+    // project's `nodegx.project.json`. With it disabled, released 3ms before the switch, the same
+    // edit is **gone** — and `open_in_editor` reports the identical `disposition: "switch"` and the
+    // identical success note in both arms. The report cannot see the difference; only the file can.
     await flushPendingProjectSave();
     router.route({ to: 'projects' });
     // One turn of the loop, so the projects route is the current one before the next `route()`
