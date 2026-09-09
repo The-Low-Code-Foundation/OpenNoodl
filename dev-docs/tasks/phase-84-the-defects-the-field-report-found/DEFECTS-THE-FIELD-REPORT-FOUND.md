@@ -87,4 +87,17 @@ nobody was told about gets re-reported.
 
 ## 6. Rows this phase found
 
-*(none yet — the phase has not started)*
+Every row carries an owner or **NONE**, and stays open until someone closes it. A row with no owner
+is one that gets rediscovered later at full price.
+
+| id | what | found by | owner |
+|---|---|---|---|
+| P14 | 🔴 **The launcher's "New project → Quick Start" hangs.** Name typed, location defaulted to `~/vscode_projects/NodeGX test projects`, "Create Project" clicked: the button's spinner runs indefinitely, **no project directory is created**, no error is shown to the user, and nothing reaches `.logs/dev.log` or the renderer console. Reproduced twice on `cline-dev` HEAD (`11b2d3a9`). `handleCreateProject` (`ProjectsPage.tsx:801`) only opens the wizard, so the failure is downstream in `handleCreateProjectConfirm`. **This is the front door for a first-time user.** | FLD-001 drive, 2026-09-09 — it blocked AC1 until worked around by seeding a recent-projects entry against a copied project | **NONE** — deserves a task |
+| P15 | The component context menu offers **no "Make Home"** for either a page component or `App`, while the viewer's own error page reads *"No HOME component selected — click Make home as shown below"* and shows a picture of that menu item. `ComponentItem.tsx:240` gates it on `component.isPage \|\| component.isVisual`, and the menu that rendered was the folder-shaped one (`Create Folder / Open / Show in workbench / Rename / Duplicate / Move to… / Delete`). A project whose root node is unset therefore has **no route out through the UI** — the drive had to set `rootNodeId` in `project.json` by hand with the editor closed. ⚠️ Note `makeComponentHome`'s own docstring already records this gesture having been inert once before, for a different reason | FLD-001 drive, 2026-09-09 | **NONE** |
+| P16 | `NodeContextMenu.ts:179` builds "Add new child" with `parentModel: editor.highlighted ? editor.highlighted.model : undefined` — the **hovered** node, not `selectedNodes[0]`, which is what the menu item's own guard (`:167-172`) tested. If the pointer is not over the node when the item is clicked, the new node is added to the root instead of as a child, silently. **Read from source; not driven** — the drive parented nodes by dragging instead | FLD-001, reading the path AC1 needed | **NONE** |
+
+⚠️ **P14 and P15 are both about a project that does not exist or cannot render**, and both were hit
+inside twenty minutes of trying to do the most ordinary thing in the product. Neither is in any of
+the fifteen issues, because the field report's agent drove an **existing** project through the MCP
+and never opened the launcher.
+

@@ -175,7 +175,7 @@ than counted as something this task built.
   fires below 700. Projects authored around the broken behaviour will start folding. This is a real
   behaviour change on existing user projects.
 
-### Found while building — for the register, not for this task
+### Found while building — filed as register rows P14, P15 and P16, not chased here
 
 - 🔴 **The launcher's "New project → Quick Start" hangs.** Name typed, folder defaulted, "Create
   Project" spins forever: no project directory is created, no error is shown, nothing reaches
