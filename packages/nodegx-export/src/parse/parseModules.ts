@@ -29,6 +29,37 @@ import { errorMessage } from '../errorMessage';
 import { ModuleIR, ModuleStatus } from '../ir/types';
 import { runKitSource } from './kitSource';
 
+/**
+ * The exporting machine's filesystem, taken back out of a message the report will publish
+ * (register row C42).
+ *
+ * 🔴 **`EXPORT-REPORT.md` is an artefact, and in CI it is a published one.** Node writes the
+ * *absolute* path into an `ENOENT`, so a kit whose `main` is missing put
+ * `/Users/<somebody>/…/noodl_modules/gone-kit/index.js` into the report — measured on the `kits`
+ * corpus project, and the only absolute path anywhere in the corpus's emitted output. Behind a
+ * GUI that is noise. In a pipeline it is two defects: the report stops being reproducible (two
+ * machines exporting the same project disagree byte for byte, which is the comparison HLS-002's
+ * AC1 rests on), and a checkout path of whoever ran the job ships inside the app.
+ *
+ * ⚠️ **The diagnostic is kept, only the machine is removed.** `ENOENT: no such file or directory,
+ * open 'noodl_modules/gone-kit/index.js'` still says what happened and names the file *in the
+ * author's own vocabulary* — the path they would type, rather than one that only existed on the
+ * exporting machine. The `errno`/`syscall` prose Node wrote is untouched.
+ *
+ * Both replacements are needed and neither subsumes the other: the first is the path Node was
+ * handed, the second catches any other mention of the project root in a message this function
+ * cannot predict the shape of.
+ */
+function withoutMachinePaths(message: string, projectDir: string, absoluteMain: string, relativeMain: string): string {
+  return message
+    .split(absoluteMain)
+    .join(relativeMain)
+    .split(projectDir + path.sep)
+    .join('')
+    .split(projectDir)
+    .join('.');
+}
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { scanModuleManifestsSync } = require('@nodegx/module-inject') as {
   scanModuleManifestsSync: (dir: string) => Array<{
@@ -91,12 +122,17 @@ export function parseModules(projectDir: string): ModuleIR[] {
     }
 
     let code: string;
+    const relativeMain = path.posix.join('noodl_modules', entry.name, main);
+    const absoluteMain = path.join(projectDir, 'noodl_modules', entry.name, main);
     try {
-      code = fs.readFileSync(path.join(projectDir, 'noodl_modules', entry.name, main), 'utf8');
+      code = fs.readFileSync(absoluteMain, 'utf8');
     } catch (error) {
       module.status = 'unreadable';
-      module.message = `"${displayName}" names "${main}" as its main, which could not be read: ${errorMessage(
-        error
+      module.message = `"${displayName}" names "${main}" as its main, which could not be read: ${withoutMachinePaths(
+        errorMessage(error),
+        projectDir,
+        absoluteMain,
+        relativeMain
       )}`;
       modules.push(module);
       continue;

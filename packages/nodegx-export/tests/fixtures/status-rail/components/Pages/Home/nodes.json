@@ -1,0 +1,68 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c7e41a90-0000-4000-8000-000000000023",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Status Rail",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "rail"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "alignItems": "flex-start",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Status Rail",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "rail",
+      "type": "/Components/StatusRail",
+      "label": "Status rail",
+      "parent": "shell",
+      "parameters": {
+        "statusColor": "rgb(0, 128, 0)",
+        "load": 62
+      },
+      "x": 160,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

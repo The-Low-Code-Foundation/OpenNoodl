@@ -97,7 +97,12 @@ describe('HLS-001 AC3 — emitApp over the corpus is byte-identical', () => {
 
   it('the corpus is the one the golden was taken over', () => {
     // Arming the instrument: a corpus that shrank to nothing would make the comparison vacuous.
-    expect(corpusProjects().length).toBe(43);
+    //
+    // 43 → 44 on 2026-09-09 (HLS-005), counted off `ls tests/fixtures/`, not inferred from the
+    // failure: `status-rail` is issue #23's own table reconstructed as a project, added because
+    // the golden's 43 already carried the defect but none of them carried it in the shape the
+    // issue describes — one input reaching three sinks of which two survive.
+    expect(corpusProjects().length).toBe(44);
     expect(Object.keys(golden).sort()).toEqual(corpusProjects());
   });
 

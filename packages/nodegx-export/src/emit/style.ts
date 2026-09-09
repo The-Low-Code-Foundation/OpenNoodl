@@ -248,6 +248,14 @@ const PASSTHROUGH = new Set([
  * unitless, the two colours are strings. A wired `width` would need the port's `defaultUnit`
  * appended and a wired `transformX` a `transform` the static style has no rule for — both
  * refused by name until a fixture asks. Keys in emit order.
+ *
+ * 🔴 **"Refused by name" was the intent and not the behaviour, for as long as this table existed
+ * (HLS-005).** Nothing here refuses anything: this is a lookup table, and `styleAttrs` iterates
+ * *it* rather than the bindings, so a wire onto a port that is not a key was never visited and so
+ * never named. The wire was dropped in silence and the component could still be filed under
+ * "Translated with nothing left over" — issue #23. The mechanism that makes this sentence true is
+ * the claim ledger and its sweep in `component.ts`, which reports every binding no builder took.
+ * `tests/fixtures/status-rail` is the fixture that asked.
  */
 /**
  * EXP-011 §63. A `Drag`'s own ports — the hook's options, printed by the component emitter and neither style nor

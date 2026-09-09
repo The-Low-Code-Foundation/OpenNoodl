@@ -1291,6 +1291,34 @@ export function emitComponent(
   };
 
   /**
+   * HLS-005 — every binding this emitter *took*, recorded at the point it took it.
+   *
+   * 🔴 **The rule that decides whether a binding is emitted was, until this task, "some builder
+   * happened to look at it".** `plan.bindings` records a sink for every Component Inputs wire
+   * into a rendered node ({@link planComponent}, the `Component Inputs && rendered` arm) without
+   * asking whether anything downstream can render one. The builders then divide into two shapes
+   * and both leak: `styleAttrs` iterates the *rule table* (`WIRED_STYLE_SINKS`) and looks bindings
+   * up, so a binding outside the table is never visited; `contentAttrs` iterates the *bindings*
+   * but `continue`s on any port with no `attr:` role. A property in neither — `textAlignX` on a
+   * Text node is the corpus's own case — falls through both in silence, and the author's wire is
+   * gone with nothing said. Measured on `puppy-test-3/Components/BenchProbe`: `Align` reached
+   * `textAlignX` and vanished while `Accent`→`color` and `Title`→`text` beside it survived, which
+   * is issue #23's table one construct over.
+   *
+   * 🔴 **Recorded where the binding is consumed, never re-derived from the rule tables.** A second
+   * copy of "which ports can render a binding" would be a copy that drifts, and the drift would be
+   * silent in exactly the direction this ledger exists to catch. A builder that starts handling a
+   * new port claims it in the same statement that handles it, or the sweep below reports it.
+   *
+   * ⚠️ A *reported* binding is claimed too. The ledger's question is "did anything account for
+   * this wire", not "did it survive" — a wire dropped with a note is accounted for.
+   */
+  const claimedBindings = new Set<string>();
+  const claimBinding = (nodeId: string, port: string): void => {
+    claimedBindings.add(`${nodeId}\u0000${port}`);
+  };
+
+  /**
    * The marker's prose, without the comment syntax that carries it — written once because it is
    * emitted in two syntaxes, and two copies of a sentence drift.
    *
@@ -4612,6 +4640,7 @@ export function emitComponent(
     for (const [port, sink] of Object.entries(WIRED_STYLE_SINKS)) {
       const source = (plan.bindings[node.id] ?? {})[port];
       if (source === undefined) continue;
+      claimBinding(node.id, port);
       if (source.kind === 'computed' && source.expr.kind === 'undefined') continue;
       const expr = bindingExpr(source, sink.sink);
       if (expr === null) {
@@ -4646,9 +4675,14 @@ export function emitComponent(
       if (param.value.kind === 'literal') attrs.set(attr, jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
-      if (toProperty === stateParam) continue;
+      // The controlled attribute prints from `useState`, not from here — handled, not skipped.
+      if (toProperty === stateParam) {
+        claimBinding(node.id, toProperty);
+        continue;
+      }
       const role = roles[toProperty];
       if (role === 'attr-not:disabled') {
+        claimBinding(node.id, toProperty);
         const code = negatedBindingExpr(source);
         if (code === 'omit') continue; // folded to always-enabled
         if (code !== null) attrs.set('disabled', code === 'disabled' ? code : `disabled={${code}}`);
@@ -4659,6 +4693,7 @@ export function emitComponent(
         continue;
       }
       if (!role?.startsWith('attr:')) continue;
+      claimBinding(node.id, toProperty);
       const attr = role.slice('attr:'.length);
       // A boot-value read renders as the attribute's absence — undefined delivered and nothing
       // delivered are the same rendered control (COMPONENT-OBJECT-TARGET §3; noted at plan).
@@ -4774,6 +4809,7 @@ export function emitComponent(
     const bound = plan.bindings[id]?.['visible'];
     let mode: 'normal' | 'hidden' | 'live' = 'normal';
     if (bound !== undefined) {
+      claimBinding(id, 'visible');
       if (bound.kind === 'computed' && bound.expr.kind === 'undefined') mode = 'hidden';
       else if (bound.kind === 'computed' && bound.expr.kind === 'literal') mode = bound.expr.value ? 'normal' : 'hidden';
       else mode = 'live';
@@ -4824,6 +4860,7 @@ export function emitComponent(
   const childText = (node: NodeIR, paramName: string): string | null => {
     const bound = plan.bindings[node.id]?.[paramName];
     if (bound) {
+      claimBinding(node.id, paramName);
       // An all-static format folded to a literal reads as the plain text it is.
       if (bound.kind === 'computed' && bound.expr.kind === 'literal') return jsxText(String(bound.expr.value));
       // A boot-value read renders empty, as the runtime renders an undefined text.
@@ -4942,6 +4979,7 @@ export function emitComponent(
     const node = nodeById.get(id)!;
     const mountedBound = plan.bindings[id]?.['mounted'];
     if (mountedBound !== undefined) {
+      claimBinding(id, 'mounted');
       const staticallyFalse =
         mountedBound.kind === 'computed' &&
         (mountedBound.expr.kind === 'undefined' ||
@@ -5639,6 +5677,7 @@ export function emitComponent(
     }
 
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
+      claimBinding(node.id, toProperty);
       const prop = binding.propOf.get(toProperty);
       if (prop === undefined) {
         notes.push(
@@ -5708,6 +5747,7 @@ export function emitComponent(
       attrs.push(jsxAttr(attr, param.value.value));
     }
     for (const [toProperty, source] of Object.entries(plan.bindings[node.id] ?? {})) {
+      claimBinding(node.id, toProperty);
       // mounted rides the render wrapper; visible has no class to toggle on an instance.
       if (toProperty === 'mounted') continue;
       if (toProperty === 'visible') {
@@ -6098,6 +6138,48 @@ export function emitComponent(
       : plan.runTasks.length > 0
         ? ['    <>', ...runTasksJsx(6).flat(), '    </>']
         : ['    null'];
+  /**
+   * HLS-005 — the cardinality assertion: every binding the plan recorded, against every binding
+   * the emitter took.
+   *
+   * 🔴 **This is the check neither end of the chain could make.** The plan knows which wires it
+   * turned into bindings; the emitter knows which bindings it rendered; until this loop nothing
+   * compared the two, and the difference left the building as a silently missing attribute. A
+   * gate over either end alone reads as coverage and is not — the plan's own count is right, and
+   * so is the emitter's.
+   *
+   * It runs after `jsxLines`, because a claim is only a fact once the tree has been walked. A
+   * `defer` filed this late still reaches the reader: `preReturnMarkers` below sweeps every node
+   * whose marker no element flushed, which is the path this one takes by construction.
+   */
+  for (const [nodeId, ports] of Object.entries(plan.bindings)) {
+    const node = nodeById.get(nodeId);
+    if (node === undefined) continue;
+    for (const [port, source] of Object.entries(ports)) {
+      if (claimedBindings.has(`${nodeId}\u0000${port}`)) continue;
+      /*
+       * The author's own vocabulary at BOTH ends of the wire, not the emitter's.
+       *
+       * 🔴 **The sink alone is not enough, and issue #23 is the reason.** Its report is a table of
+       * *inputs* — "7 of 25 component inputs" — and the question an author arrives with is "what
+       * happened to `load`", not "what happened to `sr_fill.width`". A note naming only the sink
+       * is unsearchable by the name they have, and the prop is still sitting in the emitted
+       * interface looking delivered. `originOf` cannot supply this: it answers only for an
+       * `unresolved` source, and a Component Inputs binding is a resolved `prop`.
+       */
+      const fromInput = source.kind === 'prop' ? ` from component input "${source.name}"` : '';
+      notes.push(
+        `${plan.path}: wire into ${nodeId}.${port}${fromInput} has no rendered sink on ${node.type} — the property renders from its authored parameter only, so the wire is dropped, reported`
+      );
+      defer(
+        nodeId,
+        `the wire into "${port}"${fromInput}`,
+        `has no rendered sink on ${node.type} — the property renders from its authored parameter only`,
+        source
+      );
+    }
+  }
+
   /**
    * The markers that cannot be siblings, as line comments above the `return`.
    *

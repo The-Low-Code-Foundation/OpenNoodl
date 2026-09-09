@@ -1,0 +1,102 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c7e41a90-0000-4000-8000-000000000022",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "sr_rail",
+      "type": "Group",
+      "label": "Status rail",
+      "children": [
+        "sr_fill",
+        "sr_ptext",
+        "sr_pdot"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "alignItems": "flex-start"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "sr_fill",
+      "type": "Group",
+      "label": "Fill bar",
+      "parent": "sr_rail",
+      "parameters": {
+        "height": {
+          "value": 8,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--muted)"
+      },
+      "metadata": {
+        "comment": "Issue #23 rows 1 and 4: statusColor reaches backgroundColor (a WIRED_STYLE_SINKS port, translated) and load reaches width (a dimension port, which has no dynamic sink)."
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "sr_ptext",
+      "type": "Text",
+      "label": "Percent label",
+      "parent": "sr_rail",
+      "parameters": {
+        "text": "Load",
+        "fontSize": "var(--text-sm)"
+      },
+      "metadata": {
+        "comment": "Issue #23 row 2: statusColor reaches color, which translates as an inline style."
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "sr_pdot",
+      "type": "Group",
+      "label": "Status dot",
+      "parent": "sr_rail",
+      "parameters": {
+        "width": {
+          "value": 8,
+          "unit": "px"
+        },
+        "height": {
+          "value": 8,
+          "unit": "px"
+        }
+      },
+      "metadata": {
+        "comment": "Issue #23 row 3. The reporter measured this one DROPPED while sr_fill.backgroundColor beside it translated; on this exporter both translate, and that difference is recorded in the spec rather than engineered away."
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "sr_ci",
+      "type": "Component Inputs",
+      "label": "Status rail properties",
+      "ports": [
+        {
+          "name": "statusColor",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        },
+        {
+          "name": "load",
+          "plug": "output",
+          "type": "number",
+          "index": 1
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "sr_rail"
+  ]
+}
