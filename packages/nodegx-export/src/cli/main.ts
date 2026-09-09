@@ -9,9 +9,24 @@
  * and the *packed* binary from an install outside the repo (`hls002-pack-and-run.test.ts`),
  * because HLS-001 found three defects that every in-repo gate read green on.
  */
+import { parseArgs } from './args';
 import { runCli } from './run';
+import { runServe } from './serve';
 
-process.exitCode = runCli(process.argv.slice(2), {
-  out: (text) => process.stdout.write(text),
-  err: (text) => process.stderr.write(text)
-});
+const argv = process.argv.slice(2);
+const io = {
+  out: (text: string) => process.stdout.write(text),
+  err: (text: string) => process.stderr.write(text)
+};
+
+// HLS-006 — `serve` is the one command that does not return, so it is dispatched here rather
+// than inside `runCli`, which stays synchronous precisely so every command it owns is gradeable
+// as a function of its arguments.
+const parsed = parseArgs(argv);
+if (parsed.kind === 'serve') {
+  runServe(parsed, io).then((code) => {
+    process.exitCode = code;
+  });
+} else {
+  process.exitCode = runCli(argv, io);
+}

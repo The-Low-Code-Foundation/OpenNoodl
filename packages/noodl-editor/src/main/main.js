@@ -815,9 +815,134 @@ function launchApp() {
       { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
     );
 
+    // HLS-006: the share action. In the Application menu rather than behind a canvas control
+    // because it is a decision about the machine, not about the project — and because it has to
+    // be reachable to *turn off* even when the project that prompted it has been closed.
+    template.push({
+      label: 'Preview',
+      submenu: [{ label: 'Share preview on this network\u2026', click: () => showPreviewSharing() }]
+    });
+
     template.push({ label: 'Help', submenu: helpSubmenu });
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
+  /**
+   * HLS-006 — the share action, and the screen that #31 says never existed.
+   *
+   * 🔴 **The sentence this exists to make true:** opening a project does not put the app you are
+   * building on the office network, and when someone does want it there, they choose it and get a
+   * URL and a token to hand over.
+   *
+   * Two things about the wording are deliberate:
+   *
+   *  - It says what a *reader of the link* can do, not what the feature is called. "Anyone on this
+   *    network who opens the link can see and interact with the app you are building" is the fact
+   *    somebody needs before deciding, and it is not recoverable from the phrase "share preview".
+   *  - It says the link **is** the credential. A token in a URL is only as private as the URL, and
+   *    a person who does not know that will paste it into a channel with three hundred people in
+   *    it. That is not a caveat in a tooltip; it is the second line of the dialog.
+   */
+  function showPreviewSharing() {
+    const status = startServer.getAccessStatus();
+    if (!status) {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Preview sharing',
+        message: 'The preview server has not started yet.',
+        detail: 'Try again in a moment.'
+      });
+      return;
+    }
+
+    if (!status.shared) {
+      dialog
+        .showMessageBox(win, {
+          type: 'question',
+          title: 'Share preview on this network',
+          message: 'Put the preview of this project on your local network?',
+          detail:
+            'Right now the preview is only reachable from this computer.\n\n' +
+            'Sharing makes it reachable from other devices on the same network \u2014 a phone, a ' +
+            'tablet, a colleague\u2019s laptop. Anyone on this network who opens the link can see ' +
+            'and interact with the app you are building, and can see changes as you make them.\n\n' +
+            'The link contains a token, so the link is the credential: anyone you send it to can ' +
+            'open it, and anyone they forward it to can too. It stops working when you stop ' +
+            'sharing or quit NodeGX.\n\n' +
+            'The preview will reload once while it switches over.',
+          buttons: ['Share on this network', 'Cancel'],
+          defaultId: 1,
+          cancelId: 1,
+          noLink: true
+        })
+        .then(({ response }) => {
+          if (response !== 0) return;
+          return startServer.setSharing(true).then((shared) => showPreviewShareLink(shared));
+        })
+        .catch((error) => {
+          dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Share preview on this network',
+            message: 'The preview could not be shared.',
+            detail: String(error && error.message ? error.message : error)
+          });
+        });
+      return;
+    }
+
+    showPreviewShareLink(status);
+  }
+
+  /** The link, the token, and the way to stop. Shown after sharing starts and whenever asked. */
+  function showPreviewShareLink(status) {
+    if (!status.lanAddress) {
+      // Bound to every interface and there is no non-internal IPv4 to name. Saying so is better
+      // than printing `0.0.0.0`, which is not an address anybody can type.
+      dialog.showMessageBox(win, {
+        type: 'warning',
+        title: 'Preview sharing',
+        message: 'The preview is shared, but this computer has no network address to hand out.',
+        detail: 'It looks like there is no network connection. Connect to a network and open this again.',
+        buttons: ['Stop sharing', 'Close'],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true
+      }).then(({ response }) => {
+        if (response === 0) startServer.setSharing(false);
+      });
+      return;
+    }
+
+    dialog
+      .showMessageBox(win, {
+        type: 'info',
+        title: 'Preview sharing',
+        message: 'The preview is shared on this network.',
+        detail:
+          `${status.url}\n\n` +
+          'Send the whole link \u2014 the part after `?t=` is the token, and without it the ' +
+          'address answers nothing.\n\n' +
+          'Anyone on this network who has the link can open the app. Sharing stops when you ' +
+          'choose Stop sharing below, or when you quit NodeGX.',
+        buttons: ['Copy link', 'Stop sharing', 'Close'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+      })
+      .then(({ response }) => {
+        if (response === 0) electron.clipboard.writeText(status.url);
+        if (response === 1) {
+          startServer.setSharing(false).then(() => {
+            dialog.showMessageBox(win, {
+              type: 'info',
+              title: 'Preview sharing',
+              message: 'Sharing stopped.',
+              detail: 'The preview is reachable from this computer only. The link no longer works.'
+            });
+          });
+        }
+      });
   }
 
   /**

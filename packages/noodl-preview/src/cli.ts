@@ -14,6 +14,8 @@ import type { FSWatcher } from 'chokidar';
 // editor module is touched. See headless.ts.
 import { bootstrapNodeLibrary } from './headless';
 
+import { describeAccess, lanAddress, resolveAccess, shareUrl } from '../../nodegx-export/src/serve/access';
+
 import { assertDeployAssets, loadPreview, resolveTarget, type ProjectFormat } from './loader';
 import { PreviewServer } from './server';
 import { startWatching } from './watcher';
@@ -25,7 +27,9 @@ on disk change. Accepts a v2 project directory or a legacy project.json.
 
 Options:
   --port <n>        Port to listen on (default 8575, 0 for any free port).
-  --host <addr>     Address to bind (default 127.0.0.1).
+  --host <addr>     Address to bind (default 127.0.0.1). Any address but loopback also turns
+                    on the token: the printed URL carries it, and without it nothing is served.
+  --token <t>       Use this token rather than minting one.
   --debounce <ms>   Quiet period before rebuilding after a change (default 120).
   --no-watch        Render once and serve; do not watch for changes.
   --open            Open the preview in the default browser.
@@ -40,13 +44,14 @@ interface Args {
   target: string;
   port: number;
   host: string;
+  token: string | null;
   debounce: number;
   watch: boolean;
   open: boolean;
 }
 
 function parseArgs(argv: string[]): Args | null {
-  const args: Args = { target: '', port: 8575, host: '127.0.0.1', debounce: 120, watch: true, open: false };
+  const args: Args = { target: '', port: 8575, host: '127.0.0.1', token: null, debounce: 120, watch: true, open: false };
   const positional: string[] = [];
 
   for (let i = 0; i < argv.length; i++) {
@@ -57,6 +62,9 @@ function parseArgs(argv: string[]): Args | null {
         break;
       case '--host':
         args.host = argv[++i];
+        break;
+      case '--token':
+        args.token = argv[++i];
         break;
       case '--debounce':
         args.debounce = Number(argv[++i]);
@@ -146,7 +154,12 @@ async function main(): Promise<void> {
   const types = bootstrapNodeLibrary();
   log(`noodl-preview — ${dir} (${format}), ${types} node types`);
 
-  const server = new PreviewServer({ projectDir: dir, port: args.port, host: args.host });
+  // HLS-006 — `--host` is a person deciding to leave loopback, so it is the thing that sets
+  // `share`; anything else arriving as a host is ignored, which is what keeps the port from being
+  // re-opened by a config nobody read.
+  const shared = args.host !== '127.0.0.1' && args.host !== 'localhost';
+  const access = resolveAccess({ share: shared, host: args.host, token: args.token });
+  const server = new PreviewServer({ projectDir: dir, port: args.port, host: args.host, access });
   let port: number;
   try {
     port = await server.listen();
@@ -162,8 +175,13 @@ async function main(): Promise<void> {
 
   await rebuild(server, dir, format);
 
-  const url = `http://${args.host}:${port}`;
+  const url = shared ? shareUrl(lanAddress() ?? args.host, port, access.token) : `http://${args.host}:${port}`;
   log(`  → ${url}`);
+  if (shared) {
+    // A shared preview that does not say it is shared is the half of #31 that was not about a
+    // socket at all.
+    log(`  ${describeAccess(access, port, lanAddress() ?? undefined)}`);
+  }
 
   let watcher: FSWatcher | null = null;
   if (args.watch) {

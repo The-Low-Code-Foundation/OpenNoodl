@@ -19,6 +19,8 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as path from 'path';
 
+import { type Access, authoriseRequest, resolveAccess } from '../../nodegx-export/src/serve/access';
+
 import { bootstrapPage, injectClient } from './client';
 import { DEPLOY_ASSETS, deployAssetPath, type PreviewBuild } from './loader';
 import type { PreviewReport } from './validate';
@@ -52,6 +54,13 @@ export interface PreviewServerOptions {
   projectDir: string;
   port: number;
   host?: string;
+  /**
+   * HLS-006 — the access decision, from the one module that makes it
+   * (`@nodegx/export/serve/access`). Optional so an in-repo caller that has
+   * always run on loopback keeps working unchanged; absent means loopback and
+   * no gate, which is what `resolveAccess()` returns for an empty request.
+   */
+  access?: Access;
 }
 
 const MIME: Record<string, string> = {
@@ -82,6 +91,8 @@ const mimeFor = (file: string) => MIME[path.extname(file).toLowerCase()] ?? 'app
 
 export class PreviewServer {
   private readonly server: http.Server;
+  /** HLS-006 — the binding and the gate, decided once in `@nodegx/export/serve/access`. */
+  private readonly access: Access;
   private readonly clients = new Set<http.ServerResponse>();
   private readonly projectDir: string;
 
@@ -92,7 +103,24 @@ export class PreviewServer {
 
   constructor(private readonly options: PreviewServerOptions) {
     this.projectDir = path.resolve(options.projectDir);
+    // HLS-006. `--host` on this CLI was an unauthenticated LAN listener: the default was already
+    // loopback, so #31 never named it, but the *shared* case had no credential at all — the same
+    // defect one flag further along. The policy is the shared one deliberately; a second copy of
+    // a security default is the thing HLS-006 exists to prevent.
+    this.access = options.access ?? resolveAccess();
+
     this.server = http.createServer((req, res) => {
+      const verdict = authoriseRequest(
+        { url: req.url, headers: req.headers, remoteAddress: req.socket.remoteAddress },
+        this.access
+      );
+      if (verdict.ok === false) {
+        res.writeHead(verdict.status, { 'content-type': 'text/plain; charset=utf-8' });
+        res.end(verdict.body);
+        return;
+      }
+      if (verdict.setCookie) res.setHeader('Set-Cookie', verdict.setCookie);
+
       this.handle(req, res).catch((err) => {
         res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });
         res.end(String(err && err.stack ? err.stack : err));
@@ -103,7 +131,9 @@ export class PreviewServer {
   listen(): Promise<number> {
     return new Promise((resolve, reject) => {
       this.server.once('error', reject);
-      this.server.listen(this.options.port, this.options.host ?? '127.0.0.1', () => {
+      // The address comes from the access decision, never from `options.host` directly — that
+      // asymmetry is what stops a forwarded option re-opening the port. See `serve/access.ts`.
+      this.server.listen(this.options.port, this.access.host, () => {
         const address = this.server.address();
         resolve(typeof address === 'object' && address ? address.port : this.options.port);
       });

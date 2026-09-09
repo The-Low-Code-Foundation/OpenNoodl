@@ -39,7 +39,14 @@ export const EXIT = {
    * A write failed part-way. The folder now holds part of an app, which builds nothing — so this
    * is louder than a failure before any write, and says so.
    */
-  write: 5
+  write: 5,
+  /**
+   * HLS-006 — `serve` could not start: the folder is not a built site, or the port is taken. It
+   * is its own code rather than {@link EXIT.target} because a pipeline that gets this one has a
+   * *running* problem (a port already in use, most often) rather than a wrong argument, and the
+   * two want different retries.
+   */
+  serve: 6
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];

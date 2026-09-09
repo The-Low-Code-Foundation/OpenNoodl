@@ -10,6 +10,34 @@ const ProjectModules = require('../../shared/utils/projectmodules').default;
 const JSONStorage = require('../../shared/utils/jsonstorage');
 const { getRelayToken, injectRelayToken } = require('./relay-token');
 const { startWebSocketServer } = require('./relay-server');
+// HLS-006 — the binding and the gate. Resolved through the `@nodegx/export` alias that already
+// exists in this package's tsconfig, jest config and webpack config; it is the same module the
+// `nodegx serve` command uses, which is the whole reason it is not four lines in this file.
+const {
+  resolveAccess,
+  authoriseRequest,
+  describeAccess,
+  shareUrl,
+  lanAddress,
+  ALL_INTERFACES
+} = require('@nodegx/export/serve/access');
+
+/**
+ * HLS-006 — what this launch's web server is currently bound to, and who may talk to it.
+ *
+ * Module scope rather than a closure inside {@link startServer} because the share action is
+ * reached from `main.js` over IPC, and there is exactly one web server per launch.
+ */
+let access = null;
+let httpServer = null;
+let listeningPort = null;
+/** Every open connection, so a rebind can end them rather than wait on them. */
+const openSockets = new Set();
+/** True while {@link setSharing} owns the socket, so the launch-failure handler stands down. */
+let rebinding = false;
+/** The relay is attached once per launch; `listening` fires once per bind. */
+let relayAttached = false;
+
 
 function parseRangeHeader(range, length) {
   if (!range || range.length === 0) {
@@ -62,6 +90,17 @@ function startServer(
   });
 
   var port = process.env.NOODLPORT || 8574;
+
+  // 🔴 HLS-006. Until this line the server below called `.listen(port)` with no address, which
+  // binds `::` — every interface on the machine, with nothing asked of a caller. #31 is a report
+  // of exactly that, confirmed from a second machine on a LAN. The default is now loopback and
+  // there is no path to anything else that does not go through `setSharing`.
+  //
+  // The share credential is this launch's relay token, deliberately and not as a shortcut: the
+  // page being shared is the viewer, the viewer connects back to the relay to receive the project
+  // at all, and the token is therefore already injected into the HTML it is served. Minting a
+  // second one would let the URL imply a smaller capability than it actually hands over.
+  access = resolveAccess({ token: getRelayToken(app) });
 
   function serveIndexFile(path, response) {
     fs.readFile(path, 'utf8', function (err, data) {
@@ -129,7 +168,42 @@ function startServer(
     });
   }
 
+  /**
+   * 🔴 HLS-006 — the gate, in front of every branch rather than on the routes that looked
+   * sensitive. `handleRequest` is the single entry point and this is its first statement, so a
+   * route added later is covered by construction. A gate placed per-route is a gate with a hole
+   * shaped like whichever route somebody adds next.
+   *
+   * A loopback caller is never challenged — see the module note in `serve/access.ts` for why
+   * that is the honest boundary and not a weakening.
+   */
   function handleRequest(request, response) {
+    const verdict = authoriseRequest(
+      {
+        url: request.url,
+        headers: request.headers,
+        remoteAddress: request.socket && request.socket.remoteAddress
+      },
+      access
+    );
+
+    if (verdict.ok === false) {
+      console.log(`[preview] refused a request from ${request.socket && request.socket.remoteAddress}: ${verdict.reason}`);
+      response.writeHead(verdict.status, { 'Content-Type': 'text/plain; charset=utf-8' });
+      response.end(verdict.body);
+      return;
+    }
+
+    if (verdict.setCookie) {
+      // The token arrived in the URL the person was handed; every asset the page then requests is
+      // a bare GET, so it is handed back as a cookie or the HTML is the only thing that renders.
+      response.setHeader('Set-Cookie', verdict.setCookie);
+    }
+
+    handleAuthorisedRequest(request, response);
+  }
+
+  function handleAuthorisedRequest(request, response) {
     var parsedUrl = URL.parse(request.url, true);
 
     let path = decodeURI(parsedUrl.pathname);
@@ -252,12 +326,28 @@ function startServer(
       key: fs.readFileSync(process.env.sslKey),
       cert: fs.readFileSync(process.env.sslCert)
     };
-    server = https.createServer(options, handleRequest).listen(port);
+    server = https.createServer(options, handleRequest).listen(port, access.host);
   } else {
-    server = http.createServer(handleRequest).listen(port);
+    server = http.createServer(handleRequest).listen(port, access.host);
   }
+  httpServer = server;
+
+  // ⚠️ `http.Server#close` stops accepting new connections and then waits for the open ones to
+  // end — and neither a WebSocket nor a kept-alive viewer ever ends on its own. Without this the
+  // rebind in `setSharing` would hang forever rather than fail, which is the worst of the three
+  // outcomes. `relay-auth.test.js` hit the same wall for the same reason.
+  server.on('connection', (socket) => {
+    openSockets.add(socket);
+    socket.on('close', () => openSockets.delete(socket));
+  });
 
   server.on('error', (e) => {
+    // 🔴 HLS-006. This handler quits the app, which is right for a web server that never came up
+    // — the editor cannot preview anything without it — and badly wrong for a *rebind*. Sharing
+    // is an optional action; a port the OS will not give us is a reason to tell the person that
+    // sharing failed, not to close their editor with unsaved work in it. `setSharing` owns the
+    // error while it is rebinding and puts it in a dialog of its own.
+    if (rebinding) return;
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { dialog } = require('electron');
     dialog
@@ -271,8 +361,24 @@ function startServer(
   });
 
   server.on('listening', () => {
-    console.log('webserver hustling bytes on port', port);
-    process.env.NOODLPORT = port;
+    // The port the OS actually gave us. With `NOODLPORT=0` — which a harness and a second editor
+    // both use — that is not the number that was passed in, and a rebind that reused the request
+    // rather than the result would move the server to a different port every time.
+    listeningPort = server.address().port;
+    console.log('webserver hustling bytes on port', listeningPort);
+    // #31's complaint is as much that the editor never said what was listening as that it was
+    // listening everywhere. It says so now, on every launch and on every change.
+    console.log('[preview]', describeAccess(access, listeningPort, lanAddress() || undefined));
+    process.env.NOODLPORT = String(listeningPort);
+
+    // 🔴 HLS-006. `listening` fires again after every rebind, and everything below it is
+    // once-per-launch work. Attaching a second relay to the same HTTP server is not a no-op: both
+    // `WebSocketServer`s take the `upgrade` event, every peer ends up registered twice, and each
+    // message is delivered twice to a viewer that has no way to tell the copies apart. Found by
+    // reading this handler after writing the rebind, not by a spec — which is why there is now a
+    // spec for it (`hls006-preview-binding.test.js`, "attaches exactly one relay").
+    if (relayAttached) return;
+    relayAttached = true;
 
     // Mint the token before the first socket can arrive, so an early `register` cannot race it.
     getRelayToken(app);
@@ -400,4 +506,135 @@ function serve404(response) {
   response.end('file not found');
 }
 
+/**
+ * What is listening, in the shape the renderer and the menu need to say it.
+ *
+ * Returns `null` before {@link startServer} has run — the caller is a menu item and a menu can be
+ * built before the server is, so "not yet" is a real answer rather than an exception.
+ */
+function getAccessStatus() {
+  if (!access || !httpServer) return null;
+  /**
+   * 🔴 Read off the socket, not off `access`.
+   *
+   * `access.host` is what was *asked for*, and HLS-006 AC2 exists because those are two
+   * different facts — a `listen()` that ignored the argument entirely would leave every
+   * assertion about `access.host` green. It also matters in ordinary use: `NOODLPORT=0` is a
+   * real configuration and the port that was requested is then not the port anybody can
+   * connect to, so the share URL built from it would name a port nothing is listening on.
+   */
+  const bound = httpServer.address();
+  if (bound === null || typeof bound === 'string') return null;
+  const lan = lanAddress();
+  return {
+    shared: access.shared,
+    host: bound.address,
+    port: bound.port,
+    token: access.token,
+    lanAddress: lan,
+    url: access.shared ? shareUrl(lan || bound.address, bound.port, access.token) : null,
+    description: describeAccess(access, bound.port, lan || undefined)
+  };
+}
+
+/**
+ * HLS-006 — turn network sharing on or off, by actually rebinding the socket.
+ *
+ * 🔴 **The alternative was to keep binding every interface and refuse non-loopback callers in the
+ * handler, which is strictly worse and looks identical from the editor.** A port that is open and
+ * answers 401 is still an open port: it is found by every scanner, it is still reachable by
+ * anything that can speak to the socket before the handler runs, and — the reason it matters here
+ * — it would make HLS-006 AC2 unverifiable, because there would be no honest way to read
+ * "loopback" off the listening socket. So the address changes.
+ *
+ * The cost, stated because it is a real one: rebinding ends the open preview connections, so the
+ * app being previewed reloads. That is why this is a deliberate action and not a setting that
+ * something else can toggle underneath the author.
+ */
+function setSharing(shared) {
+  return new Promise((resolve, reject) => {
+    if (!httpServer || !access) {
+      reject(new Error('The preview server has not started yet.'));
+      return;
+    }
+    if (access.shared === Boolean(shared)) {
+      resolve(getAccessStatus());
+      return;
+    }
+
+    const previous = access;
+    const next = resolveAccess({ share: Boolean(shared), host: ALL_INTERFACES, token: access.token });
+
+    rebinding = true;
+    const settle = (fn, value) => {
+      rebinding = false;
+      fn(value);
+    };
+
+    httpServer.close((closeError) => {
+      if (closeError) {
+        settle(reject, closeError);
+        return;
+      }
+
+      const onError = (error) => {
+        /**
+         * 🔴 The socket is now closed and the rebind failed, so the preview is down. Going back
+         * to what was working is the only acceptable end state — the alternative is an editor
+         * whose preview silently stopped because somebody tried to share it.
+         */
+        httpServer.listen(listeningPort, previous.host, () => {
+          access = previous;
+          settle(reject, error);
+        });
+      };
+
+      httpServer.once('error', onError);
+      httpServer.listen(listeningPort, next.host, () => {
+        httpServer.removeListener('error', onError);
+        access = next;
+        console.log('[preview]', describeAccess(access, listeningPort, lanAddress() || undefined));
+        settle(resolve, getAccessStatus());
+      });
+    });
+
+    for (const socket of openSockets) socket.destroy();
+    openSockets.clear();
+  });
+}
+
+/**
+ * Test seam. Never called in the app: the web server lives as long as the process does.
+ *
+ * `relay-token.js` carries `_resetRelayTokenForTests` for the same reason — the module holds
+ * one-per-launch state, and a spec that starts a second server in the same process needs the
+ * first one gone rather than a second copy of the state.
+ */
+function _stopServerForTests() {
+  return new Promise((resolve) => {
+    if (!httpServer) {
+      resolve();
+      return;
+    }
+    const server = httpServer;
+    httpServer = null;
+    access = null;
+    listeningPort = null;
+    relayAttached = false;
+    rebinding = false;
+    for (const socket of openSockets) socket.destroy();
+    openSockets.clear();
+    server.close(() => resolve());
+  });
+}
+
 module.exports = startServer;
+module.exports.getAccessStatus = getAccessStatus;
+module.exports.setSharing = setSharing;
+module.exports._stopServerForTests = _stopServerForTests;
+/**
+ * Test seam. The live `http.Server`, so a spec can count the `upgrade` listeners on it — one per
+ * attached WebSocket relay, which is the only way to see the double-attach a rebind used to cause
+ * without standing up two peers and comparing message counts.
+ */
+module.exports._getHttpServerForTests = () => httpServer;

@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const WebSocketServer = WebSocket.Server;
+const { LOOPBACK } = require('@nodegx/export/serve/access');
 const JSONStorage = require('../../shared/utils/jsonstorage');
 const { app } = require('electron');
 const fs = require('fs');
@@ -23,7 +24,18 @@ function sendProjectName(ws, name) {
 function start(projectGetInfo) {
   const port = Number(process.env.NOODLPORT || 8574) + 1; //use standard Noodl port + 1
 
-  var wss = new WebSocketServer({ port });
+  /**
+   * 🔴 HLS-006 — loopback, and unlike the preview server there is no way to share this one.
+   *
+   * `new WebSocketServer({ port })` with no `host` binds `::`, which is the second half of what
+   * [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) found listening on a LAN.
+   * The preview server has a sharing action because previewing on a phone is a thing people
+   * genuinely want; **this socket has no such case.** It exists for a design-tool plugin running
+   * on the same machine, and the messages it accepts write files into the open project — so the
+   * set of peers that should ever reach it is exactly "processes on this computer", and that is
+   * a binding, not a policy someone can turn off.
+   */
+  var wss = new WebSocketServer({ port, host: LOOPBACK });
 
   wss.on('connection', (ws) => {
     clientSockets.push(ws);

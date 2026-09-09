@@ -135,6 +135,15 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
     return EXIT.usage;
   }
 
+  if (parsed.kind === 'serve') {
+    // 🔴 `serve` listens rather than returning, so it is dispatched in `main.ts` before this
+    // function is reached and lives in `cli/serve.ts`. This branch is what keeps the union total.
+    // It is unreachable from the binary, and it says what happened rather than falling through to
+    // the export path with a folder it would then treat as a project.
+    io.err('`nodegx serve` is started by the binary directly, not through runCli.\n');
+    return EXIT.serve;
+  }
+
   const projectDir = path.resolve(parsed.projectDir);
   const readable = readableProject(projectDir);
   if (!readable.ok) {
