@@ -1412,6 +1412,19 @@ function launchApp() {
     ipcMain.on('main-window-resize', function (event, options) {
       resizeMainWindow(options);
     });
+
+    // HLS-009 — an agent opened a project; put the window where the person can see it.
+    //
+    // ⚠️ `focus()` alone is not enough on any of the three platforms: a minimised window stays
+    // minimised and a hidden one stays hidden, and in both cases the renderer has already routed
+    // to the project, so the tool would report success against a window nobody can see. That is
+    // the same class of lie as HLS-013's `res.ok` — a true statement about the wrong thing.
+    ipcMain.on('main-window-focus', function () {
+      if (!win) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
   }
 }
 

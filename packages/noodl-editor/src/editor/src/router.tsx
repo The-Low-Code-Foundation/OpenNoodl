@@ -12,6 +12,7 @@ import { platform } from '@noodl/platform';
 import { AiAssistantModel } from '@noodl-models/AiAssistant';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
+import { installExternalProjectOpen } from './models/externalProjectOpen';
 import { AppRoute } from './pages/AppRoute';
 import { AppRouteOptions, AppRouter } from './pages/AppRouter';
 import { EditorPage } from './pages/EditorPage';
@@ -128,6 +129,13 @@ export default class Router
       },
       null
     );
+
+    // HLS-009 — an agent on the relay can ask this window to open a project.
+    //
+    // Installed here because this class *is* the router, and routing is the half of the job that
+    // cannot be done from a model. Once, in the constructor, for the life of the window — the
+    // subscription has no other lifetime, and there is exactly one router.
+    installExternalProjectOpen(this);
 
     PopupLayer.instance = new PopupLayer();
     document.body.appendChild(PopupLayer.instance.render());

@@ -36,6 +36,7 @@ import { registerOpenProjectTools } from './tools/openProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
+import { registerOpenInEditorTools } from './tools/openInEditor';
 import { registerKitTools } from './tools/kitTools';
 import { registerLibraryTools } from './tools/libraryTools';
 import { registerLessonTools } from './tools/lessonTools';
@@ -168,6 +169,12 @@ export function createServer(options: ServerOptions): CreatedServer {
   // `open_project` does it in a call. Passing the binding is what stops the
   // sentence being right for one of the two servers it ships in.
   registerListProjectsTools(rec, binding);
+  // HLS-009. Takes neither a store nor the binding, for the same reason `list_projects` takes no
+  // store: its subject is the editor process, not this server's project. Registered in both modes
+  // — a read-only server is exactly the one an agent is using to *look* at a project, which is
+  // when "put it on screen for me" is asked. It is deferred (the `project` group), so it costs
+  // nothing resident; see the manifest note for why that placement and not a resident one.
+  registerOpenInEditorTools(rec);
   // LBR-008 — the shelf. The reads are registered in both modes (browsing what
   // could be installed changes nothing); `install_prefab` registers itself only
   // when `allowWrites` says so, which is what keeps WRITE_ONLY_TOOLS honest.

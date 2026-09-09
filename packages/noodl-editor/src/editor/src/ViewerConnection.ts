@@ -167,6 +167,33 @@ export class ViewerConnection extends Model {
       return;
     }
 
+    /**
+     * HLS-009 — an external agent asks this editor to open a project.
+     *
+     * 🔴 **The only inbound branch here that is not `type === 'viewer'`, and that is deliberate.**
+     * Every other command on this socket comes from the preview, which stamps its own messages;
+     * this one comes from a peer that registered as a `service` and is addressed to this window by
+     * `clientId`. Requiring `type === 'viewer'` would mean an agent had to claim to be the preview
+     * to be heard, and the transport would then be unable to tell the two apart at all.
+     *
+     * ⚠️ **The token is the authorisation, not this branch.** An unauthorised socket is closed by
+     * the relay on its first message (OBS-004/HLS-006) and never reaches `processRequest`. Nothing
+     * here re-checks it, and nothing here should: a second, weaker check in a second place is how a
+     * gate acquires a hole.
+     *
+     * Transport only, exactly like the trace replies below it: the decision — already open, open,
+     * switch, or refuse — belongs to `ExternalProjectOpen`, which owns routing and the project
+     * lifecycle. Importing that here would also close an import cycle, since it imports this.
+     */
+    if (request.cmd === 'openProject') {
+      EventDispatcher.instance.emit('ViewerConnection.openProjectRequested', {
+        directory: request.directory,
+        requestId: request.requestId,
+        replyTo: request.clientId
+      });
+      return;
+    }
+
     // A new viewer is connected
     if (request.cmd === 'registered' && request.type === 'viewer') {
       WarningsModel.instance.clearWarningsForRefMatching((ref) => ref.isFromViewer);
@@ -591,6 +618,20 @@ export class ViewerConnection extends Model {
       cmd: 'getTraceEvents',
       content: JSON.stringify({ clientId, afterSeq })
     });
+  }
+
+  /**
+   * HLS-009 — the answer to an `openProject`, addressed back to the peer that asked.
+   *
+   * ⚠️ **`target`, never a broadcast.** `broadcastMessage` fans to every peer of the *opposite*
+   * type, so an un-targeted reply from an editor peer would go to every preview window attached
+   * to this relay and to no agent at all — the reply would be delivered precisely everywhere it
+   * is useless. The relay's `target` branch matches on `clientId`, which is why the request had
+   * to carry the asker's.
+   */
+  sendOpenProjectResult(replyTo: string, requestId: string, result: unknown) {
+    if (!replyTo) return;
+    this.send({ cmd: 'openProjectResult', target: replyTo, requestId, content: JSON.stringify(result) });
   }
 
   sendGetPortValues(clientId: string, ports: Array<{ node: string; port: string; direction: 'input' | 'output' }>) {

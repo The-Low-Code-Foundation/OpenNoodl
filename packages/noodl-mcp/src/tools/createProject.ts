@@ -587,7 +587,15 @@ export function completeBind(bind: CreateProjectBinding, projectDir: string): Bi
       // 🔴 §3 — the briefing `initialize` already spent, and the reason this
       // field exists at all.
       'Read `guidance` below before authoring: it is what a server started with this project would have ' +
-      'told you at the start of the session, and it could not be sent then because there was no project.',
+      'told you at the start of the session, and it could not be sent then because there was no project. ' +
+      // 🔴 HLS-009 / #28 — "a project created through the MCP server never appears in Recent
+      // projects". It appears the moment the editor opens it, and `open_in_editor` is how that is
+      // asked for; before this task there was no way to ask, which is why #28 read as a missing
+      // launcher entry rather than as a missing door. Said here, in a per-call payload, because
+      // the resident surface has seven tokens of headroom (C65) and this sentence is only useful
+      // in the one turn where a project has just been bound.
+      'When the user should see it, call open_in_editor with this directory — find_tools({query:' +
+      ' "editor"}) reveals it — and the running editor will open it and list it under Recent projects.',
     guidance: bindGuidance(projectDir, bind.deferTools)
   };
 }

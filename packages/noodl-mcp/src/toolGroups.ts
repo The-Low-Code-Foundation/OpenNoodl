@@ -384,8 +384,27 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // DEF-006 (b) — the widening the CN-006 note above asks for, off the resident
     // budget. `kit` already reached `create_node_kit` by tool name; `custom node`
     // and `import` did not reach anything.
-    keywords: ['kit', 'custom node', 'import', 'new project', 'open'],
-    tools: ['list_projects', 'open_project', 'create_project', 'get_import_report', 'create_node_kit'],
+    // HLS-009 — `open_in_editor` is appended here rather than given a group or made resident, and
+    // the arithmetic is the one `create_node_kit` recorded above: appending costs **0** resident
+    // tokens (the only resident trace of a deferred group is `find_tools`' `(N tools)`, and "5
+    // tools" and "6 tools" are the same length), a new group costs ~26, and resident costs its
+    // whole description. C65 measured 7 tokens of headroom against the 8,280 bar, and the bar
+    // carries a written *"there should not be a third"* renegotiation — so resident was never
+    // available, whatever it would have bought.
+    //
+    // 🔴 **What that costs, stated rather than argued away:** `purpose` above does not mention the
+    // editor, so a model browsing group purposes will not meet this tool. The keywords are the
+    // door — 'editor', 'show' and 'open' all reach it by name — and `tests/hls009OpenInEditor.test.ts`
+    // asserts that door works rather than assuming it.
+    keywords: ['kit', 'custom node', 'import', 'new project', 'open', 'editor', 'show'],
+    tools: [
+      'list_projects',
+      'open_project',
+      'create_project',
+      'get_import_report',
+      'create_node_kit',
+      'open_in_editor'
+    ],
     resident: false
   },
   {
