@@ -72,6 +72,32 @@ function toCssLength(value: string | number | undefined): string {
 }
 
 /**
+ * The width of the container the columns actually have to fit inside.
+ *
+ * FLD-001, the second half. The div this reads is declared `width: calc(100% + marginX)` — the
+ * other half of the negative-margin gutter, so that its right edge lands back on the parent's —
+ * which means its `offsetWidth` is the true container width *plus* the gutter. Every breakpoint
+ * therefore fired `marginX` early: "Medium Below 700" on a default 16px gutter actually fired
+ * below 684, and the fold had 16px of width that was never there. The **export** measures the
+ * true container (`@container` resolves against the parent), so the runtime and the exported app
+ * disagreed about the same graph by exactly one gutter.
+ *
+ * `100%` resolves against the parent's *content* box, so subtracting the gutter gives the
+ * parent's content width even when the parent has padding — which is what percentage-width
+ * children resolve against too, and therefore the number the fold has to reason about.
+ *
+ * ⚠️ Only the gutter that can be read as a number is subtracted. A tokenised `marginX`
+ * (`var(--space-4)`) cannot be resolved without computed styles, so it is treated as 0 — the
+ * same degradation {@link toPixels} already documents for the fold, and the same direction: the
+ * measurement is a little large rather than negative. Clamped at 0 because a gutter wider than
+ * the container would otherwise measure below zero and fold to a single column on a container
+ * that has not been laid out yet.
+ */
+export function measureContainerWidth(container: HTMLElement, marginX: string | number | undefined): number {
+  return Math.max(0, container.offsetWidth - toPixels(marginX));
+}
+
+/**
  * Parse the authored layout string into positive fractions.
  *
  * Anything that is not a positive finite number is dropped rather than carried: a double
@@ -346,31 +372,68 @@ function sameOffsets(a: { tops: number[]; height: number } | null, b: { tops: nu
 export function Columns(props: ColumnsProps) {
   let columnLayout = null;
 
-  const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(null);
 
+  /**
+   * The measured element, as **state** rather than a ref.
+   *
+   * FLD-001. This used to be a `useRef` written by the callback ref below, and the observer was
+   * built in a `useEffect` with `[]` deps that read it. Both of the early returns further down
+   * render no container div at all, so on a node that first rendered without one the effect ran
+   * once, found `null`, and returned — and nothing ever ran it again. Children arrive by
+   * `addChild` → `forceUpdate()`, which is a re-render with an unchanged React key, **not** a
+   * remount. `containerWidth` therefore stayed `null` for the life of that node, and every
+   * measured behaviour — breakpoints, Auto Fit, autofold — was silently dead on it. Adding a
+   * Columns node to a graph is exactly that order (`#21`), and reopening the project cured it,
+   * because a saved graph is built with its children already present.
+   *
+   * A state setter in the callback ref is what makes the element itself the dependency: React
+   * calls the ref with the node on attach and with `null` on detach, so mounting the div arms the
+   * observer whenever it happens, and unmounting it disarms and forgets the width. That covers
+   * both early returns without touching either of them — which matters, because the
+   * `!props.children` one is load-bearing against the hook-count crash its comment describes.
+   *
+   * Setting the same element twice is a no-op: React bails out of a re-render when the state is
+   * `Object.is`-equal, so this does not loop.
+   */
+  const [containerElement, setContainerElement] = useState<HTMLDivElement | null>(null);
+
   const rootRef = useCallback((el: HTMLDivElement | null) => {
-    containerRef.current = el;
+    setContainerElement(el);
     props.noodlNode?.setDOMElement(el);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    const container = containerRef?.current;
-    if (!container) return;
+    if (!containerElement) {
+      // No element means no measurement. Keeping the last width would let a node that has just
+      // had all its children deleted resolve against the width of a div that is gone — and then
+      // render that stale layout for a frame when children come back.
+      setContainerWidth(null);
+      return;
+    }
+
+    // Matches the masonry observer below. A server render runs no effects at all, so this is
+    // about environments with a DOM and no `ResizeObserver`; an unmeasured node renders the
+    // authored layout, which is the documented fallback rather than a failure.
+    if (typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver(() => {
-      const container = containerRef.current;
-      if (!container) return;
-      setContainerWidth(container.offsetWidth);
+      setContainerWidth(measureContainerWidth(containerElement, props.marginX));
     });
 
-    observer.observe(container);
+    // Deliberately no eager measurement here. `observe()` delivers an initial callback in every
+    // browser, and reading the element synchronously in the effect would report `0` for anything
+    // not yet laid out — which is a *number*, so it would take the measured branch and fold the
+    // node to one column instead of leaving the authored layout up.
+    observer.observe(containerElement);
 
     return () => {
       observer.disconnect();
     };
-  }, []);
+    // `marginX` is a dependency because it is subtracted from the reading: a changed gutter is a
+    // changed container width for the same element.
+  }, [containerElement, props.marginX]);
 
   const { children, forEachComponents } = partitionColumnChildren(props.children);
   const masonry = props.packing === 'masonry';
