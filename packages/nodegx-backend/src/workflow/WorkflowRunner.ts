@@ -182,11 +182,37 @@ export interface RunTriggerContext {
   requestId?: string;
 }
 
+/** One loaded bundle, and the fingerprint of the deploy that put it here. */
+export interface WorkflowBundleStatus {
+  name: string;
+  /**
+   * HLS-013 — the `deployFingerprint` the deployer sent with this bundle, or
+   * `null` for one deployed before fingerprints existed (or written by hand).
+   *
+   * 🔴 **Echoed, never recomputed.** The fingerprint is the deployer's own
+   * `hashCloudExport`, and a second implementation of that function living here
+   * would drift from it silently — this repo has the scar (`a-second-copy-of-a-
+   * palette-drifts-silently`). Echoing makes the backend a *record* of what was
+   * pushed rather than a second opinion about it, so a mismatch can only mean
+   * the bundle changed.
+   */
+  deployFingerprint: string | null;
+  functionCount: number;
+}
+
 /** The body of `GET /admin/workflows` — what the editor's panel renders. */
 export interface WorkflowRunnerStatus {
   initialized: boolean;
   workflowCount: number;
   functions: { name: string; workflow: string }[];
+  /**
+   * HLS-013 — what each bundle on this backend was deployed from.
+   *
+   * A headless deploy is a new process every run, so it has no memory of its own
+   * previous push the way the editor does. Without this it could only ever
+   * report a fresh success, which is the thing AC3 exists to prevent.
+   */
+  bundles: WorkflowBundleStatus[];
 }
 
 export class WorkflowRunner {
@@ -809,10 +835,23 @@ export class WorkflowRunner {
   }
 
   getStatus(): WorkflowRunnerStatus {
+    const bundles: WorkflowBundleStatus[] = [];
+    for (const [name, bundle] of this.loadedWorkflows) {
+      const fingerprint = (bundle as { deployFingerprint?: unknown }).deployFingerprint;
+      bundles.push({
+        name,
+        deployFingerprint: typeof fingerprint === 'string' ? fingerprint : null,
+        functionCount: Array.isArray((bundle as { components?: unknown }).components)
+          ? ((bundle as { components: unknown[] }).components).length
+          : 0
+      });
+    }
+
     return {
       initialized: this.isInitialized,
       workflowCount: this.loadedWorkflows.size,
-      functions: this.getAvailableFunctions()
+      functions: this.getAvailableFunctions(),
+      bundles
     };
   }
 }

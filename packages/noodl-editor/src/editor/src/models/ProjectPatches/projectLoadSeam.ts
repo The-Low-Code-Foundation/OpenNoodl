@@ -202,6 +202,18 @@ export const GRAPH_READER_SITES: readonly GraphReaderSite[] = [
       'page at all. Also in `PROJECT_LOAD_SITES`, which is how it was ever found.'
   },
   {
+    file: 'packages/noodl-mcp/src/cloud/bundleEntry.js',
+    disposition: 'applies',
+    note:
+      'HLS-013. The headless cloud-function deploy. Calls `applyPatches(legacy)` before ' +
+      '`ProjectModel.fromJSON`, which is what puts it on the same side of the seam as the ' +
+      "editor's own Deploy button — both then build the bundle with " +
+      '`buildCloudBundlePartsWithKits`. Skipping it would have shipped a different graph from ' +
+      'the same project depending on which door deployed it, which is SB-017 wearing a new hat. ' +
+      'Nothing is written back to the project: `prepareProjectForCloudExport` marks the model ' +
+      'read-only, because loading one otherwise schedules an autosave over the author\'s files.'
+  },
+  {
     file: 'packages/noodl-mcp/src/project/ProjectStore.ts',
     disposition: 'does-not-apply',
     note:

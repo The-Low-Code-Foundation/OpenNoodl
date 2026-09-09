@@ -16,6 +16,7 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { readCloudModuleSources } from '../../../../shared/utils/projectmodules';
 
+import { cloudBundleNameFrom, hashCloudExport, type CloudBundleParts, type CloudExportFailure } from './cloudDeployCore';
 import { exportComponent, exportSettings } from './util';
 
 /** Path prefix that makes a component a cloud function. */
@@ -282,21 +283,83 @@ function withScriptPorts(node: TSFixme): TSFixme {
   return node;
 }
 
-export function exportCloudFunctionsToJSON(project: ProjectModel): Record<string, unknown> | null {
+export type { CloudBundleParts, CloudExportFailure } from './cloudDeployCore';
+
+/**
+ * HLS-013 — the bundle, built one component at a time so that one broken
+ * function is a NAMED failure rather than a dead deploy.
+ *
+ * 🔴 **What this replaces was not a partial failure, it was a total silent one.**
+ * `exportComponent` can throw, and nothing on the deploy path caught it:
+ * `pushToBackend` calls `exportCloudFunctionsWithKits` outside its `try`, and the
+ * save-triggered push swallows the rejection wholesale
+ * (`CloudFunctionDeployer.start`'s `.catch(() => undefined)`). So a single
+ * malformed component meant **every** function in the project silently stopped
+ * deploying, on every autosave, with nothing said anywhere — the exact silence
+ * WFA-001 exists to remove, one level up from where it removed it.
+ *
+ * The other half is AC2's: an agent deploying unattended cannot act on
+ * *"could not export 3 cloud function(s)"*. It can act on *"`charge` failed,
+ * `saveOrder` and `refund` shipped"* — the failure is then about that function
+ * rather than about the deploy being down.
+ *
+ * ⚠️ **Isolation is per component, not per node.** A component that throws is
+ * dropped whole; it is not repaired or partially shipped. Shipping half a graph
+ * would be a worse lie than shipping none of it.
+ */
+export function buildCloudBundleParts(project: ProjectModel): CloudBundleParts {
   const components = getCloudFunctionComponents(project);
-  if (components.length === 0) return null;
+  if (components.length === 0) return { bundle: null, shipped: [], failures: [] };
+
+  const exported: TSFixme[] = [];
+  const shipped: string[] = [];
+  const failures: CloudExportFailure[] = [];
+
+  for (const component of components) {
+    try {
+      const json = exportComponent(component);
+      json.nodes.forEach(withScriptPorts);
+      exported.push(json);
+      shipped.push(component.name);
+    } catch (e) {
+      failures.push({ name: component.name, reason: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  // Every component failed: there is no bundle to push, and pushing an empty one
+  // would DELETE the functions the backend is serving — `WorkflowRunner` replaces
+  // a bundle wholesale. A total failure must leave the backend alone.
+  if (exported.length === 0) return { bundle: null, shipped: [], failures };
 
   return {
-    components: components.map((component) => {
-      const exported = exportComponent(component);
-      exported.nodes.forEach(withScriptPorts);
-      return exported;
-    }),
-    // No `componentIndex`: `useBundles: false` is the only sensible mode here
-    // and `GraphModel.importEditorData` treats a missing index as empty.
-    settings: exportSettings(project),
-    metadata: project.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
+    bundle: {
+      components: exported,
+      // No `componentIndex`: `useBundles: false` is the only sensible mode here
+      // and `GraphModel.importEditorData` treats a missing index as empty.
+      settings: exportSettings(project),
+      metadata: project.metadata ? JSON.parse(JSON.stringify(project.metadata)) : {}
+    },
+    shipped,
+    failures
   };
+}
+
+/**
+ * The bundle, or `null` when the project has no cloud functions.
+ *
+ * ⚠️ **Still throws on a component that cannot be exported**, exactly as it did
+ * before {@link buildCloudBundleParts} existed. Its callers get a bundle and
+ * nothing else, so silently dropping a component here would replace one
+ * silence with another — the isolation is only meaningful to a caller that
+ * reads `failures`, which is the deploy path.
+ */
+export function exportCloudFunctionsToJSON(project: ProjectModel): Record<string, unknown> | null {
+  const parts = buildCloudBundleParts(project);
+  if (parts.failures.length) {
+    const first = parts.failures[0];
+    throw new Error(`Could not export the cloud function "${first.name}": ${first.reason}`);
+  }
+  return parts.bundle;
 }
 
 /**
@@ -324,8 +387,20 @@ export function exportCloudFunctionsToJSON(project: ProjectModel): Record<string
  * module that still works is the worst outcome" wearing a deployment hat.
  */
 export async function exportCloudFunctionsWithKits(project: ProjectModel): Promise<Record<string, unknown> | null> {
-  const bundle = exportCloudFunctionsToJSON(project);
-  if (!bundle) return null;
+  return (await buildCloudBundlePartsWithKits(project)).bundle;
+}
+
+/**
+ * HLS-013 — {@link exportCloudFunctionsWithKits}'s answer, keeping the names of
+ * the components that did not make it.
+ *
+ * The deploy path calls this one. `exportCloudFunctionsWithKits` stays as it was
+ * for everything that only wants the bundle.
+ */
+export async function buildCloudBundlePartsWithKits(project: ProjectModel): Promise<CloudBundleParts> {
+  const parts = buildCloudBundleParts(project);
+  const bundle = parts.bundle;
+  if (!bundle) return parts;
 
   try {
     const modules = await readCloudModuleSources(project._retainedProjectDirectory);
@@ -338,28 +413,7 @@ export async function exportCloudFunctionsWithKits(project: ProjectModel): Promi
     console.error('[cloudFunctions] could not read the project kits for the cloud bundle', e);
   }
 
-  return bundle;
-}
-
-/**
- * A stable fingerprint of the pushed bundle.
- *
- * The push happens on every project save, and a save fires ~1s after *any*
- * model change — so without this, editing a browser component would redeploy
- * every function in the project. Content-based rather than time-based so an
- * edit-and-undo is correctly a no-op.
- */
-export function hashCloudExport(exportJson: Record<string, unknown> | null): string {
-  if (!exportJson) return 'empty';
-  const serialised = JSON.stringify(exportJson);
-  // FNV-1a. Not cryptographic — this only has to distinguish two graphs the
-  // same user produced seconds apart.
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < serialised.length; i++) {
-    hash ^= serialised.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return (hash >>> 0).toString(16) + '-' + serialised.length;
+  return parts;
 }
 
 /**
@@ -376,17 +430,10 @@ export function hashCloudExport(exportJson: Record<string, unknown> | null): str
  * other's functions.
  */
 export function cloudBundleName(project: ProjectModel): string {
-  const directory = project._retainedProjectDirectory || '';
-  const safeName = (project.name || 'project').replace(/[^a-zA-Z0-9_-]/g, '-').replace(/^-+|-+$/g, '') || 'project';
-
-  if (!directory) return safeName;
-
-  // FNV-1a again; 8 hex chars is plenty to separate the handful of project
-  // folders one backend ever sees, and it keeps the file name readable.
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < directory.length; i++) {
-    hash ^= directory.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return `${safeName}-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+  // The rule itself lives in `cloudDeployCore` so the headless door computes the
+  // same name without importing a `ProjectModel`. Two copies of this would mean
+  // two bundle names for one project, and the stale one still being served.
+  return cloudBundleNameFrom(project.name, project._retainedProjectDirectory);
 }
+
+export { hashCloudExport };

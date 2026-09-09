@@ -385,14 +385,14 @@ describe('AWP-006 — nothing is unreachable', () => {
     expect(res.data.note).toBeUndefined();
     const backend = res.data.groups.find((g) => g.group === 'backend');
     expect(backend).toMatchObject({ advertised: false });
-    expect(backend!.tools).toBe(60);
+    expect(backend!.tools).toBe(61);
     expect(await toolNames(session.client)).not.toContain('provision_backend');
   });
 
-  it('revealing the backend group makes all 60 advertised and callable', async () => {
+  it('revealing the backend group makes all 61 advertised and callable', async () => {
     const res = await call<FindToolsResponse>(session, 'find_tools', { group: 'backend' });
     expect(res.isError).toBe(false);
-    expect(res.data.revealed).toHaveLength(60);
+    expect(res.data.revealed).toHaveLength(61);
     expect(res.data.note).toContain('--all-tools');
 
     const names = await toolNames(session.client);

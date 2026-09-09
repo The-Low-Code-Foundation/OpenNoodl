@@ -69,12 +69,23 @@ export class NodeLibrary extends Model {
     return typeof type === 'string' ? type : type.name;
   }
 
-  loadLibrary() {
+  /**
+   * @param data HLS-013 — the library to load, for a caller with no `window`.
+   *
+   * 🔴 **Omitting it is not the same as passing an empty library.** With no
+   * argument this reads `window.NodeLibraryData`, which in a plain Node process
+   * is not "no library" but *silently* `{}` — every node type unresolved, every
+   * connection unhealthy, and an export that quietly ships a fraction of the
+   * graph. The headless cloud deploy hit exactly that, and it looked like a
+   * working export. A caller outside the renderer must say which library it
+   * means.
+   */
+  loadLibrary(data?: TSFixme) {
     this.types = [];
     this.typeCache.clear();
     this.unkownNodeTypes = {};
 
-    this.library = (typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {};
+    this.library = data ?? ((typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {});
 
     // CN-003 ✅ D3 — the project catalog overlay, installed from the library the
     // viewer already sent. Here rather than in `NodeLibraryImporter` because

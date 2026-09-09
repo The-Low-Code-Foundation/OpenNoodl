@@ -33,6 +33,26 @@ await esbuild.build({
 });
 
 /**
+ * HLS-013 — the headless cloud-function bundler, bundled as its own artifact.
+ *
+ * A second bundle rather than part of the server for the reason its own header
+ * gives: it reaches `ProjectModel`, whose import chain does not belong in a
+ * server bundle (it drags renderer view modules in) and whose singletons must
+ * not outlive one build. `dist/` is where it has to land — `files: ["bin","dist"]`
+ * is what ships.
+ */
+await esbuild.build({
+  ...common,
+  entryPoints: ['src/cloud/bundleEntry.js'],
+  target: 'node18',
+  outfile: 'dist/cloud-bundle.cjs',
+  // The editor sources it reaches import CSS-module and asset paths through
+  // modules that are never executed on this path; keep esbuild from trying to
+  // resolve them into a Node bundle.
+  loader: { '.css': 'empty', '.scss': 'empty', '.svg': 'empty', '.png': 'empty' }
+});
+
+/**
  * CN-003 — the headless kit extractor, bundled as its own artifact.
  *
  * It is a second bundle rather than part of the server because it is *spawned*:

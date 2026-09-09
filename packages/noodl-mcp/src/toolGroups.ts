@@ -187,6 +187,11 @@ const BACKEND_TOOLS = [
   'provision_backend',
   'stop_backend',
   'list_backend_processes',
+  // HLS-013 — the deploy. In this group and not the read set because it is the
+  // other half of `provision_backend`: an agent that has just made a backend is
+  // exactly the agent that needs to put functions on it, and finding out it
+  // exists a round trip later is the cost this grouping avoids.
+  'deploy_cloud_functions',
   // backendTools.ts — read
   'list_backends',
   'get_backend_permissions',
@@ -423,6 +428,9 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   'derive_starter',
   'provision_backend',
   'stop_backend',
+  // HLS-013. Writes a bundle to a running backend, so it is write-gated for the
+  // same reason `provision_backend` is.
+  'deploy_cloud_functions',
   // Reads the process registry and changes nothing — but it ships in
   // `registerProvisionTools`, which is inside the write gate, so it is
   // write-only in fact whatever it is in spirit. Recorded as observed rather

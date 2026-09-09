@@ -32,9 +32,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import { requireBackend } from '../backend/client';
 import { ensureProjectId } from '../backend/projectIdentity';
 import { censusBackends, listBackendConfigs, provisionBackend, stopBackend } from '../backend/provision';
 import { reapOrphanedBackends } from '../backend/reaper';
+import { deployProjectCloudFunctions } from '../cloud/deploy';
 import { listRuntimeRecords, ownerIsLive } from '../backend/runtimeRecord';
 import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
@@ -150,6 +152,49 @@ export function registerProvisionTools(server: McpServer, binding: ProjectBindin
           'The project is bound. Record/User nodes will now resolve prop-* ports from this backend, and the ' +
           'backend tools (permissions, roles, keys, workflows) target it without a backendId. It stops when ' +
           'this MCP server stops; if this server is killed, the next one reaps it.'
+      });
+    })
+  );
+
+  server.registerTool(
+    'deploy_cloud_functions',
+    {
+      title: 'Deploy this project\'s cloud functions',
+      description:
+        "Push this project's cloud functions to a running backend — the one thing an app with a backend " +
+        'needed a person for. Builds the bundle exactly as the editor\'s own Deploy button does (same code, ' +
+        'not a second implementation), pushes it, and answers with EVERY cloud function named and its ' +
+        'outcome: `deployed`, `unchanged` (the backend already served this exact bundle), or `failed` with ' +
+        'the reason. ' +
+        '⚠️ A function that DEPLOYED and a function that ANSWERS are two different claims — call it over ' +
+        "HTTP to check the second. Deploying twice is safe: the second run reports `changed: false` rather " +
+        'than a fresh success.',
+      inputSchema: {
+        backendId: z
+          .string()
+          .optional()
+          .describe('Which backend (omit if exactly one is running). From provision_backend or list_backends.'),
+        force: z
+          .boolean()
+          .optional()
+          .describe('Push even when the backend already serves this exact bundle. Off by default.')
+      }
+    },
+    guarded(async (args: { backendId?: string; force?: boolean }) => {
+      const store = binding.require();
+      const client = await requireBackend(args.backendId);
+      const result = await deployProjectCloudFunctions(store.projectDir, client, { force: args.force });
+
+      return jsonResult({
+        ...result,
+        backendId: client.descriptor.id,
+        backendName: client.descriptor.name,
+        endpoint: `http://127.0.0.1:${client.descriptor.port}`,
+        // 🔴 Deploying is not answering. The task this closes says so explicitly,
+        // and an agent that stops at `ok: true` has verified the weaker claim.
+        next: result.ok
+          ? 'Call one of these functions over HTTP to confirm it answers — deploying and answering are two claims.'
+          : 'Read `functions` for the ones that failed and why; the named function is the thing to fix.'
       });
     })
   );
