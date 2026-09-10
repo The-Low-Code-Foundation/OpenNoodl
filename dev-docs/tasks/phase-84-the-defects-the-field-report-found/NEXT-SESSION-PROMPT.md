@@ -8,9 +8,9 @@ still gate tasks.
 back with **six red gates**. Three of them are one command each. That is now the largest pile of
 loose work attached to this phase and none of it is FLD work.
 
-## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 10)
+## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 11)
 
-Seventeen task files, each grepped for its own marker. **Eight built, TWO partly built, seven never
+Seventeen task files, each grepped for its own marker. **Eight built, THREE partly built, six never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
@@ -55,59 +55,75 @@ needs **P13**. Do not start either without the ruling.
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
 | FLD-015 | Charts that export | #39 | ⬜ never built | **R2**, 🔴 **P9 collision** |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
-| FLD-017 | The release stops shipping what it never runs | #42 | ⬜ never built | R5 (minify only) |
+| FLD-017 | The release stops shipping what it never runs | #42 | 🟡 **PARTLY** `07f6a7e74`, −85.4 MB + idle 2.42% → 0.14% · ✅ **replied, STAYS OPEN** | 🔴 **R5** for the rest |
 
-🔴 **Two tasks are `🟡 PARTLY BUILT` and NEITHER is done.** FLD-011 is missing parallelise-by-tab
+🔴 **THREE tasks are `🟡 PARTLY BUILT` and NONE is done.** FLD-011 is missing parallelise-by-tab
 (AC3, AC6). FLD-016 has all four fixes in and AC2/AC4/AC5 measured, but **AC1 and AC3 cannot be
-measured on any machine we have** — see §8.
+measured on any machine we have** — see §8. FLD-017 has the size fix, the idle fix and the
+multicast gate in, and **its whole remainder is minification, which is R5**.
 
-## 2. What session 10 built — FLD-013, `e51c8c61d`
+## 2. What session 11 built — FLD-017, `07f6a7e74`
 
-**#37 asked for `export: {status, badge, reason}` on the catalog tools. Shipped with the PORTS
-beside the status, because the field as asked would have read `translated` on `Circle`** — the type
-that produced all twenty-three of the refusals the issue was filed about. The refusal is per
-**parameter source**, not per type. Full write-up in the task file §6; the short version:
+**#42 reported a 271 MB archive and a 4%-of-a-core idle launcher. Both were real. Neither cause was
+where the issue — or the task's own §2 — said it was.**
 
-- `export: {status, badge?, structurePorts, contentPorts}` on `get_node_type`, unconditional and at
-  the **default** detail (a reading only `detail:"full"` carries is one almost nobody sees).
-- On `list_node_types`, on rows that have something to say — **non-translated OR refuses on a wire**,
-  which is a deliberate departure from the task's §3. The strict rule drops nine translated-and-
-  refusing types, `Circle` first.
-- `exportCoverage` on the listing payload, so the silence on the other 107 rows is readable.
-- `STRUCTURE_PORTS`, `CONTENT_BOUND_PORTS` **and `renderRole`'s `switch (node.type)`** moved out of
-  `analyze/plan.ts` into `packages/nodegx-export/src/structurePorts.ts`. One table, two readers.
+- **−85,414,531 bytes.** `"!**/*.map"` in `build.files`, and the `cli.js.map` extraResource gone.
+  Two `electron-builder --dir` runs of the same pipeline: `app.asar` **283,432,139 → 198,017,608 B
+  (−30.1%)**, **13,113 → 11,932 files**, and **0** `.map` files anywhere in the built `.app`
+  (was 1,181 / 81.2 MB). AC3 driven: map-free app, project opened, caught and uncaught throws both
+  still report, editor still holding the project.
+- 🔴 **The idle CPU was three `bouncedelay 1.4s infinite` dots nobody could see.**
+  `.popup-layer-activity` hides itself with `opacity: 0` — **and an `opacity: 0` element still
+  animates; only `display: none` stops a CSS animation** — and it is built once in `popuplayer.ts`'s
+  constructor and never leaves the tree. `PrimaryButton` had the identical defect and was found by
+  **driving**, not reading: its `.Spinner` is also `opacity: 0` and mounted its dots unconditionally,
+  so the Deploy button animated behind every open project.
+  `document.getAnimations()`: **3 → 0** on the welcome screen, **3 → 0** with a project open.
+  Idle over 180 s: **gpu 0.92% → 0.03%, renderer 1.42% → 0.04%, total 2.42% → 0.14% of a core.**
+- 🔴 **The GPU time this phase wrote down as "not explained by anything static" is explained**, and
+  it was static after all — it was compositing that spinner. `getAnimations()` is the instrument the
+  code read could not be.
+- **What did NOT change: the main process, 0.06% either way.** The UDP multicast is now gated on
+  project-open (it used to advertise `No Project Open` to `225.0.0.100` every 2 s forever), and the
+  commit and the reply both say in words that this is **network hygiene, not a CPU fix**.
 
-🔴 **The reverted arm found a hole shaped like the task.** Deleting `startAngle` from
-`STRUCTURE_PORTS.circle` reddened **nothing**: four of the thirteen circle ports were asserted by
-hand and nine were not, including the port #37's dashboard wired. Closed by a sweep that reads the
-table under a cardinality floor, and proved to grade *behaviour* by a third arm that leaves the
-table alone and breaks the code path.
+🔴 **Two of the task's five scope items are REFUSED with a measurement, not deferred.**
+Item 2 claimed breaking `readableCode.ts`'s value import of `blockly` saves 13 MB. It saves **zero**:
+`getExternalModules({production: true})` marks **every** `node_modules` directory a webpack
+external, so `index.bundle.js` holds one `require("blockly")` and none of blockly's code. A cold
+re-`require` in the packaged renderer is **4 ms**. ⚠️ **AC4 is vacuous, not met.** Item 4's profile
+poll **does not run on the welcome screen at all** and, with a project open, is 8 samples of 112,752
+(**0.007%**) in a 30 s V8 profile — the renderer's JS is **99.78% idle** there.
 
-Ratchet: `list_node_types` **47,860 → 58,386 wire bytes (+22.0%)**, attributed field by field, and
-it is the first size assertion that tool has ever had. `nodeDocBudget` ceilings **not** moved —
-nothing went red (`Group` 13,689 → 13,718 of 14,300). The 8,280-token disclosure gate is unchanged
-at **8,275**: nothing was added to a tool description.
+Gates: `test:main` **448 / 7,372, exit 0**; `typecheck:editor` 0; `typecheck:core-ui` **45 errors,
+the identical set at HEAD** (proved with `git show HEAD:` over the changed file, md5 both ways).
+New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two reverted arms run**.
 
 ## 3. The next task to build
 
-🔴 **FLD-016 is not the next session's job unless a Linux box appears.** Ranked:
+🔴 **There is no wholly ungated FLD task left.** FLD-017 was the last one, and it is built except
+for the half R5 decides. Ranked:
 
-1. **FLD-017** (#42) — **now the only wholly ungated FLD task.** R5 gates the minification item
-   **only**; the −86 MB sourcemap half and the two idle timers are ungated and nobody has looked at
-   them. It also owes #42 a reply, so it moves the board and the end condition together.
-2. **FLD-011's remaining half** — parallelise by tab. ⚠️ Weaker case than the task file assumed;
-   the settle budget already took the corpus 205s → 55s. AC3's shared `consoleErrors` array is the
-   trap.
-3. **FLD-003** (#22) — unblocked by FLD-002 but still gated on **R3** and FLD-004. It is the open
-   half of an issue already answered, which keeps R3 the ruling with the most behind it after R4.
+1. **FLD-011's remaining half** — parallelise by tab. The only remaining work that needs **no
+   ruling at all**. ⚠️ Weaker case than the task file assumed; the settle budget already took the
+   corpus 205s → 55s. AC3's shared `consoleErrors` array is the trap.
+2. **FLD-010** (#41) — unblocked, and **R6 can reasonably be answered *no*** (in public, on #41).
+   Ask before building a lock; the tool itself does not need one.
+3. **FLD-003** (#22) — unblocked by FLD-002 but still gated on **R3** and FLD-004.
 
-🔴 **FLD-014 is NOT ungated (P25). FLD-004 needs R4, FLD-005 needs P13, FLD-015 needs R2 and P9.**
-**FLD-010 is unblocked** and R6 can reasonably be answered *no*; ask before building a lock.
+🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
+FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**), FLD-017's
+remainder (**R5**). **FLD-016 needs a Linux box, not a ruling** — see §8.
+
+⚠️ **R5 is now the cheapest ruling with the most behind it that is purely a decision**: one line in
+`webpack.renderer.production.js`, worth roughly another **35 MB**, and the only thing standing
+between FLD-017 and 🟢.
 
 ⚠️ **But read §6 first and decide honestly whether a red CI outranks all of these.** It is not FLD
-work and it is not this phase's, and it is the reason a month of drift went unseen.
+work and it is not this phase's, and it is the reason a month of drift went unseen. Session 11 did
+not touch it.
 
-## 4. 🔴 The reply gate — 19 sent, 5 owed
+## 4. 🔴 The reply gate — 20 sent, 4 owed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -124,54 +140,59 @@ for i in 1 5 9 12 13 14 15 21 22 25 26 27 29 30 32 33 34 35 37 39 40 41 42 43; d
 done
 ```
 
-**Sent (19):** #1 #5 #9 #12 **#13** #14 #15 #21 #22 **#25** **#27** #29 #30 #32 #33 **#34** **#37**
-#40 #41. **Closed (10):** #1 #5 #9 #12 #14 #15 #21 #32 #33 **#37**.
+**Re-derived from GitHub at the end of session 11, with the loop above:**
 
-**Owed (5): #26 #35 #39 #42 #43.**
+**Sent (20):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #27 #29 #30 #32 #33 #34 #37 #40 #41 **#42**.
+**Closed (10):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37.
 
-✅ **The remaining five now map one-to-one onto the remaining build work**, which is the cleanest
-this has been: #26 = FLD-004 (R4), #35 = FLD-005 (P13), #39 = FLD-015 (R2 + P9), #42 = FLD-017
-(**ungated**), #43 = FLD-014 (P25). 🔴 **There are no more cheap replies.** Every one left needs
-either a ruling or a build first — so from here the reply count only moves when the board does.
+**Owed (4): #26 #35 #39 #43.** Every one is behind a ruling: #26 = FLD-004 (**R4**),
+#35 = FLD-005 (**P13**), #39 = FLD-015 (**R2** + **P9**), #43 = FLD-014 (**P25**). 🔴 **There are no
+replies left that a build alone can unlock** — from here the count moves only when a ruling does.
 
-🔴 **NINE issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #40, #41.**
-Most are the same shape — *the issue asked for two things, one is built, closing it would close the
-other*. Say which half is which, in the reply.
+🔴 **TEN issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #40, #41,
+#42.** Most are the same shape — *the issue asked for two things, one is built, closing it would
+close the other*. Say which half is which, in the reply. #42's open half is **minification (R5)**.
 
 ⚠️ Do not count with `grep replied` — the table spells them **SENT**, and that grep undercounts.
 
-## 5. 🔴 What session 10 learned, and it is mostly about instruments
+## 5. 🔴 What session 11 learned, and it is mostly about instruments
 
-🔴 **A run list is not a log. `failure` for a month read as "the suite is red"; the suite was never
-running.** Every job on `cline-dev` died at `npm ci` in ~19 seconds, before a single gate. Nobody
-opened one. **Open the log, not the status column.** Register row **P30**.
+🔴 **`opacity: 0` is not "not rendered", and only `display: none` stops a CSS animation.** An
+invisible spinner mounted at startup and never removed was the whole of a 4%-of-a-core idle CPU
+report. `visibility: hidden` would not have stopped it either. This is the third time this phase
+has been bitten by *hidden ≠ absent* — FLD-012's `visible` check was the first.
 
-🔴 **A register row can be a number lifted from the gate's own config.** C13 said *"real parser
-count is 582"* — 582 is `.tsfixme-baseline.json`'s `max.TSFixme`, not what the scanner reads (819).
-Same family as [[a-client-property-read-as-a-fact-about-the-source]]. Register row **P31**.
+🔴 **A code read cannot enumerate what is animating; `document.getAnimations()` can.** The task
+file said, correctly, that `ProjectsPage` has no interval, no rAF and no keyframes — and there were
+**three running animations on that screen**, in a layer mounted underneath it. The same call found
+the second instance (`PrimaryButton`) the moment a project was open, which no amount of reading
+`ProjectsPage` would ever have reached.
 
-🔴 **Moving a role-keyed table is not enough to make it readable from outside.** FLD-013's §5 named
-`STRUCTURE_PORTS` as the thing to move; the thing that actually had to move was `renderRole`'s
-`switch (node.type)`, because the MCP server has type names and the tables are keyed by role. A
-table you cannot key into is not shared.
+🔴 **The decisive control was free and needed no rebuild.** Setting `display: none` on the one
+element **in the live renderer over CDP** took `getAnimations()` to 0 and idle CPU from 2.42% to
+0.06% of a core in the same process, over the same 180 s window — before a line of source was
+changed. Do that before building the fix, not after.
 
-🔴 **The reverted arm is where the finding was, again — and the arm that found it was the one that
-should have been redundant.** Deleting the port that AC5 names from the table reddened nothing.
-Nine of thirteen were ungraded. **Run the arm you expect to be boring.**
+🔴 **A `ps` window says HOW MUCH; a V8 sampling profile says WHAT.** The renderer read 1.42% of a
+core, and its JavaScript was **99.81% idle** — the cost was compositing, not code. That gap is what
+killed scope item 4: the profile put the file poll at **8 samples of 112,752**.
 
-⚠️ **`npm ci --dry-run` is the cheap check for a lockfile fix**, and
-`npm install --package-lock-only` is the safe way to make one on a shared checkout: it rewrites the
-lock and does **not** touch `node_modules`, so no peer's install moves. The diff was 19 insertions,
-0 deletions, no version moved.
+🔴 **"It is in the bundle" is a claim about the BUILD CONFIG, not about the import graph.** The
+static trace confirmed exactly the chain the task file described into `blockly` — and it saves
+nothing, because `getExternalModules({production: true})` makes every `node_modules` package an
+external. **Grep the bundle for the library's own code before believing a bundle-size claim**;
+`require("blockly")` appearing once is the tell. Same family as
+[[a-client-property-read-as-a-fact-about-the-source]].
 
-⚠️ **A `--report` flag can write a tracked file as a side effect.** `npm run tsfixme:report`
-rewrote `dev-docs/reference/TYPE-ESCAPE-HATCHES.md`. That was wanted here — it was a month stale —
-but check `git status` after running any `:report` target.
+⚠️ **`ELECTRON_RUN_AS_NODE=1` is set in this session's environment** (an MCP server exports it), and
+with it set a packaged Electron binary parses argv with **Node's** option parser and dies on
+`bad option: --user-data-dir=…`. It reads exactly like the app rejecting the flag. Launch with
+`env -u ELECTRON_RUN_AS_NODE`.
 
-⚠️ **A hand-rolled directory walk with `return` inside a `for...of` skips the rest of the
-directory.** An ad-hoc per-package count of TSFixme read **75** against the real **819** for exactly
-that reason. Same family as [[foreachnode-stops-on-a-truthy-return]] — and the fix was to stop
-hand-rolling and run the instrument the repo already has (`npm run tsfixme:report`).
+⚠️ **A test whose NAME overclaims will pass its reverted arm.** The spec's fourth case was called
+*"the two arms differ ONLY by the dots"* and it passed with the dots deleted outright, because the
+wrapper keeps its `is-loading` class either way. Renamed to what it grades. **Run the second
+reverted arm — the one in the other direction.**
 
 ## 6. 🔴 Gates — CI is alive again, and it came back with six red
 
@@ -223,10 +244,12 @@ the units-port fix ship in a patch · **R5** is minification in scope · **R6** 
 the lock (answered *"probably not"* in public on #41 — confirm). Full wording in
 [README.md](./README.md) §2.
 
-🔴 **R4 and P13 remain the phase's critical path.** R5 is now the cheapest ruling to ask for,
-because FLD-017 is the only ungated task left and R5 decides only one of its five items.
+🔴 **R4 and P13 remain the phase's critical path — and after session 11, EVERY remaining FLD task
+is behind a ruling, a collision or a Linux box except FLD-011's second half.** R5 is the cheapest
+one to ask for and it is now worth a concrete number: **~35 MB, one line, and a full editor QA
+pass**, and it is the only thing between FLD-017 and 🟢.
 
-## 8. 🔴 Two things for Richard
+## 8. 🔴 Three things for Richard
 
 **(a) FLD-016's AC1 and AC3 need a real Linux box, and AC3 has teeth.** Re-enabling Chromium's
 sandbox is a genuine behaviour change on older kernels and under restrictive AppArmor profiles.
@@ -239,8 +262,25 @@ and it is waiting on them.
 baseline silently is the one thing it exists to stop — so somebody has to either fund the burn-down
 or look at the raise. Per-package floors is the shape proposed to @SgtSpork on #13.
 
+**(c) R5 — minification — is now the single most valuable ruling that costs nothing to make.**
+FLD-017 took 85 MB off the archive and it is the only ungated size item that existed. Minification
+is worth roughly another **35 MB** on a 199 MB archive, it is one line
+(`optimization: { minimize: false }` in `webpack.renderer.production.js`, never touched or justified
+since the fork), and the risk is entirely in the QA: this codebase has legacy prototype code and
+dynamic `require` in its plugin paths, which is what mangling breaks. **Yes/no, and if yes who runs
+the QA pass.** #42 is being held open for it.
+
 ⚠️ `brew install rpm` remains installed on this machine from session 9. Reversible with
 `brew uninstall rpm`.
+
+⚠️ Session 11 moved four gitignored stray macOS duplicate directories out of
+`packages/noodl-editor/src/external/` (`deploy 2/`, `viewer 3/`, `ssr 3/`, `cloudruntime 3/`, ~16 MB)
+into its scratchpad rather than deleting them, because `build.files` includes `"src"` wholesale and
+a local packaging run would have shipped them. **They are recoverable; if they are genuinely dead,
+delete them for good.**
+
+⚠️ Two stray untracked files sit at the repo root — `-d` and `2026-09-10 15:00`. Not session 11's;
+they look like the fallout of a mis-quoted command. Left alone.
 
 ## 9. The end condition has not moved
 
@@ -248,4 +288,4 @@ The phase closes when the issues are each **fixed and closed, or answered on the
 measurement that changed our mind**. Read the count off §5 of the register, not off README §6's
 "fifteen".
 
-**Nineteen sent, five to go — and all five are behind a build or a ruling.**
+**Twenty sent, four to go — and all four are behind a RULING, not a build.**
