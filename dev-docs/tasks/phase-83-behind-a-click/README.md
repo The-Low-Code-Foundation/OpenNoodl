@@ -23,7 +23,7 @@ HLS-012, and it is the first thing this phase does.
 ## 1. The person sentence for the whole phase
 
 **A person who has never opened the editor ships a NodeGX app from a GitHub Action: the workflow
-runs `nodegx export`, then `npm ci && npm run build`, and the built site is what the author sees on
+runs `nodegx export`, then `npm install && npm run build`, and the built site is what the author sees on
 the canvas.**
 
 Every acceptance criterion in this phase is checked against that sentence. Note what it contains
@@ -70,7 +70,7 @@ good reframing is allowed to grow the board it arrived at.
 
 | # | question | ruling | what it settles |
 |---|---|---|---|
-| R1 | Which release does this ship with? | ⬜ **STILL UNRULED** | Nothing can be ordered against 0.2.2's cut, and **nothing said publicly may name a date** — the HLS-012 drafts are written to that constraint. |
+| R1 | Which release does this ship with? | ✅ **0.2.3 — ruled by Richard 2026-09-10 (session 16).** | **A release number, not a date.** The constraint that nothing public may name a *date* still stands and every posted reply honours it. This unblocked HLS-012: the six replies posted in s16 all name 0.2.3 as the release and all say plainly that nothing is on `main` or npm today. |
 | R2 | Published to npm publicly, or private with the `bin` inside the app? | ✅ **Public on npm** | HLS-001 built it that way: `engines: node >= 22`, `files`, `exports`, `publishConfig.access: public`. Pulls in [#12](https://github.com/The-Low-Code-Foundation/NodeGX/issues/12), and makes the package boundary a compatibility promise from here on. |
 | R3 | Binary name | ✅ **`nodegx`** | HLS-002 ships `nodegx export`. Consistent with the `nodegx-backend` and `nodegx-observe` bins already in the repo. |
 | R4 | Does the legacy `deploy` get a CLI at all? | ✅ **YES — ruled by Richard 2026-09-10 (session 14), and BUILT the same session.** [HLS-015](HLS-015-WHAT-WAS-BUILT.md) ships `nodegx deploy`, 5/5 ACs. The spike's own words below are what he ruled on. ✅ HLS-014 built s15, 4/4 ACs. ~~🧭 Spike answered s9 — the ruling is still Richard's.~~ [HLS-010's verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9): `deployToFolder` **runs headlessly**, no Electron, and produces a servable static site. The spike **recommends building it** and scoped [HLS-015](HLS-015-NODEGX-DEPLOY.md) | HLS-014 stays gated until R4 is taken. The deploy is a **different artefact** from `nodegx export` — a ready-to-host site running the interpreter, versus React source you build yourself — so #36's table is right that they sit side by side and wrong that they are one shape. |
@@ -182,7 +182,7 @@ job **only** if it blocks an acceptance criterion.
 ## 6. The end condition
 
 The phase closes when HLS-011 is driven: **on a machine with no display server, a shell creates a
-project, authors it over MCP, exports it with `nodegx export`, runs `npm ci && npm run build`
+project, authors it over MCP, exports it with `nodegx export`, runs `npm install && npm run build`
 successfully, serves it, and the served pages are what the editor renders for the same project.**
 
 Not "the commands exist". The last clause is HLS-003, and it is the one that could still be false

@@ -116,7 +116,7 @@ describe('what it refuses to serve', () => {
   it('refuses an unbuilt export and says to build it', async () => {
     const exportDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hls006-export-'));
     fs.writeFileSync(path.join(exportDir, 'package.json'), '{}');
-    await expect(serve({ dir: exportDir })).rejects.toThrow(/npm ci && npm run build/);
+    await expect(serve({ dir: exportDir })).rejects.toThrow(/npm install && npm run build/);
   });
 
   it('refuses a folder that is not there', async () => {

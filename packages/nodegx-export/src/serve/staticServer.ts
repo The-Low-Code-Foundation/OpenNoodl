@@ -6,13 +6,13 @@
  * [#36](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36) asks for
  * `nodegx serve <project> --host --token`, and the honest version of that in *this* package is
  * one step further along the pipeline. `@nodegx/export` turns a project into **React source**;
- * looking at it requires `npm ci && npm run build` first. A `serve` that took a project folder
+ * looking at it requires `npm install && npm run build` first. A `serve` that took a project folder
  * would either have to carry the editor's runtime — which is what `@noodl/preview` does, and it
  * reaches into `noodl-editor` in eleven places to do it, so it cannot be what a published
  * package offers — or silently serve something that is not the app.
  *
  * So this serves a directory of built files, and the pipeline it completes is the phase's own
- * person sentence: `nodegx export`, then `npm ci && npm run build`, then `nodegx serve dist`.
+ * person sentence: `nodegx export`, then `npm install && npm run build`, then `nodegx serve dist`.
  * A folder that is a project rather than a build is **refused with the two commands that are
  * missing**, not served empty — see {@link describeTarget}.
  *
@@ -67,7 +67,7 @@ export function describeTarget(dir: string): { ok: true } | { ok: false; reason:
         `${dir} is a NodeGX project, not a built site. A project has to be exported and built ` +
         'before it can be served:\n' +
         `  nodegx export ${dir} ./exported\n` +
-        '  cd exported && npm ci && npm run build\n' +
+        '  cd exported && npm install && npm run build\n' +
         '  nodegx serve ./exported/dist\n'
     };
   }
@@ -77,7 +77,7 @@ export function describeTarget(dir: string): { ok: true } | { ok: false; reason:
       reason:
         `${dir} is an exported app that has not been built yet — it holds React source, which a ` +
         'browser cannot run. Build it first:\n' +
-        `  cd ${dir} && npm ci && npm run build\n` +
+        `  cd ${dir} && npm install && npm run build\n` +
         `  nodegx serve ${path.join(dir, 'dist')}\n`
     };
   }

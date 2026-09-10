@@ -1,8 +1,43 @@
 # HLS-012 — the reply drafts
 
-**Status: drafted 2026-09-09, session 2, `opennoodl-2d`. NOT POSTED.**
-🧭 **Richard posts these, or approves the text.** An agent does not post to the community on its own
-account. Until one is posted, HLS-012 is not closed — a draft is not a reply.
+**Status: ✅ ALL SIX POSTED 2026-09-10, session 16.** HLS-012 is CLOSED.
+
+| issue | comment | state |
+|---|---|---|
+| [#11](https://github.com/The-Low-Code-Foundation/NodeGX/issues/11) @dominikstohl | [5618289591](https://github.com/The-Low-Code-Foundation/NodeGX/issues/11#issuecomment-5618289591) | left OPEN |
+| [#36](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36) @dishant-kumar-thakur | [5618293618](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36#issuecomment-5618293618) | left OPEN |
+| [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) | [5618294150](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31#issuecomment-5618294150) | left OPEN — **workaround-led**, by Richard's ruling |
+| [#24](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24) | [5618295078](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24#issuecomment-5618295078) | left OPEN |
+| [#23](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23) | [5618295659](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23#issuecomment-5618295659) | left OPEN |
+| [#38](https://github.com/The-Low-Code-Foundation/NodeGX/issues/38) | [5618296297](https://github.com/The-Low-Code-Foundation/NodeGX/issues/38#issuecomment-5618296297) | left OPEN |
+
+🔴 **NOTHING WAS CLOSED, deliberately and consistently.** #31's reply says in public that *a source
+fix is not a shipped fix*; closing #23/#24/#38 for a fix nobody can install would contradict that in
+the same pass. **Closing them is a one-liner the day 0.2.3 ships.**
+
+🔴 **THE POSTED TEXT IS NOT THE TEXT BELOW.** The drafts were written at the *scoping* moment
+(session 2), before anything was built, and by s16 they were describing the work as unresolved —
+the opposite of the truth. Three specific things in them were false by the time they were posted:
+
+1. §1 said deploy *"is not close"* and *"whether it gets a CLI at all is an open question"* —
+   **R4 was ruled YES and `nodegx deploy` shipped** (HLS-015, HLS-014).
+2. §1 and §2 said `@nodegx/export` is `"private": true` with no build script and no `bin` —
+   **HLS-001 published it**: public access, `dist/`, `bin: { nodegx }`.
+3. §2 said `deployFunctions()` has *"exactly two call sites, both of them UI"* — **HLS-013
+   re-measured that and it was wrong on all three counts** (one caller; two non-UI triggers already
+   existed). Posting verbatim would have published a measurement this phase itself disproved.
+
+🔴 **THE LESSON, AND IT IS THE PHASE'S OWN: A DRAFT DECAYS AGAINST THE WORK THAT ANSWERS IT.**
+These drafts were correct when written and were made wrong by their own phase succeeding. The
+sessions that would have "just posted the approved text" would have told two people who waited
+seventeen months that their issue was still unresolved.
+
+**The posted bodies are archived in the repo: [HLS-012-POSTED-REPLIES.md](HLS-012-POSTED-REPLIES.md).**
+
+---
+
+### ⚠️ Historical — the s2 drafts, superseded. Do not post.
+
 
 Every factual claim below was re-measured at `cline-dev` HEAD on 2026-09-09 before it was written
 down; the measurements are listed in §4 at the bottom so a reviewer can check them without reading

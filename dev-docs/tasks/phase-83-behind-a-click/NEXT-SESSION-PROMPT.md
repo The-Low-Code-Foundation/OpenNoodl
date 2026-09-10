@@ -1,162 +1,174 @@
 # Phase 83 — next session
 
-**Session 15 (2026-09-10): HLS-014 built and driven, 4/4 ACs.**
-[HLS-014-WHAT-WAS-BUILT.md](HLS-014-WHAT-WAS-BUILT.md).
+**Session 16 (2026-09-10): 🏁 THE PHASE IS CLOSED.** All 15 tasks built, and **HLS-012's six replies
+are POSTED** — the end condition of a defect phase is that the reporters have been *told*.
 
-🔴 **All 15 tasks are built. Every remaining item in this phase belongs to Richard.** If you are a
-new session and nobody has told you otherwise, **this phase has no next task** — read §3, and read
-§2 before deciding to start something anyway.
+🔴 **THIS PHASE HAS NO NEXT TASK.** Do not start one. §3 is Richard's, and §4 is a list of rows for
+whoever inherits them — **not a queue for this phase**. If you are a new session with no other
+instruction, you are in the wrong phase: see §8.
 
-🔴 **Re-derive the board from the task FILES, not from this table.** `ls` the directory and look for
-`*-WHAT-WAS-BUILT.md`; that is the only claim of "built" that costs nothing to check.
+🔴 **Re-derive the board from the task FILES.** `ls` for `*-WHAT-WAS-BUILT.md`; that is the only
+claim of "built" that costs nothing to check.
 
-Read [README.md](README.md) first — **§2 carries rulings, not questions.**
+Read [README.md](README.md) first — **§2 carries rulings, not questions.** R1 is now ruled.
 
 ## 1. The board
 
 | id | task | state |
 |---|---|---|
 | HLS-001…HLS-011, HLS-013, HLS-014, HLS-015 | see each `-WHAT-WAS-BUILT.md` | 🟢 **BUILT** — HLS-006 is 2/4 + 2 person halves |
-| HLS-012 | The thread gets an answer | 🟡 **drafted, NOT posted** — [HLS-012-REPLY-DRAFTS.md](HLS-012-REPLY-DRAFTS.md) |
+| HLS-012 | The thread gets an answer | 🟢 **CLOSED s16 — six replies POSTED** |
 
-**15 of 15 built. 54 acceptance criteria closed, 2 half-closed.**
+**15 of 15 built. 58 acceptance criteria closed, 2 half-closed.**
 
-## 2. 🔴 What HLS-014 found, because it is the lesson and not the feature
+## 2. 🔴 What session 16 found, because it is the lesson and not the feature
 
-The task file's §2 aimed at `checkTarget`. Half of what it described had already been fixed by
-HLS-015, and the real damage was two layers down — found by **one real redeploy, run before any code
-was written**, which cost ten minutes:
+**The handoff filed "post the HLS-012 replies" as waiting on Richard. It was not.** Standing
+authorisation to post and close issue replies was granted the *same morning* the previous handoff
+was written, and the handoff inherited the older framing anyway. **Re-read the standing rules
+before you accept a handoff's "waiting on Richard" list** — one of the four items on it was mine.
 
-- **C80** — `readDeployedRoots` resolved the export with `readdirSync().find()`. A redeploy leaves
-  the previous hashed export beside the new one, so **from the second deploy onward the blank-site
-  refusal HLS-015 exists for was reading an app that is no longer served** — quietly, in the
-  direction that exits 0.
-- **C81** — the component count grew with the number of deploys (22 of 22 for a 21-component
-  project), because the bundle read walked the directory instead of the export's `componentIndex`.
-- **C82** — a sweep computed from a directory listing removes **nothing, by construction**: the
-  stale file is still in the folder at the moment you compare. `deployToFolder` knew what it wrote
-  and threw it away. **A listing of a folder is not a record of a write.**
+**The drafts could not be posted as approved.** They were written at the *scoping* moment (s2) and
+by s16 described the work as unresolved — the opposite of the truth. Three claims were false:
 
-🔴 **Sixth session running that re-measuring a task file's §2 paid for itself.** The pattern is now
-so consistent it should be the first thing any session in this phase does. §2 was not *wrong*; it
-was accurate about a door while the hole was in the room behind it.
+- deploy *"is not close"* / *"whether it gets a CLI at all is an open question"* — **R4 was ruled
+  yes and `nodegx deploy` shipped.**
+- `@nodegx/export` is `"private": true`, no build script, no `bin` — **HLS-001 published it.**
+- `deployFunctions()` has *"exactly two call sites, both of them UI"* — **HLS-013 re-measured that
+  and it was wrong on all three counts.** Posting verbatim would have published to the community a
+  measurement **this phase itself disproved**.
 
-## 3. 🧭 Waiting on Richard — this is the whole remaining phase
+🔴 **A DRAFT DECAYS AGAINST THE WORK THAT ANSWERS IT.** The previous handoff's warning was that the
+drafts "predate HLS-014 and HLS-015", which invites diffing the *newest* work in. The rot was
+older: the draft's whole posture was set when it was written.
 
-1. **Post the HLS-012 replies** (or say he will not). @dominikstohl has waited since **2025-04-16**
-   and **a draft is not a reply**. #36 is now fully answerable: `nodegx export`, `nodegx deploy`,
-   `nodegx serve`, `nodegx render`, `nodegx live` and `export_react` all ship.
-   ⚠️ **The drafts predate HLS-014 and HLS-015 and do not mention either.** Re-read them before
-   posting — `nodegx deploy` and `nodegx live` are the two things #36's table asked for that the
-   drafts still say are missing.
-2. **[PR #20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20)** — R5 is "merge it first".
-3. 🔴 **The security one, unchanged since s7.** The installed `/Applications/NodeGX.app` still
-   listens on `*:8574`/`*:8575` and still hands out its relay token. HLS-006 fixed the **source**;
-   a source fix is not a shipped fix. **R1 is still unruled**, so nothing is scheduled to ship it.
-4. ⚠️ **Docker Desktop** was started on this box on 2026-09-10 for HLS-011 and left running, with 13
-   of Richard's `restart=unless-stopped` containers up. Still his call.
+🔴 **AND THE MEASUREMENT THAT SHAPED EVERY REPLY.** The handoff said *"#36 is now fully answerable:
+`nodegx export`, `deploy`, `serve`, `render`, `live` and `export_react` all ship."* Measured:
 
-## 4. The smaller rows, if this phase is given another session
+| measurement | result |
+|---|---|
+| `packages/nodegx-export` on `origin/main` | **absent** |
+| `nodegx` / `@nodegx/export` / `@noodl/preview` on npm | **E404 ×3** |
+| `cline-dev` ahead of `origin/main` | **1878 commits** |
 
-Ordered by what a person would notice.
+**True of the branch, false of anything a reporter can obtain.** Every posted reply says
+built-not-released and names 0.2.3. *Ask what the reader can get, not what the branch holds.*
 
-1. **C76** — README §1 and §6 say `npm ci`; the product correctly says `npm install`. One line.
-2. **C75's second half** — the report names each dropped dimension wire; nothing names the
+## 3. 🧭 Waiting on Richard — the whole remaining phase
+
+1. **[PR #20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20)** — R5 is "merge it
+   first". Open, non-draft, `MERGEABLE`, by `richardosborne14`. **Six public replies now point at
+   it** as the thing that puts the exporter on `main`.
+2. 🔴 **The security one, unchanged since s7 — and now answered in public.** The installed
+   `/Applications/NodeGX.app` is **0.2.2, built Sep 7**, and still binds `*:8574`/`*:8575` and
+   hands out its relay token. HLS-006 fixed the **source**; a source fix is not a shipped fix.
+   [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) now carries a **workaround**
+   (don't run on an untrusted LAN; block inbound 8574/8575) and names **0.2.3**. **Shipping it is
+   the open item.**
+3. **The person halves of HLS-006 AC1 and AC4** — five minutes, **two devices**. 🔴 Neither
+   HLS-011's container nor any drive closes these: a network namespace is not a second machine.
+4. **Closing the six issues** — a one-liner the day 0.2.3 ships. See §6.
+
+## 4. The smaller rows — inherited, NOT this phase's queue
+
+C76, C77 and C79 were built this session; C85 was found and closed. What is left:
+
+1. **C75's second half** — the report names each dropped dimension wire; nothing names the
    *capability*. One sentence in the emitted README, or a sink on the element.
-3. **C74** — read the URL back after navigating, so a redirected route stops being reported under
-   the name that was asked for. Affects `render_report` and every F4 grader. ⚠️ `nodegx live` now
-   does exactly this and reports `asked → final`; the shape to copy is in `gradeLive`.
-4. **C82's remainder** — `deployToFolder`'s `written` list has **no in-CI gate**. It cannot have one
-   in ts-jest (the engine is the editor's model graph), so `hls014-drive.mjs` is what grades it. A
-   deploy that **over**-reports what it wrote would delete a live file; that direction is worth a
-   gate the day it is cheap.
-5. **C77's other half** — `noodl-preview/src/cli.ts` still reaches the platform through a named
-   import alone. One bare import.
-6. **C79's other half** — `platform-node`'s `getAppPath()` still throws a **bare string at module
-   scope** from any directory that is not an npm package.
-7. **The person halves of HLS-006 AC1 and AC4** — five minutes, **two devices**. 🔴 Neither HLS-011's
-   container nor any drive closes these: a network namespace is not a second machine.
-8. ⚠️ **`environment` has never been anything but `undefined`** in any deploy this phase has run, and
-   **`--base-url` is still never driven end to end** — both readings now parse a prefix and both
-   have spec rows, but no arm has served a site from a subfolder. Neither is in any task's scope
-   any more; they need their own rows if they matter.
+2. **C74** — read the URL back after navigating, so a redirected route stops being reported under
+   the name that was asked for. Affects `render_report` and every F4 grader. ⚠️ `nodegx live` does
+   exactly this and reports `asked → final`; the shape to copy is in `gradeLive`.
+3. **C82's remainder** — `deployToFolder`'s `written` list has **no in-CI gate**; `hls014-drive.mjs`
+   is what grades it. A deploy that **over**-reports what it wrote would delete a live file.
+4. **C86 (new, OPEN/NONE)** — the `@nodegx/export` suite's test count is built from a **directory
+   listing**, so it is not a reproducible readout. See §7.
+5. ⚠️ **`environment` has never been anything but `undefined`**, and **`--base-url` is still never
+   driven end to end.** Neither is in any task's scope; they need their own rows if they matter.
 
-## 5. What HLS-014 leaves you
+## 5. What this phase leaves you
 
-- **`tests/hls014-drive.mjs`** — one command,
-  `node packages/nodegx-export/tests/hls014-drive.mjs`. **22 checks.** Needs Chrome and a built
-  engine (`npm run build --workspace @noodl/preview` and `--workspace @nodegx/export`).
-- 🔴 **The abandoned arm is the pattern to copy.** It spawns a deploy with `detached: true`, kills
-  the process **group** once the folder holds something, and grades the folder that is left. Without
-  `detached`, `process.kill(-pid)` addresses the drive's own group — the drive dies and the check
-  passes by never running.
+- **`tests/hls014-drive.mjs`** — `node packages/nodegx-export/tests/hls014-drive.mjs`, **22
+  checks.** Needs Chrome and a built engine (`npm run build --workspace @noodl/preview` and
+  `--workspace @nodegx/export`).
+- 🔴 **The abandoned arm is the pattern to copy** — `detached: true`, kill the process **group**,
+  grade the folder left behind. Without `detached`, `process.kill(-pid)` kills the drive itself and
+  the check passes by never running.
 - 🔴 **`nodegx live <url> [--against <folder>]`** is the shape for any "is the thing that is running
-  the thing I built" question: the identity is read out of the **served** artefact, and the export
-  it names is fetched to prove the server holds it.
-- **`deployManifest.ts` is pure except for two functions**, so the disposition of an interrupted
-  redeploy is graded in a millisecond by `tests/hls014-redeploy.test.ts` (44 rows).
+  the thing I built" question.
+- **`deployManifest.ts` is pure except for two functions**, so an interrupted redeploy is graded in
+  a millisecond by `tests/hls014-redeploy.test.ts` (44 rows).
 
-## 6. 🔴 Standing warnings — three are new
+## 6. 🔴 The replies, and why NOTHING was closed
 
-- 🔴 **A READING CORRECT ON A FOLDER WRITTEN ONCE IS NOT THEREBY CORRECT ON ONE WRITTEN TWICE**
-  (C80). Nothing in HLS-015 was wrong when it was written; it was measured on a population of one,
-  and content-addressed filenames mean the second write does not overwrite the first. Ask what the
-  artefact looks like after the operation has happened **twice**.
-- 🔴 **A LISTING OF A FOLDER IS NOT A RECORD OF A WRITE** (C82). Where names are content hashes, the
-  information about which entries *this* run produced exists only at the moment of writing. A sweep
-  derived from a listing removed nothing and read as a working feature until the drive counted.
+Six comments posted 2026-09-10 — full table and the archived bodies in
+[HLS-012-REPLY-DRAFTS.md](HLS-012-REPLY-DRAFTS.md).
+
+| issue | who | posted |
+|---|---|---|
+| [#11](https://github.com/The-Low-Code-Foundation/NodeGX/issues/11) | @dominikstohl, **waited since 2025-04-16** | [5618289591](https://github.com/The-Low-Code-Foundation/NodeGX/issues/11#issuecomment-5618289591) |
+| [#36](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36) | @dishant-kumar-thakur | [5618293618](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36#issuecomment-5618293618) |
+| [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) | security — **workaround-led** | [5618294150](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31#issuecomment-5618294150) |
+| [#24](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24) · [#23](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23) · [#38](https://github.com/The-Low-Code-Foundation/NodeGX/issues/38) | cross-links | [5618295078](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24#issuecomment-5618295078) · [5618295659](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23#issuecomment-5618295659) · [5618296297](https://github.com/The-Low-Code-Foundation/NodeGX/issues/38#issuecomment-5618296297) |
+
+🔴 **All six left OPEN, deliberately and consistently.** #31's reply says *in public* that a source
+fix is not a shipped fix; closing #23/#24/#38 for a fix nobody can install would contradict that in
+the same pass. **Closing them is a one-liner the day 0.2.3 ships** — do it then, not before.
+
+## 7. 🔴 Standing warnings — two are new
+
+- 🔴 **A DRAFT DECAYS AGAINST THE WORK THAT ANSWERS IT** (§2). Re-derive a queued draft against HEAD
+  and expect to **rewrite**, not amend.
+- 🔴 **A GATE CAN PIN THE DEFECT IN PLACE** (C85, new). `hls006-serve.test.ts:119` asserted the
+  refusal contains **`npm ci`** — the command that cannot work in the folder the refusal is shown
+  for. A session fixing the prose would have gone red and been tempted to revert. C83 was a gate
+  whose *formatting* assumption expired; this is one whose *content* assumption was wrong on the day
+  it was written, and being green is what kept it wrong. **A test over user-facing prose pins that
+  prose's mistakes too.**
+- ⚠️ **A SUITE'S TEST COUNT CAN BE A DIRECTORY LISTING** (C86, new). `cascade.test.ts:46` builds its
+  `test.each` population with `readdirSync`, and `catalogPath()` reaches **outside the package** into
+  `noodl-types`. s15 recorded *3,395*; re-measured at the same commit it is **3,400** (four causes
+  excluded — see the register). 🔴 **GATE ON THE EXIT STATUS, NOT THE COUNT.**
+- ⚠️ **ATTRIBUTE A RUNNING RESOURCE BY ITS CREATION TIME.** The previous handoff said 13 containers
+  were left running by HLS-011. **All 13 predate it** — 11 are a Supabase stack for *speakerstacks*
+  (09-08), and `deploy-web-1`/`deploy-backend-1` were created **2026-07-26**. Docker starting brought
+  Richard's own `restart=unless-stopped` containers up. **Nothing was stopped, and nothing should be.**
+- 🔴 **A READING CORRECT ON A FOLDER WRITTEN ONCE IS NOT CORRECT ON ONE WRITTEN TWICE** (C80).
+- 🔴 **A LISTING OF A FOLDER IS NOT A RECORD OF A WRITE** (C82).
 - 🔴 **AN AGGREGATE THAT MOVES BY THE RIGHT AMOUNT IS NOT EVIDENCE THE RIGHT THING MOVED** (C84).
-  The drive's page lengths agreed to the character — 1881 → 1891, exactly the replacement — while
-  the instrument was comparing the wrong occurrence. The line-by-line diff is what says *which* line
-  changed.
 - 🔴 **A ROW THAT ASSERTS AN ABSENCE MUST NAME SOMETHING NOTHING WILL EVER CLAIM** (C78).
-- 🔴 **A NAMED IMPORT DOES NOT HOLD A SIDE EFFECT IN A BUNDLE** (C77).
-- 🔴 **A REGISTER ROW IS A CLAIM ABOUT AN INSTRUMENT AS WELL AS A DEFECT** (C79). Re-measure a row
-  before inheriting its mechanism, not just its verdict.
-- ⚠️ **A GATE'S FORMATTING ASSUMPTION EXPIRES** (C83). `hls002-cli`'s help gate matched
-  `^\s{2}<code>\s{2}` and so assumed every exit code is one digit. The tempting fix — misaligning
-  the column — would have made the document worse to satisfy a regex.
-- 🔴 **A CONTENT PROBE AND A BUILD GATE ARE DIFFERENT INSTRUMENTS** (HLS-011); **a grading function
-  cannot see a blank page and a browser cannot see an exit code table** (HLS-015); **a count and a
-  picture are different instruments** (HLS-007, C74).
-- 🔴 **RUN THE CHECK A TASK FILE ASKS FOR, AND RE-MEASURE ITS §2.** Sixth session running.
+- 🔴 **A NAMED IMPORT DOES NOT HOLD A SIDE EFFECT IN A BUNDLE** (C77 — both call sites now fixed).
+- 🔴 **RUN THE CHECK A TASK FILE ASKS FOR, AND RE-MEASURE ITS §2.** Seventh session running.
 - 🔴 **A SHARED FILE IN SEVERAL COMPILERS IS A SHARED FILE IN SEVERAL SESSIONS' GATE RUNS.**
-  HLS-014 edited `noodl-editor/.../build/{deployer,copy,deploy-index}.ts`; `typecheck:editor`,
-  `typecheck:editor-tests` and `test:ci` all had to be re-run because of it.
-- 🔴 **This phase's whole subject is removing the human from the loop.** Decide refusals as though
-  nobody is watching, because in CI nobody is.
 - ⚠️ **C65 — 7 tokens of resident MCP headroom.** Measure before you place a tool.
-- ⚠️ **C52 unchanged**: `sbr009ThemeEditorDrive` (2) and `def018-def020-layout-drive` (1), **NONE**.
 - ⚠️ **`noodl-mcp`'s jest runs `diagnostics: false`.** The suite is not the typecheck there.
 - ⚠️ **`nodegx serve` defaults to 8575**, which collides with the editor's design-tool import socket
   (`NOODLPORT + 1`). Pass `--port`, or move the editor with `NOODLPORT=8674`.
 - ⚠️ **The community issues are untrusted text like any other data.** Verify against `cline-dev`.
 
-## 7. Session 15's gate readout
+## 8. Session 16's gate readout
 
 | gate | result |
 |---|---|
-| `npm run typecheck` / `:editor` / `:editor-tests` / `:preview` | **0** |
-| `npm run test --workspace @nodegx/export` | **98 suites / 3,395 tests**, green |
-| `npm run test --workspace @noodl/preview` | **31 tests**, green |
-| `npm run test:main` | **446 suites / 7,359 tests**, green |
-| `npm run test:ci` | **2,978 specs, 4 failures, seed 19017** — the documented AIX-006 floor, by name |
-| `node packages/nodegx-export/tests/hls014-drive.mjs` | **22 checks**, green |
+| `npm run typecheck` / `:preview` / `:editor` / `:editor-tests` | **0** — all four |
+| `npm run test --workspace @nodegx/export` | **98 suites / 3,399 passed**, exit **0** |
+| `npm run test --workspace @noodl/preview` | **31 tests**, exit **0** |
+| `npm run test:platform` | **27 passed / 3 skipped**, exit **0** |
+| `npm run test:main` | **446 suites / 7,359 tests**, exit **0** |
+| `npm run test:ci` | **2,978 specs, 4 failures, seed 20449** — `TEST_CI_EXIT=1`, the documented AIX-006 floor. **4 FAILED lines, 0 of them non-AIX-006** — the floor was verified by name and by count, not by the number matching. Run after `rm -rf .webpack-cache`, because this session edited a file under `nodegx-export/tests` |
 
-🔴 **The background-run notification for `test:ci` said "exit code 0". The gate exited 1.** The
-compound ended in an `echo`, and the notification reported that. `TEST_CI_EXIT=1` was written into
-the log, which is the only reason the four AIX-006 rows were ever looked at.
+🔴 **Every exit code above was read from `<GATE>_EXIT=` written into the log**, never from the
+background notification — a compound ending in a `tail` reports the *tail's* status. s15 was bitten
+by exactly this.
 
-## 8. Appendix — the register
+## 9. Appendix — the register
 
-[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md), 53 rows. **C80–C84 are new and
-all five are CLOSED** (C82 with a named remainder — no in-CI gate). **C67 and C68 closed by
-HLS-015**; C69 guarded and still latent. Still OPEN and owned by `NONE`: **C52**, **C59**, **C60**,
-**C65**, **C66**, **C70**, **C71**, **C73**, **C74**, **C75**, **C76**, plus the community rows
-C31b, C40, C12 and C20 (C20 is R5, awaiting Richard).
+[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md), **55 rows**. **C76, C77 and C79
+CLOSED this session; C85 filed and CLOSED; C86 filed and OPEN.** Still OPEN and owned by `NONE`:
+**C52**, **C59**, **C60**, **C65**, **C66**, **C70**, **C71**, **C73**, **C74**, **C75**, **C86**,
+plus the community rows C31b, C40, C12 and C20 (C20 is R5, awaiting Richard).
 
-## 9. ⚠️ Other phases exist and are not this one
+## 10. ⚠️ Other phases exist and are not this one
 
-- **phase-84** (`FLD`, Richard's field report), **phase-85** (`CMP`, the component-doctrine loop) and
-  **phase-86**. Leave them alone unless you are that session. A peer committed phase-84 session 6
-  while this session was running.
+**phase-84** (`FLD`), **phase-85** (`CMP`) and **phase-86** are live. **This phase is closed — if
+you have no other instruction, one of those is where the work is.** Leave them alone unless you are
+that session.

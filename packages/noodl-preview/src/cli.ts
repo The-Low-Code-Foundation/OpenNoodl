@@ -12,6 +12,10 @@ import type { FSWatcher } from 'chokidar';
 
 // Must be first: binds @noodl/platform and populates NodeLibrary before any
 // editor module is touched. See headless.ts.
+// 🔴 C77 — the bare import is load-bearing. A named import alone is a binding a
+// bundler may drop or reorder; only the side-effect import pins the module's
+// evaluation to this point in the file.
+import './headless';
 import { bootstrapNodeLibrary } from './headless';
 
 import { describeAccess, lanAddress, resolveAccess, shareUrl } from '../../nodegx-export/src/serve/access';
