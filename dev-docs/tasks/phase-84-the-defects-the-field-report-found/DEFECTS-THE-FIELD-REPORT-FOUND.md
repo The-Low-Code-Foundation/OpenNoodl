@@ -116,7 +116,7 @@ nobody was told about gets re-reported.
 | #37 | @dishant-kumar-thakur | the field as asked would have read green on `Circle` | ⬜ |
 | #40 | @dishant-kumar-thakur | screenshots are per viewport, not per page | ⬜ |
 | #43 | @dishant-kumar-thakur | inputs are majority camelCase; the round-trip pair is the sharper bug | ⬜ |
-| #33 | @dishant-kumar-thakur | 🟢 **Fixed (FLD-006).** It was never a fit: the button routed to a *centre* whose scale is the literal `1`, which is why the HUD read exactly 100% and a second click did nothing. Say both faults — the literal scale **and** the centroid-instead-of-bounding-box. ⚠️ The "viewport dimensions are wrong" hypothesis FLD-006 §2 warns against is **not in the issue body** (it is in the linked field report), so the reply does not need to rebut it | ⬜ |
+| #33 | @dishant-kumar-thakur | 🟢 **Fixed (FLD-006, `901280af`), AC1 driven.** It was never a fit: the button routed to a *centre* whose scale is the literal `1` | ✅ **SENT + CLOSED 2026-09-10** — [comment 5616099308](https://github.com/The-Low-Code-Foundation/NodeGX/issues/33#issuecomment-5616099308) (cause) + [comment 5616228302](https://github.com/The-Low-Code-Foundation/NodeGX/issues/33#issuecomment-5616228302) (the drive: HUD 100% → 12%, 0 of 10 nodes outside the pane) |
 | #32 | @dishant-kumar-thakur | their proposed discriminator **misses the slider thumb** — say so before agreeing with it. FLD-012 | ⬜ |
 | #22 | @richardosborne14 | FLD-002/FLD-003; the breakpoint read-out is unblocked by FLD-001, the prefab needs ruling R3 | ⬜ |
 | #26 | @dishant-kumar-thakur | register row **N2**: `node.ts:135` seeds a units port as `{value, type}` and `:402` reads `.unit`. Present since `b9c60b07d`, found independently from two directions. Needs ruling R4 | ⬜ |

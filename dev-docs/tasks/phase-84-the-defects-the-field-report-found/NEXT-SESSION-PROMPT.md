@@ -16,7 +16,7 @@ built.** That is the file count, not a copied status.
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
 | FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built | R4 |
 | FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built | 🔴 **P13 collision** |
-| FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `901280af` · ⚠️ reply owed | — |
+| FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `901280af`, AC1 driven · ✅ **replied + closed** | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
@@ -54,7 +54,7 @@ strength of someone else's fix. **Check what the issue asked for, not what you f
 ⚠️ **The register's §5 table was short by two.** #21 and #41 were among the fifteen and had no row
 at all. A reply table that omits an issue reads as a reply that is not owed. Both are in it now.
 
-**Distance: 5 of 17 built. 4 replies sent, 20 still owed** (§5 of the
+**Distance: 5 of 17 built. 5 replies sent, 19 still owed** (§5 of the
 [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md)).
 
 🔴 **"12 still owed" was wrong, and it was wrong because the table was short.** Session 5 swept
@@ -66,8 +66,14 @@ re-run the sweep (it is two commands, recorded in §5) rather than trusting eith
 
 ## 3. The next task to build — FLD-012 (FLD-006 is DONE)
 
-✅ **FLD-006 landed** (`901280af`, session 5) — the claim above resolved. It was claimed within
-twenty minutes of this board naming it, which is why the in-flight marker exists; it worked.
+✅ **FLD-006 landed** (`901280af`, session 5), **AC1 driven**, **#33 replied and closed**. It was
+claimed within twenty minutes of this board naming it, which is why the in-flight marker exists; it
+worked.
+
+✅ **Worth copying: the drive was cheap and it earned the close.** A spec calling
+`centerToFit(AllNodes)` is not a person clicking Fit view, and the click is what the reporter filed.
+Hit-test `elementFromPoint` at the button's centre **before** clicking — a toast was sitting on top
+of it and would have eaten the press — and screenshot after, before concluding anything.
 
 Track A outranks track B. Of the three track-A tasks left, two are gated or collided:
 
