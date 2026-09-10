@@ -1,16 +1,21 @@
 # FLD-017 — The release stops shipping what it never runs
 
-🟡 **PARTLY BUILT** — session 11, 2026-09-10, `07f6a7e74`.
+🟢 **BUILT** — session 11, 2026-09-10, `07f6a7e74` + `aedc51f64` (ruling **R5** answered mid-session).
+**`app.asar` 283,432,139 → 168,143,884 B — −115,288,255 B, −40.7%** — and idle CPU on the welcome
+screen **2.42% → 0.14% of a core**. All six ACs are met or answered; see §6 and §9.
+
+Files (`07f6a7e74`):
 `packages/noodl-editor/package.json`, `.../src/editor/src/styles/popuplayer.css`,
 `.../src/editor/src/views/popuplayer.ts`, `.../src/main/main.js`,
 `packages/noodl-core-ui/src/components/inputs/PrimaryButton/PrimaryButton.tsx`,
 `packages/noodl-editor/tests-unit/fld-017/primary-button-spinner.test.ts` (new),
-`packages/noodl-editor/jest.config.js`. **#42 replied, LEFT OPEN.**
+`packages/noodl-editor/jest.config.js`. **#42 replied twice and CLOSED.**
 
-🔴 **Deliberately NOT `🟢 BUILT`.** Scope items 1, 3 and the idle-CPU fix are in and measured;
-**item 5 (minification, −35 MB) is untouched and still gated on R5**, and it is now the largest
-remaining item in this task by a wide margin. Items 2 and 4 are **refused with a measurement** —
-see §6, they are not deferred, their premises are false.
+Plus (`aedc51f64`): `packages/noodl-editor/webpackconfigs/webpack.renderer.production.js`,
+`scripts/check-build-artefacts.js`, `.gitignore`.
+
+⚠️ Items 2 and 4 are **refused with a measurement** — see §6. They are not deferred; their premises
+are false, and **AC4 is vacuous rather than met**.
 
 271 MB of app archive, of which **86 MB is sourcemaps nobody reads at runtime**, and an idle
 launcher burning 4% of a core with nothing open. The two best fixes are about twenty-five lines
@@ -193,13 +198,95 @@ capture — not any of the polls.
   (`require.context` is a webpack API that fails the suite *to run*). No arm passes an `icon`, so
   the stub is never called.
 
-## 8. 🔴 What is left, and it is one ruling
+## 8. ✅ Item 5 — minification. R5 answered mid-session; AC6 is MET
 
-**Item 5, minification, is the whole remainder: ~35 MB, one line in
-`webpack.renderer.production.js`, and a full editor QA pass.** R5 has not been answered. §5's trap
-still stands — `mode: 'production'` also enables `sideEffects` and mangling, this codebase has
-legacy prototype code and dynamic `require` in its plugin paths, and `keep_classnames` /
-`keep_fnames` is where to start. **AC6 is unmet and cannot be met without R5.**
+**Ruling R5, answered by Richard 2026-09-10: in scope for 0.2.3, with `keep_classnames` /
+`keep_fnames`.** Shipped `aedc51f64`.
+
+`optimization: { minimize: false }` had been in `webpack.renderer.production.js` **since the initial
+fork commit with no comment and no linked issue** — `git log -S` returns that one commit. Nobody
+here chose it.
+
+### The number was an estimate; this is the measurement
+
+Two full renderer builds, one variable changed:
+
+| build | the two renderer bundles |
+|---|---|
+| `minimize: false` | 55,600,724 B |
+| `keep_classnames` + `keep_fnames` (shipped) | **27,036,061 B (−51.4%)** |
+| full mangling, no `keep_*` | 24,966,424 B |
+
+Packaged, the whole day in one table:
+
+| | `app.asar` | files |
+|---|---|---|
+| HEAD at the start of session 11 | 283,432,139 B | 13,113 |
+| after the sourcemap fix (`07f6a7e74`) | 198,017,608 B | 11,932 |
+| **after minification (`aedc51f64`)** | **168,143,884 B** | 11,934 |
+
+**−115,288,255 B, −40.7%.** The name-safety costs **1,066,993 B — 3.5%** — and is not worth trading.
+
+### 🔴 §5's first trap was overstated, and the measurement says how
+
+*"`mode: 'production'` also enables `sideEffects` and mangling"* — **`mode: 'production'` was already
+set, on the line above.** Tree-shaking, `usedExports`, `sideEffects` and module concatenation have
+been live in every shipped build all along. The only thing this change adds is terser.
+
+On the surface mangling can actually reach: `constructor.name` has **zero** call sites in the editor
+source; the ~25 `.name ===` comparisons are node-type, component and port names — **data strings out
+of project JSON**, which terser never touches; terser does not mangle property names unless asked.
+
+🔴 **The one genuine hazard is handled by terser itself, and it is READ OFF THE MINIFIED ARTEFACT
+rather than argued.** `compilation.ts` does `eval(fileContent)` on project build scripts, in a scope
+whose locals mangling would otherwise rename. Terser detects the direct `eval` and left that whole
+scope alone — `buildScriptLocation`, `scriptFiles`, `readTasks`, `filePath`, `fileContent`,
+`buildScript` all appear verbatim in `src/editor/index.bundle.js`. The other site,
+`sitemap.ts`'s `new Function(codeText)`, captures no scope at all.
+
+### AC6 — the QA pass, named
+
+Driven headlessly against the **packaged minified** build, console errors and uncaught exceptions
+recorded throughout (`scratchpad/qa-drive.js`):
+
+| step | reading |
+|---|---|
+| launcher renders | 1 project card, hit-tested before the press |
+| project opened by a real click | editor up, **13 canvas nodes**, 0 animations |
+| property editor / side panels | **10 panels, 34 buttons, 2 inputs** |
+| `keep_classnames` / `keep_fnames` live | a named class and a named function both still report their names |
+| detached viewer window (`viewer-detach`) | **`viewer-frame`, the SECOND minified bundle**: 24 visible boxes, its webview present, **0 console errors, 0 exceptions** |
+| live preview webview | real computed output — *"Both stamps fall on the same working day"*, *"The launch date has passed"* |
+| both renderers | 🔴 **0 uncaught exceptions** |
+
+⚠️ **What the QA could NOT reach:** an actual deploy/export run, and a Logic Builder session. Both
+are behind flows that need a backend or a node with a saved workspace. The `eval` path they exercise
+is the one proved above by reading the artefact, which is the stronger evidence anyway.
+
+⚠️ **Two consequences of enabling minification, both handled.** Terser writes a
+`*.bundle.js.LICENSE.txt` sidecar per bundle — gitignored, covered by
+`scripts/check-build-artefacts.js` (green), and **shipped**, because shipping the attribution is
+right. And the renderer build goes **58–73 s → 113 s**; watch the first CI run, since the macOS
+runners are the ones that OOMed at 2048 MB (`webpackHeapCeiling.ts`).
+
+## 9. ⚠️ One pre-existing defect the QA drive found — NOT minification
+
+**The node-graph canvas icons have never shipped.** `CanvasIcons.ts` `require`s five SVGs through
+`file-loader`, which emits them as hashed files into the **package root**; `build.files` ships
+`"*.js"` from there but nothing else, so all five fail to load in every packaged build — five
+`Failed to load … icon` console errors, and the home / component / AI-assistant / warning glyphs
+simply are not painted.
+
+🔴 **Proved pre-existing for free, against a SHIPPED artefact rather than a rebuild:**
+`/Applications/NodeGX.app`'s asar carries the **identical** 56 SVGs and the same **zero** hashed
+file-loader assets as ours. Minification cannot cause this and did not.
+
+⚠️ **`"*.svg"` in `build.files` is probably NOT the whole fix** — the bundle references the assets by
+bare filename while the HTML lives at `src/editor/index.html`, so this is a `publicPath` question as
+well as a packaging one. **Not attempted here**; it is not FLD-017's and guessing at it would be
+worse than filing it. 325 files / 375,288 B.
+
+## 10. Housekeeping this session did, and one environment trap
 
 ⚠️ The four stray macOS duplicate directories under `src/external/` (§5's third trap) were removed
 before any measurement was taken — they went to the session scratchpad, which is ephemeral, so

@@ -10,7 +10,7 @@ loose work attached to this phase and none of it is FLD work.
 
 ## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 11)
 
-Seventeen task files, each grepped for its own marker. **Eight built, THREE partly built, six never
+Seventeen task files, each grepped for its own marker. **NINE built, two partly built, six never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
@@ -55,14 +55,13 @@ needs **P13**. Do not start either without the ruling.
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
 | FLD-015 | Charts that export | #39 | ⬜ never built | **R2**, 🔴 **P9 collision** |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
-| FLD-017 | The release stops shipping what it never runs | #42 | 🟡 **PARTLY** `07f6a7e74`, −85.4 MB + idle 2.42% → 0.14% · ✅ **replied, STAYS OPEN** | 🔴 **R5** for the rest |
+| FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
-🔴 **THREE tasks are `🟡 PARTLY BUILT` and NONE is done.** FLD-011 is missing parallelise-by-tab
+🔴 **TWO tasks are `🟡 PARTLY BUILT` and NEITHER is done.** FLD-011 is missing parallelise-by-tab
 (AC3, AC6). FLD-016 has all four fixes in and AC2/AC4/AC5 measured, but **AC1 and AC3 cannot be
-measured on any machine we have** — see §8. FLD-017 has the size fix, the idle fix and the
-multicast gate in, and **its whole remainder is minification, which is R5**.
+measured on any machine we have** — see §8.
 
-## 2. What session 11 built — FLD-017, `07f6a7e74`
+## 2. What session 11 built — FLD-017, `07f6a7e74` + `aedc51f64`
 
 **#42 reported a 271 MB archive and a 4%-of-a-core idle launcher. Both were real. Neither cause was
 where the issue — or the task's own §2 — said it was.**
@@ -95,35 +94,49 @@ re-`require` in the packaged renderer is **4 ms**. ⚠️ **AC4 is vacuous, not 
 poll **does not run on the welcome screen at all** and, with a project open, is 8 samples of 112,752
 (**0.007%**) in a 30 s V8 profile — the renderer's JS is **99.78% idle** there.
 
+🔴 **R5 was answered mid-session (Richard: in scope for 0.2.3, with `keep_classnames`/`keep_fnames`)
+and minification shipped `aedc51f64`, so FLD-017 is 🟢 and #42 is CLOSED.** `app.asar` the whole day:
+**283,432,139 → 198,017,608 → 168,143,884 B — −40.7%.**
+🔴 **The QA burden was overstated and the measurement says how.** `mode: 'production'` was **already
+set**, so tree-shaking and `sideEffects` were live in every shipped build and only terser is new;
+`constructor.name` has **zero** call sites; the ~25 `.name ===` hits are **data strings from project
+JSON**. The one real hazard — `eval(fileContent)` in `compilation.ts` — is handled by terser itself,
+**read off the minified artefact**: that whole scope is unmangled. AC6's QA pass was driven headlessly
+against the packaged build (launcher → project → panels → the detached `viewer-frame` window → the
+live preview): **0 uncaught exceptions in either renderer**.
+⚠️ ~1 MB is the cost of `keep_*`; full mangling was not worth it.
+
 Gates: `test:main` **448 / 7,372, exit 0**; `typecheck:editor` 0; `typecheck:core-ui` **45 errors,
 the identical set at HEAD** (proved with `git show HEAD:` over the changed file, md5 both ways).
 New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two reverted arms run**.
 
 ## 3. The next task to build
 
-🔴 **There is no wholly ungated FLD task left.** FLD-017 was the last one, and it is built except
-for the half R5 decides. Ranked:
+🔴 **R5 was answered mid-session and FLD-017 is CLOSED, so the ungated pile is back to one item.**
+Ranked:
 
-1. **FLD-011's remaining half** — parallelise by tab. The only remaining work that needs **no
-   ruling at all**. ⚠️ Weaker case than the task file assumed; the settle budget already took the
-   corpus 205s → 55s. AC3's shared `consoleErrors` array is the trap.
+1. **FLD-011's remaining half** — parallelise by tab. The only remaining work behind **no ruling at
+   all**. ⚠️ Weaker case than the task file assumed; the settle budget already took the corpus
+   205s → 55s. AC3's shared `consoleErrors` array is the trap.
 2. **FLD-010** (#41) — unblocked, and **R6 can reasonably be answered *no*** (in public, on #41).
    Ask before building a lock; the tool itself does not need one.
 3. **FLD-003** (#22) — unblocked by FLD-002 but still gated on **R3** and FLD-004.
 
-🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
-FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**), FLD-017's
-remainder (**R5**). **FLD-016 needs a Linux box, not a ruling** — see §8.
+⚠️ **Register row P32 is small, user-visible and unowned**: the node-graph canvas icons have never
+shipped in any packaged release. Found by the R5 QA drive, proved pre-existing against
+`/Applications/NodeGX.app`. Not FLD-017's; somebody should take it.
 
-⚠️ **R5 is now the cheapest ruling with the most behind it that is purely a decision**: one line in
-`webpack.renderer.production.js`, worth roughly another **35 MB**, and the only thing standing
-between FLD-017 and 🟢.
+🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
+FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**).
+**FLD-016 needs a Linux box, not a ruling** — see §8.
 
 ⚠️ **But read §6 first and decide honestly whether a red CI outranks all of these.** It is not FLD
 work and it is not this phase's, and it is the reason a month of drift went unseen. Session 11 did
-not touch it.
+not touch it — and it now has **one more reason to be read**: minification takes the renderer build
+from 58–73 s to 113 s, and the macOS runners are the ones that OOMed at 2048 MB
+(`scripts/webpackHeapCeiling.ts`). **Watch the first CI run after `aedc51f64`.**
 
-## 4. 🔴 The reply gate — 20 sent, 4 owed
+## 4. 🔴 The reply gate — 20 sent, 4 owed, ELEVEN closed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -143,15 +156,17 @@ done
 **Re-derived from GitHub at the end of session 11, with the loop above:**
 
 **Sent (20):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #27 #29 #30 #32 #33 #34 #37 #40 #41 **#42**.
-**Closed (10):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37.
+**Closed (11):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37 **#42**.
 
 **Owed (4): #26 #35 #39 #43.** Every one is behind a ruling: #26 = FLD-004 (**R4**),
 #35 = FLD-005 (**P13**), #39 = FLD-015 (**R2** + **P9**), #43 = FLD-014 (**P25**). 🔴 **There are no
 replies left that a build alone can unlock** — from here the count moves only when a ruling does.
 
-🔴 **TEN issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #40, #41,
-#42.** Most are the same shape — *the issue asked for two things, one is built, closing it would
-close the other*. Say which half is which, in the reply. #42's open half is **minification (R5)**.
+🔴 **NINE issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #40, #41.**
+All the same shape — *the issue asked for two things, one is built, closing it would close the
+other*. Say which half is which, in the reply. ✅ **#42 stopped being one of them the moment R5 was
+answered** — that is the pattern to copy: the open half of a two-half issue is usually a ruling, and
+answering the ruling closes the issue.
 
 ⚠️ Do not count with `grep replied` — the table spells them **SENT**, and that grep undercounts.
 
@@ -234,20 +249,21 @@ work made it stale.
 - 🔴 `npx jest tests/toolDisclosure.test.ts` in `packages/noodl-mcp` prints the margin on a
   **passing** run. **8,275 of 8,280 — 5 tokens.** Check it BEFORE adding to the MCP surface. P25.
 
-## 7. 🔴 Rulings — one down, four still gating
+## 7. 🔴 Rulings — TWO down, three still gating
 
 ✅ **R1 ANSWERED: 0.2.3, not split.** What is *published* is **0.2.2** (2026-09-07) — re-derive per
 issue with `gh release list`.
 
-Still open: **R2** charts as a kit or core nodes · **R3** the Advanced Columns prefab · **R4** does
-the units-port fix ship in a patch · **R5** is minification in scope · **R6** does FLD-010 include
-the lock (answered *"probably not"* in public on #41 — confirm). Full wording in
-[README.md](./README.md) §2.
+✅ **R5 ANSWERED 2026-09-10 (s11): minification IS in scope for 0.2.3**, with
+`keep_classnames`/`keep_fnames`. Shipped `aedc51f64`; FLD-017 🟢; #42 closed.
 
-🔴 **R4 and P13 remain the phase's critical path — and after session 11, EVERY remaining FLD task
-is behind a ruling, a collision or a Linux box except FLD-011's second half.** R5 is the cheapest
-one to ask for and it is now worth a concrete number: **~35 MB, one line, and a full editor QA
-pass**, and it is the only thing between FLD-017 and 🟢.
+Still open: **R2** charts as a kit or core nodes · **R3** the Advanced Columns prefab · **R4** does
+the units-port fix ship in a patch · **R6** does FLD-010 include the lock (answered
+*"probably not"* in public on #41 — confirm). Full wording in [README.md](./README.md) §2.
+
+🔴 **R4 and P13 are now the phase's whole critical path.** Every remaining FLD task is behind a
+ruling, a collision or a Linux box except FLD-011's second half. **R4 has the most behind it:** it
+gates FLD-004, which in turn gates FLD-003, and it owes #26 a reply.
 
 ## 8. 🔴 Three things for Richard
 
@@ -262,13 +278,12 @@ and it is waiting on them.
 baseline silently is the one thing it exists to stop — so somebody has to either fund the burn-down
 or look at the raise. Per-package floors is the shape proposed to @SgtSpork on #13.
 
-**(c) R5 — minification — is now the single most valuable ruling that costs nothing to make.**
-FLD-017 took 85 MB off the archive and it is the only ungated size item that existed. Minification
-is worth roughly another **35 MB** on a 199 MB archive, it is one line
-(`optimization: { minimize: false }` in `webpack.renderer.production.js`, never touched or justified
-since the fork), and the risk is entirely in the QA: this codebase has legacy prototype code and
-dynamic `require` in its plugin paths, which is what mangling breaks. **Yes/no, and if yes who runs
-the QA pass.** #42 is being held open for it.
+**(c) ✅ R5 ANSWERED and SHIPPED — nothing owed, but read this before 0.2.3 cuts.** `app.asar` is
+**168,143,884 B, down 40.7% from this morning**. Two consequences to know about: the renderer build
+goes **58–73 s → 113 s** (watch the first CI run — the macOS runners are the ones that OOMed), and
+**a minified bundle with no shipped map is a stack trace nobody can read**, so
+`index.bundle.js.map` should be attached to the 0.2.3 release as an asset. The maps are still
+generated; they just do not go in the archive.
 
 ⚠️ `brew install rpm` remains installed on this machine from session 9. Reversible with
 `brew uninstall rpm`.
@@ -295,4 +310,4 @@ The phase closes when the issues are each **fixed and closed, or answered on the
 measurement that changed our mind**. Read the count off §5 of the register, not off README §6's
 "fifteen".
 
-**Twenty sent, four to go — and all four are behind a RULING, not a build.**
+**Twenty sent, four to go, eleven closed — and all four remaining are behind a RULING, not a build.**

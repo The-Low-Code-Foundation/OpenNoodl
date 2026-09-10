@@ -44,7 +44,7 @@ worse than an expensive right one.
 | R2 | **Charts: a kit, or core nodes?** (FLD-015) | The kit route exports **today** and is days; core nodes are weeks and duplicate arc maths across runtime and emitter. But a kit is not in the picker by default, so "there is no chart primitive" stays true for anyone who does not install it. Product call, not engineering. |
 | R3 | **The Advanced Columns prefab (FLD-003) — build it, or add ports?** | Richard proposed the prefab himself and argued against "a hundred new fields". Confirm before anyone authors library content. |
 | R4 | **Does FLD-004 ship in a patch release?** | It switches on a value coercion that has been dead for every dynamically registered units port **since the initial commit**. Mostly it makes wrong things right. "Mostly" is the problem. |
-| R5 | **Is enabling minification (FLD-017) in scope, or deferred?** | It is one line and −35 MB, and it needs a full QA pass this phase may not want to own. The −86 MB sourcemap fix does not. |
+| R5 | ✅ **ANSWERED 2026-09-10 (s11) — IN SCOPE for 0.2.3, with `keep_classnames`/`keep_fnames`.** Richard. Shipped `aedc51f64`. The −35 MB was an estimate; measured, the two renderer bundles go **55,600,724 → 27,036,061 B** and `app.asar` **198,017,608 → 168,143,884 B**. 🔴 The QA burden was overstated: `mode: 'production'` was already set, so tree-shaking and `sideEffects` were live all along and only terser is new; `constructor.name` has **zero** call sites, and terser leaves the `eval(fileContent)` scope in `compilation.ts` unmangled — read off the artefact. QA driven headlessly: **0 uncaught exceptions in either renderer** | — |
 | R6 | **Does FLD-010 include the advisory lock, or only `session_status`?** | The measured answer is that the lock is largely unnecessary once FLD-009 lands — the editor already refuses to clobber. Confirm before building a locking protocol. |
 
 🔴 **DO NOT SCOPE BY TIME** — standing rule from phase 77. Dependency order only. No estimates.
@@ -135,7 +135,7 @@ The issues were a report, not a diagnosis. This is what challenging them against
 | FLD-014 | **The MCP surface stops costing a round trip** — four papercuts, and the round-trip bug under them | [#43](https://github.com/The-Low-Code-Foundation/NodeGX/issues/43) | — |
 | FLD-015 | **Charts that export** — as a kit, if R2 agrees | [#39](https://github.com/The-Low-Code-Foundation/NodeGX/issues/39) | **R2** |
 | FLD-016 | **The Linux install works on a current distribution** — FUSE, the sandbox flag, the display abort, RPM | [#29](https://github.com/The-Low-Code-Foundation/NodeGX/issues/29) | — |
-| FLD-017 | **The release stops shipping what it never runs** — maps, the Blockly edge, the two idle timers | [#42](https://github.com/The-Low-Code-Foundation/NodeGX/issues/42) | — (**R5** for minification only) |
+| FLD-017 | 🟢 **BUILT** (`07f6a7e74` + `aedc51f64`) — **`app.asar` 283,432,139 → 168,143,884 B, −40.7%**, and idle CPU 2.42% → 0.14% of a core | [#42](https://github.com/The-Low-Code-Foundation/NodeGX/issues/42) | R5 ✅ **answered** |
 
 ## 6. The end condition
 
