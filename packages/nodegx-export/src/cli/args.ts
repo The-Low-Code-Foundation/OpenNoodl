@@ -38,6 +38,20 @@ export type ParsedArgs =
       host: string | null;
       /** `null` mints one. A caller supplies it so a pipeline can know it before the server runs. */
       token: string | null;
+    }
+  | {
+      kind: 'render';
+      projectDir: string;
+      /** `null` grades without keeping anything — a CI gate that wants no artefacts. */
+      outDir: string | null;
+      /**
+       * Passed to the harness verbatim, deliberately. The vocabulary (`desktop,phone`,
+       * `1280x900`) belongs to `parseViewports` in the harness, and restating it here would be a
+       * second copy of a list that already has one reader — with the CLI's copy going stale the
+       * first time a viewport is named.
+       */
+      viewports: string | null;
+      scale: number | null;
     };
 
 const FLAGS = new Set(['--dry-run', '--preflight', '--force', '--help', '-h', '--version', '-v']);
@@ -52,6 +66,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
     return { kind: 'usage', problem: `\`${command}\` is a flag, not a command.` };
   }
   if (command === 'serve') return parseServe(rest);
+  if (command === 'render') return parseRender(rest);
   if (command !== 'export') {
     return { kind: 'usage', problem: `There is no \`nodegx ${command}\` command.` };
   }
@@ -154,11 +169,61 @@ function parseServe(rest: readonly string[]): ParsedArgs {
   return { kind: 'serve', dir: positional[0], port, share, host, token };
 }
 
+/** Options that take a value; a missing one is a usage error rather than a swallowed flag. */
+const RENDER_VALUE_OPTIONS = new Set(['--out-dir', '--viewports', '--scale']);
+
+/**
+ * HLS-007 — `nodegx render <project> [--out-dir dir] [--viewports list] [--scale n]`.
+ *
+ * ⚠️ `--out-dir` is **optional**, and that is a product decision rather than an omission. Without
+ * it the command renders every routed page, grades them and writes nothing — which is exactly the
+ * shape a CI gate wants (*did every page of this app render?*) and is the cheapest way to ask,
+ * because the harness is told not to capture at all. With it, the same run keeps the pictures.
+ */
+function parseRender(rest: readonly string[]): ParsedArgs {
+  let outDir: string | null = null;
+  let viewports: string | null = null;
+  let scale: number | null = null;
+  const positional: string[] = [];
+
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i];
+    if (RENDER_VALUE_OPTIONS.has(arg)) {
+      const value = rest[i + 1];
+      // A value that looks like the next option is a *missing* value — see `parseServe`, where
+      // the same read would have minted `--share` as a credential.
+      if (value === undefined || value.startsWith('-')) {
+        return { kind: 'usage', problem: `\`${arg}\` needs a value.` };
+      }
+      i += 1;
+      if (arg === '--out-dir') {
+        outDir = value;
+      } else if (arg === '--viewports') {
+        viewports = value;
+      } else {
+        scale = Number(value);
+        if (!Number.isFinite(scale) || scale <= 0) {
+          return { kind: 'usage', problem: `\`--scale ${value}\` is not a scale factor.` };
+        }
+      }
+      continue;
+    }
+    if (arg.startsWith('-')) return { kind: 'usage', problem: `Unknown option: ${arg}.` };
+    positional.push(arg);
+  }
+
+  if (positional.length === 0) return { kind: 'usage', problem: 'No project folder given.' };
+  if (positional.length > 1) return { kind: 'usage', problem: `Too many folders: ${positional.join(', ')}.` };
+
+  return { kind: 'render', projectDir: positional[0], outDir, viewports, scale };
+}
+
 export const USAGE = `nodegx — the NodeGX command line
 
   nodegx export <project> <output>   Export a project as a React app
   nodegx export --dry-run <project>  Print what the export would produce, and write nothing
   nodegx serve <folder>              Serve a built site over HTTP, on this machine only
+  nodegx render <project>            Render every routed page and say which ones did not
 
 Options
   --dry-run, --preflight   Print the pre-flight summary and exit without writing anything.
@@ -171,6 +236,11 @@ Options
   --host <addr>            serve: the address to bind when sharing. Implies --share.
   --token <t>              serve: use this token instead of minting one, so a pipeline can know
                            it in advance.
+  --out-dir <dir>          render: keep the images, one per page per viewport, as
+                           <page>-<viewport>.png. Without it nothing is written and nothing is
+                           captured — the run still grades every page.
+  --viewports <list>       render: "desktop,phone" or "1280x900,390x844" (default desktop,phone).
+  --scale <n>              render: screenshot scale (default 0.5).
   --help, -h               This.
   --version, -v            The exporter version.
 
@@ -182,8 +252,21 @@ Exit codes
   4  --dry-run: something will not translate
   5  a write failed part-way
   6  serve: the folder is not a built site, or the port could not be bound
+  7  render: a routed page did not render — it is named on stderr
+  8  render: this installation has no render harness (see below)
 
 ⚠️ \`nodegx serve\` listens on 127.0.0.1 unless you pass --share or --host. That is a decision, not
 a default that something else can change: nothing but those two flags reaches another interface.
+
+⚠️ \`nodegx render\` needs the NodeGX render harness — a browser and the viewer bundle — which is
+NOT part of this package. It works from a NodeGX checkout, or set NODEGX_RENDER_CLI to one. Every
+other command works without it.
+
+⚠️ \`nodegx render\` photographs URLS, not components. A route that redirects — an admin page that
+sends a logged-out visitor to a login page — is photographed as what that URL renders, which is the
+login page. It is a true picture of the route and not of the component you named.
+
+⚠️ \`nodegx render\` proves pixels, not reachability. It clicks nothing, so a page whose only button
+sits under an invisible overlay photographs perfectly and exits 0.
 
 ⚠️ This reads the project from disk. If the editor has it open with unsaved changes, save first.`;

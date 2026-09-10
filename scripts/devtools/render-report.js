@@ -1484,6 +1484,11 @@ async function withRenderedPage(options, fn) {
  * @param {string} options.projectDir           v2 project directory.
  * @param {Array}  [options.viewports]          `[{name, width, height, mobile}]`.
  * @param {'full'|'viewport'|'none'} [options.screenshot='full']
+ * @param {'start'|'all'} [options.screenshotPages='start'] Which pages to photograph. `start` is
+ *   the historical behaviour and stays the default **on purpose**: `render_report` returns its
+ *   screenshots to a model as image content, and turning this on by default would hand an agent
+ *   ten pictures where it asked for two, for every project with five pages. HLS-007's `--out-dir`
+ *   is the caller that wants `all`, and it writes them to disk rather than into a context window.
  * @param {number} [options.deviceScaleFactor=0.5]  Screenshot scale — 0.5 keeps a full page around 500KB.
  * @param {number} [options.backendPort]        Backend to proxy `/__backend` to, if the project has one.
  * @param {boolean}[options.editorTokens=false] Mirror a running editor's tokens (see render-from-disk.js).
@@ -1495,13 +1500,18 @@ async function withRenderedPage(options, fn) {
  *   AC1/AC3) — `quiz`, `/quiz`, `#quiz` or the component name; `/` is the start page. A path no
  *   router registers is an **actionable throw**, never an empty report. Implies no sweep: the
  *   caller asked for one page and paying ~4.3s each for the rest is not what they asked.
- * @returns {Promise<{report: object, screenshots: Array<{name: string, mimeType: string, base64: string}>}>}
+ * @returns {Promise<{report: object, screenshots: Array<{name: string, page: string, isStart: boolean, mimeType: string, base64: string}>}>}
+ *   `name` is the viewport; `page` is the component the picture is of; `subject` marks the page
+ *   this report is *about* (the start page, or the `--page` one). With the default
+ *   `screenshotPages: 'start'` every entry has `subject: true`, which is why `name` alone was
+ *   enough to key a filename for two years and is not any more.
  */
 async function renderReport(options) {
   const {
     projectDir,
     viewports = DEFAULT_VIEWPORTS,
     screenshot = 'full',
+    screenshotPages = 'start',
     deviceScaleFactor = 0.5,
     backendPort,
     editorTokens = false,
@@ -1565,9 +1575,55 @@ async function renderReport(options) {
     const focusedOffStart = Boolean(focus && !focus.isStart);
     if (focusedOffStart) await page.navigate(focus.url);
 
-    const expression = measureExpression(placeholders, probesFor(subjectComponent));
     const measured = {};
     const screenshots = [];
+
+    /**
+     * One PNG, of whatever is on screen now.
+     *
+     * HLS-007 — extracted so the routed-page sweep below captures through the
+     * *same* call the start page does. Two capture sites with the same options
+     * spelled twice is how the start page ends up with `captureBeyondViewport`
+     * and page four ends up with a 900px crop of a 3,000px page, and neither
+     * picture would look wrong on its own.
+     *
+     * 🔴 `name` stays the viewport name and nothing else, because that is what
+     * `measure-from-disk.js --out` and `render_report`'s `--inline-screenshots`
+     * have always read. `page` is additive: a caller that does not know about
+     * it keeps the behaviour it had, and a caller that asks for every page
+     * needs it to name the file.
+     *
+     * ⚠️ `subject` is NOT `isStart`, and the difference is `--page`. The subject
+     * is whichever page this report is *about* — the start page normally, the
+     * focused one under `--page quiz` — and it is the one `--out` has always
+     * written. Calling the field `isStart` would have made it **false** for a
+     * focused page and silently stopped `--out --page quiz` writing anything,
+     * or **true** for a page that is not the start page. Neither is a thing to
+     * be wrong about in a field a filename is keyed on.
+     */
+    const capture = async (vp, raw, component, subject) => {
+      const shot = await page.client.send('Page.captureScreenshot', {
+        format: 'png',
+        captureBeyondViewport: screenshot === 'full',
+        optimizeForSpeed: true,
+        ...(screenshot === 'full'
+          ? {
+              clip: {
+                x: 0,
+                y: 0,
+                width: vp.width,
+                // Chrome refuses beyond 16384px; a page taller than that is
+                // already the finding.
+                height: Math.min(raw.pageHeight, 16384),
+                scale: deviceScaleFactor
+              }
+            }
+          : {})
+      });
+      return { name: vp.name, page: component, subject, mimeType: 'image/png', base64: shot.data };
+    };
+
+    const expression = measureExpression(placeholders, probesFor(subjectComponent));
 
     for (const vp of viewports) {
       // Everything logged from here to the read belongs to this viewport; for
@@ -1583,25 +1639,7 @@ async function renderReport(options) {
       };
 
       if (screenshot !== 'none') {
-        const shot = await page.client.send('Page.captureScreenshot', {
-          format: 'png',
-          captureBeyondViewport: screenshot === 'full',
-          optimizeForSpeed: true,
-          ...(screenshot === 'full'
-            ? {
-                clip: {
-                  x: 0,
-                  y: 0,
-                  width: vp.width,
-                  // Chrome refuses beyond 16384px; a page taller than that is
-                  // already the finding.
-                  height: Math.min(raw.pageHeight, 16384),
-                  scale: deviceScaleFactor
-                }
-              }
-            : {})
-        });
-        screenshots.push({ name: vp.name, mimeType: 'image/png', base64: shot.data });
+        screenshots.push(await capture(vp, raw, subjectComponent, true));
       }
     }
 
@@ -1677,6 +1715,10 @@ async function renderReport(options) {
             ...raw,
             consoleErrors: page.consoleErrors.slice(loggedBefore)
           };
+          // HLS-007 / C40 — a picture of page four, which nothing produced before.
+          if (screenshot !== 'none' && screenshotPages === 'all') {
+            screenshots.push(await capture(vp, raw, p.component, false));
+          }
         }
 
         // No `blankDiagnosis` for these: that walk is a start-page walk and every

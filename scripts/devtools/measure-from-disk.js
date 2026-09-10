@@ -8,6 +8,11 @@
  *   --json                   the full report as JSON on stdout, nothing else
  *   --inline-screenshots     with --json, include the PNGs as base64 in it
  *   --out <prefix>           write <prefix>-<viewport>.png (default: no files)
+ *   --out-dir <dir>          HLS-007 — write ONE image PER PAGE per viewport into <dir>, as
+ *                            <page-slug>-<viewport>.png. Implies photographing every routed page,
+ *                            which `--out` never did: `--out` wrote the start page under a name
+ *                            keyed only by viewport, so five pages would have overwritten each
+ *                            other twice. Both are accepted together; they write different files.
  *   --viewports <list>       "desktop,phone" or "1280x900,390x844"
  *   --screenshot <mode>      full | viewport | none        (default: full)
  *   --scale <n>              screenshot scale              (default: 0.5)
@@ -26,10 +31,11 @@
  * assumed is.
  */
 const fs = require('fs');
+const path = require('path');
 const { renderReport, parseViewports } = require('./render-report');
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['--out', '--viewports', '--screenshot', '--scale', '--backend-port', '--page']);
+const VALUE_FLAGS = new Set(['--out', '--out-dir', '--viewports', '--screenshot', '--scale', '--backend-port', '--page']);
 const flag = (name, fallback) => {
   const i = argv.indexOf(name);
   return i === -1 ? fallback : argv[i + 1];
@@ -46,6 +52,24 @@ function viewportsOrExit(spec) {
     console.error(e.message);
     process.exit(2);
   }
+}
+
+/**
+ * A component's legacy name as a filename stem — `/Pages/Thank You` → `pages-thank-you`.
+ *
+ * ⚠️ Two components CAN slug the same (`/Pages/Sign-In` and `/Pages/Sign In`), and a silent
+ * overwrite would hand a pipeline four images where it counted five and no way to tell. The
+ * caller de-duplicates against what it has already written rather than trusting this to be
+ * injective, which it is not and cannot cheaply be made.
+ */
+function pageSlug(component) {
+  const slug = String(component)
+    .replace(/^\/+/, '')
+    .replace(/__page__/g, 'page')
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase();
+  return slug || 'page';
 }
 
 function printHuman(report, files) {
@@ -79,14 +103,21 @@ function printHuman(report, files) {
 
 async function main() {
   if (!projectDir) {
-    console.error('usage: measure-from-disk.js <project-dir> [--json] [--out prefix] [--viewports desktop,phone] [--page quiz]');
+    console.error(
+      'usage: measure-from-disk.js <project-dir> [--json] [--out prefix] [--out-dir dir] [--viewports desktop,phone] [--page quiz]'
+    );
     process.exit(2);
   }
 
+  const outDir = flag('--out-dir');
   const { report, screenshots } = await renderReport({
     projectDir,
     viewports: viewportsOrExit(flag('--viewports')),
     screenshot: flag('--screenshot', 'full'),
+    // 🔴 The sweep is what makes `--out-dir` mean "every page", and it is off by default in
+    // `renderReport` so that `render_report` keeps costing what it costs. Asking for the images
+    // is the act that turns it on; nothing else in this script does.
+    screenshotPages: outDir ? 'all' : 'start',
     deviceScaleFactor: Number(flag('--scale', 0.5)),
     backendPort: flag('--backend-port') ? Number(flag('--backend-port')) : undefined,
     editorTokens: argv.includes('--editor-tokens'),
@@ -96,10 +127,37 @@ async function main() {
   const out = flag('--out');
   const files = [];
   if (out) {
-    for (const shot of screenshots) {
+    // Unchanged, and deliberately still the START page only: `--out` names a prefix, one file per
+    // viewport, and every caller that has ever passed it expects exactly that many files.
+    for (const shot of screenshots.filter((shot) => shot.subject !== false)) {
       const file = `${out}-${shot.name}.png`;
       fs.writeFileSync(file, Buffer.from(shot.base64, 'base64'));
       report.viewports[shot.name].screenshot = file;
+      files.push(file);
+    }
+  }
+
+  if (outDir) {
+    fs.mkdirSync(outDir, { recursive: true });
+    const pageByComponent = new Map((report.pages || []).map((pg) => [pg.component, pg]));
+    const taken = new Set();
+    for (const shot of screenshots) {
+      let stem = `${pageSlug(shot.page)}-${shot.name}`;
+      // See `pageSlug`: a collision loses an image, and a pipeline counting images would read the
+      // loss as a page that was never rendered. Suffixing keeps the count honest and says so.
+      if (taken.has(stem)) {
+        let n = 2;
+        while (taken.has(`${stem}-${n}`)) n += 1;
+        stem = `${stem}-${n}`;
+      }
+      taken.add(stem);
+      const file = path.join(outDir, `${stem}.png`);
+      fs.writeFileSync(file, Buffer.from(shot.base64, 'base64'));
+      // Recorded ON THE PAGE ROW, which is what lets a caller assert "one image per measured page
+      // per viewport" against the router's list rather than against a count of files it wrote.
+      const row = pageByComponent.get(shot.page);
+      if (row && row.viewports && row.viewports[shot.name]) row.viewports[shot.name].screenshot = file;
+      if (shot.subject && report.viewports[shot.name]) report.viewports[shot.name].screenshot = file;
       files.push(file);
     }
   }

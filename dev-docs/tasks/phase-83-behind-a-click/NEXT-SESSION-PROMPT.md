@@ -1,28 +1,27 @@
 # Phase 83 — next session
 
-**Session 11 (2026-09-10) built HLS-008 and drove it.** `export_react` over MCP: an agent that
-authored an app ships it in the same conversation — created a project, authored two pages, exported,
-and `npm install && npm run build` in the output folder exited 0. **4 of 4 ACs.**
-[HLS-008-WHAT-WAS-BUILT.md §1](HLS-008-WHAT-WAS-BUILT.md#1--the-shape-and-the-one-decision-that-made-everything-else-easy)
-is the one to read: **the tool calls `runCli`, so AC2's byte-identity is structural rather than
-asserted** — and the spec is a regression test on the wiring, not the thing keeping it true.
+**Session 12 (2026-09-10) built HLS-007 and drove it.** `nodegx render <project> --out-dir <dir>`:
+every routed page, at every viewport asked for, photographed and graded, with **exit 7** naming a
+page that did not render and **exit 8** the honest refusal a published install gets. **3 of 3 ACs.**
+[HLS-007-WHAT-WAS-BUILT.md §1](HLS-007-WHAT-WAS-BUILT.md#1--the-first-ten-minutes-which-changed-the-task)
+is the one to read.
 
-🔴 **The finding that matters most is C72, and no in-repo gate could have seen it.** `export_react`
-would have shipped **dead in the packaged app**: the exporter reads its node catalog from disk, and
-the in-repo path resolves only *by coincidence of directory depth*. Driving the built bundle from a
-directory with no `packages/` above it is what showed it. **That is the class, not the instance** —
-it is the first thing bundled into `noodl-mcp.cjs` that reads a file at runtime, and the next one
-will be invisible the same way.
+🔴 **The first ten minutes changed the task, and they were the ten minutes the task file asked
+for.** HLS-007's own §2 said *"check whether #40 lands first; if it does, this is a thin wrapper"*.
+It had not landed. `renderReport` **measured all five routed pages of a real project and wrote two
+images** — the UNI-010 §8.2 sweep added the other pages' measurements and never their pictures. So
+`render_report` has been able to say page four has a defect and has never been able to show it.
+✅ **Run the check a task file asks for. This one was the difference between a wrapper and a task.**
+
+🔴 **The finding that matters most is C74, and only a PICTURE could have found it.** Two routed
+pages came back **byte-identical**. The obvious reading — a capture racing its navigation — was
+**excluded by a control**: a fresh browser navigated straight to `/#admin` produced the same md5.
+It is the app's own auth gate, and the report has been filing the login page's numbers under the
+admin page's name since UNI-010 §8.2, in silence. **A picture surfaced in one run what five
+sessions of numbers did not.**
 
 🔴 **Re-derive the board from the task FILES, not from this table.** `ls` the directory and look for
 `*-WHAT-WAS-BUILT.md`; that is the only claim of "built" that costs nothing to check.
-
-🔴 **Do not trust a task file's §2 — but note what happened this time.** Three sessions running
-found §2 wrong, so session 11 re-measured HLS-008's before writing a line: **it was right in every
-clause** (24 tool modules not 23, which changes nothing). ✅ **Keep re-measuring anyway.** The
-budget bought a correct answer in ten minutes, and the two rules it produced were worth more than
-the check: the resident surface was read **before** the placement was chosen (§3), and the *built*
-artefact was driven rather than the checkout (C72).
 
 Read [README.md](README.md) first — **§2 carries rulings, not questions.**
 
@@ -41,12 +40,12 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
 | HLS-010 | The deploy spike | 🟢 **ANSWERED s9, 3/3 ACs** — [what was built](HLS-010-WHAT-WAS-BUILT.md) · [the verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9) |
 | HLS-009 | Something other than a mouse opens a project | 🟢 **BUILT + DRIVEN s10, 4/4 ACs** — [what was built](HLS-009-WHAT-WAS-BUILT.md) |
 | HLS-008 | 🆕 `export_react` over MCP | 🟢 **BUILT + DRIVEN s11, 4/4 ACs** — [what was built](HLS-008-WHAT-WAS-BUILT.md) |
-| HLS-007 | `nodegx render` | ⬜ never built |
+| HLS-007 | 🆕 `nodegx render` | 🟢 **BUILT + DRIVEN s12, 3/3 ACs** — [what was built](HLS-007-WHAT-WAS-BUILT.md) |
 | HLS-015 | `nodegx deploy` — the task HLS-010 produced | ⬜ never built, ⚠️ **gated on R4** |
 | HLS-014 | The second deploy (⚠️ gated on R4 + HLS-010) | ⬜ never built |
 | HLS-011 | The drive | ⬜ never built |
 
-**11 of 15 built. 38 acceptance criteria closed, 2 half-closed.** The ratchet in
+**12 of 15 built. 41 acceptance criteria closed, 2 half-closed.** The ratchet in
 [PHASE-EXECUTION.md §2](../../guidelines/PHASE-EXECUTION.md) is not tripped.
 
 ## 2. 🧭 Waiting on Richard — none of it blocks the next build
@@ -63,27 +62,50 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
    listens on `*:8574`/`*:8575` and hands out its relay token to the LAN. HLS-006 fixed the source;
    **a source fix is not a shipped fix**, and R1 is still unruled.
 
-## 3. The next task: **HLS-007 — `nodegx render`**
+## 3. The next task: **HLS-011 — the drive**, or **HLS-015 if R4 comes back**
 
-The smallest remaining CLI row, and the last one that is not gated on a ruling. ⚠️ **Read register
-row C40 before scoping it**: `render_report` does not write screenshots to disk and renders pages
-serially ([#40](https://github.com/The-Low-Code-Foundation/NodeGX/issues/40)), owned by **NONE**,
-and C40's own disposition says *"HLS-007 checks whether it lands first"*. That check is the first
-ten minutes of the task, not a footnote.
+🔴 **Every command HLS-011 needs now exists.** It was gated on `nodegx render` and is not any more.
+[HLS-011-THE-DRIVE.md](HLS-011-THE-DRIVE.md) is the phase's own end-to-end pass and §6 of the README
+is written against it: *on a machine with no display server, a shell creates a project, authors it
+over MCP, exports it, runs `npm ci && npm run build`, serves it, and the served pages are what the
+editor renders for the same project.* **The last clause is HLS-003's, and it is the one that could
+still be false with every command shipped.**
 
-🔴 **Drive the BUILT artefact, not the checkout.** This is C72's lesson and it is now the phase's
-sharpest one. Anything that reads a file at runtime resolves in a checkout by accident of directory
-depth and is absent in the shipped app; `noodl-editor`'s `extraResources` ships **named files**, not
-directories. The recipe is in [HLS-008 §5](HLS-008-WHAT-WAS-BUILT.md#5--the-drive): copy the bundle
-into a directory with no `packages/` above it and drive it over stdio.
+⚠️ **Two things HLS-007 learned that HLS-011 will need on day one:**
+
+- **`nodegx render` needs a harness this repo has and a published install does not** (§3 of what was
+  built). On a clean machine `nodegx render` exits **8** unless `NODEGX_RENDER_CLI` points at a
+  checkout. If HLS-011's "clean machine" means *installed from npm*, that refusal **is** part of
+  what the drive measures, and the drive should assert it rather than trip over it.
+- **The render harness needs Chrome and the 14MB viewer bundle.** "No display server" is fine —
+  it is headless — but "no Chrome" is not, and `checkPrerequisites` is the thing to call first.
 
 ### The alternatives
 
-- **HLS-011 (the drive)** — the phase's own end-to-end pass. Everything it needs now exists except
-  `nodegx render`.
 - **HLS-015**, *if R4 comes back yes*. 🔴 The biggest remaining row; do not start it on a guess, and
   **C67 blocks its AC2**.
+- **C40's remaining half** — `render_report` itself writing screenshots to disk, and rendering pages
+  in parallel. Still `NONE`. ⚠️ HLS-007 measured the cost and it argues **against** the parallel
+  half: the boot is ~7s and a page-viewport ~2s, so one browser with N navigations beats N browsers
+  on any project small enough to care about. The disk half is a real ask from a real issue.
+- **C74** — a redirected route reported under the name that was asked for. Read the URL back after
+  navigating. Affects `render_report` and every F4 grader, not only the CLI.
 - **The person halves of HLS-006 AC1 and AC4** — five minutes, two devices.
+
+## 3b. What HLS-007 leaves you
+
+- **`nodegx render` is the third command, and the first that spawns something.** The pattern —
+  resolve an external tool, refuse with a code of its own naming everywhere you looked, spawn it,
+  and grade its JSON with a **pure function** — is the one to copy for a fourth.
+- **`renderReport` takes `screenshotPages: 'start' | 'all'`**, defaulting to `'start'` so
+  `render_report` costs exactly what it cost. `measure-from-disk.js --out-dir <dir>` is the only
+  caller that asks for `'all'`. ⚠️ `--out <prefix>` is unchanged and still writes the start page.
+- **`EXIT.render` (7) and `EXIT.harness` (8)** are taken. Nine is next.
+- **[`hls007-drive.ts`](../../../packages/nodegx-export/tests/hls007-drive.ts) — a four-arm drive**,
+  48s, exit 0, each arm with its control. Arm A asserts the image hashes are **DISTINCT**, which is
+  the only check that catches a capture racing its navigation; the mutant that does exactly that
+  fails that check **and nothing else**.
+- **C74 filed** (open, `NONE`). **C40 half closed.**
 
 ## 4. What HLS-008 leaves you
 
@@ -115,7 +137,21 @@ into a directory with no `packages/` above it and drive it over stdio.
   the save debounce. It reads the token off the **running editor's argv**, not the default
   user-data path (C70).
 
-## 6. 🔴 Standing warnings — two are new
+## 6. 🔴 Standing warnings — three are new
+
+- 🔴 **A COUNT AND A PICTURE ARE DIFFERENT INSTRUMENTS, AND THE COUNT HAD BEEN WRONG FOR FIVE
+  SESSIONS.** `render_report` reported `/Pages/Admin` as *"Rendered clean, 2 texts"* while measuring
+  the login page the route redirects to. Nothing in the numbers could show it; two byte-identical
+  PNGs did, in the first run that produced any. ✅ **What made it a finding rather than a bug
+  report about my own code:** a control — a fresh browser, one navigation, nothing measured before
+  it — produced the same md5, which excluded the capture race. C74.
+- 🔴 **RUN THE CHECK A TASK FILE ASKS FOR.** HLS-007 §2 said *"check whether #40 lands first"*. It
+  had not, and the ten minutes was the difference between a thin wrapper and the task. This is the
+  fourth session running to re-measure §2 and the second to find it materially wrong.
+- 🔴 **A SHARED FILE IN SEVERAL COMPILERS IS A SHARED FILE IN SEVERAL SESSIONS' GATE RUNS.** A peer
+  hit two TS2339s in `typecheck:editor-tests` and reported them against HEAD; they were my
+  uncommitted working tree. HLS-008's warning, one turn further out. ✅ **Say what you are editing
+  when you touch a file three packages compile.**
 
 - 🔴 **AN IN-REPO GATE CAN BE BLIND BY ARITHMETIC, NOT BY OVERSIGHT.** C72: the exporter's
   `loadCatalog()` tries `__dirname/node-catalog.json` then `__dirname/../../noodl-types/src/…`.
@@ -164,11 +200,11 @@ into a directory with no `packages/` above it and drive it over stdio.
 
 ## 7. Appendix — the register
 
-[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md). **C72 (closed, HLS-008) and C73 (open, `NONE`) are new.** Still OPEN and owned by `NONE`: **C52**, **C59**, **C60**, **C65**, **C66**,
+[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md). **C74 (open, `NONE`) is new and C40 is half closed, both by HLS-007.** Still OPEN and owned by `NONE`: **C52**, **C59**, **C60**, **C65**, **C66**,
 **C67** (blank app, reports success — **blocks HLS-015 AC2**), plus the community rows C31b, C40,
 C12 and C20 (C20 is R5, awaiting Richard). C68 and C69 are owned by HLS-015.
 
-🔴 **Nothing in the register is the next session's first job. Build HLS-007.** C72 is closed;
+🔴 **Nothing in the register is the next session's first job. Build HLS-011.** C72 is closed;
 **C73 is new and open** (owner NONE) — "an empty placeholder page" is tested structurally, so a page
 somebody wrote is treated as one and the next page created steals `startPage`. It is reported in the
 tool response, which is why it is a row and not a blocker.

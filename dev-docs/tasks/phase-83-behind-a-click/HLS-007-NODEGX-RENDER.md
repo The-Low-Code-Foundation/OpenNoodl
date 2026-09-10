@@ -1,5 +1,18 @@
 # HLS-007 — `nodegx render`
 
+> ✅ **BUILT AND DRIVEN, session 12, 2026-09-10 — 3 of 3 ACs.**
+> [HLS-007-WHAT-WAS-BUILT.md](HLS-007-WHAT-WAS-BUILT.md).
+>
+> 🔴 **§2's "adjacent and worth checking" was the right instruction and its premise was wrong.**
+> #40 had **not** landed, and this was **not** a thin wrapper: `renderReport` measured every routed
+> page and photographed only the start page — 5 pages measured, 2 images written. Half of C40 is
+> closed here because it blocked AC1; the other half (`render_report` writing to disk, and parallel
+> pages) is still open and still owned by `NONE`.
+>
+> ⚠️ **§4's third trap was right about the seam and silent about the one that bit.** A route the
+> app **redirects** is photographed as its destination under the name that was asked for — C74,
+> found by looking at two byte-identical images and excluded as a capture race by a control.
+
 The smallest of the four commands, because the machinery exists: `@nodegx/render-measure` and
 `scripts/devtools/measure-from-disk.js` (`npm run render:report`) already render a project from disk
 and measure it.

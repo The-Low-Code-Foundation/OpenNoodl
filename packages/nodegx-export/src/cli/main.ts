@@ -11,6 +11,7 @@
  */
 import { parseArgs } from './args';
 import { runCli } from './run';
+import { runRender } from './render';
 import { runServe } from './serve';
 
 const argv = process.argv.slice(2);
@@ -25,6 +26,13 @@ const io = {
 const parsed = parseArgs(argv);
 if (parsed.kind === 'serve') {
   runServe(parsed, io).then((code) => {
+    process.exitCode = code;
+  });
+} else if (parsed.kind === 'render') {
+  // HLS-007 — the second async command, and dispatched here for the same reason `serve` is:
+  // `runCli` stays synchronous, which is what keeps every command it owns gradeable as a function
+  // of its arguments. This one waits on a browser it started in another process.
+  runRender(parsed, io).then((code) => {
     process.exitCode = code;
   });
 } else {

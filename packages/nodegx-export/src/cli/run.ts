@@ -144,6 +144,18 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
     return EXIT.serve;
   }
 
+  if (parsed.kind === 'render') {
+    // HLS-007 — the same shape as `serve` above, and added for the same reason: this function is
+    // synchronous and `render` waits on a browser. 🔴 The branch is not decoration. Adding a
+    // command to `parseArgs` without one lets its parse reach the export path below, where
+    // `parsed.projectDir` is a project and `parsed.outDir` is an image directory, and `nodegx
+    // render app --out-dir shots` would have written an exported React app into `shots`. The
+    // compiler caught exactly that when this command was added — the union stopped being total
+    // and `parsed.force` stopped existing — which is why the union is discriminated at all.
+    io.err('`nodegx render` is started by the binary directly, not through runCli.\n');
+    return EXIT.render;
+  }
+
   const projectDir = path.resolve(parsed.projectDir);
   const readable = readableProject(projectDir);
   // 🔴 `=== false`, not `!readable.ok`, and it is not a style choice — the same idiom the

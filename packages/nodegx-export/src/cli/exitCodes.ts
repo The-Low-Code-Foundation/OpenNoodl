@@ -46,7 +46,27 @@ export const EXIT = {
    * *running* problem (a port already in use, most often) rather than a wrong argument, and the
    * two want different retries.
    */
-  serve: 6
+  serve: 6,
+  /**
+   * HLS-007 — `render` only: a routed page did not render. The router registers it and the sweep
+   * has no row for it, or it was reached and came back blank, or its measurement errored, or the
+   * image that was asked for was never written.
+   *
+   * 🔴 Its own code, and not {@link EXIT.refusals}, because the two mean opposite things to a
+   * pipeline. A refusal is *the exporter knows it cannot translate this and said so*; this is
+   * *the app was built, the page is routed, and there is nothing on it* — which nothing upstream
+   * of the browser can see. The harness itself exits 0 whatever it finds (a finding is
+   * `render_report`'s product, not a crash), so a pipeline gating on the harness's status gates on
+   * nothing at all. This code is the whole reason the command exists rather than a shell alias.
+   */
+  render: 7,
+  /**
+   * HLS-007 — `render` only: there is no render harness here. Distinct from every code above
+   * because it is a statement about **this installation**, not about the project or the arguments:
+   * nothing the caller changes about either will fix it, and a pipeline that retries is wasting
+   * its time. See `renderHarness.ts` for why the published package does not carry one.
+   */
+  harness: 8
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];
