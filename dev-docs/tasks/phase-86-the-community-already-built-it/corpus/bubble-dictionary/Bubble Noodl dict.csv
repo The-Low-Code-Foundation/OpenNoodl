@@ -1,0 +1,404 @@
+﻿Id,Public Id,Name,References,Data type,Example,Result,Noodl node,Noodl code,Notes,Created By Id,Created By Name,Creation Date,Modification Date
+fc5db6f0-5b0c-11ef-92e9-251611a1d3f1,96,... is ...,,Any,String 1 is String 2,FALSE,Expression,String1 === String2,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f1-5b0c-11ef-92e9-251611a1d3f1,97,... is not ...,,Any,String1 is not String2,TRUE,Expression,String1 !== String2,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f2-5b0c-11ef-92e9-251611a1d3f1,98,... is empty,,Any,String1 is empty,FALSE,Function / Script,"const doesStringHaveContent = Boolean(Inputs.String1)
+
+if (doesStringHaveContent) { 
+    Outputs.IsNotEmpty()
+} else {
+    Outputs.IsEmpty()
+}
+
+Outputs.CurrentState = doesStringHaveContent","This function outputs both signals and data, to be able to account for multiple scenarios. It can be used to check both for empty and not empty strings.",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f3-5b0c-11ef-92e9-251611a1d3f1,99,... is not empty,,Any,String2 is not empty,TRUE,Function / Script,See above,See above,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f4-5b0c-11ef-92e9-251611a1d3f1,100,:formatted as JSON-safe,,Any,List1 : formatted as JSON-safe,"""pink, blue, purple, red, white, cherry\/deep-red""",Function / Script,"const input = Inputs.InputString || '';
+const escapedString = JSON.stringify(input);
+Outputs.OutputString = `""${escapedString}""`;
+Outputs.Success();","This escapes any JSON unsafe values as Bubble does, then wraps the resulting string in quotations read to send in an API call",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f5-5b0c-11ef-92e9-251611a1d3f1,101,:formatted as JSON-safe,,Date,Date1 : formatted as JSON-safe,2023-07-06T12:43:14.649Z,,,Converts dates from any human readable format to ISO simplified UTC,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f6-5b0c-11ef-92e9-251611a1d3f1,102,is not in,,String,String1 is not in List1,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f7-5b0c-11ef-92e9-251611a1d3f1,103,... contains,,String,String2 contains String1,TRUE,Expression,string1.includes(string2),"Matches the exact substring to the tested string, including case, spaces, etc.",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f8-5b0c-11ef-92e9-251611a1d3f1,104,... doesn't contain,,String,String1 doesn't contain String2,TRUE,Expression,!string1.includes(string2),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6f9-5b0c-11ef-92e9-251611a1d3f1,105,... contains keyword(s),,String,String2 contains keywords String1,TRUE,,,"This operator tests whether some text contains certain words. It takes the argument supplied, breaks it up into component words, removes any 'stop' words (short, common words like 'the' or 'a'), and looks for the resulting word(s). For example, searching for ‘cat hat’, ‘cat in hat’, ‘cat in the hat’, ‘the hat cat’, or ‘hat cat’ would return ‘the cat in the hat’. This does not respect partial words that are not of the same stem, so 'pepp' would not return 'peppers'.",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6fa-5b0c-11ef-92e9-251611a1d3f1,106,... doesn't contain keyword(s),,String,String2 doesn't contain keywords String1,FALSE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6fb-5b0c-11ef-92e9-251611a1d3f1,107,:capitalized words,,String,String2 :capitalized words,"""Hello World""",Function / Script,"const inputString = Inputs.InputString || '';
+if (!inputString) return;
+
+const words = inputString.split(' ');
+const capitalizedWords = words.map(word => {
+  const firstLetter = word.charAt(0).toUpperCase();
+  const restOfWord = word.slice(1);
+  return firstLetter + restOfWord;
+});
+
+const outputString = capitalizedWords.join(' ');
+Outputs.OutputString = outputString;
+Outputs.Success();","You can also use CSS for this, which is probably more preferrable. The Text Style section of all nodes containing text has a property called ""Case""
+
+The code here was suggested by Noodl AI and can be updated if necessary",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6fc-5b0c-11ef-92e9-251611a1d3f1,108,:uppercase,,String,String2 :uppercase,"""HELLO WORLD""",Expression,string2.toUpperCase(),"You can also use CSS for this, which is probably more preferrable. The Text Style section of all nodes containing text has a property called ""Case""",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6fd-5b0c-11ef-92e9-251611a1d3f1,109,:lowercase,,String,String1 :lowercase,"""hello""",Expression,string2.toLowerCase(),"You can also use CSS for this, which is probably more preferrable. The Text Style section of all nodes containing text has a property called ""Case""",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6fe-5b0c-11ef-92e9-251611a1d3f1,110,:append,,String,"String1 :append ""World""","""Hello World""",Other node (specify),"String format node, {string1} World",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db6ff-5b0c-11ef-92e9-251611a1d3f1,111,:formatted as URL encoded,,String,String2 :formatted as URL encoded,"""Hello%20world""",Function / Script,"const string = Inputs.String || '';
+if (!string) return;
+
+Outputs.EncodedString = encodeURIComponent(string);
+Outputs.Success();",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db700-5b0c-11ef-92e9-251611a1d3f1,112,:formatted as MD5 hash,,String,String2 :formatted as MD5 hash,"""3e25960a79dbc69b674cd4ec67a72c62""",,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db701-5b0c-11ef-92e9-251611a1d3f1,113,:formatted as SHA1 Hash,,String,String2 :formatted as SHA1 Hash,"""7b502c3a1f48c8609ae212cdfb639dee39673f5e""",,,This one isn't a native Bubble method but it was very useful for an encryption project I worked on and could be achieved through a plugin,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db702-5b0c-11ef-92e9-251611a1d3f1,114,:trimmed,,String,String2 :trimmed,"""Hello world""",Expression,string2.trim(),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db703-5b0c-11ef-92e9-251611a1d3f1,115,:number of characters,,String,String2 :number of characters,11,Expression,string2.length,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db704-5b0c-11ef-92e9-251611a1d3f1,116,:truncated to,,String,String2 :truncated to 5,"""Hello""",Expression,"string2.slice(0, 5)",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db705-5b0c-11ef-92e9-251611a1d3f1,117,:truncated from end to,,String,String2 :truncated from end to 5,"""world""",Expression,string2.slice(-5),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db706-5b0c-11ef-92e9-251611a1d3f1,118,:converted to number,,String,String3 :convert to number,99,Other node (specify),Number node,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db707-5b0c-11ef-92e9-251611a1d3f1,119,:split by...,,String,"String4 :split by "", ""","[ ""pink"", ""blue"", ""purple"", ""red"", ""white"", ""cherry/deep-red"" ]",Expression,"String4.split("", "")",Note that with the nature of the original string I needed to add a trailing space in the separator string. Otherwise I could have done a find & replace method before applying the split to remove all spaces and just keep the commas,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db708-5b0c-11ef-92e9-251611a1d3f1,120,:find/replace...,,String,"String2 :find/replace ""world"" ""Homer""","""Hello Homer""",Expression,"string2.replace(""world"",""Homer"")","Note that this only replaces the first instance of ""world"" and if the string has multiple occurances we must used .replaceAll",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db709-5b0c-11ef-92e9-251611a1d3f1,121,:extract with Regex,,String,String2 :extract with Regex,"""world""",Function / Script,"const string = Inputs.String2 || '';
+const regex = /\bw\w*/i;
+const match = string.match(regex);
+if (match) {
+  Outputs.allMatches = match;
+  Outputs.FirstWord = match[0];
+  Outputs.Success();
+} else {
+  Outputs.Failure();
+}","I'm adding this as a function, with the help of NoodlAI and ChatGPT, because I think regex can lead to some pretty wild use cases, and this function shows how some of these might be better handled. For example, if there are multiple matches, the function will output an array of results through Outputs.allMatches. If you want to target a certain result in the list, you can use match[0] replacing 0 with whatever number item from the array you want.
+
+For all the regex fun you could ever ask for: https://regexr.com/",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70a-5b0c-11ef-92e9-251611a1d3f1,122,:formatted as ...,,Integer,Int3 :formatted as currency,"""$3.33""",Function / Script,"const amount = Inputs.int1|| 0;
+const formattedAmount = `$${amount.toFixed(2)}`;
+Outputs.FormattedAmount = formattedAmount;
+Outputs.Success();","Making this a function simplifies the Noodl workspace with only one node, but the same could be achieved with an Expression and String Formatter node, see below",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70b-5b0c-11ef-92e9-251611a1d3f1,123,:formatted as ...,,Integer,Int3 :formatted as currency,"""$3.33""",Expression,"Expression node: int1.toFixed(2)
+
+Connected to a String Formatter node: ${formattedNumber}",Uses two simple nodes instead of the 1 slightly more complex Function node above. Could be packaged into a reusable logic element,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70c-5b0c-11ef-92e9-251611a1d3f1,124,< > ≥ ≤ + - / *,,Integer,Int1 * Int2,29997,Expression,int1 * int2,"All basic math operators are the same except ≤ which in Noodl expressions in <=
+
+The big advantage of Noodl over Bubble (at the time of writing) is the ability to create complex math expressions using parentheses, like (int1 * 1000) == (int2 / 3)",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70d-5b0c-11ef-92e9-251611a1d3f1,125,:rounded to,,Integer,Int1 :rounded to 0,3,Expression,int1.toFixed(0),There's also a built in Math method for the Expression node to round to the nearest integer : round(x),,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70e-5b0c-11ef-92e9-251611a1d3f1,126,:floor,,Integer,Int1 :floor,3,Expression,floor(int1),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db70f-5b0c-11ef-92e9-251611a1d3f1,127,:ceiling,,Integer,Int1 :ceiling,4,Expression,ceil(int1),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db710-5b0c-11ef-92e9-251611a1d3f1,128,... ^...,,Integer,Int1 ^ 2,9.999,Expression,int1 ** 2,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db711-5b0c-11ef-92e9-251611a1d3f1,129,<- range ->,,Integer,Int1 <-range-> Int2,"[3.333, 9000]",Function / Script,"function createRange(start, end) {
+  return [start, end];
+}
+
+const start = Inputs.start;
+const end = Inputs.end;
+
+Outputs.range = createRange(start, end);","The Bubble numeric range field is basically an array of two numbers like [3.33, 9000] for int1 and int2. It allows the code to take item 0 and item 1 as the min and max values, then compute whether an integer is within the min and max range, or whether another range min and max exist inside or outside (or both) of the original range.",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db712-5b0c-11ef-92e9-251611a1d3f1,130,:min,,Integer range,IntRange1 :min,1,Function / Script,"const numbers = Inputs.Numbers || [0, 0];
+if (!Array.isArray(numbers) || numbers.length !== 2) {
+  throw new Error('Invalid input: Numbers must be an array of two integers');
+}
+
+const min = Math.min(...numbers);
+Outputs.Minimum = min;
+Outputs.Success();",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db713-5b0c-11ef-92e9-251611a1d3f1,131,:max,,Integer range,IntRange1 :max,20,Function / Script,"const numbers = Inputs.Numbers || [0, 0];
+if (!Array.isArray(numbers) || numbers.length !== 2) {
+  throw new Error('Invalid input: Numbers must be an array of two integers');
+}
+
+const max = Math.max(...numbers);
+Outputs.Maximum = max;
+Outputs.Success();",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db714-5b0c-11ef-92e9-251611a1d3f1,132,:average,,Integer range,IntRange1 :average,10.5,Function / Script,"const inputArray = Inputs.InputArray || [0, 0];
+const num1 = inputArray[0];
+const num2 = inputArray[1];
+
+const average = (num1 + num2) / 2;
+
+Outputs.Average = average;
+Outputs.Success();",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db715-5b0c-11ef-92e9-251611a1d3f1,133,contains range,,Integer range,IntRange1 contains range IntRange2,TRUE,Function / Script,"const range1 = Inputs.Range1 || [];
+const range2 = Inputs.Range2 || [];
+
+if (range1.length !== 2 || range2.length !== 2) {
+  Outputs.Result = false;
+  return;
+}
+
+const [start1, end1] = range1;
+const [start2, end2] = range2;
+
+if (start2 >= start1 && end2 <= end1) {
+  Outputs.Result = true;
+} else {
+  Outputs.Result = false;
+}",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db716-5b0c-11ef-92e9-251611a1d3f1,134,contains point,,Integer range,IntRange1 contains point Int1,TRUE,Function / Script,"const number = Inputs.Number;
+const range = Inputs.Range;
+
+if (number >= range[0] && number <= range[1]) {
+  Outputs.Result = true;
+} else {
+  Outputs.Result = false;
+}",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db717-5b0c-11ef-92e9-251611a1d3f1,135,is contained by,,Integer range,IntRange1 is contained by IntRange2,FALSE,Function / Script,"const firstRange = Inputs.FirstRange || [1, 4];
+const secondRange = Inputs.SecondRange || [2, 3];
+
+const firstStart = firstRange[0];
+const firstEnd = firstRange[1];
+const secondStart = secondRange[0];
+const secondEnd = secondRange[1];
+
+if (firstStart >= secondStart && firstEnd <= secondEnd) {
+  Outputs.Result = true;
+} else {
+  Outputs.Result = false;
+}",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db718-5b0c-11ef-92e9-251611a1d3f1,136,overlaps with,,Integer range,IntRange1 overlaps with IntRange2,TRUE,Function / Script,"const range1 = Inputs.Range1 || [1, 4];
+const range2 = Inputs.Range2 || [3, 6];
+
+if (range1[0] <= range2[1] && range1[1] >= range2[0]) {
+  Outputs.Result = true;
+} else {
+  Outputs.Result = false;
+}",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db719-5b0c-11ef-92e9-251611a1d3f1,137,is greater,,Integer range,,,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71a-5b0c-11ef-92e9-251611a1d3f1,138,is greater (point),,Integer range,,,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71b-5b0c-11ef-92e9-251611a1d3f1,139,is smaller,,Integer range,,,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71c-5b0c-11ef-92e9-251611a1d3f1,140,is smaller (point),,Integer range,,,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71d-5b0c-11ef-92e9-251611a1d3f1,141,Current date & time,,Date,Current date & time,15/08/2024,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71e-5b0c-11ef-92e9-251611a1d3f1,142,formatted as,,Date,Date1 formatted as ddd dS mm-yy HH:MM,Thu 6th 07-23 14:22,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db71f-5b0c-11ef-92e9-251611a1d3f1,143,formatted as JSON safe,,Date,,,,,See top of list,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db720-5b0c-11ef-92e9-251611a1d3f1,144,<-range->,,Date,Date2 <-range-> Date1,,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db721-5b0c-11ef-92e9-251611a1d3f1,145,_+(seconds)/+(minutes)...,,Date,Date1 +(days): 2,08/07/2023 14:22,Function / Script,"let date = Inputs.date;
+
+// Add 2 seconds
+date.setSeconds(date.getSeconds() + 2);
+
+// Add 2 minutes
+date.setMinutes(date.getMinutes() + 2);
+
+// Add 2 hours
+date.setHours(date.getHours() + 2);
+
+// Add 2 days
+date.setDate(date.getDate() + 2);
+
+// Add 2 months
+date.setMonth(date.getMonth() + 2);
+
+// Add 2 years
+date.setFullYear(date.getFullYear() + 2);
+
+Outputs.date = date;
+Outputs.Success()",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db722-5b0c-11ef-92e9-251611a1d3f1,146,change seconds to / change minutes to / ...,,Date,Date1 change minutes to 0,06/07/2023 14:00,Function / Script,"let date = Inputs.date;
+
+Outputs.newDate = date.setMinutes(0)",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db723-5b0c-11ef-92e9-251611a1d3f1,147,>,,Date,Date1 > Date2,TRUE,Expression,date1 > date2,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db724-5b0c-11ef-92e9-251611a1d3f1,148,<,,Date,Date 1 < Date2,FALSE,Expression,date1 < date2,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db725-5b0c-11ef-92e9-251611a1d3f1,149,' -  :formatted as seconds/minutes/...,,Date,Date1 - Date2 :formatted as years,53,Function / Script,"let date1 = Inputs.date1;
+let date2 = Inputs.date2;
+
+let differenceInMilliseconds = date2 - date1;
+
+let differenceInYears = differenceInMilliseconds / (1000 * 60 * 60 * 24 * 365.25);",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db726-5b0c-11ef-92e9-251611a1d3f1,150,"extract (minutes, day, date, month)",,Date,Date1 extract month,7,Function / Script,"let date1 = Inputs.dates;
+
+Outputs.day = date1.getDay();","In Bubble the 'day' parameter was a nightmare, as they started their calendar on a Sunday as day 0, going up to Saturday as day 6. This made detecting the day and determining distances between days a pain. I think a more logical choice would be Monday is day 1 and Sunday is day 7, but this is up for debate",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db727-5b0c-11ef-92e9-251611a1d3f1,151,"rounded down to (second, minute, ...)",,Date,Date1 rounded down to week,03/07/2023 00:00,,,"As above, Bubble used to round down weeks to Sunday. A more logical international choice would be Monday",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db728-5b0c-11ef-92e9-251611a1d3f1,152,"equals rounded down to (second, month, ...)",,Date,Date1 equals rounded down to year Date2,FALSE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db729-5b0c-11ef-92e9-251611a1d3f1,153,<-max->,,Date,Date1 <-max-> Date2,06/07/2023 14:22,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72a-5b0c-11ef-92e9-251611a1d3f1,154,<-min->,,Date,Date 1 <-min-> Date 2,01/01/1970 00:01,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72b-5b0c-11ef-92e9-251611a1d3f1,155,:start,,Date Range,DateRange1 :start,01/01/2023 14:00,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72c-5b0c-11ef-92e9-251611a1d3f1,156,:end,,Date Range,DateRange1 :end,06/01/2023 14:00,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72d-5b0c-11ef-92e9-251611a1d3f1,157,:center,,Date Range,DateRange1 :center,03/01/2023 02:00,,,Takes the centre point relative to the two exact dates by averaging the start and end,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72e-5b0c-11ef-92e9-251611a1d3f1,158,contains range,,Date Range,DateRange1 contains range DateRange2,FALSE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db72f-5b0c-11ef-92e9-251611a1d3f1,159,contains point,,Date Range,DateRange1 contains (point) Date1 ,FALSE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db730-5b0c-11ef-92e9-251611a1d3f1,160,is contained by,,Date Range,DateRange3 is contained by DateRange1,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db731-5b0c-11ef-92e9-251611a1d3f1,161,overlaps with,,Date Range,DateRange1 overlaps with DateRange2,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db732-5b0c-11ef-92e9-251611a1d3f1,162,is after,,Date Range,DateRange2 is after DateRange3,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db733-5b0c-11ef-92e9-251611a1d3f1,163,is after (point),,Date Range,DateRange2 is after (point) Date2,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db734-5b0c-11ef-92e9-251611a1d3f1,164,is before,,Date Range,DateRange 2 is before DateRange3,FALSE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db735-5b0c-11ef-92e9-251611a1d3f1,165,is before (point),,Date Range,DateRange2 is before (point) Date1,TRUE,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db736-5b0c-11ef-92e9-251611a1d3f1,166,:unique elements,,List,List1 merged with List2 : unique elements,"pink, blue, purple, red, white, cherry/deep-red, apples, bananas, blueberries, yellow",Function / Script,"const array1 = Inputs.Array1 || [];
+const array2 = Inputs.Array2 || [];
+
+let result = [];
+
+try {
+  const combinedArray = [...array1, ...array2];
+  const ids = new Set();
+
+  combinedArray.forEach(item => {
+    if (!ids.has(item.id)) { // Check if id has not been seen before
+      ids.add(item.id); // Add id to the set
+      result.push(item); // Add item to the result
+    }
+  });
+
+  Outputs.Result = result;
+  Outputs.Success();
+} catch (error) {
+  Outputs.error = error;
+  Outputs.Failure();
+}",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db737-5b0c-11ef-92e9-251611a1d3f1,167,:count,,List,List1 :count,6,Expression,inputListName.length,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db738-5b0c-11ef-92e9-251611a1d3f1,168,contains,,List,List1 contains apples,FALSE,Expression,list.some(item => item === 'apple'),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db739-5b0c-11ef-92e9-251611a1d3f1,169,contains,,List,"List3 contains { ""name"": ""Frank }",TRUE,Expression,list.some(item => item.name === 'Frank'),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73a-5b0c-11ef-92e9-251611a1d3f1,170,doesn't contain,,List,"List3 doesn't contain { ""name"": ""John"" }",TRUE,Function / Script,"const array = Inputs.List3 || [];
+if (!Array.isArray(array)) throw new Error('Invalid array');
+
+let contains = false;
+
+// Loop through the array and check if any object has 'name' key with value 'John'
+for (let i = 0; i < array.length; i++) {
+  if (array[i].name === 'John') {
+    contains = true;
+    break;
+  }
+}
+
+// If 'John' is not found, output true, else output false
+Outputs.Result = !contains;",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73b-5b0c-11ef-92e9-251611a1d3f1,171,:first item,,List,List1 :first item,pink,Expression,list[0],,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73c-5b0c-11ef-92e9-251611a1d3f1,172,:last item,,List,List1 :last item,cherry/deep red,Function / Script,"const list = Inputs.list;
+
+const lastItemNumber = list.length - 1;
+
+Outputs.lastItem = list[lastItemNumber]",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73d-5b0c-11ef-92e9-251611a1d3f1,173,:random item,,List,List1:random,white,Function / Script,"const list = Inputs.list || [];
+if (list.length === 0) return;
+
+const randomIndex = Math.floor(Math.random() * list.length);
+const randomItem = list[randomIndex];
+
+Outputs.RandomItem = randomItem;
+Outputs.Success();",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73e-5b0c-11ef-92e9-251611a1d3f1,174,:item #,,List,List1 :item #2,blue,Expression,"list.slice(1,2) // Slice out item index 1 (2nd item) up to but not including item index 2 (3rd item)",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db73f-5b0c-11ef-92e9-251611a1d3f1,175,:items until #,,List,List1 :items until 2,"pink, blue",Expression,"list.slice(0,2) // Slice out item index 0 (1st item) up to but not including item index 2 (3rd item)",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db740-5b0c-11ef-92e9-251611a1d3f1,176,:items from #,,List,List1: items from 5,"white, cherry/deep red",Expression,list.slice(4) // Slice out from item index 4 5th item) up to end of list,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db741-5b0c-11ef-92e9-251611a1d3f1,177,contains list,,List,List1 contains list List2,FALSE,Expression,list2.every(val => list1.includes(val)),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db742-5b0c-11ef-92e9-251611a1d3f1,178,:each item's [value],,List,List3 :each item's location,"New York, New York, Boston",Expression,list.map(obj => obj.location),,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db743-5b0c-11ef-92e9-251611a1d3f1,179,:plus item,,List,"List1 :plus item ""mauve""","pink, blue, purple, red, white, cherry/deep-pink, mauve",Function / Script,"const list = Inputs.list
+
+list.push(""mauve"") ","This will push the text to the original list, not output a new list. The way Noodl array listeners work, this basic method isn't the best if you want to have associated nodes react to the new item. The best is to use the Noodl.Arrays object and associated methods, see below",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db744-5b0c-11ef-92e9-251611a1d3f1,180,:plus item,,List,"List1 :plus item ""mauve""","pink, blue, purple, red, white, cherry/deep-pink, mauve",Function / Script,"// Assuming you already have an Array node with the id ""List1""
+
+Noodl.Arrays.List1 = Noodl.Arrays.List1.concat(""mauve"") 
+
+Outputs.Success();","This will cause the List1 array to be remade with 'mauve' added to the end, triggering any Array nodes to fire their 'changed' signal and update associated nodes
+
+NOTE: If you want to add a list of items, just add the array of items in the concat method, e.g. .concat([""mauve"",""chartruse""])",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db745-5b0c-11ef-92e9-251611a1d3f1,181,:minus item,,List,"List1 :minus item ""pink""","blue, purple, red, white, cherry/deep-pink",Function / Script,"// Assuming you already have an Array node with the id ""List1""
+
+// Step 1: Find the index of ""pink""
+let indexToRemove = Noodl.Arrays.List1.indexOf(""pink"");
+
+// Step 2: Create a new array excluding ""pink""
+let updatedArray;
+if (indexToRemove !== -1) {
+  updatedArray = Noodl.Arrays.List1.slice(0, indexToRemove)
+    .concat(Noodl.Arrays.List1.slice(indexToRemove + 1));
+} else {
+  // ""pink"" is not in the array, keep the original array
+  updatedArray = Noodl.Arrays.List1;
+}
+
+// Step 3: Update the Noodl array with the new reference
+Noodl.Arrays.List1 = updatedArray;
+
+Outputs.Success()","Removing things in Javascript isn't as easy as just popping something onto the end. You have to identify where in the array the target item exists, then slice it out",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db746-5b0c-11ef-92e9-251611a1d3f1,182,:minus list,,List,"List1: minus list ""pink"", ""blue""","purple, red, white, cherry/deep-red",Function / Script,"// Assuming you already have an Array node with the id ""List1""
+
+// Step 1: Filter out ""pink"" and ""blue""
+let updatedArray = Noodl.Arrays.List1.filter(
+  colour => colour !== ""pink"" && colour !== ""blue""
+);
+
+// Step 2: Update the Noodl array with the new reference
+Noodl.Arrays.List1 = updatedArray;","If you wanted to filter out one or more objects based on a field of each object, like with List3 we want to remove anyone from Boston, we'd just modify the filter a bit: 
+
+.filter(
+  item => item.location !== ""Boston""
+);",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db747-5b0c-11ef-92e9-251611a1d3f1,183,merged with,,List,List1 merged with List2,"pink, blue, purple, red, white, cherry/deep-red, apples, bananas, yellow, blueberries",Expression,"[...List1, ...List2]","This simple Javascript won't do the Bubble magic of only returning unique elements in the output array. You'd need to use a Function node with a bit more script for that: 
+
+// Function to check if two objects are equivalent (for primitive values and simple objects)
+function areObjectsEqual(obj1, obj2) {
+  return JSON.stringify(obj1) === JSON.stringify(obj2);
+}
+
+// Merge arrays and remove duplicates
+function mergeUniqueArrays(arr1, arr2) {
+  const mergedArray = [...arr1, ...arr2];
+  const uniqueArray = [];
+
+  for (let item of mergedArray) {
+    // Check if item is already in uniqueArray
+    if (!uniqueArray.some(existingItem => areObjectsEqual(existingItem, item))) {
+      uniqueArray.push(item);
+    }
+  }
+
+  return uniqueArray;
+}
+
+// Example Usage
+const array1 = Inputs.List1 || [];
+const array2 = Inputs.List2 || [];
+
+try {
+  const mergedArray = mergeUniqueArrays(array1, array2);
+
+  Outputs.MergedArray = mergedArray;
+  Outputs.Success();
+} catch (error) {
+  Outputs.error = error;
+  Outputs.Failure();
+}
+",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db748-5b0c-11ef-92e9-251611a1d3f1,184,intersects with,,List,List1 intersects with List2,"blue, red",Function / Script,"// Function to check if two objects are equivalent
+function deepEqual(obj1, obj2) {
+  if (typeof obj1 !== ""object"" || typeof obj2 !== ""object"" || obj1 === null || obj2 === null) {
+    return obj1 === obj2;
+  }
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+  if (keys1.length !== keys2.length) {
+    return false;
+  }
+  for (const key of keys1) {
+    if (!keys2.includes(key) || !deepEqual(obj1[key], obj2[key])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Function to find the intersection of two arrays
+function arrayIntersection(arr1, arr2) {
+  return arr1.filter(element1 => {
+    return arr2.some(element2 => deepEqual(element1, element2));
+  });
+}
+
+const array1 = Inputs.List1 || [];
+const array2 = Inputs.List2 || [];
+
+if (!Array.isArray(array1) || !Array.isArray(array2)) throw new Error('Invalid input, both inputs should be arrays');
+
+try {
+  const intersection = arrayIntersection(array1, array2);
+  Outputs.IntersectionArray = intersection;
+  Outputs.Success();
+} catch (error) {
+  Outputs.error = error;
+  Outputs.Failure();
+}
+","This beautiful beast of a function is ChatGPT's creation. If anyone can think of anything better I'd be open to hearing about it!
+
+The logic here is that objects in different arrays might have slight differences, and so the deepEqual function dives into the keys of the function to assess structural and value equality. Then the arrayIntersection function uses that to filter the two arrays to only return objects that exist in both",,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db749-5b0c-11ef-92e9-251611a1d3f1,185,:group by...,,List,"List 3: grouped by ""location"" (EXACT) (aggregation: count) :each item's count","2, 1",Function / Script,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db74a-5b0c-11ef-92e9-251611a1d3f1,186,:filtered,,List,List3 :filtered (name is not Frank),"Jim, Jane",Function / Script,"const list = Inputs.List3;
+
+const filteredList = list.filter(item => item.name !== ""Frank"")
+
+Outputs.filteredList = filteredList;",,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db74b-5b0c-11ef-92e9-251611a1d3f1,187,:sorted,,List,List3 :sorted by name (descending),"Jim, Jane, Frank",,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db74c-5b0c-11ef-92e9-251611a1d3f1,188,:ranked by,,List,List3 :ranked by numerical similarity to Jane,"Jane, Frank, Jim",,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
+fc5db74d-5b0c-11ef-92e9-251611a1d3f1,189,:format as text,,List,List3 :format as text (Content to show per list item: This item's name) (Delimiter: & ),Frank & Jim & Jane,,,,,,2024-08-15T13:48:00.806Z,2024-08-15T13:48:00.806Z
