@@ -114,16 +114,25 @@ not a hole: FLD-008 lives in `@noodl/runtime` and `@noodl/cloud-runtime`, which 
 `npm run test:packages` (`pr.yml:160`), not by `test:main`. **Check which gate covers the package
 you changed before reading an unchanged number as coverage.**
 
-## 5. Gates, as they stood at the end of session 4
+## 5. Gates, as they stood at the end of session 5
 
-`npm run typecheck` **exit 0** · `typecheck:editor` **exit 0** ·
-`test:main` **446 suites / 7359 passing, exit 0** ·
-`@noodl/runtime` **157 suites / 2686 passing** · `@noodl/cloud-runtime` **14 suites / 226 passing**.
+`typecheck:editor` **exit 0** · `typecheck:editor-tests` **exit 0** ·
+`test:ci` **2978 specs / 4 failures, seed 30027** — exactly the named AIX-006 floor ·
+`test:main` **446 suites / 7359 tests, exit 0**.
 
-⚠️ `test:ci` was **not** run this session — nothing here touches the editor. Its floor is the named
-AIX-006 four.
+✅ **`test:main` is fully green for the first time**, and it took three runs to get there. Runs 1
+and 2 were red on `fld-009/projectLevelWatch` (run 1 also on `rel-009b/projectFileWatcher`) — see
+register row **P21**. The cause was not load and not a ceiling: the specs wrote **before
+`fs.watch`'s FSEvents stream was live**, so no event was ever coming. Fixed by
+`tests-unit/support/armWatcher.ts`.
 
-⚠️ A peer session held phase 83 work uncommitted in this checkout throughout. **Commit by pathspec.**
+🔴 **Read a gate's exit status out of the LOG, not out of the harness notification.** Three times
+this session a background task reported *"completed (exit code 0)"* while the gate had exited **1**
+— the wrapper ended in `; echo "EXIT=$?" >> log`, and the notification reports the **last** command.
+Write the status into the log and grep it.
+
+⚠️ A peer session held phase 83 and nodegx-export work uncommitted in this checkout throughout.
+**Commit by pathspec** — `git status` still shows their files.
 
 ## 6. 🔴 Rulings — one down, four still gating
 
