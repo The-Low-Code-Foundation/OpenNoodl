@@ -26,7 +26,8 @@ import {
 } from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
 import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
-import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
+import type { PreflightReport, MigrationResult, ProjectLevelKey, ProjectLevelTarget } from '../services/ProjectStructure';
+import { applyProjectLevelSlice } from '../services/ProjectStructure';
 import { hashComponent } from '../services/ProjectStructure/ComponentSaver';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
 import { decideComponentReload } from '../services/ProjectFileWatcher/decide';
@@ -760,6 +761,20 @@ export class ProjectModel extends Model {
                 components: res.refused
               });
             }
+            // FLD-009, the project-level half. Same rule, different files: the
+            // agent's write is still on disk and the person's project-level
+            // change is still only in memory, and saying nothing is the defect.
+            if (res.refusedProjectFiles && res.refusedProjectFiles.length > 0) {
+              console.warn(
+                'Project save skipped ' +
+                  res.refusedProjectFiles.length +
+                  ' project file(s) changed on disk by something else: ' +
+                  res.refusedProjectFiles.join(', ')
+              );
+              EventDispatcher.instance.emit('ProjectModel.saveRefusedExternalProjectFileChange', {
+                files: res.refusedProjectFiles
+              });
+            }
             callback && callback({ result: 'success' });
           } else {
             callback && callback({ result: 'failure', message: res.message || 'Error writing project files.' });
@@ -902,6 +917,99 @@ export class ProjectModel extends Model {
 
     this.notifyListeners('componentReloadedFromDisk', { component: newModel, previous: existing });
     return 'reloaded';
+  }
+
+  /**
+   * FLD-009 — the same seam for the project-level files.
+   *
+   * `reloadComponentFromDisk` gave an agent's component write a way into the
+   * canvas. `nodegx.project.json`, the routes file and the styles file had no
+   * such way: the watcher did not report them and the saver did not check them,
+   * so an agent's backend binding or design-token block sat on disk unread until
+   * the editor's next project-level change wrote over it.
+   *
+   * 🔴 **This is what makes the saver's refusal usable rather than merely
+   * correct.** Without it, the guard added in `saveProjectLevelFiles` would
+   * refuse the person's project-level change *forever*: the editor's copy would
+   * never learn what the agent wrote, so every save would find the file moved
+   * and decline again, and the person's own change would never land. Adopting
+   * the disk copy is what closes that loop.
+   *
+   * The decision is per FILE, not per project, and that is deliberate: adopting
+   * a whole reconstructed project would overwrite an unsaved colour edit with
+   * the disk copy the moment an agent wrote an unrelated backend binding — the
+   * data loss this task exists to stop, wearing the other face.
+   *
+   * @returns the outcome for each file the caller asked about.
+   */
+  async reloadProjectLevelFromDisk(keys: ProjectLevelKey[]): Promise<Record<string, ReloadFromDiskOutcome>> {
+    const outcomes: Record<string, ReloadFromDiskOutcome> = {};
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) {
+      for (const key of keys) outcomes[key] = 'not-applicable';
+      return outcomes;
+    }
+
+    const { slice, raw, decisions } = await projectStructureService.readProjectLevelFromDisk(
+      this._retainedProjectDirectory,
+      this.toJSON()
+    );
+
+    const refused: ProjectLevelKey[] = [];
+    const reloaded: ProjectLevelKey[] = [];
+
+    // The whole adoption runs with autosave disarmed. Every field written here
+    // already exists on disk, so a save triggered by writing it would at best be
+    // a no-op and at worst race the agent's next write.
+    const wasSaving = saveOnModelChange;
+    ProjectModel.setSaveOnModelChange(false);
+    try {
+      for (const key of keys) {
+        const decision = decisions[key];
+        if (!decision || decision.action === 'skip-unchanged') {
+          outcomes[key] = 'unchanged';
+          continue;
+        }
+        if (decision.action === 'refuse-dirty') {
+          // 🔴 The baseline is deliberately NOT advanced, exactly as on the
+          // component path: it still describes the version this editor loaded,
+          // which is what keeps `saveProjectLevelFiles` able to see that the
+          // file moved and refuse to write over it.
+          outcomes[key] = 'refused-dirty';
+          refused.push(key);
+          continue;
+        }
+
+        // `ProjectModel` carries the project-level fields directly (`settings`,
+        // `metadata`, `rootNodeId`, …) — it IS the legacy project shape with
+        // behaviour on top — but it declares them rather than an index
+        // signature, which is what this cast bridges.
+        applyProjectLevelSlice(this as unknown as ProjectLevelTarget, slice, key);
+        projectStructureService.markProjectLevelBaseline(key, raw[key] ?? null, this.toJSON());
+        outcomes[key] = 'reloaded';
+        reloaded.push(key);
+      }
+    } finally {
+      ProjectModel.setSaveOnModelChange(wasSaving);
+    }
+
+    for (const key of reloaded) {
+      // The panels that read project metadata listen for this, and a reload
+      // nobody redraws is a reload the person cannot see.
+      EventDispatcher.instance.notifyListeners('ProjectModel.metadataChanged', {
+        key: 'projectLevelReload',
+        data: key
+      });
+    }
+    if (reloaded.length > 0) {
+      this.notifyListeners('projectLevelReloadedFromDisk', { files: reloaded });
+      EventDispatcher.instance.notifyListeners('ProjectModel.projectLevelReloadedFromDisk', { files: reloaded });
+    }
+    if (refused.length > 0) {
+      this.notifyListeners('projectLevelReloadRefused', { files: refused });
+      EventDispatcher.instance.notifyListeners('ProjectModel.projectLevelReloadRefused', { files: refused });
+    }
+
+    return outcomes;
   }
 
   // ── v2 migration (SUB-003) ──────────────────────────────────────────────────

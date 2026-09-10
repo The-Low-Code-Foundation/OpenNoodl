@@ -39,8 +39,10 @@ import type {
 } from '../../schemas';
 
 import { ProjectStructureFilesystem, V2_FILES } from './types';
+import { PROJECT_LEVEL_KEYS, decideProjectLevelReload, hashProjectLevel } from './projectLevel';
+import type { ProjectLevelKey, ProjectLevelReloadDecision } from './projectLevel';
 import { ComponentLoader } from './ComponentLoader';
-import { ComponentSaver, stableStringify, hashString, hashComponent } from './ComponentSaver';
+import { ComponentSaver, hashComponent } from './ComponentSaver';
 import type { ComponentChangeSet } from './ComponentSaver';
 import { ProjectMigrator, type MigratorFilesystem } from './ProjectMigrator';
 
@@ -61,10 +63,14 @@ export interface SaveResult {
    * else wrote them while we held the project. See {@link findExternallyChanged}.
    */
   refused?: string[];
+  /**
+   * FLD-009. Project-level file names that were NOT written for the same reason:
+   * the file on disk has moved off the baseline this editor recorded, so an
+   * agent (or a git checkout, or a second editor) wrote it while we held the
+   * project. See {@link findExternallyChangedProjectLevel}.
+   */
+  refusedProjectFiles?: string[];
 }
-
-/** Project-level file identities tracked for change detection. */
-type ProjectLevelKey = 'project' | 'routes' | 'styles';
 
 export class ProjectStructureService {
   readonly loader: ComponentLoader;
@@ -72,8 +78,27 @@ export class ProjectStructureService {
   private readonly detector: ProjectFormatDetector;
   private readonly importer = new ProjectImporter();
 
-  /** Content hash (minus volatile fields) of each project-level file on disk. */
+  /**
+   * Content hash of each project-level file as this editor would BUILD it from
+   * the project in memory. Answers "has our copy changed since we last wrote?"
+   * and so decides whether a save touches the file at all.
+   */
   private readonly projectLevelHashes = new Map<ProjectLevelKey, string>();
+
+  /**
+   * FLD-009. Content hash of each project-level file as it was last READ FROM or
+   * WRITTEN TO disk. Answers a different question — "is the file still what we
+   * put there?" — and it has to be a second map rather than the one above.
+   *
+   * 🔴 The two are in different spaces. `projectLevelHashes` is the hash of the
+   * *export of the in-memory project*; a project loaded from disk and exported
+   * straight back is not guaranteed byte-identical (the importer normalises, and
+   * a field it does not model is dropped). Comparing disk against the built
+   * baseline would therefore read as "someone else wrote this" on the first save
+   * of a perfectly untouched project, and a guard that refuses everything is
+   * indistinguishable from a guard that works (FLD-009 AC4).
+   */
+  private readonly projectLevelDiskHashes = new Map<ProjectLevelKey, string>();
 
   /**
    * The project directory the current baselines describe, or undefined if none.
@@ -118,6 +143,7 @@ export class ProjectStructureService {
     if (this.seededProjectDir === projectDir) return;
     this.saver.forgetBaselines();
     this.projectLevelHashes.clear();
+    this.projectLevelDiskHashes.clear();
     this.seededProjectDir = projectDir;
   }
 
@@ -186,6 +212,13 @@ export class ProjectStructureService {
     // WHICH project they describe — see `seededProjectDir`.
     this.saver.seedFromProject(project);
     this.seedProjectLevelHashes(project);
+    // FLD-009. The disk baselines come from the BYTES just read, never from the
+    // re-export of what was imported from them — see `projectLevelDiskHashes`.
+    this.seedProjectLevelDiskHashes({
+      project: projectFile ?? null,
+      routes: routes ?? null,
+      styles: styles ?? null
+    });
     this.seededProjectDir = projectDir;
     this.loader.invalidate();
 
@@ -277,9 +310,10 @@ export class ProjectStructureService {
     // the registry), rather than leaving a component orphaned from a stale index.
     const baselineSnapshot = this.saver.snapshotBaselines();
     const projectLevelSnapshot = new Map(this.projectLevelHashes);
+    const projectLevelDiskSnapshot = new Map(this.projectLevelDiskHashes);
 
     try {
-      await this.saveProjectLevelFiles(projectDir, project);
+      const refusedProjectFiles = await this.saveProjectLevelFiles(projectDir, project);
 
       for (const { path, component } of changeSet.changed) {
         await this.saver.saveComponent(projectDir, path, component);
@@ -295,12 +329,15 @@ export class ProjectStructureService {
         result: 'success',
         changed: changeSet.changed.map((c) => c.path),
         removed: changeSet.removed,
-        refused: refused.size > 0 ? [...refused].sort() : undefined
+        refused: refused.size > 0 ? [...refused].sort() : undefined,
+        refusedProjectFiles: refusedProjectFiles.length > 0 ? refusedProjectFiles.sort() : undefined
       };
     } catch (err) {
       this.saver.restoreBaselines(baselineSnapshot);
       this.projectLevelHashes.clear();
       for (const [k, v] of projectLevelSnapshot) this.projectLevelHashes.set(k, v);
+      this.projectLevelDiskHashes.clear();
+      for (const [k, v] of projectLevelDiskSnapshot) this.projectLevelDiskHashes.set(k, v);
       return {
         result: 'failure',
         message: err instanceof Error ? err.message : String(err)
@@ -374,27 +411,34 @@ export class ProjectStructureService {
     };
   }
 
-  private hashProjectLevel(content: unknown): string {
-    if (content === null) return 'absent';
-    // Exclude the volatile `modified` field on the project file.
-    const { modified: _m, ...rest } = content as Record<string, unknown>;
-    return hashString(stableStringify(rest));
-  }
-
   private seedProjectLevelHashes(project: LegacyProject): void {
     const content = this.projectLevelContent(project);
     (Object.keys(content) as ProjectLevelKey[]).forEach((key) => {
-      this.projectLevelHashes.set(key, this.hashProjectLevel(content[key]));
+      this.projectLevelHashes.set(key, hashProjectLevel(content[key]));
     });
   }
 
-  private async saveProjectLevelFiles(projectDir: string, project: LegacyProject): Promise<void> {
+  private seedProjectLevelDiskHashes(raw: Record<ProjectLevelKey, unknown | null>): void {
+    PROJECT_LEVEL_KEYS.forEach((key) => {
+      this.projectLevelDiskHashes.set(key, hashProjectLevel(raw[key]));
+    });
+  }
+
+  /** Reads one project-level file, or `null` when it is legitimately absent. */
+  private async readProjectLevelFile(projectDir: string, key: ProjectLevelKey): Promise<unknown | null> {
+    const path = this.fs.join(projectDir, PROJECT_LEVEL_FILE_NAMES[key]);
+    if (!this.fs.exists(path)) return null;
+    try {
+      return await this.fs.readJson(path);
+    } catch {
+      // Mid-write or unreadable. Treated as "we cannot tell", and the caller
+      // refuses rather than writing over something it could not read.
+      return undefined;
+    }
+  }
+
+  private async saveProjectLevelFiles(projectDir: string, project: LegacyProject): Promise<string[]> {
     const now = new Date().toISOString();
-    const fileNames: Record<ProjectLevelKey, string> = {
-      project: V2_FILES.project,
-      routes: V2_FILES.routes,
-      styles: V2_FILES.styles
-    };
 
     // Build with a real timestamp only where we actually write.
     const built: Record<ProjectLevelKey, unknown | null> = {
@@ -403,9 +447,11 @@ export class ProjectStructureService {
       styles: buildStylesV2File(project)
     };
 
-    for (const key of Object.keys(built) as ProjectLevelKey[]) {
+    const refused: string[] = [];
+
+    for (const key of PROJECT_LEVEL_KEYS) {
       const content = built[key];
-      const hash = this.hashProjectLevel(content);
+      const hash = hashProjectLevel(content);
       if (hash === this.projectLevelHashes.get(key)) continue; // unchanged
       if (content === null) {
         // Went from present → absent: leave the stale file rather than deleting.
@@ -413,11 +459,128 @@ export class ProjectStructureService {
         this.projectLevelHashes.set(key, hash);
         continue;
       }
-      await this.saver.writeFileAtomic(this.fs.join(projectDir, fileNames[key]), content);
+
+      // FLD-009. Our copy has moved, so we are about to write. Before we do:
+      // has the file moved underneath us? Measured 2026-09-10 — without this,
+      // one `rootNodeId` change in the editor reverted a backend binding an
+      // agent had written seconds earlier, with nothing reported to either side.
+      if (await this.projectLevelFileMovedOnDisk(projectDir, key, hash)) {
+        refused.push(PROJECT_LEVEL_FILE_NAMES[key]);
+        continue;
+      }
+
+      await this.saver.writeFileAtomic(this.fs.join(projectDir, PROJECT_LEVEL_FILE_NAMES[key]), content);
       this.projectLevelHashes.set(key, hash);
+      this.projectLevelDiskHashes.set(key, hash);
     }
+
+    return refused;
+  }
+
+  /**
+   * Has this project-level file moved off the baseline we recorded for it?
+   *
+   * Mirrors {@link findExternallyChanged}, including its two escapes, and for
+   * the same reasons:
+   *
+   * - **No baseline** — this editor has never seen the file on disk (a project
+   *   created here since the load). Nothing to clobber, so write.
+   * - **Disk already equals what we would write** — that is us, one save ago,
+   *   whose registry commit failed and whose baselines were rewound so the retry
+   *   would redo the write. Refusing would strand the retry forever.
+   *
+   * ⚠️ An unreadable file (mid-write, or corrupt) is reported as MOVED, unlike
+   * the component path which skips it. A component that cannot be read is one
+   * this editor is about to rewrite in full from a copy it holds; a project file
+   * that cannot be read may be an agent's atomic write landing this instant, and
+   * writing over it would be exactly the loss this guard exists for.
+   */
+  private async projectLevelFileMovedOnDisk(
+    projectDir: string,
+    key: ProjectLevelKey,
+    pendingHash: string
+  ): Promise<boolean> {
+    const baseline = this.projectLevelDiskHashes.get(key);
+    if (baseline === undefined) return false;
+
+    const raw = await this.readProjectLevelFile(projectDir, key);
+    if (raw === undefined) return true; // unreadable — see the note above
+
+    const onDisk = hashProjectLevel(raw);
+    if (onDisk === baseline) return false;
+    if (onDisk === pendingHash) return false;
+    return true;
+  }
+
+  // ── Project-level reload (FLD-009) ────────────────────────────────────────────
+
+  /**
+   * Reads the project-level files from disk and reports, per file, whether it
+   * has moved off our baseline and whether the editor holds unsaved changes to
+   * it — everything {@link ProjectModel.reloadProjectLevelFromDisk} needs to
+   * decide, without giving it a filesystem.
+   *
+   * `slice` is the project reconstructed from the files on disk, with no
+   * components: `applyProjectLevelSlice` takes the fields each file owns off it.
+   */
+  async readProjectLevelFromDisk(
+    projectDir: string,
+    project: LegacyProject
+  ): Promise<{
+    slice: LegacyProject;
+    raw: Record<ProjectLevelKey, unknown | null | undefined>;
+    decisions: Record<ProjectLevelKey, ProjectLevelReloadDecision>;
+  }> {
+    const raw = {} as Record<ProjectLevelKey, unknown | null | undefined>;
+    for (const key of PROJECT_LEVEL_KEYS) {
+      raw[key] = await this.readProjectLevelFile(projectDir, key);
+    }
+
+    const built = this.projectLevelContent(project);
+    const decisions = {} as Record<ProjectLevelKey, ProjectLevelReloadDecision>;
+    for (const key of PROJECT_LEVEL_KEYS) {
+      const diskRaw = raw[key];
+      if (diskRaw === undefined) {
+        // Unreadable right now — say nothing happened rather than guess. The
+        // next watcher event for the same file finds it settled.
+        decisions[key] = { action: 'skip-unchanged' };
+        continue;
+      }
+      decisions[key] = decideProjectLevelReload({
+        diskBaselineHash: this.projectLevelDiskHashes.get(key),
+        diskHash: hashProjectLevel(diskRaw),
+        dirty: hashProjectLevel(built[key]) !== this.projectLevelHashes.get(key)
+      });
+    }
+
+    const { project: slice } = this.importer.import({
+      project: (raw.project ?? { name: project.name, version: project.version }) as ProjectV2File,
+      registry: { $schema: '', version: 1, components: {} } as unknown as RegistryV2File,
+      routes: (raw.routes ?? undefined) as RoutesV2File | undefined,
+      styles: (raw.styles ?? undefined) as StylesV2File | undefined,
+      components: {}
+    });
+
+    return { slice, raw, decisions };
+  }
+
+  /**
+   * Records that `target` now holds exactly what is on disk for `key`, so
+   * neither the next save nor the next watcher event treats the change we just
+   * adopted as a conflict. The apply half of {@link readProjectLevelFromDisk}.
+   */
+  markProjectLevelBaseline(key: ProjectLevelKey, diskRaw: unknown | null, project: LegacyProject): void {
+    this.projectLevelDiskHashes.set(key, hashProjectLevel(diskRaw));
+    this.projectLevelHashes.set(key, hashProjectLevel(this.projectLevelContent(project)[key]));
   }
 }
+
+/** File name of each project-level file, relative to the project directory. */
+export const PROJECT_LEVEL_FILE_NAMES: Record<ProjectLevelKey, string> = {
+  project: V2_FILES.project,
+  routes: V2_FILES.routes,
+  styles: V2_FILES.styles
+};
 
 /** App-wide instance bound to the platform filesystem. */
 export const projectStructureService = new ProjectStructureService(
@@ -434,5 +597,12 @@ export const projectMigrator = new ProjectMigrator(filesystem as unknown as Migr
 export { ComponentLoader } from './ComponentLoader';
 export { ComponentSaver } from './ComponentSaver';
 export { ProjectMigrator } from './ProjectMigrator';
+export {
+  PROJECT_LEVEL_KEYS,
+  applyProjectLevelSlice,
+  decideProjectLevelReload,
+  hashProjectLevel
+} from './projectLevel';
+export type { ProjectLevelKey, ProjectLevelReloadDecision, ProjectLevelTarget } from './projectLevel';
 export type { MigratorFilesystem, PreflightReport, MigrationResult, VerificationResult } from './ProjectMigrator';
 export * from './types';

@@ -1,13 +1,18 @@
 /**
- * REL-009b — the two pure decisions the file watcher rests on.
+ * REL-009b — the pure decisions the file watcher rests on.
  *
- * Both live here, with no imports, for one reason: they are the whole of the
- * watcher's judgement, and everything else in this feature needs Electron, a
- * real filesystem or an editor singleton to run. Keeping them free of all three
- * is what lets them be graded in plain jest rather than only through a drive.
+ * They live here, reaching for nothing but a table of file names, for one
+ * reason: they are the whole of the watcher's judgement, and everything else in
+ * this feature needs Electron, a real filesystem or an editor singleton to run.
+ * Keeping them free of all three is what lets them be graded in plain jest
+ * rather than only through a drive.
+ *
+ * FLD-009 added the project-level mapping alongside the component one.
  *
  * @module noodl-editor/services/ProjectFileWatcher/decide
  */
+
+import { V2_FILES } from '../ProjectStructure/types';
 
 /** Directory names that never contain a component and are noisy. */
 const IGNORED_SEGMENTS = new Set([
@@ -22,6 +27,57 @@ const IGNORED_SEGMENTS = new Set([
 
 /** The three files a v2 component is made of. Anything else in the dir is not ours. */
 const COMPONENT_FILES = new Set(['component.json', 'nodes.json', 'connections.json']);
+
+/**
+ * FLD-009 — the three project-level files, by the names the saver writes them
+ * under. Imported rather than restated: a second copy of a file name drifts the
+ * day one of them is renamed, and `types.ts` is a pure constants-and-interfaces
+ * module, so this file still needs no filesystem, no Electron and no singleton
+ * to run.
+ */
+const PROJECT_LEVEL_BY_FILENAME: Record<string, ProjectLevelFile> = {
+  [V2_FILES.project]: 'project',
+  [V2_FILES.routes]: 'routes',
+  [V2_FILES.styles]: 'styles'
+};
+
+/** Which project-level file a path names, in the vocabulary the saver uses. */
+export type ProjectLevelFile = 'project' | 'routes' | 'styles';
+
+/**
+ * Maps a path relative to the project directory onto the project-level file it
+ * names, or `null` if it is not one.
+ *
+ * 🔴 **This is the hole FLD-009 was filed for.** Until it existed the watcher
+ * asked `componentPathFromRelativePath` about every event and that function
+ * answers `null` for everything outside `components/<path>/`, so an agent's
+ * write to `nodegx.project.json` — a backend binding, a design-token block —
+ * reached the editor through no channel at all. Every downstream assertion about
+ * project-level changes would have passed vacuously on a watcher that saw
+ * nothing, which is why FLD-009 AC3 grades this function directly.
+ *
+ * `components/_registry.json` is deliberately NOT here, and the reason is
+ * measured rather than assumed: `ComponentSaver.updateRegistry` re-reads the
+ * registry off disk and merges its change set into it, so an entry an agent
+ * added is not lost by the editor's next save. The registry is the one
+ * project-level file that was never exposed. A component an agent *adds* still
+ * reaches the canvas by its own three files, which the component mapping above
+ * already reports.
+ *
+ *   "nodegx.project.json"          → "project"
+ *   "nodegx.styles.json"           → "styles"
+ *   "nodegx.project.json.tmp"      → null   (our own two-phase write, staging)
+ *   "components/_registry.json"    → null   (see above)
+ *   "sub/nodegx.project.json"      → null
+ */
+export function projectLevelFileFromRelativePath(relativePath: string): ProjectLevelFile | null {
+  if (!relativePath) return null;
+
+  const parts = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  if (parts.length !== 1) return null;
+
+  return PROJECT_LEVEL_BY_FILENAME[parts[0]] ?? null;
+}
 
 /**
  * Maps a path relative to the project directory onto the registry path of the

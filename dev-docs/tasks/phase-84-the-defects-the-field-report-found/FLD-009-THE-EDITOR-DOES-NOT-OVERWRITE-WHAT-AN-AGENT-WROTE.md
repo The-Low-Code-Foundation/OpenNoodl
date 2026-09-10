@@ -75,6 +75,91 @@ above, not the router.
 5. The component path is asserted unchanged — its three-hash decision and its refusal toast still
    behave as they do at HEAD. This task must not weaken the half that already works.
 
+## 4b. What was built — 2026-09-10, session 3
+
+🔴 **The first thing measured contradicts AC1, and it would have graded green before the work.**
+
+Before writing a line, the sequence AC1 asks for was run against HEAD on a `MemFs` double: load the
+project, have an agent write `metadata.cloudservices` into `nodegx.project.json` exactly as
+`ProjectStore.writeCloudServices` does, then edit a **component** and save.
+
+| arm | what the editor changed | binding on disk after the save |
+|---|---|---|
+| A — **AC1 as written** | one component (`Pages/Home`) | 🟢 **still there** |
+| B | `rootNodeId` (the app root moves) | 🔴 **gone, silently** |
+| C — tokens instead of a binding | `rootNodeId` | 🔴 **gone, silently** |
+
+Arm A does not lose the binding **and never could**, because `saveProjectLevelFiles` compares the
+project-level content *built from memory* against its own baseline and `continue`s when they match —
+a component edit does not move that hash, so the file is not opened, let alone written. **The
+trigger is not autosave. It is any editor change to a project-level file while an agent's change to
+the same file is unread.** N1 said "writes unconditionally", and that is true only *once its own
+copy has moved*; the register row is right about the missing guard and wrong about when it fires.
+
+Both halves are now pinned by specs, so the distinction cannot be lost again — the arm-A case is the
+first spec in `projectLevelGuard.test.ts` and it asserts the file is untouched **byte for byte**,
+with the save's own `changed: ['Pages/Home']` beside it as the known-firing signal.
+
+### What the fix is
+
+- **`ProjectStructure/projectLevel.ts`** (new) — the pure half: `hashProjectLevel`,
+  `decideProjectLevelReload`, and `applyProjectLevelSlice`, which copies **only the fields one
+  project-level file owns**. That last one is the reverse of `ProjectExporter`'s split and has to
+  stay that way: adopting a whole reconstructed project would overwrite an unsaved colour edit with
+  the disk copy the moment an agent wrote an unrelated backend binding — this task's data loss
+  wearing the other face.
+- **`ProjectStructureService`** — a **second** baseline map, `projectLevelDiskHashes`, and a
+  `projectLevelFileMovedOnDisk` check before every project-level write, mirroring
+  `findExternallyChanged` including both of its escapes. ⚠️ **Two maps, not one, and that is the
+  whole of AC4.** `projectLevelHashes` holds the hash of the *export of the in-memory project*;
+  the disk map holds the hash of *the bytes we last read or wrote*. They are different quantities —
+  a project loaded and exported straight back is not guaranteed identical — so comparing disk
+  against the built baseline would read "someone else wrote this" on the first save of an untouched
+  project, and a guard that refuses everything is indistinguishable from a guard that works.
+- **`ProjectFileWatcher/decide.ts`** — `projectLevelFileFromRelativePath`. This is the hole: at HEAD
+  the watcher asked `componentPathFromRelativePath` about every event, which answers `null` for
+  every path outside `components/<path>/`, so an agent's project-file write reached the editor
+  through **no channel at all**.
+- **`ProjectModel.reloadProjectLevelFromDisk`** — 🔴 **the half that makes the guard usable rather
+  than merely correct.** Without it the refusal is permanent: the editor's copy never learns what
+  the agent wrote, so every save finds the file moved and declines again, and the person's own
+  change never lands. Adopting the disk copy closes the loop. Decision per **file**, with the same
+  three-way shape and the same "do not advance the baseline on a refusal" rule as the component path.
+- **`EditorPage`** — two toasts, matching the two the component path already has: one when a save is
+  refused, one when the write lands and the person has unsaved project changes.
+
+`components/_registry.json` is **covered by being excluded, with a reason** (§3's third bullet, and
+P11): `ComponentSaver.updateRegistry` re-reads the registry off disk and merges its change set into
+it, so an entry an agent added is not lost by the editor's next save. It is the one project-level
+file that was never exposed. A component an agent *adds* still reaches the canvas by its own three
+files, which the component mapping already reports.
+
+### The reverted arms
+
+- **AC2** — `projectLevelFileMovedOnDisk` stubbed to `false` (the one check taken back out), same
+  save: `refusedProjectFiles` is `undefined` and the binding is **gone from disk**. The spec asserts
+  the loss, not just the absence of a refusal.
+- **AC3** — no stub needed: the function did not exist at HEAD, and
+  `componentPathFromRelativePath('nodegx.project.json')` returning `null` is asserted in the same
+  file, so the "before" is on the record beside the "after".
+
+### The presence controls — AC4
+
+Four, because "the binding survived" passes just as well on a guard that refuses everything and on a
+save that never ran:
+
+1. an editor-originated `rootNodeId` change with nothing external in play **saves normally**;
+2. two such changes back to back both land;
+3. after the external write is **adopted**, the editor's change saves *and* the binding survives —
+   the refusal is a pause, not a wall;
+4. the watcher's project-level callback is **not** called for a component-only batch.
+
+### Gates
+
+`typecheck:editor` **exit 0**. `test:main` **446 suites / 7359 passing, exit 0** (7350 before; the
+nine new ones are the watcher specs, including a real-`fs.watch` arm proving node reports a
+root-level file as a bare filename — the assumption the whole mapping rests on).
+
 ## 5. Traps
 
 - 🔴 **Do not "fix" this by making the MCP server stop writing project files.** It writes them for

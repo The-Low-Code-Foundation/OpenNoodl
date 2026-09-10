@@ -233,6 +233,38 @@ export function EditorPage({ route }: EditorPageProps) {
       eventGroup
     );
 
+    // FLD-009 — the project-level half of the same refusal. `nodegx.project.json`
+    // carries the backend binding and the design tokens, and an agent writes all
+    // three through the MCP server; the person's own project-level change is
+    // still only in memory and the agent's is still on disk.
+    EventDispatcher.instance.on(
+      'ProjectModel.saveRefusedExternalProjectFileChange',
+      (args: { files: string[] }) => {
+        const names = (args?.files ?? []).join(', ');
+        ToastLayer.showError(
+          `Not saved: ${names} changed on disk outside the editor — nothing of yours was ` +
+            `overwritten. Your project settings are still open here.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // FLD-009 — and the moment the write lands, which is earlier than the save
+    // and is the first point at which anyone could act on it.
+    EventDispatcher.instance.on(
+      'ProjectModel.projectLevelReloadRefused',
+      (args: { files: string[] }) => {
+        const names = (args?.files ?? []).join(', ');
+        ToastLayer.showError(
+          `${names} changed on disk outside the editor, but you have unsaved project changes here. ` +
+            `Your version is untouched and was not overwritten — reopen the project to take the other one.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
     // REL-009b — watch the open project's component files so an agent's write
     // reaches the canvas without reopening the project. v2 projects only; the
     // watcher is a no-op without a retained directory (i.e. off Electron).
@@ -257,6 +289,14 @@ export function EditorPage({ route }: EditorPageProps) {
             }),
           Promise.resolve()
         );
+      },
+      (files) => {
+        // FLD-009. Adopting the agent's project-level write is what keeps the
+        // saver's refusal from becoming permanent — see
+        // `ProjectModel.reloadProjectLevelFromDisk`.
+        void ProjectModel.instance?.reloadProjectLevelFromDisk(files).catch((error) => {
+          console.warn('[FLD-009] could not reload project-level files from disk', error);
+        });
       });
     }
 

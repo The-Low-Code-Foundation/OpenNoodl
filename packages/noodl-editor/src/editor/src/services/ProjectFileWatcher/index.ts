@@ -33,10 +33,11 @@
  * @module noodl-editor/services/ProjectFileWatcher
  */
 
-import { componentPathFromRelativePath } from './decide';
+import { componentPathFromRelativePath, projectLevelFileFromRelativePath } from './decide';
+import type { ProjectLevelFile } from './decide';
 
-export { componentPathFromRelativePath, decideComponentReload } from './decide';
-export type { ReloadDecision } from './decide';
+export { componentPathFromRelativePath, projectLevelFileFromRelativePath, decideComponentReload } from './decide';
+export type { ReloadDecision, ProjectLevelFile } from './decide';
 
 /** The subset of `fs.FSWatcher` this needs. */
 export interface WatchHandle {
@@ -86,6 +87,7 @@ export interface ProjectFileWatcherOptions {
 export class ProjectFileWatcher {
   private handle: WatchHandle | null = null;
   private pending = new Set<string>();
+  private pendingProjectLevel = new Set<ProjectLevelFile>();
   private timer: unknown = null;
 
   private readonly debounceMs: number;
@@ -112,20 +114,33 @@ export class ProjectFileWatcher {
    * Starting an already-started watcher stops the previous watch first, so
    * reopening a project cannot leave two watches on one directory.
    */
-  start(directory: string, onComponentsChanged: (componentPaths: string[]) => void): void {
+  start(
+    directory: string,
+    onComponentsChanged: (componentPaths: string[]) => void,
+    onProjectLevelChanged?: (files: ProjectLevelFile[]) => void
+  ): void {
     this.stop();
 
     this.handle = this.watchFactory(directory, (relativePath) => {
       const componentPath = componentPathFromRelativePath(relativePath);
-      if (componentPath === null) return;
+      // FLD-009. Until this second question was asked, every event that was not
+      // a component file was dropped here, so the editor learned nothing about
+      // an agent writing `nodegx.project.json`.
+      const projectLevelFile = componentPath === null ? projectLevelFileFromRelativePath(relativePath) : null;
+      if (componentPath === null && projectLevelFile === null) return;
 
-      this.pending.add(componentPath);
+      if (componentPath !== null) this.pending.add(componentPath);
+      if (projectLevelFile !== null) this.pendingProjectLevel.add(projectLevelFile);
+
       if (this.timer !== null) this.clearTimeoutFn(this.timer);
       this.timer = this.setTimeoutFn(() => {
         this.timer = null;
         const batch = Array.from(this.pending);
+        const projectLevelBatch = Array.from(this.pendingProjectLevel);
         this.pending.clear();
+        this.pendingProjectLevel.clear();
         if (batch.length > 0) onComponentsChanged(batch);
+        if (projectLevelBatch.length > 0 && onProjectLevelChanged) onProjectLevelChanged(projectLevelBatch);
       }, this.debounceMs);
     });
   }
@@ -137,6 +152,7 @@ export class ProjectFileWatcher {
       this.timer = null;
     }
     this.pending.clear();
+    this.pendingProjectLevel.clear();
     if (this.handle) {
       try {
         this.handle.close();
