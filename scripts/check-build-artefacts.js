@@ -70,6 +70,10 @@ const GENERATED = [
   'packages/noodl-editor/src/frames/viewer-frame/index.bundle.js.map',
   'packages/noodl-editor/src/main/main.bundle.js',
   'packages/noodl-editor/src/main/main.bundle.js.map',
+  // FLD-017 / ruling R5: terser writes a license-banner sidecar next to each
+  // bundle it minifies. New artefacts, same rule — they ship, they are not tracked.
+  'packages/noodl-editor/src/editor/index.bundle.js.LICENSE.txt',
+  'packages/noodl-editor/src/frames/viewer-frame/index.bundle.js.LICENSE.txt',
   ':(glob)packages/noodl-editor/*.bundle.js',
   ':(glob)packages/noodl-editor/*.bundle.js.map',
   ':(glob)packages/noodl-editor/*.worker.js',
