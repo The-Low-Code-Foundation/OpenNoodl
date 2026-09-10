@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "ec0991f9-fbe1-4274-a6e0-6a550d9b934a",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "seIn",
+      "type": "Component Inputs",
+      "label": "What they typed",
+      "x": 60,
+      "y": 60,
+      "ports": [
+        {
+          "name": "email",
+          "plug": "output",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "seFn",
+      "type": "JavaScriptFunction",
+      "label": "Clean it up",
+      "x": 420,
+      "y": 60,
+      "parameters": {
+        "functionScript": "var raw = String(Inputs.email == null ? '' : Inputs.email).trim();\n// The three shapes a paste actually arrives in: a mailto: link, an angle-bracketed\n// address out of a mail client, and the plain thing with stray whitespace.\nif (raw.slice(0, 7).toLowerCase() === 'mailto:') raw = raw.slice(7).trim();\nif (raw.charAt(0) === '<' && raw.charAt(raw.length - 1) === '>') raw = raw.slice(1, -1).trim();\n// The local part is case-sensitive per RFC 5321 and case-insensitive at every mail host\n// anyone uses. Lower-casing the whole address is what makes two sign-ups the same person.\nvar email = raw.toLowerCase();\nvar at = email.lastIndexOf('@');\nOutputs.email = email;\nOutputs.domain = at === -1 ? '' : email.slice(at + 1);\nOutputs.isValid = /^[^\\s@]+@[^\\s@.]+(\\.[^\\s@.]+)+$/.test(email);"
+      },
+      "ports": [
+        {
+          "name": "in-email",
+          "plug": "input",
+          "type": "*",
+          "displayName": "email",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-email",
+          "plug": "output",
+          "type": "string",
+          "displayName": "email",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-domain",
+          "plug": "output",
+          "type": "string",
+          "displayName": "domain",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isValid",
+          "plug": "output",
+          "type": "boolean",
+          "displayName": "isValid",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "seOut",
+      "type": "Component Outputs",
+      "label": "What to store",
+      "x": 780,
+      "y": 60,
+      "ports": [
+        {
+          "name": "email",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "domain",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "isValid",
+          "plug": "input",
+          "type": "boolean"
+        }
+      ]
+    }
+  ]
+}

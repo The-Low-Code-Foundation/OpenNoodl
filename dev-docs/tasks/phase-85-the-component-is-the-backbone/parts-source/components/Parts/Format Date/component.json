@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f825325f-c851-4a0c-a197-b5293ac3acee",
+  "name": "Format Date",
+  "path": "/Parts/Format Date",
+  "type": "logic",
+  "created": "2026-09-10T19:03:39.851Z",
+  "modified": "2026-09-10T19:03:39.851Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Turns a date into a string by name — \"long\", \"time\", \"datetime\" — instead of a token string nobody remembers. Pass Format to write your own."
+}

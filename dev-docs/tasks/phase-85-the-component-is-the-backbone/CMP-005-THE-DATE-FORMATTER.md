@@ -200,7 +200,7 @@ trade from a token. It changes what CMP-005 should SAY — see AC5.
 | **AC2** the tokens | ✅ **13 new tokens**, asserted as rendered strings | `noodl-runtime/test/nodes/cmp-005-date-to-string-tokens.test.ts` (19 specs) |
 | **AC3** byte-identical | ✅ golden table captured off the PRE-CHANGE node, both branches | same suite, `describe('AC3 …')` |
 | **AC4** the locale | ✅ a `Locale` port; `''` → `en-US`, which is what was hardcoded | same suite, `describe('AC4 …')` |
-| **AC5** reachable | 🟡 **half** — the catalog example ships; the shelf entry does not | `docs/node-catalog/examples/logic-date-formatting.json` |
+| **AC5** reachable | ✅ **CLOSED s5** — the catalog example (s4) and the exported shelf entry `format-date` | `library/prefabs/format-date`, graded in this suite's `AC5` describe |
 
 **The token set, for Thursday 10 September 2026 at 15:05:07:**
 
@@ -241,13 +241,62 @@ fixtures returns exactly `deadline-desk` and `due-desk` — and came back **4 of
 projects' `src/lib/date.ts` and `src/pages/Home.tsx`, nothing else. Written into that file's
 header, where its two previous regenerations are recorded.
 
-### 5.2 What AC5 still needs
+### 5.2 ✅ AC5 CLOSED, 2026-09-10 (session 5) — the shelf entry, and the two answers now name each other
 
-The catalog example is done and validates (`68/68`, strict). **The shelf entry is not**, and it is
-deliberately the same piece of work as CMP-004 AC3: a small date-formatting component built in a
-real project and put on the shelf with `export_to_library`, so the shelf's first single-part entry
-is one that was *exported* rather than hand-authored. 🔴 **Do not hand-author it** — that would
-skip the round trip AC4 exists to exercise.
+The catalog example shipped in session 4 (`68/68`, strict). The shelf entry is
+**`library/prefabs/format-date`**, built in a real project (`parts-source/`, beside CMP-004) and
+written to the shelf by `export_to_library` — **not hand-authored**, so it exercises the round trip
+AC4 exists for. One component, four nodes.
+
+**What the part is.** `Component Inputs (Date, Style, Format, Locale)` → a `Function` node mapping
+a named style to a token string → `Date To String` → `Component Outputs (Text)`. An app asks for
+`"long"` instead of remembering twenty-one tokens, and `Format` overrides it with anything this
+node can read, which is what keeps the presets honest rather than a second vocabulary.
+
+| style | renders, for Thursday 10 September 2026 15:05:07 |
+|---|---|
+| `short` | `10/09/26` |
+| `date` (default) | `September 10th, 2026` |
+| `long` | `Thursday 10th September 2026` |
+| `time` | `3:05 pm` |
+| `datetime` | `Thu 10th Sep 2026, 3:05 pm` |
+| `iso` | `2026-09-10` — the node's own default, which is what makes it the safe fallback |
+
+**Every preset is written in the thirteen tokens AC2 added**, which is the demonstration AC5 asked
+for: without `{dayName} {ordinal} {monthName} {h12} {ampm}` there are no presets, only `iso`.
+
+#### 🔴 The library card is a corpus example with a wider audience, so it is graded
+
+The row above is quoted on the entry's card. **This phase has already shipped one format string
+that was a lie** — the corpus example that set `"HH:mm:ss"`, moment syntax this node cannot read,
+which validated clean because the gate checked the PORT and never the VALUE.
+
+So the presets are not read out of a test file. `noodl-runtime`'s
+`cmp-005-date-to-string-tokens.test.ts` lifts the script **out of the entry on the shelf** —
+`library/prefabs/format-date/project/project.json`, the bytes `install_prefab` copies into
+somebody's project — and renders every style through this node. Three specs: the table above
+verbatim, no `{}` or token letters surviving into any output, and the locale following through
+(`fr-FR` → `jeudi 10th septembre 2026`, `{ordinal}` staying English on purpose).
+✅ **Control run**: changing one shipped preset to `"HH:mm:ss"` reddens it with
+`Received: "HH:mm:ss"` — the historical failure, caught.
+
+#### ✅ "Make the two answers tell the truth about each other"
+
+Both descriptions now carry the other's slug and say which job is **not** theirs — `format-date`'s
+opens *"NOT the same thing as the intl-format module"*, `intl-format`'s gained *"NOT the part for
+formatting a date you already hold"*. Graded in `cmp004LibraryQuery.test.ts`.
+
+🔴 **And the phase's own worked example changed its answer.** `list_library({query: "is there a
+date formatter"})` returned `intl-format` first when session 4 built the query — the honest answer
+when the shelf had no date formatter. It now returns **`format-date`** first, with `intl-format`
+still in the answer. Session 4's assertion went red on the day the phase closed the gap it was
+measuring; the literal was not bumped, both facts are asserted, and the cross-reference is what
+makes the ranking not the decision.
+
+⚠️ `intl-format`'s `Utilities` tag was **deliberately left alone**. Fixing that one character would
+make `list_library({tag: "Utility"})` correct — and it would also delete the evidence AC2's whole
+decision rests on, which `cmp004LibraryQuery.test.ts` pins against the real library. Available as a
+follow-up, owner NONE, and it needs that suite rewritten in the same commit.
 
 ### 5.3 Regenerated artefacts, and the merge each one needed
 

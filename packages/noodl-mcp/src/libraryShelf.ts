@@ -26,6 +26,29 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+/**
+ * 🔴 **CMP-004 AC3 — why there is no third value here, and no `part` tag either.**
+ *
+ * The AC offered three ways to tell a part from a prefab: a tag, a type, or a stated reason it
+ * need not. This is the reason.
+ *
+ * A label has to be typed by a person, once per entry, and this shelf has already shown what
+ * that produces: the single entry that formats things is tagged `Utilities` and the other eight
+ * utilities are tagged `Utility`, so the obvious query excludes the one row it was asked for.
+ * 22 tags over 75 entries, one of them holding 50. A `part` tag joins that vocabulary and
+ * inherits its failure mode — an entry is a part when somebody remembered to say so.
+ *
+ * And the obvious mechanical rule does not work either. "One component" was AC3's own proposed
+ * unit, and measured over the shelf it does not separate the two things: `file-upload` is ONE
+ * component containing **48** nodes, `toggle-switch` is ONE component containing **7**. Six
+ * prefabs shipped exactly one component before this AC was started.
+ *
+ * So a row carries the two numbers the judgement is actually made from — `size.components` and
+ * `size.nodes`, derived from the entry's own `project.json` on every call — and no verdict. They
+ * cannot be typed wrong, they cannot drift from what installs, and they answer the question the
+ * label was a proxy for: *how much of my project does this become?* `format-date` is 1 and 4;
+ * `stripe` is 25 and 155. Nobody needs to be told which of those is a part.
+ */
 export type LibraryEntryType = 'prefab' | 'module';
 
 /** `library.json`, as `scripts/library/schema.json` describes it. */
@@ -51,6 +74,14 @@ export interface ShelfRow {
   description: string;
   tags: string[];
   version: string;
+  /**
+   * CMP-004 AC3 — how big the thing is, derived from the entry on every call.
+   *
+   * `components` is how many components install; `nodes` is how many nodes they contain in
+   * total. A `module` entry that ships only a code kit reads `0` for both, which is the
+   * honest answer — what it installs is node types, not a graph.
+   */
+  size: { components: number; nodes: number };
   /** CMP-004 AC2 — present only on a `query` call, saying why this row is in the answer. */
   matchedTerms?: string[];
   /** CMP-004 AC2 — the fields those terms hit, best first. */
@@ -274,10 +305,15 @@ export function listShelf(
   /** Entries that passed `type`/`tag` and were then offered to the query — the search's denominator. */
   let considered = 0;
   /**
-   * CMP-004 AC2. Component names cost a `project.json` parse per entry — 3 MB and ~25 ms over the
-   * whole shelf, measured — so they are read on a `query` call and on no other. An entry is
-   * described by its own prose and by what it ships; leaving the second out would mean a query for
-   * `Sanitise email` could not find the part called exactly that.
+   * CMP-004 AC2. An entry is described by its own prose AND by what it ships; leaving the second
+   * out would mean a query for `Sanitise email` could not find the part called exactly that.
+   *
+   * ⚠️ **AC2 read the entry's `project.json` on a query call and on no other, to keep the index an
+   * index. AC3 reads it always** — a row now carries `size`, and a size that appears only when you
+   * happen to search is not a field an agent can rely on. The price was re-measured on the shelf as
+   * it now stands: **75 entries, 3.0 MB, 8.5 ms** for the whole read (AC2's note said ~25 ms over
+   * 72 entries; that figure was never re-taken and this one supersedes it). One parse per entry
+   * serves both the size and the search — see `readEntryContents`.
    */
   const terms = filter.query ? queryTerms(filter.query) : [];
   const searching = terms.length > 0;
@@ -300,15 +336,20 @@ export function listShelf(
       if (!fs.existsSync(path.join(entryDir, 'library.json'))) continue; // not an entry (scratch dir, etc.)
       try {
         const meta = readLibraryJson(entryDir);
+        const tags = Array.isArray(meta.tags) ? meta.tags : [];
+        // The tag filter is decided from `library.json` alone, so an entry the caller
+        // filtered out never costs the contents read below.
+        if (filter.tag && !tags.some((t) => t.toLowerCase() === filter.tag!.toLowerCase())) continue;
+        const contents = readEntryContents(entryDir);
         const row: ShelfRow = {
           slug,
           type,
           label: meta.label,
           description: oneLine(meta.description ?? ''),
-          tags: Array.isArray(meta.tags) ? meta.tags : [],
-          version: meta.version ?? '0.0.0'
+          tags,
+          version: meta.version ?? '0.0.0',
+          size: { components: contents.components, nodes: contents.nodes }
         };
-        if (filter.tag && !row.tags.some((t) => t.toLowerCase() === filter.tag!.toLowerCase())) continue;
         considered += 1;
         if (!searching) {
           rows.push(row);
@@ -321,7 +362,7 @@ export function listShelf(
           // 🔴 The FULL description, not `row.description` — that one is capped at 160 characters
           // for display, and searching it would make an entry findable by its first sentence only.
           description: meta.description ?? '',
-          components: entryComponentNames(entryDir)
+          components: contents.names
         });
         if (match) scored.push({ row: { ...row, matchedTerms: match.matchedTerms, matchedIn: match.matchedIn }, match });
       } catch (err) {
@@ -343,21 +384,60 @@ export function listShelf(
 }
 
 /**
- * The component names an entry ships. Every entry on the shelf today is a legacy monolithic
- * project, so this is `project.json`'s own `components` array — the same read
- * `get_library_entry` does, kept here so the search does not need the tools module.
+ * What an entry's own `project.json` says it ships — the names, and how much graph.
+ *
+ * Every entry on the shelf today is a legacy monolithic project, so this is that file's
+ * `components` array: the same read `get_library_entry` does, kept here so neither the search
+ * nor the size needs the tools module, and done ONCE per entry so a `query` call does not pay
+ * for the same 3 MB twice.
  *
  * An unreadable or absent file is an entry with no components (every `module` entry), not an
  * error: a module is found by its description, which is where its node names are written.
  */
-export function entryComponentNames(entryDir: string): string[] {
+export interface EntryContents {
+  names: string[];
+  components: number;
+  nodes: number;
+}
+
+export function readEntryContents(entryDir: string): EntryContents {
   try {
     const raw = fs.readFileSync(path.join(entryDir, 'project', 'project.json'), 'utf8');
-    const parsed = JSON.parse(raw) as { components?: Array<{ name?: string }> };
-    return (parsed.components ?? []).map((c) => c.name).filter((n): n is string => typeof n === 'string');
+    const parsed = JSON.parse(raw) as { components?: LegacyComponentShape[] };
+    const components = parsed.components ?? [];
+    let nodes = 0;
+    for (const component of components) {
+      for (const root of component?.graph?.roots ?? []) nodes += countNodes(root);
+    }
+    return {
+      names: components.map((c) => c?.name).filter((n): n is string => typeof n === 'string'),
+      components: components.length,
+      nodes
+    };
   } catch {
-    return [];
+    return { names: [], components: 0, nodes: 0 };
   }
+}
+
+/** Only the two fields the count walks — a legacy graph is a forest of `children` arrays. */
+interface LegacyComponentShape {
+  name?: string;
+  graph?: { roots?: LegacyNodeShape[] };
+}
+interface LegacyNodeShape {
+  children?: LegacyNodeShape[];
+}
+
+function countNodes(node: LegacyNodeShape | undefined): number {
+  if (!node) return 0;
+  let total = 1;
+  for (const child of node.children ?? []) total += countNodes(child);
+  return total;
+}
+
+/** The component names alone, for callers that do not need the size. */
+export function entryComponentNames(entryDir: string): string[] {
+  return readEntryContents(entryDir).names;
 }
 
 export interface ResolvedEntry {

@@ -1,6 +1,6 @@
 {
   "label": "Intl Format",
-  "description": "Locale-aware formatting nodes built on the browser's Intl APIs — no dependencies, no network. Relative Time turns a date into \"3 hours ago\" with an optional auto-refresh interval; Format Number handles decimal, currency and percent styles; Format List joins items with a localized conjunction or disjunction; Pluralize picks the right one/other form with Intl.PluralRules. Every node has a Locale input defaulting to the browser language, and every input is guarded — an unconnected input yields an empty string instead of throwing.",
+  "description": "Locale-aware formatting nodes built on the browser's Intl APIs — no dependencies, no network. Relative Time turns a date into \"3 hours ago\" with an optional auto-refresh interval; Format Number handles decimal, currency and percent styles; Format List joins items with a localized conjunction or disjunction; Pluralize picks the right one/other form with Intl.PluralRules. Every node has a Locale input defaulting to the browser language, and every input is guarded — an unconnected input yields an empty string instead of throwing. NOT the part for formatting a date you already hold — \"September 10th, 2026\", \"3:05 pm\" — that is the format-date part, which wraps the Date To String node. This module formats against the clock and against number, list and plural rules; the two do not overlap and an app that shows a post date and a \"posted 3 hours ago\" beside it wants both.",
   "type": "module",
   "tags": [
     "Utilities",

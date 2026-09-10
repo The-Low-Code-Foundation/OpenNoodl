@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "bbaeb530-7aa2-4c6c-8016-e9bb08206b44",
+  "name": "Format Full Name",
+  "path": "/Parts/Format Full Name",
+  "type": "logic",
+  "created": "2026-09-10T19:03:40.006Z",
+  "modified": "2026-09-10T19:03:40.006Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "First and last name into one display string plus initials, without the trailing space a missing surname leaves behind."
+}

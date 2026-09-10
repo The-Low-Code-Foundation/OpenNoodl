@@ -9,9 +9,11 @@ grows, so re-count it rather than quoting this file.
 ✅ **AC4 closed 2026-09-10 (session 3)** — the path is two-way, and step 4 of THE ORDER says so.
 ✅ **AC2 closed 2026-09-10 (session 4)** — `list_library({query})`, and the doctrine tells an agent
 to ask it by name for each part it was about to build.
-**AC3 and AC5 are open.** The shelf is still prefab-sized
+✅ **AC3 closed 2026-09-10 (session 5)** — three exported single-component parts, and a `size` on
+every row instead of a label. **AC5 remains open.** (Superseded, kept for the reasoning: the shelf
+was prefab-sized
 (AC3 — 🔴 **no longer blocked**; the CSV was already in the repo and reading it changed what AC3
-asks for, see below), and no graded build has yet shown a model reaching for it (AC5).
+asks for, see below), and no graded build has yet shown a model reaching for it (AC5).)
 
 ## 1. The person sentence
 
@@ -172,6 +174,95 @@ formatter, which is the worked example of a small sharp part the product does no
 **AC3 is done when the shelf carries at least three single-component entries, one of them produced
 by `export_to_library` rather than hand-authored**, and `list_library` distinguishes a part from a
 prefab (a `tag`, a `type`, or a stated reason it need not).
+
+### ✅ **AC3 CLOSED, 2026-09-10 (session 5)** — three parts, all three exported
+
+`format-date`, `format-full-name` and `sanitise-email`. Each is **one component**: 4, 3 and 3
+nodes. **None was hand-authored** — all three were built with `create_component` in a real project
+(`parts-source/` beside this file) and written to the shelf by `export_to_library`. The shelf is
+**75 entries**; `npm run library:check` reports all three clean with zero warnings.
+
+#### 🔴 The AC's literal criterion was GREEN before a line of work, and measuring it first is what found that
+
+*"at least three single-component entries"* — counted over the shelf as it stood: **fourteen**
+entries already shipped exactly one component, **six of them prefabs** (`confirm-dialog`,
+`date-picker`, `file-upload`, `progress-circle`, `search-bar`, `toggle-switch`). ⚠️ **§2's premise
+above — *"Every entry is a whole prefab"* — is false as written**, and a criterion the artefact
+already satisfies grades nothing. That is the **fourth** time in this phase a task file's premise
+did not survive contact with the artefact (see §"This phase has now failed measure-the-artefact"
+in the phase memory).
+
+What IS true is the sentence underneath it, and it is what the AC was really about: **the shelf had
+nothing at utility scale.** Measured over all 50 entries that ship a graph:
+
+| | |
+|---|---|
+| smallest graph on the shelf | **4 nodes** (`rich-text-editor` — and that is a code module's demo page, not a part) |
+| median | ~20 nodes |
+| largest | `stripe`, **25 components / 155 nodes** |
+| 🔴 one component, 48 nodes | `file-upload` |
+| 🔴 one component, 7 nodes | `toggle-switch` |
+
+**Those last two rows are why "single-component" could not be the test.** The AC's own proposed
+unit does not separate a part from a screen.
+
+#### 🔴 The third clause: no label, and the measurement that ruled one out
+
+`list_library` distinguishes them by **reporting `size: { components, nodes }` on every row and
+labelling nothing** — the AC's *"a stated reason it need not"* arm, and the reason is a
+measurement rather than a preference.
+
+A `tag` or a `type` has to be typed by a person, once per entry. **This shelf has already shown
+what that produces**: AC2 measured the one formatting entry tagged `Utilities` while the other
+eight utilities are tagged `Utility`, so the obvious query excludes the one row it was asked for;
+22 tags over 75 entries, one of them holding 50. A `part` tag joins that vocabulary and inherits
+its failure mode — *an entry is a part when somebody remembered to say so.* And the mechanical
+rule fails for the `file-upload`/`toggle-switch` reason above.
+
+So a row carries the two numbers the judgement is actually made from, derived from the entry's own
+`project.json` on every call. They cannot be typed wrong, they cannot drift from what installs, and
+they answer the question the label was a proxy for: **how much of my project does this become?**
+`format-date` is 1 and 4; `stripe` is 25 and 155. Nobody needs to be told which of those is a part.
+
+⚠️ **The price, re-measured rather than inherited.** AC2 read an entry's `project.json` only on a
+`query` call and recorded *"3 MB and ~25 ms"*. A size that appears only when you happen to search
+is not a field an agent can rely on, so it is now read on every call — and the cost re-taken on the
+shelf as it now stands is **75 entries, 3.0 MB, 8.5 ms** (five runs, 8.4–8.9). One parse per entry
+serves both the size and the search. AC2's 25 ms was never re-taken and this supersedes it.
+
+**And step 3 of THE ORDER says what the numbers are for**, because a field nobody is told to read
+is a field nobody reads. Graded over the wire.
+
+#### How it is graded, and the four controls that were run
+
+`packages/noodl-mcp/tests/cmp004Parts.test.ts` — **21 specs**, plus two in `phase85Doctrine.test.ts`
+over the wire and three in `noodl-runtime`'s CMP-005 suite.
+
+🔴 **The entries are never read to decide whether the export produced them.** A spec that reads
+`library/prefabs/format-date/` proves a directory exists — and *"not hand-authored"* is precisely
+what AC3 asks. So the grading **re-runs `export_to_library`** from the committed source project and
+its committed `export-manifest.json` into a temp shelf and compares **every byte**, file list
+first. The source project and the manifest are inputs; `library/prefabs/<slug>/` is output.
+
+| control | result |
+|---|---|
+| one character added to a shipped `README.md` | ✅ red |
+| a hand-added file in a shipped entry directory | ✅ red (the file-list check, not the diff) |
+| the trailing-space bug reintroduced into the shipped `Format Full Name` script | ✅ red, `Expected "Ada" / Received "Ada "` |
+| `countNodes` neutered to return 0 | ✅ **4** specs red |
+| a preset changed to moment syntax (`"HH:mm:ss"`) in the shipped entry | ✅ red, `Received "HH:mm:ss"` |
+
+🔴 **A control caught a spec that graded nothing — session 4's finding, arriving again in the
+same task.** The first *"reachable by what it does"* spec asked the three natural questions
+(*"is there a date formatter"*, *"clean up an email address"*, *"first and last name initials"*)
+and asserted each part came back. **Blanking all three descriptions turned nothing red**: every one
+of those questions matches the SLUG. Rewritten around a term that lives in exactly one field —
+`weekday`, `surname`, `domain` — asserting `matchedIn` is exactly `['description']`, and the
+control now reddens it. The natural questions are still asserted, as what they are.
+
+⚠️ **Two specs survived the size control by reading zero in both arms** and were tightened: a
+one-sided `nodes <= 4` passes when the count is broken, and a row-vs-`readEntryContents`
+comparison agrees with itself at 0. Both now carry a known-firing signal beside them.
 
 **AC4 — the path is two-way.** ✅ **DONE, 2026-09-10 (session 3).** `export_to_library({component,
 slug, label, description, tags?, version?, readme?})` — a fourth tool in the `explore` group, write-

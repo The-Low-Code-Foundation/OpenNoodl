@@ -164,7 +164,9 @@ export function registerLibraryTools(
       description:
         'The index of installable library entries — prefabs (graphs of components: forms, tables, pickers, ' +
         'auth pages) and modules (code that adds node types: charts, icons, maps, QR). One row per entry: ' +
-        'slug, label, one-line description, tags, version. Pass query to search by what a part DOES — ' +
+        'slug, label, one-line description, tags, version, and size — how many components install and how ' +
+        'many nodes they contain, so you can tell a one-node utility from a whole screen. Pass query to ' +
+        'search by what a part DOES — ' +
         '"date formatter", "file upload", "sanitise email" — over labels, descriptions, tags and the ' +
         'component names entries ship; ask it before building a part from scratch. Cheap by design; call ' +
         'get_library_entry for detail and install_prefab to install one into this project.',
@@ -191,8 +193,9 @@ export function registerLibraryTools(
       const searched = typeof args.query === 'string' && args.query.trim().length > 0;
       const shown = searched ? rows.slice(0, QUERY_RESULT_CAP) : rows;
       const note = !searched
-        ? `${rows.length} entries. get_library_entry({slug}) for the full description, components, modules ` +
-          'and README; install_prefab({slug}) to install one into this project.'
+        ? `${rows.length} entries. size is what installing costs you — {components, nodes} — so a 1/4 row is ` +
+          'a part you wire in and a 25/155 row is most of a screen. get_library_entry({slug}) for the full ' +
+          'description, components, modules and README; install_prefab({slug}) to install one into this project.'
         : rows.length === 0
           ? `Nothing on the shelf matches "${args.query}". That is an answer: build the part, then ` +
             'export_to_library({component}) puts it here for the next project. Call list_library with no ' +

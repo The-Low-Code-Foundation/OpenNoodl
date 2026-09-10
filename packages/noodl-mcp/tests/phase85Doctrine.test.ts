@@ -251,6 +251,21 @@ describe('CMP-004 AC2 — the doctrine tells an agent to ASK the shelf, not brow
     expect(doctrine).toContain('`Utility`');
   });
 
+  /**
+   * CMP-004 AC3. A field nobody is told to read is a field nobody reads — `size` exists to be
+   * traded on, so the step that sends an agent to the shelf has to say what the numbers mean.
+   */
+  it('🔴 tells an agent what a row\'s size is FOR, and that nothing is labelled a part', async () => {
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    const doctrine = String(data.designDoctrine);
+    expect(doctrine).toContain('`size`');
+    // Not the field name alone: the trade it stands for, in the two shapes it separates.
+    expect(doctrine).toMatch(/part you wire into a graph/i);
+    expect(doctrine).toMatch(/most of a screen/i);
+    // And the reason there is no label, which is the same reason the tags are not to be trusted.
+    expect(doctrine).toMatch(/cannot be typed wrong the way the tags were/i);
+  });
+
   it('still puts the query step BEFORE authoring — advice after the leaves are written is a rewrite', async () => {
     const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
     const doctrine = String(data.designDoctrine);
@@ -272,11 +287,37 @@ describe('CMP-004 AC2 — the query answers over the wire, not only in the index
     });
     expect(isError).toBe(false);
     const slugs = data.entries.map((e) => e.slug);
+    // 🔴 Session 4 asserted `intl-format` first, and it was the honest answer then. Session 5
+    // put a real date formatter on the shelf (AC3), so the answer moved — both rows still come
+    // back, and each description names the other. See `cmp004LibraryQuery.test.ts`.
+    expect(slugs[0]).toBe('format-date');
     expect(slugs).toContain('intl-format');
-    expect(slugs[0]).toBe('intl-format');
     // Each row says why it is in the answer, so a model can judge the second-best rather than
     // trusting the first.
     expect(data.entries[0].matchedTerms).toEqual(expect.arrayContaining(['date', 'formatter']));
+  });
+
+  /**
+   * CMP-004 AC3 — the row carries how big the entry is, over the wire and not only in the index
+   * module. `size` is what an agent trades on: a 1-component/4-node row is a part you wire in, a
+   * 25-component/155-node row is most of a screen. There is deliberately no `part` label — see
+   * the header of `libraryShelf.ts` for the measurement that ruled one out.
+   */
+  it('🔴 every row says how much of your project it becomes', async () => {
+    const { isError, data } = await call<ListLibraryResponse>(session, 'list_library', {});
+    expect(isError).toBe(false);
+    for (const row of data.entries) {
+      expect(typeof row.size.components).toBe('number');
+      expect(typeof row.size.nodes).toBe('number');
+    }
+    const bySlug = new Map(data.entries.map((e) => [e.slug, e.size]));
+    // The two ends of the shelf, named rather than derived, so this reddens if either moves.
+    expect(bySlug.get('format-date')).toEqual({ components: 1, nodes: 4 });
+    expect(bySlug.get('stripe')!.nodes).toBeGreaterThan(100);
+    // A code module ships node types, not a graph — zero is the honest answer, not a gap.
+    expect(bySlug.get('lucide-icons')).toEqual({ components: 0, nodes: 0 });
+    // And the note tells a model what the numbers are FOR, or they are two integers nobody reads.
+    expect(data.note).toMatch(/size is what installing costs you/);
   });
 
   it('🔴 an empty answer is an ANSWER, and says what to do with it', async () => {

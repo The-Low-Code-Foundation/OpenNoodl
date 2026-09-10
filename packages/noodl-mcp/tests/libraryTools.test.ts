@@ -142,7 +142,7 @@ describe('LBR-008 — list_library and get_library_entry', () => {
     await session.close();
   });
 
-  it('lists index rows: slug, label, ONE-line description, tags, version', async () => {
+  it('lists index rows: slug, label, ONE-line description, tags, version, size', async () => {
     const res = await call<ListLibraryResponse>(session, 'list_library');
     expect(res.isError).toBe(false);
     const badge = res.data.entries.find((e) => e.slug === 'badge-card');
@@ -152,7 +152,9 @@ describe('LBR-008 — list_library and get_library_entry', () => {
       label: 'Badge Card',
       description: 'A small card with a badge.',
       tags: ['UI', 'Feedback'],
-      version: '1.2.0'
+      version: '1.2.0',
+      // CMP-004 AC3 — read off this fixture entry's own project.json, not declared anywhere.
+      size: { components: 2, nodes: 3 }
     });
     // The second line of the description must NOT be in the index — the index
     // costs like an index, detail is get_library_entry's job.

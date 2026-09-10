@@ -19,6 +19,9 @@
  * named IANA zone, which is the same instant everywhere.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import { createNode } from '../helpers/node-harness';
 
 import DateToStringModule = require('../../src/nodes/std-library/datetostring');
@@ -186,5 +189,71 @@ describe('AC4 — the locale stops being hardcoded (CMP-005)', () => {
     expect(node.out('currentValue')).toBe('September');
     node.node.setInputValue('locale', 'fr-FR');
     expect(node.out('currentValue')).toBe('septembre');
+  });
+});
+
+/**
+ * CMP-005 AC5 / CMP-004 AC3 — **the shipped `format-date` shelf entry, rendered.**
+ *
+ * Session 5 exported a `format-date` part whose whole job is to hand this node a token string,
+ * and whose library card promises what comes out: *"long" gives Thursday 10th September 2026,
+ * "time" gives 3:05 pm*. A promise on a library card is a corpus example with a wider audience.
+ *
+ * 🔴 **This phase has already shipped one format string that was a lie.** The single corpus
+ * example that set a format set `"HH:mm:ss"` — moment syntax this node cannot read — and it
+ * validated clean, because the gate checked that `formatString` was a real PORT and never what
+ * its value meant. It rendered as the literal letters `HH:mm:ss`.
+ *
+ * So the presets are not read from this file. They are lifted out of the ENTRY ON THE SHELF —
+ * `library/prefabs/format-date/project/project.json`, the bytes `install_prefab` copies into
+ * somebody's project — and rendered through this node. If a preset uses a token this node does
+ * not have, the letters survive into the output and these assertions fail.
+ */
+describe('AC5 — the format-date shelf entry renders what its card promises (CMP-005)', () => {
+  const presets = (() => {
+    const entry = path.join(
+      __dirname, '..', '..', '..', '..', 'library', 'prefabs', 'format-date', 'project', 'project.json'
+    );
+    const project = JSON.parse(fs.readFileSync(entry, 'utf8')) as {
+      components: Array<{ graph: { roots: Array<{ id: string; parameters?: { functionScript?: string } }> } }>;
+    };
+    const scripts = project.components
+      .flatMap((c) => c.graph.roots)
+      .map((n) => n.parameters?.functionScript)
+      .filter((s): s is string => typeof s === 'string');
+    // The part's own script IS the mapping; run it once per style rather than re-typing it here.
+    const script = scripts.find((s) => s.includes('PRESETS'));
+    if (!script) throw new Error('format-date entry has no PRESETS script — the part has changed shape');
+    return (style: string): string => {
+      const Outputs: Record<string, unknown> = {};
+      // eslint-disable-next-line no-new-func
+      new Function('Inputs', 'Outputs', script)({ style }, Outputs);
+      return Outputs.format as string;
+    };
+  })();
+
+  it('🔴 renders each named style, and the card is quoting these strings', () => {
+    expect(render(INSTANT, presets('long'))).toBe('Thursday 10th September 2026');
+    expect(render(INSTANT, presets('time'))).toBe('3:05 pm');
+    expect(render(INSTANT, presets('date'))).toBe('September 10th, 2026');
+    expect(render(INSTANT, presets('short'))).toBe('10/09/26');
+    expect(render(INSTANT, presets('datetime'))).toBe('Thu 10th Sep 2026, 3:05 pm');
+    // `iso` is the node's own default format, which is what makes it the safe fallback.
+    expect(render(INSTANT, presets('iso'))).toBe('2026-09-10');
+  });
+
+  it('🔴 no preset leaves an unsubstituted token behind — the "HH:mm:ss" failure', () => {
+    for (const style of ['short', 'date', 'long', 'time', 'datetime', 'iso']) {
+      const out = render(INSTANT, presets(style));
+      expect({ style, out }).toEqual({ style, out: expect.not.stringMatching(/[{}]/) });
+      // And the letters of the token names do not survive as literals either.
+      expect({ style, out }).toEqual({ style, out: expect.not.stringMatching(/dayName|monthName|ordinal|ampm/) });
+    }
+  });
+
+  it('and the styles that name a day or a month follow the Locale the part passes through', () => {
+    expect(render(INSTANT, presets('long'), undefined, 'fr-FR')).toBe('jeudi 10th septembre 2026');
+    // ⚠️ `{ordinal}` stays English on purpose — see `ordinalSuffix`'s own comment and AC2.
+    expect(render(INSTANT, presets('short'), undefined, 'fr-FR')).toBe('10/09/26');
   });
 });

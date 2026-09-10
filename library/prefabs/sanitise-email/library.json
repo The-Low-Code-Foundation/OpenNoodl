@@ -1,0 +1,9 @@
+{
+  "label": "Sanitise Email",
+  "description": "Turns the address someone typed into the one you can store and compare: trimmed, lower-cased, unwrapped from a mailto: link or from the angle brackets a mail client pastes, with the domain split out and a validity flag beside it. Logic only, no UI — put it between a Text Input and whatever you save to, so two sign-ups for the same person are the same row.",
+  "type": "prefab",
+  "tags": [
+    "Utility"
+  ],
+  "version": "1.0.0"
+}

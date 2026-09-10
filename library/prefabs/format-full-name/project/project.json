@@ -1,0 +1,170 @@
+{
+  "name": "Format Full Name",
+  "components": [
+    {
+      "name": "/Parts/Format Full Name",
+      "graph": {
+        "roots": [
+          {
+            "id": "fnIn",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The name",
+            "x": 60,
+            "y": 60,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "firstName",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "lastName",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "fallback",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "fnFn",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Join and initial",
+            "x": 420,
+            "y": 60,
+            "parameters": {
+              "functionScript": "var first = String(Inputs.firstName == null ? '' : Inputs.firstName).trim();\nvar last = String(Inputs.lastName == null ? '' : Inputs.lastName).trim();\n// A single field holding 'Ada Lovelace' is the commonest real shape of this data;\n// splitting it here is why the initials come out AL rather than A.\nif (!last && first.indexOf(' ') !== -1) {\n  var bits = first.split(/\\s+/);\n  last = bits.pop();\n  first = bits.join(' ');\n}\nvar parts = [];\nif (first) parts.push(first);\nif (last) parts.push(last);\nvar fallback = String(Inputs.fallback == null ? '' : Inputs.fallback).trim();\nOutputs.hasName = parts.length > 0;\nOutputs.fullName = parts.length ? parts.join(' ') : fallback;\nvar letters = [];\nfor (var i = 0; i < parts.length; i++) letters.push(parts[i].charAt(0).toUpperCase());\nOutputs.initials = letters.join('') || fallback.charAt(0).toUpperCase();"
+            },
+            "ports": [
+              {
+                "name": "in-firstName",
+                "plug": "input",
+                "type": "*",
+                "displayName": "firstName",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-lastName",
+                "plug": "input",
+                "type": "*",
+                "displayName": "lastName",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-fallback",
+                "plug": "input",
+                "type": "*",
+                "displayName": "fallback",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-fullName",
+                "plug": "output",
+                "type": "string",
+                "displayName": "fullName",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-initials",
+                "plug": "output",
+                "type": "string",
+                "displayName": "initials",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-hasName",
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "hasName",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "fnOut",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "How to show it",
+            "x": 780,
+            "y": 60,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "fullName",
+                "plug": "input",
+                "type": "string"
+              },
+              {
+                "name": "initials",
+                "plug": "input",
+                "type": "string"
+              },
+              {
+                "name": "hasName",
+                "plug": "input",
+                "type": "boolean"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "fnIn",
+            "fromProperty": "firstName",
+            "toId": "fnFn",
+            "toProperty": "in-firstName"
+          },
+          {
+            "fromId": "fnIn",
+            "fromProperty": "lastName",
+            "toId": "fnFn",
+            "toProperty": "in-lastName"
+          },
+          {
+            "fromId": "fnIn",
+            "fromProperty": "fallback",
+            "toId": "fnFn",
+            "toProperty": "in-fallback"
+          },
+          {
+            "fromId": "fnFn",
+            "fromProperty": "out-fullName",
+            "toId": "fnOut",
+            "toProperty": "fullName"
+          },
+          {
+            "fromId": "fnFn",
+            "fromProperty": "out-initials",
+            "toId": "fnOut",
+            "toProperty": "initials"
+          },
+          {
+            "fromId": "fnFn",
+            "fromProperty": "out-hasName",
+            "toId": "fnOut",
+            "toProperty": "hasName"
+          }
+        ]
+      },
+      "id": "bbaeb530-7aa2-4c6c-8016-e9bb08206b44",
+      "description": "First and last name into one display string plus initials, without the trailing space a missing surname leaves behind.",
+      "created": "2026-09-10T19:03:40.006Z",
+      "modifiedBy": "noodl-mcp"
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {
+    "styles": {}
+  },
+  "variants": []
+}

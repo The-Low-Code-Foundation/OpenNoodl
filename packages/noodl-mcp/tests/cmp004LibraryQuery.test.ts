@@ -5,7 +5,7 @@
  * not be asked it: `list_library` took `type` and an exact `tag`, and nothing else.
  *
  * 🔴 **The measurement that decided it, and the reason "state why tags are enough" was not the
- * answer.** Over the 72 entries actually on the shelf:
+ * answer.** Over the 72 entries on the shelf when AC2 was built (75 after AC3 exported three parts):
  *
  *  - the ONE entry that formats things (`intl-format`) is tagged **`Utilities`**; the other eight
  *    utilities are tagged **`Utility`**. `list_library({tag: "Utility"})` therefore returns eight
@@ -19,6 +19,9 @@
  * asserted as a floor or a relationship rather than as a frozen number, except the two tag counts,
  * which ARE the finding.
  */
+
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { entryComponentNames, listShelf, queryTerms, resolveLibraryRoot, scoreEntry } from '../src/libraryShelf';
 
@@ -49,11 +52,37 @@ describe('CMP-004 AC2 — why an exact tag was not enough', () => {
 });
 
 describe("CMP-004 AC2 — the AC's own worked example", () => {
+  /**
+   * 🔴 **This spec changed its answer because the shelf changed, and that is the point.**
+   *
+   * Session 4 asserted `intl-format` as the best answer, and it was: the shelf had no date
+   * formatter and the nearest thing was a module of locale-aware formatting nodes. Session 5
+   * exported `format-date` (CMP-004 AC3 / CMP-005 AC5), so the honest best answer moved — the
+   * spec went red on the day the phase closed the gap it was measuring. The literal was not
+   * bumped: what is asserted below is the new fact PLUS the old one, because both rows have to
+   * come back or an author picks whichever they met first.
+   */
   it('answers "is there a date formatter?" with the entry that formats dates', () => {
     const found = slugs('is there a date formatter');
+    // The part built for exactly this question ranks first — a ranked list an agent reads top-down.
+    expect(found[0]).toBe('format-date');
+    // And the module that formats against the clock is still in the answer, not displaced by it.
     expect(found).toContain('intl-format');
-    // 🔴 It is not merely present, it is the ANSWER: a ranked list an agent reads top-down.
-    expect(found[0]).toBe('intl-format');
+  });
+
+  /**
+   * CMP-005 AC5 — *"make the two answers tell the truth about each other"*. Two entries that both
+   * format dates and never name each other is worse than one, because then the RANKING decides
+   * for the author. Each description carries the other's slug and says which job is not its own.
+   */
+  it('the two date answers name each other, so the rank is not the decision', () => {
+    const description = (type: 'prefabs' | 'modules', slug: string) =>
+      (JSON.parse(fs.readFileSync(path.join(ROOT, type, slug, 'library.json'), 'utf8')) as { description: string })
+        .description;
+    expect(description('prefabs', 'format-date')).toContain('intl-format');
+    expect(description('modules', 'intl-format')).toContain('format-date');
+    expect(description('prefabs', 'format-date')).toMatch(/NOT the same thing/);
+    expect(description('modules', 'intl-format')).toMatch(/NOT the part/);
   });
 
   it('finds it by a word no field spells — "formatter" against a label saying "Format"', () => {

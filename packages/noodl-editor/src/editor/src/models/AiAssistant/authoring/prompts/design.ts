@@ -115,7 +115,11 @@ Then plan the components. Then, before authoring the first leaf:
    every other utility is tagged \`Utility\` — a tag filter answers "no such thing" about parts
    that are sitting there. This server ships installable entries — prefabs (accordions, app shells,
    auth pages, cards and card grids, tables, forms, pickers, toasts, multi-selects, pagination,
-   ratings) and modules (charts, icons, maps, QR). \`get_library_entry({slug})\` says exactly which
+   ratings) and modules (charts, icons, maps, QR). Every row carries \`size\` — how many components
+   install and how many nodes they contain — because that is the whole trade: a 1-component,
+   4-node row is a part you wire into a graph, a 25-component, 155-node row is most of a screen.
+   Nothing is labelled "part" or "prefab"; the numbers are read off the entry itself, so they
+   cannot be typed wrong the way the tags were. \`get_library_entry({slug})\` says exactly which
    components an entry brings;
    \`install_prefab({slug})\` puts them in the project and NEVER overwrites what you already have,
    reporting anything it skipped. An entry that matches a part of your tree is a part you do not

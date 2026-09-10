@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "ec0991f9-fbe1-4274-a6e0-6a550d9b934a",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "seIn",
+      "fromProperty": "email",
+      "toId": "seFn",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "seFn",
+      "fromProperty": "out-email",
+      "toId": "seOut",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "seFn",
+      "fromProperty": "out-domain",
+      "toId": "seOut",
+      "toProperty": "domain"
+    },
+    {
+      "fromId": "seFn",
+      "fromProperty": "out-isValid",
+      "toId": "seOut",
+      "toProperty": "isValid"
+    }
+  ]
+}
