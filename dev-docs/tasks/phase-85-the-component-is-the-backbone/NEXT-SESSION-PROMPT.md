@@ -4,100 +4,122 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## The board, re-derived from the task FILES on 2026-09-10 (session 3)
+## The board, re-derived from the task FILES on 2026-09-10 (session 4)
 
 | task | AC | state |
 |---|---|---|
-| CMP-001 | AC1 the `States.currentState` enum input | ✅ **s2**, four assertions over the wire |
-| CMP-001 | AC2 the playbook ships as a doctrine field | OPEN — **now ten patterns**, P10 added |
+| CMP-001 | AC1 the `States.currentState` enum input | ✅ s2, four assertions over the wire |
+| CMP-001 | AC2 the playbook ships as a doctrine field | OPEN — ten patterns written, ships nowhere |
 | CMP-001 | AC3 four new corpus examples | OPEN |
 | CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
 | CMP-002 | the graded baseline build | **NEXT**, and unchanged: run it from its own brief, in a clean session |
-| CMP-003 | AC1 the doctrine stops forbidding the named utility | ✅ **s2**, both copies |
+| CMP-003 | AC1 the doctrine stops forbidding the named utility | ✅ s2, both copies |
 | CMP-003 | AC2 P10 in the playbook | 🟡 half — written into CMP-001 §3, ships nowhere (blocked on CMP-001 AC2) |
 | CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
-| CMP-003 | AC4 the ledger column | ✅ **s2** |
-| CMP-004 | AC1 the shelf is in THE ORDER | ✅ **s2**, step 3 of §"The order" |
-| CMP-004 | AC2 searchable by what a part does | OPEN — 🔴 **the highest-leverage SHELF item left** |
-| CMP-004 | AC3 parts, not just prefabs | OPEN — 🔴 **NOT blocked**; the CSV was in the repo all along, and reading it CHANGED the AC |
-| CMP-004 | AC4 the path is two-way | ✅ **s3** — `export_to_library`, graded by round trip |
+| CMP-003 | AC4 the ledger column | ✅ s2 |
+| CMP-004 | AC1 the shelf is in THE ORDER | ✅ s2 |
+| CMP-004 | AC2 searchable by what a part does | ✅ **s4** — `list_library({query})`, 19 specs over the real library |
+| CMP-004 | AC3 parts, not just prefabs | OPEN — 🔴 **the highest-leverage item left**, and CMP-005 AC5 is the same work |
+| CMP-004 | AC4 the path is two-way | ✅ s3 — `export_to_library`, graded by round trip |
 | CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
-| CMP-005 | the date formatter — node or part | **WRITTEN s3**, not built. AC1 is a decision, not code |
+| CMP-005 | AC1 node or part — the decision | ✅ **s4** — the node, additively; the part after, and exported |
+| CMP-005 | AC2 the tokens an app needs | ✅ **s4** — 13 new tokens, asserted as rendered strings |
+| CMP-005 | AC3 existing projects byte-identical | ✅ **s4** — golden table off the pre-change node, both branches |
+| CMP-005 | AC4 the locale stops being hardcoded | ✅ **s4** — a `Locale` port, `''` → `en-US` |
+| CMP-005 | AC5 reachable by someone who does not know | 🟡 **half** — the catalog example ships, the shelf entry does not |
 
-Session 3 closed the one the phase called its highest-leverage item. **The loop can now compound:**
-step 3 of THE ORDER reads the shelf, step 4 writes back to it. It also opened **CMP-005** from
-Richard's own words, and killed a blocker two handoffs had carried without checking it.
+Session 4 built two tasks and closed six ACs. Both commits are on `cline-dev`:
+`b8f84fc85` (CMP-005) and `af5fbb9f0` (CMP-004 AC2).
 
 ## The first job
 
-1. **CMP-005 AC1 — decide: extend the node, or ship a part.** One paragraph, before any code.
-   Richard raised it and left the choice open; §2 of the task lays out both with the measurement
-   behind each, and recommends **the node, additively, then a part that demonstrates it**. 🔴 The
-   task's §1.2 already rejected the two hypotheses you would otherwise spend an hour on — **do not
-   re-derive them**. Then AC2/AC3: new tokens, and existing projects byte-identical.
-2. **CMP-004 AC2 — the text query.** `list_library` takes `type` and an exact `tag`. *"Is there a
-   date formatter?"* — the AC's own worked example, and now a real question with a real answer
-   coming — has no query that answers it. ⚠️ **Measure before building**: `get_library_entry`
-   already returns component names, and `find_tools` has a name-matching matcher; check whether the
-   query wants to live in one of those before writing a third.
-3. **CMP-004 AC3 — the shelf's granularity.** No longer blocked, and no longer what it said: read
-   the corrected AC before starting. What it needs is **three single-component entries, one of them
-   exported rather than hand-authored** — CMP-005's formatter is the obvious first.
-4. **CMP-002** still grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5 — three open ACs across three
-   tasks, and it needs a session that has read only its brief.
+🔴 **CMP-004 AC3 and CMP-005 AC5 are ONE piece of work — do them together.** The shelf needs three
+single-component entries, **one of them exported rather than hand-authored**, and CMP-005 needs a
+part that demonstrates the new tokens. A small date-formatting component, built in a real project
+and put on the shelf with `export_to_library`, is both. **Do not hand-author it** — that skips the
+round trip AC4 exists to exercise, which is the only reason the entry is interesting.
 
-## ✅ Nothing outstanding from Richard
+⚠️ **And it has to say what it is NOT.** `intl-format` is already on the shelf and already formats
+things (below). Two date entries that do not name each other means an author picks by whichever
+they met first.
 
-**The CSV arrived long before anyone asked.** Sessions 2 and 3 both wrote *"ask Richard for the CSV
-of community logic and visual nodes"*; it was vendored and committed at `121fd5c5f` as
-`dev-docs/tasks/phase-86-the-community-already-built-it/corpus/components/Components.csv` —
-**thirty-four minutes before s2 recorded the blocker.** Richard pointed at it when asked.
+Then: **CMP-002**, which alone grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5 — three open ACs
+across three tasks — and needs a session that has read only its brief.
 
-🔴 **Reading it changed CMP-004 AC3.** It is 29 *prefab-scale* community components, not one-node
-utilities; P86's COM-005 has already measured 8 of them as covered by existing shelf entries and
-exactly 3 as gaps. The boundary is P86's own (COM-003 §7): **P86 turns the corpus into examples and
-the three missing entries; P85 owns the shelf that carries them and its granularity.**
+## 🔴 THE FINDING OF SESSION 4: THE SHELF ALREADY HELD THE ANSWER, AND NOBODY COULD ASK FOR IT
 
-## 🔴 Traps — session 3's, then the standing ones
+CMP-004 AC2's worked example is *"is there a date formatter?"*. The first thing the new query
+returned is **`intl-format`** — a module of locale-aware formatting nodes: `Relative Time` ("3 hours
+ago", with auto-refresh), `Format Number`, `Format List`, `Pluralize`, each with a Locale input.
 
-- 🔴 **THE PHASE'S OWN GRADING SUITE WAS COMMITTED IN A STATE THAT COULD NOT RUN.**
-  `tests/phase85Doctrine.test.ts` at `2ae2379d9` was missing one `});` — the CMP-001 describe at
-  line 68 never closed — so `tsc` reported `TS1005: '}' expected` at EOF and jest could not compile
-  the file. **The twelve assertions behind three ✅ rows were not running, and every document in the
-  phase said they were.** s2's own recorded number (`3 failed / 1428 passed`) reproduces exactly
-  once you add s3's 14 new specs (`3 failed / 1442 passed`), which dates the breakage to an edit
-  made *after* the last suite run and before the commit. ✅ **Run the suite you are claiming as
-  evidence AFTER your last edit to it, not before** — a green recorded mid-session is a measurement
-  of a file that no longer exists. Fixed in s3.
-- ⚠️ **A sibling package's in-flight edits redden `tsc -p noodl-mcp`.** s3's first typecheck failed
-  in `packages/nodegx-export/src/analyze/plan.ts` — a peer's working tree, mtime ten seconds old,
-  nothing to do with this phase. Filter by path before believing a typecheck, and never "fix" a file
-  whose mtime is younger than your session.
-- ✅ **The negative control is worth the four minutes.** Disabling the closure walk turned 9 of the
-  14 round-trip specs red, which is what makes the `validate_project` absence assertion mean
-  something. A spec that passes on an empty list grades nothing.
-- 🔴 **MEASURE THE ARTEFACT, NOT THE TASK FILE — twice in s1/s2, and TWICE MORE in s3.** s3's were
-  (a) a *committed* grading suite contradicting three documents, above, and (b) a **blocker that had
-  never been true**: two handoffs said "blocked on Richard's CSV, ask for it" while the CSV sat in
-  the repo, committed half an hour before the blocker was written. 🔴 **A blocker owned by nobody is
-  the one most likely already resolved — re-measure it before inheriting it**, and `git log` the
-  thing it names. Before building an AC, run the measurement its premise rests on, and prefer the
-  instrument that reads DIFFERENTLY if you are wrong.
-- ⚠️ **A blocker's removal can invalidate the AC, not just unblock it.** Reading the CSV showed
-  CMP-004 AC3 was asking for the wrong thing (prefab-scale community components, not the one-node
-  utilities its own §2 argued for). Check what an unblocked AC now *means* before building it.
-- 🔴 **A fact stated once and contradicted by the advice around it is not documented.** Assert the
-  DESCRIPTION and the INSTRUCTION, not the presence of a name.
-- 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.** Filed in
-  README §7.
-- 🔴 **`npm run docs:nodes` wipes and rewrites the whole directory, and 28 pages were ALREADY stale
-  at HEAD.** Snapshot, regenerate, restore everything but your own page.
-- 🔴 **Two logic folders in LearnBook**, `/Global logical components/` (25) and `/#Global logic
-  components/` (12). A filter on the obvious one reads 25/88 and looks like a contradiction.
-- Session 1's traps still stand: **two obvious metrics were green before the work** (mean ports,
-  variant port — do not reintroduce them), and **a session that has read this phase cannot grade a
-  build of it**.
-- The full `noodl-mcp` suite is **3 failed / 1442 passed** (s3). Both failing suites are
-  `*Drive` (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`), reproduce identically, and
-  reference none of this phase's surfaces. Pre-existing; not this phase's.
-- `MEMORY.md` headroom: check it before adding.
+**CMP-005 walked past it twice in one day.** Its §1 records *"relative time — no token"* as an open
+product gap and its §4 rules it out of scope as *"a node with a timer in it"* — which is right, and
+is exactly the node that was sitting on the shelf. Those node names are written in **one place**,
+the entry's description, and until AC2 nothing read descriptions.
+
+✅ **This is the phase's own thesis landing on the phase**, and it is worth carrying: before you
+record a product gap, ask the shelf. `list_library({query: "..."})` now answers.
+
+## 🔴 Traps — session 4's, then the standing ones
+
+- 🔴 **A SPEC THAT PASSES WITH THE FEATURE DISABLED GRADES NOTHING, and one did.** The first
+  "matches a component name an entry ships" assertion picked a distinctive word out of a component
+  name and asserted the entry came back — and it came back **off its label**. Blanking the entire
+  component list turned **nothing** red. Rewritten around `filters`, whose components include
+  `/Filters/Date Filter` while `date` appears nowhere in its label, slug, tags or description;
+  `matchedIn` is now asserted to be exactly `['component']`, and the control reddens it. ✅ **Run
+  the control on the field you think you are grading, not on the feature as a whole.**
+- 🔴 **A MATCHER'S FALSE POSITIVE BEAT ITS TRUE POSITIVE, and only a ranked assertion caught it.**
+  A word-prefix rule with no bound on the remainder let the tag `Form` match the term `formatter`;
+  a tag outscores a description, so `date-picker` came back as the **best** answer to "is there a
+  date formatter?". `toContain('intl-format')` passed the whole time — it was `expect(found[0])`
+  that failed. **Assert the rank, not the membership**, whenever an answer is a ranked list.
+- 🔴 **THE THING YOU ARE CHANGING MAY SHIP TWICE.** `Date To String` is re-implemented as emitted
+  source in `nodegx-export/src/emit/dateLib.ts` — an array of quoted lines that becomes
+  `src/lib/date.ts` in every exported app. Editing only the runtime node would have made exported
+  apps render a different date from the editor preview, silently, and no AC would have noticed.
+  ✅ What makes it trustworthy is not that both were edited: `tests/date-family.test.ts` drives the
+  **emitted library** and the **runtime node's own `_format`** over the same inputs and asserts
+  they agree. Grep for a second implementation before editing a node.
+- ⚠️ **A byte-identity gate over 840 emitted files went red, correctly.**
+  `nodegx-export/tests/hls001-corpus-identity.test.ts`. Its own header says: count the artefact
+  BEFORE regenerating. The count was predicted from `grep -rl '"Date To String"' tests/fixtures`
+  (two projects) and came back 4 of 840. `HLS001_REGENERATE=1 npx jest hls001-corpus`, then write
+  what you counted into that file's header, where its two previous regenerations are recorded.
+- 🔴 **AN INERT PARAMETER IN A CORPUS EXAMPLE TEACHES A LIE.** The one shipped example that set a
+  date format set `"HH:mm:ss"` — moment syntax this node cannot read, rendering as the literal
+  letters. It **validated clean**: the example gate checks that `formatString` is a real PORT, never
+  that its value means anything. Fixed and asserted.
+- ⚠️ **`git log <range> -- <pathspec>` resolves the pathspec against your CWD.** Run from
+  `packages/noodl-mcp`, `-- packages/noodl-mcp` matches nothing and reads as "no peer touched it".
+  Run range queries from the repo root.
+- 🔴 **`npm run docs:nodes` wipes and rewrites the whole directory**, and **28 pages were already
+  stale at HEAD** plus one untracked new page from somebody's uncommitted work. Snapshot the dir,
+  regenerate, restore everything but your own page — and do it AGAIN if you re-run `catalog:merge`
+  afterwards, because that makes your page stale a second time.
+- ✅ **`catalog:generate` was up to date at HEAD.** Measured by restoring HEAD's version of the node
+  and re-running `catalog:check` before regenerating, so the whole diff is provably yours. Do that
+  before regenerating any shared artefact.
+- ⚠️ **A pipe eats the exit code and the failure.** `npx jest | tail -6` reported `exited with code
+  0` for a run with a failing suite, and discarded the ● block naming it. Redirect to a log and
+  echo `JEST_EXIT=$?` into it.
+- 🔴 Session 3's still stand: **run the suite you are citing AFTER your last edit to it** (the
+  phase's own grading suite was committed one `});` short and could not compile, while three
+  documents cited it); **a sibling package's in-flight edits redden a typecheck** — filter by path;
+  **a blocker's removal can invalidate an AC, not just unblock it**.
+- Session 1's still stand: two obvious metrics were **green before the work** (mean ports, variant
+  port — do not reintroduce them), and **a session that has read this phase cannot grade a build of
+  it**.
+
+## Numbers, measured this session
+
+- `noodl-mcp`: **3 failed / 1484 passed / 1487 total**. The three are the two pre-existing `*Drive`
+  suites (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`), which reproduce identically and
+  reference nothing in this phase. ⚠️ **Do not subtract from session 3's "1442"** — that figure was
+  *derived* (s2's measured 1428 plus 14 new specs), not measured, so the delta will not reconcile.
+  What is measured: this session added **26** specs (19 + 7) and a peer's FLD-013 added **11**.
+- `noodl-runtime`: **2704 passed, 13 skipped, 0 failed** (158 suites).
+- `nodegx-export`: **3400 passed / 1 failed** before the golden regeneration, **green** after.
+- The shelf is **72 entries**, not the 42 CMP-004 §2 recorded on 2026-09-09. Re-count it.
+- Resident tool budget: `toolDisclosure.test.ts` green — `list_library` is deferred in `explore`,
+  so its longer description costs nothing resident.

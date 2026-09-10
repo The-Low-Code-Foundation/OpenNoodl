@@ -114,6 +114,14 @@ difference between the MCP getting better advice and the MCP getting better part
 shelf; `list_library` still has no query that answers *"is there a date formatter?"* (CMP-004 AC2),
 and the shelf still carries no single-part entries (CMP-004 AC3).
 
+🔴 **AND THE SHELF ALREADY HELD AN ANSWER NOBODY COULD ASK FOR.** The first thing the query found
+is `intl-format` — a module of locale-aware formatting nodes (`Relative Time` "3 hours ago",
+`Format Number`, `Format List`, `Pluralize`), on the shelf the whole time. **CMP-005 walked past it
+twice in one day**, recording relative time as an open product gap while the node sat there. Its
+node names are written in exactly one place, the entry's description, and until AC2 nothing read
+descriptions. **This phase's own thesis, landing on this phase**: §1's "before an agent builds a
+part, it looks to see whether the community already built it", with us as the agent.
+
 ✅ **CMP-005 changed the answer that question will get.** As of 2026-09-10 the product's reply to
 *"format a date as Thursday, 10 September"* is **thirteen new tokens on the node that was already
 there**, not *"write a Function node with Intl"* — and the sentence in `whenToUse` that said the
@@ -129,7 +137,7 @@ format set a **moment.js pattern this node cannot read** — validating clean, t
 | [CMP-001](CMP-001-THE-COMPONENT-INTERFACE-PLAYBOOK.md) | The nine interface patterns, the three grading floors, and the `States.currentState` defect that blocks the variant pattern | **AC1 ✅ 2026-09-10** — the enum input is on the wire. AC2–AC4 open |
 | [CMP-002](CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md) | A graded MCP build of one business landing page, with the §3 reflection run over it. The baseline arm for CMP-001 AC4 | **NEXT** — 🔴 run it in a session that has read only the brief |
 | [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅ 2026-09-10** — both doctrine copies corrected. AC2–AC4 open |
-| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅ 2026-09-10** (step 3 of THE ORDER) · **AC4 ✅ 2026-09-10** (`export_to_library`, step 4, graded by round trip). AC2, AC3, AC5 open — 🔴 **AC2 is now the highest leverage left**: step 4 adds entries whose value is entirely in finding them |
+| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅** (step 3 of THE ORDER) · **AC4 ✅** (`export_to_library`, step 4) · **AC2 ✅ 2026-09-10 (s4)** — `list_library({query})`, and the doctrine says to ask it by name. AC3 and AC5 open |
 | [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | **AC1–AC4 ✅ 2026-09-10 (s4)** — the decision, **13 new tokens**, a `Locale` port, and byte-identity for the eight that shipped. **AC5 🟡 half**: the catalog example ships, the shelf entry is CMP-004 AC3's work |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 

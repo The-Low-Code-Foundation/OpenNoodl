@@ -158,15 +158,39 @@ every NodeGX app — one of the two, written down.
 formatting, and a shelf entry, so that CMP-004 AC2's own worked example — *"is there a date
 formatter?"* — has an answer on the shelf rather than a node buried in Utilities.
 
+⚠️ **AC2 shipped, and it answers that question with `intl-format`** (see §4). So AC5's remaining
+half is no longer "give the shelf an answer" but **"make the two answers tell the truth about each
+other"**: the node covers formatting a date you have, `intl-format` covers formatting relative to
+now and formatting numbers, lists and plurals. Whatever is built for AC5 has to say which is which,
+or an author picks by whichever they met first.
+
 ## 4. What this does not own
 
 The other four date nodes (`Date Add`, `Date Compare`, `Date Difference`, `Date Parts`). They were
 read while measuring this and none of them is the complaint; `Date Parts` is *evidence* for AC2
 (it already computes `dayName`), not a target.
 
-Relative time ("3 days ago") is listed in §1 as a gap and is **out of scope for AC2** unless the AC1
-decision pulls it in: it is a different job — it depends on "now", so it re-renders on a clock rather
-than on an input, which is a node with a timer in it, not a token.
+Relative time ("3 days ago") is listed in §1 as a gap and is **out of scope for AC2**: it is a
+different job — it depends on "now", so it re-renders on a clock rather than on an input, which is a
+node with a timer in it, not a token.
+
+🔴 **AND IT IS ALREADY BUILT. It has been on the shelf the whole time.** Found while building
+CMP-004 AC2 later the same day: `library/modules/intl-format` ships a **`Relative Time`** node —
+*"turns a date into '3 hours ago' with an optional auto-refresh interval"* — beside `Format
+Number`, `Format List` and `Pluralize`, every one of them with a Locale input.
+
+⚠️ **This task walked past it twice in one day**: §1 records relative time as an unreachable gap,
+and §4 rules it out of scope as *"a node with a timer in it"* — which is exactly right, and exactly
+the node that exists. The reason nobody found it is the reason CMP-004 AC2 existed: those node
+names are written in **one place, the entry's description**, and the shelf had no query that read
+descriptions. `list_library({query: "relative time"})` answers it now.
+
+✅ **This is the phase's own thesis landing on the phase.** Two sessions measured a product gap, one
+of them wrote a fix, and the part was on the shelf beside them — which is the CMP-004 §1 sentence
+(*"before an agent builds a part, it looks to see whether the community already built it"*) with
+this phase cast as the agent. It also **does not invalidate AC2's decision**: `{ordinal}` and
+`{dayName}` belong on the node whatever the shelf carries, and an installed module is a different
+trade from a token. It changes what CMP-005 should SAY — see AC5.
 
 ## 5. What session 4 built, 2026-09-10
 
