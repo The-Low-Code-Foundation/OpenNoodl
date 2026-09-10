@@ -1,0 +1,144 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "afd5320d-3b47-5d25-8c3d-8ddd687c140b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page_dep",
+      "type": "Page",
+      "label": "Deprecated",
+      "parameters": {
+        "title": "FLD-012 — the deprecated controls",
+        "urlPath": "deprecated"
+      },
+      "children": [
+        "shell_dep"
+      ]
+    },
+    {
+      "id": "shell_dep",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "24px",
+        "paddingTop": "32px",
+        "paddingBottom": "32px",
+        "paddingLeft": "24px",
+        "paddingRight": "24px",
+        "backgroundColor": "#ffffff"
+      },
+      "children": [
+        "heading_dep",
+        "group_d",
+        "slider_d"
+      ],
+      "parent": "page_dep"
+    },
+    {
+      "id": "heading_dep",
+      "type": "Text",
+      "label": "heading",
+      "parent": "shell_dep",
+      "parameters": {
+        "text": "The same two controls, the old way",
+        "textStyle": "h2",
+        "color": "#111111"
+      }
+    },
+    {
+      "id": "group_d",
+      "type": "Radio Button Group",
+      "label": "Radio Button Group",
+      "parent": "shell_dep",
+      "parameters": {
+        "flexDirection": "column",
+        "sizeMode": "contentSize",
+        "value": "a"
+      },
+      "children": [
+        "radio_a_d",
+        "radio_b_d"
+      ]
+    },
+    {
+      "id": "radio_a_d",
+      "type": "Radio Button",
+      "label": "Radio A",
+      "parent": "group_d",
+      "parameters": {
+        "value": "a",
+        "width": {
+          "value": 24,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "#d8d8d8",
+        "borderRadius": 12
+      }
+    },
+    {
+      "id": "radio_b_d",
+      "type": "Radio Button",
+      "label": "Radio B",
+      "parent": "group_d",
+      "parameters": {
+        "value": "b",
+        "width": {
+          "value": 24,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "#d8d8d8",
+        "borderRadius": 12
+      }
+    },
+    {
+      "id": "slider_d",
+      "type": "Range",
+      "label": "Slider",
+      "parent": "shell_dep",
+      "parameters": {
+        "width": {
+          "value": 320,
+          "unit": "px"
+        },
+        "height": {
+          "value": 32,
+          "unit": "px"
+        },
+        "min": 0,
+        "max": 100,
+        "value": 40,
+        "thumbWidth": {
+          "value": 16,
+          "unit": "px"
+        },
+        "thumbHeight": {
+          "value": 16,
+          "unit": "px"
+        },
+        "thumbColor": "#2f6fed",
+        "trackColor": "#c9c9c9",
+        "trackHeight": {
+          "value": 4,
+          "unit": "px"
+        }
+      }
+    }
+  ],
+  "visualRoots": [
+    "page_dep"
+  ]
+}

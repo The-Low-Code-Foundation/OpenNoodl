@@ -121,7 +121,46 @@ function measureExpression(placeholders, probes = []) {
   const round = (n) => Math.round(n);
   const cls = (el) => String(el.className || '').trim().slice(0, 60);
   const all = [...document.querySelectorAll('body *')];
-  const visible = all.filter((el) => el.offsetParent !== null || getComputedStyle(el).position === 'fixed');
+
+  // FLD-012 — one computed style per element, reused by every rule below. 'visible' now needs a
+  // style for EVERY element rather than only for the ones with no offset parent, and four rules
+  // downstream ask for the same element's style again. Without this the change would have paid for
+  // a second 'getComputedStyle' per empty box on every page.
+  const styles = new Map();
+  const styleOf = (el) => {
+    let cs = styles.get(el);
+    if (cs === undefined) {
+      cs = getComputedStyle(el);
+      styles.set(el, cs);
+    }
+    return cs;
+  };
+
+  // FLD-012 (#32) — 'visible' is the population every rule below is computed over, and it used to
+  // mean "the browser gave it a layout box". That is not the same as "a person can see it":
+  // 'offsetParent' is null for 'display: none' but perfectly non-null for 'opacity: 0' and for
+  // 'visibility: hidden'. So an invisible element was being reported as a box a person could see —
+  // by 'empty-decorated-box', and inherited unchanged by 'elements-overflowing', the accent-area
+  // census, the rhythm bands and 'single-column-grid'. This is a correctness fix, not a
+  // suppression: nothing that can be seen is dropped.
+  //
+  // ⚠️ 'visibility' is inherited, so the computed value already accounts for a hidden ancestor.
+  // 'opacity' is NOT inherited — a child of an 'opacity: 0' parent computes to 1 — so this catches
+  // the element that is itself transparent and not one buried under a faded ancestor. Walking every
+  // ancestor would cost a style read per level per element; the shipped false positives are all the
+  // first kind ('.ndl-controls-radio-2' is 'opacity: 0' on the input itself).
+  // FLD-012 AC3 — declared OUTSIDE the filter below on purpose: a reverted arm replaces only the
+  // filter, and a counter declared inside it would make the reverted arm throw a ReferenceError
+  // instead of measuring. Left at 0, which is exactly what the old predicate excluded.
+  let transparentExcluded = 0;
+  const visible = all.filter((el) => {
+    const cs = styleOf(el);
+    if (cs.visibility === 'hidden' || cs.opacity === '0') {
+      transparentExcluded += 1;
+      return false;
+    }
+    return el.offsetParent !== null || cs.position === 'fixed';
+  });
 
   const vw = document.documentElement.clientWidth;
   const vh = document.documentElement.clientHeight;
@@ -152,7 +191,7 @@ function measureExpression(placeholders, probes = []) {
   const fontWeights = {};
   const fontSizes = {};
   for (const el of textEls) {
-    const cs = getComputedStyle(el);
+    const cs = styleOf(el);
     fontWeights[cs.fontWeight] = (fontWeights[cs.fontWeight] || 0) + 1;
     fontSizes[cs.fontSize] = (fontSizes[cs.fontSize] || 0) + 1;
   }
@@ -164,11 +203,52 @@ function measureExpression(placeholders, probes = []) {
     byText[t] = (byText[t] || 0) + 1;
   }
 
+  // FLD-012 (#32) — *"I started ignoring the warning."* Five of ten pages carried this finding
+  // purely for containing a control, and noise in a signal this good is a real cost.
+  //
+  // Two residues survive the 'visible' fix above, because neither is invisible — they are drawn,
+  // they are just not the author's boxes:
+  //
+  //   1. A FORM CONTROL. It has no children and no text by construction, and the runtime styles it
+  //      — the deprecated Radio Button is an '<input type="radio">' at 24x24 with a solid border
+  //      ('nodes-deprecated/controls/radiobutton.tsx:62', 'assets/style.css:64'). It is not an empty
+  //      box; it is a control that happens to be childless.
+  //   2. A CONTROL'S OWN FURNITURE — the parts the runtime draws INSIDE a control, beside its
+  //      input, as plain unclassed '<div>'s: the Slider's track and thumb ('Slider.tsx:146-176')
+  //      and the Radio Button's checked fill dot, which is the one this fixture actually caught —
+  //      a 16x16 absolutely-positioned black div whose parent also holds the radio input. Every
+  //      one of them is drawn, so no visibility test reaches them, and every one is furniture
+  //      rather than a box the author left empty.
+  //
+  // 🔴 #32's own suggested discriminator does not reach either of them, and the second half of
+  // this file's earlier scope note was actively dangerous:
+  //   - 'closest('[class*="ndl-controls-"]')' returns null for the track and the thumb — they are
+  //     unclassed and so is their parent; only their '<input>' SIBLING carries the class.
+  //   - 'appearance: none' is the COMPUTED DEFAULT of an ordinary '<div>' in Chrome, measured on
+  //     this fixture. Skipping on it would suppress every finding on every page, including the
+  //     author's genuinely empty box — which is exactly the failure mode this rule's presence
+  //     control exists to catch. It is not used here.
+  //
+  // ⚠️ The furniture predicate is deliberately narrow, and it is TWO conditions, not one:
+  // absolutely positioned AND a direct sibling of a form control. An author's own empty Group is
+  // neither — measured on this fixture it is 'position: relative' with four plain div siblings.
+  // It would take positioning a box absolutely AND placing it beside a control in the same parent
+  // to be suppressed by this: small, real, and stated here rather than discovered later.
+  const FORM_CONTROL_TAGS = ['INPUT', 'SELECT', 'TEXTAREA', 'BUTTON', 'PROGRESS', 'METER'];
+  const CONTROL_SIBLING_SELECTOR = ':scope > input, :scope > select, :scope > textarea, :scope > button';
+  const isControlFurniture = (el) => {
+    const parent = el.parentElement;
+    if (!parent || !parent.querySelector(CONTROL_SIBLING_SELECTOR)) return false;
+    return styleOf(el).position === 'absolute';
+  };
+
   const emptyBoxes = visible.filter((el) => {
-    const r = el.getBoundingClientRect();
     if (el.children.length !== 0 || el.textContent.trim() !== '') return false;
+    const r = el.getBoundingClientRect();
     if (r.width <= 8 || r.height <= 8) return false;
-    const cs = getComputedStyle(el);
+    if (FORM_CONTROL_TAGS.indexOf(el.tagName) !== -1) return false;
+    if (isControlFurniture(el)) return false;
+    const cs = styleOf(el);
     return cs.backgroundColor !== 'rgba(0, 0, 0, 0)' || cs.borderStyle !== 'none';
   });
 
@@ -243,7 +323,7 @@ function measureExpression(placeholders, probes = []) {
   for (const el of visible) {
     const r = el.getBoundingClientRect();
     if (r.width < vw * 0.6 || r.height < 8) continue;
-    const cs = getComputedStyle(el);
+    const cs = styleOf(el);
     const painted =
       cs.backgroundImage && cs.backgroundImage !== 'none'
         ? cs.backgroundImage
@@ -274,7 +354,7 @@ function measureExpression(placeholders, probes = []) {
     const r = el.getBoundingClientRect();
     const area = r.width * r.height;
     if (area < 1000) continue;
-    const bg = getComputedStyle(el).backgroundColor;
+    const bg = styleOf(el).backgroundColor;
     const c = parseRgb(bg);
     if (!c) continue;
     const chroma = Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]);
@@ -333,7 +413,7 @@ function measureExpression(placeholders, probes = []) {
   };
   for (let i = 1; i < bands.length; i++) addSpacing(bands[i].r.top - bands[i - 1].r.bottom);
   for (const b of bands) {
-    const cs = getComputedStyle(b.el);
+    const cs = styleOf(b.el);
     addSpacing(parseFloat(cs.paddingTop));
     addSpacing(parseFloat(cs.paddingBottom));
   }
@@ -414,6 +494,12 @@ function measureExpression(placeholders, probes = []) {
 
   return {
     lists,
+    // FLD-012 AC3 — the SIZE of the population every rule below is computed over, and the number of
+    // elements the visibility correction took out of it. Reported directly because a rule's finding
+    // count can move for several reasons at once, and 'the fix changed what is measured' is a
+    // different claim from 'the fix changed what is reported'.
+    visibleCount: visible.length,
+    transparentExcluded,
     layoutWidth: window.innerWidth,
     clientWidth: vw,
     clientHeight: vh,

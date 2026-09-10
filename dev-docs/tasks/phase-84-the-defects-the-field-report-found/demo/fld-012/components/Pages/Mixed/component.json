@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "d3a81216-13c0-54d0-85e7-7bde9e812c53",
+  "name": "Mixed",
+  "path": "/Pages/Mixed",
+  "type": "visual",
+  "created": "2026-09-10T00:00:00.000Z",
+  "modified": "2026-09-10T00:00:00.000Z",
+  "modifiedBy": "fld-012"
+}
