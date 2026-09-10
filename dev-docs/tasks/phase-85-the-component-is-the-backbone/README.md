@@ -117,7 +117,7 @@ and it is the difference between the MCP getting better advice and the MCP getti
 | [CMP-001](CMP-001-THE-COMPONENT-INTERFACE-PLAYBOOK.md) | The nine interface patterns, the three grading floors, and the `States.currentState` defect that blocks the variant pattern | **AC1 ✅ 2026-09-10** — the enum input is on the wire. AC2–AC4 open |
 | [CMP-002](CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md) | A graded MCP build of one business landing page, with the §3 reflection run over it. The baseline arm for CMP-001 AC4 | **NEXT** — 🔴 run it in a session that has read only the brief |
 | [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅ 2026-09-10** — both doctrine copies corrected. AC2–AC4 open |
-| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅ 2026-09-10** — the shelf is step 3 of THE ORDER. AC2–AC5 open, 🔴 still highest leverage |
+| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅ 2026-09-10** (step 3 of THE ORDER) · **AC4 ✅ 2026-09-10** (`export_to_library`, step 4, graded by round trip). AC2, AC3, AC5 open — 🔴 **AC2 is now the highest leverage left**: step 4 adds entries whose value is entirely in finding them |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
 ## 6. Instruments
@@ -133,6 +133,14 @@ task file**, because the pass that produced them was never committed. One was a 
 0 by every whole-graph reading, 20 counting working nodes, 45 at one-or-two). See CMP-003 §2.1.
 
 ## 7. Known gaps, owner NONE
+
+- ⚠️ **`install_prefab` never carries design-token OVERRIDES, and `export_to_library` never writes
+  them.** Tokens travel by name and resolve against the installing project's theme, which is the
+  behaviour CMP-004 AC4 wants — but a part built against a token project A *invented*
+  (`nodegx.project.json → metadata.designTokens`) falls back to the shipped `DEFAULT_TOKENS` in
+  project B rather than reporting anything. It renders; it may render the wrong colour. The export
+  lists the tokens a part reads, in the response and in the generated README, which is as far as
+  either side can go without deciding whose theme wins. Found 2026-09-10 building AC4.
 
 - 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.**
   `catalog.ts`'s `getNodeTypeDetail` copies `summary`, `description`, `whenToUse`,

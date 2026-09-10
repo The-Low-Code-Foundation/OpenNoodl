@@ -58,6 +58,7 @@ import type { LegacyComponent, StylesV2File } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ComponentFiles } from '../graph';
 import { refreshProjectOverlay } from '../kitOverlay';
+import { planEntry, SLUG_PATTERN, writeEntry, type EntryPlan, type HardcodedColour } from '../libraryExport';
 import {
   entryModuleDirs,
   listShelf,
@@ -113,6 +114,29 @@ export interface InstallPrefabResponse {
   modulesSkipped: string[];
   /** A shipped kit that failed to load in the overlay refresh — absent when none. */
   kitLoadFailures?: Array<{ module: string; message: string }>;
+  next: string;
+}
+
+export interface ExportToLibraryResponse {
+  slug: string;
+  type: 'prefab';
+  version: string;
+  /** Where it landed, relative to the library root — e.g. `prefabs/pricing-table`. */
+  entryDir: string;
+  /** Legacy names of every component the entry carries: the one asked for, plus its closure. */
+  componentsExported: string[];
+  stylesCarried: { colors: string[]; textStyles: string[]; variants: string[] };
+  assetsCopied: string[];
+  modulesCopied: string[];
+  /** Design tokens the part reads. Carried by NAME — they resolve against the installing project. */
+  tokensUsed: string[];
+  files: string[];
+  /** Literal colours: they survive the trip and then ignore the host theme — absent when none. */
+  hardcodedColors?: HardcodedColour[];
+  /** Node types the entry needs and cannot ship — absent when none. */
+  unresolvedTypes?: string[];
+  /** Component references that do not resolve in the source project — absent when none. */
+  missingComponents?: string[];
   next: string;
 }
 
@@ -333,6 +357,125 @@ export function registerLibraryTools(
       return jsonResult(payload);
     })
   );
+
+  // ── CMP-004 AC4 — the way back out ───────────────────────────────────────────
+  //
+  // A fourth tool in this group costs nothing resident, by exactly the
+  // measurement LBR-008 recorded above: the only resident trace of a deferred
+  // group is `find_tools`' `(N tools)`, and "6 tools" and "7 tools" are the same
+  // string length. The name carries the word "library", which is the door
+  // `find_tools`' name-matching query opens.
+  server.registerTool(
+    'export_to_library',
+    {
+      title: 'Export a component to the library',
+      description:
+        'Take a component out of this project and write it to the NodeGX library as an installable entry, ' +
+        'so the next project can install_prefab it. Carries everything it needs to render elsewhere: the ' +
+        'components it places, the named styles and variants it uses, its assets, and any code module its ' +
+        'nodes come from. Design tokens travel by name, so the part adopts the theme of whatever project ' +
+        'installs it. Never overwrites an existing entry.',
+      inputSchema: {
+        component: z.string().describe('The component to export — path form ("Sections/Hero") or legacy ("/Sections/Hero")'),
+        slug: z.string().describe('Directory name on the shelf, e.g. "pricing-table". Letters, digits, . _ -'),
+        label: z.string().describe('Display name on the library card, e.g. "Pricing Table"'),
+        description: z
+          .string()
+          .describe('What the part is and does, in a sentence or two — this is what someone browsing the shelf reads'),
+        tags: z.array(z.string()).optional().describe('Tags for list_library filtering, e.g. ["UI", "Layout"]'),
+        version: z.string().optional().describe('Semver content version; defaults to 1.0.0'),
+        readme: z.string().optional().describe('Post-install configuration notes, appended to the generated README')
+      }
+    },
+    guarded((args: {
+      component: string;
+      slug: string;
+      label: string;
+      description: string;
+      tags?: string[];
+      version?: string;
+      readme?: string;
+    }) => {
+      const store = binding.require();
+      const root = requireLibraryRoot();
+
+      if (!SLUG_PATTERN.test(args.slug)) {
+        throw new ToolError(
+          'invalid-argument',
+          `"${args.slug}" is not a usable slug. It must start with a letter or digit and contain only letters, digits, ` +
+            'dots, underscores and hyphens — it becomes a directory name and a URL segment.'
+        );
+      }
+      const version = args.version ?? '1.0.0';
+      if (!/^\d+\.\d+\.\d+$/.test(version)) {
+        throw new ToolError('invalid-argument', `version must be semver (e.g. "1.0.0"); got "${version}".`);
+      }
+
+      const meta = {
+        slug: args.slug,
+        label: args.label,
+        description: args.description,
+        tags: args.tags ?? [],
+        version,
+        ...(args.readme ? { readme: args.readme } : {})
+      };
+
+      const plan = planEntry(store, args.component);
+      const written = writeEntry(root, plan, meta, store.projectDir);
+
+      const payload: ExportToLibraryResponse = {
+        slug: args.slug,
+        type: 'prefab',
+        version,
+        entryDir: path.relative(root, written.entryDir).split(path.sep).join('/'),
+        componentsExported: plan.components.map((c) => c.legacyName),
+        stylesCarried: {
+          colors: Object.keys(plan.colors).sort(),
+          textStyles: Object.keys(plan.textStyles).sort(),
+          variants: plan.variants.map((v) => `${v.name} (${v.typename})`).sort()
+        },
+        assetsCopied: plan.assets,
+        modulesCopied: plan.kitModules,
+        tokensUsed: plan.tokens,
+        files: written.files,
+        ...(plan.hardcodedColors.length > 0 ? { hardcodedColors: plan.hardcodedColors } : {}),
+        ...(plan.unresolvedTypes.length > 0 ? { unresolvedTypes: plan.unresolvedTypes } : {}),
+        ...(plan.missingComponents.length > 0 ? { missingComponents: plan.missingComponents } : {}),
+        next: exportGuidance(args.slug, plan)
+      };
+      return jsonResult(payload);
+    })
+  );
+}
+
+/**
+ * What the author does next, and — where the export could not carry something —
+ * what is wrong with the entry that was nevertheless written. An entry with a
+ * hole is more useful than a refusal, provided it says so out loud: the hole is
+ * in the response, in the README, and visible to `get_library_entry`.
+ */
+function exportGuidance(slug: string, plan: EntryPlan): string {
+  const parts: string[] = [];
+  if (plan.unresolvedTypes.length > 0 || plan.missingComponents.length > 0) {
+    parts.push(
+      '🔴 This entry is incomplete and will not render where it is installed: ' +
+        [
+          ...plan.unresolvedTypes.map((t) => `node type "${t}" is not in the catalog`),
+          ...plan.missingComponents.map((c) => `component "${c}" is not in this project`)
+        ].join('; ') +
+        '.'
+    );
+  }
+  if (plan.hardcodedColors.length > 0) {
+    parts.push(
+      `${plan.hardcodedColors.length} colour value${plan.hardcodedColors.length === 1 ? '' : 's'} ` +
+        'are literals rather than var(--token), so they will ignore the theme of any project that installs this. ' +
+        'Tokenise them in the source component and export again under a new slug if that matters.'
+    );
+  }
+  parts.push(`install_prefab({slug: "${slug}"}) installs it into another project; list_library now lists it.`);
+  parts.push('Run "npm run library:check" before committing the entry to the NodeGX repo.');
+  return parts.join(' ');
 }
 
 /** Component legacyNames of an entry's source project, for `get_library_entry`. */

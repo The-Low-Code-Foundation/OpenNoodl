@@ -164,6 +164,7 @@ describe('CMP-001 AC1 — States.currentState is documented in BOTH directions',
     // the anti-pattern it is.
     expect(antiPatterns).toMatch(/One signal input per state plus a Condition or Switch chain/);
   });
+});
 
 describe('CMP-004 AC1 — the shelf is in THE ORDER', () => {
   it('🔴 get_project_info states the shelf step, over the wire', async () => {
@@ -224,6 +225,57 @@ describe('CMP-004 AC1 — the shelf is in THE ORDER', () => {
 
   it('the doctrine says WHY, which is the half the budgeted surface can never afford', () => {
     expect(DESIGN_DOCTRINE_MD).toMatch(/Why the shelf is a step and not a footnote/);
+  });
+});
+
+describe('CMP-004 AC4 — the return path is in THE ORDER too', () => {
+  // 🔴 The round trip itself is graded in `cmp004RoundTrip.test.ts`, over two
+  // real projects. What is asserted HERE is the half CMP-004 was originally
+  // filed about: the shelf was real, it worked, and NOTHING TOLD AN AGENT IT
+  // WAS THERE. A two-way path nobody is told about is the same defect a second
+  // time — the tool exists, the loop still does not compound — so the sentence
+  // that names it is graded on the same surface, over the wire, as AC1's.
+  it('🔴 get_project_info names the tool that puts a part BACK, over the wire', async () => {
+    const { isError, data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    expect(isError).toBe(false);
+    const doctrine = String(data.designDoctrine);
+    expect(doctrine).toContain('export_to_library({component, slug,');
+    expect(doctrine).toMatch(/when you have built something good, put it back/);
+  });
+
+  it('puts it AFTER authoring — it is what you do with a part, not a step before one exists', async () => {
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    const doctrine = String(data.designDoctrine);
+    const shelf = doctrine.indexOf('**The shelf.**');
+    const author = doctrine.indexOf('Only then author them.');
+    const back = doctrine.indexOf('export_to_library');
+    expect(back).toBeGreaterThan(author);
+    expect(author).toBeGreaterThan(shelf);
+  });
+
+  it('🔴 states the token rule, which is the one thing an exporter gets wrong', async () => {
+    // A part exported with project A's colours baked in looks wrong in every
+    // project that installs it, and the author cannot see that from project A.
+    // The doctrine says tokens travel by NAME because that is the property that
+    // makes an installed part wear the HOST project's look.
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    expect(String(data.designDoctrine)).toMatch(/Design tokens travel by NAME/);
+  });
+
+  it('and did not grow the resident briefing to say it either', () => {
+    const rendered = projectInstructions({
+      projectDir: '/tmp/example-project',
+      allowWrites: true,
+      deferTools: true
+    })
+      .split('/tmp/example-project')
+      .join('<PROJECT_DIR>');
+    expect(rendered.length).toBeLessThanOrEqual(7130);
+    expect(rendered).not.toContain('export_to_library');
+  });
+
+  it('says why a shelf that is only read is worth less than one that is written to', () => {
+    expect(DESIGN_DOCTRINE_MD).toMatch(/why step 4 is what makes step 3 worth anything/);
   });
 });
 

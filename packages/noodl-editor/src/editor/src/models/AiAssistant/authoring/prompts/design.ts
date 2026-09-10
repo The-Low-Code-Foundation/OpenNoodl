@@ -116,6 +116,14 @@ Then plan the components. Then, before authoring the first leaf:
 
 Only then author them.
 
+4. **And when you have built something good, put it back.** \`export_to_library({component, slug,
+   label, description})\` takes a component out of this project and writes it to the shelf as an
+   installable entry — carrying the components it places, the styles and variants it uses, its
+   assets and any code module its nodes come from, so it renders in a project that has never seen
+   it. Design tokens travel by NAME, which is what makes an installed part wear the new project's
+   look instead of dragging this one's palette along. A part worth exporting is one you would reach
+   for again: a named utility, a section you got right, a control with a real interface.
+
 **Why this is an order and not just two more rules.** A look decided after the components is a
 repaint of every one of them, so it never actually happens: each component is already correct on its
 own terms, nobody wants to reopen it, and the app ships wearing whatever the first leaf authored
@@ -128,6 +136,11 @@ built from scratch beside a shelf of parts. Checking is one cheap call before th
 costs the whole part, and costs it again on the next app. This is the same bargain as reaching for a
 CSS framework instead of writing the styles: you are not saving typing, you are inheriting decisions
 somebody already got right.
+
+**And why step 4 is what makes step 3 worth anything.** A shelf that is only ever read is a fixed
+set of parts that ages. A shelf that is also written to is a library that gets better every time
+anybody builds anything — which is the difference between every app inheriting the best component
+anyone has built and every app starting from nothing.
 
 **What "settled" means, stated so a person can check it:** somebody can open the project and read
 back the accent, the surface ramp and the page list before a single component has been authored. If

@@ -310,8 +310,21 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // DEF-006 (b) — the LBR-008 note above records that "prefab" is reachable only
     // because it happens to be inside a tool name. Said outright here, along with
     // the words for the half of this group that searches an existing graph.
-    keywords: ['prefab', 'shelf', 'recipe', 'find', 'search', 'where is', 'understand'],
-    tools: ['search_project', 'explain_component', 'list_examples', 'list_library', 'get_library_entry', 'install_prefab'],
+    // ✅ CMP-004 AC4 — `export_to_library`, the way back out, appended on the
+    // same measurement: "6 tools" and "7 tools" are the same string length, so
+    // the fourth library tool is free too. "publish" and "share" are here
+    // because somebody who has built a good part reaches for those words, not
+    // for "export".
+    keywords: ['prefab', 'shelf', 'recipe', 'find', 'search', 'where is', 'understand', 'publish', 'share', 'reuse'],
+    tools: [
+      'search_project',
+      'explain_component',
+      'list_examples',
+      'list_library',
+      'get_library_entry',
+      'install_prefab',
+      'export_to_library'
+    ],
     resident: false
   },
   {
@@ -464,6 +477,11 @@ export const WRITE_ONLY_TOOLS: ReadonlySet<string> = new Set<string>([
   // both modes; installing writes components, styles, assets and modules into
   // the bound project, so it ships inside the write gate.
   'install_prefab',
+  // CMP-004 AC4. The mirror image: `export_to_library` writes a new entry into
+  // the library checkout. It touches nothing in the bound project, so the gate
+  // it sits behind is about the FILESYSTEM rather than about the project — a
+  // read-only server is one nobody has given permission to write anywhere.
+  'export_to_library',
   // UNI-010. `create_lesson` writes a directory, so the whole group ships inside
   // the write gate — including the two that change nothing. Same reasoning, and
   // the same honesty, as `list_backend_processes` below: recorded as observed.
