@@ -16,7 +16,7 @@ built.** That is the file count, not a copied status.
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
 | FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built | R4 |
 | FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built | 🔴 **P13 collision** |
-| FLD-006 | Fit view fits | #33 | ⬜ never built | — |
+| FLD-006 | Fit view fits | #33 | 🔨 **IN FLIGHT — `opennoodl-d4`, from 2026-09-10 ~10:57. DO NOT START** | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
@@ -57,14 +57,23 @@ at all. A reply table that omits an issue reads as a reply that is not owed. Bot
 **Distance: 4 of 17 built. 4 replies sent, 12 still owed** (§5 of the
 [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md)).
 
-## 3. The next task to build — FLD-006, then FLD-012
+## 3. The next task to build — FLD-012 (FLD-006 is TAKEN)
 
-Track A outranks track B. Of the four track-A tasks left, two are gated or collided:
+🔴 **FLD-006 was claimed within twenty minutes of this board naming it, and this section said
+"FLD-006" for those twenty minutes.** Session `opennoodl-d4` was building it at 10:57 on 2026-09-10
+— `ViewportActions.ts`, `CanvasViewport.ts`, a registered
+`tests/nodegraph/fld-006-fit-view-fits.spec.js` — and running `test:ci` over it.
+**Re-measure before you inherit this line**: `git log --oneline -5` and
+`git status --porcelain` will say whether it landed. Do not start it on the strength of this file.
 
-1. **[FLD-006 — fit view fits](./FLD-006-FIT-VIEW-FITS.md)** (#33). Nothing gates it.
-2. **[FLD-012 — the empty-box warning stops crying wolf](./FLD-012-THE-EMPTY-BOX-WARNING-STOPS-CRYING-WOLF.md)**
+Track A outranks track B. Of the four track-A tasks left, two are gated or collided and one is taken:
+
+1. **[FLD-012 — the empty-box warning stops crying wolf](./FLD-012-THE-EMPTY-BOX-WARNING-STOPS-CRYING-WOLF.md)**
    (#32). Ungated, but read its §3 first: #32's own proposed discriminator **misses the slider
    thumb**, so do not build the reporter's suggestion as stated. Register row **P1** blocks its AC3.
+2. If FLD-012 is also taken, the highest-value work left is **not a task at all — it is the twelve
+   replies in §2.** Sending one costs a fraction of building one and moves the only number that
+   closes this phase.
 
 🔴 **FLD-004 needs R4 and FLD-005 needs P13 resolved. Do not start either without the ruling.**
 
