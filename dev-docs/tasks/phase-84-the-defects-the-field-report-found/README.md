@@ -2,7 +2,7 @@
 
 **Scoped:** 2026-09-09, from 15 confirmed community issues, re-measured against `cline-dev` HEAD
 (`11b2d3a9`) rather than against the 0.2.2 AppImage they were filed from.
-**Status: OPEN — 1 of 17 built (FLD-001, 2026-09-09).** **Prefix: `FLD`.** **Release: ⬜ NOT RULED** (see §2).
+**Status: OPEN — 3 of 17 built (FLD-001 2026-09-09; FLD-007 and FLD-009 2026-09-10).** **Prefix: `FLD`.** **Release: ⬜ NOT RULED** (see §2).
 
 On 2026-09-08 an unattended agent session on one Fedora machine installed NodeGX, drove it entirely
 through the bundled MCP server, measured it, and filed **21 issues**. Richard filed **2** more the
@@ -120,7 +120,7 @@ The issues were a report, not a diagnosis. This is what challenging them against
 | FLD-006 | **Fit view fits** — bounding box and a real scale, not a literal | [#33](https://github.com/The-Low-Code-Foundation/NodeGX/issues/33) | — |
 | FLD-007 | 🟢 **BUILT 2026-09-10** — A lesson step that can be completed. Both writers of the preview-route global now share `previewRoutePath`. 8/8 spec through the real evaluator, two reverted arms, three should-fail arms. Sweep: **8 conditions ship, 1 was dead** — the other 7 passed on a race or on a stray page parameter (§4b). Reply to #5 drafted (§4c). AC1 **driven** — a real click on a query-less route publishes `/create-card-page`, and the reverted arm evaluated in the same renderer reads `''` | [#5](https://github.com/The-Low-Code-Foundation/NodeGX/issues/5) | — |
 | FLD-008 | **An aggregation that cannot answer says so** — the swallowed refusal, in both nodes that have it | [#14](https://github.com/The-Low-Code-Foundation/NodeGX/issues/14) | — |
-| FLD-009 | 🔴 **The editor does not overwrite what an agent wrote** — the project-level half of the guard | [#41](https://github.com/The-Low-Code-Foundation/NodeGX/issues/41) | — |
+| FLD-009 | 🟢 **BUILT 2026-09-10** — The editor does not overwrite what an agent wrote. A disk baseline and a re-read before every project-level write, the watcher mapping that was missing, and the reload that makes the refusal a pause rather than a wall. 15 specs, a reverted arm each for the guard and the watcher, four presence controls. **Driven in the real editor: five arms, the reverted pair on an identical payload, and the refusal toast verbatim.** 🔴 The AC1 sequence as written was **green before the work** — the loss needs an editor change to a project-level file, not a component touch (§4b) | [#41](https://github.com/The-Low-Code-Foundation/NodeGX/issues/41) | — |
 | FLD-012 | **The empty-box warning stops crying wolf** — the controls, and the `opacity` blind spot under them | [#32](https://github.com/The-Low-Code-Foundation/NodeGX/issues/32) | — |
 
 **Track B — it costs too much to install and to drive.**
