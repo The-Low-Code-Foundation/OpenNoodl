@@ -87,7 +87,19 @@ Secondary: `centerToFit` calls `setPanAndScale` directly (`ViewportActions.ts:92
 
 ---
 
-## 6. 🟢 **BUILT** — 2026-09-10 (session 5)
+## 6. 🟢 **BUILT** `901280af` — 2026-09-10 (session 5)
+
+**Gate:** `test:ci` **2978 specs, 4 failures, seed 30027** — exactly the named AIX-006 floor, and
+the spec count reconciles (2977 before, one arm replaced and two added). All 15 FLD-006 specs
+confirmed **started**, not merely not-failing. `typecheck:editor` and `typecheck:editor-tests`
+both exit 0.
+
+⚠️ **The first run was red on one of my own arms, and the code was right.** A spec asserted a full
+80px margin on the `wide` fixture, where the zoom floor deliberately shrinks it — the very trade
+documented three paragraphs below. Fixed by moving that assertion to a fixture that clears the
+floor and adding *gives up margin, never the floor, when the two disagree* for the case itself.
+🔴 The lesson is the ordinary one: **an assertion written from the intent rather than from the
+decision will contradict the decision.**
 
 ### What changed
 
