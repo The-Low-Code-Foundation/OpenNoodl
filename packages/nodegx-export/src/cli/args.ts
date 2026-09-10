@@ -40,6 +40,21 @@ export type ParsedArgs =
       token: string | null;
     }
   | {
+      kind: 'deploy';
+      projectDir: string;
+      /** A folder to write the site into. Never optional — a deploy with nowhere to go is nothing. */
+      outDir: string;
+      /** Write into a folder that already holds something. */
+      force: boolean;
+      /**
+       * The path the site will be served from, spliced into `index.html`'s `<base>`. `null` means
+       * `/`, which is right for a site at the root of a domain and wrong for one in a subfolder —
+       * where every asset URL comes out absolute and 404s. The editor's dialog asks for it; this is
+       * the same question with nobody to ask.
+       */
+      baseUrl: string | null;
+    }
+  | {
       kind: 'render';
       projectDir: string;
       /** `null` grades without keeping anything — a CI gate that wants no artefacts. */
@@ -67,6 +82,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   }
   if (command === 'serve') return parseServe(rest);
   if (command === 'render') return parseRender(rest);
+  if (command === 'deploy') return parseDeploy(rest);
   if (command !== 'export') {
     return { kind: 'usage', problem: `There is no \`nodegx ${command}\` command.` };
   }
@@ -218,18 +234,77 @@ function parseRender(rest: readonly string[]): ParsedArgs {
   return { kind: 'render', projectDir: positional[0], outDir, viewports, scale };
 }
 
+/** Options that take a value; a missing one is a usage error rather than a swallowed flag. */
+const DEPLOY_VALUE_OPTIONS = new Set(['--base-url']);
+const DEPLOY_FLAGS = new Set(['--force']);
+
+/**
+ * HLS-015 — `nodegx deploy <project> <output> [--force] [--base-url /path]`.
+ *
+ * ⚠️ **Both folders are required, and there is no `--dry-run`.** `nodegx export --dry-run` answers
+ * "will this translate", which is a question about a *format conversion* that can be answered
+ * without writing. A deploy does no translation — it runs the graph's own interpreter — so the
+ * question it would be asked instead is "will this render", and the only instrument that answers
+ * that is `nodegx render`, which already exists and needs a browser this command does not have.
+ */
+function parseDeploy(rest: readonly string[]): ParsedArgs {
+  let force = false;
+  let baseUrl: string | null = null;
+  const positional: string[] = [];
+
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i];
+    if (DEPLOY_VALUE_OPTIONS.has(arg)) {
+      const value = rest[i + 1];
+      // A value that looks like the next option is a *missing* value — see `parseServe`, where the
+      // same read would have minted `--share` as a credential.
+      if (value === undefined || value.startsWith('-')) {
+        return { kind: 'usage', problem: `\`${arg}\` needs a value.` };
+      }
+      i += 1;
+      baseUrl = value;
+      continue;
+    }
+    if (DEPLOY_FLAGS.has(arg)) {
+      force = true;
+      continue;
+    }
+    if (arg.startsWith('-')) return { kind: 'usage', problem: `Unknown option: ${arg}.` };
+    positional.push(arg);
+  }
+
+  if (positional.length === 0) return { kind: 'usage', problem: 'No project folder given.' };
+  if (positional.length === 1) {
+    return {
+      kind: 'usage',
+      problem: 'No output folder given. `nodegx deploy` writes a site; it needs somewhere to write it.'
+    };
+  }
+  if (positional.length > 2) return { kind: 'usage', problem: `Too many folders: ${positional.join(', ')}.` };
+
+  return { kind: 'deploy', projectDir: positional[0], outDir: positional[1], force, baseUrl };
+}
+
 export const USAGE = `nodegx — the NodeGX command line
 
   nodegx export <project> <output>   Export a project as a React app
   nodegx export --dry-run <project>  Print what the export would produce, and write nothing
+  nodegx deploy <project> <output>   Write a ready-to-host site you can upload as it is
   nodegx serve <folder>              Serve a built site over HTTP, on this machine only
   nodegx render <project>            Render every routed page and say which ones did not
+
+export or deploy?
+  export writes React SOURCE. You run npm install and npm run build, and you own the code.
+  deploy writes a FINISHED SITE — index.html, your app, and the NodeGX runtime that runs it.
+    Upload the folder and it works. Nothing to build, and no source to edit.
 
 Options
   --dry-run, --preflight   Print the pre-flight summary and exit without writing anything.
                            Exits 4 if anything would be left out, so a pipeline can gate on it.
   --force                  Write into an output folder that already holds something. Files with
                            the same names are overwritten; nothing else is touched.
+  --base-url <path>        deploy: the path the site is served from, when it is not the root of a
+                           domain (\`--base-url /app/\`). Without it every asset URL is absolute.
   --port <n>               serve: the port to listen on (default 8575).
   --share                  serve: also accept connections from other machines on this network.
                            Prints a URL containing a token; without the token nothing is served.
@@ -253,10 +328,20 @@ Exit codes
   5  a write failed part-way
   6  serve: the folder is not a built site, or the port could not be bound
   7  render: a routed page did not render — it is named on stderr
-  8  render: this installation has no render harness (see below)
+  8  render/deploy: this installation has no render harness or deploy engine (see below)
+  9  deploy: the site that was written would render nothing — it is not fit to upload
 
 ⚠️ \`nodegx serve\` listens on 127.0.0.1 unless you pass --share or --host. That is a decision, not
 a default that something else can change: nothing but those two flags reaches another interface.
+
+⚠️ \`nodegx deploy\` needs the NodeGX deploy engine — the editor's model engine and the ~15 MB
+NodeGX interpreter — which is NOT part of this package. It works from a NodeGX checkout with the
+engine built, or set NODEGX_DEPLOY_CLI to one. \`nodegx export\` needs none of it.
+
+⚠️ \`nodegx deploy\` publishes your project folder as well as your app. Everything beside
+nodegx.project.json ships unless a default rule or your .noodlignore excludes it — the run says
+what it left out, and reading that line is how ".env was excluded" and "my logo went missing" stay
+different things.
 
 ⚠️ \`nodegx render\` needs the NodeGX render harness — a browser and the viewer bundle — which is
 NOT part of this package. It works from a NodeGX checkout, or set NODEGX_RENDER_CLI to one. Every

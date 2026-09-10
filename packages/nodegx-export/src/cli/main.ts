@@ -11,6 +11,7 @@
  */
 import { parseArgs } from './args';
 import { runCli } from './run';
+import { runDeploy } from './deploy';
 import { runRender } from './render';
 import { runServe } from './serve';
 
@@ -33,6 +34,12 @@ if (parsed.kind === 'serve') {
   // `runCli` stays synchronous, which is what keeps every command it owns gradeable as a function
   // of its arguments. This one waits on a browser it started in another process.
   runRender(parsed, io).then((code) => {
+    process.exitCode = code;
+  });
+} else if (parsed.kind === 'deploy') {
+  // HLS-015 — the third, and the last of this shape: it waits on the deploy engine, which is a
+  // separate process because everything inside it is the editor's model graph.
+  runDeploy(parsed, io).then((code) => {
     process.exitCode = code;
   });
 } else {

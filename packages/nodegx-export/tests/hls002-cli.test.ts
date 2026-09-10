@@ -98,9 +98,15 @@ describe('the exit codes, each from its own cause', () => {
   });
 
   test(`${EXIT.usage} — a command this binary does not have`, () => {
-    const result = nodegx('deploy', CLEAN, path.join(tmp, 'app'));
+    // ⚠️ This row used to name `deploy`, and HLS-015 built it — the spec then PASSED a real
+    // project and a real output folder to a real command and read exit 0. The lesson is not about
+    // deploy: **a spec whose subject is "a thing that does not exist" has to pick a name nothing
+    // will ever claim**, because the day it is claimed the row stops testing what it says and
+    // starts exercising whatever took the name. `nodegx export` is the only door this repo has
+    // ever wanted for uploading, so `upload` is safe in a way `deploy` was not.
+    const result = nodegx('upload', CLEAN, path.join(tmp, 'app'));
     expect(result.status).toBe(EXIT.usage);
-    expect(result.stderr).toContain('There is no `nodegx deploy` command.');
+    expect(result.stderr).toContain('There is no `nodegx upload` command.');
     // 🔴 Nothing was read and nothing was written: a usage error must not have started an export.
     expect(fs.readdirSync(tmp)).toEqual([]);
   });

@@ -174,7 +174,9 @@ describe('parseArgs — nodegx render', () => {
     const { USAGE } = require('../src/cli/args');
     expect(USAGE).toContain('nodegx render <project>');
     expect(USAGE).toContain('7  render: a routed page did not render');
-    expect(USAGE).toContain('8  render: this installation has no render harness');
+    // HLS-015 widened this row from `render` to both commands rather than minting a ninth code
+    // for the same sentence. See exitCodes.ts.
+    expect(USAGE).toContain('8  render/deploy: this installation has no render harness or deploy engine');
     // 🔴 The two things this command cannot see, said where the person reads them. A trap written
     // only in a task file is a trap nobody hits documentation for.
     expect(USAGE).toContain('photographs URLS, not components');

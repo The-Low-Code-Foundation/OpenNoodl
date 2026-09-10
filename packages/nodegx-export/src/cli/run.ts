@@ -156,6 +156,18 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
     return EXIT.render;
   }
 
+  if (parsed.kind === 'deploy') {
+    // HLS-015 — the third async command, dispatched in `main.ts` for the same reason `serve` and
+    // `render` are: this function is synchronous and a deploy waits on another process. 🔴 The
+    // branch is not decoration. `parsed.projectDir` and `parsed.outDir` would fall through to the
+    // export path below and read as an export request, so `nodegx deploy app site` would write
+    // React source into `site` and report it as an export — an artefact of the wrong KIND, in the
+    // right place, reported as success. The compiler catches the missing branch (the union stops
+    // being total and `parsed.dryRun` stops existing), which is why the union is discriminated.
+    io.err('`nodegx deploy` is started by the binary directly, not through runCli.\n');
+    return EXIT.deploy;
+  }
+
   const projectDir = path.resolve(parsed.projectDir);
   const readable = readableProject(projectDir);
   // 🔴 `=== false`, not `!readable.ok`, and it is not a style choice — the same idiom the

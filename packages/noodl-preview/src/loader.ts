@@ -156,6 +156,85 @@ function resolveRootNode(project: ProjectModel): string | null {
 }
 
 /**
+ * Reads the project on disk into the legacy project object, whichever format it is in.
+ *
+ * Split out of {@link loadPreview} by HLS-015 so the deploy reads a project through the same code
+ * the preview does. Two readers of the same directory drift, and the first thing they disagree
+ * about is which of them is right.
+ */
+export function readLegacyProject(
+  dir: string,
+  format: ProjectFormat
+): { legacy: LegacyProject; warnings: string[] } {
+  if (format === 'v2') {
+    const read = readV2(dir);
+    return { legacy: read.project, warnings: read.warnings };
+  }
+  return { legacy: readJson<LegacyProject>(path.join(dir, 'project.json')), warnings: [] };
+}
+
+/**
+ * Builds the `ProjectModel` the exporter needs, with a root node resolved.
+ *
+ * Throws when there is no renderable root at all — which is the one project-content failure that
+ * cannot be rendered *around*, because there is nothing to render.
+ */
+export function buildProjectModel(
+  legacy: LegacyProject,
+  dir: string
+): { project: ProjectModel; warnings: string[] } {
+  const warnings: string[] = [];
+  const project = ProjectModel.fromJSON(legacy);
+  // The HtmlProcessor reads noodl_modules from here, and asset URLs resolve
+  // against it — the deploy path sets the same field.
+  project._retainedProjectDirectory = dir;
+
+  if (!project.getRootNode()) {
+    const note = resolveRootNode(project);
+    if (!note) {
+      throw new Error(
+        'No renderable root node found. The project has no "rootNodeId" and no component ' +
+          'with a node that can be an export root (a Group, Page Router, …).'
+      );
+    }
+    warnings.push(note);
+  }
+  return { project, warnings };
+}
+
+/**
+ * HLS-015 — read a project for `nodegx deploy`: the same read, the same validation gate and the
+ * same root resolution the preview performs, with every failure raised as one sentence.
+ *
+ * 🔴 **The validation gate is not decoration here.** The preview shows diagnostics and keeps the
+ * last good render, because there is a person watching a browser. A deploy has nobody watching, so
+ * the same verdict has to be a refusal: an invalid graph reaching the exporter is how a folder
+ * gets written that nothing will tell you about.
+ */
+export function readProjectForDeploy(
+  dir: string,
+  format: ProjectFormat
+): { project: ProjectModel; warnings: string[] } {
+  const { legacy, warnings } = readLegacyProject(dir, format);
+
+  const report = validateLegacyProject(legacy);
+  if (report.summary.errors > 0) {
+    const named = report.diagnostics
+      .filter((diagnostic) => diagnostic.severity === 'error')
+      .slice(0, 5)
+      .map((d) => `  ${d.component}${d.nodeId ? ` › ${d.nodeId}` : ''}: ${d.message}`);
+    throw new Error(
+      `${dir} has ${report.summary.errors} validation error(s) and was not deployed:\n` +
+        named.join('\n') +
+        (report.summary.errors > named.length ? `\n  … and ${report.summary.errors - named.length} more` : '')
+    );
+  }
+
+  const built = buildProjectModel(legacy, dir);
+  return { project: built.project, warnings: [...warnings, ...built.warnings] };
+}
+
+/**
  * Loads, validates and builds one snapshot of the project.
  *
  * Never throws for project-content reasons: a torn or invalid project comes
@@ -166,13 +245,9 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
   const warnings: string[] = [];
 
   try {
-    if (format === 'v2') {
-      const read = readV2(dir);
-      legacy = read.project;
-      warnings.push(...read.warnings);
-    } else {
-      legacy = readJson<LegacyProject>(path.join(dir, 'project.json'));
-    }
+    const read = readLegacyProject(dir, format);
+    legacy = read.legacy;
+    warnings.push(...read.warnings);
   } catch (err) {
     return { status: 'error', message: err instanceof Error ? err.message : String(err) };
   }
@@ -184,23 +259,9 @@ export async function loadPreview(dir: string, format: ProjectFormat): Promise<P
   }
 
   try {
-    const project = ProjectModel.fromJSON(legacy);
-    // The HtmlProcessor reads noodl_modules from here, and asset URLs resolve
-    // against it — the deploy path sets the same field.
-    project._retainedProjectDirectory = dir;
-
-    if (!project.getRootNode()) {
-      const note = resolveRootNode(project);
-      if (!note) {
-        return {
-          status: 'error',
-          message:
-            'No renderable root node found. The project has no "rootNodeId" and no component ' +
-            'with a node that can be an export root (a Group, Page Router, …).'
-        };
-      }
-      warnings.push(note);
-    }
+    const built = buildProjectModel(legacy, dir);
+    const project = built.project;
+    warnings.push(...built.warnings);
 
     // `environment: null` blanks the cloud-services metadata: a local preview
     // must never inherit a deployed backend by accident.

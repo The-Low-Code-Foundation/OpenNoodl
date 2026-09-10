@@ -61,12 +61,31 @@ export const EXIT = {
    */
   render: 7,
   /**
-   * HLS-007 — `render` only: there is no render harness here. Distinct from every code above
+   * `render` and `deploy`: there is no harness or engine here. Distinct from every code above
    * because it is a statement about **this installation**, not about the project or the arguments:
    * nothing the caller changes about either will fix it, and a pipeline that retries is wasting
-   * its time. See `renderHarness.ts` for why the published package does not carry one.
+   * its time. See `renderHarness.ts` and `deployEngine.ts` for why the published package carries
+   * neither.
+   *
+   * 🔴 HLS-015 widened this from "render only" to both commands rather than minting a ninth code
+   * for the same sentence. The two refusals differ in what is missing and are identical in what a
+   * pipeline should do about it, and an exit code exists to be branched on — a second number
+   * meaning "stop retrying, this box cannot do that" would be a distinction with no consumer.
    */
-  harness: 8
+  harness: 8,
+  /**
+   * HLS-015 — `deploy` only: the folder that was written would render nothing. Not one deployed
+   * component carries a root node, or the component the app starts at does not.
+   *
+   * 🔴 Its own code, and the reason it exists is register row **C67**: this failure is invisible to
+   * every reading upstream of the browser. The deploy resolves, writes all eight files, reports
+   * the same copy count as a good run, and keeps **93 of 93 connections** — the field that empties
+   * is `roots`. A pipeline that gates on `deployToFolder` resolving gates on nothing, and the
+   * person gets a blank page under a success message. Distinct from {@link EXIT.render} because
+   * that one is measured by a browser and this one is measured by reading the artefact, so they
+   * are available at different moments and a pipeline may well have only one of them.
+   */
+  deploy: 9
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];

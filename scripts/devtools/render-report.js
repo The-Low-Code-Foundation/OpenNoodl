@@ -1827,6 +1827,14 @@ module.exports = {
   checkPrerequisites,
   findChrome,
   freePort,
+  // HLS-015 — the CDP pair, exported so a drive that boots something OTHER than a project
+  // directory can still talk to a page. `withRenderedPage` boots the viewer against project
+  // FILES; `nodegx deploy`'s output is a finished site with no project in it, so it needs the
+  // plumbing without the booting. The alternative was a second copy of `connect` in a sibling
+  // script, which is the thing the comment above `withRenderedPage` says not to do.
+  connect,
+  evaluate,
+  httpJson,
   parseViewports,
   RenderFinding,
   DEFAULT_VIEWPORTS,

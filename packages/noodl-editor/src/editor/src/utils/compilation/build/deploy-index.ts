@@ -14,11 +14,41 @@ type DeployIndexItem = {
 type DeployIndex = ReadonlyArray<DeployIndexItem>;
 
 /**
+ * HLS-015 / register row C68 — where the deployed runtime files are read from.
+ *
+ * 🔴 **The default is a fact about the working directory, not about the install.**
+ * `platform.getAppPath()` is real under Electron (`app.getAppPath()`), and under
+ * `@noodl/platform-node` it is `process.cwd()` when that folder holds a `package.json`
+ * and `__dirname` otherwise. So the *same binary* deploying the *same project* finds
+ * `deploy/index.json` from `packages/noodl-editor` and throws `ENOENT` from anywhere
+ * else. The editor never notices; a headless deploy is nothing but that case.
+ *
+ * The override exists so a headless caller can state the path from its own `__dirname`
+ * — the same thing `noodl-preview`'s `DEPLOY_DIR` already does for the files it serves.
+ * It is a **function call rather than an environment variable** on purpose: an env var
+ * would let anything in the process's environment redirect where a deploy reads its
+ * runtime from, and this is the one input that decides what code the shipped app runs.
+ */
+let externalFolderOverride: string | null = null;
+
+/**
+ * Point the deploy at an explicit `src/external` folder, or pass `null` to go back to
+ * reading it off `platform.getAppPath()`.
+ *
+ * ⚠️ Process-wide, because the three call sites that read it (`loadDeployIndex`,
+ * `_writeFileToFolder`, and `deployer.ts`'s index lookup) are all reached through
+ * `deployToFolder` and none of them takes a context. A caller that sets it owns the process.
+ */
+export function setExternalFolderPath(dir: string | null): void {
+  externalFolderOverride = dir;
+}
+
+/**
  * Gives the path to the "external" folder.
  * @returns
  */
 export function getExternalFolderPath() {
-  return filesystem.join(platform.getAppPath(), 'src/external');
+  return externalFolderOverride ?? filesystem.join(platform.getAppPath(), 'src/external');
 }
 
 /**
