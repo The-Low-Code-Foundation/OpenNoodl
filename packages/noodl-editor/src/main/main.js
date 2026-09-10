@@ -106,6 +106,13 @@ try {
 //running in a separate browser window (file:// cross origin warning)
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 
+// A Wayland session with no Xwayland has no $DISPLAY and Chromium defaults to
+// the X11 ozone backend, so the app dies at startup with "Unable to open X
+// display" (#29, FLD-016 (c)). The decision lives in its own module so it can
+// be graded without launching Electron — see src/linux-display.js for why the
+// switch is `ozone-platform-hint` and not `ozone-platform`.
+require('./src/linux-display').applyLinuxDisplayHint(app);
+
 var args = process.argv || [];
 
 const isDev = args.includes('--dev');

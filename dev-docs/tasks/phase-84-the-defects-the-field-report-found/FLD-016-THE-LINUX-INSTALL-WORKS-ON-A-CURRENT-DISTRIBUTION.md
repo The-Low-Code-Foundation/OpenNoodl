@@ -1,5 +1,178 @@
 # FLD-016 — The Linux install works on a current distribution
 
+🟡 **PARTLY BUILT** — session 9, 2026-09-10. `packages/noodl-editor/package.json`,
+`packages/noodl-editor/src/main/src/linux-display.js`, `scripts/check-release-assets.js`,
+`.github/workflows/release.yml`.
+
+🔴 **Deliberately NOT `🟢 BUILT`, so the board's grep keeps counting it open.** All four
+sub-problems are FIXED, and **AC2, AC4 and AC5 are measured against built artefacts on this
+machine**. **AC1 and AC3 are NOT met and cannot be met here** — they need a real FUSE-3 Wayland
+distribution, and no amount of work on a Mac closes them. See §7.
+
+## ✅ What was built, and what it was measured against
+
+| # | fix | where | graded |
+|---|---|---|---|
+| (a) | `toolsets.appimage: "1.0.3"` — the static, FUSE-free AppImage runtime | `noodl-editor/package.json` | ✅ artefact, reverted arm |
+| (b) | `--no-sandbox` disappears from the `.desktop` Exec line | *same one line* | ✅ **AC2**, artefact, reverted arm |
+| (c) | `ozone-platform-hint=auto` when a Wayland session has no `$DISPLAY` | `src/main/src/linux-display.js` | ✅ 9 specs, 3 reverted arms |
+| (d) | `rpm` target + the release-asset check that fails without it | `package.json`, `check-release-assets.js`, `release.yml` | ✅ **AC4** (check half), **AC5** |
+
+## 1. 🔴 The first question was "is this gradeable here", and the answer was better than expected
+
+The handoff said to decide gradeability **before** building. The answer is **yes, for three of the
+five ACs**, and it turns on two facts nobody had checked:
+
+- ✅ **electron-builder builds a Linux x64 AppImage, `.deb` AND `.rpm` on darwin-arm64.** All three
+  exit 0. The AppImage needs nothing installed; the `.rpm` needs `brew install rpm` (bottled,
+  ~1 min) for `rpmbuild`, and `.deb` needs nothing.
+- 🔴 **The repo's own release path CANNOT be run on this checkout.**
+  `scripts/noodl-editor/build-editor.ts:62` runs **`npx rimraf ./node_modules`** and reinstalls.
+  On a shared checkout with peer sessions live that is destructive. The artefacts below were built
+  by invoking `node_modules/.bin/electron-builder` directly against the existing bundles, with
+  **`--config.npmRebuild=false`** so `@electron/rebuild` could not rewrite native modules in the
+  shared tree, and `--config.directories.output=` pointed at the scratchpad so `dist/` stayed
+  clean. `packages/noodl-editor/node_modules` was verified untouched afterwards, and
+  `src/main/main.bundle.js` md5-verified unchanged.
+
+## 2. ✅ AC2 — measured on our own AppImage, with a reverted arm
+
+AC2 says *"asserted against the built artefact — not against the config that is supposed to produce
+it."* So it was. `NodeGX-0.2.2-linux-x86_64.AppImage` was built twice from the **real**
+`packages/noodl-editor` package, changing exactly one thing. The reverted arm passes
+`--config.toolsets.appimage=0.0.0`, which `AppImageTarget.js:27` treats **identically to absent**
+(`appimageTool == null || appimageTool === "0.0.0"`), so it reproduces HEAD-before without editing
+a file a peer might commit:
+
+| arm | `.desktop` `Exec=` | AppImage runtime | size |
+|---|---|---|---|
+| **REVERTED** (`0.0.0` ≡ no `toolsets`) | `AppRun --no-sandbox %U` | links **`libfuse.so.2`** | 217,169,161 B |
+| **FIXED** (`1.0.3`) | `AppRun %U` | **no FUSE linkage** | 198,423,686 B |
+
+The `.desktop` was read out of the squashfs with `7zz` (electron-builder ships one at
+`~/Library/Caches/electron-builder/7zip@1.0.0/…/bin/7zz`; macOS has no `unsquashfs`). FUSE linkage
+was read as `strings` over the first 200 KB — the ELF runtime that is prepended to the image.
+
+🔴 **One line fixes both (a) and (b), and the artefact proves it rather than the config asserting
+it.** The `.deb` Exec (`/opt/NodeGX/noodl-editor %U`) and the `.rpm` Exec (identical) never carried
+`--no-sandbox`, which confirms §2(b)'s claim that it is AppImage-only.
+
+## 3. ✅ (c) — nine specs, three reverted arms, and the spec's own hole
+
+`tests-main/fld016-linux-display.test.js`, **9 tests, exit 0**. The decision lives in
+`src/main/src/linux-display.js` as a pure function so it is gradeable without launching Electron.
+
+The guard is exercised over **all four** environments, because three of them are sessions that work
+today and a fix that moved them would be a regression:
+
+| `$DISPLAY` | `$WAYLAND_DISPLAY` | hint? | |
+|---|---|---|---|
+| — | set | ✅ **true** | the reported failure |
+| set | set | false | Xwayland |
+| set | — | false | plain X11 |
+| — | — | false | headless |
+
+Plus `DISPLAY=""` → **true** (Chromium treats an empty `DISPLAY` as unusable; reading it as "X11 is
+available" would leave the reported session broken), and `darwin`/`win32` → false.
+
+🔴 **The switch name is asserted literally, because #29 asks for the wrong one.**
+`ozone-platform=auto` is not a valid value for `ozone-platform` and would be silently ignored —
+which is indistinguishable from this fix on any machine that is not a Wayland box.
+
+**Reverted arms — the baseline is green, so it grades nothing until something reddens it:**
+
+| arm | result |
+|---|---|
+| A — `appendSwitch('ozone-platform', 'auto')`, the #29 spelling | 🔴 1 of 9 failed |
+| B — the call in `main.js` **commented out** | 🔴 1 of 9 failed |
+| C — the call in `main.js` **deleted** | 🔴 1 of 9 failed |
+
+🔴 **Arm B passed 9/9 on the first attempt, and that was the spec's defect, not the arm's.** The
+wiring assertion was `expect(mainSource).toContain("require('./src/linux-display')…")` — and
+`// require('./src/linux-display')…` still contains it. **A source-text match reads dead code as
+live code.** It is now anchored to the start of a line (`/^[ \t]*require\(…/m`), where a `//`
+breaks the match. Both arms redden now. `main.js` was restored by `cp` from a snapshot, md5
+verified — never `git checkout`.
+
+## 4. ✅ (d) — AC4's check half and AC5, on the real filenames
+
+All three Linux targets were produced from the real package, exit 0 each:
+
+```
+NodeGX-0.2.2-linux-x86_64.AppImage   198,423,686 B
+NodeGX-0.2.2-linux-amd64.deb         164,728,592 B
+NodeGX-0.2.2-linux-x86_64.rpm        131,942,169 B    # rpm -qip: noodl-editor 0.2.2-1, x86_64
+```
+
+🔴 **That is AC5 as well: adding a third target did not cost the other two.**
+
+⚠️ **The task file's own §3(d) was WRONG.** It says `check-release-assets.js` *"asserts only
+`latest.yml`/`latest-mac.yml`"*. It already asserted the AppImage and the `.deb` — the `.deb` row
+exists precisely because of the F73 incident §5 cites. The real gap was the `.rpm` alone.
+[[measure-the-artefact-before-believing-the-task-file]], again.
+
+**AC4's second half — "asserted by removing it, because a check that has never failed has not been
+tested"** — graded against the **filenames actually produced above**, not invented ones:
+
+| asset list | exit | says |
+|---|---|---|
+| all 10, real Linux names | **0** | `✓ all 10 expected artifacts are present` |
+| the same list, `.rpm` removed | **1** | `missing Linux .rpm (/\.rpm$/)` |
+
+`--self-test` is **5/5, exit 0** (was 4/4; the new case is the removal arm, and
+`the real v0.1.0 draft is caught` moved 6 → 7 problems because that draft is now also short an rpm).
+
+⚠️ **`release.yml` needed a step, or the leg would have gone red exactly like F73.**
+`rpmbuild` is not on `ubuntu-latest`; without it electron-builder builds and **uploads** the
+AppImage and the `.deb`, then dies on the third target. `Install rpmbuild (Linux)`, gated
+`if: matrix.platform == 'linux-x64'`, is what stops that — and `verify-release-assets` is now what
+shouts if it happens anyway.
+
+## 5. Gate readings — session 9, 2026-09-10
+
+- `tests-main/fld016-linux-display.test.js` — **9 tests, exit 0**; arms A/B/C each **1 failed**.
+- `node scripts/check-release-assets.js --self-test` — **5/5 cases, exit 0**.
+- `release.yml` parses; the new step's `if` is `matrix.platform == 'linux-x64'`.
+- `package.json`: `toolsets = {"appimage":"1.0.3"}`, `linux.target = ["AppImage","deb","rpm"]`.
+
+## 6. ⚠️ What a reader should NOT read into this
+
+- 🔴 **`toolsets` is Beta in electron-builder's own types.** The AppImage runtime can change under
+  us on a bump. **Tested against electron-builder 26.15.3 / app-builder-lib 26.15.3**, runtime
+  `appimage-tools-runtime-20251108`. §5 of the original task asked for this to be recorded.
+- ⚠️ **`chrome-sandbox` ships inside the AppImage** and nothing in our source passes `--no-sandbox`
+  any more (grepped across `src/main/` and `package.json`). That is a **necessary** condition for
+  AC3, **not** a confirmation of it — the SUID bit cannot be set inside an AppImage and Chromium
+  falls back to user namespaces, which only a real kernel can answer.
+- ⚠️ The AppImage above was packaged from the **existing** `main.bundle.js`, which predates the (c)
+  edit. That is deliberate — rebuilding it would clobber a bundle a peer may be running — and it
+  does not weaken AC2, whose Exec line is a function of `toolsets` and productName alone. (c) is
+  graded by its own specs instead.
+- ⚠️ `brew install rpm` was installed on Richard's machine to produce the `.rpm`. Reversible with
+  `brew uninstall rpm`. It conflicts with `rpm2cpio`, which was not installed.
+
+## 7. 🔴 What is left, and why it cannot be done here
+
+**AC1** — *the AppImage launches by double-click and from a terminal with no `DISPLAY` on a Wayland
+session, on a FUSE-3-only distribution* — and **AC3** — *Chromium's sandbox is confirmed active in
+the shipped AppImage*.
+
+Both need a **real current Linux distribution**. Docker is up on this box and can run a container,
+but a container has no Wayland compositor, no session bus, and no `/dev/fuse` without
+`--privileged` — so it can answer neither question honestly, and a container that said "yes" would
+be answering an easier one.
+
+🔴 **AC3 is the one with teeth**, and §5 of this task already says why: *"Removing the flag and
+leaving the sandbox disabled some other way would satisfy AC2 and fix nothing."* Re-enabling the
+sandbox is a **real behaviour change** on older kernels and under restrictive AppArmor profiles.
+**This must be smoke-tested on at least two distributions before 0.2.3 ships** — the change makes
+the Linux app strictly better on a modern Fedora and could, in principle, stop it launching
+somewhere it launches today.
+
+**The three artefacts to hand a tester** are in this session's scratchpad and are reproducible with
+the commands in §2 and §4.
+
+
 Four sub-problems, independently shippable. **Two of them are the same config line**, and one of the
 four is a security default nobody chose.
 

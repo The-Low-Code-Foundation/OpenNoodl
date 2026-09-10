@@ -43,10 +43,14 @@
     "nsis": {
       "guid": "com.nodegx.app"
     },
+    "toolsets": {
+      "appimage": "1.0.3"
+    },
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Development",
       "icon": "src/assets/images/icon.png"

@@ -62,6 +62,17 @@ jobs:
 
       - uses: ./.github/actions/setup
 
+      # electron-builder's rpm target shells out to `rpmbuild`, which is NOT on
+      # the ubuntu-latest image. Without this the leg builds the AppImage and
+      # the .deb, uploads them, and then dies on the third target — which is
+      # F73's failure mode exactly, and the reason `verify-release-assets` now
+      # asserts the .rpm too (#29, FLD-016 AC5).
+      - name: Install rpmbuild (Linux)
+        if: matrix.platform == 'linux-x64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+
       - name: Build viewer bundles
         run: npm run build:editor:_viewer
         env:

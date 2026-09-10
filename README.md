@@ -17,10 +17,36 @@ This is an **alpha**. Expect rough edges, and please [report what you find](http
 
 - **macOS**: signed and notarized — no Gatekeeper prompt.
 - **Windows**: not yet code-signed, so Windows SmartScreen will warn on first run ("Windows protected your PC" → More info → Run anyway). This is expected for a new, unsigned publisher and improves over time; see [`INSTALLING-UNSIGNED-BUILDS.md`](dev-docs/guidelines/INSTALLING-UNSIGNED-BUILDS.md).
-- **Linux**: AppImage and `.deb`, unsigned (normal for Linux desktop distribution).
+- **Linux**: AppImage, `.deb` and `.rpm`, unsigned (normal for Linux desktop distribution). See
+  [below](#linux-notes) if the AppImage does not start.
 
 Version-pinned download links go stale silently — they keep resolving, just to the
 wrong thing — so this points at the release list instead, which cannot.
+
+### Linux notes
+
+Three artifacts are published for Linux: the **AppImage** (runs anywhere, no install), the
+**`.deb`** (Debian, Ubuntu, Mint) and the **`.rpm`** (Fedora, RHEL, openSUSE). Mark the AppImage
+executable before running it — `chmod +x NodeGX-*.AppImage`.
+
+**FUSE.** AppImages mount themselves, and older AppImage runtimes need **FUSE 2**, which current
+distributions no longer ship — the symptom is a `dlopen(): error loading libfuse.so.2` on launch.
+NodeGX builds against the **static AppImage runtime**, which needs no FUSE at all, so this should
+not arise. If you hit it on an older build, `./NodeGX-*.AppImage --appimage-extract-and-run` is
+the workaround.
+
+**Wayland.** On a Wayland session with no Xwayland there is no `$DISPLAY`, and Chromium's default
+backend is X11 — which used to make the app exit at startup with *"Unable to open X display"*,
+visible only if you launched it from a terminal. NodeGX now asks for
+`--ozone-platform-hint=auto` automatically in exactly that case, so it picks Wayland when a
+compositor is there and X11 otherwise. Nothing changes on an X11 or Xwayland session.
+
+**The sandbox.** NodeGX runs with **Chromium's sandbox enabled**. Earlier AppImage builds shipped
+a `.desktop` entry carrying `--no-sandbox`, which was a default of the old AppImage runtime rather
+than a choice — the current runtime does not add it. If the app will not start on an old kernel or
+under a restrictive AppArmor profile, running with `--no-sandbox` will tell you whether the
+sandbox is the cause; please [open an issue](https://github.com/The-Low-Code-Foundation/NodeGX/issues/new/choose)
+if it is, rather than leaving it off.
 
 ## Documentation
 
