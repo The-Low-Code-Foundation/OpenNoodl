@@ -162,3 +162,39 @@ AC3.
 current formulas — and **neither needed an assertion changed**. `centerOn`, `zoomAtPoint` and
 `clamp` all behave identically; `minScale` was an extraction, not a rewrite. Nothing here turned a
 red green.
+
+### 7. AC1 DRIVEN — the button, in the real editor, 2026-09-10
+
+A spec that calls `centerToFit(AllNodes)` is not a person clicking Fit view. This is the click.
+
+**Setup:** `cp -R` of *Members' Area (TPL-001)*, **renamed** to `FLD-006 Fit Drive` in
+`nodegx.project.json` first — a copy is otherwise indistinguishable from its source in the launcher
+([[open-a-copy-of-a-real-project-in-the-editor]]). Opened with `openProjectFromFolder` + the router
+walked off the React fiber. Component `/Pages/Post`, **10 root nodes**, graph **640 × 2500** graph
+units in a pane of **988 × 359** CSS px. Source project verified untouched by mtime afterwards
+(Aug 28), copy and its recents entry removed.
+
+| step | measured |
+|---|---|
+| before the click | HUD **`100%`**, `panAndScale {x: -62, y: -1161.8, scale: 1}` |
+| click `[aria-label="Fit view"]` (real `Input.dispatchMouseEvent`) | HUD **`12%`** — read off `CanvasHud-module__ZoomValue` itself, not inferred from the scale |
+| every root inside the pane? | **0 of 10 outside**, checked as `(x + pan) * scale` against `[0, 988] × [0, 359]` |
+| click Fit view **again** | camera **identical to 10 decimal places** — the reporter's "clicking again does nothing", now true for the right reason |
+| click the **minus** button after the fit | stays **`12%`** — it does **not** zoom back in |
+
+🔴 **The floor path was exercised, not bypassed.** `vp.minScale()` on this graph is
+`0.12379310344827586` and the fit returned **exactly** that: 359 px of pane against 2500 units
+wanted 0.1116, the floor refused it, the margin gave way instead. That is the third decision above,
+happening in the product — and it is why the minus button is a no-op rather than a jump.
+
+⚠️ **Two things about the drive worth carrying forward, neither a product defect:**
+
+- **A toast sat on top of the Fit view button.** `elementFromPoint` at the button's centre returned
+  `ToastCard-module__Root`, so the first click would have been spent on the blocker
+  ([[a-rendered-surface-can-be-behind-a-blocker]]). The toast was a *cloud-function deploy failure
+  from the copied project* — `Duplicate component name /#__cloud__/claimAssociation`, an artefact of
+  `cp -R`-ing a project with a provisioned backend, **not** anything to do with this task. Dismissed
+  via its own close button, then re-hit-tested before clicking.
+- **Hit-test before every drive click, and screenshot after.** Both were cheap and both mattered:
+  the hit-test caught the blocker, and the screenshot confirmed the whole graph really is in the
+  pane rather than merely satisfying an arithmetic check.
