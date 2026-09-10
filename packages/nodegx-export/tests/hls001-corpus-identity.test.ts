@@ -60,6 +60,26 @@
  *    **all 840**, where they disagreed about 3 before. The convergence is the evidence that what
  *    was fixed was the realm sensitivity rather than the wording.
  *
+ * ✅ **Regenerated a THIRD time by CMP-005 (P85), and the count was predicted before it was taken.**
+ *
+ * CMP-005 gave `Date To String` the tokens an app actually needs (weekday, full month name,
+ * 12-hour clock, unpadded numbers, ordinal) and a `Locale` port, so like HLS-004 it *is* allowed
+ * to move bytes: the emitted `dateToString` gained a fourth argument and `src/lib/date.ts` gained
+ * the substitution pass. The prediction, made from `grep -rl '"Date To String"' tests/fixtures`
+ * **before** the golden was touched, was **two projects and no others** — `deadline-desk` and
+ * `due-desk` are the only corpus projects that contain the node.
+ *
+ *  - **4 of 840** hashes differ, and they are those two projects' `src/lib/date.ts` and
+ *    `src/pages/Home.tsx` — the emitted library and its one call site. The other 42 projects do
+ *    not emit `date.ts` at all, which is why a change to the formatter reaches four files rather
+ *    than forty-four.
+ *  - 🔴 The parity that makes this safe is graded elsewhere and deliberately not here:
+ *    `tests/date-family.test.ts` runs the **emitted** library and the **runtime node's own
+ *    `_format`** over the same formats and asserts they agree, CMP-005's new tokens and every
+ *    Locale included. This gate answers "did the bytes move"; that one answers "do the two
+ *    implementations still say the same thing", and only the second can catch a divergence that
+ *    moves both sides at once.
+ *
  * ✅ **Regenerated a second time by HLS-004, and here is what was counted first.**
  *
  * HLS-004 changed the re-hosted JS wrapper's input contract (`jsWrapperLines` in

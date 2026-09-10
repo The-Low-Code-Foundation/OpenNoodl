@@ -109,7 +109,7 @@ describe('§B — the sinks and the write', () => {
   });
 
   test('B2 Date To String reads the column bare — `toDate` takes a Date', () => {
-    expect(home(app)).toContain("<p className={styles.text}>{dateToString(taskRow?.due, '{year}-{month}-{date}', '')}</p>");
+    expect(home(app)).toContain("<p className={styles.text}>{dateToString(taskRow?.due, '{year}-{month}-{date}', '', '')}</p>");
   });
 
   test('B3 a Now into the column writes the Date local, and it typechecks against `due?: Date`', () => {

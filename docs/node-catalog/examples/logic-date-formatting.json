@@ -1,0 +1,50 @@
+{
+  "id": "logic-date-formatting",
+  "title": "Dates a person would read, without a Function node",
+  "description": "One instant from Now, rendered three ways by three Date To String nodes — no JavaScript anywhere. The headline uses the weekday and the full month name ({dayName}, {d} {monthName} {year} → \"Thursday, 10 September 2026\"); the time uses the 12-hour clock and a meridiem ({h12}:{minutes} {ampm} → \"3:05 pm\"); the third is the same headline with Locale set to fr-FR, which translates the month and day NAMES and nothing else. Tokens are the whole vocabulary: {d} {m} {h} {min} {s} are the unpadded numbers, {date} {month} {hours} {minutes} {seconds} the padded ones, and anything the node does not recognise is copied through unchanged — which is why a moment/date-fns pattern like HH:mm:ss renders as the literal text HH:mm:ss rather than a time.",
+  "demonstrates": ["Date To String", "net.noodl.Now", "Text", "Group"],
+  "components": [
+    {
+      "name": "/Meeting Card",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Meeting card",
+          "parameters": { "flexDirection": "column" },
+          "children": ["headline_text", "time_text", "french_text"]
+        },
+        { "id": "headline_text", "type": "Text", "label": "Thursday, 10 September 2026", "parent": "root" },
+        { "id": "time_text", "type": "Text", "label": "3:05 pm", "parent": "root" },
+        { "id": "french_text", "type": "Text", "label": "jeudi 10 septembre 2026", "parent": "root" },
+        { "id": "clock", "type": "net.noodl.Now", "label": "The instant" },
+        {
+          "id": "headline",
+          "type": "Date To String",
+          "label": "Long date",
+          "parameters": { "formatString": "{dayName}, {d} {monthName} {year}" }
+        },
+        {
+          "id": "clock_time",
+          "type": "Date To String",
+          "label": "12-hour time",
+          "parameters": { "formatString": "{h12}:{minutes} {ampm}" }
+        },
+        {
+          "id": "headline_fr",
+          "type": "Date To String",
+          "label": "Long date, in French",
+          "parameters": { "formatString": "{dayName} {d} {monthName} {year}", "locale": "fr-FR" }
+        }
+      ],
+      "connections": [
+        { "fromId": "clock", "fromProperty": "date", "toId": "headline", "toProperty": "input" },
+        { "fromId": "clock", "fromProperty": "date", "toId": "clock_time", "toProperty": "input" },
+        { "fromId": "clock", "fromProperty": "date", "toId": "headline_fr", "toProperty": "input" },
+        { "fromId": "headline", "fromProperty": "currentValue", "toId": "headline_text", "toProperty": "text" },
+        { "fromId": "clock_time", "fromProperty": "currentValue", "toId": "time_text", "toProperty": "text" },
+        { "fromId": "headline_fr", "fromProperty": "currentValue", "toId": "french_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

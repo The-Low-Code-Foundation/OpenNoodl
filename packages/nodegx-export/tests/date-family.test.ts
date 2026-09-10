@@ -57,7 +57,7 @@ interface DateLib {
   dateDifference(from: unknown, to: unknown, unit: DateUnit, absolute: unknown): number | undefined;
   dateCompare(a: unknown, b: unknown, g: CompareGranularity, answer: string): boolean | undefined;
   datePart(value: unknown, part: string): number | string | undefined;
-  dateToString(value: unknown, format: unknown, timeZone: unknown): string | undefined;
+  dateToString(value: unknown, format: unknown, timeZone: unknown, locale?: unknown): string | undefined;
 }
 
 const loadDateLib = (source = dateLibSource()): DateLib => {
@@ -104,7 +104,7 @@ const runtimeDateToStringNode = (() => {
 })();
 
 /** The real `_format`, driven through the node's own setters. */
-const runtimeFormat = (input: unknown, format: string, timeZone: string): string | undefined => {
+const runtimeFormat = (input: unknown, format: string, timeZone: string, locale = ''): string | undefined => {
   const mod = { node: runtimeDateToStringNode };
   const instance = {
     _internal: {} as Record<string, unknown>,
@@ -116,6 +116,7 @@ const runtimeFormat = (input: unknown, format: string, timeZone: string): string
   mod.node.initialize.call(instance);
   mod.node.inputs.formatString.set.call(instance, format);
   mod.node.inputs.timeZone.set.call(instance, timeZone);
+  mod.node.inputs.locale.set.call(instance, locale);
   mod.node.inputs.input.set.call(instance, input);
   return mod.node.outputs.currentValue.getter!.call(instance) as string | undefined;
 };
@@ -230,7 +231,14 @@ describe('EXP-011 Tier 1.3 §A — the emitted module against the interpreter', 
       '{monthShort} {date}, {year}',
       '{hours}:{minutes}:{seconds}',
       'no placeholders at all',
-      '{year}{year}{year}'
+      '{year}{year}{year}',
+      // CMP-005's tokens, graded the same way: the emitted library and the runtime node have to
+      // agree about the weekday, the 12-hour clock, the ordinal and the unpadded fields too, or
+      // an exported app renders a different date from the one the editor previewed.
+      '{dayName}, {d} {monthName} {year}',
+      '{dayShort} {ordinal} {monthName}',
+      '{h12}:{minutes} {ampm} / {hours12}{AMPM}',
+      '{d}/{m}/{yearShort} {h}:{min}:{s}'
     ];
     const inputs: unknown[] = [
       new Date(2024, 1, 29, 9, 5, 3),
@@ -256,6 +264,18 @@ describe('EXP-011 Tier 1.3 §A — the emitted module against the interpreter', 
     for (const zone of ['Europe/London', 'America/New_York', 'Asia/Tokyo', 'UTC', 'Not/AZone']) {
       expect(`${zone}: ${lib.dateToString(instant, '{year}-{month}-{date} {hours}:{minutes}', zone)}`).toBe(
         `${zone}: ${runtimeFormat(instant, '{year}-{month}-{date} {hours}:{minutes}', zone)}`
+      );
+    }
+  });
+
+  it('dateToString agrees with the real _format about the Locale port (CMP-005)', () => {
+    const instant = new Date(Date.UTC(2024, 5, 1, 23, 30, 0));
+    const format = '{dayName} {d} {monthName} {monthShort} {ordinal}';
+    // 🔴 `''` first: it is the value every existing project has, and the one whose answer must be
+    // the English the node used to hardcode.
+    for (const locale of ['', 'en-US', 'fr-FR', 'de-DE', 'ja-JP']) {
+      expect(`${locale}: ${lib.dateToString(instant, format, 'UTC', locale)}`).toBe(
+        `${locale}: ${runtimeFormat(instant, format, 'UTC', locale)}`
       );
     }
   });
@@ -430,7 +450,7 @@ describe('EXP-011 Tier 1.3 §B — the translation', () => {
       expectParses(app);
       const page = notesFile(app);
       expect(page).toContain("import { dateToString } from '../lib/date';");
-      expect(page).toContain(`dateToString('2024-02-29T09:05:03Z', '{monthShort} {date}, {year}', '')`);
+      expect(page).toContain(`dateToString('2024-02-29T09:05:03Z', '{monthShort} {date}, {year}', '', '')`);
       // The module ships because something imports it.
       expect(app.files['src/lib/date.ts']).toContain('export function dateToString');
     });
@@ -446,7 +466,7 @@ describe('EXP-011 Tier 1.3 §B — the translation', () => {
       });
       // `{year}-{month}-{date}` and `''` are what `initialize` assigns; a declared default never
       // runs its setter, so these are the values the interpreter is actually holding.
-      expect(notesFile(app)).toContain(`dateToString('2024-02-29', '{year}-{month}-{date}', '')`);
+      expect(notesFile(app)).toContain(`dateToString('2024-02-29', '{year}-{month}-{date}', '', '')`);
     });
 
     it('the four datemath nodes each emit their own helper with the panel’s configuration', () => {
@@ -536,7 +556,7 @@ describe('EXP-011 Tier 1.3 §B — the translation', () => {
         connect(notes, 'dueText', 'currentValue', 'notesHeading', 'text', 'value');
       });
       expectParses(app);
-      expect(notesFile(app)).toContain(`dateToString(dateAdd(clock, 7, 'days'), '{date} {monthShort}', '')`);
+      expect(notesFile(app)).toContain(`dateToString(dateAdd(clock, 7, 'days'), '{date} {monthShort}', '', '')`);
     });
   });
 
@@ -832,13 +852,13 @@ describe('EXP-011 Tier 1.3 §B — the translation', () => {
     /** The clamp, as the browser rendered it: "Feb 29, 2024", never "Mar 02, 2024". */
     it('nests Date Add inside Date To String for the review date', () => {
       expect(deskHome).toContain(
-        `{dateToString(dateAdd('2024-01-31T12:00:00', 1, 'months'), '{monthShort} {date}, {year}', '')}`
+        `{dateToString(dateAdd('2024-01-31T12:00:00', 1, 'months'), '{monthShort} {date}, {year}', '', '')}`
       );
     });
 
     it('carries the zone through to the formatter', () => {
       expect(deskHome).toContain(
-        `{dateToString('2024-06-01T23:30:00Z', '{year}-{month}-{date} {hours}:{minutes}', 'Asia/Tokyo')}`
+        `{dateToString('2024-06-01T23:30:00Z', '{year}-{month}-{date} {hours}:{minutes}', 'Asia/Tokyo', '')}`
       );
     });
 
@@ -874,7 +894,7 @@ describe('EXP-011 Tier 1.3 §B — the translation', () => {
     /** Render reads go through the row, and need no guard — the row is seeded at mount. */
     it('renders the row unguarded, and the variable the chain wrote', () => {
       expect(deskHome).toContain('{clock.toISOString()}');
-      expect(deskHome).toContain(`{dateToString(clock, '{hours}:{minutes}:{seconds}', '')}`);
+      expect(deskHome).toContain(`{dateToString(clock, '{hours}:{minutes}:{seconds}', '', '')}`);
       expect(deskHome).not.toContain('clock?.');
       expect(deskHome).toContain('const read = useValue(lastRead);');
     });

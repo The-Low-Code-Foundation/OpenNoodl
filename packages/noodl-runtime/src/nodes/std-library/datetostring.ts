@@ -9,6 +9,8 @@ interface DateToStringNodeInstance extends NodeInstance {
     dateString?: string;
     /** CWF-011 slice 4. Empty/unset means "the host's local zone", which is today's behaviour. */
     timeZone?: string;
+    /** CMP-005. Empty/unset means `en-US`, which is what the one `Intl` call used to hardcode. */
+    locale?: string;
   };
   _format(): void;
 }
@@ -62,6 +64,31 @@ function fieldsInZone(t: Date, timeZone: string): DateFields {
   };
 }
 
+/**
+ * CMP-005 — the English ordinal suffix for a day of the month.
+ *
+ * ⚠️ **English only, on purpose, and it stays English when a Locale is set.** The suffix is not
+ * derivable from `Intl` without a per-language table of its own (`Intl.PluralRules` gives the
+ * ordinal CATEGORY — one/two/few/other — not the string), and inventing one for forty languages
+ * inside a format token is a bigger promise than this node should make. `{ordinal}` is documented
+ * as English; the localised route is `{dayName} {d} {monthName}`, which needs no suffix in most
+ * languages anyway.
+ */
+function ordinalSuffix(day: number): string {
+  // 11th, 12th, 13th — the exception every naive implementation gets wrong.
+  if (day >= 11 && day <= 13) return 'th';
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
 const DateToStringNode: NodeDefinitionOptions = {
   name: 'Date To String',
   docs: 'https://docs.noodl.net/nodes/utilities/date-to-string',
@@ -72,6 +99,10 @@ const DateToStringNode: NodeDefinitionOptions = {
     // means "local zone" is written here as well as declared below. An existing project that
     // has never heard of this port therefore formats exactly as it did before.
     this._internal.timeZone = '';
+    // CMP-005, same reasoning as `timeZone` above: a declared `default` never runs its setter,
+    // so the empty string that means "en-US" is written here too. A project that has never heard
+    // of Locale renders its month and day names in English, exactly as it always has.
+    this._internal.locale = '';
   },
   inputs: {
     formatString: {
@@ -80,7 +111,14 @@ const DateToStringNode: NodeDefinitionOptions = {
       type: 'string',
       default: '{year}-{month}-{date}',
       description:
-        'Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through',
+        'Template in which these tokens are replaced and everything else is copied through. ' +
+        'Date: {date} 09, {d} 9, {ordinal} 9th. ' +
+        'Month: {month} 09, {m} 9, {monthShort} Sep, {monthName} September. ' +
+        'Year: {year} 2026, {yearShort} 26. ' +
+        'Weekday: {dayName} Thursday, {dayShort} Thu. ' +
+        'Time: {hours} 15, {h} 15, {hours12} 03, {h12} 3, {minutes} 05, {min} 5, {seconds} 07, ' +
+        '{s} 7, {ampm} pm, {AMPM} PM. ' +
+        'Names follow Locale; {ordinal} is English',
       set: function (this: DateToStringNodeInstance, value: string) {
         if (this._internal.formatString === value) return;
         this._internal.formatString = value;
@@ -104,6 +142,26 @@ const DateToStringNode: NodeDefinitionOptions = {
         const next = value || '';
         if (this._internal.timeZone === next) return;
         this._internal.timeZone = next;
+
+        if (this._internal.currentInput !== undefined) {
+          this._format();
+          this.flagOutputDirty('currentValue');
+        }
+      }
+    },
+    locale: {
+      group: 'Values',
+      displayName: 'Locale',
+      type: 'string',
+      default: '',
+      description:
+        'BCP 47 language tag for the month and day names — fr-FR, de-DE, ja-JP. Leave empty for ' +
+        'English (en-US), which is what every project rendered before this port existed. It does ' +
+        'not change the digits, the padding or {ordinal}, only the words',
+      set: function (this: DateToStringNodeInstance, value: string) {
+        const next = value || '';
+        if (this._internal.locale === next) return;
+        this._internal.locale = next;
 
         if (this._internal.currentInput !== undefined) {
           this._format();
@@ -158,6 +216,10 @@ const DateToStringNode: NodeDefinitionOptions = {
         const t = this._internal.currentInput;
         const format = this._internal.formatString;
         const zone = this._internal.timeZone;
+        // CMP-005. `''` is the "never touched this port" value seeded in `initialize`, and it has
+        // to resolve to the string that used to be written into the `Intl` call below, or every
+        // existing project's {monthShort} changes.
+        const locale = this._internal.locale || 'en-US';
 
         // ⚠️ The no-zone branch is the ORIGINAL code, unchanged, and it has to be: an existing
         // project must produce byte-identical output. `getDate()` on an unset or invalid
@@ -181,14 +243,23 @@ const DateToStringNode: NodeDefinitionOptions = {
         const monthShortOptions: Intl.DateTimeFormatOptions = zone
           ? { month: 'short', timeZone: zone }
           : { month: 'short' };
-        const monthShort = new Intl.DateTimeFormat('en-US', monthShortOptions).format(t);
+        const monthShort = new Intl.DateTimeFormat(locale, monthShortOptions).format(t);
         const year = fields.year;
         const yearShort = year.toString().substring(2);
         const hours = ('0' + fields.hours).slice(-2);
         const minutes = ('0' + fields.minutes).slice(-2);
         const seconds = ('0' + fields.seconds).slice(-2);
 
-        this._internal.dateString = format
+        // ⚠️ These eight are the ORIGINAL chain, character for character, so that a format string
+        // using only them renders what it always rendered. CMP-005's tokens are appended below
+        // rather than folded in.
+        //
+        // The order of the two passes is NOT load-bearing, and that was measured rather than
+        // assumed: no token's rendered value contains a `{`, so neither pass can create or
+        // destroy a needle for the other, and running the CMP-005 pass first leaves all 18 specs
+        // green. The chain stays first because it is easier to review an untouched block than to
+        // re-derive that it is untouched.
+        let rendered = format
           .replace(/\{date\}/g, date)
           .replace(/\{month\}/g, month)
           .replace(/\{monthShort\}/g, monthShort)
@@ -199,6 +270,49 @@ const DateToStringNode: NodeDefinitionOptions = {
           .replace(/\{hours\}/g, hours)
           .replace(/\{minutes\}/g, minutes)
           .replace(/\{seconds\}/g, seconds);
+
+        /**
+         * CMP-005 — the tokens an app actually needs.
+         *
+         * Each one is rendered LAZILY: a format that does not mention `{dayName}` never
+         * constructs the `Intl.DateTimeFormat` that would produce it, so the common case
+         * (`{year}-{month}-{date}`) makes exactly the one `Intl` call it always made.
+         */
+        const substitute = (token: string, render: () => string) => {
+          const needle = '{' + token + '}';
+          if (rendered.indexOf(needle) === -1) return;
+          // `split`/`join` on a literal is `replace` with a `/g` regex, without having to
+          // escape the braces into a pattern.
+          rendered = rendered.split(needle).join(render());
+        };
+
+        /** A name read in the same zone the numbers were read in, in the chosen language. */
+        const named = (options: Intl.DateTimeFormatOptions) =>
+          new Intl.DateTimeFormat(locale, zone ? { ...options, timeZone: zone } : options).format(t);
+
+        // 0 is midnight and prints as 12; 13 prints as 1. `(h + 11) % 12 + 1` is that in one line.
+        const hours12 = ((fields.hours + 11) % 12) + 1;
+        // Derived from the hour, not from `Intl`, so it is the same two letters in every locale —
+        // a French app rendering a 12-hour clock is already an odd thing to ask for, and a
+        // localised day period would make `{ampm}` unpredictable rather than translated.
+        const meridiem = fields.hours < 12 ? 'am' : 'pm';
+
+        substitute('dayName', () => named({ weekday: 'long' }));
+        substitute('dayShort', () => named({ weekday: 'short' }));
+        substitute('monthName', () => named({ month: 'long' }));
+        substitute('hours12', () => ('0' + hours12).slice(-2));
+        substitute('h12', () => String(hours12));
+        substitute('ampm', () => meridiem);
+        substitute('AMPM', () => meridiem.toUpperCase());
+        substitute('ordinal', () => String(fields.date) + ordinalSuffix(fields.date));
+        // The unpadded halves of the six numeric fields. `{hours}` stays 24-hour and padded.
+        substitute('d', () => String(fields.date));
+        substitute('m', () => String(fields.month));
+        substitute('h', () => String(fields.hours));
+        substitute('min', () => String(fields.minutes));
+        substitute('s', () => String(fields.seconds));
+
+        this._internal.dateString = rendered;
       } catch (error) {
         // Set the output to be blank, makes it easier to handle.
         this._internal.dateString = '';

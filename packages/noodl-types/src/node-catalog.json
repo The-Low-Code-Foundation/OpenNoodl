@@ -6019,7 +6019,7 @@
           },
           "isSignal": false,
           "default": "{year}-{month}-{date}",
-          "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through"
+          "description": "Template in which these tokens are replaced and everything else is copied through. Date: {date} 09, {d} 9, {ordinal} 9th. Month: {month} 09, {m} 9, {monthShort} Sep, {monthName} September. Year: {year} 2026, {yearShort} 26. Weekday: {dayName} Thursday, {dayShort} Thu. Time: {hours} 15, {h} 15, {hours12} 03, {h12} 3, {minutes} 05, {min} 5, {seconds} 07, {s} 7, {ampm} pm, {AMPM} PM. Names follow Locale; {ordinal} is English"
         },
         {
           "name": "input",
@@ -6031,6 +6031,18 @@
           },
           "isSignal": false,
           "description": "The instant to render; a string arriving here is parsed as a date first"
+        },
+        {
+          "name": "locale",
+          "displayName": "Locale",
+          "group": "Values",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "",
+          "description": "BCP 47 language tag for the month and day names — fr-FR, de-DE, ja-JP. Leave empty for English (en-US), which is what every project rendered before this port existed. It does not change the digits, the padding or {ordinal}, only the words"
         },
         {
           "name": "timeZone",

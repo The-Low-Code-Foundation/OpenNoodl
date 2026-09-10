@@ -989,7 +989,10 @@ const DATE_NODES: Record<string, { fn: DateHelper; args: DateArgSpec[]; outputs:
     args: [
       { port: 'input' },
       { port: 'formatString', fallback: '{year}-{month}-{date}' },
-      { port: 'timeZone', fallback: '' }
+      { port: 'timeZone', fallback: '' },
+      // CMP-005. Same fallback shape as `timeZone`: `initialize` seeds `''`, and `''` is the
+      // en-US the one `Intl` call used to hardcode, so an unset port exports as today's output.
+      { port: 'locale', fallback: '' }
     ],
     outputs: { currentValue: null }
   }

@@ -78,6 +78,60 @@ half-built version of either is worse than either.
 component built in a real project can be put on the shelf by exporting it — which is also what makes
 this the natural first entry for CMP-004 AC3's *single-part* granularity.
 
+## 2.1 ✅ AC1 — THE DECISION, session 4: **the node, additively; the part comes after and is exported, not hand-authored**
+
+**Decided 2026-09-10 (session 4). Both, in that order, and the node first.** The complaint Richard
+raised is *"it exists somewhere in the nodes, but it sucks"* — a part built beside `Date To String`
+leaves the node exactly as bad and adds a second thing to choose between, which is the failure mode
+§2 named. The tokens are missing from the place tokens belong: one `.replace()` chain, in a file
+that already constructs `Intl.DateTimeFormat` twice. **AC2 and AC4 are therefore changes to
+`datetostring.ts`**, and the demonstration part (AC5) is built afterwards in a real project and put
+on the shelf with `export_to_library` — which is CMP-004 AC3's single-part granularity earning its
+first entry rather than a second formatter competing with the first.
+
+🔴 **What happens to the `whenToUse` sentence** — the AC's own condition. Today it reads *"For
+formats beyond these tokens (locale-aware dates, relative times like '2 h ago'), use a Function node
+with Intl or a date library. Note there is no {day}-of-week token."* After AC2/AC4 **both of its
+clauses are false**, so it is not softened, it is replaced: the weekday and locale halves are struck
+out and the sentence keeps only the part that stays true — **relative time** ("3 days ago"), which
+§4 puts out of scope for a reason (it depends on "now", so it is a node with a clock in it, not a
+token). A `whenToUse` that still says "go write JavaScript" for a weekday after this ships is the
+same defect wearing the fix as a hat.
+
+### 2.2 🔴 A THIRD document promises this node a capability it does not have
+
+`Date Parts` ships `dayName`, and its port description reads, verbatim:
+
+> *"The English name of the weekday. **For a localised name, format through Date To String**."*
+
+`Date To String` has no weekday token **and** hardcodes `'en-US'`, so the localised name it sends
+the author to collect cannot be obtained there by any format string. That is now three places
+saying different things about one gap: the node's own port description (silent), the catalog's
+`whenToUse` (documents the gap, ships "write it yourself"), and a sibling node's port description
+(points at a capability that does not exist). ✅ **`Date Parts`' sentence becomes TRUE with AC4** —
+it needs no edit once the locale port lands, which is a second, independent reason to fix the node
+rather than route around it.
+
+### 2.3 🔴 THE ONE SHIPPED EXAMPLE THAT SETS A FORMAT SETS A MOMENT.JS PATTERN
+
+`grep -rn "formatString" docs/node-catalog/examples/*.json` returns **exactly one line**, and it is
+wrong:
+
+```json
+{ "id": "saved_time", "type": "Date To String", "parameters": { "formatString": "HH:mm:ss" } }
+```
+
+`HH:mm:ss` is moment/date-fns syntax. This node substitutes **brace tokens only** and copies
+everything else through, so that example's status line renders *"Saved a1b2c3d4 at HH:mm:ss"* —
+the literal letters, in the shipped corpus, in an example an agent is given as the idiomatic
+wiring. ⚠️ It validates: the example gate checks that `formatString` is a real port, not that its
+VALUE means anything. **A parameter can be inert and still pass every gate** — see
+[[an-inert-parameter-in-a-corpus-example-teaches-a-lie]]. Fixed to `{hours}:{minutes}:{seconds}`.
+
+✅ It is also §1's *"the token syntax is bespoke, so nothing an author already knows transfers"*
+with a measurement attached: **the corpus itself reached for the syntax it knew** — and the
+corpus was written by us.
+
 ## 3. Acceptance criteria
 
 **AC1 — the decision, in writing, before any code.** One paragraph in this file: node, part, or
@@ -113,3 +167,74 @@ read while measuring this and none of them is the complaint; `Date Parts` is *ev
 Relative time ("3 days ago") is listed in §1 as a gap and is **out of scope for AC2** unless the AC1
 decision pulls it in: it is a different job — it depends on "now", so it re-renders on a clock rather
 than on an input, which is a node with a timer in it, not a token.
+
+## 5. What session 4 built, 2026-09-10
+
+| AC | state | where it is graded |
+|---|---|---|
+| **AC1** the decision | ✅ §2.1 — the node, additively; the part comes after, and by export | this file |
+| **AC2** the tokens | ✅ **13 new tokens**, asserted as rendered strings | `noodl-runtime/test/nodes/cmp-005-date-to-string-tokens.test.ts` (19 specs) |
+| **AC3** byte-identical | ✅ golden table captured off the PRE-CHANGE node, both branches | same suite, `describe('AC3 …')` |
+| **AC4** the locale | ✅ a `Locale` port; `''` → `en-US`, which is what was hardcoded | same suite, `describe('AC4 …')` |
+| **AC5** reachable | 🟡 **half** — the catalog example ships; the shelf entry does not | `docs/node-catalog/examples/logic-date-formatting.json` |
+
+**The token set, for Thursday 10 September 2026 at 15:05:07:**
+
+| | padded | unpadded | named |
+|---|---|---|---|
+| day of month | `{date}` 09 | `{d}` 9 | `{ordinal}` 9th |
+| month | `{month}` 09 | `{m}` 9 | `{monthShort}` Sep, `{monthName}` September |
+| year | `{year}` 2026 | | `{yearShort}` 26 |
+| weekday | | | `{dayName}` Thursday, `{dayShort}` Thu |
+| hour, 24 | `{hours}` 15 | `{h}` 15 | |
+| hour, 12 | `{hours12}` 03 | `{h12}` 3 | `{ampm}` pm, `{AMPM}` PM |
+| minute | `{minutes}` 05 | `{min}` 5 | |
+| second | `{seconds}` 07 | `{s}` 7 | |
+
+**Everything but `{date} {month} {monthShort} {year} {yearShort} {hours} {minutes} {seconds}` is
+new** — thirteen tokens where there were eight. `{dayName} {dayShort} {monthName} {monthShort}`
+follow **Locale**; everything else is language-independent, `{ordinal}` deliberately so (§2.1 and
+`ordinalSuffix`'s own comment).
+
+### 5.1 🔴 THE FORMATTER SHIPS TWICE, AND THE SECOND COPY IS A STRING LITERAL
+
+`packages/nodegx-export/src/emit/dateLib.ts` **re-implements `_format` as emitted source** — the
+same eight replacements, written out as an array of quoted lines that becomes `src/lib/date.ts` in
+every exported app. A change to the runtime node alone would have made an exported app render a
+different date from the one the editor previewed, silently, and nothing in this task's ACs would
+have noticed. Both copies now carry the tokens and the locale, and
+`packages/nodegx-export/src/analyze/plan.ts` passes the fourth argument.
+
+✅ **What makes that trustworthy is not that both were edited.** `tests/date-family.test.ts` loads
+the **emitted** library and drives the **runtime node's own `_format`** over the same formats and
+asserts the two strings are equal — a real cross-implementation grade, and CMP-005 added its
+tokens and a five-locale case to it. See [[a-second-copy-of-a-palette-drifts-silently]].
+
+⚠️ **A byte-identity gate went red, correctly, and was regenerated by its own documented rule.**
+`tests/hls001-corpus-identity.test.ts` hashes 840 emitted files across 44 corpus projects. The
+count was **predicted before the golden was touched** — `grep -rl '"Date To String"'` over the
+fixtures returns exactly `deadline-desk` and `due-desk` — and came back **4 of 840**: those two
+projects' `src/lib/date.ts` and `src/pages/Home.tsx`, nothing else. Written into that file's
+header, where its two previous regenerations are recorded.
+
+### 5.2 What AC5 still needs
+
+The catalog example is done and validates (`68/68`, strict). **The shelf entry is not**, and it is
+deliberately the same piece of work as CMP-004 AC3: a small date-formatting component built in a
+real project and put on the shelf with `export_to_library`, so the shelf's first single-part entry
+is one that was *exported* rather than hand-authored. 🔴 **Do not hand-author it** — that would
+skip the round trip AC4 exists to exercise.
+
+### 5.3 Regenerated artefacts, and the merge each one needed
+
+- `packages/noodl-types/src/node-catalog.json` + `.d.ts` — `catalog:generate`. ✅ It was **up to
+  date at HEAD** (measured by restoring HEAD's `datetostring.ts` and re-running the check before
+  regenerating), so the whole diff is this node.
+- `packages/noodl-types/src/node-catalog-enriched.json` + `.d.ts` — `catalog:merge`, from the
+  authored `docs/node-catalog/enrichment/date-to-string.json`.
+- 🔴 `docs-site/docs/nodes/utilities/date-to-string.md` — `docs:nodes` **wipes and rewrites the
+  whole directory**, and **28 pages were already stale at HEAD** plus one untracked new page
+  (`noodl-cloud-listusersinrole.md`) belonging to somebody's uncommitted catalog work. Snapshot,
+  regenerate, restore all but your own page — done twice, because adding the example changed the
+  enriched catalog and made the page stale again. See
+  [[regenerating-a-shared-artefact-is-an-unperformed-merge]].

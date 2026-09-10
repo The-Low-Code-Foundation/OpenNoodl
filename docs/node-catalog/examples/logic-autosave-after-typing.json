@@ -42,7 +42,7 @@
           "id": "saved_time",
           "type": "Date To String",
           "label": "Format time",
-          "parameters": { "formatString": "HH:mm:ss" }
+          "parameters": { "formatString": "{hours}:{minutes}:{seconds}" }
         },
         {
           "id": "status_line",
