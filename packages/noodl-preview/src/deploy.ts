@@ -53,16 +53,15 @@
 // `Cannot read properties of undefined (reading 'join')` from an `EditorSettings` static
 // initialiser — a sentence that names neither the platform nor the import that was dropped.
 import './headless';
-import { bootstrapNodeLibrary } from './headless';
-
 import * as fs from 'fs';
 import * as path from 'path';
 
 import { ProjectModel } from '@noodl-models/projectmodel';
-import { deployToFolder } from '@noodl-utils/compilation/build/deployer';
 import { setExternalFolderPath } from '@noodl-utils/compilation/build/deploy-index';
+import { deployToFolder } from '@noodl-utils/compilation/build/deployer';
 
 import { gradeRoots, readDeployedRoots, type RootsReading } from './deployReading';
+import { bootstrapNodeLibrary } from './headless';
 import { readProjectForDeploy, resolveTarget, type ProjectFormat } from './loader';
 
 /**
@@ -119,6 +118,15 @@ export interface DeployOutcome {
   excluded: { path: string; rule: string; reason?: string }[];
   /** Entries written at the top level of the output folder. */
   files: string[];
+  /**
+   * HLS-014 — every out-dir-relative path this deploy wrote, from the deployer itself.
+   *
+   * 🔴 Not a listing of the folder. On a second deploy into the same folder the listing holds this
+   * run's files AND the previous run's, under different content-hashed names, and nothing in a
+   * listing says which is which. This is what lets `nodegx deploy` remove what its own previous
+   * deploy left rather than either leaving it served or guessing.
+   */
+  written: string[];
   roots: RootsReading;
   /** The refusal, when the folder that was written would render nothing. */
   blank: string | null;
@@ -155,8 +163,9 @@ export async function deployProject(options: {
   project._isReadOnly = true;
 
   let copyReport;
+  let written: string[];
   try {
-    ({ copyReport } = await deployToFolder({
+    ({ copyReport, written } = await deployToFolder({
       project,
       direntry: options.outDir,
       environment: undefined,
@@ -168,9 +177,7 @@ export async function deployProject(options: {
     // everything underneath is an `Error`. A caller that only reads `.stack` gets `undefined` for
     // the refusal that a person is most likely to provoke.
     const message =
-      error instanceof Error
-        ? error.message
-        : ((error as { message?: string })?.message ?? JSON.stringify(error));
+      error instanceof Error ? error.message : (error as { message?: string })?.message ?? JSON.stringify(error);
     throw new Error(message);
   }
 
@@ -187,6 +194,7 @@ export async function deployProject(options: {
       reason: file.reason
     })),
     files: fs.readdirSync(options.outDir).sort(),
+    written: written.slice().sort(),
     roots,
     blank: gradeRoots(roots),
     warnings

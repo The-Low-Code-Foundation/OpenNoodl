@@ -41,7 +41,9 @@ export const EXIT = {
    */
   write: 5,
   /**
-   * HLS-006 — `serve` could not start: the folder is not a built site, or the port is taken. It
+   * HLS-006 — `serve` could not start: the folder is not a built site, or the port is taken.
+   * HLS-014 widened it to `live`, where the same sentence — *nothing is answering* — is a URL that
+   * refused the connection, timed out, or came back non-200. It
    * is its own code rather than {@link EXIT.target} because a pipeline that gets this one has a
    * *running* problem (a port already in use, most often) rather than a wrong argument, and the
    * two want different retries.
@@ -85,7 +87,23 @@ export const EXIT = {
    * that one is measured by a browser and this one is measured by reading the artefact, so they
    * are available at different moments and a pipeline may well have only one of them.
    */
-  deploy: 9
+  deploy: 9,
+  /**
+   * HLS-014 — `live` only: the URL answered, and what it is serving is not the build it was
+   * compared against (or is not a NodeGX deploy at all, or names an export the server does not
+   * hold).
+   *
+   * 🔴 Its own code because it is the only one in this table that is a statement about **a
+   * machine that is not this one**. Every other failure here is fixed by changing an argument, a
+   * project or an installation; this one is fixed by uploading, or by waiting for a cache, or by
+   * discovering that the deploy went somewhere else — and a pipeline that treats it like
+   * {@link EXIT.deploy} would refuse to ship a build that is perfectly good.
+   *
+   * ⚠️ Distinct from {@link EXIT.serve}, which stays "nothing answered". A 404 from the host and a
+   * 200 serving last week's app are opposite situations: one is a deploy that has not landed, the
+   * other is a deploy that has landed somewhere nobody is looking.
+   */
+  stale: 10
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];

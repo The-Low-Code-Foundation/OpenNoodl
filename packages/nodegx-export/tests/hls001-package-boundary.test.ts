@@ -65,7 +65,25 @@ export function specifiersOf(file: string): string[] {
   return out;
 }
 
-const BUILTINS = new Set(['fs', 'path', 'vm', 'crypto', 'child_process', 'os', 'url', 'util', 'assert']);
+/**
+ * Node builtins this package loads. An inventory rather than a policy — every name here was added
+ * because a command needed it, and the list is short enough that adding one is a decision somebody
+ * makes on purpose. `http`/`https` arrived with HLS-014's `nodegx live`, which is the first command
+ * that reads a machine other than this one.
+ */
+const BUILTINS = new Set([
+  'fs',
+  'path',
+  'vm',
+  'crypto',
+  'child_process',
+  'os',
+  'url',
+  'util',
+  'assert',
+  'http',
+  'https'
+]);
 
 /** `<file>: <specifier>` for every specifier that leaves the package. */
 export function escapees(files: string[]): string[] {

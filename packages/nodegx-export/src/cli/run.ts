@@ -34,10 +34,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { loadCatalog } from '../catalog';
-import { errorMessage } from '../errorMessage';
 import { emitApp } from '../emit/emitApp';
 import { renderPreflight, summarizePreflight } from '../emit/preflight';
 import { REPORT_PATH } from '../emit/report';
+import { errorMessage } from '../errorMessage';
 import { EXPORTER_VERSION, parseProject } from '../parse/parseProject';
 import { checkTarget, writeExport } from '../write/writeExport';
 import { parseArgs, USAGE } from './args';
@@ -168,6 +168,15 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
     return EXIT.deploy;
   }
 
+  if (parsed.kind === 'live') {
+    // HLS-014 — the fourth, and the branch the compiler asked for the moment the union grew: it
+    // caught this one too, and the three sentences above are what it caught the last two times.
+    // `live` carries a `url` and no `projectDir`, so the fall-through here would have been a type
+    // error rather than a wrong artefact — which is the only reason this list is still accurate.
+    io.err('`nodegx live` is started by the binary directly, not through runCli.\n');
+    return EXIT.stale;
+  }
+
   const projectDir = path.resolve(parsed.projectDir);
   const readable = readableProject(projectDir);
   // 🔴 `=== false`, not `!readable.ok`, and it is not a style choice — the same idiom the
@@ -219,11 +228,7 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
     app = emitApp(parseProject(projectDir, catalog), catalog);
     summary = summarizePreflight(app);
   } catch (error) {
-    io.err(
-      'The export could not be prepared, and nothing has been written.\n' +
-        errorMessage(error) +
-        '\n'
-    );
+    io.err('The export could not be prepared, and nothing has been written.\n' + errorMessage(error) + '\n');
     return EXIT.project;
   }
 

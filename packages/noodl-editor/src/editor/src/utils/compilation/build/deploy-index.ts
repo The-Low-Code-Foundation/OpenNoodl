@@ -166,9 +166,9 @@ async function writeIndexFiles({
   enableHash,
   envVariables,
   runtimeType
-}: WriteIndexFilesArgs) {
+}: WriteIndexFilesArgs): Promise<string[]> {
   //write the export-carrying files (hashed names when enabled)
-  const [indexJsPath] = await Promise.all(
+  const written = await Promise.all(
     injectExportFiles.map((file) =>
       _writeFileToFolder({
         project,
@@ -180,21 +180,25 @@ async function writeIndexFiles({
       })
     )
   );
+  const [indexJsPath] = written;
 
   if (indexHtmlFile) {
     //and write the index.html file with the correct path
-    await _writeFileToFolder({
-      project,
-      direntry,
-      url: indexHtmlFile.url,
-      exportJson: undefined,
-      injectHTML: true,
-      indexJsPath,
-      baseUrl,
-      enableHash,
-      runtimeType
-    });
+    written.push(
+      await _writeFileToFolder({
+        project,
+        direntry,
+        url: indexHtmlFile.url,
+        exportJson: undefined,
+        injectHTML: true,
+        indexJsPath,
+        baseUrl,
+        enableHash,
+        runtimeType
+      })
+    );
   }
+  return written;
 }
 
 export type CopyDeployFilesToFolderArgs = {
@@ -208,6 +212,17 @@ export type CopyDeployFilesToFolderArgs = {
   envVariables?: Record<string, string>;
 };
 
+/**
+ * Copies the runtime files into the output folder, and says which names it wrote.
+ *
+ * 🔴 **HLS-014 — the return value is the point of the function having one.** The names are
+ * content-hashed (`index-<hash>.js`), so on a second deploy into the same folder they are
+ * *different names* and the previous deploy's files stay there being served. Nothing else in this
+ * module can reconstruct that list: the caller sees a directory holding both, and a directory
+ * listing cannot say which entries this run put there. Measured, not feared — a redeploy after a
+ * one-word edit left `index-842da82…js` next to `index-b529d76…js` and a `noodl_bundles/` holding
+ * two copies of the page that changed.
+ */
 export async function copyDeployFilesToFolder({
   project,
   direntry,
@@ -216,12 +231,12 @@ export async function copyDeployFilesToFolder({
   baseUrl,
   envVariables,
   runtimeType
-}: CopyDeployFilesToFolderArgs) {
+}: CopyDeployFilesToFolderArgs): Promise<string[]> {
   const injectExportFiles = files.filter((file) => file.injectExport);
   const indexHtmlFile = files.find((file) => file.injectHTML);
   const otherFiles = files.filter((f) => !f.injectExport && f !== indexHtmlFile);
 
-  const otherFilesPromises = otherFiles.map((file) =>
+  const otherFilesWritten = otherFiles.map((file) =>
     _writeFileToFolder({
       project,
       direntry,
@@ -232,8 +247,8 @@ export async function copyDeployFilesToFolder({
     })
   );
 
-  await Promise.all([
-    ...otherFilesPromises,
+  const [others, indexes] = await Promise.all([
+    Promise.all(otherFilesWritten),
     writeIndexFiles({
       project,
       direntry,
@@ -247,4 +262,5 @@ export async function copyDeployFilesToFolder({
     })
   ]);
   // reject({ result: 'failure', message: 'Failed to copy deploy files.' });
+  return [...others, ...indexes];
 }

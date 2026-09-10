@@ -19,16 +19,35 @@ import * as path from 'path';
 
 import { gradeRoots, readDeployedRoots, type RootsReading } from '../src/deployReading';
 
-/** A written deploy folder, small enough to read and shaped exactly like a real one. */
+/**
+ * A written deploy folder, small enough to read and shaped exactly like a real one.
+ *
+ * 🔴 **`index.html` is written too, and HLS-014 is why.** A real deploy folder always has one and
+ * it is what names the export the browser loads; a fixture without it let the reader be graded on
+ * a folder no deploy ever produces, and the reader was resolving the export by walking the
+ * directory. That was right until a folder was deployed into twice.
+ */
 function writeDeploy(
   dir: string,
   components: { name: string; roots: string[] }[],
-  options: { rootComponent?: string | null; bundled?: { name: string; roots: string[] }[] } = {}
+  options: {
+    rootComponent?: string | null;
+    bundled?: { name: string; roots: string[] }[];
+    /** The hashed export `index.html` points at. Defaults to the one that is written. */
+    entry?: string;
+    /** A second, older export left in the folder — what a redeploy leaves behind. */
+    stale?: string;
+    /** Bundle files present in `noodl_bundles/` that `componentIndex` does not name. */
+    staleBundles?: Record<string, { name: string; roots: string[] }[]>;
+    /** Skip `index.html` entirely — the shape of a folder that is not a site. */
+    noIndexHtml?: boolean;
+  } = {}
 ): void {
   fs.mkdirSync(dir, { recursive: true });
   const data = {
     rootComponent: options.rootComponent === undefined ? '/App' : options.rootComponent,
-    components: components.map((component) => ({ name: component.name, roots: component.roots, nodes: [] }))
+    components: components.map((component) => ({ name: component.name, roots: component.roots, nodes: [] })),
+    componentIndex: options.bundled ? { b1: { components: options.bundled.map((c) => c.name), dependencies: [] } } : {}
   };
   // The real file is the runtime with the export spliced into it as a literal, so the reader has
   // to find where the object ends rather than parsing the file. Both halves are reproduced.
@@ -36,11 +55,34 @@ function writeDeploy(
     path.join(dir, 'index-deadbeef.js'),
     `!function(){"use strict";var x={a:"}"};window.projectData=${JSON.stringify(data)};console.log("{")}();\n`
   );
+  if (options.stale) {
+    fs.writeFileSync(
+      path.join(dir, options.stale),
+      `!function(){window.projectData=${JSON.stringify({
+        rootComponent: '/App',
+        components: [],
+        componentIndex: {}
+      })}}();\n`
+    );
+  }
+  if (!options.noIndexHtml) {
+    fs.writeFileSync(
+      path.join(dir, 'index.html'),
+      `<html><head><script src="/${options.entry ?? 'index-deadbeef.js'}"></script></head><body></body></html>`
+    );
+  }
   if (options.bundled) {
     fs.mkdirSync(path.join(dir, 'noodl_bundles'), { recursive: true });
     fs.writeFileSync(
       path.join(dir, 'noodl_bundles', 'b1.json'),
       JSON.stringify(options.bundled.map((c) => ({ name: c.name, roots: c.roots, nodes: [] })))
+    );
+  }
+  for (const [name, contents] of Object.entries(options.staleBundles ?? {})) {
+    fs.mkdirSync(path.join(dir, 'noodl_bundles'), { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, 'noodl_bundles', name),
+      JSON.stringify(contents.map((c) => ({ name: c.name, roots: c.roots, nodes: [] })))
     );
   }
 }
@@ -92,6 +134,90 @@ describe('HLS-015 — reading a written deploy', () => {
   });
 });
 
+/**
+ * 🔴 HLS-014 — the reading after a SECOND deploy into the same folder.
+ *
+ * Nothing in the write path deletes and every generated name is a content hash, so a redeploy
+ * leaves the previous deploy's export and the previous copy of every changed bundle beside the new
+ * ones. Measured on a real redeploy of `templates/landing-pages` after a one-word edit:
+ * `index.html` named `index-b529d76…js`, the reader's `readdirSync().find()` returned
+ * `index-842da82…js` — **the previous deploy's** — and `noodl_bundles/` held two `/Pages/Business`
+ * so the reading reported 22 components for a 21-component project.
+ *
+ * Both readings were of an app that is no longer being served, and both were taken by the function
+ * whose whole job is to notice that a deploy would ship a blank page.
+ */
+describe('HLS-014 — a folder that has been deployed into twice', () => {
+  let tmp: string;
+  beforeEach(() => (tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hls014-roots-'))));
+  afterEach(() => fs.rmSync(tmp, { recursive: true, force: true }));
+
+  it('reads the export index.html names, not the first one in the directory', () => {
+    // `index-000…` sorts before `index-deadbeef.js` and is the one `find` would have returned.
+    writeDeploy(tmp, [{ name: '/App', roots: ['n1'] }], { stale: 'index-0000000000000000.js' });
+    expect(readDeployedRoots(tmp).indexJs).toBe('index-deadbeef.js');
+  });
+
+  it('🔴 and the stale export is the one that would have been graded blank', () => {
+    // The control that gives the row above its meaning: the stale export really does read as a
+    // blank site, so a reader that picked it would have refused a good deploy — and, in the other
+    // direction, blessed a bad one whose predecessor was good.
+    writeDeploy(tmp, [{ name: '/App', roots: ['n1'] }], { stale: 'index-0000000000000000.js' });
+    fs.unlinkSync(path.join(tmp, 'index.html'));
+    fs.unlinkSync(path.join(tmp, 'index-deadbeef.js'));
+    // Left alone with the stale export — the file the old reader returned first — the grading
+    // really does come out blank. So the old reading was not merely reading the wrong file: it
+    // was reading a file that produces the opposite verdict.
+    expect(gradeRoots(readDeployedRoots(tmp))).toContain('no components at all');
+  });
+
+  it('counts the bundles the export names and not the files in the folder', () => {
+    writeDeploy(tmp, [{ name: '/Loader', roots: [] }], {
+      bundled: [{ name: '/App', roots: ['n1'] }],
+      // The previous deploy's copy of the same component, under its old hash.
+      staleBundles: { 'b1-old.json': [{ name: '/App', roots: ['n1'] }] }
+    });
+    const reading = readDeployedRoots(tmp);
+    expect(reading.components).toBe(2);
+    expect(reading.staleBundles).toEqual(['b1-old.json']);
+  });
+
+  it('a bundle the export names and the folder does not hold is counted as rendering nothing', () => {
+    // The direction that refuses rather than the direction that reassures: the runtime will ask
+    // for this file and get a 404, and the components in it draw nothing.
+    writeDeploy(tmp, [{ name: '/Loader', roots: [] }], { bundled: [{ name: '/App', roots: ['n1'] }] });
+    fs.unlinkSync(path.join(tmp, 'noodl_bundles', 'b1.json'));
+    const reading = readDeployedRoots(tmp);
+    expect(reading.components).toBe(2);
+    expect(reading.withRoots).toBe(0);
+    expect(reading.withoutRoots).toContain('/App (its bundle b1.json is not in the folder)');
+    expect(gradeRoots(reading)).toContain('Not one of the 2');
+  });
+
+  it('refuses to guess between two exports when there is no index.html to ask', () => {
+    writeDeploy(tmp, [{ name: '/App', roots: ['n1'] }], {
+      stale: 'index-0000000000000000.js',
+      noIndexHtml: true
+    });
+    expect(() => readDeployedRoots(tmp)).toThrow(/holds 2 index-\*\.js files/);
+  });
+
+  it('and still reads a folder with one export and no index.html', () => {
+    // A fixture, a partially-copied folder, an older deploy: one candidate is not a guess.
+    writeDeploy(tmp, [{ name: '/App', roots: ['n1'] }], { noIndexHtml: true });
+    expect(readDeployedRoots(tmp).indexJs).toBe('index-deadbeef.js');
+  });
+
+  it('reads the export through a --base-url prefix', () => {
+    writeDeploy(tmp, [{ name: '/App', roots: ['n1'] }]);
+    fs.writeFileSync(
+      path.join(tmp, 'index.html'),
+      '<html><head><script src="/app/v2/index-deadbeef.js"></script></head></html>'
+    );
+    expect(readDeployedRoots(tmp).indexJs).toBe('index-deadbeef.js');
+  });
+});
+
 /** A reading shaped like a good run, so each row below changes exactly one field. */
 const reading = (over: Partial<RootsReading> = {}): RootsReading => ({
   components: 21,
@@ -100,6 +226,7 @@ const reading = (over: Partial<RootsReading> = {}): RootsReading => ({
   rootComponent: '/App',
   rootComponentRenders: true,
   indexJs: 'index-abc.js',
+  staleBundles: [],
   ...over
 });
 

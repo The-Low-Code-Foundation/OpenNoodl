@@ -9,10 +9,13 @@
  * and the *packed* binary from an install outside the repo (`hls002-pack-and-run.test.ts`),
  * because HLS-001 found three defects that every in-repo gate read green on.
  */
+import * as fs from 'fs';
+
 import { parseArgs } from './args';
-import { runCli } from './run';
 import { runDeploy } from './deploy';
+import { runLive } from './live';
 import { runRender } from './render';
+import { runCli } from './run';
 import { runServe } from './serve';
 
 const argv = process.argv.slice(2);
@@ -40,6 +43,11 @@ if (parsed.kind === 'serve') {
   // HLS-015 — the third, and the last of this shape: it waits on the deploy engine, which is a
   // separate process because everything inside it is the editor's model graph.
   runDeploy(parsed, io).then((code) => {
+    process.exitCode = code;
+  });
+} else if (parsed.kind === 'live') {
+  // HLS-014 — the fourth, and the only one that waits on a machine that is not this one.
+  runLive(parsed, io, fs).then((code) => {
     process.exitCode = code;
   });
 } else {

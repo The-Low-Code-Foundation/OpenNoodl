@@ -55,6 +55,16 @@ export type ParsedArgs =
       baseUrl: string | null;
     }
   | {
+      kind: 'live';
+      /** A full URL — the site as somebody would open it, redirects and all. */
+      url: string;
+      /**
+       * A deploy folder to compare what is live against. `null` asks only "what is live", which is
+       * the half of the question that has no local half and is answerable with no local anything.
+       */
+      against: string | null;
+    }
+  | {
       kind: 'render';
       projectDir: string;
       /** `null` grades without keeping anything — a CI gate that wants no artefacts. */
@@ -83,6 +93,7 @@ export function parseArgs(argv: readonly string[]): ParsedArgs {
   if (command === 'serve') return parseServe(rest);
   if (command === 'render') return parseRender(rest);
   if (command === 'deploy') return parseDeploy(rest);
+  if (command === 'live') return parseLive(rest);
   if (command !== 'export') {
     return { kind: 'usage', problem: `There is no \`nodegx ${command}\` command.` };
   }
@@ -285,6 +296,47 @@ function parseDeploy(rest: readonly string[]): ParsedArgs {
   return { kind: 'deploy', projectDir: positional[0], outDir: positional[1], force, baseUrl };
 }
 
+/**
+ * HLS-014 — `nodegx live <url> [--against <folder>]`.
+ *
+ * 🔴 **A URL, not a folder, and that is the whole point of the command.** Every other command here
+ * takes paths on this machine; this one is the only reading in the binary that comes from the
+ * server a person actually loads. `--against` is optional because "what is live right now" is
+ * worth answering on its own — an agent that did not do the deploy still needs it.
+ */
+function parseLive(rest: readonly string[]): ParsedArgs {
+  let against: string | null = null;
+  const positional: string[] = [];
+
+  for (let i = 0; i < rest.length; i++) {
+    const arg = rest[i];
+    if (arg === '--against') {
+      const value = rest[i + 1];
+      if (value === undefined || value.startsWith('-')) {
+        return { kind: 'usage', problem: '`--against` needs the deploy folder to compare with.' };
+      }
+      i += 1;
+      against = value;
+      continue;
+    }
+    if (arg.startsWith('-')) return { kind: 'usage', problem: `Unknown option: ${arg}.` };
+    positional.push(arg);
+  }
+
+  if (positional.length === 0) {
+    return { kind: 'usage', problem: 'No URL given. `nodegx live` reads a site that is being served.' };
+  }
+  if (positional.length > 1) return { kind: 'usage', problem: `Too many URLs: ${positional.join(', ')}.` };
+  if (!/^https?:\/\//.test(positional[0])) {
+    return {
+      kind: 'usage',
+      problem: `\`${positional[0]}\` is not a URL. \`nodegx live\` reads a served site, so it needs http:// or https:// — a folder on this machine is what \`nodegx deploy\` and \`nodegx serve\` take.`
+    };
+  }
+
+  return { kind: 'live', url: positional[0], against };
+}
+
 export const USAGE = `nodegx — the NodeGX command line
 
   nodegx export <project> <output>   Export a project as a React app
@@ -292,6 +344,7 @@ export const USAGE = `nodegx — the NodeGX command line
   nodegx deploy <project> <output>   Write a ready-to-host site you can upload as it is
   nodegx serve <folder>              Serve a built site over HTTP, on this machine only
   nodegx render <project>            Render every routed page and say which ones did not
+  nodegx live <url>                  Read a site that is being served and say which build it is
 
 export or deploy?
   export writes React SOURCE. You run npm install and npm run build, and you own the code.
@@ -311,6 +364,8 @@ Options
   --host <addr>            serve: the address to bind when sharing. Implies --share.
   --token <t>              serve: use this token instead of minting one, so a pipeline can know
                            it in advance.
+  --against <folder>       live: the deploy folder to compare the served site with. Without it
+                           the command reports what is live and compares it with nothing.
   --out-dir <dir>          render: keep the images, one per page per viewport, as
                            <page>-<viewport>.png. Without it nothing is written and nothing is
                            captured — the run still grades every page.
@@ -330,6 +385,7 @@ Exit codes
   7  render: a routed page did not render — it is named on stderr
   8  render/deploy: this installation has no render harness or deploy engine (see below)
   9  deploy: the site that was written would render nothing — it is not fit to upload
+ 10  live: the served site is not the build you compared it against, or is not a NodeGX site
 
 ⚠️ \`nodegx serve\` listens on 127.0.0.1 unless you pass --share or --host. That is a decision, not
 a default that something else can change: nothing but those two flags reaches another interface.
@@ -342,6 +398,15 @@ engine built, or set NODEGX_DEPLOY_CLI to one. \`nodegx export\` needs none of i
 nodegx.project.json ships unless a default rule or your .noodlignore excludes it — the run says
 what it left out, and reading that line is how ".env was excluded" and "my logo went missing" stay
 different things.
+
+⚠️ \`nodegx deploy\` into a folder it deployed to before is an UPDATE: it rewrites the site and
+removes the files its own previous deploy left behind, and touches nothing else in the folder. A
+folder holding anything else is refused unless you pass --force, and with --force nothing is swept
+— this command will not delete from a folder it has no record of writing.
+
+⚠️ \`nodegx live\` is the only reading here taken from a machine that is not this one. Everything a
+deploy knows, it learned from a folder on this disk; between that folder and the app somebody loads
+there is an upload, a cache and a host. It follows redirects and says so when it did.
 
 ⚠️ \`nodegx render\` needs the NodeGX render harness — a browser and the viewer bundle — which is
 NOT part of this package. It works from a NodeGX checkout, or set NODEGX_RENDER_CLI to one. Every

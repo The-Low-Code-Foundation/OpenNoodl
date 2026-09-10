@@ -301,7 +301,11 @@ describe('the front matter', () => {
     const result = nodegx('--help');
     expect(result.status).toBe(EXIT.ok);
     for (const code of Object.values(EXIT)) {
-      expect(result.stdout).toMatch(new RegExp(`^\\s{2}${code}\\s{2}`, 'm'));
+      // ⚠️ `\s+` before the number and `\s{2}` after. It was `\s{2}` on both sides, which quietly
+      // assumed every exit code is one digit: HLS-014's `10` is right-aligned under the `9` with a
+      // single leading space, and the gate failed on correctly formatted help. The two spaces
+      // AFTER are what keeps this from matching a `10` inside a sentence, so that half stays.
+      expect(result.stdout).toMatch(new RegExp(`^\\s+${code}\\s{2}`, 'm'));
     }
   });
 

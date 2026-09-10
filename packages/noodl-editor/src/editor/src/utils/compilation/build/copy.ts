@@ -57,6 +57,12 @@ export interface ExcludedFile {
 export interface ProjectCopyReport {
   /** Files written into the output folder. */
   copiedCount: number;
+  /**
+   * HLS-014 — the out-dir-relative path of every file copied, so a later deploy into the same
+   * folder can tell an asset it still ships from one the previous deploy left behind. The count
+   * above answers "did anything ship"; only the names answer "which of these is stale now".
+   */
+  copiedPaths: string[];
   /** Every excluded path, with the rule that excluded it. */
   excluded: ExcludedFile[];
   /** Excluded counts keyed by the rule that did it, for a short summary. */
@@ -297,6 +303,7 @@ async function scanProject(projectPath: string): Promise<ProjectScan> {
 function toReport(scan: ProjectScan, staleExclusions: string[] = []): ProjectCopyReport {
   return {
     copiedCount: scan.files.length,
+    copiedPaths: scan.files.map((file) => file.relativePath),
     excluded: scan.excluded,
     excludedByRule: summarise(scan.excluded),
     hasIgnoreFile: scan.hasIgnoreFile,

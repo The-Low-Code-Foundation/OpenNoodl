@@ -33,6 +33,53 @@ export interface RootsReading {
   rootComponentRenders: boolean;
   /** The hashed export file the reading was taken from. */
   indexJs: string;
+  /**
+   * HLS-014 — bundle files present in `noodl_bundles/` that the served export does not name.
+   *
+   * A redeploy writes a new hashed bundle beside the old one and deletes neither, so on the
+   * second deploy of a project this is the previous deploy's copy of every page that changed.
+   * The runtime never fetches them; a reading that walks the directory does, and counts the same
+   * component twice.
+   */
+  staleBundles: string[];
+}
+
+/**
+ * Which `index-*.js` is the one the site actually serves?
+ *
+ * 🔴 **HLS-014.** This used to be `readdirSync(outDir).find(/^index-.*\.js$/)`, and a folder that
+ * has only ever been deployed into once holds exactly one, so that read was right every time
+ * anybody looked. A **second** deploy writes a second hashed export beside the first and deletes
+ * nothing, and `find` returns whichever entry the directory happens to hand back first — measured
+ * on a real redeploy: `index.html` pointed at `index-b529d76…js` and the reading took
+ * `index-842da82…js`, **the previous deploy's**. Every reading built on it — including the
+ * blank-site refusal HLS-015 exists for — was then a statement about an app that is no longer
+ * being served.
+ *
+ * So the entry is resolved the way a browser resolves it: from `index.html`. `--base-url` puts a
+ * prefix on that src, so only the basename is taken.
+ */
+function resolveEntry(outDir: string): string {
+  const indexHtml = path.join(outDir, 'index.html');
+  if (fs.existsSync(indexHtml)) {
+    const html = fs.readFileSync(indexHtml, 'utf8');
+    const match = /<script[^>]+src="([^"]*\/)?(index-[^"/]+\.js)"/.exec(html);
+    if (match) return match[2];
+    throw new Error(`${outDir}/index.html names no index-*.js — the deploy wrote no export.`);
+  }
+
+  // No index.html. One candidate is unambiguous and several are not, and guessing between several
+  // is exactly the thing above. A folder with two exports and no page naming one of them is not a
+  // site, and saying so is cheaper than being right by luck.
+  const candidates = fs.readdirSync(outDir).filter((file) => /^index-.*\.js$/.test(file));
+  if (candidates.length === 1) return candidates[0];
+  if (candidates.length === 0) {
+    throw new Error(`${outDir} holds no index-*.js — the deploy wrote no export.`);
+  }
+  throw new Error(
+    `${outDir} holds ${candidates.length} index-*.js files and no index.html to say which one is ` +
+      `served (${candidates.sort().join(', ')}). Deploy again into this folder to rewrite it.`
+  );
 }
 
 /**
@@ -43,10 +90,7 @@ export interface RootsReading {
  * understands string escapes is the whole of it.
  */
 function projectData(outDir: string): { indexJs: string; data: TSFixme } {
-  const indexJs = fs.readdirSync(outDir).find((file) => /^index-.*\.js$/.test(file));
-  if (!indexJs) {
-    throw new Error(`${outDir} holds no index-*.js — the deploy wrote no export.`);
-  }
+  const indexJs = resolveEntry(outDir);
   const source = fs.readFileSync(path.join(outDir, indexJs), 'utf8');
   const marker = source.indexOf('window.projectData');
   if (marker === -1) throw new Error(`${indexJs} carries no window.projectData.`);
@@ -95,7 +139,8 @@ export function readDeployedRoots(outDir: string): RootsReading {
     withoutRoots: [],
     rootComponent: data.rootComponent ?? null,
     rootComponentRenders: false,
-    indexJs
+    indexJs,
+    staleBundles: []
   };
 
   const add = (components: TSFixme[]) => {
@@ -111,13 +156,41 @@ export function readDeployedRoots(outDir: string): RootsReading {
   };
 
   add(data.components);
+
   // The bundled half. A project whose root component is lazily fetched keeps every root out of
   // `window.projectData`, so a reading that stopped here would report a blank app for a good one.
+  //
+  // 🔴 **HLS-014 — the bundles the EXPORT names, not the files in the directory.** `componentIndex`
+  // is how the runtime decides what to fetch, so it is the only list that describes the app being
+  // served. Walking the directory instead was right for exactly as long as no folder was ever
+  // deployed into twice: measured on a real redeploy, `noodl_bundles/` held both
+  // `b2-378e4cd…json` and `b2-6ac1955…json` — the same component `/Pages/Business` before and
+  // after a one-word edit — and the reading reported **22 of 22** components for a 21-component
+  // project. A count that grows with the number of times you have deployed is not a reading of
+  // the app.
   const bundleDir = path.join(outDir, 'noodl_bundles');
-  if (fs.existsSync(bundleDir)) {
-    for (const file of fs.readdirSync(bundleDir)) {
-      add(JSON.parse(fs.readFileSync(path.join(bundleDir, file), 'utf8')));
+  const named = Object.keys(data.componentIndex ?? {}).filter((id) => id !== 'root');
+  for (const id of named) {
+    const file = path.join(bundleDir, `${id}.json`);
+    // A bundle the export names and the folder does not hold is a broken deploy, not a stale one —
+    // the runtime will ask for it and get a 404. It has no roots to contribute, so the components
+    // it carries go missing from the reading, which is the direction that refuses rather than the
+    // direction that reassures.
+    if (fs.existsSync(file)) {
+      add(JSON.parse(fs.readFileSync(file, 'utf8')));
+      continue;
     }
+    for (const name of data.componentIndex[id]?.components ?? [id]) {
+      reading.components++;
+      reading.withoutRoots.push(`${name} (its bundle ${id}.json is not in the folder)`);
+    }
+  }
+  if (fs.existsSync(bundleDir)) {
+    const live = new Set(named.map((id) => `${id}.json`));
+    reading.staleBundles = fs
+      .readdirSync(bundleDir)
+      .filter((file) => file.endsWith('.json') && !live.has(file))
+      .sort();
   }
   return reading;
 }
