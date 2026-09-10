@@ -18,6 +18,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 
+import { armWatcher } from '../support/armWatcher';
 import {
   ProjectFileWatcher,
   componentPathFromRelativePath,
@@ -249,6 +250,12 @@ describe('REL-009b — against a real filesystem', () => {
 
     watcher.start(dir, (paths) => batches.push(paths));
 
+    // 🔴 ARM THE INSTRUMENT FIRST — see `support/armWatcher.ts`. Every previous
+    // fix to this spec adjusted how long to wait AFTER the write (a 600ms sleep,
+    // an event-wait, the latch below, a 30s ceiling). None of them could work
+    // when the write beat the FSEvents stream, because then no event is coming.
+    const armed = await armWatcher({ dir, batches, sentinel: 'components/__arming__/nodes.json', debounceMs: 60 });
+
     // Exactly what ComponentSaver.saveComponent does: stage a .tmp, then rename.
     const target = path.join(dir, 'components', 'Pages', 'Home', 'nodes.json');
     fs.writeFileSync(`${target}.tmp`, JSON.stringify({ nodes: [] }));
@@ -285,6 +292,7 @@ describe('REL-009b — against a real filesystem', () => {
     // `test:main` for everybody is strictly worse than one that reddens it. The
     // control above did exactly that: it failed correctly in 35ms and then hung
     // until it was killed (EXIT=143, not 1).
+    expect(armed).toBe(true);
     expect(arrivedWithinCeiling).toBe(true);
     expect(batches.flat()).toContain('Pages/Home');
     // And nothing that is not a component path ever got through.

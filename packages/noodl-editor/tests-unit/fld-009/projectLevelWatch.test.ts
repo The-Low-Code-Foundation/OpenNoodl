@@ -17,6 +17,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 
+import { armWatcher } from '../support/armWatcher';
 import {
   ProjectFileWatcher,
   componentPathFromRelativePath,
@@ -24,9 +25,22 @@ import {
   type WatchHandle
 } from '../../src/editor/src/services/ProjectFileWatcher';
 
-/** Bounds a genuine hang and nothing else — see REL-009b's note on stopwatches. */
-const WATCH_EVENT_CEILING_MS = 4000;
-const WATCH_TEST_TIMEOUT_MS = 20000;
+/**
+ * A hang bound, and nothing else. It is deliberately far above any latency this
+ * spec can legitimately see: measured 2026-09-10, a real `fs.watch` event on an
+ * ARMED stream lands in 14ms idle and 208ms under heavy load.
+ *
+ * 🔴 **This spec's red was never about this number, and raising it did not fix
+ * anything.** It was 4000ms; this session raised it to 30_000 on the theory that
+ * a loaded box needed headroom, and `test:main` then failed it **twice more, at
+ * 30s** — while REL-009b's arm, which had been at 30_000 all along, failed
+ * alongside it once. The real defect was that the watcher was not armed when the
+ * write happened, so no event was ever coming; see `support/armWatcher.ts` for
+ * the control pair. The two constants must still be changed together — a ceiling
+ * above jest's per-test timeout is not a ceiling.
+ */
+const WATCH_EVENT_CEILING_MS = 30_000;
+const WATCH_TEST_TIMEOUT_MS = WATCH_EVENT_CEILING_MS + 5_000;
 
 describe('FLD-009 — mapping a changed file onto a project-level file', () => {
   it('maps each of the three project-level files', () => {
@@ -143,6 +157,12 @@ describe('FLD-009 — against a real filesystem', () => {
 
     watcher.start(dir, () => undefined, (files) => batches.push(files));
 
+    // 🔴 ARM THE INSTRUMENT FIRST. `start()` returning does not mean FSEvents is
+    // live, and a write that beats the stream produces no event at all — which
+    // is what reddened this spec under a full suite, at every ceiling it has
+    // ever had. `armWatcher` carries the 48%-vs-0% control pair.
+    const armed = await armWatcher({ dir, batches, sentinel: 'nodegx.routes.json', debounceMs: 60 });
+
     // Exactly what ComponentSaver.writeFileAtomic does.
     const target = path.join(dir, 'nodegx.project.json');
     fs.writeFileSync(`${target}.tmp`, JSON.stringify({ name: 'p', metadata: { cloudservices: {} } }));
@@ -160,6 +180,9 @@ describe('FLD-009 — against a real filesystem', () => {
 
     // Every assertion after stop(), so a failure cannot leak the fs.watch handle
     // and hang `test:main` for everybody.
+    // An unarmed watcher is silent in exactly the way the original defect was,
+    // so this is asserted rather than assumed.
+    expect(armed).toBe(true);
     expect(arrivedWithinCeiling).toBe(true);
     expect(batches.flat()).toContain('project');
     expect(batches.flat().every((f) => f === 'project')).toBe(true);
