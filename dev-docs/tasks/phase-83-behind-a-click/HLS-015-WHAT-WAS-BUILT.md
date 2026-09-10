@@ -224,17 +224,22 @@ export or deploy?
   (from 1 / 14) · root `tsc --noEmit` **0** · `typecheck:editor` **0** · `typecheck:editor-tests`
   **0** · editor `test:main` **446 suites / 7,359, one red**.
 
-- ⚠️ **That one red is not this task's, and its cause is still unknown.**
-  `tests-unit/fld-009/projectLevelWatch.test.ts` — phase 84's, landed the same day — went red under
-  full-suite load and passed **in 276 ms** run alone. 🔴 **Two diagnoses have been offered and both
-  were wrong.** I filed it as a flake off the re-run; the owning session read the spec, found a
-  4,000 ms latency ceiling that had taken REL-009b's stopwatch note only half way, raised it to
-  30,000, and re-ran — **both real-filesystem watcher specs then failed, including REL-009b's, which
-  had been at 30,000 all along.** So the ceiling is not the cause: under a 446-suite run the
-  filesystem event **does not arrive at all**, rather than arriving late. The two specs run together
-  are 25/25 green in 10 s. It is a full-suite phenomenon, open, and owned by the phase-84 session.
-  ⚠️ The ceiling change may have made it worse, not neutral — `fld-009` now burns 30 s before
-  failing with a live `fs.watch` handle open.
+- ⚠️ **That one red was not this task's, and it is now solved — by the third diagnosis.**
+  `tests-unit/fld-009/projectLevelWatch.test.ts` (phase 84's) went red under full-suite load and
+  passed in **276 ms** alone. 🔴 **The cause was that the watcher was never armed when the write
+  happened.** `fs.watch(dir, {recursive: true})` is FSEvents on macOS and the stream is **not live
+  when `start()` returns**; both real-filesystem watcher specs wrote immediately after it, and a
+  write that beats the stream produces **no event at all**. Load never broke the watch — it widened
+  the window before the stream was live. Control pair, 25 trials per arm: **12/25 missed** writing
+  immediately under load, **0/25** waiting for the stream, **0/60** on an idle box. Fixed by the
+  owning session with `tests-unit/support/armWatcher.ts`, which asserts `armed`.
+
+  🔴 **Two earlier diagnoses were wrong and one of them was mine.** I filed it as a flake off a
+  re-run; the owner read the spec and found a half-applied latency ceiling, raised it, and both
+  watcher specs then failed — including one already at the raised value. **Every fix these specs
+  have ever had adjusted how long to wait AFTER the write, for something that was never coming.**
+  The reading that would have killed all of it in a minute: when the event *does* fire it lands in
+  **14 ms** idle and **208 ms** worst case under load, so no ceiling was ever the constraint.
 
 - ⚠️ `tests/hls015-drive.mjs` is **not** a CI gate. It needs Chrome, and calling a
   Chrome-dependent script a gate is this phase's own C46/C47 mistake. `.mjs`, so jest's

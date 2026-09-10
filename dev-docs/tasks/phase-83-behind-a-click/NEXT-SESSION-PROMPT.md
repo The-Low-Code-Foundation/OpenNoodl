@@ -117,14 +117,18 @@ If HLS-014 is not the session's job, the honest alternatives are unchanged from 
   nobody is watching, because in CI nobody is.
 - ⚠️ **C65 — 7 tokens of resident MCP headroom.** Measure before you place a tool.
 - ⚠️ **C52 unchanged**: `sbr009ThemeEditorDrive` (2) and `def018-def020-layout-drive` (1), **NONE**.
-- 🔴 **"GREEN ALONE, RED UNDER LOAD" IS NOT A DIAGNOSIS, AND TWO CONFIDENT ONES WERE ALREADY WRONG.**
-  `test:main` came back 446/7,359 with one red — **phase 84's** `fld-009/projectLevelWatch`, 276 ms
-  alone. I re-ran it, read green, filed a flake. The owning session read the spec instead, found a
-  4,000 ms ceiling half-applied from REL-009b's stopwatch note, raised it to 30,000 — and **both**
-  real-filesystem watcher specs then went red, including REL-009b's, **which had been at 30,000 all
-  along**. The event does not arrive at all under a 446-suite run; the two specs together are 25/25
-  green in 10 s. **Open, unexplained, owned by phase 84 — do not spend anything on it here, and do
-  not treat a passing re-run as the answer.**
+- 🔴 **WHEN THE THEORY IS "TOO SLOW", MEASURE THE LATENCY OF THE RUNS THAT SUCCEED.** `test:main`'s
+  one red — phase 84's `fld-009/projectLevelWatch` — took **three** diagnoses. Mine: a flake, off a
+  re-run (which only tells you the spec passes alone, never in doubt). The owner's: a latency
+  ceiling too small (a real defect, and not the cause — raising it broke a second spec that was
+  already at the raised value). Mine again: worker or fd pressure (reasonable, unnecessary). 🔴 **The
+  actual cause: `fs.watch` is FSEvents on macOS and the stream is not live when `start()` returns,
+  so a write that beats it produces NO event — load widened that window rather than slowing
+  anything.** 12/25 missed under load writing immediately, 0/25 waiting for the stream. The reading
+  that would have ended it immediately is that a *successful* event lands in **14 ms** idle and
+  **208 ms** worst case: a miss is binary, and no budget was ever the constraint. Fixed by phase 84
+  with `tests-unit/support/armWatcher.ts`. **Ask what has to be LIVE before the stimulus, not only
+  what has to be fast after it** — an unarmed watcher and a broken one read identically.
 
 - ⚠️ **`noodl-mcp`'s jest runs `diagnostics: false`.** The suite is not the typecheck there.
 - ⚠️ **`nodegx serve` defaults to 8575**, which collides with the editor's design-tool import socket
