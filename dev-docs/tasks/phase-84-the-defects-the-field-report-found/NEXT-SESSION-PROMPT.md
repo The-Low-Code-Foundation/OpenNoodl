@@ -273,11 +273,18 @@ the QA pass.** #42 is being held open for it.
 ⚠️ `brew install rpm` remains installed on this machine from session 9. Reversible with
 `brew uninstall rpm`.
 
-⚠️ Session 11 moved four gitignored stray macOS duplicate directories out of
+⚠️ Session 11 removed the four gitignored stray macOS duplicate directories under
 `packages/noodl-editor/src/external/` (`deploy 2/`, `viewer 3/`, `ssr 3/`, `cloudruntime 3/`, ~16 MB)
-into its scratchpad rather than deleting them, because `build.files` includes `"src"` wholesale and
-a local packaging run would have shipped them. **They are recoverable; if they are genuinely dead,
-delete them for good.**
+before taking any measurement — `build.files` includes `"src"` wholesale, so a local packaging run
+would have shipped them. They went to the **session scratchpad, which is ephemeral**, so treat them
+as gone; they were regenerable build output.
+
+⚠️ Session 11 also removed `packages/noodl-editor/dist/mac-arm64` (525 MB, its own `--dir` build) —
+the machine is down to **11 GiB free**. The `0.1.6` / `0.1.7` / `0.2.2` dmg+zip in that directory
+are from earlier sessions and were **not** touched. A `--dir` build reproduces in about four
+minutes: `npm run build:bundles`, then
+`CSC_IDENTITY_AUTO_DISCOVERY=false node_modules/.bin/electron-builder --mac --arm64 --dir --publish never --config.npmRebuild=false`
+(🔴 never `npm run build:editor` — it runs `npx rimraf ./node_modules`, register **P28**).
 
 ⚠️ Two stray untracked files sit at the repo root — `-d` and `2026-09-10 15:00`. Not session 11's;
 they look like the fallout of a mis-quoted command. Left alone.

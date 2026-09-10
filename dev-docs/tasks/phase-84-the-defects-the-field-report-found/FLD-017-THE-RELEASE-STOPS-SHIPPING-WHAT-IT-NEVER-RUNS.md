@@ -201,10 +201,14 @@ still stands — `mode: 'production'` also enables `sideEffects` and mangling, t
 legacy prototype code and dynamic `require` in its plugin paths, and `keep_classnames` /
 `keep_fnames` is where to start. **AC6 is unmet and cannot be met without R5.**
 
-⚠️ The four stray macOS duplicate directories under `src/external/` (§5's third trap) were **moved
-to the session scratchpad, not deleted**, before any measurement was taken. They are gitignored
-build output; if they matter, they are recoverable, and if a later packaging run needs to be clean
-they must be moved again.
+⚠️ The four stray macOS duplicate directories under `src/external/` (§5's third trap) were removed
+before any measurement was taken — they went to the session scratchpad, which is ephemeral, so
+treat them as gone. They were gitignored build output.
+
+⚠️ The `--dir` build itself (`packages/noodl-editor/dist/mac-arm64`, 525 MB) was removed at the end
+of the session; the machine is at 11 GiB free. Reproduce with `npm run build:bundles` then
+`CSC_IDENTITY_AUTO_DISCOVERY=false node_modules/.bin/electron-builder --mac --arm64 --dir --publish never --config.npmRebuild=false`.
+🔴 **Never `npm run build:editor`** — it runs `npx rimraf ./node_modules` (register **P28**).
 
 ⚠️ **`ELECTRON_RUN_AS_NODE=1` is set in this session's environment** (an MCP server exports it), and
 with it set the packaged binary parses its argv with **Node's** option parser and dies on
