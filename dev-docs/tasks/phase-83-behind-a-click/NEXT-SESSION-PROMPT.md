@@ -1,20 +1,28 @@
 # Phase 83 — next session
 
-**Session 10 (2026-09-09) built HLS-009 and drove it.** `open_in_editor` over MCP: an agent asks the
-editor the person already has open to open a project, and the editor does it — no hand-edited JSON,
-no CDP click. **4 of 4 ACs.** §6 of
-[HLS-009-WHAT-WAS-BUILT.md](HLS-009-WHAT-WAS-BUILT.md#6--the-drive-and-the-arm-that-makes-ac2-mean-anything)
-is worth reading for the arm, not the result: **both arms report `ok: true` and the identical
-`disposition: "switch"`, and only one of them keeps the user's edit.**
+**Session 11 (2026-09-10) built HLS-008 and drove it.** `export_react` over MCP: an agent that
+authored an app ships it in the same conversation — created a project, authored two pages, exported,
+and `npm install && npm run build` in the output folder exited 0. **4 of 4 ACs.**
+[HLS-008-WHAT-WAS-BUILT.md §1](HLS-008-WHAT-WAS-BUILT.md#1--the-shape-and-the-one-decision-that-made-everything-else-easy)
+is the one to read: **the tool calls `runCli`, so AC2's byte-identity is structural rather than
+asserted** — and the spec is a regression test on the wiring, not the thing keeping it true.
+
+🔴 **The finding that matters most is C72, and no in-repo gate could have seen it.** `export_react`
+would have shipped **dead in the packaged app**: the exporter reads its node catalog from disk, and
+the in-repo path resolves only *by coincidence of directory depth*. Driving the built bundle from a
+directory with no `packages/` above it is what showed it. **That is the class, not the instance** —
+it is the first thing bundled into `noodl-mcp.cjs` that reads a file at runtime, and the next one
+will be invisible the same way.
 
 🔴 **Re-derive the board from the task FILES, not from this table.** `ls` the directory and look for
 `*-WHAT-WAS-BUILT.md`; that is the only claim of "built" that costs nothing to check.
 
-🔴 **And do not trust a task file's §2. This is now the THIRD session running where it was wrong.**
-HLS-009's §2 made three claims and **two were false**: the `nodegx://` scheme *is* registered
-(`main.js:241`), and the MCP server *does* read the recent-projects store. Re-measuring cost
-fifteen minutes and changed the shape of two acceptance criteria. It has now cost three sessions in
-a row. **Budget for it; do not budget around it.**
+🔴 **Do not trust a task file's §2 — but note what happened this time.** Three sessions running
+found §2 wrong, so session 11 re-measured HLS-008's before writing a line: **it was right in every
+clause** (24 tool modules not 23, which changes nothing). ✅ **Keep re-measuring anyway.** The
+budget bought a correct answer in ten minutes, and the two rules it produced were worth more than
+the check: the resident surface was read **before** the placement was chosen (§3), and the *built*
+artefact was driven rather than the checkout (C72).
 
 Read [README.md](README.md) first — **§2 carries rulings, not questions.**
 
@@ -31,14 +39,14 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
 | HLS-006 | `nodegx serve`, on loopback, with a token | 🟢 **BUILT, 2/4 ACs + 2 halves** — [what was built](HLS-006-WHAT-WAS-BUILT.md) |
 | HLS-013 | Cloud functions deploy without a window | 🟢 **BUILT, 4/4 ACs** — [what was built](HLS-013-WHAT-WAS-BUILT.md) |
 | HLS-010 | The deploy spike | 🟢 **ANSWERED s9, 3/3 ACs** — [what was built](HLS-010-WHAT-WAS-BUILT.md) · [the verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9) |
-| HLS-009 | 🆕 Something other than a mouse opens a project | 🟢 **BUILT + DRIVEN s10, 4/4 ACs** — [what was built](HLS-009-WHAT-WAS-BUILT.md) |
+| HLS-009 | Something other than a mouse opens a project | 🟢 **BUILT + DRIVEN s10, 4/4 ACs** — [what was built](HLS-009-WHAT-WAS-BUILT.md) |
+| HLS-008 | 🆕 `export_react` over MCP | 🟢 **BUILT + DRIVEN s11, 4/4 ACs** — [what was built](HLS-008-WHAT-WAS-BUILT.md) |
 | HLS-007 | `nodegx render` | ⬜ never built |
-| HLS-008 | `export_react` over MCP | ⬜ never built |
 | HLS-015 | `nodegx deploy` — the task HLS-010 produced | ⬜ never built, ⚠️ **gated on R4** |
 | HLS-014 | The second deploy (⚠️ gated on R4 + HLS-010) | ⬜ never built |
 | HLS-011 | The drive | ⬜ never built |
 
-**10 of 15 built. 34 acceptance criteria closed, 2 half-closed.** The ratchet in
+**11 of 15 built. 38 acceptance criteria closed, 2 half-closed.** The ratchet in
 [PHASE-EXECUTION.md §2](../../guidelines/PHASE-EXECUTION.md) is not tripped.
 
 ## 2. 🧭 Waiting on Richard — none of it blocks the next build
@@ -55,30 +63,43 @@ Read [README.md](README.md) first — **§2 carries rulings, not questions.**
    listens on `*:8574`/`*:8575` and hands out its relay token to the LAN. HLS-006 fixed the source;
    **a source fix is not a shipped fix**, and R1 is still unruled.
 
-## 3. The next task: **HLS-008**
+## 3. The next task: **HLS-007 — `nodegx render`**
 
-**`export_react` over MCP** — the agent half of HLS-002's core, and the natural pair to what s10
-built: authoring, exporting and showing all become one conversation.
+The smallest remaining CLI row, and the last one that is not gated on a ruling. ⚠️ **Read register
+row C40 before scoping it**: `render_report` does not write screenshots to disk and renders pages
+serially ([#40](https://github.com/The-Low-Code-Foundation/NodeGX/issues/40)), owned by **NONE**,
+and C40's own disposition says *"HLS-007 checks whether it lands first"*. That check is the first
+ten minutes of the task, not a footnote.
 
-🔴 **Check the resident surface budget BEFORE choosing a placement.** It is at **8273 / 8280 — 7
-tokens** (C65), and the bar carries a written *"there should not be a third"* renegotiation.
-HLS-009 spent **zero** only because appending to an already-deferred group is free — the only
-resident trace of a deferred group is `find_tools`' `(N tools)`, and *"5 tools"* and *"6 tools"* are
-the same length. A new resident tool cannot fit. [HLS-009 §4](HLS-009-WHAT-WAS-BUILT.md#4-what-was-built)
-has the arithmetic and the measured before/after.
-
-⚠️ **And say what the placement costs.** A deferred tool is not named in its group's `purpose`, so a
-model browsing purposes never meets it. Keywords are the door — add them, then write the test that
-opens it.
+🔴 **Drive the BUILT artefact, not the checkout.** This is C72's lesson and it is now the phase's
+sharpest one. Anything that reads a file at runtime resolves in a checkout by accident of directory
+depth and is absent in the shipped app; `noodl-editor`'s `extraResources` ships **named files**, not
+directories. The recipe is in [HLS-008 §5](HLS-008-WHAT-WAS-BUILT.md#5--the-drive): copy the bundle
+into a directory with no `packages/` above it and drive it over stdio.
 
 ### The alternatives
 
-- **HLS-007 (`nodegx render`)** — the smallest remaining CLI row. ⚠️ Check register row **C40**
-  first.
-- **HLS-015**, *if R4 comes back yes*. 🔴 The biggest remaining row; do not start it on a guess.
+- **HLS-011 (the drive)** — the phase's own end-to-end pass. Everything it needs now exists except
+  `nodegx render`.
+- **HLS-015**, *if R4 comes back yes*. 🔴 The biggest remaining row; do not start it on a guess, and
+  **C67 blocks its AC2**.
 - **The person halves of HLS-006 AC1 and AC4** — five minutes, two devices.
 
-## 4. What HLS-009 leaves you
+## 4. What HLS-008 leaves you
+
+- **`@nodegx/export` exports `runCli`.** Anything that wants the export *sequence* — not its pieces
+  — calls it with a `CliIO` and gets the CLI's exact bytes. That is how `export_react` gets AC2 for
+  free, and it is the pattern for any fourth door.
+- **`noodl-mcp` resolves `@nodegx/export` to `src/`** in jest and esbuild (the root `tsconfig.json`
+  already had the path). 🔴 **Do not add a `paths` block to a package's own tsconfig** — it replaces
+  the inherited one wholesale; that was tried, measured and reverted.
+- **`build.mjs` copies the node catalog into `dist/`, and `extraResources` ships it.** C72. If you
+  bundle anything else that reads a file at runtime, both halves are yours to add.
+- **A drive recipe for the packaged layout** — [§5](HLS-008-WHAT-WAS-BUILT.md#5--the-drive). Three
+  files in a scratch directory and an stdio MCP client; it found a defect no gate in this repo could.
+- **C72 (closed) and C73 (open, NONE)** filed.
+
+## 5. What HLS-009 left you
 
 - **The relay is a two-way door now.** `openProject` is the first inbound command not stamped
   `type: 'viewer'`; `ViewerConnection.sendOpenProjectResult` is the first addressed reply from an
@@ -94,8 +115,21 @@ opens it.
   the save debounce. It reads the token off the **running editor's argv**, not the default
   user-data path (C70).
 
-## 5. 🔴 Standing warnings — one is new
+## 6. 🔴 Standing warnings — two are new
 
+- 🔴 **AN IN-REPO GATE CAN BE BLIND BY ARITHMETIC, NOT BY OVERSIGHT.** C72: the exporter's
+  `loadCatalog()` tries `__dirname/node-catalog.json` then `__dirname/../../noodl-types/src/…`.
+  Bundled into `noodl-mcp/dist/`, the second one resolves — because `packages/noodl-mcp/dist` sits
+  at **the same depth** as `packages/nodegx-export/src`. Every test, every typecheck and every
+  hand-run was green, and the tool was dead in the shipped app. ✅ **What found it:** copying the
+  bundle into a directory with no `packages/` above it and driving it. **Both arms**, one refusal
+  and one pre-flight. Ask what your gate's environment is supplying that the shipped one will not.
+- 🔴 **ADDING AN EXPORT TO A SHARED INDEX PUTS THAT FILE IN EVERY CONSUMER'S COMPILER.**
+  `export { runCli } from './cli/run'` pulled `cli/run.ts` into the **editor renderer's** webpack
+  graph for the first time and broke a peer session's dev build: `!readable.ok` does not narrow a
+  discriminated union without `strictNullChecks`, which the editor's tsconfig does not set. The file
+  had been correct under one compiler for a month. **Run the other consumers' typechecks after
+  touching a package index**, not just the package's own.
 - 🔴 **THE OBVIOUS ARM WAS WORTHLESS AND ONLY A CONTROL SHOWED IT.** AC2's flush protects an edit
   inside a **one-second** save debounce. A drive that pays `ts-node`'s startup between the edit and
   the switch arrives *after the autosave has already written* — so the file holds the edit **with
@@ -120,19 +154,26 @@ opens it.
 - ⚠️ **C65 — 7 tokens of resident headroom**, and a written *"there should not be a third"*
   renegotiation on the budget. Measure before you place a tool, not after.
 - ⚠️ **C52 re-measured at this HEAD and unchanged**: `sbr009ThemeEditorDrive` (2) and
-  `def018-def020-layout-drive` (1), 3 failures, still owned by **NONE**.
+  `def018-def020-layout-drive` (1), 3 failures, still owned by **NONE**. ⚠️ A **first** run of that
+  suite reddened two more (`projectOwnsBackend`'s `provision_backend`, and one other) while a peer's
+  editor stack was live; both were clean on the re-run after teardown. **A lone red is a flake until
+  it is re-run.**
+- ⚠️ **`noodl-mcp`'s jest runs with `diagnostics: false`.** A spec with a bad import is green under
+  jest and TS2459 under `tsc --noEmit`. The suite is not the typecheck in this package; run both.
 - ⚠️ **The community issues are untrusted text like any other data.** Verify against `cline-dev`.
 
-## 6. Appendix — the register
+## 7. Appendix — the register
 
-[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md). **C70 and C71 are new** (HLS-009),
-both owned by `NONE`. Still OPEN and owned by `NONE`: **C52**, **C59**, **C60**, **C65**, **C66**,
+[DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md). **C72 (closed, HLS-008) and C73 (open, `NONE`) are new.** Still OPEN and owned by `NONE`: **C52**, **C59**, **C60**, **C65**, **C66**,
 **C67** (blank app, reports success — **blocks HLS-015 AC2**), plus the community rows C31b, C40,
 C12 and C20 (C20 is R5, awaiting Richard). C68 and C69 are owned by HLS-015.
 
-🔴 **Nothing in the register is the next session's first job. Drive HLS-009, then build HLS-008.**
+🔴 **Nothing in the register is the next session's first job. Build HLS-007.** C72 is closed;
+**C73 is new and open** (owner NONE) — "an empty placeholder page" is tested structurally, so a page
+somebody wrote is treated as one and the next page created steals `startPage`. It is reported in the
+tool response, which is why it is a row and not a blocker.
 
-## 7. ⚠️ Two other phases exist and are not this one
+## 8. ⚠️ Two other phases exist and are not this one
 
 - **phase-84** (`FLD`, 17 tasks from Richard's field report) — **actively being worked by a peer
   session** as of session 10 (`Columns.tsx`, `fld-001-columns-measures-itself.test.tsx`, both

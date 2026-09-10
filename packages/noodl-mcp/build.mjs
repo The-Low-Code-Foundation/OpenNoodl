@@ -12,6 +12,7 @@
  * the spec's standing warning is that the two must not be *confused* — which one
  * `npm install` producing both worked directly against.
  */
+import { copyFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
@@ -22,7 +23,18 @@ const common = {
   platform: 'node',
   format: 'cjs',
   sourcemap: false,
-  logLevel: 'info'
+  logLevel: 'info',
+  /**
+   * HLS-008 — the third of the three resolvers that have to agree, after
+   * `tsconfig.json`'s `paths` and `jest.config.js`'s `moduleNameMapper`.
+   *
+   * 🔴 Without it esbuild follows `@nodegx/export`'s `main` into
+   * `../nodegx-export/dist/index.cjs`, and the server would ship whatever the
+   * exporter looked like the last time somebody ran `npm run build` in a
+   * sibling package. The editor already carries this alias in its own three
+   * resolvers for the same reason; this package is now the second consumer.
+   */
+  alias: { '@nodegx/export': path.resolve('../nodegx-export/src/index.ts') }
 };
 
 await esbuild.build({
@@ -31,6 +43,29 @@ await esbuild.build({
   target: 'node18',
   outfile: 'dist/noodl-mcp.cjs'
 });
+
+/**
+ * HLS-008 — the node catalog travels with the server, because `export_react` reads it.
+ *
+ * 🔴 **This is not bookkeeping; without it the tool is dead in the shipped app.**
+ * `@nodegx/export`'s `loadCatalog()` reads `node-catalog.json` from disk, trying
+ * `__dirname/node-catalog.json` (the packaged copy) then
+ * `__dirname/../../noodl-types/src/node-catalog.json` (the in-repo source). Bundled into
+ * `dist/noodl-mcp.cjs`, `__dirname` is this package's `dist/` — and the in-repo fallback happens
+ * to resolve, because `packages/noodl-mcp/dist` sits at the same depth as
+ * `packages/nodegx-export/src`. **In a checkout it therefore works by coincidence.**
+ *
+ * In the packaged app it does not. `noodl-editor`'s `extraResources` copies exactly one file —
+ * `dist/noodl-mcp.cjs` → `Resources/noodl-mcp/noodl-mcp.cjs` — so `__dirname` is a directory
+ * holding one `.cjs` and there is no `packages/` above it. Both candidates miss and `loadCatalog()`
+ * throws, naming two paths that mean nothing to the person reading it.
+ *
+ * So the copy is made here, into the one directory that is both `__dirname` in a checkout and the
+ * thing `extraResources` ships. **`extraResources` needs a second entry for it** — the two are
+ * asserted to agree by `tests/hls008ExportReact.test.ts`, because a build step and a packaging
+ * manifest that disagree fail only in a signed build nobody runs in CI.
+ */
+copyFileSync('../noodl-types/src/node-catalog.json', 'dist/node-catalog.json');
 
 /**
  * HLS-013 — the headless cloud-function bundler, bundled as its own artifact.

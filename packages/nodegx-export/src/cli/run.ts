@@ -146,7 +146,15 @@ export function runCli(argv: readonly string[], io: CliIO): ExitCode {
 
   const projectDir = path.resolve(parsed.projectDir);
   const readable = readableProject(projectDir);
-  if (!readable.ok) {
+  // 🔴 `=== false`, not `!readable.ok`, and it is not a style choice — the same idiom the
+  // `checkTarget` call below has always used. HLS-008 put this file in the **editor's** program for
+  // the first time (its `@nodegx/export` alias resolves to `src/`, and `index.ts` now re-exports
+  // `runCli` so an MCP tool can call the CLI rather than re-assemble it). That program compiles
+  // without `strictNullChecks`, where a discriminated union does **not** narrow through `!x` and
+  // does narrow through an explicit comparison: `!readable.ok` is TS2339 there and compiles
+  // cleanly under this package's own `strict: true`. Two compilers now read this file; it has to
+  // satisfy the stricter reading of both.
+  if (readable.ok === false) {
     io.err(readable.reason + '\n');
     return EXIT.project;
   }

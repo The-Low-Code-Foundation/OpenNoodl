@@ -122,6 +122,10 @@
         "to": "noodl-mcp/noodl-mcp.cjs"
       },
       {
+        "from": "../noodl-mcp/dist/node-catalog.json",
+        "to": "noodl-mcp/node-catalog.json"
+      },
+      {
         "from": "../nodegx-observe/dist/nodegx-observe.cjs",
         "to": "nodegx-observe/nodegx-observe.cjs"
       },

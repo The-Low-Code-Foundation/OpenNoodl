@@ -396,14 +396,42 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // editor, so a model browsing group purposes will not meet this tool. The keywords are the
     // door — 'editor', 'show' and 'open' all reach it by name — and `tests/hls009OpenInEditor.test.ts`
     // asserts that door works rather than assuming it.
-    keywords: ['kit', 'custom node', 'import', 'new project', 'open', 'editor', 'show'],
+    // HLS-008 — `export_react` is appended here on the same arithmetic HLS-009 recorded above, and
+    // the measurement was taken BEFORE the placement rather than after: the resident surface was
+    // **8,273 of 8,280 — 7 tokens** (C65), so resident was not available at any price, and a new
+    // `export` group would have cost ~26 against a bar that has 7. Appending costs **0**: the only
+    // resident trace of a deferred group is `find_tools`' `(N tools)`, and "6 tools" and "7 tools"
+    // are the same length. `keywords` are matched server-side and never sent, so they cost 0 too.
+    //
+    // ⚠️ **The group is "Project lifecycle" and an export is the end of one**, which is the first
+    // placement in this manifest that reads naturally rather than being defended as a trade. What
+    // it still costs is the same thing every other tool here costs: `purpose` above does not
+    // mention exporting, so a model browsing group purposes will not meet it. The keywords are the
+    // door — 'export', 'react', 'ship', 'deploy', 'host' and 'hand over' all reach it — and
+    // `tests/hls008ExportReact.test.ts` opens that door rather than assuming it opens.
+    keywords: [
+      'kit',
+      'custom node',
+      'import',
+      'new project',
+      'open',
+      'editor',
+      'show',
+      'export',
+      'react',
+      'ship',
+      'deploy',
+      'host',
+      'hand over'
+    ],
     tools: [
       'list_projects',
       'open_project',
       'create_project',
       'get_import_report',
       'create_node_kit',
-      'open_in_editor'
+      'open_in_editor',
+      'export_react'
     ],
     resident: false
   },

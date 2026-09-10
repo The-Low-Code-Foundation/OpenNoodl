@@ -40,3 +40,22 @@ ask a human to click Export.
   descriptions of one behaviour that drift.
 - ⚠️ The bound server may be the **installed app**, not this checkout. Read `probed` before
   concluding anything about which code answered.
+
+## 5 — Closed, 2026-09-10 (session 11)
+
+**4 of 4 acceptance criteria.** See [HLS-008-WHAT-WAS-BUILT.md](HLS-008-WHAT-WAS-BUILT.md).
+
+✅ **§2 above was right in every clause** — the first time in four sessions a task file's §2 held up.
+The only correction is cosmetic: 24 tool modules, not 23. It was still re-measured before a line was
+written, and that budget bought the two decisions the task turned on (the surface read *before* the
+placement, and the built artefact driven rather than the checkout).
+
+🔴 **§2's `dry_run` requirement decided the whole shape.** "Returns the pre-flight verbatim — not a
+re-worded JSON summary" is not satisfiable by assembling `parseProject`/`emitApp`/`renderPreflight`
+here; it is satisfiable by calling `runCli`. So `@nodegx/export` now exports the command, and
+byte-identity is structural.
+
+🔴 **§4's trap list was one short, and the missing one was the serious one.** It warns about the
+token budget (measured: 0 cost) and about a stale `dist/` (avoided: two resolvers now point at
+`src/`). It does not warn that the **shipped** server is a single `.cjs` copied into a directory
+with nothing above it — and `loadCatalog()` reads a file from disk. Register row **C72**.

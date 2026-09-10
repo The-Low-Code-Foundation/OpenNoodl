@@ -36,6 +36,7 @@ import { registerOpenProjectTools } from './tools/openProject';
 import { registerProvisionTools } from './tools/provisionTools';
 import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
+import { registerExportReactTools } from './tools/exportReact';
 import { registerOpenInEditorTools } from './tools/openInEditor';
 import { registerKitTools } from './tools/kitTools';
 import { registerLibraryTools } from './tools/libraryTools';
@@ -175,6 +176,12 @@ export function createServer(options: ServerOptions): CreatedServer {
   // when "put it on screen for me" is asked. It is deferred (the `project` group), so it costs
   // nothing resident; see the manifest note for why that placement and not a resident one.
   registerOpenInEditorTools(rec);
+  // HLS-008. Registered in BOTH modes, deliberately, and it is worth saying why on a server
+  // started `--read-only`: an export writes to a folder the caller names, outside the project, and
+  // reads the project without touching it. The flag protects the *project* from an agent, and
+  // refusing to export one would protect nothing. `checkTarget` is what keeps that true — a target
+  // inside the project is refused whatever mode this server is in.
+  registerExportReactTools(rec, binding);
   // LBR-008 — the shelf. The reads are registered in both modes (browsing what
   // could be installed changes nothing); `install_prefab` registers itself only
   // when `allowWrites` says so, which is what keeps WRITE_ONLY_TOOLS honest.
