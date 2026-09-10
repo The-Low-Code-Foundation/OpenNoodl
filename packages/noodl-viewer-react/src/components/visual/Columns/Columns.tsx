@@ -25,8 +25,26 @@ export interface ColumnsProps extends Noodl.ReactProps {
   smallBreakpoint: string;
   smallLayout: string;
 
+  /**
+   * FLD-002 — the breakpoint reporting ports, installed as props by `outputProps` in
+   * `nodes/visual/columns.ts`. Optional because the component is also rendered directly by
+   * the corpus specs, where there is no node to install them.
+   */
+  onBreakpointChanged?: (breakpoint: ColumnsBreakpoint) => void;
+  onAtMedium?: () => void;
+  onAtSmall?: () => void;
+
   children: Slot;
 }
+
+/**
+ * Which of the three authored layout strings a container width selects.
+ *
+ * The names are the port's values, not an internal enum: they are what the `Breakpoint` output
+ * publishes and what an author reads in a Text node, so they are capitalised the way the
+ * `Medium Below` / `Small Below` ports are named.
+ */
+export type ColumnsBreakpoint = 'Default' | 'Medium' | 'Small';
 
 /**
  * Read a px-ish port value as a number.
@@ -212,17 +230,26 @@ export function resolveColumnLayout(
     return {
       layout: targetLayout,
       columnAmount: targetLayout.length,
-      fractionSize: 100 / targetLayout.reduce((a, b) => a + b, 0)
+      fractionSize: 100 / targetLayout.reduce((a, b) => a + b, 0),
+      // FLD-002. Unmeasured is `Default` because the authored layout is what is rendered here —
+      // the reported band is always the one whose string was used, never a band guessed from a
+      // width nobody has taken yet.
+      breakpoint: 'Default' as ColumnsBreakpoint
     };
   }
 
   if (props.sizing === 'autoFit') {
-    return calcAutoFit(minWidth, containerWidth, marginX);
+    // FLD-002. Auto Fit consults no layout string at all — not the base one and not the two
+    // breakpoint ones — so no band is in force and `Default` is the honest reading. Reporting
+    // the band the width falls in would name a layout that is not on screen, which is the one
+    // thing these ports exist to make impossible.
+    return { ...calcAutoFit(minWidth, containerWidth, marginX), breakpoint: 'Default' as ColumnsBreakpoint };
   }
 
-  const targetLayout = parseLayout(pickBreakpointLayout(columnLayout, props, containerWidth));
+  const picked = pickBreakpointLayout(columnLayout, props, containerWidth);
+  const targetLayout = parseLayout(picked.layoutString);
 
-  return calcAutofold(targetLayout, minWidth, containerWidth, marginX);
+  return { ...calcAutofold(targetLayout, minWidth, containerWidth, marginX), breakpoint: picked.breakpoint };
 }
 
 /**
@@ -238,19 +265,29 @@ export function resolveColumnLayout(
  * picker, in the catalog, and to the AI authoring loop without any dynamic-port machinery, and
  * "desktop / tablet / mobile" is the shape of the request. A breakpoint with no layout beside
  * it (or the other way round) is ignored rather than half-applied.
+ *
+ * FLD-002 — it returns the step's **name** beside the string it chose, and that is the whole
+ * design of the reporting ports: the `Breakpoint` output and the widths the children are given
+ * come out of this one decision, so there is no second derivation of "which band are we in"
+ * that could disagree with the layout actually rendered. A half-configured pair is `Default`
+ * here for the same reason it renders the base layout — nothing was applied.
  */
 export function pickBreakpointLayout(
   base: string,
   props: Pick<ColumnsProps, 'mediumBreakpoint' | 'mediumLayout' | 'smallBreakpoint' | 'smallLayout'>,
   containerWidth: number
-): string {
+): { breakpoint: ColumnsBreakpoint; layoutString: string } {
   const small = toPixels(props.smallBreakpoint);
-  if (small > 0 && props.smallLayout && containerWidth < small) return props.smallLayout;
+  if (small > 0 && props.smallLayout && containerWidth < small) {
+    return { breakpoint: 'Small', layoutString: props.smallLayout };
+  }
 
   const medium = toPixels(props.mediumBreakpoint);
-  if (medium > 0 && props.mediumLayout && containerWidth < medium) return props.mediumLayout;
+  if (medium > 0 && props.mediumLayout && containerWidth < medium) {
+    return { breakpoint: 'Medium', layoutString: props.mediumLayout };
+  }
 
-  return base;
+  return { breakpoint: 'Default', layoutString: base };
 }
 
 /**
@@ -369,9 +406,30 @@ function sameOffsets(a: { tops: number[]; height: number } | null, b: { tops: nu
   );
 }
 
-export function Columns(props: ColumnsProps) {
-  let columnLayout = null;
+/**
+ * The authored layout string, or `null` when the port is carrying something that is not one.
+ *
+ * FLD-002 lifted this out of the render body. The effect that publishes the breakpoint has to
+ * be declared with the other hooks — which is *above* both early returns — and it can only
+ * report a band that a resolved layout actually chose. So the resolution has to happen above
+ * them too, and that needs the layout string before the `!props.children` return rather than
+ * after it. The behaviour is unchanged: a non-string, non-number port and an empty string both
+ * mean "no columns", and the node renders its children bare.
+ */
+export function readColumnLayoutString(value: unknown): string | null {
+  switch (typeof value) {
+    case 'string':
+      return value.trim() || null;
 
+    case 'number':
+      return String(value).trim() || null;
+
+    default:
+      return null;
+  }
+}
+
+export function Columns(props: ColumnsProps) {
   const [containerWidth, setContainerWidth] = useState(null);
 
   /**
@@ -488,29 +546,52 @@ export function Columns(props: ColumnsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masonry, children.length, containerWidth]);
 
+  // FLD-002. One resolution, read by two consumers: the effect below publishes the band it
+  // chose, and the render further down lays the children out with the widths it chose. They
+  // cannot disagree, because there is nothing to disagree with — see `pickBreakpointLayout`.
+  //
+  // It sits above the early returns because the effect is a hook. `resolveColumnLayout` is pure
+  // and cheap, so running it on a render that goes on to return `null` costs an object.
+  const columnLayout = readColumnLayoutString(props.layoutString);
+  const resolved = columnLayout === null ? null : resolveColumnLayout(columnLayout, props, containerWidth);
+  const breakpoint: ColumnsBreakpoint = resolved?.breakpoint ?? 'Default';
+
+  /**
+   * Publish the breakpoint, and pulse the signal for the band just entered.
+   *
+   * **From an effect keyed on the band, never from render.** `forceUpdate()` is how children
+   * arrive and how every input port write lands (`react-component-node.ts`), so this component
+   * re-renders often and for reasons that have nothing to do with width; firing here from the
+   * render body would pulse `At Small` on every one of them. `[breakpoint]` is the whole guard:
+   * React skips an effect whose deps are `Object.is`-equal, so a resize *within* a band runs
+   * nothing at all, and crossing a boundary runs it exactly once.
+   *
+   * The string publishes on the first run too, with `Default` — an output nobody has written is
+   * `undefined` at every sink, and the unmeasured first render genuinely is the base layout. The
+   * signals do not fire there, because the first run is always `Default`: `containerWidth` starts
+   * `null` and only a `ResizeObserver` callback can change it, which is a later render.
+   *
+   * The handlers `outputProps` installs are created once per node and never replaced, so the
+   * closure cannot go stale across the renders this deliberately skips.
+   */
+  useEffect(() => {
+    props.onBreakpointChanged?.(breakpoint);
+
+    if (breakpoint === 'Medium') props.onAtMedium?.();
+    else if (breakpoint === 'Small') props.onAtSmall?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [breakpoint]);
+
   // The node renders nothing without children. This used to be the first statement in the
   // function, ahead of every hook — so a Columns node whose last child was deleted while the app
   // was running changed its hook count and React threw. Live-editing a graph does exactly that.
   if (!props.children) return null;
 
-  switch (typeof props.layoutString) {
-    case 'string':
-      columnLayout = props.layoutString.trim();
-      break;
-
-    case 'number':
-      columnLayout = String(props.layoutString).trim();
-      break;
-
-    default:
-      columnLayout = null;
-  }
-
-  if (!columnLayout) {
+  if (resolved === null) {
     return <>{props.children}</>;
   }
 
-  const { layout, columnAmount, fractionSize } = resolveColumnLayout(columnLayout, props, containerWidth);
+  const { layout, columnAmount, fractionSize } = resolved;
   columnAmountRef.current = columnAmount;
 
   // Masonry needs the horizontal position too, because its items are out of flow.

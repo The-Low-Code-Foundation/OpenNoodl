@@ -152,6 +152,46 @@ const ColumnsNode: ReactNodeDefinition = {
     }
   },
 
+  /**
+   * FLD-002 (#22) — the breakpoint the node is at, as ports.
+   *
+   * The state was computed and unreadable: `pickBreakpointLayout` has always known which of the
+   * three layout strings it chose, and nothing outside the component could ask. The workaround
+   * in the field was a States node keyed off `boundingWidth`, which re-derives the thresholds by
+   * hand in the graph — a second copy of the breakpoints that drifts the moment either port is
+   * edited, and one that reads the *bounding* width where the node folds on the *container* width
+   * (FLD-001's second half: those differ by one gutter).
+   *
+   * `outputProps`, not `outputs`: these are values the React component produces, and the
+   * machinery in `react-component-node.ts` installs each one as a prop — a plain call for a
+   * signal, a `flagOutputDirty` write for a value. The precedent is `group.ts`'s scroll trio,
+   * which is the same shape: one number the component publishes plus two pulses beside it.
+   *
+   * All three sit in `Breakpoints`, beside the four inputs they report on, so the panel reads as
+   * one feature rather than as settings in one place and readings in another.
+   */
+  outputProps: {
+    onBreakpointChanged: {
+      displayName: 'Breakpoint',
+      description:
+        'Which layout is in force: Default, Medium or Small. It is Default until the node has been measured, and while Column Sizing is Auto Fit, where no layout string is used',
+      type: 'string',
+      group: 'Breakpoints'
+    },
+    onAtMedium: {
+      displayName: 'At Medium',
+      description: 'Fires when the container narrows or widens into the Medium band, once per crossing',
+      type: 'signal',
+      group: 'Breakpoints'
+    },
+    onAtSmall: {
+      displayName: 'At Small',
+      description: 'Fires when the container narrows or widens into the Small band, once per crossing',
+      type: 'signal',
+      group: 'Breakpoints'
+    }
+  },
+
   inputProps: {
     // NDA-006 §3. Auto Fit is the one-input answer — "columns at least this wide, as many as
     // fit" — and covers most real layouts without any breakpoint to manage. The breakpoint

@@ -207,6 +207,96 @@ describe('columns → CSS Grid (VISUALS-TARGET §1)', () => {
     expect(result.files['src/components/Showcase.tsx']).not.toContain('styles.gallery');
   });
 
+  /**
+   * FLD-002 AC5 — the three breakpoint reporting ports, at the export.
+   *
+   * They do **not** translate, and the reason is not laziness: the export renders the
+   * breakpoints as an `@container (max-width: …)` override, which is CSS. CSS cannot hand a
+   * string to a Text node or fire an action, and knowing which query matched needs the runtime
+   * measurement this exporter deliberately does not make. So the honest answer is a declared
+   * deferral — which is what AC5 asks for, and the thing it forbids is the third option, a wire
+   * that is quietly dropped.
+   *
+   * Both sentences come from machinery that already existed (`handlerAttrs` for the signal,
+   * step 5's value rule for the string). That is the point of measuring them: a new output port
+   * on a translated node is exactly the shape that could fall through both and say nothing, and
+   * nothing in the port's own definition says which way it went.
+   */
+  describe('FLD-002: the breakpoint reporting ports are declared deferrals, not silent drops', () => {
+    const withSinks = (wire: (component: ComponentIR) => void) =>
+      withShowcase((component) => {
+        component.nodes.push(
+          node('bandText', 'Text', { text: lit('band') }, { parent: 'shell' }),
+          // A literal `value` as well as the name: a Set Variable with nothing feeding its value
+          // fails to compile as an action, and the wire is then dropped with *that* sentence —
+          // "nothing is wired into value" — which is a note about the sink and would have read
+          // as this port having been handled. The sink has to be able to run for the port's own
+          // answer to be the one under test.
+          node('setBand', 'Set Variable', { name: lit('band'), value: lit('small') })
+        );
+        component.nodes.find((n) => n.id === 'shell')!.children!.push('bandText');
+        wire(component);
+      });
+
+    test('the Breakpoint string at a Text sink is reported, not dropped', () => {
+      const result = withSinks((component) => {
+        component.connections.push({
+          key: 'gallery:onBreakpointChanged->bandText:text',
+          fromId: 'gallery',
+          fromProperty: 'onBreakpointChanged',
+          toId: 'bandText',
+          toProperty: 'text',
+          kind: 'value'
+        });
+      });
+      expect(result.notes.join('\n')).toContain(
+        'wire gallery:onBreakpointChanged->bandText:text has no deterministic translation in step 5 (deferred to EXP-003)'
+      );
+    });
+
+    test('the At Small pulse at an action is reported, not dropped', () => {
+      const result = withSinks((component) => {
+        component.connections.push({
+          key: 'gallery:onAtSmall->setBand:do',
+          fromId: 'gallery',
+          fromProperty: 'onAtSmall',
+          toId: 'setBand',
+          toProperty: 'do',
+          kind: 'signal'
+        });
+      });
+      expect(result.notes.join('\n')).toContain('signal gallery.onAtSmall has no DOM event equivalent — dropped, reported');
+    });
+
+    test('At Medium takes the same sentence — both signals, not one of two', () => {
+      const result = withSinks((component) => {
+        component.connections.push({
+          key: 'gallery:onAtMedium->setBand:do',
+          fromId: 'gallery',
+          fromProperty: 'onAtMedium',
+          toId: 'setBand',
+          toProperty: 'do',
+          kind: 'signal'
+        });
+      });
+      expect(result.notes.join('\n')).toContain('signal gallery.onAtMedium has no DOM event equivalent — dropped, reported');
+    });
+
+    /**
+     * The control. Every assertion above is that a sentence is *present*, and a note list that
+     * carried those sentences for some unrelated reason would pass all three. With the sinks
+     * grafted on and no wire into them, none of the three names appears at all — so the notes
+     * above are this wire's, and the grid still emits beside them.
+     */
+    test('control: no wire, no sentence — and the columns still translate', () => {
+      const result = withSinks(() => undefined);
+      expect(result.notes.join('\n')).not.toContain('onBreakpointChanged');
+      expect(result.notes.join('\n')).not.toContain('onAtSmall');
+      expect(result.notes.join('\n')).not.toContain('onAtMedium');
+      expect(result.files['src/components/Showcase.module.css']).toContain('grid-template-columns: 1fr 2fr 1fr;');
+    });
+  });
+
   test('a wired layout string defers the node', () => {
     const result = withShowcase((component) => {
       component.connections.push({

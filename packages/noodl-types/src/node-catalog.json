@@ -54170,6 +54170,39 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "onAtMedium",
+          "displayName": "At Medium",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Medium band, once per crossing"
+        },
+        {
+          "name": "onAtSmall",
+          "displayName": "At Small",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Small band, once per crossing"
+        },
+        {
+          "name": "onBreakpointChanged",
+          "displayName": "Breakpoint",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which layout is in force: Default, Medium or Small. It is Default until the node has been measured, and while Column Sizing is Auto Fit, where no layout string is used"
+        },
+        {
           "name": "screenPositionX",
           "displayName": "Screen Position X",
           "group": "Bounding Box",

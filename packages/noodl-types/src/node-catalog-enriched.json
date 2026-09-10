@@ -58341,6 +58341,39 @@
           "description": "Fires once this element has been added to the page and can be measured"
         },
         {
+          "name": "onAtMedium",
+          "displayName": "At Medium",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Medium band, once per crossing"
+        },
+        {
+          "name": "onAtSmall",
+          "displayName": "At Small",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Small band, once per crossing"
+        },
+        {
+          "name": "onBreakpointChanged",
+          "displayName": "Breakpoint",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which layout is in force: Default, Medium or Small. It is Default until the node has been measured, and while Column Sizing is Auto Fit, where no layout string is used"
+        },
+        {
           "name": "screenPositionX",
           "displayName": "Screen Position X",
           "group": "Bounding Box",
@@ -58390,19 +58423,30 @@
       "enrichment": {
         "typeName": "net.noodl.visual.columns",
         "summary": "Responsive multi-column layout: distributes its children into columns whose relative widths come from a layout string.",
-        "description": "Columns lays out its visual children in a grid of columns described by `layoutString`: a space-separated list of relative widths, so '1 2 1' means three columns where the middle one is twice as wide as the outer ones (default '1 2 1'). Children fill the columns in order and wrap into further rows when there are more children than columns. `marginX` (Horizontal Gap) and `marginY` (Vertical Gap) set the spacing in pixels (default 16), and `minWidth` (Min Column Width) makes the layout responsive: when the container gets too narrow to honour the minimum, columns fold away and content reflows into fewer, wider columns. `direction` flips the fill order between row and column, and `justifyContent` aligns partial rows. The node warns in the editor if `layoutString` is bound to a non-string.",
+        "description": "Columns lays out its visual children in a grid of columns described by `layoutString`: a space-separated list of relative widths, so '1 2 1' means three columns where the middle one is twice as wide as the outer ones (default '1 2 1'). Children fill the columns in order and wrap into further rows when there are more children than columns. `marginX` (Horizontal Gap) and `marginY` (Vertical Gap) set the spacing in pixels (default 16). Three things make it responsive, and they are separate: `minWidth` (Min Column Width) folds columns away from the end when the container is too narrow to honour the minimum; `sizing` set to Auto Fit ignores the layout string and takes as many equal columns of `minWidth` as will fit; and the Breakpoints group swaps in a different layout string entirely below `mediumBreakpoint` and again below `smallBreakpoint`. The breakpoints measure this node's own container, not the viewport, so the same Columns behaves correctly inside a sidebar, a modal or a repeater cell. The node reports which of the three it is at on `onBreakpointChanged` and pulses `onAtMedium` / `onAtSmall` as the container crosses a boundary, so a graph can react to a layout change without re-deriving the thresholds itself. `direction` flips the fill order between row and column, `packing` set to Masonry lets each column stack independently, and `justifyContent` aligns partial rows. The node warns in the editor if `layoutString` is bound to a non-string.",
         "whenToUse": "Card grids, dashboards, magazine-style layouts — anywhere content should reflow across a variable number of columns. For a fixed row or column of items a plain Group with `flexDirection` is simpler; for one instance per data record put a For Each inside the Columns.",
         "ports": {
           "layoutString": "String value of space-separated relative widths, e.g. '1 2 1'. The number of entries is the column count; each entry is that column's share of the width.",
-          "minWidth": "Number value in px (Min Column Width, default 0): below this per-column width the layout folds columns away and reflows — this is what makes the grid responsive.",
+          "sizing": "Enum (default Layout String): Layout String uses the authored fractions; Auto Fit ignores them and takes as many equal columns of minWidth as fit. Auto Fit also ignores the Breakpoints layouts.",
+          "packing": "Enum (default Rows): Rows makes every item in a wrap line as tall as the tallest; Masonry lets each column stack independently, keeping the same left-to-right item order.",
+          "minWidth": "Number value in px (Min Column Width, default 0): below this per-column width the layout folds columns away from the end and reflows. With Auto Fit it decides how many columns there are.",
           "marginX": "Number value in px (Horizontal Gap) between columns.",
-          "marginY": "Number value in px (Vertical Gap) between wrapped rows."
+          "marginY": "Number value in px (Vertical Gap) between wrapped rows.",
+          "mediumBreakpoint": "Number value in px (Medium Below): container width below which mediumLayout replaces layoutString. This is the width of this node's container, not the viewport. Inert unless mediumLayout is also set.",
+          "mediumLayout": "String value, the layout string to use below mediumBreakpoint. Leaving it blank makes the medium breakpoint inert rather than half-applied.",
+          "smallBreakpoint": "Number value in px (Small Below): container width below which smallLayout replaces the others. It wins over mediumBreakpoint. Inert unless smallLayout is also set.",
+          "smallLayout": "String value, the layout string to use below smallBreakpoint. Leaving it blank makes the small breakpoint inert.",
+          "onBreakpointChanged": "String output (Breakpoint): which layout is in force — 'Default', 'Medium' or 'Small'. It reads 'Default' until the node has been measured and while sizing is Auto Fit, where no layout string is used at all.",
+          "onAtMedium": "Signal output (At Medium): fires once each time the container crosses into the Medium band, in either direction. It does not fire while the container resizes within a band.",
+          "onAtSmall": "Signal output (At Small): fires once each time the container crosses into the Small band, in either direction."
         },
         "examples": [
           "vis-columns-media-cards"
         ],
         "patterns": [
           "Responsive card grid: layoutString '1 1 1' + `minWidth` ~200 so three columns collapse to two, then one, as the viewport narrows.",
+          "Named breakpoints: layoutString '1 2 1' with mediumLayout '1 1' below 1024 and smallLayout '1' below 600 — three explicit layouts rather than a fold from the end.",
+          "React to the band: wire `onBreakpointChanged` into a Text node, or `onAtSmall` into an action, instead of re-deriving the thresholds from a States node on boundingWidth.",
           "For Each inside Columns: repeated component instances distribute across the columns automatically."
         ],
         "relatedNodes": [
