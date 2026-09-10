@@ -7,6 +7,7 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import View from '../../../../shared/ListenableView';
 import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { VisualCanvas } from './VisualCanvas';
+import { previewRoutePath } from './previewRoutePath';
 
 export class CanvasView extends View {
   webview: Electron.WebviewTag;
@@ -55,7 +56,7 @@ export class CanvasView extends View {
 
     this.onNavigationStateChanged = (state) => {
       onNavigationStateChanged(state);
-      window.noodlEditorPreviewRoute = state.route.substring(0, state.route.indexOf('?'));
+      window.noodlEditorPreviewRoute = previewRoutePath(state.route);
       EventDispatcher.instance.emit('viewer-navigated', state.route);
     };
 
@@ -197,7 +198,9 @@ export class CanvasView extends View {
     const port = process.env.NOODLPORT || 8574;
 
     this.webview.src = protocol + 'localhost:' + port + route;
-    window.noodlEditorPreviewRoute = route;
+    // FLD-007: the same normalisation `load-commit` applies, so this global means one thing
+    // whichever of the two writers ran last.
+    window.noodlEditorPreviewRoute = previewRoutePath(route);
     EventDispatcher.instance.emit('viewer-navigated', route);
   }
   dispose() {
