@@ -212,6 +212,7 @@ var AggregateNode = {
         if (!this._internal.filterFunc) return;
 
         var _filter = {},
+          _filterFailed,
           _this = this;
 
         // Collect filter variables
@@ -219,14 +220,38 @@ var AggregateNode = {
           _filter = QueryUtils.convertFilterOp(f, {
             collectionName: _this._internal.name,
             error: function (err) {
-              _this.context.editorConnection.sendWarning(
-                _this.nodeScope.componentOwner.name,
-                _this.id,
-                'aggregate-node-filter',
-                {
-                  message: err
-                }
-              );
+              /**
+               * FLD-008 — the refusal is the answer, not a warning.
+               *
+               * `convertFilterOp` reports a filter it cannot translate here and then
+               * returns `{}`. Two things used to go wrong from this callback and they
+               * compounded:
+               *
+               *   1. The editor warning was the *only* place the message went, and there
+               *      is no `editorConnection` in a deployed cloud function — so this line
+               *      threw a `TypeError` on every backend that is not the editor.
+               *   2. That throw unwound through the filter script and into the
+               *      `catch` below, which logs and carries on. `_filter` was still `{}`,
+               *      so `{ where: {} }` reached `CloudStore.aggregate` and the node
+               *      aggregated over the **whole class** and returned a number. Issue #14
+               *      is that number.
+               *
+               * Keep the message instead, so `getStorageFilter` can hand it back as
+               * `failed` and `fetch` fails the node out loud — the same decision DEF-012
+               * made for the visual-filter path above, which is why this path was the
+               * one still widening.
+               */
+              _filterFailed = err;
+              if (_this.context.editorConnection) {
+                _this.context.editorConnection.sendWarning(
+                  _this.nodeScope.componentOwner.name,
+                  _this.id,
+                  'aggregate-node-filter',
+                  {
+                    message: err
+                  }
+                );
+              }
             }
           });
         };
@@ -248,8 +273,12 @@ var AggregateNode = {
         try {
           this._internal.filterFunc.apply(this, filterFuncArgs);
         } catch (e) {
+          // Kept: before FLD-008 this line was the only trace a swallowed refusal ever
+          // left, and a swallowed error with no log is worse than one with a log.
           console.log('Error while running filter script: ' + e);
         }
+
+        if (_filterFailed !== undefined) return { failed: _filterFailed };
 
         return { where: _filter };
       }

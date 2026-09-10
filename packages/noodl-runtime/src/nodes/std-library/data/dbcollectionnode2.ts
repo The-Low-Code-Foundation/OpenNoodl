@@ -1016,6 +1016,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
         if (!this._internal.filterFunc) return;
 
         let _filter: unknown = {},
+          _filterFailed: string | undefined,
           _neutralFilter: Filter | undefined,
           _sort: unknown = [];
         const _this = this;
@@ -1031,14 +1032,30 @@ const DbCollectionNode: NodeDefinitionOptions = {
           _filter = QueryUtils.convertFilterOp(f, {
             collectionName: _this._internal.name,
             error: function (err: string) {
-              _this.context.editorConnection.sendWarning(
-                _this.nodeScope.componentOwner.name,
-                _this.id,
-                'query-collection-filter',
-                {
-                  message: err
-                }
-              );
+              /**
+               * FLD-008 — the same two compounding defects that let Aggregate Records
+               * answer a filter it had refused (issue #14), in the node next to it.
+               *
+               * `editorConnection` is undefined outside the editor, so this warning threw
+               * a `TypeError`; the throw unwound into the `catch` below, which logs and
+               * carries on with `_filter` still `{}`. A query whose filter could not be
+               * translated then fetched **every row in the collection** — the widening
+               * `wire.ts` §166 names, arriving by a second route.
+               *
+               * Keep the message so `getStorageFilter` returns it as `failed` and the
+               * caller's existing guard fails the node instead.
+               */
+              _filterFailed = err;
+              if (_this.context.editorConnection) {
+                _this.context.editorConnection.sendWarning(
+                  _this.nodeScope.componentOwner.name,
+                  _this.id,
+                  'query-collection-filter',
+                  {
+                    message: err
+                  }
+                );
+              }
             }
           });
         };
@@ -1063,8 +1080,11 @@ const DbCollectionNode: NodeDefinitionOptions = {
         try {
           this._internal.filterFunc.apply(this, filterFuncArgs);
         } catch (e) {
+          // Kept: before FLD-008 this was the only trace a swallowed refusal left.
           console.log('Error while running filter script: ' + e);
         }
+
+        if (_filterFailed !== undefined) return { failed: _filterFailed };
 
         return { where: _filter, neutralWhere: _neutralFilter, sort: _sort };
       }
