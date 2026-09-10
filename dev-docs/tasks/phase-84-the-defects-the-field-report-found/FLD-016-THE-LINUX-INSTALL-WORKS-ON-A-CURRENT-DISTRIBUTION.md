@@ -169,8 +169,9 @@ sandbox is a **real behaviour change** on older kernels and under restrictive Ap
 the Linux app strictly better on a modern Fedora and could, in principle, stop it launching
 somewhere it launches today.
 
-**The three artefacts to hand a tester** are in this session's scratchpad and are reproducible with
-the commands in §2 and §4.
+**The three artefacts to hand a tester are REPRODUCIBLE, not archived** — they were built into a
+session scratchpad that does not survive, and at ~500 MB they do not belong in the repo. The
+commands in §2 and §4 rebuild all three in a few minutes on any Mac with `brew install rpm`.
 
 
 Four sub-problems, independently shippable. **Two of them are the same config line**, and one of the
