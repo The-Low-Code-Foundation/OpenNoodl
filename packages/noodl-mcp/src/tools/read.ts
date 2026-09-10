@@ -12,6 +12,7 @@ import {
   BACKEND_DOCTRINE_MD,
   DECOMPOSITION_DOCTRINE_MD,
   DESIGN_DOCTRINE_MD,
+  INTERFACE_DOCTRINE_MD,
   isComponentRef,
   refToPath,
   unfoldNodeComment
@@ -165,6 +166,14 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
               // this project has measured.
               authoringTraps: AUTHORING_TRAPS,
               authoringDoctrine: DECOMPOSITION_DOCTRINE_MD,
+              // CMP-001 AC2 — the other half of the sentence above. The
+              // decomposition doctrine says what becomes a component; this says
+              // what goes on it, and phase 85 measured the population that
+              // learns only the first half (10% of the corpus's components
+              // publish anything, against 84% of the shipped library's). It
+              // sits directly after `authoringDoctrine` on purpose: the two are
+              // one decision, and the second half is the one that gets skipped.
+              interfaceDoctrine: INTERFACE_DOCTRINE_MD,
               designDoctrine: DESIGN_DOCTRINE_MD,
               // SB-002 — the backend idiom, in the same channel and for the
               // same measured reason. The instructions cannot carry it (surface

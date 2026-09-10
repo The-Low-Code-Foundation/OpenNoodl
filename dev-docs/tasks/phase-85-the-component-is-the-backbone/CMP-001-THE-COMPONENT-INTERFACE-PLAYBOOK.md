@@ -31,6 +31,13 @@ Three populations, one script, identical classification. Ports are derived from 
 | `Expression` nodes | 6 | 16 | 341 |
 | `Component Children` (slot) | 1 | 2 | 7 |
 
+⚠️ **The LearnBook column is NOT reproducible on this machine (measured 2026-09-10, session 6).**
+The four copies under `~/vscode_projects/Noodl projects/` all read **100** components with an
+interface, **58%** publishing outputs, mean **3.9** ports and **67** `States` nodes — not 204 / 73% /
+5.0 / 146. Whatever `LearnBook v5.1 Noodl` was, it is not here, so treat that column as unverified
+and cite the two columns that re-measure exactly (corpus **10%**, prefabs **84%** — both reproduced
+with `measure-interfaces.py` on 2026-09-10). See §3.1.
+
 🔴 **The 10% / 84% row is the finding.** The corpus teaches components that receive text and draw
 it. The prefabs and the production app teach components that are two-way parts.
 
@@ -158,35 +165,65 @@ The three rules that make it a pattern rather than an excuse to make files:
 3. **It lives in a shared folder, not beside a page** — that is what makes it findable by the next
    builder, which is the case for extracting it. Reuse is the bonus.
 
-⚠️ **Measured against itself:** 17 of LearnBook's 37 are used 0 or 1 times, so extraction is not
+⚠️ **Measured against itself** (⚠️ on the v5.1 copy — the LearnBook here reads **17** shared
+logic components instantiated **50** times, 7 of them used 0 or 1 times, and 48 of the 83
+logic-only prefabs are one or two working nodes): 17 of LearnBook's 37 are used 0 or 1 times, so extraction is not
 free and not always repaid in reuse. It is still right at one use, for the findability reason — but
 a model should hear the honest version, not a rule that promises reuse it will not always get.
 
-### 3.1 The exemplar worth copying whole
+### 3.1 🔴 THE EXEMPLAR WAS NOT REAL — corrected 2026-09-10 (session 6)
 
-`LearnBook /Global visual components/Collapsable group` — 11 nodes, 4 inputs, and every one of them
-carries its weight:
+⚠️ **What this section said until now does not exist in any artefact on this machine**, and it was
+about to ship into the doctrine as "the craft". Kept below the correction, because the correction is
+the finding.
+
+**Claimed:** `LearnBook /Global visual components/Collapsable group` at **11 nodes, 4 inputs**
+(`title, mounted, showIcon, forceOpen`), with `forceOpen → Inverter → Group.pointerEventsEnabled`
+called *"the third wire"*.
+
+**Measured**, across all four copies of LearnBook under `~/vscode_projects/Noodl projects/`
+(`LearnBook`, `LearnBook test`, `LB copy backup`, and the one under a project UUID) — every one of
+them reads:
 
 ```
-Group
+Group                                     9 nodes, 2 inputs, 0 outputs
   Group [Header] → Text [Title], Icon
   Group [Expandable group] → Component Children      ← P7, the slot
-States                                                ← P4, two values of two types
-Component Inputs → title, mounted, showIcon, forceOpen
+States  (collapsed,opened)                           ← P4
+JavaScriptFunction [Convert to icon object]
+Component Inputs → title, mounted
 
-States.expand → Group.mounted            (boolean value)
-States.icon   → JS → Icon.iconIconSource (string value, same state machine)
+States.expand → Group [Expandable group].mounted     (boolean value)
+States.icon   → JS → Icon.iconIconSource             (string value, same state machine)
 Group.onClick → States.toggle
-Component Inputs.showIcon  → Icon.mounted
-Component Inputs.forceOpen → Group.mounted
-Component Inputs.forceOpen → Expression → States.to-opened
-Component Inputs.forceOpen → Inverter → Group.pointerEventsEnabled   ← 🔴
+Component Inputs.title  → Text.text
+Component Inputs.mounted → Group.mounted
 ```
 
-That last wire is the craft: when the group is forced open, the header **stops being clickable**, so
-the flag cannot be contradicted by a user click. A model that emits `forceOpen → mounted` and stops
-has built the same component with a bug in it. **The playbook has to teach the third wire, not just
-the port.**
+🔴 **`forceOpen` does not occur in any `project.json` on this machine** (`grep -rl forceOpen
+--include=project.json ~/vscode_projects` is empty, and the same grep for `Collapsable group` finds
+four files, so the search works). Neither does the `Inverter`, the `Expression`, or `showIcon`. The
+LearnBook this repo can reach is **not** the `v5.1` the §2 table was measured from either: it reads
+**100** components with an interface, **58%** publishing outputs and `Clickable icon` at **18**
+inputs, against §2's 204 / 73% / 19.
+
+**What the real component teaches** is still worth having, and it is not what §3.1 claimed: one
+`States` node driving **two properties of two different types** (a boolean `mounted` and a string
+that becomes an icon), a slot for the consumer's children — **and no `Component Outputs` at all**,
+so a parent cannot ask whether it is open. Its sibling `Collapsable menu title` publishes exactly
+that (`current state`). The exemplar is an example of the 84%/10% gap, not an exception to it.
+
+✅ **The shipped doctrine teaches the same lesson from artefacts in THIS repo**, under §"A flag has
+to reach everything it implies": `Form Fields/Labelled Select` (`Disabled` → Function → the
+control's own `enabled`), `Pagination` (`BackEnabled`/`NextEnabled` disable the two buttons that
+would walk off the ends) and `Table/String Cell` (one `Editable` flag mounts the input, its
+`Inverter` mounts the read-only text). All three are pinned wire-by-wire by
+`packages/noodl-mcp/tests/cmp001InterfaceDoctrine.test.ts`.
+
+**Generalises — and it is the fifth time in this phase.** A citation written into a task file is a
+claim, not a measurement, and this one survived four sessions and two ✅ rows because every reader
+after the first inherited it. See
+`[[measure-the-artefact-before-believing-the-task-file]]`.
 
 ## 4. ✅ FIXED 2026-09-10 — the catalog defect that blocked P4
 
@@ -250,11 +287,33 @@ an unperformed merge.
 ⚠️ The `patterns` / `antiPatterns` half of that edit reaches a PERSON, not an agent:
 `get_node_type` emits neither field at any detail level. Filed in README §7, owner NONE.
 
-**AC2 — the playbook ships where a model reads it.** The ten patterns become a fifth doctrine field
-alongside `authoringTraps` / `authoringDoctrine` / `designDoctrine` / `backendDoctrine` in
-`get_project_info` (`tools/read.ts:157-175`) — a response field, **outside** the 8,280-token
-instruction budget (`toolDisclosure.test.ts:83`), which has 6 tokens of headroom and must not be
-touched. Armed by a test that fails if the field is absent when `allowWrites` is true.
+**AC2 — the playbook ships where a model reads it.** ✅ **DONE, 2026-09-10 (session 6).** The ten
+patterns ride `get_project_info` as a fifth doctrine field, `interfaceDoctrine`, directly after
+`authoringDoctrine` — the two are one decision and the second half is the one that gets skipped.
+
+- **The text**: `packages/noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/interfaces.ts`
+  (`INTERFACE_DOCTRINE_MD`, 7.5 KB), a shared module that imports nothing, re-exported through
+  `noodl-mcp/src/editor-deps.ts` under the same containment rule as `decomposition` / `design` /
+  `backend`. One substrate, two clients — the in-editor loop can consume it without a second dialect.
+- **The wire**: `tools/read.ts` ships it read-write only; `ProjectInfoResponse.interfaceDoctrine`
+  declares it. The resident instruction surface is **8,275 / 8,280 — unchanged**, because a result
+  field rides free. The `get_project_info` payload grows 38,287 → **45,830 chars** (+20%), which is
+  the honest cost of the channel.
+- **Armed by**: `packages/noodl-mcp/tests/cmp001InterfaceDoctrine.test.ts`, 20 specs, two halves —
+  (a) the text ARRIVES (asserted on the received field over a real server, length-bounded, absent
+  read-only), and (b) 🔴 every component, port, state list, wire and percentage the text cites is
+  **re-derived from the real shelf and the real enriched catalog** and asserted on both sides. Four
+  controls run red: field removed from `read.ts` (16/20), module blanked (19/20 — the survivor is
+  the meta-spec that grades the claim table), a cited port renamed in the text only (2 red), a
+  percentage literal bumped (1 red).
+- 🔴 **The AC3/AC4 floors are deliberately NOT in the shipped text**, and a spec asserts their
+  absence (beside a known-firing anchor). CMP-002 is a graded build that reads this field; a
+  doctrine that states its own thresholds can be satisfied by counting.
+- ⚠️ **What it does NOT do:** the in-editor authoring and planning prompts do not include it yet
+  (`decomposition.ts` has three copies of its own doctrine and this text is deliberately not a
+  fourth). Cross-referencing it from `DECOMPOSITION_DOCTRINE_MD` was left alone this session because
+  a peer was live in `packages/noodl-editor` and that string is pinned by editor-side suites.
+  Follow-up, owner NONE.
 
 **AC3 — the corpus stops teaching content-only components.** At least four new examples, each
 demonstrating one pattern at wire level: a variant selector (P4 + the `currentState` wire), a

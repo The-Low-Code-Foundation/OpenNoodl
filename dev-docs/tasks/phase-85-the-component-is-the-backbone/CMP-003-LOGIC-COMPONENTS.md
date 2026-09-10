@@ -7,7 +7,7 @@ write `Sanitise email`, and the next page grows its own anonymous Function that 
 under no name at all.
 
 ✅ **AC1 and AC4 closed 2026-09-10.** Both doctrine copies now state the test as a NAME, not a
-node count. AC2 is half done and AC3 waits on the CMP-002 build.
+node count. AC2 is DONE (session 6, it ships in `interfaceDoctrine`); AC3 waits on the CMP-002 build.
 
 ## 1. The person sentence
 
@@ -83,9 +83,19 @@ is"* with the measured citations. The two texts were corrected together on purpo
 header warns that a copy which drifts from the doctrine it enforces silently wins, and the planner's
 copy carried the same wrong sentence.
 
-**AC2 — the playbook's tenth pattern.** 🟡 **HALF DONE, 2026-09-10** — P10 is written into CMP-001
-§3 with its citations and its three rules. The other half is CMP-001 AC2: the list does not yet ship
-anywhere a model reads it, so P10 currently teaches nobody.
+**AC2 — the playbook's tenth pattern.** ✅ **DONE, 2026-09-10 (session 6)** — P10 was written into
+CMP-001 §3 with its citations and its three rules on 2026-09-10, and it now SHIPS: CMP-001 AC2 put
+the ten patterns on `get_project_info` as `interfaceDoctrine`, and P10 travelled with them as
+§10 *"The named utility publishes too"* — the shape (`Component Inputs` → one or two working nodes →
+`Component Outputs`), the name that is a job (`Format full name`, `Is Trainer check`,
+`Sanitise email`, never `Function 3`), the shared folder, and the honest caveat that findability is
+the case and reuse is the bonus. Asserted on the text the agent RECEIVES by
+`packages/noodl-mcp/tests/cmp001InterfaceDoctrine.test.ts`.
+
+⚠️ **Its numbers were re-measured rather than inherited**, because §2's were not reproducible here:
+the shipped text says **48 of the 83** logic-only prefabs are one or two working nodes (not 45 of
+80 — this phase exported three parts onto the shelf), and cites the LearnBook on this machine at
+**17** shared logic components instantiated **50** times, `Format full name` nine of them.
 
 P10, the named utility: what shape it has (Component Inputs
 → one working node → Component Outputs), where it lives (a shared logic folder, not beside a page),

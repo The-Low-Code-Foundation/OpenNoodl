@@ -392,6 +392,15 @@ export {
 // model measurably reads. Same containment rule: `prompts/traps` imports nothing.
 export { AUTHORING_TRAPS } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/traps';
 
+// CMP-001 — the interface playbook, the half `decomposition` never carried.
+// Same containment rule (`prompts/interfaces` imports nothing) and the same
+// channel as the three above: a result field on `get_project_info`, because the
+// `instructions` surface is budgeted and this text is not small. Phase 85
+// measured why it has to ship somewhere: 10% of the components in the corpus an
+// agent copies publish any outputs, against 84% of the ones the Noodl team
+// shipped.
+export { INTERFACE_DOCTRINE_MD } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/interfaces';
+
 // SB-002, same containment rule again: the backend idiom the prefab library
 // already practices, taught nowhere until phase 76. A result field rather than
 // `instructions` prose — the surface budget gate measures instructions, and a
