@@ -117,9 +117,12 @@ If HLS-014 is not the session's job, the honest alternatives are unchanged from 
   nobody is watching, because in CI nobody is.
 - ⚠️ **C65 — 7 tokens of resident MCP headroom.** Measure before you place a tool.
 - ⚠️ **C52 unchanged**: `sbr009ThemeEditorDrive` (2) and `def018-def020-layout-drive` (1), **NONE**.
-- ⚠️ **A lone red is a flake until it is re-run.** `test:main` came back 446/7,359 with one red —
-  **phase 84's** `fld-009/projectLevelWatch`, a latency ceiling under full-suite load, green in
-  276 ms alone. The third watcher spec in this repo to do it.
+- 🔴 **"GREEN ALONE, RED UNDER LOAD" DOES NOT DISTINGUISH A FLAKE FROM A CEILING THAT IS TOO SMALL.**
+  `test:main` came back 446/7,359 with one red — **phase 84's** `fld-009/projectLevelWatch`, 276 ms
+  alone. I re-ran it, read green, and filed it as a flake. The session that owns it read the spec
+  instead and found a **4,000 ms** latency ceiling that had taken REL-009b's stopwatch note only
+  half way; it now carries REL-009b's own 30,000. Re-running is the cheap check and it answers a
+  different question from the one you have.
 - ⚠️ **`noodl-mcp`'s jest runs `diagnostics: false`.** The suite is not the typecheck there.
 - ⚠️ **`nodegx serve` defaults to 8575**, which collides with the editor's design-tool import socket
   (`NOODLPORT + 1`). Pass `--port`, or move the editor with `NOODLPORT=8674`.
