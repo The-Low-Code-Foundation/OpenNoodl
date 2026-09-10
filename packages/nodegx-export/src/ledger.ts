@@ -74,7 +74,7 @@ export interface ExportCoverage {
   exportable: number;
   /** Placeable picker nodes in all (`pickerCoverageTotal`, held by the same check). */
   placeable: number;
-  /** Whole percent, rounded down — 97 of 127 reads "76%", never "77%". */
+  /** Whole percent, rounded down — 117 of 127 reads "92%", never "93%". */
   percent: number;
 }
 
@@ -83,8 +83,13 @@ export interface ExportCoverage {
  *
  * 🔴 Both numbers are the gate's own: `export-ledger:picker --check` fails when either drifts
  * from what `picker-coverage.js` counts off the catalog, so the sentence the editor prints beside
- * its alpha warning ("97 of the 127 nodes you can place export") is the phase's headline number
- * and not a second copy of it. Rounded DOWN so the product never claims a percent it has not reached.
+ * its alpha warning is the phase's headline number and not a second copy of it. Rounded DOWN so
+ * the product never claims a percent it has not reached.
+ *
+ * ⚠️ **Do not quote the numbers here.** This docstring read *"97 of the 127"* for long enough that
+ * FLD-013 found it stale against a ledger that says **117 of 127 (92%)** — a prose copy of a
+ * computed number, in the file whose whole argument is that there is only one list. Call the
+ * function.
  */
 export function exportCoverage(): ExportCoverage {
   const { pickerCoverageFloor, pickerCoverageTotal } = ledgerJson as { pickerCoverageFloor: number; pickerCoverageTotal: number };

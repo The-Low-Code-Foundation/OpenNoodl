@@ -224,6 +224,22 @@ export type ExplainComponentResponse = ComponentDescription;
 export interface ListNodeTypesResponse {
   nodeTypes: NodeTypeRow[];
   categories: string[];
+  /**
+   * FLD-013 — the payload-level half of the export reading.
+   *
+   * 🔴 **A row's `export` field is absent far more often than it is present, and absence has to
+   * mean something a caller can read.** This says what: the headline coverage the product prints
+   * beside its own alpha warning, and one sentence saying that a silent row is a translated type
+   * that refuses on no port. Without it, silence is indistinguishable from a server that does not
+   * carry the field at all.
+   */
+  exportCoverage: {
+    exportable: number;
+    placeable: number;
+    percent: number;
+    notice: string;
+    note: string;
+  };
 }
 
 /** AWP-005 §2 — what `get_node_type({ports: [...]})` returns per type. */

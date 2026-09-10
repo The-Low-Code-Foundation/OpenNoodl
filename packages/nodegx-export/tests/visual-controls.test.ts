@@ -14,6 +14,7 @@ import { Catalog, loadCatalog } from '../src/catalog';
 import { emitApp } from '../src/emit/emitApp';
 import { parseProject } from '../src/parse/parseProject';
 import { ComponentIR, ExportIR, NodeIR, ParamValue } from '../src/ir/types';
+import { STRUCTURE_PORTS } from '../src/structurePorts';
 
 const FIXTURE = path.join(__dirname, 'fixtures', 'cheer');
 
@@ -677,6 +678,43 @@ describe('range, dropdown, video, circle (VISUALS-TARGET §4–§7)', () => {
     expect(notes).not.toContain('the "svg" shape is not translated in this slice');
     // And no author markup leaks into the emitted file.
     expect(result.files['src/components/Showcase.tsx']).not.toContain('<rect');
+  });
+
+  /**
+   * 🔴 **FLD-013's reverted arm found this hole, and the hole is the reason for the sweep.**
+   * Removing `startAngle` from `STRUCTURE_PORTS.circle` reddened **nothing** in this file: the
+   * four hand-picked ports above (`shape`, `svgSource`, `points`, `cornerRadius`) were the whole
+   * of the coverage, and the other **nine** entries in that table — `startAngle` among them — were
+   * asserted by no test in this package. `Circle` is the type #37 was filed about and `startAngle`
+   * is the port its dashboard wired.
+   *
+   * So the loop reads the table rather than restating it: a port added to `STRUCTURE_PORTS.circle`
+   * is graded the day it is added, and the floor beneath it means a port *removed* from the table
+   * cannot make this pass by shrinking the loop. Two-sided, both directions.
+   */
+  test('🔴 every port in the circle structure table defers, swept from the table itself', () => {
+    const ports = STRUCTURE_PORTS.circle ?? [];
+    // The cardinality, so "all of them passed" can never mean "none were tried".
+    expect(ports.length).toBe(13);
+    expect(ports).toContain('startAngle');
+
+    const missed: string[] = [];
+    for (const port of ports) {
+      const result = withShowcase((component) => {
+        component.connections.push({
+          key: `x:value->dot:${port}`,
+          fromId: 'x',
+          fromProperty: 'value',
+          toId: 'dot',
+          toProperty: port,
+          kind: 'value'
+        });
+      });
+      if (!result.notes.join('\n').includes(`its ${port} arrives over a wire, so the rendered structure is not static`)) {
+        missed.push(port);
+      }
+    }
+    expect(missed).toEqual([]);
   });
 
   test('a wired `svgSource` defers before any literal is read', () => {

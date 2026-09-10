@@ -35,6 +35,10 @@ export {
 } from './emit/report';
 export { isPathwayType } from './analyze/plan';
 export { exportBadgeOf, ledgerEntryOf, exportCoverage, alphaNotice, type ExportBadge, type ExportCoverage, type ExportStatus, type LedgerEntry } from './ledger';
+// FLD-013 — the per-parameter half of the same question. A type's ledger status says whether the
+// exporter has a translation for it at all; these say which of its ports refuse a wire even when it
+// does, which is the half `Circle` needed and the ledger cannot carry.
+export { ROLE_OF_TYPE, STRUCTURE_PORTS, CONTENT_BOUND_PORTS, structurePortsOf, contentPortsOf } from './structurePorts';
 export { README_PATH, renderReadme, type ReadmeBackend } from './emit/readme';
 export { emitKits, type EmittedCopy, type EmittedKits, type KitBinding } from './emit/kits';
 export { parseModules } from './parse/parseModules';

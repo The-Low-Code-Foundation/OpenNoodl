@@ -26,6 +26,13 @@ const enrichedJson = require('../../noodl-types/src/node-catalog-enriched.json')
 // BCN-010: the capability tables, read rather than restated.
 import { BACKEND_TYPES, capabilitiesForNode, gateFor } from '@noodl/backend-contract';
 
+// FLD-013 (#37) — the export's own two answers, read rather than restated. `ledgerEntryOf` says
+// whether this product has a translation for the TYPE; `structurePortsOf` says which of its ports
+// refuse a wire even when it does. Both come from `@nodegx/export`, which `exportReact.ts` already
+// pulls into this bundle, so the surface below is a projection and never a second table.
+import { contentPortsOf, exportBadgeOf, ledgerEntryOf, structurePortsOf } from '@nodegx/export';
+import type { ExportBadge, ExportStatus } from '@nodegx/export';
+
 // ─── Enrichment shapes (authored by SUB-005; all fields optional in practice) ──
 
 export interface NodeEnrichment {
@@ -230,6 +237,78 @@ function summaryOf(n: EnrichedCatalogNode): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+// ─── Export reach (FLD-013) ───────────────────────────────────────────────────
+
+/**
+ * What an agent needs to know about a type *before* it designs an app it intends to export.
+ *
+ * 🔴 **`status` alone is the answer #37 asked for, and it would not have prevented #37.** The
+ * dashboard that produced twenty-three refusals was built on `Circle`, whose ledger status is
+ * `translated`. The refusal is per **parameter source**: a wire into any of `structurePorts`
+ * leaves the node out. A field that says only "translated" on that type is a green light on the
+ * exact node that failed, which is why the two lists travel with the status and not instead of it.
+ */
+export interface NodeTypeExportInfo {
+  /**
+   * The coverage ledger's classification of the **type** — never of a node in a graph.
+   *
+   * `translated` means this exporter has a translation for the type, *not* that any given node of
+   * it will export: see `structurePorts`.
+   */
+  status: ExportStatus;
+  /** Present only when the type never exports (`deferred`). Absent is not "exports" — read `status`. */
+  badge?: ExportBadge;
+  /**
+   * Ports whose value arriving over a **wire** makes a node of this type refuse: what it shapes
+   * (tracks, options, marks, the outline itself) cannot be rendered statically, so the node is
+   * left out of the export rather than drawn wrongly. Set the port as a literal parameter and it
+   * exports.
+   *
+   * Always present, empty for most types — an empty list and a missing field are different answers.
+   */
+  structurePorts: string[];
+  /**
+   * Ports that carry *content* into a control and still refuse a wire, for a different reason:
+   * the value is not statically known and the wrong one is worse than none (`Range.min` fed by a
+   * record would emit a 0–100 slider). Reported apart from `structurePorts` because calling these
+   * structure would be untrue of this product.
+   */
+  contentPorts: string[];
+}
+
+/**
+ * The export reading for a named type, or `undefined` when the ledger does not classify it.
+ *
+ * 🔴 **`undefined` is a real answer and is not "will not export".** A kit node's export is decided
+ * by its kit (EXP-010) and a component instance's by its component; the ledger has never heard of
+ * either. Emitting `{ structurePorts: [] }` for one would tell an agent it refuses on no port,
+ * which nothing here has measured.
+ */
+export function exportInfoOf(typeName: string): NodeTypeExportInfo | undefined {
+  const entry = ledgerEntryOf(typeName);
+  if (entry === undefined) return undefined;
+  const info: NodeTypeExportInfo = {
+    status: entry.status,
+    structurePorts: structurePortsOf(typeName),
+    contentPorts: contentPortsOf(typeName)
+  };
+  const badge = exportBadgeOf(typeName);
+  if (badge) info.badge = badge;
+  return info;
+}
+
+/**
+ * Is there anything to say about this type's export on a **listing** row?
+ *
+ * A row with nothing to say is silent, and `list_node_types`' payload-level `exportCoverage.note`
+ * is what makes the silence readable. 27 of the 143 picker rows are non-translated and a further
+ * handful are translated types that refuse on a wire — `Circle` is the reason this is an `or` and
+ * not `status !== "translated"`.
+ */
+function worthListing(info: NodeTypeExportInfo): boolean {
+  return info.status !== 'translated' || info.structurePorts.length > 0 || info.contentPorts.length > 0;
+}
+
 // ─── Compact listing ──────────────────────────────────────────────────────────
 
 export interface NodeTypeRow {
@@ -246,6 +325,13 @@ export interface NodeTypeRow {
   providedBy?: string;
   /** CN-009 — the kit that declared it. Present exactly when `providedBy` is. */
   kitModule?: string;
+  /**
+   * FLD-013 — present only when there is something to say: the type does not export, or it does
+   * and refuses on a wire into one of its ports. Silence means translated with no refusing port;
+   * the payload's `exportCoverage.note` says so, because silence a caller cannot read is not an
+   * answer. Full detail (`get_node_type`) carries this for every classified type.
+   */
+  export?: NodeTypeExportInfo;
 }
 
 export interface ListNodeTypesFilter {
@@ -302,6 +388,8 @@ export function listNodeTypes(filter: ListNodeTypesFilter = {}): NodeTypeRow[] {
       row.providedBy = origin.providedBy;
       row.kitModule = origin.kitModule;
     }
+    const exportInfo = exportInfoOf(n.typeName);
+    if (exportInfo && worthListing(exportInfo)) row.export = exportInfo;
     rows.push(row);
   }
   rows.sort((a, b) => (a.typeName < b.typeName ? -1 : 1));
@@ -368,6 +456,13 @@ export interface NodeTypeDetail {
   kitModule?: string;
   /** Server-side-rendering compatibility (RUN-002); absent for cloud-only types. */
   ssr?: { compat: 'safe' | 'partial' | 'client-only'; note?: string };
+  /**
+   * FLD-013 — the code-export reading, unconditional for every type the ledger classifies, so an
+   * agent choosing between types learns which of them refuse and on which ports before it designs.
+   * Absent only for a kit node or a component instance, whose export their kit and their component
+   * decide; see {@link exportInfoOf}.
+   */
+  export?: NodeTypeExportInfo;
   summary?: string;
   description?: string;
   whenToUse?: string;
@@ -490,6 +585,13 @@ export interface NodeTypeSummary {
   providedBy?: string;
   /** CN-009 — the kit that declared it. Present exactly when `providedBy` is. */
   kitModule?: string;
+  /**
+   * FLD-013 — carried here for the same reason `providedBy` is: `summary` is `get_node_type`'s
+   * **default** (AWP-005 §2), and an export reading that only survives `detail: "full"` is one the
+   * overwhelming majority of calls never see. AC1 is a `get_node_type` call on `Circle`, and it is
+   * a summary call.
+   */
+  export?: NodeTypeExportInfo;
   summary?: string;
   /** `"in name: type"` / `"out name: type (signal)"` one-liners. */
   ports: string[];
@@ -618,6 +720,7 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
     s.providedBy = full.providedBy;
     s.kitModule = full.kitModule;
   }
+  if (full.export) s.export = full.export;
   if (full.summary) s.summary = full.summary;
   if (full.dynamicPorts) {
     s.hasDynamicPorts = true;
@@ -727,6 +830,8 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
     detail.providedBy = origin.providedBy;
     detail.kitModule = origin.kitModule;
   }
+  const exportInfo = exportInfoOf(n.typeName);
+  if (exportInfo) detail.export = exportInfo;
   if (n.ssr) detail.ssr = n.ssr;
   // CN-009 — `summaryOf`, not `e?.summary`: a kit type is never in the
   // repo-build enrichment table, so this is the only route its author's own

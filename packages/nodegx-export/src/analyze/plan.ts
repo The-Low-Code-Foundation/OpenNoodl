@@ -44,6 +44,7 @@ import { DateHelper } from '../emit/dateLib';
 import { UtilHelper, UTIL_HELPER_MAY_BE_UNDEFINED } from '../emit/utilLib';
 import { ID_HELPERS_BY_FN, IdHelper } from '../emit/idLib';
 import { CONTENT_PARAMS, iconSourceOf, StyleRole, WIRED_STYLE_SINKS } from '../emit/style';
+import { CONTENT_BOUND_PORTS, ROLE_OF_TYPE, STRUCTURE_PORTS } from '../structurePorts';
 import { AnimateEaseName, ANIMATE_EASE_NAMES } from '../emit/animateLib';
 import { StatesValueType, STATES_VALUE_TYPES } from '../emit/statesLib';
 import {
@@ -19099,136 +19100,14 @@ function renderRole(node: NodeIR, catalog: CatalogIndex, kits: KitIndex): Render
     // the same null a Variable takes, and the sweep at the bottom of planComponent names it.
     return kit.def.visual ? 'custom' : null;
   }
-  switch (node.type) {
-    case 'Group':
-      return 'group';
-    // EXP-011 §63. A wrapper div the drag hook binds to; the node itself renders nothing in the running app.
-    case DRAG_TYPE:
-      return 'drag';
-    case 'Text':
-    case 'Label':
-      return 'text';
-    case 'Image':
-      return 'image';
-    case 'net.noodl.controls.button':
-    case 'Button':
-      return 'button';
-    case 'net.noodl.controls.textinput':
-    case 'Text Input':
-      return 'input';
-    case 'net.noodl.visual.columns':
-      return 'columns';
-    case 'net.noodl.visual.icon':
-      return 'icon';
-    case 'net.noodl.controls.checkbox':
-    case 'Checkbox':
-      return 'checkbox';
-    case 'net.noodl.controls.radiobutton':
-    case 'Radio Button':
-      return 'radio';
-    case 'Radio Button Group':
-      return 'radiogroup';
-    case 'net.noodl.controls.range':
-    case 'Range':
-      return 'range';
-    case 'net.noodl.controls.options':
-    case 'Options':
-      return 'select';
-    case 'Video':
-      return 'video';
-    case 'Circle':
-      return 'circle';
-    case 'Page':
-      return 'page';
-    case 'For Each':
-      return 'repeater';
-    case 'Router':
-      return null;
-    // EXP-011 §61. The Component Stack renders its top entry; `roleOf` refuses the shapes §61.0 names.
-    case PAGE_STACK_TYPE:
-      return 'stack';
-    // EXP-011 §51. Rendered as `{children}` where it sits; see CHILD_SLOT_TYPE.
-    case CHILD_SLOT_TYPE:
-      return 'slot';
-    default:
-      return catalog.isVisual(node.type) ? 'unsupported' : null;
-  }
+  // FLD-013 — the table this switch used to be now lives in `../structurePorts`, so the MCP
+  // server can answer *"which ports does this type refuse on?"* from the same source the export
+  // decides by. `undefined` means the table does not decide this type; `null` means it decides it
+  // draws nothing, which is not the same answer.
+  const named = ROLE_OF_TYPE[node.type];
+  if (named !== undefined) return named;
+  return catalog.isVisual(node.type) ? 'unsupported' : null;
 }
-
-/**
- * Ports whose value shapes the emitted *structure* (tracks, options, marks, initial state) —
- * a wire into one means the node's static translation would lie, so the node defers whole
- * (VISUALS-TARGET). Ports that merely carry content (src, label text) stay bindable.
- */
-const STRUCTURE_PORTS: Partial<Record<RenderRole, string[]>> = {
-  columns: [
-    'layoutString',
-    'sizing',
-    'packing',
-    'direction',
-    'minWidth',
-    'marginX',
-    'marginY',
-    'justifyContent',
-    'mediumBreakpoint',
-    'mediumLayout',
-    'smallBreakpoint',
-    'smallLayout'
-  ],
-  icon: ['iconSourceType', 'iconIconSource', 'iconImageSource'],
-  // A wired `checked`/`value` no longer defers the control whole: it is the controlled-state
-  // slice's local-state + sync-effect shape (CONTROLLED-STATE-TARGET §4c). The ports that
-  // stay here still shape structure a static render cannot follow (tracks, options, marks).
-  //
-  // `useLabel`/`useIcon` decide whether the `<label>` wrapper and the mark exist at all
-  // (Checkbox.tsx:70,170); a radio's `value` and a group's `value` decide which child prints
-  // `defaultChecked` (component.ts:1343,1373). Those are structure. `label`, `min`, `max` and
-  // `step` are NOT — see CONTENT_BOUND_PORTS below.
-  checkbox: ['useLabel', 'useIcon'],
-  radio: ['useLabel', 'useIcon', 'value'],
-  radiogroup: ['value'],
-  select: ['items', 'placeholder', 'useLabel'],
-  // §2 of NOTES-UNOWNED-NODE-WORK.md. Both compose into the emitted `src` as a media fragment,
-  // so a wired value makes the attribute non-static exactly as a wired `src` would.
-  video: ['startTime', 'endTime'],
-  circle: [
-    'size',
-    'shape',
-    // Stage 2. Both move the outline itself, so a wire into either makes the rendered structure
-    // non-static exactly as a wired `shape` does.
-    'points',
-    'cornerRadius',
-    'svgSource',
-    'fillEnabled',
-    'fillColor',
-    'strokeEnabled',
-    'strokeWidth',
-    'strokeColor',
-    'strokeLineCap',
-    'startAngle',
-    'endAngle'
-  ]
-};
-
-/**
- * Ports that carry *content* into a control — text, bounds, increments. A wire into one does
- * not move the rendered structure: `label` is the single text child of `<label>`
- * (Checkbox.tsx:191, RadioButton.tsx:200) and `min`/`max`/`step` are plain attributes the
- * emitter already orders (CONTENT_ATTR_ORDER), with nothing in the emitted CSS derived from
- * them (style.ts's `range` rule reads `thumbColor` and `width` only).
- *
- * They still defer, because omitting an unknown bound renders a 0–100 slider where the running
- * app renders the row's — wrong output, confidently emitted. But the wall is the *source*, not
- * the port, and every one of them in the corpus resolves to one of the two walls already on the
- * list: a `Model2` row property, or a component-record property only a runtime script writes.
- * Naming the source is what lets the census group them there instead of inventing a third wall
- * (RECORD-VERBS §19).
- */
-const CONTENT_BOUND_PORTS: Partial<Record<RenderRole, string[]>> = {
-  checkbox: ['label'],
-  radio: ['label'],
-  range: ['min', 'max', 'step']
-};
 
 /**
  * Why a node of a supported visual type still cannot render statically, or null when it can.

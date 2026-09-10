@@ -8,6 +8,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import { getExample, getNodeTypeDetail, getNodeTypePorts, getNodeTypeSummary, listCategories, listExamples, listNodeTypes } from '../catalog';
+import { alphaNotice, exportCoverage } from '@nodegx/export';
 import { ToolError } from '../errors';
 import type { GetNodeTypeResponse, ListExamplesResponse, ListNodeTypesResponse } from './responses';
 import { guarded, jsonResult } from './util';
@@ -37,7 +38,22 @@ export function registerCatalogTools(server: McpServer): void {
         visualOnly: args.visual_only,
         includeHidden: args.include_hidden
       });
-      const payload: ListNodeTypesResponse = { nodeTypes: rows, categories: listCategories() };
+      // FLD-013 — the coverage line rides the listing rather than costing a second call, and it is
+      // the ledger's own numbers (`export-ledger:picker --check` holds them), not a second count.
+      const coverage = exportCoverage();
+      const payload: ListNodeTypesResponse = {
+        nodeTypes: rows,
+        categories: listCategories(),
+        exportCoverage: {
+          ...coverage,
+          notice: alphaNotice(),
+          note:
+            'A row with no `export` field is a type this exporter translates and that refuses on no port. ' +
+            'Where `export` is present: `status` classifies the TYPE, and `structurePorts`/`contentPorts` list ports ' +
+            'whose value arriving over a WIRE leaves a node of that type out of the export — a translated type can ' +
+            'still refuse. Set those ports as literal parameters, or accept the node will not be in the exported code.'
+        }
+      };
       return jsonResult(payload);
     })
   );
