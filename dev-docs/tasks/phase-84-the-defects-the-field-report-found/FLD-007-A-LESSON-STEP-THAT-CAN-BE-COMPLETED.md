@@ -62,6 +62,121 @@ Unchanged since the initial commit; every commit touching this file since is unr
 5. The reply to [#5](https://github.com/The-Low-Code-Foundation/NodeGX/issues/5) answers both halves,
    including where to patch a lesson.
 
+## 4b. What was built — 2026-09-10, session 2 🟢 **BUILT** (`4068d139`)
+
+`views/VisualCanvas/previewRoutePath.ts` — one pure function, the path half of the route — and
+**both** writers in `CanvasView.ts` now call it (lines 59 and 203). The second writer is half the
+story and §2 only noted it in passing: `setCurrentRoute` wrote the route *untruncated*, so the
+global the evaluator reads meant two different things depending on which write landed last.
+
+### The sweep — AC3, and the number is 1, not "most of them"
+
+`scripts/fld-007-lesson-route-conditions.mjs` is re-runnable and fetches the live set:
+
+```
+8 hosted lessons; 9 in-repo bundles
+8 route conditions (0 of them in bundles)
+```
+
+Every `viewerpatheq` in the shipped set, with the sentence the learner is given:
+
+| lesson | condition | what the step says | before this fix |
+|---|---|---|---|
+| 01_basics | `/task-page` | "Type a name … click the Get Started button" | ✅ ticked |
+| 02_layout | `/task-page` | "Select the /task-page path in the Path Dropdown" | ✅ ticked |
+| 03_components | `/task-page` | "…select that in the Path Dropdown" | ✅ ticked |
+| 04_data-driven-components | `/task-page` | "Navigate to it using the Path Dropdown" | ✅ ticked |
+| 05_page-navigation | `/details-page` | "Select the /details-page path in the Path Dropdown" | ✅ ticked |
+| 05_page-navigation | `/task-page` | **"Click the button to navigate back to the Task Page"** | ❌ **dead** |
+| 06_store-user-data | `/create-card-page` | "…select the /create-card-page path in the Path Dropdown" | ✅ ticked |
+| 07_logic-components | `/task-page` | "Select the /task-page path in the Path Dropdown" | ✅ ticked |
+
+🔴 **§3's hypothesis was wrong, and the reason it was wrong is the finding.** Six of the eight
+steps ask the learner to pick a route in the **Path Dropdown**, which goes
+`EditorTopbar → onRouteChanged → canvasView.setCurrentRoute`
+(`EditorDocument.tsx:199-205`) — the *untruncated* writer, which emits `viewer-navigated`
+synchronously, so `lessonlayer2`'s refresh (`:171`) evaluates the condition against the full route
+and the step advances. The webview's `load-commit` then fires and clobbers the global back to `''`,
+but the step has already ticked. Those six were passing on a **race between two writers**, not on a
+comparison. The seventh (01_basics) is an in-app click, and it survived only because that
+navigation carries a page parameter — `RouterNavigate` on the Start Page sets `pm-User Name`, so
+the URL has a `?` and the truncation happened to be a no-op. Measured in all seven lesson project
+zips: **`/Start Page → /Task Page` is the only navigation in the shipped set that carries a param.**
+
+The eighth is the reported one, and it is the only step in the set that asks the learner to click a
+button whose navigation has no parameters (`/Details Page → /Task Page`, `params={}`). No `?`, so
+`substring(0, -1)`, so `''`, so never.
+
+**Zero of the nine in-repo `lesson.json` bundles use `previewRouteEquals` at all**, so the
+declarative format has never exercised this verb — which is why nothing in `tests-unit` caught it.
+
+### AC4 — a should-fail arm, so a green AC2 means something
+
+`tests-unit/fld-007/preview-route-path.test.ts` runs the **real** `evaluateSingleCondition` over a
+context built the way `lessonevalconditions.live.ts` builds it. Eight arms, all green: the fixed
+case, the with-query case, a fragment left alone, **two reverted arms** restating the old
+expression (query-less → `''`, and the step therefore `false`), and three should-fail cases
+(`/create-card-page`, `/`, `/task-page-two`).
+
+### AC5 — where a lesson is patched (the half of #5 nobody answered)
+
+Two places, and they are different repositories:
+
+- **The hosted legacy lessons** — hand-authored HTML, one file per lesson, at
+  `nodegx-content/static/lessons/<slug>/lesson.html`, with the project starter beside it as
+  `project.zip`. Steps are split on `<!-- # -->` and graded by `data-conditions` attributes. This
+  is where all eight conditions above live, and it is **not** this repo.
+- **The in-repo bundles** — `project-examples/lessons/<slug>/lesson.json`, a declarative manifest
+  (`models/lessonformat.ts`, conditions compiled at `:290`, `:588-612`). `previewRouteEquals` is
+  the authored spelling; it compiles to `viewerpatheq`.
+
+### Found while building — not chased here
+
+- 🔴 **Hash routing defeats every `viewerpatheq`, fix or no fix.** `navigationPathType` defaults to
+  `'hash'` (`noodl-viewer-react/src/nodes/navigation/router.tsx:806-812`), which produces routes
+  shaped `/#/task-page` with the query placed *before* the fragment. No authored condition matches
+  that, and stripping the fragment would yield `/`. The seven lesson projects all set
+  `navigationPathType: 'path'`, which is why the verb works at all. The correct fix is to read the
+  fragment as the path when the project is hash-routed. **Register row, owner NONE.**
+- ⚠️ **`getRelativeURL` returns `undefined` when a page has no `path` parameter**
+  (`router.tsx:610-611`), yet every Page node in all seven lesson projects has `path: undefined`
+  and the routes plainly work — so the default is filled in elsewhere. Not chased; noted because a
+  reader of that function alone would conclude the lessons cannot navigate.
+
+## 4c. The reply owed to #5 — AC5, ready to send
+
+@VitoMinheere — draft, not yet posted. It answers both halves, which is what the issue asked and
+never got.
+
+> You were right, and it was one line.
+>
+> `views/VisualCanvas/CanvasView.ts` published the preview route to the lesson grader as
+> `route.substring(0, route.indexOf('?'))`. For `/task-page` there is no `?`, so `indexOf` returns
+> `-1`, and `substring(0, -1)` returns the **empty string**. The step's condition is a strict
+> equality against that value, so `"/task-page" === ""` was false forever.
+>
+> That also explains the detail you noticed — that it completed via the Start Page. The Start Page's
+> navigation passes a page parameter (`User Name`), so that URL *does* carry a `?`, the truncation
+> does what it was meant to do, and the step ticks. The button on the Details Page passes no
+> parameters, so it never could. Fixed in `4068d139`: the route keeps its whole path when there is
+> no query, and the two places that publish it now share one function instead of disagreeing.
+>
+> **Where to patch a lesson** — your second question, and there are now two answers depending on
+> which kind you have:
+>
+> - **The hosted lessons** (Basics, Layout, Data Driven Pages, …) are not in this repository. They
+>   live in `nodegx-content` under `static/lessons/<slug>/`, as a hand-authored `lesson.html` split
+>   into steps on `<!-- # -->` comments, with the starter project beside it as `project.zip`. The
+>   grading lives in `data-conditions` attributes on the step markup — the one you hit reads
+>   `[{ "viewerpatheq": "/task-page" }]`. The editor fetches these from the content CDN at runtime,
+>   so a change there ships without an editor release.
+> - **Newer lessons** are bundles in this repo at `project-examples/lessons/<slug>/lesson.json`, a
+>   declarative manifest instead of HTML. The same condition is authored as
+>   `previewRouteEquals` and compiled by `models/lessonformat.ts:290`.
+>
+> Please do open an issue if a step still refuses to tick — a step that cannot complete is worth
+> more to us than it looks, and this one had been sitting since 2024.
+
 ## 5. Traps
 
 - ⚠️ `CanvasView.ts` is **not reachable from the jest runner** — the same constraint FIX-025 records
