@@ -4,15 +4,23 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is now answered (0.2.3)** and
 four still gate tasks.
 
-## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 6)
+## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 7)
 
-Seventeen files, each grepped for its own `🟢 **BUILT**` marker. **Six built, eleven never built.**
-That is the file count, not a copied status. Re-derive it, do not inherit this table:
+Seventeen task files, each grepped for its own marker. **Six built, one PARTLY built, ten never
+built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
 cd dev-docs/tasks/phase-84-the-defects-the-field-report-found
-for f in FLD-*.md; do printf '%s ' "$f"; grep -q '🟢 \*\*BUILT\*\*' "$f" && echo BUILT || echo '⬜'; done
+for f in $(ls FLD-*.md | grep -v WHAT-WAS-BUILT); do
+  id=$(echo "$f" | cut -d- -f1,2)
+  if grep -q '🟢 \*\*BUILT\*\*' "$f"; then echo "$id BUILT"
+  elif grep -q '🟡 \*\*PARTLY BUILT\*\*' "$f"; then echo "$id PARTLY"
+  else echo "$id --"; fi
+done
 ```
+
+⚠️ **The old one-liner over `FLD-*.md` now over-counts** — `FLD-011-WHAT-WAS-BUILT.md` matches the
+glob and is not a task. The `grep -v WHAT-WAS-BUILT` is not cosmetic.
 
 **Track A — it went wrong and said nothing** (outranks track B in every ordering decision)
 
@@ -27,8 +35,8 @@ for f in FLD-*.md; do printf '%s ' "$f"; grep -q '🟢 \*\*BUILT\*\*' "$f" && ec
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-012 | The empty-box warning stops crying wolf | #32 | 🟢 **BUILT** `0df984a11`, AC1–AC5 measured · ✅ **replied + closed** | — |
 
-🔴 **Track A is now exhausted except for its two gated tasks.** Both need a decision, not work:
-FLD-004 needs **R4**, FLD-005 needs **P13** resolved. Do not start either without it.
+🔴 **Track A is still exhausted except for its two gated tasks.** FLD-004 needs **R4**, FLD-005
+needs **P13**. Do not start either without the ruling.
 
 **Track B — it costs too much to install and to drive**
 
@@ -37,12 +45,17 @@ FLD-004 needs **R4**, FLD-005 needs **P13** resolved. Do not start either withou
 | FLD-002 | The Columns node says which breakpoint it is at | #22 | ⬜ never built | FLD-001 ✅ **unblocked** |
 | FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002, FLD-004, **R3** |
 | FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅ unblocked, **R6** |
-| FLD-011 | The render report writes to disk and stops sleeping | #40 | ⬜ never built | — **ungated** |
+| FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟡 **PARTLY BUILT** `c7f5ea794` · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | ⬜ never built | — **ungated** |
-| FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | — **ungated** |
+| FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the token budget** |
 | FLD-015 | Charts that export | #39 | ⬜ never built | **R2**, 🔴 **P9 collision** |
 | FLD-016 | The Linux install works on a current distribution | #29 | ⬜ never built | — **ungated** |
 | FLD-017 | The release stops shipping what it never runs | #42 | ⬜ never built | R5 (minify only) |
+
+🔴 **FLD-011 is `🟡 PARTLY BUILT` on purpose and it is NOT done.** `out_dir` (AC1, AC5) and the
+settle budget (AC2, AC4) are built and measured; **parallelise-by-tab is not, so AC3 and AC6 are
+unmet** — and AC3 (per-tab console attribution) is the arm the task itself calls the one that
+matters. Read [FLD-011-WHAT-WAS-BUILT.md](./FLD-011-WHAT-WAS-BUILT.md) §6 before picking it up.
 
 ## 2. 🔴 The reply gate is OPEN — stop asking, start sending
 
@@ -58,8 +71,11 @@ and all four fixes were already in it. `git show v0.2.2:<path>` and
 `git merge-base --is-ancestor <sha> v0.2.2` settle it in seconds, and *"already published, in
 0.2.2"* is a far better answer to a reporter than *"it will ship in 0.2.3"*.
 
-**Ten sent. Session 6 sent five** — #32 (FLD-012, replied + closed) and the whole of §3: #9, #12,
-#1, #15, all replied and closed.
+**Eleven sent, thirteen owed — re-derived from GitHub, not from the table.** Session 7 sent one:
+#40 (FLD-011), **deliberately left OPEN**. ⚠️ Do not count replies with `grep replied` — the table
+spells them **SENT**, and that grep undercounts by five. The honest count is one `gh` loop over the
+24 rows asking each issue whether it carries a comment matching *"automated reply generated from
+Claude"*; it reconciles exactly with the table as it now stands.
 
 🔴 **#41 is still the lesson in one direction, and #15 is the lesson in the other.** #41 asks for
 the `session_status` tool (FLD-010, unbuilt) and stays open because FLD-009 fixed a *different*
@@ -71,28 +87,70 @@ says exactly that and invites a reopen. **Do not claim a verification you did no
 rows, nothing missing.** It has caught an omission twice before; it is one command and it is
 recorded in §5 of the [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md).
 
-**Distance: 6 of 17 built. 10 replies sent, 14 still owed.**
+**Distance: 6 of 17 built, 1 partly built. 11 replies sent, 13 still owed.**
 
 ## 3. The next task to build
 
-Track A outranks track B, and **track A has nothing left that is not gated**. So either get R4 or
-P13 decided, or build the best ungated track-B task. Of those four, ranked:
+Track A outranks track B, and **track A still has nothing left that is not gated**. So either get
+R4 or P13 decided, or build the best ungated track-B task. Ranked, after session 7:
 
-1. **[FLD-011 — the render report writes to disk and stops sleeping](./FLD-011-THE-RENDER-REPORT-WRITES-TO-DISK-AND-STOPS-SLEEPING.md)**
-   (#40). Ungated, and session 6 has just been living in this exact code — `render-report.js`,
-   `withRenderedPage`, `measure-from-disk.js`. ⚠️ It asks for the corpus to grade **finding
-   stability, not just speed** (its §4): `demo/fld-012-arms.js --corpus --json <file>` now produces exactly
-   that readout, and `--report <file>` re-derives it without re-rendering.
-2. **[FLD-002 — the Columns node says which breakpoint it is at](./FLD-002-THE-COLUMNS-NODE-SAYS-WHICH-BREAKPOINT-IT-IS-AT.md)**
-   (#22). Unblocked by FLD-001, and it is the only remaining task on an issue a reporter is still
-   waiting on that has no gate at all.
-3. **FLD-013** / **FLD-014** — both ungated, both MCP-surface work.
+1. **[FLD-002 — the Columns node says which breakpoint it is at](./FLD-002-THE-COLUMNS-NODE-SAYS-WHICH-BREAKPOINT-IT-IS-AT.md)**
+   (#22). Unblocked by FLD-001, no gate at all, and a reporter is still waiting on it. This is now
+   the top ungated task.
+2. **FLD-011's remaining half** — parallelise by tab. ⚠️ **The case for it is weaker than the task
+   file assumed**, because the settle budget already took the corpus from 205s to 55s. It is
+   strongest on many-page projects and it carries the AC3 trap: `page.consoleErrors` is ONE shared
+   array attributed by index-slicing, so interleaving misattributes every console error.
+3. **FLD-013** (#37) — ungated MCP-surface work. ⚠️ Check P25 first; anything that adds to the
+   resident tool surface is now gated by a budget with **5 tokens spare**.
+4. **FLD-016** (#29) — the Linux install. Ungated, and the only track-B task that needs no MCP
+   surface at all.
+
+🔴 **FLD-014 is NO LONGER ungated — do not start it.** Register row **P25**: its scope is *"accept
+snake-case aliases for the 98 camelCase inputs in `backendTools.ts`"*, which **adds** to the
+resident MCP tool surface. That surface has **5 tokens of headroom** against `toolDisclosure`'s
+8280-token gate, and the gate's own comment says the budget has been renegotiated twice and *"there
+should not be a third"*. It needs a ruling, or the `$ref` fix the gate names as the honest answer.
 
 🔴 **FLD-004 needs R4, FLD-005 needs P13, FLD-015 needs R2 and P9. Do not start any of them without
-the ruling.** **FLD-010 is unblocked** and R6 can reasonably be answered *no* — that is what the
-#41 reply said in public. Ask before building a locking protocol.
+the ruling.** **FLD-010 is unblocked** and R6 can reasonably be answered *no*. Ask before building a
+locking protocol.
 
-## 4. What session 6 learned that the next one should not re-learn
+## 4. What session 7 learned that the next one should not re-learn
+
+🔴 **A self-agreement control detects nondeterminism, NOT time-dependence.** FLD-011's arms script
+ran the new arm twice to check it agreed with itself, and reported three projects as `CHANGED` with
+`0 unstable`. Both arms were internally deterministic — fixed sleeps land on the same side of a
+timer every run — so each agreed with itself perfectly while disagreeing with the other. The thing
+that actually answered it was a **third arm that varied the sample TIME**: the OLD mechanism with
+the timers merely HALVED reproduced the NEW arm's reading exactly. Register row **P26**.
+
+🔴 **Two wrong diagnoses before that one, both plausible.** First "a CSS fade-in" — an animation
+wait was added and did not move the result; sampling showed the element stable at `opacity: 0` for
+1.5s, not mid-transition. Then "the page is flaky". It was neither: three lesson projects reveal a
+caption on a **~5 second timer**, and the old sleeps reached the phone measurement at exactly 5.9s.
+**Sample the page over time before theorising about why two readings differ.**
+
+🔴 **The resident MCP tool surface had SEVEN tokens of headroom and nothing said so until a gate went
+red.** One optional parameter on one tool took it 101 tokens over. See **P25**. Before adding any
+tool, parameter or description anywhere in `noodl-mcp/src/tools/`, run
+`npx jest tests/toolDisclosure.test.ts` and read the `[surface]` line — it prints the margin on a
+**passing** run, which is the only time anyone can act on it.
+
+✅ **A ceiling that is the old constant makes a speed change unfalsifiably safe.** The settle budget
+can never be slower than the fixed timers it replaced, because it is bounded by them — and
+`report.settle.atCeiling` says how many settles got there. `0 of 98` is what makes the corpus
+number mean something; had it been `98 of 98`, nothing would have been sped up at all.
+
+⚠️ **A spec that writes files can litter the repo.** FLD-011's relative-path arm resolved
+`'shots-relative'` against jest's cwd and left a directory inside `packages/noodl-mcp` on every run.
+Caught by `git status` before the commit, not by the suite. Point relative-path fixtures at
+`os.tmpdir()`.
+
+⚠️ **`FLD-*.md` now matches `FLD-011-WHAT-WAS-BUILT.md`.** The board one-liner needs
+`grep -v WHAT-WAS-BUILT` or it counts a report as a task.
+
+## 5. What session 6 learned that the next one should not re-learn
 
 ✅ **One render, four arms — the shape to copy for anything measured inside the page.**
 `demo/fld-012-arms.js` renders each page **once** and evaluates four textually reverted builds of
@@ -132,25 +190,34 @@ identical 3 failed / 15 passed without the change. `def018-def020-layout-drive` 
 `sbr009ThemeEditorDrive` use `withRenderedPage` but never `measureExpression`, so they could not
 have been affected. **Never `git stash` here; snapshot and `cp` back.**
 
-## 5. Gates, as they stood at the end of session 6
+## 6. Gates, as they stood at the end of session 7
 
-`npx lerna run test --scope @nodegx/render-measure` **2 suites / 13 tests, exit 0** ·
-`npm run test:main` **446 suites / 7359 tests, exit 0** — identical to session 5's baseline, and
-correctly so: `@nodegx/render-measure` is gated by **`test:packages`**, not by `test:main`.
+`npm run test:main` **446 suites / 7359 tests, exit 0** — identical to sessions 5 and 6.
+`npx lerna run test --scope @nodegx/render-measure` **2 suites / 13 tests, exit 0**.
+`packages/noodl-mcp` **99 of 101 suites, 1416 of 1419 tests** — the two reds below.
 
-⚠️ **`@noodl/mcp` is 2 suites / 3 tests RED at HEAD, and it is NOT ours** — `def018-def020-layout-drive`
-(D28 expects an overlap defect to reproduce and gets 0 overlaps) and `sbr009ThemeEditorDrive` (two
-AC2 arms). Proved pre-existing by the control described in §4. **Somebody should own these**; they
-are in `test:packages`, which is a PR gate.
+⚠️ **`@noodl/mcp` is 2 suites / 3 tests RED at HEAD and it is still NOT ours** —
+`def018-def020-layout-drive` (D28) and `sbr009ThemeEditorDrive` (two AC2 arms). 🔴 **Session 6's
+argument for these did not cover session 7's change and had to be redone.** That argument was *"they
+use `withRenderedPage` but never `measureExpression`"* — true for FLD-012, useless for FLD-011,
+which changed `withRenderedPage` itself. Re-proved with the control: `git show HEAD:` over
+`render-report.js`, those two suites re-run, **identical 3 failed / 15 passed**, snapshot `cp`ed
+back, md5 verified in both directions. **An inherited pre-existing verdict is only as good as the
+change it was measured against.** They are in `test:packages`, a PR gate, and nobody owns them.
 
-🔴 **Read a gate's exit status out of the LOG, not out of the harness notification.**
+🔴 **`npx jest tests/toolDisclosure.test.ts` is now a gate you must check BEFORE adding to the MCP
+surface, not after.** It prints `[surface] N tokens / 20 resident tools — M under the 8280 budget`
+on a **passing** run. M is currently **5**. See **P25**.
 
-⚠️ A peer session held **phase 83 / nodegx-export / noodl-preview** work uncommitted in this
-checkout throughout session 6 (`nodegx-export/src/cli/*`, `noodl-preview/*`,
-`noodl-editor/.../compilation/build/*`, untracked `hls014-*`). **Commit by pathspec.** It did not
-redden `test:main`.
+🔴 **Read a gate's exit status out of the LOG, not out of the harness notification** — and note
+`echo "EXIT=$?"` after a pipe reports the LAST command in the pipe, not the runner. Write the exit
+into the log file itself.
 
-## 6. 🔴 Rulings — one down, four still gating
+⚠️ A peer session held phase-83 / `nodegx-export` / `noodl-preview` work uncommitted in this
+checkout at the start of session 7 and committed it during. **Commit by pathspec**, and `git add`
+untracked files first — a pathspec commit skips them.
+
+## 7. 🔴 Rulings — one down, four still gating
 
 ✅ **R1 ANSWERED: 0.2.3, not split** (Richard, 2026-09-10) — but see §2: what is *already published*
 is **0.2.2**, and four replies were corrected to say so before they went out.
@@ -163,10 +230,10 @@ the lock (**answered "probably not" in public on #41 — confirm**). Full wordin
 🔴 **R4 and P13 are now the phase's critical path**, because they are the only things standing
 between the next session and the last two track-A tasks.
 
-## 7. The end condition has not moved
+## 8. The end condition has not moved
 
 The phase closes when the issues are each **fixed and closed, or answered on the thread with the
 measurement that changed our mind**. Read the count off §5 of the register, not off README §6's
 "fifteen".
 
-**Ten sent, fourteen to go.**
+**Eleven sent, thirteen to go.**

@@ -1,6 +1,6 @@
 # FLD-011 — The render report writes to disk and stops sleeping
 
-🟡 **PARTLY BUILT — session 7, 2026-09-10.** Read
+🟡 **PARTLY BUILT** — session 7, 2026-09-10. Read
 [FLD-011-WHAT-WAS-BUILT.md](./FLD-011-WHAT-WAS-BUILT.md).
 
 🔴 **Deliberately NOT marked `🟢 BUILT`, so the board's grep keeps counting this as open.** Two of
