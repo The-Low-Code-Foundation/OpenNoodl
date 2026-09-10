@@ -339,12 +339,12 @@ is *"a slot component that is still a component"* rather than a second wrapper.
 
 **Measured after, with the same instrument** (`measure-interfaces.py corpus`):
 
-| | before | after | floor |
-|---|---|---|---|
-| components with an interface | 30 | 34 | — |
-| publishes outputs | 10% | **21%** | 50% |
-| carries a flag port | 3% | **12%** | 20% |
-| `States` per component | 0.03 | **0.06** | 0.15 |
+| | before | after s6 | after the s7 remainder | floor |
+|---|---|---|---|---|
+| components with an interface | 30 | 34 | 34 | — |
+| publishes outputs | 10% | 21% | **26%** | 50% |
+| carries a flag port | 3% | **12%** | 12% | 20% |
+| `States` per component | 0.03 | **0.06** | 0.06 | 0.15 |
 
 🔴 **Four examples cannot clear a corpus-wide floor of 50%, and no number of *new* examples fixes it
 cheaply.** 27 of the original 30 publish nothing; reaching 17 of 34 needs **ten more** publishing
@@ -354,6 +354,60 @@ percentage.** Adding an output to a row because a floor is at 50% is the same fa
 that states its own thresholds: the metric stops measuring the thing it was chosen for. The honest
 remainder is *"the rows that should publish a click and do not"*, judged one at a time — which is a
 task, not a number. Filed as the AC3 remainder; owner NONE.
+
+### AC3 remainder — judged 2026-09-10 (session 7). Two rows should publish; twelve should not.
+
+🔴 **The pass was worth doing for a reason the floor could not see.** Across all **72** corpus
+examples there were **zero** `itemOutputSignal-…` and `itemOutput-…` connections. The corpus never
+once showed how a repeated row talks back to the page that repeats it — which is not "these rows are
+under-specified", it is *the mechanism is undemonstrated*, and two examples were broken by it.
+
+**The mechanism, read from the runtime rather than assumed** (`noodl-viewer-react/src/nodes/
+std-library/data/foreach.tsx`): a `For Each` reads its template component's output ports and mints
+`itemOutputSignal-<name>` for each `signal` and `itemOutput-<name>` for each value (`:1029-1046`).
+When a row raises one it sets `itemActionItemId = model.getId()` and flags it dirty **synchronously**,
+then updates the item outputs and sends the signal in one scheduled pass (`:905-928`) — so the id and
+the trigger always describe the same row. **A repeater template's interface is reachable; it surfaces
+on the repeater, not on the instance.**
+
+🔴 **And the id only moves if the signal is consumed.** `itemOutputSignals[name]` is set only by
+`registerOutputIfNeeded` (`:939-941`), which runs for outputs something is actually connected to, and
+`onOutputChanged` tests that flag before raising anything (`:628`). **An `itemActionItemId` wire with
+no `itemOutputSignal-…` wire beside it reads `undefined` forever** — which is exactly what
+`data-shared-array-add-remove` shipped.
+
+**Two fixed, because each example's own description already promised the thing it could not do:**
+
+| example | it claimed | it did |
+|---|---|---|
+| `data-shared-array-add-remove` | title: *"insert, **remove** and clear"* | `CollectionRemove.modifyId` wired from `itemActionItemId`; **nothing ever fired `remove`**, and with no item signal consumed the id was never set either. Now `/Todo Row` publishes a `remove` signal and the page wires `itemOutputSignal-remove → remove`. |
+| `cloud-record-crud` | buttons labelled *"Rename **selected**"* / *"Delete **selected**"*, both nodes `idSource: "value"` | **nothing selected anything and no `modelId` was wired** — both writes acted on an empty id. Rename and Delete moved onto `/Note Row`, which is the only thing that knows which record it is; the page wires `itemActionItemId → modelId` and each `itemOutputSignal-…` → `store`. |
+
+**Twelve judged silent, and the reason is the example's own subject — not the metric:**
+
+| row | why it correctly publishes nothing |
+|---|---|
+| `comp-repeater-set-item-object::/Task Row` | 🔴 **the contrast case.** It writes to its own record from *inside*, via `For Each Actions.itemId → SetModelProperties.modelId`. That is the example's whole lesson; publishing would contradict it. A row that acts **on itself** stays internal; a row that asks the **page** to act publishes. |
+| `cloud-record-live-refresh::/Note Row` · `cloud-subscribe-to-changes::/Order Row` | the subject is a query keeping itself current. No per-row action is claimed anywhere. |
+| `cloud-filter-records-tabs::/Task Line` | the subject is client-side `Filter Records` fan-out. |
+| `code-rest-list::/Remote Row` | the subject is the REST node's script-declared ports. |
+| `data-static-array-filter-repeater::/Product Row` | the subject is non-destructive `Array Filter` / `Array Map`. |
+| `repeater-query-records::/Task Card` | the canonical list shape. Navigation to a detail page is `cloud-edit-record`'s subject and would drag a `Router` into the one example that exists to be minimal. |
+| `agent-sse-task-monitor::/Log Row` | a log line has nothing to ask for. |
+| `ui-empty-state::/Components/OrderRow` | the subject is the `isEmpty` switch, not the rows. |
+| `ui-footer-columns::/Components/FooterLink` | ⚠️ **the one arguable case.** A real footer link navigates, and this one is a bare `Text` with no click surface — but the example exists to show three columns as one component over an array, and a `Router` would bury that. Left silent deliberately; owner NONE. |
+| `vis-wrapper-component-children::/Media Frame` | superseded — `comp-slot-panel-with-interface` (s6) is the slot that *does* carry an interface. |
+| `cloud-edit-record::/Task Detail` | not a repeated row at all: a page-level component whose `done` is consumed locally by its own `Condition`. |
+
+**Measured after, same instrument:** publishing **21% → 26%**, flags **12%** and States **0.06**
+unchanged. 🔴 **Still FAIL against the 50% floor, and that is the honest outcome** — twelve rows were
+looked at and twelve were left alone. The remainder of the gap is not a defect in the corpus; it is the AC's two halves
+contradicting each other, recorded above.
+
+⚠️ **The examples gate passed a parameter that does not exist.** `Group.gap` — copied in from CSS
+habit — validated **72/72 clean**, because `Group` is one of the 172 skipped runtime-discovered-port
+nodes. The real port is `columnGap`. Caught by hand against `node-catalog.json`, which is the check
+this gate cannot do for you; an inert parameter in a corpus example teaches a lie.
 
 ⚠️ **The examples gate cannot see a misspelled wire.** `catalog:examples` was 69/69 clean with
 `Group.paddingLeft` mutated to `paddingLeftt` in a shipped example — a connection into a port that
@@ -377,7 +431,7 @@ description now names the other and says what it is not. Same fix as CMP-005 AC5
 |---|---|---|---|---|
 | mean ports/component | **3.4** | 2.6 | 4.3 | — **rejected, see below** |
 | carries a variant port | **14%** | 9% | 17% | — **rejected, see below** |
-| **publishes outputs** | **14%** | 21% | 84% | **≥ 50%** |
+| **publishes outputs** | **14%** | 26% | 84% | **≥ 50%** |
 | **carries a flag port** | **0%** | 12% | 20% | **≥ 20%** |
 | **`States` per component** | **0.00** | 0.06 | 0.22 | **≥ 0.15** |
 

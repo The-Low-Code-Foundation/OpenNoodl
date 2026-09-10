@@ -2,7 +2,7 @@
  * CMP-001 AC2 (P85) — the interface playbook ships where a model reads it.
  *
  * The decomposition doctrine has said what BECOMES a component since AAQ-008. Nothing said what to
- * put ON one, and phase 85 measured the consequence: **21%** of the components in the corpus an
+ * put ON one, and phase 85 measured the consequence: **26%** of the components in the corpus an
  * agent learns from publish any `Component Outputs`, against **84%** of the components the original
  * Noodl team shipped in `library/prefabs`. The playbook now rides `get_project_info` as
  * `interfaceDoctrine`, beside the four doctrine fields already there.
@@ -30,7 +30,7 @@
  * doctrine's text has gone stale against the artefacts it teaches from, which is exactly the
  * failure this suite exists to catch. The reference instrument for the two percentages is
  * `dev-docs/tasks/phase-85-the-component-is-the-backbone/measure-interfaces.py`; the derivation
- * below reproduced its numbers (corpus 21%, prefabs 84%) at the time of writing, and the two
+ * below reproduced its numbers (corpus 26%, prefabs 84%) at the time of writing, and the two
  * disagreeing is itself worth knowing.
  */
 
@@ -337,11 +337,14 @@ describe('CMP-001 AC2 — the numbers it argues from are the numbers the artefac
     );
     // The population is not empty and not the shelf — a rate over nothing is not a rate.
     expect(comps.filter((c) => c.inputs.length > 0).length).toBeGreaterThan(20);
-    // 🔴 This literal moved once already, and correctly: it read 10 until CMP-001 AC3 added
-    // four examples that publish, and this spec is what said the doctrine's sentence had gone
-    // stale. Re-run `measure-interfaces.py corpus` before touching it.
-    expect(publishRate(comps)).toBe(21);
-    expect(received).toMatch(/\*\*21%\*\*/);
+    // 🔴 This literal has moved TWICE now, and correctly both times: 10 until CMP-001 AC3
+    // added four examples that publish, then 21 until the AC3 remainder gave `/Note Row` and
+    // `/Todo Row` the outputs their own examples already claimed. Each time this spec is what
+    // said the doctrine's sentence had gone stale, within the same session that moved it.
+    // Re-run `measure-interfaces.py corpus` before touching it — count the artefact, never the
+    // literal.
+    expect(publishRate(comps)).toBe(26);
+    expect(received).toMatch(/\*\*26%\*\*/);
   });
 
   it('the fifty-four components that publish a failure port are still fifty-four', () => {
@@ -350,5 +353,85 @@ describe('CMP-001 AC2 — the numbers it argues from are the numbers the artefac
       .filter((p) => p.outputs.some((o) => ['Success', 'Failure', 'Failed', 'Error'].includes(o)));
     expect(failing).toHaveLength(54);
     expect(received).toContain('**Fifty-four**');
+  });
+});
+
+/**
+ * CMP-001 AC3 remainder — the repeated-row rule, graded against the runtime that implements it
+ * and the corpus that now demonstrates it.
+ *
+ * 🔴 The rule was written because the corpus had **zero** `itemOutputSignal-…` connections across
+ * 72 examples, and both examples that reached for the mechanism were broken by it. The port names
+ * are therefore re-derived from `foreach.tsx` rather than quoted: a doctrine that names a port the
+ * runtime does not mint is worse than one that says nothing.
+ */
+describe('CMP-001 AC3 remainder — a repeated row publishes to the repeater', () => {
+  const FOREACH = fs.readFileSync(
+    path.join(__dirname, '..', '..', 'noodl-viewer-react', 'src', 'nodes', 'std-library', 'data', 'foreach.tsx'),
+    'utf8'
+  );
+
+  const corpus = () =>
+    (
+      JSON.parse(
+        fs.readFileSync(path.join(__dirname, '..', '..', 'noodl-types', 'src', 'node-catalog-enriched.json'), 'utf8')
+      ) as { examples: { id: string; components: { name: string; connections?: Conn[] }[] }[] }
+    ).examples;
+
+  it('the three port names the doctrine gives are the three the runtime mints', () => {
+    // Not a substring search over prose: these are the literals `_collectPortsInTemplateComponent`
+    // builds and the one `itemOutputSignalTriggered` flags.
+    expect(FOREACH).toContain("'itemOutputSignal-' + outputName");
+    expect(FOREACH).toContain("'itemOutput-' + outputName");
+    expect(FOREACH).toContain("this._internal.itemActionItemId = model.getId()");
+    for (const port of ['itemOutputSignal-', 'itemOutput-', 'itemActionItemId']) {
+      expect(received).toContain(port);
+    }
+  });
+
+  it('the runtime really does gate the id on the signal being consumed', () => {
+    // The doctrine's one 🔴 claim. `registerOutputIfNeeded` is the only writer of the flag, and
+    // `onOutputChanged` is the only reader — if either half moved, the warning is now false.
+    expect(FOREACH).toContain("this._internal.itemOutputSignals[name.substring('itemOutputSignal-'.length)] = true");
+    expect(FOREACH).toMatch(/internal\.itemOutputSignals\[name\]\s*\)\s*\{\s*\n\s*this\.itemOutputSignalTriggered/);
+    expect(received).toContain('itemActionItemId');
+    expect(received).toMatch(/only moves if the signal is consumed/);
+  });
+
+  it('the corpus demonstrates the mechanism the doctrine describes', () => {
+    const wired = corpus().flatMap((e) =>
+      e.components.flatMap((c) =>
+        (c.connections ?? [])
+          .filter((x) => x.fromProperty.startsWith('itemOutputSignal-') || x.fromProperty.startsWith('itemOutput-'))
+          .map((x) => `${e.id}::${x.fromProperty}`)
+      )
+    );
+    // Was zero across all 72 examples until the AC3 remainder. A rule nothing demonstrates is the
+    // failure this phase exists to catch, so the floor here is "more than none", asserted by name.
+    expect(wired).toEqual(
+      expect.arrayContaining([
+        'cloud-record-crud::itemOutputSignal-rename',
+        'cloud-record-crud::itemOutputSignal-delete',
+        'cloud-record-crud::itemOutput-title',
+        'data-shared-array-add-remove::itemOutputSignal-remove'
+      ])
+    );
+  });
+
+  it('every itemActionItemId wire in the corpus has an item signal beside it', () => {
+    // 🔴 The defect this remainder found, turned into a standing gate: `data-shared-array-add-remove`
+    // wired the id with nothing consuming a signal, so it read `undefined` for the life of the page
+    // and `catalog:examples` could not see it — `For Each` has runtime-discovered ports and is one
+    // of the 172 nodes that check skips.
+    for (const e of corpus()) {
+      for (const c of e.components) {
+        const conns = c.connections ?? [];
+        const usesId = conns.some((x) => x.fromProperty === 'itemActionItemId');
+        if (!usesId) continue;
+        const signals = conns.filter((x) => x.fromProperty.startsWith('itemOutputSignal-'));
+        // Named, so a failure says WHICH component is wired to read an id that never arrives.
+        expect(`${e.id}::${c.name} item signals=${signals.length}`).not.toBe(`${e.id}::${c.name} item signals=0`);
+      }
+    }
   });
 });

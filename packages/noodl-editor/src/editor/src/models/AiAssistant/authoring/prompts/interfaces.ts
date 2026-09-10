@@ -7,8 +7,8 @@
  * AAQ-008. Nothing anywhere said what to put ON one. Phase 85 measured the
  * consequence across three populations with a single instrument
  * (`measure-interfaces.py`, beside the phase-85 task): of the components in the
- * examples an agent learns from, **21%** publish any `Component Outputs` — 10% until
- * CMP-001 AC3 added four that do; of the
+ * examples an agent learns from, **26%** publish any `Component Outputs` — 10% until
+ * CMP-001 AC3 added four that do and repaired two rows that could not; of the
  * components the original Noodl team shipped in `library/prefabs`, **84%** do.
  * The corpus teaches a component that receives text and draws it. The library
  * teaches a two-way part. A model copying the corpus builds display sinks, and
@@ -62,7 +62,7 @@ export const INTERFACE_DOCTRINE_MD = `## What goes on a component's interface
 You know what becomes a component. This is the other half — what its interface carries — and it is
 the half that decides whether the next person can use the thing you built.
 
-**Why this is written down.** Across the examples an agent learns from, **21%** of components publish
+**Why this is written down.** Across the examples an agent learns from, **26%** of components publish
 any \`Component Outputs\`. Across the components the original Noodl team shipped in the prefab
 library, **84%** do. That gap is the whole difference between a part and a display sink: a sink takes
 text, draws it in one fixed place, and tells nobody anything, so every wire it should have owned ends
@@ -143,6 +143,21 @@ need it first: findability is the case for extracting it and reuse is the bonus.
 meant literally — 48 of the 83 logic-only components in the shipped library are one or two working
 nodes, and a production app's shared folder holds 17 of them instantiated 50 times, \`Format full
 name\` alone nine times.
+
+### A repeated row publishes to the repeater, not to nowhere
+Rows end up mute because it looks as if there is nowhere to wire them: the page never places the
+row, a \`For Each\` does. The repeater publishes for you. Every output port on the template
+component reappears on the repeater itself — a \`signal\` as \`itemOutputSignal-<name>\`, a value as
+\`itemOutput-<name>\` — beside \`itemActionItemId\`, the id of the row that raised it. Take the
+trigger and the id from that same node and the write lands on exactly the row that was clicked.
+
+🔴 **The id only moves if the signal is consumed.** A repeater tracks an item output only when
+something is connected to it, so an \`itemActionItemId\` wire with no \`itemOutputSignal-…\` wire
+beside it reads empty forever, and the delete that looked wired never fires.
+
+⚠️ **A row acting on itself does not need this.** \`For Each Actions\` (\`Repeater Item\`) hands the
+row its own \`itemId\` — that is what a checkbox storing \`done\` on its own record should use.
+Publish when you are asking the page to act; stay internal when the target is your own record.
 
 ### A flag has to reach everything it implies
 \`Form Fields/Labelled Select\` takes \`Disabled\` and does not merely grey the label — it drives the
