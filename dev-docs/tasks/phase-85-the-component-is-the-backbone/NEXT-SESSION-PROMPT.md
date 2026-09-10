@@ -4,48 +4,71 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## Where session 1 left it (2026-09-09)
+## The board, re-derived from the task FILES on 2026-09-10
 
-Scoped from Richard's field test of the shipped landing-page template. Nothing is built; four tasks
-are written and one instrument is committed. **No code has been changed.**
+| task | AC | state |
+|---|---|---|
+| CMP-001 | AC1 the `States.currentState` enum input | ✅ **2026-09-10**, four assertions over the wire |
+| CMP-001 | AC2 the playbook ships as a doctrine field | OPEN — **now ten patterns**, P10 added |
+| CMP-001 | AC3 four new corpus examples | OPEN |
+| CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
+| CMP-002 | the graded baseline build | **NEXT**, and unchanged: run it from its own brief, in a clean session |
+| CMP-003 | AC1 the doctrine stops forbidding the named utility | ✅ **2026-09-10**, both copies |
+| CMP-003 | AC2 P10 in the playbook | 🟡 half — written into CMP-001 §3, ships nowhere (blocked on CMP-001 AC2) |
+| CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
+| CMP-003 | AC4 the ledger column | ✅ **2026-09-10** |
+| CMP-004 | AC1 the shelf is in THE ORDER | ✅ **2026-09-10**, step 3 of §"The order" |
+| CMP-004 | AC2 searchable by what a part does | OPEN |
+| CMP-004 | AC3 parts, not just prefabs | OPEN — 🔴 **blocked on Richard's CSV**, ask for it |
+| CMP-004 | AC4 the path is two-way | OPEN — 🔴 still the highest leverage in the phase |
+| CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
 
-Read `README.md` first — it carries the loop, the cadence and the four defects.
-
-## State
-
-| | |
-|---|---|
-| **Written, not built** | CMP-001 (playbook, 9 patterns, 3 floors), CMP-004 (the shelf) |
-| **Measured, not written** | CMP-003 — the logic-component finding; the numbers are in README §2 row 3 |
-| **NEXT** | CMP-002 — the graded baseline build, from its own brief, in a clean session |
-| **Committed?** | ✅ Pushed to `cline-dev` at `b0ad5c8a`, 2026-09-09. The instrument is in the repo, so both arms of any grading can use it |
-| **Weekly nudge** | `trig_01MFceQCDiZvLy7cuSyeU877`, Fridays 09:00 Paris, first fire 2026-09-11 |
+Session 2 changed product code for the first time in this phase. Everything above that says ✅ is
+graded by `packages/noodl-mcp/tests/phase85Doctrine.test.ts` — 12 assertions, most of them over a
+real server rather than off a constant.
 
 ## The first job
 
-In order of leverage:
-
-1. **CMP-004 AC1** — one sentence putting the shelf in the authoring order. ⚠️ The resident surface
-   has 6 tokens of headroom; this rides in `get_project_info`'s doctrine channel, not
-   `instructions.ts`.
-2. **CMP-001 AC1** — the `States.currentState` port. One catalog/enrichment fix, and it unblocks the
-   whole variant pattern. Smallest real change on the board.
-3. **CMP-003** — write it up. The measurement is done; it needs the "when not to" correction and the
-   tenth pattern.
+1. **CMP-004 AC4 — the two-way path.** The one that makes the loop compound. Without it every cycle
+   improves the doctrine and every agent still builds every part from scratch. A tool that takes a
+   component out of the bound project and writes a shelf-shaped entry; graded by round trip.
+2. **CMP-001 AC2 — ship the playbook.** Ten patterns, currently readable only by us. ⚠️ It cannot go
+   in `instructions` (the budget gate reports **8,275 / 8,280** — five tokens). It goes in
+   `get_project_info` as a fifth doctrine field, the way CMP-004 AC1 went in as step 3 of the order.
+   🔴 **Consider the per-node route instead or as well** — see the gap in README §7.
+3. **CMP-004 AC2 — the text query.** `list_library` takes `type` and an exact `tag`. "Is there a
+   date formatter?" has no query that answers, which makes step 3 of THE ORDER weaker than it reads.
 
 ## Ask Richard for
 
-**The CSV of community logic and visual nodes.** He mentioned it and does not have it to hand. It is
-the seed corpus for CMP-004 AC3 and that AC cannot close without it.
+**The CSV of community logic and visual nodes.** Still outstanding. It is the seed corpus for
+CMP-004 AC3 and that AC cannot close without it. Session 2 did not have it.
 
-## Traps found in session 1
+## 🔴 Traps, session 2's added to session 1's
 
-- 🔴 **Two obvious metrics were green before the work.** "Mean ports ≥ 3.5" and "carries a variant
-  port" both fail to separate the shipped template from the reference library — the template scores
-  3.4 and 14%. They are recorded as rejected in CMP-001 AC3. **Do not reintroduce them.**
-- 🔴 **A session that has read this phase cannot grade a build of it.** The patterns are the answers.
-- `MEMORY.md` was at 17,454/17,510 units. The P85 pointer was paid for by moving P69 and P65 into
-  `older-phase-pointers.md` and tightening ten prose fragments. **14 units of headroom remain** —
-  the next writer must free space before adding.
-- A peer session rewrote the P83 index line mid-edit. Anchor on the heading, not on a neighbouring
-  row, and re-read immediately before writing.
+- 🔴 **MEASURE THE ARTEFACT, NOT THE TASK FILE — this phase has now failed that twice in two
+  sessions.** CMP-001 §4's headline claim ("the catalog documents only the output") was false on the
+  live server; the enum input was named in `runtimeBehavior`, which travels with the DEFAULT
+  response. CMP-003's "49 of them one node" reproduces under no definition (it is 20, or 45 counting
+  one-or-two). Both are corrected in place, with the corrections kept visible rather than tidied
+  away. **Before building an AC, run the measurement its premise rests on.**
+- 🔴 **A fact stated once and contradicted by the advice around it is not documented.** Five surfaces
+  described `States.currentState`; four said "output" or "use signals", one clause said "enum
+  input", and the sentence right after that clause said *"wire signals to `to-S`"*. A check asking
+  "does the response contain the string `currentState`?" passes on that. Assert the DESCRIPTION and
+  the INSTRUCTION, not the presence of the name.
+- 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.** Filed in
+  README §7. Cost a rewritten assertion when a test that "should" have passed did not.
+- 🔴 **`npm run docs:nodes` wipes and rewrites the whole directory, and 28 pages were ALREADY stale
+  at HEAD.** Regenerating in place folds someone else's unpublished catalog work into your commit.
+  The gate is not in CI, so it goes unnoticed. Snapshot, regenerate, restore everything but your own
+  page. Session 2 did that; the recipe is in the CMP-001 AC1 note.
+- 🔴 **Two logic folders in LearnBook**, `/Global logical components/` (25) and `/#Global logic
+  components/` (12). A filter on the obvious one reads 25/88 and looks like a contradiction.
+- Session 1's traps still stand: **two obvious metrics were green before the work** (mean ports,
+  variant port — do not reintroduce them), and **a session that has read this phase cannot grade a
+  build of it**.
+- The full `noodl-mcp` suite is **3 failed / 1428 passed**. Both failures are in `*Drive` suites
+  (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`), reproduce identically, and reference
+  none of this phase's surfaces. Pre-existing; not this phase's.
+- `MEMORY.md` headroom: check it before adding. Session 1 left 14 units.

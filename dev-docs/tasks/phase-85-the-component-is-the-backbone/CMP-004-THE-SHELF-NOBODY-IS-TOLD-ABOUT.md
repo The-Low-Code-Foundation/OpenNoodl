@@ -1,7 +1,11 @@
 # CMP-004 — The shelf exists, and nothing tells an agent it is there
 
 🔴 **The MCP ships a 42-entry component library and a working install path. The authoring briefing
-never mentions it once.** A model following THE ORDER builds every part from scratch, every time.
+never mentioned it once.** A model following THE ORDER built every part from scratch, every time.
+
+✅ **AC1 closed 2026-09-10** — the shelf is now step 3 of THE ORDER, in the doctrine channel. The
+other four ACs are open, and AC1 alone does not make the loop compound: the shelf is still
+prefab-sized (AC3) and still one-way (AC4).
 
 ## 1. The person sentence
 
@@ -18,7 +22,7 @@ it builds something good, that part can go back on the shelf for the next person
 indexed by `libraryShelf.ts`. `install_prefab` merges components, styles, variants, assets and code
 modules, and never overwrites.
 
-**🔴 Nothing in the authoring path points at it.** `grep -nai "library|shelf|install_prefab|reuse|existing component" src/instructions.ts`
+**🔴 Nothing in the authoring path pointed at it (fixed by AC1).** `grep -nai "library|shelf|install_prefab|reuse|existing component" src/instructions.ts`
 returns **nothing**. The resident briefing's THE ORDER runs: the look → the screen list → the
 component tree → leaves → sections → the page → backends. A model that follows it faithfully never
 learns the shelf exists. **This is writing the styles from scratch with Tailwind sitting in
@@ -43,11 +47,18 @@ written to after it is the mechanism that makes phase 85 compound instead of rep
 
 ## 4. Acceptance criteria
 
-**AC1 — the shelf is in the order.** THE ORDER names the shelf between "the component tree" and
-"author leaves": *before building a part, check whether one exists*. ⚠️ The resident surface has
-**6 tokens of headroom** (8,274/8,280, `toolDisclosure.test.ts:83`) — so this rides in
-`get_project_info`'s doctrine channel, or THE ORDER is re-cut to pay for itself. Measured on the
-tool response, not the source.
+**AC1 — the shelf is in the order.** ✅ **DONE, 2026-09-10.** It rides in `get_project_info`'s
+`designDoctrine`, as **step 3** of §"The order" — after "plan the components", before "Only then
+author them" — naming `list_library`, `get_library_entry({slug})` and `install_prefab({slug})`, and
+saying that installing never overwrites, because a model that thinks it might will not install.
+The section heading now reads *"the look, then the screens, then the shelf, then the components"*.
+
+Graded over the wire in `packages/noodl-mcp/tests/phase85Doctrine.test.ts` — presence, POSITION
+(after the screens, before authoring), the never-overwrites guarantee, and that the resident
+briefing did not grow to say it. The budget gate reports **8,275 / 8,280** after the change, which
+is where it was before: the doctrine channel is outside it, which is the whole reason this text
+lives there. Same division of labour SBR-013 settled — `instructions` carries the order, the
+doctrine carries the reasons and the tool names.
 
 **AC2 — the shelf is searchable by what a part does.** `list_library` takes `type` and an exact
 `tag` today. An agent asking "is there a date formatter?" has no query that answers. Add a text

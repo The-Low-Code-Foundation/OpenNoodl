@@ -67,8 +67,21 @@ const NOTES = {
     'Payload input ports are defined by the "ports" parameter (the payload schema of the channel being sent on).',
   'Event Receiver':
     'Payload output ports mirror the payload schema of the channel selected via the "channelName" parameter (as defined by matching Event Sender nodes).',
+  /**
+   * CMP-001 AC1 — the enum input. `currentState` is TWO ports sharing one name: the declared
+   * string output (`states.ts:331`) and a generated enum INPUT (`:1026`) that appears once
+   * `states` is set. Documenting only the output makes the one-wire variant selector —
+   * `Component Inputs.<enum> -> States.currentState`, used four times in `library/prefabs` —
+   * unreachable from the catalog, so a model builds a signal port per state and a Condition
+   * chain instead. The old text also promised a "left" output this node has never had.
+   */
   States:
-    'Ports are generated from the "states" and "values" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs.',
+    'Ports are generated from the "states" and "values" parameters: each value gets one input per ' +
+    'state (`value-<state>-<value>`) and a current-value output; each state gets an activation ' +
+    'signal input (`to-<state>`), a boolean output (`at-<state>`) and a signal output ' +
+    '(`reached-<state>`). Once "states" is set the node also mints a single enum INPUT named ' +
+    '`currentState` — the same name as the declared string output — which selects a state by ' +
+    'name in one wire, without a signal port per state.',
   'For Each':
     'The "Template Type"/template component determines dynamic input ports: inputs of the item template component are exposed so static values can be fed to each created item.',
   REST2: 'Input and output ports are parsed from the request/response scripts in the node parameters (custom headers, query parameters and response mappings become ports).',

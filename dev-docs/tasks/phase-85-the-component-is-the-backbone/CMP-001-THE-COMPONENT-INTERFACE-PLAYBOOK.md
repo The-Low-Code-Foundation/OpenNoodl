@@ -72,10 +72,11 @@ produced pages at **3-4× the stated threshold** with zero sections. **Extractio
 compliance measurement, not more prose.** This task owns the interface half; the extraction half is
 CMP-002 and must begin by reproducing the failure, not by writing another paragraph.
 
-## 3. The nine patterns, with citations
+## 3. The ten patterns, with citations
 
 Each is a wire-level shape, taken from `library/prefabs/*/project/project.json` and
-`LearnBook v5.1 Noodl/project.json`.
+`LearnBook v5.1 Noodl/project.json`. P1–P9 were mined 2026-09-09; **P10 was added 2026-09-10**
+and is owned by [CMP-003](CMP-003-LOGIC-COMPONENTS.md).
 
 ### P1 — The placement contract
 A reusable visual component says how it sits in its parent. Almost every prefab exposes the same
@@ -110,7 +111,7 @@ Three distinct idioms, all `States`:
 - **Operation lifecycle** — `file-upload` (Idle/Picking/Uploading/Done/Failed), `auth-pages`
   (Idle/Busy, Shown/Hidden) driven from `done`/`failure` signals.
 
-🔴 **The variant selector cannot be discovered from any MCP tool.** See §4.
+🔴 **The variant selector could not be discovered from any MCP tool until 2026-09-10.** See §4.
 
 ### P5 — Dependency injection: a component as a parameter
 `multi-select/Dropdown` wires `Component Inputs.Pill Template → For Each.template` and
@@ -140,6 +141,27 @@ component = '../' + item.Type;
 `Items`, `Options`, `Headers`, `Controls`, `Filters`, `menuItems`, `cardList` — one array port
 feeding a `For Each`, never one port per row.
 
+### P10 — The named utility
+🔴 **Added 2026-09-10 by CMP-003, and it is the only pattern here that came from correcting a rule
+rather than from reading a graph.** A small piece of thinking with a name, in a shared folder:
+`Component Inputs` → one or two working nodes → `Component Outputs`. LearnBook's two shared logic
+folders hold **37** of them, instantiated **107** times — `Is Trainer check` (9×, one working node),
+`Generate Google icon object` (9×, one working node), `Format full name` (9×). **45 of the 80
+logic-only components in `library/prefabs` are one or two working nodes.**
+
+The three rules that make it a pattern rather than an excuse to make files:
+
+1. **The name is a job**, imperative or a check — `Format full name`, `Is Trainer check`,
+   `Sanitise email`. Never `Function 3`, never `Helper`.
+2. **It publishes.** A logic component with no `Component Outputs` is a node with extra steps; the
+   parent has to be able to read the result. This is P8/P2 applied to something with no pixels.
+3. **It lives in a shared folder, not beside a page** — that is what makes it findable by the next
+   builder, which is the case for extracting it. Reuse is the bonus.
+
+⚠️ **Measured against itself:** 17 of LearnBook's 37 are used 0 or 1 times, so extraction is not
+free and not always repaid in reuse. It is still right at one use, for the findability reason — but
+a model should hear the honest version, not a rule that promises reuse it will not always get.
+
 ### 3.1 The exemplar worth copying whole
 
 `LearnBook /Global visual components/Collapsable group` — 11 nodes, 4 inputs, and every one of them
@@ -166,7 +188,10 @@ the flag cannot be contradicted by a user click. A model that emits `forceOpen �
 has built the same component with a bug in it. **The playbook has to teach the third wire, not just
 the port.**
 
-## 4. 🔴 The product defect that blocks P4
+## 4. ✅ FIXED 2026-09-10 — the catalog defect that blocked P4
+
+⚠️ Read §4.1 before §4: the diagnosis below is the one filed on 2026-09-09 and its first
+sentence is wrong. Kept verbatim because the correction is the interesting part.
 
 `States.currentState` is **two ports sharing one name**:
 
@@ -174,13 +199,34 @@ the port.**
 - `:1027` — a runtime-generated **enum input** (`plug: 'input'`, `type: {name: 'enum', enums: states}`)
   that exists only once `states` is set.
 
-The catalog documents only the output. `node-catalog-enriched.json` → `States.enrichment.ports.currentState`
+The catalog documents only the output *(🔴 not true — see §4.1)*. `node-catalog-enriched.json` → `States.enrichment.ports.currentState`
 reads *"String output with the active state's name"*, and the `dynamicPorts` note says states
 generate *"an activation signal input and reached/left signal outputs"* — never the enum input.
 
 **Consequence:** a model reading `get_node_type("States")` concludes the only way to select a state
 is one signal per state, so a `size` input needs three ports and a Condition chain. The one-wire form
-the original team used four times, and Richard used in `Badge`, is invisible. Richard found it
+the original team used four times, and Richard used in `Badge`, is invisible.
+
+### 4.1 🔴 Corrected 2026-09-10, measured on the live server before any edit
+
+**"The catalog documents only the output" is not true, and the truth is worse.** The enrichment's
+`runtimeBehavior` prose has always carried one clause — *"A generated enum input `currentState` sets
+the state by name"* — and `runtimeBehavior` travels with the DEFAULT summary response, so it reached
+every reader. What made the port undiscoverable was not absence but **four-to-one contradiction**:
+
+| surface | what it said before 2026-09-10 |
+|---|---|
+| the `ports` list (the scannable index) | `out currentState: string` — no input |
+| `ports: ["currentState"]`, the cheapest targeted question | *"String output with the active state's name"* — complete-looking, one-directional |
+| `dynamicPorts.description` | states get *"an activation signal input and reached/left signal outputs"* — and there has never been a `left-` port either |
+| `runtimeBehavior`, closing sentence | *"An authoring tool should… **wire signals to `to-S`**"* — the other form, named as the instruction, one sentence after the enum clause |
+| `antiPatterns` | `currentState` only as a string to READ |
+| `runtimeBehavior`, mid-paragraph | the one clause naming the enum input |
+
+⚠️ **The general lesson is the one worth keeping.** A model does not weigh five statements and pick
+the true one; it follows the instruction nearest the thing it is about to do. A fact stated once in
+prose and contradicted by the surrounding advice is not documented — and a check that asks only
+*"does the response contain the string `currentState`?"* would have passed on the shipped text. Richard found it
 because the enum port is visible in the editor's property panel.
 
 ⚠️ The rest of the States enrichment is good — `whenToUse` is present on 176/176 nodes and States'
@@ -188,11 +234,23 @@ is accurate. This is one port, not a documentation gap.
 
 ## 5. Acceptance criteria
 
-**AC1 — the enum input is documented.** `get_node_type("States")` reports `currentState` as both an
-output and a dynamically-generated enum input, and the `dynamicPorts` description names it.
-Measured by reading the tool response, not the source.
+**AC1 — the enum input is documented.** ✅ **DONE, 2026-09-10.** `get_node_type("States")` reports
+`currentState` as both an output and a dynamically-generated enum input, and the `dynamicPorts`
+description names it. Measured by reading the tool response, not the source —
+`packages/noodl-mcp/tests/phase85Doctrine.test.ts`, four assertions over a real server.
 
-**AC2 — the playbook ships where a model reads it.** The nine patterns become a fifth doctrine field
+Changed: `docs/node-catalog/enrichment/states.json` (the port description now states BOTH
+directions; the closing authoring sentence now names both forms and when each applies; a P4 pattern
+and the Condition-chain anti-pattern added) and `scripts/node-catalog/lib/dynamic-port-notes.js`
+(the enum input named, and the phantom `left-<state>` output removed). Both artefacts regenerated
+with `catalog:generate` + `catalog:merge`; both `--check` gates green. `docs-site` page regenerated
+for this node only — 28 other pages were ALREADY stale at HEAD and folding them in would have been
+an unperformed merge.
+
+⚠️ The `patterns` / `antiPatterns` half of that edit reaches a PERSON, not an agent:
+`get_node_type` emits neither field at any detail level. Filed in README §7, owner NONE.
+
+**AC2 — the playbook ships where a model reads it.** The ten patterns become a fifth doctrine field
 alongside `authoringTraps` / `authoringDoctrine` / `designDoctrine` / `backendDoctrine` in
 `get_project_info` (`tools/read.ts:157-175`) — a response field, **outside** the 8,280-token
 instruction budget (`toolDisclosure.test.ts:83`), which has 6 tokens of headroom and must not be

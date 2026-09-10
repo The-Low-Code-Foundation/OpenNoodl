@@ -26541,7 +26541,7 @@
         "mechanisms": [
           "runtime-discovered"
         ],
-        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs."
+        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets one input per state (`value-<state>-<value>`) and a current-value output; each state gets an activation signal input (`to-<state>`), a boolean output (`at-<state>`) and a signal output (`reached-<state>`). Once \"states\" is set the node also mints a single enum INPUT named `currentState` — the same name as the declared string output — which selects a state by name in one wire, without a signal port per state."
       },
       "parameterEncoding": {
         "known": true,

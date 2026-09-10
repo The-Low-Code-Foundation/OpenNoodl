@@ -48,6 +48,14 @@
  * this file carries the REASONS and the tool names, and it rides free because a
  * result field is outside the resident-surface budget.
  *
+ * Step 3 of §"The order" is CMP-004 AC1 (phase 85). The server ships a 42-entry
+ * library and a working `install_prefab`, and a grep of the budgeted
+ * `instructions` string for "library", "shelf" or "reuse" returned NOTHING —
+ * so a model following the order faithfully built every part from scratch with
+ * the shelf sitting beside it. It lands here for the same reason the tool names
+ * do: this text rides in a result field and the resident surface, at the time,
+ * had six tokens of headroom.
+ *
  * §0 and §7 were added after Richard reviewed the reference build and found the
  * two things this file had missed. §0 because the page he was shown was 66
  * nodes of inlined sections — the decomposition doctrine broken three commits
@@ -84,7 +92,7 @@ export const DESIGN_DOCTRINE_MD = `## What a designed page is made of
 A page that looks designed is not a styled version of a page that does not. It has a different
 STRUCTURE. Build the structure first and the styling has somewhere to land.
 
-### The order: the look, then the screens, then the components
+### The order: the look, then the screens, then the shelf, then the components
 
 Two things are settled BEFORE the first component exists, and in this order:
 
@@ -95,13 +103,31 @@ Two things are settled BEFORE the first component exists, and in this order:
 2. **The screens.** Name every page the app has and say, in one sentence each, what a person does on
    it. That list is what the component tree is a decomposition OF.
 
-Then plan the components, and only then author them.
+Then plan the components. Then, before authoring the first leaf:
+
+3. **The shelf.** Call \`list_library\` and read the index against your component tree. This server
+   ships installable entries — prefabs (accordions, app shells, auth pages, cards and card grids,
+   tables, forms, pickers, toasts, multi-selects, pagination, ratings) and modules (charts, icons,
+   maps, QR). \`get_library_entry({slug})\` says exactly which components an entry brings;
+   \`install_prefab({slug})\` puts them in the project and NEVER overwrites what you already have,
+   reporting anything it skipped. An entry that matches a part of your tree is a part you do not
+   write, and it arrives with an interface the original Noodl team designed — ports, outputs and a
+   state machine — which is a better starting point than a leaf authored from nothing.
+
+Only then author them.
 
 **Why this is an order and not just two more rules.** A look decided after the components is a
 repaint of every one of them, so it never actually happens: each component is already correct on its
 own terms, nobody wants to reopen it, and the app ships wearing whatever the first leaf authored
 happened to choose. The same is true of a screen list — a component tree invented before anyone said
 what the screens are is a guess that later screens have to be bent around.
+
+**Why the shelf is a step and not a footnote.** The library and the authoring path ship in the same
+server, and until CMP-004 nothing in the briefing mentioned it — so every part of every app was
+built from scratch beside a shelf of parts. Checking is one cheap call before the work; not checking
+costs the whole part, and costs it again on the next app. This is the same bargain as reaching for a
+CSS framework instead of writing the styles: you are not saving typing, you are inheriting decisions
+somebody already got right.
 
 **What "settled" means, stated so a person can check it:** somebody can open the project and read
 back the accent, the surface ramp and the page list before a single component has been authored. If

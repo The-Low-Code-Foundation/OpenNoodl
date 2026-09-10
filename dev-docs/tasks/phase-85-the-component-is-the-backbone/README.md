@@ -31,7 +31,7 @@ was followed — and where it does speak, it is sometimes wrong.**
 |---|---|---|---|
 | 1 | *"A named section is a component… a graph past ~25 nodes wanted to be several"* | template pages of **63 / 72 / 98** nodes, **zero** section components | CMP-002 |
 | 2 | *"Interfaces are deliberate"* — and nothing else | **14%** of template components publish outputs, vs **84%** of the Noodl prefabs | CMP-001 |
-| 3 | 🔴 *"A single node… is not a component — a file and a hop that bought nothing"* | LearnBook's `/Global logical components/`: **37 components, 107 instantiations**, `Format full name` **9×**, `Is Trainer check` **9×**. Prefabs: **80** logic-only components, **49** of them one node | CMP-003 |
+| 3 | 🔴 *"A single node… is not a component — a file and a hop that bought nothing"* | LearnBook's two shared logic folders: **37 components, 107 instantiations**, `Format full name` **9×**, `Is Trainer check` **9×**. Prefabs: **80** logic-only components, **45** of them one or two working nodes | CMP-003 — rule ✅ |
 | 4 | 🔴 nothing — the briefing never mentions the library | a **42-entry shelf** with `list_library` / `install_prefab` ships in the same server; `grep` for library/shelf/reuse in `instructions.ts` returns **zero**. Every part is built from scratch | CMP-004 |
 
 Row 3 is the sharpest: **the shipped doctrine actively forbids the single most common utility
@@ -114,13 +114,31 @@ and it is the difference between the MCP getting better advice and the MCP getti
 
 | id | what | status |
 |---|---|---|
-| [CMP-001](CMP-001-THE-COMPONENT-INTERFACE-PLAYBOOK.md) | The nine interface patterns, the three grading floors, and the `States.currentState` defect that blocks the variant pattern | **OPEN** — written 2026-09-09, not built |
+| [CMP-001](CMP-001-THE-COMPONENT-INTERFACE-PLAYBOOK.md) | The nine interface patterns, the three grading floors, and the `States.currentState` defect that blocks the variant pattern | **AC1 ✅ 2026-09-10** — the enum input is on the wire. AC2–AC4 open |
 | [CMP-002](CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md) | A graded MCP build of one business landing page, with the §3 reflection run over it. The baseline arm for CMP-001 AC4 | **NEXT** — 🔴 run it in a session that has read only the brief |
-| CMP-003 | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **OPEN** — measured, not written |
-| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **OPEN** — 🔴 highest leverage in the phase |
+| [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅ 2026-09-10** — both doctrine copies corrected. AC2–AC4 open |
+| [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅ 2026-09-10** — the shelf is step 3 of THE ORDER. AC2–AC5 open, 🔴 still highest leverage |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
-## 6. Instrument
+## 6. Instruments
 
 [`measure-interfaces.py`](measure-interfaces.py) — one script, four graph dialects, so no arm is
 graded by a pass written for it. Reproduces every number in CMP-001 §2.
+
+[`measure-logic-components.py`](measure-logic-components.py) — the CMP-003 census: which components
+are logic-only, how big they are, and how often each is instantiated. Committed for the reason §6
+gives and session 2 proved: **two of the four numbers in §2 row 3 could not be reproduced from the
+task file**, because the pass that produced them was never committed. One was a narrower question
+(LearnBook has TWO logic folders, not one) and one was simply wrong ("49 of them one node" —
+0 by every whole-graph reading, 20 counting working nodes, 45 at one-or-two). See CMP-003 §2.1.
+
+## 7. Known gaps, owner NONE
+
+- 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.**
+  `catalog.ts`'s `getNodeTypeDetail` copies `summary`, `description`, `whenToUse`,
+  `runtimeBehavior`, `relatedNodes` and `dynamicPorts` out of the enrichment and stops. Both fields
+  reach exactly one reader — the EDITOR's node-docs panel (`nodeDocs.ts:161`, "Watch out for"),
+  which is a person. So every pattern and anti-pattern authored into the enrichment corpus is
+  invisible to the agent doing the authoring. Found 2026-09-10 while arming CMP-001 AC1; it is not
+  that AC's to fix, and it is the natural home for CMP-001 AC2's playbook if that lands per-node
+  rather than as a fifth doctrine field.

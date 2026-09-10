@@ -135,7 +135,11 @@ describe('SBR-013 §2 — the reasons and the tool names ride free, on the wire'
     expect(typeof data.designDoctrine).toBe('string');
     expect(typeof data.authoringDoctrine).toBe('string');
 
-    expect(data.designDoctrine).toContain('The order: the look, then the screens, then the components');
+    // ⚠️ CMP-004 AC1 (phase 85) added a third step to this section — the shelf,
+    // between planning the tree and authoring the first leaf — so the heading
+    // names four things now. The assertion this file cares about is unchanged:
+    // the look and the screen list come before the components.
+    expect(data.designDoctrine).toContain('The order: the look, then the screens, then the shelf, then the components');
     expect(data.authoringDoctrine).toMatch(/The order comes first/);
   });
 

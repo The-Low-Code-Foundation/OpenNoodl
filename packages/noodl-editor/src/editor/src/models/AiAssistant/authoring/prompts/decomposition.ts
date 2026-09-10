@@ -78,6 +78,10 @@ Plan a CREATE operation for each of these:
 - A logic cluster. Three or more logic nodes cooperating on one job (a create-record flow, a
   validation chain, a search-and-filter pipeline) is a logic component with a declared interface —
   not a cloud of nodes parked beside the visuals.
+- A named utility, HOWEVER SMALL. A name formatter, a permission check, a date format, the shape an
+  API wants — if a builder on another page would rewrite it rather than find it, it is a component
+  with a name, even at one node. This is the most reused thing in real Noodl apps: LearnBook's
+  shared logic folders hold 37 of them, instantiated 107 times.
 
 Then the page operation's intent says what it INSTANTIATES, and each section's intent states its
 Component Inputs/Outputs, because the agent authoring a section sees only your intent and never its
@@ -90,10 +94,11 @@ Placement, stated in the intent so two agents do not choose differently:
 - Plausibly reused, or already used twice → a shared folder.
 
 WHEN NOT TO FACTOR
-Judgement, not enthusiasm. Do not plan a component for: a single node; a wrapper with no name you
-would say out loud; a two-node group used once. A component that takes nothing, emits nothing and
-appears once has added a file and a hop and bought nothing. If a page genuinely has one section, it
-has one section.`;
+Judgement, not enthusiasm. SIZE IS NOT THE TEST — the test is whether the thing has a name a person
+would use. Do not plan a component for: a wrapper with no name you would say out loud; a two-node
+group used once that does nothing you would name. A component that takes nothing, emits nothing,
+appears once and has no name has added a file and a hop and bought nothing. If a page genuinely has
+one section, it has one section.`;
 
 /**
  * The doctrine for a model AUTHORING one component, which cannot create
@@ -164,8 +169,20 @@ and change than the same page as one long column of nodes.
   it is. Write one where the next reader would otherwise change something and break it — a decision that
   had an alternative, a rule from outside the app that the graph cannot state, or a trap. Omit it when
   the type and label already say it: a comment restating either is noise, and most nodes need none.
+- **A named utility is a component however small it is.** A Function that turns a name into
+  "A. Surname", a permission check, a date format, a string the API wants in a shape nobody
+  remembers — if a builder on another page would rewrite it rather than find it, give it a name and
+  a folder. This is the most reused thing in real Noodl codebases and it is usually ONE working
+  node: LearnBook's shared logic folders hold 37 such components instantiated 107 times, with
+  \`Format full name\`, \`Is Trainer check\` and \`Generate Google icon object\` at nine uses each; 45 of
+  the 80 logic-only components the original team shipped in \`library/prefabs\` are one or two working
+  nodes. Findability is the case and reuse is the bonus — a named \`Sanitise email\` in a shared
+  folder is the second builder's answer, an anonymous Function on page 4 is not.
 
-**When not to.** A single node, an unnamed wrapper, or a two-node group used once is not a
-component — it is a file and a hop that bought nothing. A page with one section has one section.
+**When not to.** An unnamed wrapper, or a two-node group used once and doing nothing you would say
+out loud, is not a component — it is a file and a hop that bought nothing. A page with one section
+has one section. ⚠️ **Size is not the test, and a small graph is not the exception.** The test is
+whether the thing has a name a person would use; if it does, extract it at one node, and if it does
+not, three nodes will not save it.
 
 **Rule of thumb.** A component graph past ~25 nodes is telling you it wanted to be several.`;

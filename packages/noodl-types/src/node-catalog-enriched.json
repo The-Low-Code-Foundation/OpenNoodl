@@ -28637,7 +28637,7 @@
         "mechanisms": [
           "runtime-discovered"
         ],
-        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs."
+        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets one input per state (`value-<state>-<value>`) and a current-value output; each state gets an activation signal input (`to-<state>`), a boolean output (`at-<state>`) and a signal output (`reached-<state>`). Once \"states\" is set the node also mints a single enum INPUT named `currentState` — the same name as the declared string output — which selects a state by name in one wire, without a signal port per state."
       },
       "parameterEncoding": {
         "known": true,
@@ -28748,10 +28748,10 @@
           "values": "Comma-separated value names (parameter only); each name becomes a value output plus one input per state.",
           "toggle": "Signal; advances to the next state in list order, wrapping around — a one-connection two-state toggle.",
           "useTransitions": "Boolean; when false every state change is instant and the per-state transition curve inputs are removed.",
-          "currentState": "String output with the active state's name; it updates at the start of a transition, not when the tween finishes.",
+          "currentState": "TWO ports share this one name. As an OUTPUT it is a string carrying the active state's name; it updates at the start of a transition, not when the tween finishes. As an INPUT it is a generated enum — it appears once `states` is set, lists the state names, and selects a state by name. The input is the one-wire way to drive a variant: `Component Inputs.<enum port> → States.currentState` needs no signal port per state and no Condition chain.",
           "stateChanged": "Signal; fires on every state change except the initial state applied at startup."
         },
-        "runtimeBehavior": "All state- and value-specific ports are runtime-discovered: the viewer generates them from the `states` and `values` parameters and pushes them to the editor per instance. For each value V: an output named `V` (connections only; type chosen by a generated enum input `type-V` — number, string, boolean, color or textStyle, default number). For each state S and value V: an input `value-S-V` holding V's setting while in state S. For each state S: a signal input `to-S` (go to S), a boolean output `at-S` (true while S is active), a signal output `reached-S` (fires when the transition into S completes — immediately when there is no transition), and, while `useTransitions` is on, a curve input `transitiondef-S` (state-wide default) plus per-value overrides `transition-S-V` for number/color values. A generated enum input `currentState` sets the state by name. An authoring tool should write `states`, `values`, `type-V` and `value-S-V` as parameters, wire signals to `to-S`, and read `V`, `at-S` and `reached-S` — the runtime registers these names on demand.",
+        "runtimeBehavior": "All state- and value-specific ports are runtime-discovered: the viewer generates them from the `states` and `values` parameters and pushes them to the editor per instance. For each value V: an output named `V` (connections only; type chosen by a generated enum input `type-V` — number, string, boolean, color or textStyle, default number). For each state S and value V: an input `value-S-V` holding V's setting while in state S. For each state S: a signal input `to-S` (go to S), a boolean output `at-S` (true while S is active), a signal output `reached-S` (fires when the transition into S completes — immediately when there is no transition), and, while `useTransitions` is on, a curve input `transitiondef-S` (state-wide default) plus per-value overrides `transition-S-V` for number/color values. Separately, once `states` is set the node mints ONE enum input named `currentState`, sharing the name of the declared string output and defaulting to the first state; writing or wiring it moves the node to that state. An authoring tool should write `states`, `values`, `type-V` and `value-S-V` as parameters, and read `V`, `at-S` and `reached-S`. To change state it has two forms and they are not interchangeable: wire a signal to `to-S` when an event causes the change (a click, a `done`), and wire a VALUE to `currentState` when the state IS a value the component was handed (a `size`, a `tone`, a `Request Type`) — the second is one wire where the first would need one port per state plus a Condition chain. The runtime registers all of these names on demand.",
         "examples": [
           "anim-states-panel"
         ],
@@ -28759,10 +28759,12 @@
           "Button `onClick` → `to-<state>` to enter a specific state; `toggle` when there are exactly two states.",
           "One value output → a Group's `opacity` and another → Color Blend `blendValue`: several properties animate together from a single state change.",
           "`at-<state>` (boolean) → `visible` or `enabled` inputs: gate UI on the current state as a level.",
+          "`Component Inputs.<enum>` → `States.currentState` (the enum INPUT): the component takes its variant as a parameter and the state machine holds the per-variant values. This is how a `size`/`tone`/`type` port reaches a States node in one wire — `library/prefabs` uses it in toast (`Type`), xano (`Request Type`, `Auth Token Storage`) and media-query (`Debugger Position`).",
           "`reached-<state>` (signal) → a follow-up action: sequence work after the transition finishes ( `stateChanged` fires at the start, `reached-` at the end)."
         ],
         "antiPatterns": [
           "Comparing `currentState` strings in an Expression to derive booleans — the generated `at-<state>` outputs already provide them.",
+          "One signal input per state plus a Condition or Switch chain to pick between them, where the state is simply a value the component was given — wire that value to the `currentState` enum input instead.",
           "Wiring `stateChanged` where 'animation done' is meant; it fires when the change starts. Use `reached-<state>`."
         ],
         "relatedNodes": [
