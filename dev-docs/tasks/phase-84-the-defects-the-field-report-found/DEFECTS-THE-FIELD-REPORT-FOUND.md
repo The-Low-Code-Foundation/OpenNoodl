@@ -65,6 +65,15 @@ of them hide a real gap that is smaller or different than the issue claims.
 
 ## 5. Replies owed — the phase does not close until this table is empty
 
+🔴 **The table was SHORT BY TWO.** #21 and #41 are among the fifteen and had no row here until
+2026-09-10. A reply table that does not list an issue reads as a reply that is not owed.
+
+✅ **No approval is needed to send these.** Richard granted standing authorisation 2026-09-10:
+post and close from his account, no ask. Every reply carries two mandatory things — a first line
+saying it is an automated reply generated from Claude, and **the release the fix ships in**
+(0.2.3 as of 2026-09-10; re-derive it, do not inherit the number).
+
+
 The end condition in [README.md](./README.md) §6 is that the reporters have been **told**. A fix
 nobody was told about gets re-reported.
 
@@ -74,8 +83,10 @@ nobody was told about gets re-reported.
 | #12 | @SgtSpork | close as done, naming the evidence | ⬜ |
 | #1 | @richardosborne14 | close as fixed; mention the second bug found on the same path | ⬜ |
 | #15 | @echelonsoftdm-source | close as obsolete, with what replaced it | ⬜ |
-| #5 | @VitoMinheere | the one-line cause **and** where to patch a lesson — both halves, asked in 2024. 🟢 **Fixed `4068d139`**; draft reply in [FLD-007 §4c](./FLD-007-A-LESSON-STEP-THAT-CAN-BE-COMPLETED.md) — ready to send | ⬜ |
-| #14 | @theMeysam | the `and:` rewrite that unblocks them **today**, plus the swallowed-error fix. 🟢 **Fixed 2026-09-10 (FLD-008)**; full draft in [FLD-008 §7](./FLD-008-AN-AGGREGATION-THAT-CANNOT-ANSWER-SAYS-SO.md) — ready to send | ⬜ |
+| #5 | @VitoMinheere | the one-line cause **and** where to patch a lesson — both halves, asked in 2024. 🟢 Fixed `4068d139` | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685302](https://github.com/The-Low-Code-Foundation/NodeGX/issues/5#issuecomment-5615685302) |
+| #14 | @theMeysam | the `and:` rewrite that unblocks them **today**, plus the swallowed-error fix. 🟢 Fixed `d1daabb1` (FLD-008) | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685570](https://github.com/The-Low-Code-Foundation/NodeGX/issues/14#issuecomment-5615685570) |
+| #21 | @richardosborne14 | both defects, and that BOTH change behaviour on existing projects. 🟢 Fixed `3c13818d` (FLD-001) | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685029](https://github.com/The-Low-Code-Foundation/NodeGX/issues/21#issuecomment-5615685029) |
+| #41 | @dishant-kumar-thakur | 🔴 **REPLIED, DELIBERATELY NOT CLOSED.** The overwrite half is fixed (`fa227028`, FLD-009); the `session_status` tool it actually asks for is **FLD-010, unbuilt**. Closing it would have closed an unbuilt feature request on the strength of a different fix | ✅ **SENT 2026-09-10, ISSUE STAYS OPEN** — [comment 5615685841](https://github.com/The-Low-Code-Foundation/NodeGX/issues/41#issuecomment-5615685841) |
 | #25 | @dishant-kumar-thakur | it is not the emitter; it is N3 | ⬜ |
 | #27 | @dishant-kumar-thakur | no mechanism found; re-measure after FLD-004 | ⬜ |
 | #30 | @dishant-kumar-thakur | the handler exists; the real gap is Linux | ⬜ |

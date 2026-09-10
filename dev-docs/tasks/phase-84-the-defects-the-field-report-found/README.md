@@ -40,7 +40,7 @@ worse than an expensive right one.
 
 | # | question | why it changes the work |
 |---|---|---|
-| R1 | **Which release does this ship with — 0.2.3, or split?** | FLD-001 is a blocker on a shipped node. It may not want to wait behind the rest. |
+| R1 | ✅ **ANSWERED 2026-09-10 — 0.2.3, not split.** Richard, when authorising the first four issue replies. That number is now in four public comments (#21, #5, #14, #41), so a change of plan has to be announced on those threads. ⚠️ 0.2.3 is the *next* cut only because 0.2.2 was cut on 09-06 and rolled back — re-derive before quoting it again | — |
 | R2 | **Charts: a kit, or core nodes?** (FLD-015) | The kit route exports **today** and is days; core nodes are weeks and duplicate arc maths across runtime and emitter. But a kit is not in the picker by default, so "there is no chart primitive" stays true for anyone who does not install it. Product call, not engineering. |
 | R3 | **The Advanced Columns prefab (FLD-003) — build it, or add ports?** | Richard proposed the prefab himself and argued against "a hundred new fields". Confirm before anyone authors library content. |
 | R4 | **Does FLD-004 ship in a patch release?** | It switches on a value coercion that has been dead for every dynamically registered units port **since the initial commit**. Mostly it makes wrong things right. "Mostly" is the problem. |

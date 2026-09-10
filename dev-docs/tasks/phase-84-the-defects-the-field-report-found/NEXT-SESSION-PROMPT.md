@@ -1,33 +1,34 @@
 # Phase 84 — next session
 
 **Phase:** 84, *the defects the field report found*. **Prefix `FLD`.** Scoped 2026-09-09.
-Read [README.md](./README.md) first — §2 carries six rulings and four of them still gate tasks.
+Read [README.md](./README.md) first — §2 carries the rulings; **R1 is now answered (0.2.3)** and
+four still gate tasks.
 
-## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 3)
+## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 4)
 
-Seventeen files, each grepped for its own `🟢 **BUILT**` marker. **Three built, fourteen never
+Seventeen files, each grepped for its own `🟢 **BUILT**` marker. **Four built, thirteen never
 built.** That is the file count, not a copied status.
 
 **Track A — it went wrong and said nothing** (outranks track B in every ordering decision)
 
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
-| FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` | — |
+| FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
 | FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built | R4 |
 | FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built | 🔴 **P13 collision** |
 | FLD-006 | Fit view fits | #33 | ⬜ never built | — |
-| FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` | — |
-| FLD-008 | An aggregation that cannot answer says so | #14 | ⬜ never built | — |
-| FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven | — |
+| FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
+| FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
+| FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-012 | The empty-box warning stops crying wolf | #32 | ⬜ never built | — |
 
 **Track B — it costs too much to install and to drive**
 
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
-| FLD-002 | The Columns node says which breakpoint it is at | #22 | ⬜ never built | FLD-001 ✅ **now unblocked** |
+| FLD-002 | The Columns node says which breakpoint it is at | #22 | ⬜ never built | FLD-001 ✅ unblocked |
 | FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002, FLD-004, **R3** |
-| FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅ **now unblocked**, **R6** |
+| FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅ unblocked, **R6** |
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | ⬜ never built | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | ⬜ never built | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | — |
@@ -35,89 +36,87 @@ built.** That is the file count, not a copied status.
 | FLD-016 | The Linux install works on a current distribution | #29 | ⬜ never built | — |
 | FLD-017 | The release stops shipping what it never runs | #42 | ⬜ never built | R5 (minify only) |
 
-## 2. The next task to build — FLD-008, then FLD-006 or FLD-012
+## 2. 🔴 The reply gate is OPEN — stop asking, start sending
 
-Track A outranks track B, and of the five track-A tasks left, two are gated or collided:
+Richard granted **standing authorisation** on 2026-09-10: post and close from his GitHub account,
+**no ask**. `gh` is authenticated as `richardosborne14`. Two things are mandatory on every reply:
 
-1. **[FLD-008 — an aggregation that cannot answer says so](./FLD-008-AN-AGGREGATION-THAT-CANNOT-ANSWER-SAYS-SO.md)**
-   (#14). Nothing gates it, and it is the purest track-A shape in the phase: a filter is dropped and
-   the node answers anyway.
-2. **[FLD-006 — fit view fits](./FLD-006-FIT-VIEW-FITS.md)** (#33), or
-   **[FLD-012 — the empty-box warning stops crying wolf](./FLD-012-THE-EMPTY-BOX-WARNING-STOPS-CRYING-WOLF.md)**
-   (#32). Both ungated. FLD-012's §3 already records that #32's own proposed discriminator misses
-   the slider thumb — do not build the reporter's suggestion as stated.
+1. A first line saying it is an **automated reply generated from Claude**.
+2. **The release the fix ships in** — 0.2.3 as of 2026-09-10. ⚠️ Re-derive it; 0.2.2 was cut on
+   09-06 and rolled back, so the number has moved once already.
+
+**Four sent in session 4** — #21, #5, #14 replied and **closed**; #41 replied and **left open**.
+
+🔴 **#41 is the lesson.** It asks for the `session_status` tool (FLD-010, unbuilt). FLD-009 fixed a
+*different* half — the overwrite. Closing it would have closed an unbuilt feature request on the
+strength of someone else's fix. **Check what the issue asked for, not what you fixed near it.**
+
+⚠️ **The register's §5 table was short by two.** #21 and #41 were among the fifteen and had no row
+at all. A reply table that omits an issue reads as a reply that is not owed. Both are in it now.
+
+**Distance: 4 of 17 built. 4 replies sent, 12 still owed** (§5 of the
+[register](./DEFECTS-THE-FIELD-REPORT-FOUND.md)).
+
+## 3. The next task to build — FLD-006, then FLD-012
+
+Track A outranks track B. Of the four track-A tasks left, two are gated or collided:
+
+1. **[FLD-006 — fit view fits](./FLD-006-FIT-VIEW-FITS.md)** (#33). Nothing gates it.
+2. **[FLD-012 — the empty-box warning stops crying wolf](./FLD-012-THE-EMPTY-BOX-WARNING-STOPS-CRYING-WOLF.md)**
+   (#32). Ungated, but read its §3 first: #32's own proposed discriminator **misses the slider
+   thumb**, so do not build the reporter's suggestion as stated. Register row **P1** blocks its AC3.
 
 🔴 **FLD-004 needs R4 and FLD-005 needs P13 resolved. Do not start either without the ruling.**
 
-**FLD-010 is now unblocked** by FLD-009, and its §3 argument got stronger, not weaker: the editor
-already refuses to clobber project files as well as components, so R6 ("does FLD-010 include the
-advisory lock") can reasonably be answered *no*. Ask before building a locking protocol.
+**FLD-010 is unblocked**, and R6 ("does it include the advisory lock") can reasonably be answered
+*no* — that is what the #41 reply said in public. Ask before building a locking protocol.
 
-## 3. What session 3 learned that the next one should not re-learn
+## 4. What session 4 learned that the next one should not re-learn
 
-🔴 **An acceptance criterion can be green before the work, and FLD-009's AC1 was.** It asked for
-"agent binds a backend, person touches a component, autosave fires". Measured against HEAD before a
-line was written: **the binding survives that sequence and always would** — the project-level save
-compares content built from memory and skips the file when it has not moved, and a component edit
-never moves it. The loss needs an editor change to a *project-level* file. **Measure the AC's own
-sequence against HEAD before you build the thing it grades**, and if it is green, the AC is wrong,
-not the defect.
+✅ **A real reverted arm fits inside jest, and it is worth the twenty lines.** Read the module's own
+source, apply the inverse patch **textually**, `expect(src).toContain(...)` each replacement so a
+moved source fails loudly instead of grading nothing, write the result **beside the original** so
+its own imports resolve identically, `require` it, then `unlink` in a `finally`. FLD-008 does this
+for a `.js` node and a `.ts` node; both reverted arms reproduce the real
+`TypeError: Cannot read properties of undefined (reading 'sendWarning')` on the way past.
 
-🔴 **Two register rows were stale, in both directions.** **N1** was right about the missing guard and
-wrong about when it fires (above). **P15** — "there is no Make Home in the component context menu" —
-is simply **wrong at HEAD**: it is there, it fires, and it refuses out loud with a reason. Both are
-now corrected in §1/§6 of the register. That is the **sixth and seventh** time a row in this repo has
-outlived its own measurement. **Re-measure before inheriting.**
+🔴 **A refusal that is only reported to the editor is a refusal that does not exist in production.**
+FLD-008's whole defect: `context.editorConnection.sendWarning(…)` called unconditionally from an
+error callback. Outside the editor it throws, the throw is swallowed by a `catch` that logs, and the
+node carries on with an empty filter. **Grep for unguarded `editorConnection` in callbacks** — there
+was a third copy in `nodes-deprecated` (register row **P20**), found by sweeping `convertFilterOp`
+callers rather than by reading the two nodes the task named.
 
-✅ **The webpack module registry is how you get a reverted arm in a running editor without a rebuild.**
+🔴 **And the ordering was the fix, not the guard.** A guard alone still loses the message if the
+connection is present and throws for another reason. Capture first, then attempt the surface. There
+is an arm on exactly that, and it is the only arm the guard-shaped fix would fail.
 
-```js
-let wr; window.webpackChunknoodl_editor.push([['probe'], {}, (r) => { wr = r; }]);
-const svc = wr('./src/editor/src/services/ProjectStructure/index.ts');
-const PM  = wr('./src/editor/src/models/projectmodel.ts').ProjectModel;
-```
+⚠️ **`test:main` did not move** — 446 suites / 7359, identical before and after. That is correct and
+not a hole: FLD-008 lives in `@noodl/runtime` and `@noodl/cloud-runtime`, which are gated by
+`npm run test:packages` (`pr.yml:160`), not by `test:main`. **Check which gate covers the package
+you changed before reading an unchanged number as coverage.**
 
-2942 modules, keyed by source path. Shadow the function the fix added, drive, restore from the saved
-original. FLD-009's arms 2 and 3 are that pair on an identical payload, seconds apart.
+## 5. Gates, as they stood at the end of session 4
 
-⚠️ **`cdp click` and `getBoundingClientRect` are in different coordinate spaces once anything is
-zoomed.** With `document.body.style.zoom` set, `cdp click` landed ~20 px off what `elementFromPoint`
-agreed was the element. Reset the zoom, or click through the element's own handler and say in the
-write-up that you did.
+`npm run typecheck` **exit 0** · `typecheck:editor` **exit 0** ·
+`test:main` **446 suites / 7359 passing, exit 0** ·
+`@noodl/runtime` **157 suites / 2686 passing** · `@noodl/cloud-runtime` **14 suites / 226 passing**.
 
-⚠️ **A menu that opens off the bottom of the window is the normal case at 1368×784.** The context
-menu is anchored near the pointer and the window is only 784 px tall; `remote.getCurrentWindow()
-.setSize()` will not grow past the 900 px display. Hit-scan with `elementFromPoint` down a column to
-find what is actually reachable.
+⚠️ `test:ci` was **not** run this session — nothing here touches the editor. Its floor is the named
+AIX-006 four.
 
-✅ **The workaround for a live editor on a project you control still works, unchanged** — copy a
-project into the scratchpad, write `<scratchpad>/userdata/recently_opened_project.json`, launch with
-`NOODL_USER_DATA_DIR=<scratchpad>/userdata npm run dev:debug -- --quiet`, then **click the launcher
-card** (it does not auto-open). Richard's config and his 79 projects are never touched. **P14
-("New project → Quick Start" hangs) is still unmeasured and still owned by NONE.**
+⚠️ A peer session held phase 83 work uncommitted in this checkout throughout. **Commit by pathspec.**
 
-## 4. Gates, as they stood at the end of session 3
+## 6. 🔴 Rulings — one down, four still gating
 
-`typecheck:editor` **exit 0** · `test:main` **446 suites / 7359 passing, exit 0** ·
-`test:ci` **2962 specs, 4 failures — the named AIX-006 floor, unchanged**.
+✅ **R1 ANSWERED: 0.2.3, not split** (Richard, 2026-09-10). It is now in four public comments, so a
+change of plan has to be announced on those threads.
 
-⚠️ `typecheck:editor-tests` read **2 errors in `packages/nodegx-export/src/cli/run.ts`** during this
-session. **They were not ours and not HEAD's** — a third session was mid-build on phase 83's HLS-007
-with six uncommitted files. A typecheck reads the **working tree**; the commit hash you print beside
-it does not. Do not file that as a register row and do not "fix" those files.
-
-## 5. 🔴 Rulings still needed — do not guess
-
-R1 which release · R2 charts as a kit or core nodes · R3 the Advanced Columns prefab · R4 does the
+Still open: R2 charts as a kit or core nodes · R3 the Advanced Columns prefab · R4 does the
 units-port fix ship in a patch · R5 is minification in scope · R6 does FLD-010 include the lock
-(**FLD-009 makes the answer "probably not" — confirm**). Full wording in [README.md](./README.md) §2.
+(**answered "probably not" in public on #41 — confirm**). Full wording in [README.md](./README.md) §2.
 
-## 6. The end condition has not moved
+## 7. The end condition has not moved
 
 The phase closes when the fifteen issues are each **fixed and closed, or answered on the thread with
-the measurement that changed our mind**. §5 of the [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md)
-is a table of fourteen replies owed, **all still `⬜`**.
-
-Distance: **3 of 17 tasks built. 0 of 14 replies sent.** 🔴 Three issues are now answerable with a
-measurement — **#21 (FLD-001), #5 (FLD-007, reply drafted in its §4c), #41 (FLD-009)**. A session
-that sends those three costs an hour and moves the only number that closes this phase.
+the measurement that changed our mind**. It is no longer zero. **Twelve replies to go.**
