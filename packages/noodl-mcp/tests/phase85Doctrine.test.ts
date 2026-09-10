@@ -38,7 +38,8 @@ import * as path from 'path';
 
 import { DECOMPOSITION_PLANNING, DESIGN_DOCTRINE_MD } from '../src/editor-deps';
 import { projectInstructions } from '../src/instructions';
-import { call, connect, copyFixture, type TestSession } from './helpers';
+import { call, connect, copyFixture, reveal, type TestSession } from './helpers';
+import type { ListLibraryResponse } from '../src/tools/libraryTools';
 import type { ProjectInfoResponse } from '../src/tools/responses';
 
 interface NodeTypeSummary {
@@ -225,6 +226,80 @@ describe('CMP-004 AC1 — the shelf is in THE ORDER', () => {
 
   it('the doctrine says WHY, which is the half the budgeted surface can never afford', () => {
     expect(DESIGN_DOCTRINE_MD).toMatch(/Why the shelf is a step and not a footnote/);
+  });
+});
+
+describe('CMP-004 AC2 — the doctrine tells an agent to ASK the shelf, not browse it', () => {
+  it('🔴 names the query and shows it being asked in the words of a part, over the wire', async () => {
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    const doctrine = String(data.designDoctrine);
+
+    // A step that says "call list_library and read the index" is a browse over 72 rows. AC2's
+    // whole point is that an agent about to build a date formatter asks for one BY NAME.
+    expect(doctrine).toContain('list_library({query: "date formatter"})');
+    expect(doctrine).toMatch(/ASK IT FOR EACH PART YOU WERE ABOUT TO BUILD/);
+  });
+
+  it('🔴 warns off the tags, and says WHY rather than just saying so', async () => {
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    const doctrine = String(data.designDoctrine);
+
+    // A bare "do not use the tags" is a rule to be overridden by the next plausible thought. The
+    // measurement travels with it: `Utilities` vs `Utility` is the reason, and it is checkable.
+    expect(doctrine).toMatch(/Do not decide from the tags/i);
+    expect(doctrine).toContain('`Utilities`');
+    expect(doctrine).toContain('`Utility`');
+  });
+
+  it('still puts the query step BEFORE authoring — advice after the leaves are written is a rewrite', async () => {
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info', {});
+    const doctrine = String(data.designDoctrine);
+    expect(doctrine.indexOf('query: "date formatter"')).toBeGreaterThan(doctrine.indexOf('**The screens.**'));
+    expect(doctrine.indexOf('query: "date formatter"')).toBeLessThan(doctrine.indexOf('Only then author them.'));
+  });
+});
+
+describe('CMP-004 AC2 — the query answers over the wire, not only in the index module', () => {
+  // `list_library` lives in the deferred `explore` group — AWP-006's budget put it there — so it
+  // has to be revealed before it can be called, exactly as a model would have to.
+  beforeAll(async () => {
+    await reveal(session, 'explore');
+  });
+
+  it("answers the AC's own worked example with the entry that formats dates", async () => {
+    const { isError, data } = await call<ListLibraryResponse>(session, 'list_library', {
+      query: 'is there a date formatter'
+    });
+    expect(isError).toBe(false);
+    const slugs = data.entries.map((e) => e.slug);
+    expect(slugs).toContain('intl-format');
+    expect(slugs[0]).toBe('intl-format');
+    // Each row says why it is in the answer, so a model can judge the second-best rather than
+    // trusting the first.
+    expect(data.entries[0].matchedTerms).toEqual(expect.arrayContaining(['date', 'formatter']));
+  });
+
+  it('🔴 an empty answer is an ANSWER, and says what to do with it', async () => {
+    const { data } = await call<ListLibraryResponse>(session, 'list_library', { query: 'xylophone tuning' });
+    expect(data.entries).toEqual([]);
+    // The sentence that turns "nothing here" into step 4 rather than into a silent from-scratch
+    // build. Without it an empty list reads as "the shelf has no opinion".
+    expect(data.note).toContain('export_to_library');
+    expect(data.note).toMatch(/build the part/i);
+  });
+
+  it('says how many of how many, so a short answer is not mistaken for a small shelf', async () => {
+    const { data } = await call<ListLibraryResponse>(session, 'list_library', { query: 'date' });
+    expect(data.note).toMatch(/\d+ of \d+ entries match/);
+    const { data: all } = await call<ListLibraryResponse>(session, 'list_library', {});
+    expect(all.entries.length).toBeGreaterThan(data.entries.length);
+  });
+
+  it('the plain index is unchanged — a query is an addition, not a new default', async () => {
+    const { data } = await call<ListLibraryResponse>(session, 'list_library', {});
+    expect(data.entries.length).toBeGreaterThan(60);
+    expect(data.entries.every((e) => e.matchedTerms === undefined)).toBe(true);
+    expect(data.note).toMatch(/^\d+ entries\./);
   });
 });
 

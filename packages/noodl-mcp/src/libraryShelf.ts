@@ -51,6 +51,10 @@ export interface ShelfRow {
   description: string;
   tags: string[];
   version: string;
+  /** CMP-004 AC2 — present only on a `query` call, saying why this row is in the answer. */
+  matchedTerms?: string[];
+  /** CMP-004 AC2 — the fields those terms hit, best first. */
+  matchedIn?: ShelfField[];
 }
 
 /** An entry directory that exists but could not be read as an entry. */
@@ -128,11 +132,156 @@ export function readLibraryJson(entryDir: string): LibraryJson {
  * half-written directory) is reported in `problems` rather than either failing
  * the whole list or silently vanishing from it.
  */
+/**
+ * CMP-004 AC2 — the free-text query.
+ *
+ * ## Why tags were not enough, measured over the 72 entries on the shelf
+ *
+ * 🔴 The one entry that formats things is tagged **`Utilities`**. The other eight utilities are
+ * tagged **`Utility`**. So `list_library({tag: "Utility"})` — the obvious query, and the only
+ * kind the shelf could answer before this — returns eight rows and **excludes the only formatting
+ * entry there is**. The rest of the vocabulary is no better: 22 distinct tags over 72 entries, of
+ * which `UI` covers **50**, and `Localization`, `Pages`, `Payments`, `Service`, `Animation`,
+ * `Custom nodes` and `Utilities` cover **one each**. A vocabulary where the commonest tag holds
+ * 69% of the shelf and seven tags hold one entry apiece is not an index, and no amount of asking
+ * the right tag fixes a tag that was typed twice two ways.
+ *
+ * ⚠️ **This is deliberately NOT `find_tools`' matcher**, which is a substring test over a tool
+ * group's id, title and keywords and pointedly refuses to search the group's prose. That refusal
+ * is right there and wrong here: a tool group's purpose is a sentence whose incidental nouns
+ * duplicate the tool names, whereas a library entry's description is *the only place what the
+ * part does is written down*. `intl-format`'s node names — Relative Time, Format Number, Format
+ * List, Pluralize — exist nowhere in its metadata except that sentence.
+ *
+ * ## The matcher
+ *
+ * Word-prefix, both directions, four characters in: a query term matches a haystack word when
+ * either starts with the other. That is what makes *"date formatter"* find a part whose label
+ * says *"Format"* — a plain substring test does not, because `"format".includes("formatter")` is
+ * false, and that failure is silent and looks exactly like an empty shelf.
+ *
+ * Terms are ORed, not ANDed, and the row carries which terms hit and where. An AND is better
+ * precision and a worse failure: *"format a date as Thursday"* has a term no entry can match, and
+ * ANDing it answers "nothing on the shelf" — the one answer that makes an agent build from
+ * scratch. Ranking carries the precision instead.
+ */
+const QUERY_STOPWORDS = new Set([
+  'a', 'an', 'and', 'any', 'are', 'as', 'be', 'can', 'do', 'does', 'for', 'from', 'get', 'has',
+  'have', 'how', 'i', 'in', 'is', 'it', 'its', 'me', 'my', 'need', 'of', 'on', 'or', 'that', 'the',
+  'their', 'there', 'they', 'this', 'to', 'use', 'want', 'was', 'what', 'which', 'with', 'you'
+]);
+
+/** Lowercase alphanumeric words, which is all either side of the match needs to be. */
+function words(text: string): string[] {
+  return text.toLowerCase().split(/[^a-z0-9]+/i).filter((w) => w.length > 0);
+}
+
+export function queryTerms(query: string): string[] {
+  const seen = new Set<string>();
+  for (const w of words(query)) {
+    if (w.length < 2 || QUERY_STOPWORDS.has(w)) continue;
+    seen.add(w);
+  }
+  return [...seen];
+}
+
+/**
+ * The shorter of the two a prefix of the longer, four characters in, with at most four characters
+ * of tail — `format` ↔ `formatter`, `date` ↔ `dates`, `list` ↔ `listing`.
+ *
+ * 🔴 **The tail bound is not decoration, it was measured.** Without it, the tag **`Form`** matched
+ * the term **`formatter`**, and since a tag scores higher than a description, `date-picker` came
+ * back as the best answer to *"is there a date formatter?"* — outranking the entry that actually
+ * formats dates, whose own match is in its label. A prefix rule with no bound on the remainder
+ * turns every four-letter word into a wildcard, and the failure is a plausible-looking wrong
+ * answer rather than an empty one.
+ */
+const MAX_PREFIX_TAIL = 4;
+
+function wordMatches(term: string, word: string): boolean {
+  if (term === word) return true;
+  const [shorter, longer] = term.length <= word.length ? [term, word] : [word, term];
+  if (shorter.length < 4) return false;
+  if (longer.length - shorter.length > MAX_PREFIX_TAIL) return false;
+  return longer.startsWith(shorter);
+}
+
+/** Which searchable field a term was found in. Ordered by how much a hit there means. */
+export type ShelfField = 'label' | 'slug' | 'tag' | 'component' | 'description';
+
+const FIELD_WEIGHT: Record<ShelfField, number> = {
+  label: 4,
+  slug: 4,
+  tag: 3,
+  component: 3,
+  description: 1
+};
+
+export interface ShelfSearchable {
+  label: string;
+  slug: string;
+  tags: string[];
+  /** The FULL description, not the one-line index cap — the cap is for display, not for search. */
+  description: string;
+  /** Component names an entry ships, when it ships components. */
+  components: string[];
+}
+
+export interface ShelfMatch {
+  score: number;
+  /** The query terms that hit, in query order — a row can say why it is in the answer. */
+  matchedTerms: string[];
+  /** The fields they hit, best first. */
+  matchedIn: ShelfField[];
+}
+
+/** `undefined` when nothing matched, which is the caller's signal to drop the row. */
+export function scoreEntry(terms: string[], searchable: ShelfSearchable): ShelfMatch | undefined {
+  const fields: Array<{ field: ShelfField; words: string[] }> = [
+    { field: 'label', words: words(searchable.label) },
+    { field: 'slug', words: words(searchable.slug) },
+    { field: 'tag', words: searchable.tags.flatMap(words) },
+    { field: 'component', words: searchable.components.flatMap(words) },
+    { field: 'description', words: words(searchable.description) }
+  ];
+
+  let score = 0;
+  const matchedTerms: string[] = [];
+  const matchedIn = new Set<ShelfField>();
+  for (const term of terms) {
+    let best = 0;
+    for (const { field, words: haystack } of fields) {
+      if (!haystack.some((w) => wordMatches(term, w))) continue;
+      matchedIn.add(field);
+      best = Math.max(best, FIELD_WEIGHT[field]);
+    }
+    if (best === 0) continue;
+    matchedTerms.push(term);
+    score += best;
+  }
+  if (matchedTerms.length === 0) return undefined;
+  const ordered = (['label', 'slug', 'tag', 'component', 'description'] as ShelfField[]).filter((f) =>
+    matchedIn.has(f)
+  );
+  return { score, matchedTerms, matchedIn: ordered };
+}
+
 export function listShelf(
   root: string,
-  filter: { type?: LibraryEntryType; tag?: string } = {}
-): { rows: ShelfRow[]; problems: ShelfProblem[] } {
+  filter: { type?: LibraryEntryType; tag?: string; query?: string } = {}
+): { rows: ShelfRow[]; problems: ShelfProblem[]; considered: number } {
   const rows: ShelfRow[] = [];
+  /** Entries that passed `type`/`tag` and were then offered to the query — the search's denominator. */
+  let considered = 0;
+  /**
+   * CMP-004 AC2. Component names cost a `project.json` parse per entry — 3 MB and ~25 ms over the
+   * whole shelf, measured — so they are read on a `query` call and on no other. An entry is
+   * described by its own prose and by what it ships; leaving the second out would mean a query for
+   * `Sanitise email` could not find the part called exactly that.
+   */
+  const terms = filter.query ? queryTerms(filter.query) : [];
+  const searching = terms.length > 0;
+  const scored: Array<{ row: ShelfRow; match: ShelfMatch }> = [];
   const problems: ShelfProblem[] = [];
   for (const { dir, type } of TYPE_DIRS) {
     if (filter.type && filter.type !== type) continue;
@@ -160,13 +309,55 @@ export function listShelf(
           version: meta.version ?? '0.0.0'
         };
         if (filter.tag && !row.tags.some((t) => t.toLowerCase() === filter.tag!.toLowerCase())) continue;
-        rows.push(row);
+        considered += 1;
+        if (!searching) {
+          rows.push(row);
+          continue;
+        }
+        const match = scoreEntry(terms, {
+          label: row.label,
+          slug,
+          tags: row.tags,
+          // 🔴 The FULL description, not `row.description` — that one is capped at 160 characters
+          // for display, and searching it would make an entry findable by its first sentence only.
+          description: meta.description ?? '',
+          components: entryComponentNames(entryDir)
+        });
+        if (match) scored.push({ row: { ...row, matchedTerms: match.matchedTerms, matchedIn: match.matchedIn }, match });
       } catch (err) {
         problems.push({ slug, type, problem: (err as Error).message });
       }
     }
   }
-  return { rows, problems };
+  if (searching) {
+    // Best first, then by how many terms hit, then alphabetically so the answer is stable.
+    scored.sort(
+      (a, b) =>
+        b.match.score - a.match.score ||
+        b.match.matchedTerms.length - a.match.matchedTerms.length ||
+        a.row.slug.localeCompare(b.row.slug)
+    );
+    return { rows: scored.map((s) => s.row), problems, considered };
+  }
+  return { rows, problems, considered };
+}
+
+/**
+ * The component names an entry ships. Every entry on the shelf today is a legacy monolithic
+ * project, so this is `project.json`'s own `components` array — the same read
+ * `get_library_entry` does, kept here so the search does not need the tools module.
+ *
+ * An unreadable or absent file is an entry with no components (every `module` entry), not an
+ * error: a module is found by its description, which is where its node names are written.
+ */
+export function entryComponentNames(entryDir: string): string[] {
+  try {
+    const raw = fs.readFileSync(path.join(entryDir, 'project', 'project.json'), 'utf8');
+    const parsed = JSON.parse(raw) as { components?: Array<{ name?: string }> };
+    return (parsed.components ?? []).map((c) => c.name).filter((n): n is string => typeof n === 'string');
+  } catch {
+    return [];
+  }
 }
 
 export interface ResolvedEntry {

@@ -140,6 +140,12 @@ export interface ExportToLibraryResponse {
   next: string;
 }
 
+/**
+ * CMP-004 AC2. A ranked answer is a short one: past a dozen the tail is noise an agent pays for in
+ * context and never reads, and the note says the full count so nothing is hidden silently.
+ */
+const QUERY_RESULT_CAP = 12;
+
 function requireLibraryRoot(): string {
   const resolved = resolveLibraryRoot();
   if (!resolved.ok) throw new ToolError('io-error', resolved.reason);
@@ -158,22 +164,46 @@ export function registerLibraryTools(
       description:
         'The index of installable library entries — prefabs (graphs of components: forms, tables, pickers, ' +
         'auth pages) and modules (code that adds node types: charts, icons, maps, QR). One row per entry: ' +
-        'slug, label, one-line description, tags, version. Cheap by design; call get_library_entry for ' +
-        'detail and install_prefab to install one into this project.',
+        'slug, label, one-line description, tags, version. Pass query to search by what a part DOES — ' +
+        '"date formatter", "file upload", "sanitise email" — over labels, descriptions, tags and the ' +
+        'component names entries ship; ask it before building a part from scratch. Cheap by design; call ' +
+        'get_library_entry for detail and install_prefab to install one into this project.',
       inputSchema: {
         type: z.enum(['prefab', 'module']).optional().describe('Only entries of this type'),
-        tag: z.string().optional().describe('Only entries carrying this tag (exact, case-insensitive)')
+        tag: z.string().optional().describe('Only entries carrying this tag (exact, case-insensitive)'),
+        query: z
+          .string()
+          .optional()
+          .describe('Free text over label, description, tags and component names — "date formatter"')
       }
     },
-    guarded((args: { type?: LibraryEntryType; tag?: string }) => {
+    guarded((args: { type?: LibraryEntryType; tag?: string; query?: string }) => {
       const root = requireLibraryRoot();
-      const { rows, problems } = listShelf(root, { type: args.type, tag: args.tag });
-      const payload: ListLibraryResponse = {
-        entries: rows,
-        ...(problems.length > 0 ? { problems } : {}),
-        note:
-          `${rows.length} entries. get_library_entry({slug}) for the full description, components, modules ` +
+      const { rows, problems, considered } = listShelf(root, { type: args.type, tag: args.tag, query: args.query });
+      /**
+       * CMP-004 AC2. A query answers in one of three ways, and the third is the one that matters:
+       * an HONEST NOTHING. "No entry on the shelf does that" is a useful answer — it is the
+       * sentence that tells an agent to build the part and then put it back with
+       * `export_to_library`, which is step 4 of THE ORDER. Silence, or a full unranked index,
+       * reads as "the shelf has no opinion" and sends the same agent to build from scratch
+       * without ever knowing it asked.
+       */
+      const searched = typeof args.query === 'string' && args.query.trim().length > 0;
+      const shown = searched ? rows.slice(0, QUERY_RESULT_CAP) : rows;
+      const note = !searched
+        ? `${rows.length} entries. get_library_entry({slug}) for the full description, components, modules ` +
           'and README; install_prefab({slug}) to install one into this project.'
+        : rows.length === 0
+          ? `Nothing on the shelf matches "${args.query}". That is an answer: build the part, then ` +
+            'export_to_library({component}) puts it here for the next project. Call list_library with no ' +
+            'query to see everything.'
+          : `${rows.length} of ${considered} entries match ` +
+            `"${args.query}", best first${rows.length > shown.length ? `, showing ${shown.length}` : ''}. Each row ` +
+            'says which terms hit and where. get_library_entry({slug}) for the full description and components.';
+      const payload: ListLibraryResponse = {
+        entries: shown,
+        ...(problems.length > 0 ? { problems } : {}),
+        note
       };
       return jsonResult(payload);
     })

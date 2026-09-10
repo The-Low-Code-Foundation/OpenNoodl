@@ -1,11 +1,15 @@
 # CMP-004 — The shelf exists, and nothing tells an agent it is there
 
-🔴 **The MCP ships a 42-entry component library and a working install path. The authoring briefing
-never mentioned it once.** A model following THE ORDER built every part from scratch, every time.
+🔴 **The MCP ships a component library and a working install path. The authoring briefing never
+mentioned it once.** A model following THE ORDER built every part from scratch, every time.
+⚠️ §2 below counted **42 entries** on 2026-09-09; re-counted 2026-09-10 it is **72** — the shelf
+grows, so re-count it rather than quoting this file.
 
 ✅ **AC1 closed 2026-09-10** — the shelf is step 3 of THE ORDER, in the doctrine channel.
 ✅ **AC4 closed 2026-09-10 (session 3)** — the path is two-way, and step 4 of THE ORDER says so.
-**AC2, AC3 and AC5 are open.** The shelf still has no text query (AC2) and is still prefab-sized
+✅ **AC2 closed 2026-09-10 (session 4)** — `list_library({query})`, and the doctrine tells an agent
+to ask it by name for each part it was about to build.
+**AC3 and AC5 are open.** The shelf is still prefab-sized
 (AC3 — 🔴 **no longer blocked**; the CSV was already in the repo and reading it changed what AC3
 asks for, see below), and no graded build has yet shown a model reaching for it (AC5).
 
@@ -67,9 +71,73 @@ is where it was before: the doctrine channel is outside it, which is the whole r
 lives there. Same division of labour SBR-013 settled — `instructions` carries the order, the
 doctrine carries the reasons and the tool names.
 
-**AC2 — the shelf is searchable by what a part does.** `list_library` takes `type` and an exact
-`tag` today. An agent asking "is there a date formatter?" has no query that answers. Add a text
-query over label + description + component names, or state in writing why tags are enough.
+**AC2 — the shelf is searchable by what a part does.** ✅ **DONE, 2026-09-10 (session 4).**
+`list_library` takes a `query`, and the doctrine's step 3 now tells an agent to **ask it for each
+part it was about to build** rather than to browse 72 rows.
+
+### 🔴 The measurement that settled "or state why tags are enough": they are not
+
+The AC offered a way out — argue that tags suffice. Over the shelf as it actually is, they do not,
+and the proof is a single pair of strings:
+
+| | |
+|---|---|
+| entries on the shelf | **72** (the task's own §2 said 42 — it has grown) |
+| distinct tags | **22** |
+| entries tagged `UI` | **50** — 69% of the shelf under one tag |
+| tags with exactly one member | **7** (`Animation`, `Custom nodes`, `Localization`, `Pages`, `Payments`, `Service`, `Utilities`) |
+| 🔴 entries tagged **`Utility`** | **8** |
+| 🔴 entries tagged **`Utilities`** | **1** — `intl-format`, **the only formatting entry there is** |
+
+**`list_library({tag: "Utility"})` — the obvious query, and the only kind the shelf could answer —
+returns eight rows and excludes the one entry that formats things.** A vocabulary typed by hand
+over years has a singular and a plural on opposite sides of the one question this AC was written
+about. Asserted in `tests/cmp004LibraryQuery.test.ts` against the real `library/`, because it is
+the case rather than an illustration of it.
+
+### 🔴 And the shelf ALREADY ANSWERS the AC's worked example — nobody could ask it
+
+`intl-format` is a module of **locale-aware formatting nodes**: `Relative Time` ("3 hours ago",
+with an auto-refresh interval), `Format Number`, `Format List`, `Pluralize`, every one of them with
+a Locale input. It has been on the shelf the whole time.
+
+⚠️ **This phase walked past it twice in one day.** CMP-005 §1 lists *"relative time — no token"* as
+an open gap in the date formatter and §4 rules it out of scope as *"a node with a clock in it"* —
+which is exactly right, and exactly the node `intl-format` ships. The reason nobody found it is the
+reason this AC exists: its node names are written in one place, its **description**, and the shelf
+had no query that read descriptions. **The shelf's problem was never that it was empty.**
+
+### What was built
+
+- `libraryShelf.ts` — `queryTerms` + `scoreEntry`, and `listShelf` takes `query`. Fields are
+  weighted (label/slug 4, tag/component 3, description 1), terms are ORed, rows come back best
+  first carrying `matchedTerms` and `matchedIn` so a model can judge a row instead of trusting it.
+- Matching is **word-prefix, both directions, four characters in, with at most four of tail**. The
+  bidirectional part is what makes *"date formatter"* find a label saying *"Format"* — a substring
+  test does not, and fails silently. 🔴 **The tail bound was earned by a measured false positive:**
+  without it the tag `Form` matched the term `formatter`, and since a tag outscores a description,
+  `date-picker` came back as the best answer to *"is there a date formatter?"*, beating the entry
+  that formats dates. A prefix rule with no bound turns every four-letter word into a wildcard.
+- Component names are read (a `project.json` parse per entry, 3 MB and ~25 ms over the whole shelf,
+  measured) **only on a query call**, so the index stays an index.
+- The empty answer is a real answer: the note names `export_to_library` and says to build the part
+  and put it back. Silence reads as "the shelf has no opinion" and sends the agent to build anyway.
+
+⚠️ **Deliberately not `find_tools`' matcher**, which the handoff asked to check first. That one is a
+substring test over a tool group's id, title and keywords and *pointedly refuses to search the
+prose* — its own comment explains why: a group's purpose is a sentence whose incidental nouns
+duplicate the tool names, so searching it would collapse the deferral. Here the description is the
+only place what a part does is written down. Same word, opposite instrument.
+
+**Graded by** `tests/cmp004LibraryQuery.test.ts` (19 specs, over the real library) and seven new
+assertions in `tests/phase85Doctrine.test.ts` (24 total), four of them over the wire.
+
+🔴 **A control caught a spec that graded nothing.** The first version of "matches a component name"
+picked a distinctive word out of a component name and asserted the entry came back — and it came
+back off its *label*. Blanking the component list turned **nothing** red. Rewritten around
+`filters`, whose components include `/Filters/Date Filter` while the word `date` appears nowhere in
+its label, slug, tags or description: `matchedIn` is asserted to be exactly `['component']`, and
+the control now turns it red. See [[assert-an-absence-with-a-known-firing-signal-beside-it]].
 
 **AC3 — parts, not just prefabs.** The shelf indexes single-component entries.
 

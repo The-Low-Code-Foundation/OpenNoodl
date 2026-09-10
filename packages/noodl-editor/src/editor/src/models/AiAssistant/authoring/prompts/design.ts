@@ -105,10 +105,18 @@ Two things are settled BEFORE the first component exists, and in this order:
 
 Then plan the components. Then, before authoring the first leaf:
 
-3. **The shelf.** Call \`list_library\` and read the index against your component tree. This server
-   ships installable entries — prefabs (accordions, app shells, auth pages, cards and card grids,
-   tables, forms, pickers, toasts, multi-selects, pagination, ratings) and modules (charts, icons,
-   maps, QR). \`get_library_entry({slug})\` says exactly which components an entry brings;
+3. **The shelf.** Call \`list_library\` and read the index against your component tree, then
+   **ASK IT FOR EACH PART YOU WERE ABOUT TO BUILD**: \`list_library({query: "date formatter"})\`,
+   \`{query: "file upload"}\`, \`{query: "sanitise email"}\`. The query searches labels,
+   descriptions, tags and the component names entries ship, and answers best-first with the terms
+   that hit — so a part whose label says "Format" is found by somebody thinking "formatter". 🔴
+   **Do not decide from the tags.** They were typed by hand over years: one tag covers most of the
+   shelf, seven cover one entry each, and the only formatting entry is tagged \`Utilities\` while
+   every other utility is tagged \`Utility\` — a tag filter answers "no such thing" about parts
+   that are sitting there. This server ships installable entries — prefabs (accordions, app shells,
+   auth pages, cards and card grids, tables, forms, pickers, toasts, multi-selects, pagination,
+   ratings) and modules (charts, icons, maps, QR). \`get_library_entry({slug})\` says exactly which
+   components an entry brings;
    \`install_prefab({slug})\` puts them in the project and NEVER overwrites what you already have,
    reporting anything it skipped. An entry that matches a part of your tree is a part you do not
    write, and it arrives with an interface the original Noodl team designed — ports, outputs and a
