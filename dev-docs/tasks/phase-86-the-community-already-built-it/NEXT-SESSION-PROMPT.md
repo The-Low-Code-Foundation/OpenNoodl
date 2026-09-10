@@ -16,14 +16,24 @@ three.
 | **Measured** | everything in [`MEASURED-2026-09-10.md`](MEASURED-2026-09-10.md) — re-run before inheriting any of it |
 | **Instrument committed** | [`convert-exports.py`](convert-exports.py) — exports → candidate examples, reproduces 12/12 from the vendored corpus |
 | **Corpus vendored** | [`corpus/`](corpus/), 31 files |
-| **Committed?** | ⚠️ **not yet** — see "Before anything else" |
+| **Committed?** | ✅ **yes — `121fd5c5f`**, the whole folder including the 32-file corpus |
 
 ## Before anything else
 
-🔴 **This folder is uncommitted, and the working tree has unrelated in-flight work in it**
-(`nodegx-export/src/cli/deploy*.ts`, `noodl-preview/src/deploy*.ts` — HLS-015, someone else's).
-Commit **by pathspec**, this folder only, and `git add` the untracked files first or the pathspec
-commit skips them.
+✅ **Nothing. The folder is committed** (`121fd5c5f`, verified 2026-09-10 by P85 s3:
+`git ls-files …/corpus/` returns 32). The earlier "commit this by pathspec first" instruction is
+done and has been struck.
+
+⚠️ **The pathspec advice still applies to YOUR commit.** Peers work in this tree continuously — P85
+s3 found live edits in `nodegx-export/` and in `noodl-mcp/src/catalog.ts` during one session — so
+commit by pathspec, this folder only, and `git add` untracked files first or the pathspec commit
+skips them.
+
+🔴 **P85 s3 read your corpus, and it settled a boundary you should know about.** `Components.csv`
+is CMP-004 AC3's seed (P85 spent two sessions believing it did not have it). The division is
+COM-003 §7's own and P85's docs now state it in the same words: **P86 turns the corpus into examples
+and into the three missing library entries; P85 owns the shelf that carries them and its
+granularity.** Nothing here changed.
 
 ## The first job
 

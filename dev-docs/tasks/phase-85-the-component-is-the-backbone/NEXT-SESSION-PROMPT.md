@@ -18,35 +18,45 @@ disqualifies you from producing the baseline.
 | CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
 | CMP-003 | AC4 the ledger column | ✅ **s2** |
 | CMP-004 | AC1 the shelf is in THE ORDER | ✅ **s2**, step 3 of §"The order" |
-| CMP-004 | AC2 searchable by what a part does | OPEN — 🔴 **now the highest leverage left** |
-| CMP-004 | AC3 parts, not just prefabs | OPEN — 🔴 **blocked on Richard's CSV**, ask for it |
+| CMP-004 | AC2 searchable by what a part does | OPEN — 🔴 **the highest-leverage SHELF item left** |
+| CMP-004 | AC3 parts, not just prefabs | OPEN — 🔴 **NOT blocked**; the CSV was in the repo all along, and reading it CHANGED the AC |
 | CMP-004 | AC4 the path is two-way | ✅ **s3** — `export_to_library`, graded by round trip |
 | CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
+| CMP-005 | the date formatter — node or part | **WRITTEN s3**, not built. AC1 is a decision, not code |
 
 Session 3 closed the one the phase called its highest-leverage item. **The loop can now compound:**
-step 3 of THE ORDER reads the shelf, step 4 writes back to it.
+step 3 of THE ORDER reads the shelf, step 4 writes back to it. It also opened **CMP-005** from
+Richard's own words, and killed a blocker two handoffs had carried without checking it.
 
 ## The first job
 
-1. **CMP-004 AC2 — the text query.** `list_library` takes `type` and an exact `tag`. "Is there a
-   date formatter?" has no query that answers, which makes step 3 of THE ORDER weaker than it reads
-   — and step 4 has just started adding entries whose value is entirely in *finding* them. A text
-   query over label + description + component names, or a written statement of why tags are enough.
-   ⚠️ **Measure before building**: `get_library_entry` already returns component names, and
-   `find_tools`' own matcher exists — check whether the query wants to live there.
-2. **CMP-001 AC2 — ship the playbook.** Ten patterns, currently readable only by us. It cannot go
-   in `instructions` (the budget gate reports **8,275 / 8,280** — five tokens). It goes in
-   `get_project_info` as a fifth doctrine field, the way CMP-004 AC1 and AC4 went in as steps 3 and
-   4 of the order. 🔴 **Consider the per-node route instead or as well** — see the gap in README §7.
-3. **CMP-002** remains the thing that grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5 — three open
-   ACs across three tasks, and it needs a session that has read only its brief.
+1. **CMP-005 AC1 — decide: extend the node, or ship a part.** One paragraph, before any code.
+   Richard raised it and left the choice open; §2 of the task lays out both with the measurement
+   behind each, and recommends **the node, additively, then a part that demonstrates it**. 🔴 The
+   task's §1.2 already rejected the two hypotheses you would otherwise spend an hour on — **do not
+   re-derive them**. Then AC2/AC3: new tokens, and existing projects byte-identical.
+2. **CMP-004 AC2 — the text query.** `list_library` takes `type` and an exact `tag`. *"Is there a
+   date formatter?"* — the AC's own worked example, and now a real question with a real answer
+   coming — has no query that answers it. ⚠️ **Measure before building**: `get_library_entry`
+   already returns component names, and `find_tools` has a name-matching matcher; check whether the
+   query wants to live in one of those before writing a third.
+3. **CMP-004 AC3 — the shelf's granularity.** No longer blocked, and no longer what it said: read
+   the corrected AC before starting. What it needs is **three single-component entries, one of them
+   exported rather than hand-authored** — CMP-005's formatter is the obvious first.
+4. **CMP-002** still grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5 — three open ACs across three
+   tasks, and it needs a session that has read only its brief.
 
-## Ask Richard for
+## ✅ Nothing outstanding from Richard
 
-**The CSV of community logic and visual nodes.** Still outstanding, asked for in s2 and s3. It is
-the seed corpus for CMP-004 AC3 and that AC cannot close without it. ✅ **AC4 makes it cheaper than
-it was**: the CSV's parts can now be turned into shelf entries by exporting them from a project
-rather than hand-authoring `library.json` files.
+**The CSV arrived long before anyone asked.** Sessions 2 and 3 both wrote *"ask Richard for the CSV
+of community logic and visual nodes"*; it was vendored and committed at `121fd5c5f` as
+`dev-docs/tasks/phase-86-the-community-already-built-it/corpus/components/Components.csv` —
+**thirty-four minutes before s2 recorded the blocker.** Richard pointed at it when asked.
+
+🔴 **Reading it changed CMP-004 AC3.** It is 29 *prefab-scale* community components, not one-node
+utilities; P86's COM-005 has already measured 8 of them as covered by existing shelf entries and
+exactly 3 as gaps. The boundary is P86's own (COM-003 §7): **P86 turns the corpus into examples and
+the three missing entries; P85 owns the shelf that carries them and its granularity.**
 
 ## 🔴 Traps — session 3's, then the standing ones
 
@@ -66,10 +76,16 @@ rather than hand-authoring `library.json` files.
 - ✅ **The negative control is worth the four minutes.** Disabling the closure walk turned 9 of the
   14 round-trip specs red, which is what makes the `validate_project` absence assertion mean
   something. A spec that passes on an empty list grades nothing.
-- 🔴 **MEASURE THE ARTEFACT, NOT THE TASK FILE — twice in s1/s2, and a third shape in s3.** s3's was
-  a *committed* artefact contradicting three documents (above). Before building an AC, run the
-  measurement its premise rests on, and prefer the instrument that reads DIFFERENTLY if you are
-  wrong.
+- 🔴 **MEASURE THE ARTEFACT, NOT THE TASK FILE — twice in s1/s2, and TWICE MORE in s3.** s3's were
+  (a) a *committed* grading suite contradicting three documents, above, and (b) a **blocker that had
+  never been true**: two handoffs said "blocked on Richard's CSV, ask for it" while the CSV sat in
+  the repo, committed half an hour before the blocker was written. 🔴 **A blocker owned by nobody is
+  the one most likely already resolved — re-measure it before inheriting it**, and `git log` the
+  thing it names. Before building an AC, run the measurement its premise rests on, and prefer the
+  instrument that reads DIFFERENTLY if you are wrong.
+- ⚠️ **A blocker's removal can invalidate the AC, not just unblock it.** Reading the CSV showed
+  CMP-004 AC3 was asking for the wrong thing (prefab-scale community components, not the one-node
+  utilities its own §2 argued for). Check what an unblocked AC now *means* before building it.
 - 🔴 **A fact stated once and contradicted by the advice around it is not documented.** Assert the
   DESCRIPTION and the INSTRUCTION, not the presence of a name.
 - 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.** Filed in

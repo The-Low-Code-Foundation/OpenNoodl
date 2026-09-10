@@ -5,8 +5,9 @@ never mentioned it once.** A model following THE ORDER built every part from scr
 
 ✅ **AC1 closed 2026-09-10** — the shelf is step 3 of THE ORDER, in the doctrine channel.
 ✅ **AC4 closed 2026-09-10 (session 3)** — the path is two-way, and step 4 of THE ORDER says so.
-**AC2, AC3 and AC5 are open.** The shelf is still prefab-sized (AC3, blocked on Richard's CSV) and
-still has no text query (AC2), and no graded build has yet shown a model reaching for it (AC5).
+**AC2, AC3 and AC5 are open.** The shelf still has no text query (AC2) and is still prefab-sized
+(AC3 — 🔴 **no longer blocked**; the CSV was already in the repo and reading it changed what AC3
+asks for, see below), and no graded build has yet shown a model reaching for it (AC5).
 
 ## 1. The person sentence
 
@@ -70,9 +71,39 @@ doctrine carries the reasons and the tool names.
 `tag` today. An agent asking "is there a date formatter?" has no query that answers. Add a text
 query over label + description + component names, or state in writing why tags are enough.
 
-**AC3 — parts, not just prefabs.** The shelf indexes single-component entries, with the CMP-003
-utilities as the seed set. Richard has a CSV of community-contributed logic and visual nodes —
-**that is the seed corpus, and AC3 is not done until it is on the shelf and installable.**
+**AC3 — parts, not just prefabs.** The shelf indexes single-component entries.
+
+🔴 **UNBLOCKED, and the premise was wrong — 2026-09-10 (s3), on Richard's correction.** Two sessions
+carried *"blocked on Richard's CSV, ask for it"*. **The CSV has been in the repo the whole time**:
+`dev-docs/tasks/phase-86-the-community-already-built-it/corpus/components/Components.csv`, 29 rows
+(name, use case, creator credit, notes), committed at `121fd5c5f` — **thirty-four minutes before
+session 2 wrote the blocker down.** See [[a-none-owned-blocker-is-the-one-most-likely-already-fixed]]:
+re-measure a blocker before inheriting it.
+
+⚠️ **And reading it kills the AC as written.** The CSV is 29 **prefab-scale** community components —
+a WebRTC recorder, TinyMCE, AG Grid, a signup template. It is not a corpus of one-node logic
+utilities. P86's COM-005 already measured it against the shelf: **8 of the 29 are covered by an
+existing entry** (Dropzone→`file-upload`, Tiptap/TinyMCE→`rich-text-editor`, AG Grid→`table`,
+Better Markdown→`markdown`, Check window width→`media-query`, CSV Download→`file-download`, Signup &
+Login→`auth-pages`, Email validator→`form-validation`) and exactly **three gaps** remain — audio
+recording, video recording, masonry grid.
+
+✅ **So the boundary with P86 is settled, and it is P86's own wording** (COM-003 §7: *"This task
+produces examples; COM-004/005 produce library entries; the shelf that carries them is P85's"*):
+
+| | |
+|---|---|
+| the 29 community components | **P86** — COM-003 makes examples, COM-004/005 make the three missing entries |
+| the shelf that carries them, and its granularity | **P85, this AC** |
+
+**What AC3 actually still needs is the UNIT the CSV does not contain**: the one-node utility CMP-003
+measured as the most reused thing in a real app (`Format full name` 9×, `Generate Google icon
+object` 9×, `Is Trainer check` 9×) — and now [CMP-005](CMP-005-THE-DATE-FORMATTER.md), a real date
+formatter, which is the worked example of a small sharp part the product does not have.
+
+**AC3 is done when the shelf carries at least three single-component entries, one of them produced
+by `export_to_library` rather than hand-authored**, and `list_library` distinguishes a part from a
+prefab (a `tag`, a `type`, or a stated reason it need not).
 
 **AC4 — the path is two-way.** ✅ **DONE, 2026-09-10 (session 3).** `export_to_library({component,
 slug, label, description, tags?, version?, readme?})` — a fourth tool in the `explore` group, write-

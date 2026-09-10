@@ -105,10 +105,17 @@ rather than adequate.
 **The measure of this phase is not that it closes. It is that the floors in CMP-001 are higher this
 quarter than last, and that each rise is traceable to an app somebody actually built.**
 
-🔴 **And the loop only compounds if the shelf is two-way (CMP-004).** Without it, every cycle
-improves the *doctrine* and every agent still builds every part from scratch. With it, one good
-`Sanitise email` is written once and reached for by everyone after. That is the Tailwind bargain,
-and it is the difference between the MCP getting better advice and the MCP getting better parts.
+✅ **The shelf is two-way as of 2026-09-10 (CMP-004 AC4).** Without it, every cycle improved the
+*doctrine* and every agent still built every part from scratch. With it, one good `Sanitise email`
+is written once and reached for by everyone after. That is the Tailwind bargain, and it is the
+difference between the MCP getting better advice and the MCP getting better parts.
+
+🔴 **What the loop now waits on is FINDING and STOCKING.** `export_to_library` can put a part on the
+shelf; `list_library` still has no query that answers *"is there a date formatter?"* (CMP-004 AC2),
+and the shelf still carries no single-part entries (CMP-004 AC3). [CMP-005](CMP-005-THE-DATE-FORMATTER.md)
+is the first real part to stock it with — and it is a worked example of the whole thesis: the
+product's answer to "format a date as Thursday, 10 September" is currently *"write a Function node
+with Intl"*, in its own documentation.
 
 ## 5. Tasks
 
@@ -118,6 +125,7 @@ and it is the difference between the MCP getting better advice and the MCP getti
 | [CMP-002](CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md) | A graded MCP build of one business landing page, with the §3 reflection run over it. The baseline arm for CMP-001 AC4 | **NEXT** — 🔴 run it in a session that has read only the brief |
 | [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅ 2026-09-10** — both doctrine copies corrected. AC2–AC4 open |
 | [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅ 2026-09-10** (step 3 of THE ORDER) · **AC4 ✅ 2026-09-10** (`export_to_library`, step 4, graded by round trip). AC2, AC3, AC5 open — 🔴 **AC2 is now the highest leverage left**: step 4 adds entries whose value is entirely in finding them |
+| [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | **WRITTEN 2026-09-10**, not built. AC1 is a decision, not code |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
 ## 6. Instruments
