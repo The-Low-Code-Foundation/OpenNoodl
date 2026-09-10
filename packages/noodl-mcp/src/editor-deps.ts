@@ -396,9 +396,9 @@ export { AUTHORING_TRAPS } from '../../noodl-editor/src/editor/src/models/AiAssi
 // Same containment rule (`prompts/interfaces` imports nothing) and the same
 // channel as the three above: a result field on `get_project_info`, because the
 // `instructions` surface is budgeted and this text is not small. Phase 85
-// measured why it has to ship somewhere: 10% of the components in the corpus an
-// agent copies publish any outputs, against 84% of the ones the Noodl team
-// shipped.
+// measured why it has to ship somewhere: 21% of the components in the corpus an
+// agent copies publish any outputs (10% before CMP-001 AC3 added four that do),
+// against 84% of the ones the Noodl team shipped.
 export { INTERFACE_DOCTRINE_MD } from '../../noodl-editor/src/editor/src/models/AiAssistant/authoring/prompts/interfaces';
 
 // SB-002, same containment rule again: the backend idiom the prefab library

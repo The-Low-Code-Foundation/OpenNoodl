@@ -5982,7 +5982,8 @@
         "description": "Component Children is how a component becomes a wrapper. Placed somewhere in the component's own visual tree (typically inside a Group), it marks the insertion point: when a parent graph adds visual children to an *instance* of the component, those children render at exactly this position, surrounded by whatever chrome the component defines. The node has no inputs or outputs and renders nothing by itself — it is purely a structural marker. A component that contains one accepts children in the node picker; a component without one does not. A component has a single insertion point: adding more than one Component Children does not create multiple slots.",
         "whenToUse": "Whenever you build a reusable container whose content varies per use — cards, page sections, modals, styled panels: define padding, borders, headers once in the wrapper component and drop Component Children where the caller's content goes. Not for repeating data-driven content (use For Each with a template component) and not for passing values into a component (use Component Inputs).",
         "examples": [
-          "vis-wrapper-component-children"
+          "vis-wrapper-component-children",
+          "comp-slot-panel-with-interface"
         ],
         "patterns": [
           "Wrapper component: Group root with the shared styling, a Text header bound from Component Inputs, and Component Children below it — instances then supply arbitrary content children.",
@@ -6038,7 +6039,11 @@
           "repeater-query-records",
           "data-run-tasks-batch",
           "cloud-record-relations",
-          "ui-card-grid-repeater"
+          "ui-card-grid-repeater",
+          "comp-variant-badge-states",
+          "comp-controlled-quantity-stepper",
+          "comp-slot-panel-with-interface",
+          "comp-placement-contract-avatar"
         ],
         "patterns": [
           "Repeater item: declare inputs named after the item object's properties and bind them straight to visuals.",
@@ -6091,7 +6096,11 @@
         "whenToUse": "Expose results and events to the parent: a form component's 'Submitted' signal, a card's 'Selected' with the wired value, a wizard's completion. If several unrelated components must react, send an event instead.",
         "runtimeBehavior": "All ports are author-declared on the node instance (component-ports mechanism); the catalog lists none. The instance's ports define the component's external outputs — read them from the node instance, never the catalog.",
         "examples": [
-          "data-run-tasks-batch"
+          "data-run-tasks-batch",
+          "comp-variant-badge-states",
+          "comp-controlled-quantity-stepper",
+          "comp-slot-panel-with-interface",
+          "comp-placement-contract-avatar"
         ],
         "patterns": [
           "Worker/task components report 'success'/'failure' signals through Component Outputs; Run Tasks consumes exactly that surface."
@@ -6570,7 +6579,8 @@
           "countChanged": "Signal; fires once per actual change, after `currentCount` holds the new value."
         },
         "examples": [
-          "logic-quantity-stepper"
+          "logic-quantity-stepper",
+          "comp-controlled-quantity-stepper"
         ],
         "patterns": [
           "Plus/minus buttons' `onClick` → `increase`/`decrease` with limits enabled: a bounded quantity stepper.",
@@ -16075,7 +16085,8 @@
           "result": "Boolean value: the opposite of `value`. Undefined until `value` first receives data."
         },
         "examples": [
-          "logic-toggle-details-panel"
+          "logic-toggle-details-panel",
+          "comp-controlled-quantity-stepper"
         ],
         "patterns": [
           "A 'is loading' boolean → Inverter → a button's `enabled`: disable actions while busy.",
@@ -28769,7 +28780,8 @@
         },
         "runtimeBehavior": "All state- and value-specific ports are runtime-discovered: the viewer generates them from the `states` and `values` parameters and pushes them to the editor per instance. For each value V: an output named `V` (connections only; type chosen by a generated enum input `type-V` — number, string, boolean, color or textStyle, default number). For each state S and value V: an input `value-S-V` holding V's setting while in state S. For each state S: a signal input `to-S` (go to S), a boolean output `at-S` (true while S is active), a signal output `reached-S` (fires when the transition into S completes — immediately when there is no transition), and, while `useTransitions` is on, a curve input `transitiondef-S` (state-wide default) plus per-value overrides `transition-S-V` for number/color values. Separately, once `states` is set the node mints ONE enum input named `currentState`, sharing the name of the declared string output and defaulting to the first state; writing or wiring it moves the node to that state. An authoring tool should write `states`, `values`, `type-V` and `value-S-V` as parameters, and read `V`, `at-S` and `reached-S`. To change state it has two forms and they are not interchangeable: wire a signal to `to-S` when an event causes the change (a click, a `done`), and wire a VALUE to `currentState` when the state IS a value the component was handed (a `size`, a `tone`, a `Request Type`) — the second is one wire where the first would need one port per state plus a Condition chain. The runtime registers all of these names on demand.",
         "examples": [
-          "anim-states-panel"
+          "anim-states-panel",
+          "comp-variant-badge-states"
         ],
         "patterns": [
           "Button `onClick` → `to-<state>` to enter a specific state; `toggle` when there are exactly two states.",
@@ -65018,6 +65030,423 @@
       ]
     },
     {
+      "id": "comp-controlled-quantity-stepper",
+      "title": "The controlled value: the same name goes in, comes out, and says when it moved",
+      "description": "The most common shape on the shelf, and the one an authored component usually forgets. `value` arrives on `Component Inputs`, the same name leaves on `Component Outputs`, and a `valueChanged` signal leaves beside it — a parent that can only set a value and never read it back has to keep its own copy and hope. `Counter` holds the number: `startValue` seeds it from the instance, `increase`/`decrease` are signals from the two buttons, and `limitsEnabled` with `limitsMin`/`limitsMax` means the clamp lives in one node instead of in two Function nodes that will disagree. 🔴 The `disabled` flag is wired through an `Inverter` into BOTH buttons' `enabled`, not just onto the label's colour: a flag that changes how a component looks but not what it accepts is a component that can be told one thing and do another. ⚠️ `logic-quantity-stepper` builds the same buttons around the same `Counter` and is about the value-shaping nodes between the count and the screen — `String Format`, `String Mapper`, `Number Remapper`; it has no interface at all, and the two are worth reading together. The page here shows the other half of the contract — it reads `value` back into a readout and acts on `valueChanged` — which is what makes this different from a component that merely renders a number.",
+      "demonstrates": [
+        "Counter",
+        "Component Inputs",
+        "Component Outputs",
+        "Inverter",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "/Components/QuantityStepper",
+          "nodes": [
+            {
+              "id": "stepper_root",
+              "type": "Group",
+              "label": "Stepper",
+              "parameters": {
+                "sizeMode": "contentSize",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "columnGap": "var(--space-2)",
+                "backgroundColor": "var(--surface)",
+                "borderStyle": "solid",
+                "borderWidth": "var(--border-1)",
+                "borderColor": "var(--border)",
+                "borderRadius": "var(--radius-md)",
+                "paddingLeft": "var(--space-1)",
+                "paddingRight": "var(--space-1)",
+                "paddingTop": "var(--space-1)",
+                "paddingBottom": "var(--space-1)"
+              },
+              "children": [
+                "minus_button",
+                "count_text",
+                "plus_button"
+              ],
+              "x": 40,
+              "y": 220
+            },
+            {
+              "id": "minus_button",
+              "type": "net.noodl.controls.button",
+              "label": "One fewer",
+              "parameters": {
+                "label": "−",
+                "sizeMode": "contentSize",
+                "backgroundColor": "var(--muted)",
+                "color": "var(--foreground)",
+                "borderRadius": "var(--radius-md)",
+                "paddingLeft": "var(--space-3)",
+                "paddingRight": "var(--space-3)",
+                "paddingTop": "var(--space-1)",
+                "paddingBottom": "var(--space-1)",
+                "fontSize": "var(--text-base)"
+              },
+              "parent": "stepper_root"
+            },
+            {
+              "id": "count_text",
+              "type": "Text",
+              "label": "The number itself",
+              "parameters": {
+                "text": "1",
+                "fontSize": "var(--text-base)",
+                "fontWeight": "var(--font-medium)",
+                "color": "var(--foreground)",
+                "textAlignX": "center",
+                "width": {
+                  "value": 32,
+                  "unit": "px"
+                }
+              },
+              "parent": "stepper_root"
+            },
+            {
+              "id": "plus_button",
+              "type": "net.noodl.controls.button",
+              "label": "One more",
+              "parameters": {
+                "label": "+",
+                "sizeMode": "contentSize",
+                "backgroundColor": "var(--muted)",
+                "color": "var(--foreground)",
+                "borderRadius": "var(--radius-md)",
+                "paddingLeft": "var(--space-3)",
+                "paddingRight": "var(--space-3)",
+                "paddingTop": "var(--space-1)",
+                "paddingBottom": "var(--space-1)",
+                "fontSize": "var(--text-base)"
+              },
+              "parent": "stepper_root"
+            },
+            {
+              "id": "stepper_inputs",
+              "type": "Component Inputs",
+              "label": "Stepper interface in — plugged \"output\"",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "value",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "min",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "max",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "disabled",
+                  "plug": "output",
+                  "type": "boolean"
+                }
+              ]
+            },
+            {
+              "id": "quantity",
+              "type": "Counter",
+              "label": "The number, clamped in one place",
+              "parameters": {
+                "limitsEnabled": true
+              },
+              "x": 480,
+              "y": 60
+            },
+            {
+              "id": "not_disabled",
+              "type": "Inverter",
+              "label": "Disabled means the buttons stop accepting clicks",
+              "x": 480,
+              "y": 300
+            },
+            {
+              "id": "stepper_outputs",
+              "type": "Component Outputs",
+              "label": "Stepper interface out — plugged \"input\"",
+              "x": 900,
+              "y": 60,
+              "ports": [
+                {
+                  "name": "value",
+                  "plug": "input",
+                  "type": "number"
+                },
+                {
+                  "name": "valueChanged",
+                  "plug": "input",
+                  "type": "signal"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "stepper_inputs",
+              "fromProperty": "value",
+              "toId": "quantity",
+              "toProperty": "startValue"
+            },
+            {
+              "fromId": "stepper_inputs",
+              "fromProperty": "min",
+              "toId": "quantity",
+              "toProperty": "limitsMin"
+            },
+            {
+              "fromId": "stepper_inputs",
+              "fromProperty": "max",
+              "toId": "quantity",
+              "toProperty": "limitsMax"
+            },
+            {
+              "fromId": "stepper_inputs",
+              "fromProperty": "disabled",
+              "toId": "not_disabled",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "not_disabled",
+              "fromProperty": "result",
+              "toId": "minus_button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "not_disabled",
+              "fromProperty": "result",
+              "toId": "plus_button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "minus_button",
+              "fromProperty": "onClick",
+              "toId": "quantity",
+              "toProperty": "decrease"
+            },
+            {
+              "fromId": "plus_button",
+              "fromProperty": "onClick",
+              "toId": "quantity",
+              "toProperty": "increase"
+            },
+            {
+              "fromId": "quantity",
+              "fromProperty": "currentCount",
+              "toId": "count_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "quantity",
+              "fromProperty": "currentCount",
+              "toId": "stepper_outputs",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "quantity",
+              "fromProperty": "countChanged",
+              "toId": "stepper_outputs",
+              "toProperty": "valueChanged"
+            }
+          ]
+        },
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Basket",
+                "urlPath": "basket"
+              },
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "rowGap": "var(--space-4)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-10)",
+                "paddingBottom": "var(--space-10)",
+                "backgroundColor": "var(--background)"
+              },
+              "parent": "page",
+              "children": [
+                "heading",
+                "line_one",
+                "line_two",
+                "readout"
+              ]
+            },
+            {
+              "id": "heading",
+              "type": "Text",
+              "label": "Page heading",
+              "parameters": {
+                "text": "Your basket",
+                "fontSize": "var(--text-2xl)",
+                "fontWeight": "var(--font-semibold)",
+                "lineHeight": "var(--leading-tight)",
+                "color": "var(--foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "line_one",
+              "type": "Group",
+              "label": "Basket line — sourdough",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "space-between",
+                "columnGap": "var(--space-4)"
+              },
+              "parent": "shell",
+              "children": [
+                "line_one_name",
+                "qty_one"
+              ]
+            },
+            {
+              "id": "line_one_name",
+              "type": "Text",
+              "label": "Line name",
+              "parameters": {
+                "text": "Sourdough, large",
+                "fontSize": "var(--text-base)",
+                "color": "var(--foreground)"
+              },
+              "parent": "line_one"
+            },
+            {
+              "id": "qty_one",
+              "type": "/Components/QuantityStepper",
+              "label": "Quantity — the page reads this one back",
+              "parameters": {
+                "value": 2,
+                "min": 1,
+                "max": 8,
+                "disabled": false
+              },
+              "parent": "line_one"
+            },
+            {
+              "id": "line_two",
+              "type": "Group",
+              "label": "Basket line — a thing that is out of stock",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "space-between",
+                "columnGap": "var(--space-4)"
+              },
+              "parent": "shell",
+              "children": [
+                "line_two_name",
+                "qty_two"
+              ]
+            },
+            {
+              "id": "line_two_name",
+              "type": "Text",
+              "label": "Line name",
+              "parameters": {
+                "text": "Cinnamon buns (back Thursday)",
+                "fontSize": "var(--text-base)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "line_two"
+            },
+            {
+              "id": "qty_two",
+              "type": "/Components/QuantityStepper",
+              "label": "Same component, disabled at the instance — not a second component",
+              "parameters": {
+                "value": 1,
+                "min": 0,
+                "max": 4,
+                "disabled": true
+              },
+              "parent": "line_two"
+            },
+            {
+              "id": "readout",
+              "type": "Text",
+              "label": "What the page learned from the component",
+              "parameters": {
+                "text": "2 loaves",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "describe_basket",
+              "type": "JavaScriptFunction",
+              "label": "Say the basket back to the customer",
+              "parameters": {
+                "functionScript": "const n = Number(Inputs.loaves) || 0;\nOutputs.line = n === 1 ? '1 loaf' : n + ' loaves';"
+              },
+              "x": 720,
+              "y": 420
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "qty_one",
+              "fromProperty": "value",
+              "toId": "describe_basket",
+              "toProperty": "in-loaves"
+            },
+            {
+              "fromId": "qty_one",
+              "fromProperty": "valueChanged",
+              "toId": "describe_basket",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "describe_basket",
+              "fromProperty": "out-line",
+              "toId": "readout",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "comp-create-object-on-event",
       "title": "Create a client-side object and bind to it by id",
       "description": "Create New Object (NewModel) makes a fresh client-side object with the property values on its schema-declared inputs and outputs the new `id`. An Object node (Model2) bound to that id then exposes the object's properties reactively — the create node acts, the Object node observes. This id-handoff is the core client-data shape: writers and readers connect through ids, not direct wires.",
@@ -65091,6 +65520,390 @@
               "fromId": "draft_object",
               "fromProperty": "title",
               "toId": "draft_title_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comp-placement-contract-avatar",
+      "title": "The placement contract: a component that says how it sits in its parent",
+      "description": "Almost every component in the shipped prefab library exposes the same block — `alignX`, `alignY`, the four margins, `position`, a size and `mounted` — and an authored component almost never does. The consequence is visible in any page built without it: every instance sits inside a single-child `Group` that exists for nothing but pushing it around, and the page keeps that wrapper forever. Here the avatar's own `Component Inputs` carry the box, wired into the root Group's matching inputs, so the page below places the same component at two sizes, in two alignments, with two margins, and holds **no wrapper Groups at all**. ⚠️ The honest limit: ports nobody sets are cost, and this is a component used everywhere earning them — a leaf used once does not earn a long interface by imitation. Expose what a parent would otherwise have to work around, and stop. `clicked` is on the interface for the same reason: a photograph the page cannot respond to is a decoration.",
+      "demonstrates": [
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "Image",
+        "Text"
+      ],
+      "components": [
+        {
+          "name": "/Components/Avatar",
+          "nodes": [
+            {
+              "id": "avatar_root",
+              "type": "Group",
+              "label": "Avatar — its own box, set by whoever places it",
+              "parameters": {
+                "sizeMode": "explicit",
+                "width": {
+                  "value": 48,
+                  "unit": "px"
+                },
+                "height": {
+                  "value": 48,
+                  "unit": "px"
+                },
+                "borderRadius": "var(--radius-full)",
+                "clip": true,
+                "backgroundColor": "var(--muted)"
+              },
+              "children": [
+                "avatar_image"
+              ],
+              "x": 40,
+              "y": 260
+            },
+            {
+              "id": "avatar_image",
+              "type": "Image",
+              "label": "The photograph",
+              "parameters": {
+                "src": "noodl_modules/starter-imagery/avatar-2.webp",
+                "alt": "Portrait",
+                "sizeMode": "explicit",
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "height": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "objectFit": "cover"
+              },
+              "parent": "avatar_root"
+            },
+            {
+              "id": "avatar_inputs",
+              "type": "Component Inputs",
+              "label": "Avatar interface in — the content, then the box",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "src",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "alt",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "size",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "alignX",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "alignY",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "marginTop",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "marginRight",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "marginBottom",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "marginLeft",
+                  "plug": "output",
+                  "type": "number"
+                },
+                {
+                  "name": "position",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "mounted",
+                  "plug": "output",
+                  "type": "boolean"
+                }
+              ]
+            },
+            {
+              "id": "avatar_outputs",
+              "type": "Component Outputs",
+              "label": "Avatar interface out",
+              "x": 860,
+              "y": 260,
+              "ports": [
+                {
+                  "name": "clicked",
+                  "plug": "input",
+                  "type": "signal"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "src",
+              "toId": "avatar_image",
+              "toProperty": "src"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "alt",
+              "toId": "avatar_image",
+              "toProperty": "alt"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "size",
+              "toId": "avatar_root",
+              "toProperty": "width"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "size",
+              "toId": "avatar_root",
+              "toProperty": "height"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "alignX",
+              "toId": "avatar_root",
+              "toProperty": "alignX"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "alignY",
+              "toId": "avatar_root",
+              "toProperty": "alignY"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "marginTop",
+              "toId": "avatar_root",
+              "toProperty": "marginTop"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "marginRight",
+              "toId": "avatar_root",
+              "toProperty": "marginRight"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "marginBottom",
+              "toId": "avatar_root",
+              "toProperty": "marginBottom"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "marginLeft",
+              "toId": "avatar_root",
+              "toProperty": "marginLeft"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "position",
+              "toId": "avatar_root",
+              "toProperty": "position"
+            },
+            {
+              "fromId": "avatar_inputs",
+              "fromProperty": "mounted",
+              "toId": "avatar_root",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "avatar_root",
+              "fromProperty": "onClick",
+              "toId": "avatar_outputs",
+              "toProperty": "clicked"
+            }
+          ]
+        },
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Team",
+                "urlPath": "team"
+              },
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell — no wrapper Groups around the avatars",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "rowGap": "var(--space-5)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-10)",
+                "paddingBottom": "var(--space-10)",
+                "backgroundColor": "var(--background)"
+              },
+              "parent": "page",
+              "children": [
+                "byline_row",
+                "big_avatar",
+                "who_text"
+              ]
+            },
+            {
+              "id": "byline_row",
+              "type": "Group",
+              "label": "Byline",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "columnGap": "var(--space-3)"
+              },
+              "parent": "shell",
+              "children": [
+                "small_avatar",
+                "byline_text"
+              ]
+            },
+            {
+              "id": "small_avatar",
+              "type": "/Components/Avatar",
+              "label": "Small, in the row — placed by its own ports",
+              "parameters": {
+                "src": "noodl_modules/starter-imagery/avatar-4.webp",
+                "alt": "Tom Beckett",
+                "size": 32,
+                "alignX": "left",
+                "alignY": "center",
+                "marginTop": 0,
+                "marginRight": 0,
+                "marginBottom": 0,
+                "marginLeft": 0,
+                "position": "relative",
+                "mounted": true
+              },
+              "parent": "byline_row"
+            },
+            {
+              "id": "byline_text",
+              "type": "Text",
+              "label": "Byline text",
+              "parameters": {
+                "text": "Tom Beckett · baker, Tuesday to Saturday",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "byline_row"
+            },
+            {
+              "id": "big_avatar",
+              "type": "/Components/Avatar",
+              "label": "Same component, larger, centred, with a margin above it",
+              "parameters": {
+                "src": "noodl_modules/starter-imagery/avatar-6.webp",
+                "alt": "Amal Haddad",
+                "size": 96,
+                "alignX": "center",
+                "alignY": "top",
+                "marginTop": 8,
+                "marginRight": 0,
+                "marginBottom": 0,
+                "marginLeft": 0,
+                "position": "relative",
+                "mounted": true
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "who_text",
+              "type": "Text",
+              "label": "Who was pressed",
+              "parameters": {
+                "text": "Press a face to see who it is",
+                "fontSize": "var(--text-sm)",
+                "textAlignX": "center",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "name_pressed",
+              "type": "JavaScriptFunction",
+              "label": "Name the person that was pressed",
+              "parameters": {
+                "functionScript": "Outputs.name = Inputs.who ? Inputs.who + ' — on the counter this week' : 'Press a face to see who it is';"
+              },
+              "x": 760,
+              "y": 420
+            },
+            {
+              "id": "who_source",
+              "type": "String",
+              "label": "The name that goes with the big avatar",
+              "parameters": {
+                "value": "Amal Haddad"
+              },
+              "x": 480,
+              "y": 420
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "who_source",
+              "fromProperty": "savedValue",
+              "toId": "name_pressed",
+              "toProperty": "in-who"
+            },
+            {
+              "fromId": "big_avatar",
+              "fromProperty": "clicked",
+              "toId": "name_pressed",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "name_pressed",
+              "fromProperty": "out-name",
+              "toId": "who_text",
               "toProperty": "text"
             }
           ]
@@ -65244,6 +66057,671 @@
               "fromProperty": "onChange",
               "toId": "save_done",
               "toProperty": "store"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comp-slot-panel-with-interface",
+      "title": "A slot component that is still a component: Component Children plus a real interface",
+      "description": "`Component Children` marks where the consumer's own children land, which is what lets one panel hold a form on one page and a table on the next — the alternative is a panel per kind of content, and nobody writes the third one. But a slot is not a substitute for an interface, and that is the mistake this example exists to correct: the panel still takes `title` and `mounted`, still lets the instance decide whether the close button exists (`showClose`), and still publishes `closed` so the page can act on the request rather than guess. Note what `closed` is: the panel does NOT hide itself when the button is pressed — it says the user asked, and the page decides, which is the same contract a controlled value has. A component that unmounts itself is a component whose parent can be surprised. The page places the same panel twice with different children inside it and different chrome, and the two instances share every line of the panel's graph.",
+      "demonstrates": [
+        "Component Children",
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "/Components/Panel",
+          "nodes": [
+            {
+              "id": "panel_root",
+              "type": "Group",
+              "label": "Panel",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "backgroundColor": "var(--surface)",
+                "borderStyle": "solid",
+                "borderWidth": "var(--border-1)",
+                "borderColor": "var(--border)",
+                "borderRadius": "var(--radius-lg)"
+              },
+              "children": [
+                "panel_header",
+                "panel_body"
+              ],
+              "x": 40,
+              "y": 200
+            },
+            {
+              "id": "panel_header",
+              "type": "Group",
+              "label": "Header",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "justifyContent": "space-between",
+                "columnGap": "var(--space-3)",
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "paddingTop": "var(--space-3)",
+                "paddingBottom": "var(--space-3)"
+              },
+              "parent": "panel_root",
+              "children": [
+                "panel_title",
+                "close_button"
+              ]
+            },
+            {
+              "id": "panel_title",
+              "type": "Text",
+              "label": "Title",
+              "parameters": {
+                "text": "Panel",
+                "fontSize": "var(--text-lg)",
+                "fontWeight": "var(--font-semibold)",
+                "lineHeight": "var(--leading-snug)",
+                "color": "var(--foreground)"
+              },
+              "parent": "panel_header"
+            },
+            {
+              "id": "close_button",
+              "type": "net.noodl.controls.button",
+              "label": "Close — present only if the instance asked for it",
+              "parameters": {
+                "label": "Close",
+                "sizeMode": "contentSize",
+                "backgroundColor": "var(--muted)",
+                "color": "var(--muted-foreground)",
+                "borderRadius": "var(--radius-md)",
+                "paddingLeft": "var(--space-3)",
+                "paddingRight": "var(--space-3)",
+                "paddingTop": "var(--space-1)",
+                "paddingBottom": "var(--space-1)",
+                "fontSize": "var(--text-sm)"
+              },
+              "parent": "panel_header"
+            },
+            {
+              "id": "panel_body",
+              "type": "Group",
+              "label": "Body — whatever the consumer put inside the instance",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "rowGap": "var(--space-3)",
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "paddingTop": "var(--space-2)",
+                "paddingBottom": "var(--space-4)"
+              },
+              "parent": "panel_root",
+              "children": [
+                "panel_slot"
+              ]
+            },
+            {
+              "id": "panel_slot",
+              "type": "Component Children",
+              "label": "The slot — the consumer's children render here",
+              "parent": "panel_body"
+            },
+            {
+              "id": "panel_inputs",
+              "type": "Component Inputs",
+              "label": "Panel interface in — plugged \"output\"",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "mounted",
+                  "plug": "output",
+                  "type": "boolean"
+                },
+                {
+                  "name": "showClose",
+                  "plug": "output",
+                  "type": "boolean"
+                }
+              ]
+            },
+            {
+              "id": "panel_outputs",
+              "type": "Component Outputs",
+              "label": "Close was REQUESTED — the page decides what that means",
+              "x": 860,
+              "y": 200,
+              "ports": [
+                {
+                  "name": "closed",
+                  "plug": "input",
+                  "type": "signal"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "panel_inputs",
+              "fromProperty": "title",
+              "toId": "panel_title",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "panel_inputs",
+              "fromProperty": "mounted",
+              "toId": "panel_root",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "panel_inputs",
+              "fromProperty": "showClose",
+              "toId": "close_button",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "close_button",
+              "fromProperty": "onClick",
+              "toId": "panel_outputs",
+              "toProperty": "closed"
+            }
+          ]
+        },
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Settings",
+                "urlPath": "settings"
+              },
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "rowGap": "var(--space-5)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-10)",
+                "paddingBottom": "var(--space-10)",
+                "backgroundColor": "var(--background)"
+              },
+              "parent": "page",
+              "children": [
+                "notice_panel",
+                "hours_panel"
+              ]
+            },
+            {
+              "id": "notice_panel",
+              "type": "/Components/Panel",
+              "label": "Panel one — dismissible, holding a sentence",
+              "parameters": {
+                "title": "Card expiring",
+                "mounted": true,
+                "showClose": true
+              },
+              "parent": "shell",
+              "children": [
+                "notice_text",
+                "notice_button"
+              ]
+            },
+            {
+              "id": "notice_text",
+              "type": "Text",
+              "label": "The consumer's child",
+              "parameters": {
+                "text": "The card ending 4417 expires next month. Payments will start failing on the 1st.",
+                "fontSize": "var(--text-sm)",
+                "lineHeight": "var(--leading-relaxed)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "notice_panel"
+            },
+            {
+              "id": "notice_button",
+              "type": "net.noodl.controls.button",
+              "label": "The consumer's second child",
+              "parameters": {
+                "label": "Update the card",
+                "sizeMode": "contentSize",
+                "backgroundColor": "var(--primary)",
+                "color": "var(--primary-foreground)",
+                "borderRadius": "var(--radius-md)",
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "paddingTop": "var(--space-2)",
+                "paddingBottom": "var(--space-2)",
+                "fontSize": "var(--text-sm)",
+                "fontWeight": "var(--font-medium)"
+              },
+              "parent": "notice_panel"
+            },
+            {
+              "id": "hours_panel",
+              "type": "/Components/Panel",
+              "label": "Panel two — same component, no close button, different content",
+              "parameters": {
+                "title": "Opening hours",
+                "mounted": true,
+                "showClose": false
+              },
+              "parent": "shell",
+              "children": [
+                "hours_weekday",
+                "hours_weekend"
+              ]
+            },
+            {
+              "id": "hours_weekday",
+              "type": "Text",
+              "label": "Weekdays",
+              "parameters": {
+                "text": "Tuesday to Friday, 7am until the bread runs out.",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--foreground)"
+              },
+              "parent": "hours_panel"
+            },
+            {
+              "id": "hours_weekend",
+              "type": "Text",
+              "label": "Weekend",
+              "parameters": {
+                "text": "Saturday 7am–1pm. Closed Sunday and Monday.",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--foreground)"
+              },
+              "parent": "hours_panel"
+            },
+            {
+              "id": "dismiss_notice",
+              "type": "JavaScriptFunction",
+              "label": "The page decides what closing means",
+              "parameters": {
+                "functionScript": "Outputs.hidden = false;\nOutputs.done();"
+              },
+              "x": 720,
+              "y": 360
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "notice_panel",
+              "fromProperty": "closed",
+              "toId": "dismiss_notice",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "dismiss_notice",
+              "fromProperty": "out-hidden",
+              "toId": "notice_panel",
+              "toProperty": "mounted"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "comp-variant-badge-states",
+      "title": "One size port, three sizes: a variant selector wired into States",
+      "description": "The component a page places three times at three sizes, without three components. `size` is a `Component Inputs` port wired straight into `States.currentState` — 🔴 that port is TWO ports sharing one name: a static string **output** that reports the current state, and, once `states` is set, a generated **enum input** that selects one by name. The input is the wire that makes a variant port work, and a chain of `Condition` nodes each setting one property is the same idea written badly. The `values` parameter (`padX,padY,labelSize`) mints one input per state per value (`value-small-padX`) and one output per value, so each state assigns the whole set at once and the graph carries no branch. `showDot` is the other half of a real interface: chrome chosen at the instance, not by making a second component. And the badge publishes `clicked`, so the page can act on a press — a component that only draws is a component the page has to work around.",
+      "demonstrates": [
+        "States",
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "Text"
+      ],
+      "components": [
+        {
+          "name": "/Components/Badge",
+          "nodes": [
+            {
+              "id": "badge_root",
+              "type": "Group",
+              "label": "Badge",
+              "parameters": {
+                "sizeMode": "contentSize",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "columnGap": "var(--space-2)",
+                "backgroundColor": "var(--muted)",
+                "borderRadius": "var(--radius-full)"
+              },
+              "children": [
+                "badge_dot",
+                "badge_label"
+              ],
+              "x": 40,
+              "y": 200
+            },
+            {
+              "id": "badge_dot",
+              "type": "Group",
+              "label": "Status dot — hidden unless the instance asks for it",
+              "parameters": {
+                "width": {
+                  "value": 8,
+                  "unit": "px"
+                },
+                "height": {
+                  "value": 8,
+                  "unit": "px"
+                },
+                "borderRadius": "var(--radius-full)",
+                "backgroundColor": "var(--primary)"
+              },
+              "parent": "badge_root"
+            },
+            {
+              "id": "badge_label",
+              "type": "Text",
+              "label": "Label",
+              "parameters": {
+                "text": "Badge",
+                "color": "var(--muted-foreground)",
+                "fontWeight": "var(--font-medium)",
+                "lineHeight": "var(--leading-none)"
+              },
+              "parent": "badge_root"
+            },
+            {
+              "id": "badge_inputs",
+              "type": "Component Inputs",
+              "label": "Badge interface in — every port plugged \"output\"",
+              "x": 40,
+              "y": 40,
+              "ports": [
+                {
+                  "name": "label",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "size",
+                  "plug": "output",
+                  "type": "string"
+                },
+                {
+                  "name": "showDot",
+                  "plug": "output",
+                  "type": "boolean"
+                }
+              ]
+            },
+            {
+              "id": "badge_size",
+              "type": "States",
+              "label": "Size variants — one state per size, three values each",
+              "parameters": {
+                "states": "small,medium,large",
+                "values": "padX,padY,labelSize",
+                "value-small-padX": "var(--space-2)",
+                "value-small-padY": "var(--space-0-5)",
+                "value-small-labelSize": "var(--text-xs)",
+                "value-medium-padX": "var(--space-3)",
+                "value-medium-padY": "var(--space-1)",
+                "value-medium-labelSize": "var(--text-sm)",
+                "value-large-padX": "var(--space-4)",
+                "value-large-padY": "var(--space-2)",
+                "value-large-labelSize": "var(--text-base)"
+              },
+              "x": 460,
+              "y": 120
+            },
+            {
+              "id": "badge_outputs",
+              "type": "Component Outputs",
+              "label": "Badge interface out — plugged \"input\"",
+              "x": 860,
+              "y": 200,
+              "ports": [
+                {
+                  "name": "clicked",
+                  "plug": "input",
+                  "type": "signal"
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "badge_inputs",
+              "fromProperty": "label",
+              "toId": "badge_label",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "badge_inputs",
+              "fromProperty": "size",
+              "toId": "badge_size",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "badge_inputs",
+              "fromProperty": "showDot",
+              "toId": "badge_dot",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "badge_size",
+              "fromProperty": "padX",
+              "toId": "badge_root",
+              "toProperty": "paddingLeft"
+            },
+            {
+              "fromId": "badge_size",
+              "fromProperty": "padX",
+              "toId": "badge_root",
+              "toProperty": "paddingRight"
+            },
+            {
+              "fromId": "badge_size",
+              "fromProperty": "padY",
+              "toId": "badge_root",
+              "toProperty": "paddingTop"
+            },
+            {
+              "fromId": "badge_size",
+              "fromProperty": "padY",
+              "toId": "badge_root",
+              "toProperty": "paddingBottom"
+            },
+            {
+              "fromId": "badge_size",
+              "fromProperty": "labelSize",
+              "toId": "badge_label",
+              "toProperty": "fontSize"
+            },
+            {
+              "fromId": "badge_root",
+              "fromProperty": "onClick",
+              "toId": "badge_outputs",
+              "toProperty": "clicked"
+            }
+          ]
+        },
+        {
+          "name": "/Pages/Example",
+          "nodes": [
+            {
+              "id": "page",
+              "type": "Page",
+              "label": "Page",
+              "parameters": {
+                "title": "Orders",
+                "urlPath": "orders"
+              },
+              "children": [
+                "shell"
+              ]
+            },
+            {
+              "id": "shell",
+              "type": "Group",
+              "label": "Shell",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "column",
+                "rowGap": "var(--space-5)",
+                "paddingLeft": "var(--space-6)",
+                "paddingRight": "var(--space-6)",
+                "paddingTop": "var(--space-10)",
+                "paddingBottom": "var(--space-10)",
+                "backgroundColor": "var(--background)"
+              },
+              "parent": "page",
+              "children": [
+                "heading",
+                "row",
+                "last_pressed"
+              ]
+            },
+            {
+              "id": "heading",
+              "type": "Text",
+              "label": "Page heading",
+              "parameters": {
+                "text": "Order 4417",
+                "fontSize": "var(--text-2xl)",
+                "fontWeight": "var(--font-semibold)",
+                "lineHeight": "var(--leading-tight)",
+                "color": "var(--foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "row",
+              "type": "Group",
+              "label": "Three instances, three sizes, one component",
+              "parameters": {
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "sizeMode": "contentHeight",
+                "flexDirection": "row",
+                "alignItems": "center",
+                "columnGap": "var(--space-3)"
+              },
+              "parent": "shell",
+              "children": [
+                "badge_small",
+                "badge_medium",
+                "badge_large"
+              ]
+            },
+            {
+              "id": "badge_small",
+              "type": "/Components/Badge",
+              "label": "Small, no dot",
+              "parameters": {
+                "label": "Paid",
+                "size": "small",
+                "showDot": false
+              },
+              "parent": "row"
+            },
+            {
+              "id": "badge_medium",
+              "type": "/Components/Badge",
+              "label": "Medium, with the status dot",
+              "parameters": {
+                "label": "Packing",
+                "size": "medium",
+                "showDot": true
+              },
+              "parent": "row"
+            },
+            {
+              "id": "badge_large",
+              "type": "/Components/Badge",
+              "label": "Large — the one the page listens to",
+              "parameters": {
+                "label": "Awaiting courier",
+                "size": "large",
+                "showDot": true
+              },
+              "parent": "row"
+            },
+            {
+              "id": "last_pressed",
+              "type": "Text",
+              "label": "What the page learned",
+              "parameters": {
+                "text": "Nothing pressed yet",
+                "fontSize": "var(--text-sm)",
+                "color": "var(--muted-foreground)"
+              },
+              "parent": "shell"
+            },
+            {
+              "id": "note_pressed",
+              "type": "JavaScriptFunction",
+              "label": "Say which badge was pressed",
+              "parameters": {
+                "functionScript": "Outputs.message = 'Courier badge pressed at ' + new Date().toLocaleTimeString();"
+              },
+              "x": 700,
+              "y": 320
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "badge_large",
+              "fromProperty": "clicked",
+              "toId": "note_pressed",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "note_pressed",
+              "fromProperty": "out-message",
+              "toId": "last_pressed",
+              "toProperty": "text"
             }
           ]
         }
@@ -67007,7 +68485,7 @@
     {
       "id": "logic-quantity-stepper",
       "title": "Quantity stepper: Counter with remapped and formatted readouts",
-      "description": "Two buttons drive a Counter up and down within limits. The count feeds three displays: a String Format caption ('{count} items'), a String Mapper that maps special values to words (0 → 'empty'), and a Number Remapper converting the 0–10 range into 0.2–1 opacity for a fill indicator. Counter holds the state; the display nodes are pure value-shaping between it and the UI.",
+      "description": "Two buttons drive a Counter up and down within limits. The count feeds three displays: a String Format caption ('{count} items'), a String Mapper that maps special values to words (0 → 'empty'), and a Number Remapper converting the 0–10 range into 0.2–1 opacity for a fill indicator. Counter holds the state; the display nodes are pure value-shaping between it and the UI. ⚠️ This component has no `Component Inputs` or `Component Outputs`: nothing outside it can set the starting quantity or read the count back, so it is a demonstration of the value-shaping nodes rather than a part a page can use. `comp-controlled-quantity-stepper` is the same idea with an interface — `value` in, `value` and `valueChanged` out.",
       "demonstrates": [
         "Counter",
         "Number Remapper",

@@ -315,27 +315,85 @@ patterns ride `get_project_info` as a fifth doctrine field, `interfaceDoctrine`,
   a peer was live in `packages/noodl-editor` and that string is pinned by editor-side suites.
   Follow-up, owner NONE.
 
-**AC3 — the corpus stops teaching content-only components.** At least four new examples, each
-demonstrating one pattern at wire level: a variant selector (P4 + the `currentState` wire), a
-controlled value (P2), a slot (P7), and a placement contract (P1).
+**AC3 — the corpus stops teaching content-only components.** 🟡 **FOUR EXAMPLES BUILT, 2026-09-10
+(session 6) — and the AC's two halves do not agree with each other.** The four are in, validated and
+merged; the corpus-wide floors are not met and **cannot be met by four examples**, which is
+arithmetic that was available when the AC was written. Both halves, honestly:
+
+✅ **Built** — one per pattern, each a component plus a page that places it, so the wire and its use
+are both visible (`docs/node-catalog/examples/`):
+
+| example | pattern | the wire it exists for |
+|---|---|---|
+| `comp-variant-badge-states` | P4 variant selector | `Component Inputs.size → States.currentState`, three states × three values |
+| `comp-controlled-quantity-stepper` | P2 controlled value | `value` in, `value` + `valueChanged` out, over a `Counter`; `disabled → Inverter →` both buttons' `enabled` |
+| `comp-slot-panel-with-interface` | P7 the slot | `Component Children` **plus** `title`/`mounted`/`showClose` and a `closed` output — the panel asks, the page decides |
+| `comp-placement-contract-avatar` | P1 placement contract | eleven ports of box wired to the root Group; the page places two instances and holds **no wrapper Groups** |
+
+🔴 **Counted first, as the phase now requires.** Over the 68 examples that existed, **30** components
+had an interface: **0** wired anything into `States.currentState`, **0** carried the same port name in
+and out, **0** exposed a single placement port, and **1** had a `Component Children` node
+(`vis-wrapper-component-children`, whose whole interface is `title`). Three of the four patterns were
+absent outright; the fourth existed as a slot with nothing on its interface, which is why the new one
+is *"a slot component that is still a component"* rather than a second wrapper.
+
+**Measured after, with the same instrument** (`measure-interfaces.py corpus`):
+
+| | before | after | floor |
+|---|---|---|---|
+| components with an interface | 30 | 34 | — |
+| publishes outputs | 10% | **21%** | 50% |
+| carries a flag port | 3% | **12%** | 20% |
+| `States` per component | 0.03 | **0.06** | 0.15 |
+
+🔴 **Four examples cannot clear a corpus-wide floor of 50%, and no number of *new* examples fixes it
+cheaply.** 27 of the original 30 publish nothing; reaching 17 of 34 needs **ten more** publishing
+components, i.e. a pass over the EXISTING row components (`/Note Row`, `/Task Line`, `/Order Row` —
+a dozen of them, each `IN ['title']`, `OUT []`). ⚠️ **And that pass must not be done to move the
+percentage.** Adding an output to a row because a floor is at 50% is the same failure as a doctrine
+that states its own thresholds: the metric stops measuring the thing it was chosen for. The honest
+remainder is *"the rows that should publish a click and do not"*, judged one at a time — which is a
+task, not a number. Filed as the AC3 remainder; owner NONE.
+
+⚠️ **The examples gate cannot see a misspelled wire.** `catalog:examples` was 69/69 clean with
+`Group.paddingLeft` mutated to `paddingLeftt` in a shipped example — a connection into a port that
+does not exist, which the editor would drop. It catches port DIRECTION, undeclared component ports,
+unknown instance parameters, inert dimensions and raw colour/spacing literals (all four were
+exercised while building these), but not that. A naive closed-world check cannot simply be switched
+on: over all 72 examples it reads **566 port references checked, 172 skipped, 0 bad**, and the skips
+are the nodes with runtime-discovered ports (`States`, `JavaScriptFunction`, and `Group` itself,
+which is why the mutation slipped through). Owner NONE; the four new examples were checked by hand
+against `node-catalog.json` instead, and every ⚠️ they raise is a documented dynamic port.
+
+⚠️ **`logic-quantity-stepper` already existed** and builds the same buttons around the same
+`Counter` with **no interface at all**. Not a duplicate — it is about the value-shaping nodes — but
+two steppers that never name each other let the reader pick whichever they met first, so each
+description now names the other and says what it is not. Same fix as CMP-005 AC5's two date answers.
 
 🔴 **Graded on the three metrics that actually separate the arms, not on port count.** Measured
 2026-09-09 against the shipped template, which is the arm any new work has to beat:
 
 | metric | shipped template | corpus today | prefabs | floor |
 |---|---|---|---|---|
-| mean ports/component | **3.4** | 2.2 | 4.4 | — **rejected, see below** |
-| carries a variant port | **14%** | 3% | 16% | — **rejected, see below** |
-| **publishes outputs** | **14%** | 10% | 84% | **≥ 50%** |
-| **carries a flag port** | **0%** | 3% | 21% | **≥ 20%** |
-| **`States` per component** | **0.00** | 0.03 | 0.23 | **≥ 0.15** |
+| mean ports/component | **3.4** | 2.6 | 4.3 | — **rejected, see below** |
+| carries a variant port | **14%** | 9% | 17% | — **rejected, see below** |
+| **publishes outputs** | **14%** | 21% | 84% | **≥ 50%** |
+| **carries a flag port** | **0%** | 12% | 20% | **≥ 20%** |
+| **`States` per component** | **0.00** | 0.06 | 0.22 | **≥ 0.15** |
 
 ⚠️ **Two obvious metrics were rejected after measuring them.** *Mean ports* does not discriminate:
 the template sits at 3.4 because `/Site/Plan` alone carries ten ports, so a floor of 3.5 would have
 been **green before any work was done**. *Variant port* does not discriminate either: the regex
 catches `/Site/Plan`'s `edge`/`ground`/`ink` and `/Site/Stat.color`, so the template scores 14%
-against the prefabs' 16%. The template's leaves are not the weak part — **the missing outputs, flags
-and state machines are**, and those three separate 14/0/0.00 from 84/21/0.23 cleanly.
+against the prefabs' 17%. The template's leaves are not the weak part — **the missing outputs, flags
+and state machines are**, and those three separate 14/0/0.00 from 84/20/0.22 cleanly.
+
+✅ The template column was re-measured on 2026-09-10 and reproduces exactly — 14 components, 47
+ports, 14% / 0% / 0.00.
+
+⚠️ The prefab column moved between 2026-09-09 and 2026-09-10 (4.4→4.3 mean, 16→17% variant, 21→20%
+flag, 0.23→0.22 States) because this phase exported three parts onto the shelf. Re-measure it rather
+than quoting it; the 84% is stable.
 
 **AC4 — a built page shows it.** A fresh MCP build of one business landing page (CMP-002) clears
 AC3's three floors, graded by the same script with the shipped template as the reverted arm.

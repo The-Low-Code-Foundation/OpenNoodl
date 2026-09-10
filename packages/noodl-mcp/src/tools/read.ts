@@ -169,7 +169,7 @@ export function registerReadTools(server: McpServer, binding: ProjectBinding, op
               // CMP-001 AC2 — the other half of the sentence above. The
               // decomposition doctrine says what becomes a component; this says
               // what goes on it, and phase 85 measured the population that
-              // learns only the first half (10% of the corpus's components
+              // learns only the first half (21% of the corpus's components
               // publish anything, against 84% of the shipped library's). It
               // sits directly after `authoringDoctrine` on purpose: the two are
               // one decision, and the second half is the one that gets skipped.

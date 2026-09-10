@@ -8,7 +8,11 @@
     "repeater-query-records",
     "data-run-tasks-batch",
     "cloud-record-relations",
-    "ui-card-grid-repeater"
+    "ui-card-grid-repeater",
+    "comp-variant-badge-states",
+    "comp-controlled-quantity-stepper",
+    "comp-slot-panel-with-interface",
+    "comp-placement-contract-avatar"
   ],
   "patterns": [
     "Repeater item: declare inputs named after the item object's properties and bind them straight to visuals.",

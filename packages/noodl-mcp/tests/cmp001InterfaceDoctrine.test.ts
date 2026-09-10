@@ -2,7 +2,7 @@
  * CMP-001 AC2 (P85) — the interface playbook ships where a model reads it.
  *
  * The decomposition doctrine has said what BECOMES a component since AAQ-008. Nothing said what to
- * put ON one, and phase 85 measured the consequence: **10%** of the components in the corpus an
+ * put ON one, and phase 85 measured the consequence: **21%** of the components in the corpus an
  * agent learns from publish any `Component Outputs`, against **84%** of the components the original
  * Noodl team shipped in `library/prefabs`. The playbook now rides `get_project_info` as
  * `interfaceDoctrine`, beside the four doctrine fields already there.
@@ -30,7 +30,7 @@
  * doctrine's text has gone stale against the artefacts it teaches from, which is exactly the
  * failure this suite exists to catch. The reference instrument for the two percentages is
  * `dev-docs/tasks/phase-85-the-component-is-the-backbone/measure-interfaces.py`; the derivation
- * below reproduced its numbers (corpus 10%, prefabs 84%) at the time of writing, and the two
+ * below reproduced its numbers (corpus 21%, prefabs 84%) at the time of writing, and the two
  * disagreeing is itself worth knowing.
  */
 
@@ -337,8 +337,11 @@ describe('CMP-001 AC2 — the numbers it argues from are the numbers the artefac
     );
     // The population is not empty and not the shelf — a rate over nothing is not a rate.
     expect(comps.filter((c) => c.inputs.length > 0).length).toBeGreaterThan(20);
-    expect(publishRate(comps)).toBe(10);
-    expect(received).toMatch(/\*\*10%\*\*/);
+    // 🔴 This literal moved once already, and correctly: it read 10 until CMP-001 AC3 added
+    // four examples that publish, and this spec is what said the doctrine's sentence had gone
+    // stale. Re-run `measure-interfaces.py corpus` before touching it.
+    expect(publishRate(comps)).toBe(21);
+    expect(received).toMatch(/\*\*21%\*\*/);
   });
 
   it('the fifty-four components that publish a failure port are still fifty-four', () => {

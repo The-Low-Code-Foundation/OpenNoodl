@@ -111,7 +111,7 @@ export interface ProjectInfoResponse {
    * CMP-001 — the component interface playbook: what to put ON a component,
    * which `authoringDoctrine` never said. Same read-write gate and the same
    * shared-module rule as the fields around it. Phase 85's measurement is the
-   * reason it ships at all — 10% of the corpus's components publish any
+   * reason it ships at all — 21% of the corpus's components publish any
    * outputs against 84% of the shipped library's — and the reason it ships
    * HERE is the one SB-002 gives: the instruction surface is budgeted, a
    * result field is not.
