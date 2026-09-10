@@ -179,6 +179,16 @@ function setArrowDirection(arrow: HTMLElement, position: string) {
   else if (position === 'right') arrow.classList.add('left');
 }
 
+/**
+ * How long `.popup-layer-activity`'s opacity transition lasts, in ms.
+ *
+ * 🔴 **Keep in step with `transition: opacity 500ms` in `popuplayer.css`.** A
+ * number smaller than the CSS one cuts the fade off mid-way; a larger one just
+ * leaves the spinner animating for the difference, which is the cost this
+ * pairing exists to remove.
+ */
+const ACTIVITY_FADE_MS = 500;
+
 const ARROW_COLOR_CSS_ATTR = {
   bottom: 'borderBottomColor',
   top: 'borderTopColor',
@@ -1359,8 +1369,22 @@ export class PopupLayer {
   }
 
   // ------------------ Activity (deprecated) ---------------------
+  /**
+   * FLD-017 — the fade has to be paired with a `display` toggle, because the
+   * spinner inside this box animates whether or not anyone can see it.
+   *
+   * `.popup-layer-activity` is now `display: none` by default (see
+   * `styles/popuplayer.css` for the measurement). `display` is set here BEFORE
+   * `outerSize` reads the box: a `display: none` element measures 0 x 0, and
+   * the centring below is computed from that size.
+   */
+  private activityHideTimeout: ReturnType<typeof setTimeout> | undefined;
+
   public showActivity(text: string) {
     this.activityText.innerHTML = text;
+    clearTimeout(this.activityHideTimeout);
+    this.activityEl.style.display = 'block';
+    this.activityEl.style.pointerEvents = '';
     const size = outerSize(this.activityEl, false);
     const x = (this.width - size.width) / 2;
     const y = (this.height - size.height) / 2;
@@ -1377,6 +1401,15 @@ export class PopupLayer {
   public hideActivity() {
     this.activityEl.style.opacity = '0';
     this.activityEl.style.pointerEvents = 'none';
+
+    // Take it out of layout only once the 500ms opacity transition in
+    // `popuplayer.css` has run — `display: none` immediately would replace the
+    // fade with a disappearance. After that the spinner stops animating, which
+    // is the whole point of the pairing.
+    clearTimeout(this.activityHideTimeout);
+    this.activityHideTimeout = setTimeout(() => {
+      this.activityEl.style.display = 'none';
+    }, ACTIVITY_FADE_MS);
 
     console.error('hideActivity is deprecated. Use ToastLayer.hideActivity() instead.');
   }

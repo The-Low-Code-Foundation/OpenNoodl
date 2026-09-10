@@ -71,6 +71,13 @@ module.exports = {
     // core-ui's components importable here — anything that names React or a
     // `.module.scss` still fails, loudly. What it makes reachable is the
     // import-free policy module the update-dialog spec grades.
-    '^@noodl-core-ui/(.*)$': '<rootDir>/../noodl-core-ui/src/$1'
+    '^@noodl-core-ui/(.*)$': '<rootDir>/../noodl-core-ui/src/$1',
+    // FLD-017: `PrimaryButton` imports `@noodl-hooks/useParsedHref` — an editor
+    // alias reached from inside core-ui. The hook is pure (`useMemo` and a regex),
+    // and mapping it does NOT make the renderer importable: anything that touches
+    // Electron or an editor singleton still fails here, loudly. What it makes
+    // reachable is one React component rendered by `react-dom/server`, which needs
+    // no document — see `tests-unit/fld-017/primary-button-spinner.test.ts`.
+    '^@noodl-hooks/(.*)$': '<rootDir>/src/editor/src/hooks/$1'
   }
 };

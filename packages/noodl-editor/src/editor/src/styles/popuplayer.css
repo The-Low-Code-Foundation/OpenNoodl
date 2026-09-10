@@ -460,6 +460,25 @@
   transition: opacity 500ms;
   font-size: 15px;
   z-index: 90;
+  /*
+   * FLD-017 — `opacity: 0` is not "not rendered", and this box holds three
+   * `bouncedelay 1.4s infinite` spinner dots.
+   *
+   * Measured on the packaged build, welcome screen, nothing open:
+   * `document.getAnimations()` returned **three running animations**, all of
+   * them these, and idle CPU over 180 s was **2.42% of a core** (gpu 0.92%,
+   * renderer 1.42%). Setting this one declaration in the live renderer took
+   * `getAnimations()` to 0 and the same window to **0.06%** — gpu 0.01%,
+   * renderer 0.01%. Same process, one variable changed.
+   *
+   * An invisible element still animates: only `display: none` stops a CSS
+   * animation — `opacity: 0` and `visibility: hidden` do not — and this layer
+   * is built once in `popuplayer.ts`'s constructor and never taken out of the
+   * tree, so the dots composited for the life of the app, on every screen,
+   * behind every project. `showActivity` sets `display: block`, `hideActivity`
+   * puts it back once the fade above has run.
+   */
+  display: none;
 }
 
 .popup-layer-activity-spinner {
