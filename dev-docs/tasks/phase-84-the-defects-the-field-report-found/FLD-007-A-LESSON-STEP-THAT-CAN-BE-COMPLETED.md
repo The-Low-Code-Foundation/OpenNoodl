@@ -143,6 +143,55 @@ Two places, and they are different repositories:
   and the routes plainly work — so the default is filled in elsewhere. Not chased; noted because a
   reader of that function alone would conclude the lessons cannot navigate.
 
+### AC1 — driven in the real editor, 2026-09-10
+
+Not the whole 15-minute lesson: the seam the lesson grades, reached by a real click in the running
+app. The project is a scratchpad copy of the hosted **lesson 07** starter — it ships the same three
+navigations the lessons use, including the two with **no page parameters** that #5 is about, opened
+through a seeded `recently_opened_project.json` under `NOODL_USER_DATA_DIR` so nothing touched
+Richard's launcher config.
+
+| # | what was done | viewer URL | `window.noodlEditorPreviewRoute` |
+|---|---|---|---|
+| 1 | project opened | `http://localhost:8574/` | `/` |
+| 2 | clicked **Get Started** (Start Page → Task Page, carries `pm-User Name`) | `/task-page?User%20Name=Your` | `/task-page` |
+| 3 | 🔴 clicked **add** (Task Page → Create Card Page, **no params**) | `/create-card-page` | `/create-card-page` |
+| 4 | 🔴 navigated to a bare `/task-page` — #5's literal condition | `/task-page` | `/task-page` |
+
+Row 2 is the control: the one navigation in the shipped lesson set that carries a page parameter,
+and the case that always worked. It still works — the fix did not trade one for the other.
+
+Rows 3 and 4 are the defect. Both are query-less routes, and the **reverted arm evaluated in the
+same renderer, on the same real route**, reads:
+
+```js
+{ globalNow: "/task-page",
+  ticksNow: true,                 // window.noodlEditorPreviewRoute === '/task-page'
+  ticksUnderOldCode: false }      // '/task-page'.substring(0, '/task-page'.indexOf('?')) === '/task-page'
+```
+
+Row 3 is worth its own line: `/create-card-page` is **lesson 06's shipped condition string**,
+reached by a real button click, and before this fix that click published `''`.
+
+Screenshot: `fld007-drive.png` in the session scratchpad. Stack torn down (`dev:stop` — "Stopped 26
+process(es). Nothing left running"), both peer sessions told.
+
+⚠️ **What the drive did NOT do.** It did not run *Data Driven Pages* end to end, because that lesson
+has the learner build the Details Page over fifteen minutes and the shipped starter renders the
+Create Card Page blank until they do. What it measured is the seam the step is graded on, with the
+real navigation, in the real editor — not the tutorial around it. If someone wants the literal
+sentence in AC1, that is a lesson run, and it is cheap now that the mechanism is proven.
+
+### AC status
+
+| AC | state | evidence |
+|---|---|---|
+| 1 | 🟢 **driven** (with a stated limit) | §4b/AC1 above — real click, query-less route, live reverted arm |
+| 2 | 🟢 | `tests-unit/fld-007/preview-route-path.test.ts`, 8/8, two reverted arms |
+| 3 | 🟢 | the sweep is **8 conditions, 1 dead** — `scripts/fld-007-lesson-route-conditions.mjs` |
+| 4 | 🟢 | three should-fail arms through the real evaluator |
+| 5 | 🟡 **drafted, not sent** | §4c — needs a human to post it |
+
 ## 4c. The reply owed to #5 — AC5, ready to send
 
 @VitoMinheere — draft, not yet posted. It answers both halves, which is what the issue asked and
