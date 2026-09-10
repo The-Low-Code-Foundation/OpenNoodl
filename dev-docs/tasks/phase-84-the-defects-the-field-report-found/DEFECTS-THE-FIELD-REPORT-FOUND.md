@@ -36,7 +36,11 @@ of them hide a real gap that is smaller or different than the issue claims.
 | C34 | [#34](https://github.com/The-Low-Code-Foundation/NodeGX/issues/34) | "Only `value` plus min/max" is **false**: 34 inputs including `flexDirection` and `cssClassName` (the latter comes to every React node at `react-component-node.ts:1024-1045`), against Group's 94. Genuinely missing: `rowGap`/`columnGap`, `alignItems`, `justifyContent`, borders, shadows, backgrounds — and those are **not in a mixin**, they are inline in `group.ts:270-375` | **NONE** | BACKLOG — the clean shape is extracting `addFlexInputs` and calling it from both |
 | C13 | [#13](https://github.com/The-Low-Code-Foundation/NodeGX/issues/13) | The mechanism asked for **already exists and gates every PR** (`pr.yml:87`). Real parser count is **582**, not ~556, with **526 in noodl-editor** and a large slice in test files | **NONE** | BACKLOG — per-package floors, not a big-bang |
 
-## 3. Ready to close — replies owed
+## 3. Ready to close — ✅ **ALL FOUR SENT AND CLOSED, 2026-09-10 (session 6)**
+
+Every verdict below was **re-verified at file:line before the reply went out**, and one of them moved: all
+four fixes turned out to be in the **published 0.2.2** already (checked with `git show v0.2.2:<path>`),
+not pending in 0.2.3 — which is a much better answer than the one this table was going to give.
 
 | issue | verdict | evidence |
 |---|---|---|
@@ -100,10 +104,10 @@ nobody was told about gets re-reported.
 
 | issue | reporter | owed | sent |
 |---|---|---|---|
-| #9 | @nikdjukic | close as fixed, naming the commit | ⬜ |
-| #12 | @SgtSpork | close as done, naming the evidence | ⬜ |
-| #1 | @richardosborne14 | close as fixed; mention the second bug found on the same path | ⬜ |
-| #15 | @echelonsoftdm-source | close as obsolete, with what replaced it | ⬜ |
+| #9 | @nikdjukic | Closed as fixed, naming `ee6223c3c` and the `.deb`/`AppImage` targets. Also told them their Node 18 is below the floor now (→ #12) | ✅ **replied + CLOSED 2026-09-10** ([comment](https://github.com/The-Low-Code-Foundation/NodeGX/issues/9#issuecomment-5617423117)) |
+| #12 | @SgtSpork | Closed as done, naming `.nvmrc` 22, the three `engines` blocks, CI reading `.nvmrc`, and Electron 43's bundled Node 22 | ✅ **replied + CLOSED 2026-09-10** ([comment](https://github.com/The-Low-Code-Foundation/NodeGX/issues/12#issuecomment-5617424100)) |
+| #1 | @richardosborne14 | Closed as fixed, both bugs: the untouched dynamic `-target` port, and the `acl['undefined']` string key that makes a record unreadable by everyone including its author. Named the two controls so the fix cannot read as "rules get dropped now" | ✅ **replied + CLOSED 2026-09-10** ([comment](https://github.com/The-Low-Code-Foundation/NodeGX/issues/1#issuecomment-5617432638)) |
+| #15 | @echelonsoftdm-source | Closed as **overtaken by the rebuild, not as fixed-and-verified** — their symptoms 1 and 2 have named replacements (provider picker + migration; `Test connection` against `/models`), but symptom 3 was never reproduced here and the reply says so and invites a reopen. 🔴 The #41 lesson applied in the other direction: do not claim a verification you did not do | ✅ **replied + CLOSED 2026-09-10** ([comment](https://github.com/The-Low-Code-Foundation/NodeGX/issues/15#issuecomment-5617433614)) |
 | #5 | @VitoMinheere | the one-line cause **and** where to patch a lesson — both halves, asked in 2024. 🟢 Fixed `4068d139` | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685302](https://github.com/The-Low-Code-Foundation/NodeGX/issues/5#issuecomment-5615685302) |
 | #14 | @theMeysam | the `and:` rewrite that unblocks them **today**, plus the swallowed-error fix. 🟢 Fixed `d1daabb1` (FLD-008) | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685570](https://github.com/The-Low-Code-Foundation/NodeGX/issues/14#issuecomment-5615685570) |
 | #21 | @richardosborne14 | both defects, and that BOTH change behaviour on existing projects. 🟢 Fixed `3c13818d` (FLD-001) | ✅ **SENT + CLOSED 2026-09-10** — [comment 5615685029](https://github.com/The-Low-Code-Foundation/NodeGX/issues/21#issuecomment-5615685029) |
@@ -117,7 +121,7 @@ nobody was told about gets re-reported.
 | #40 | @dishant-kumar-thakur | screenshots are per viewport, not per page | ⬜ |
 | #43 | @dishant-kumar-thakur | inputs are majority camelCase; the round-trip pair is the sharper bug | ⬜ |
 | #33 | @dishant-kumar-thakur | 🟢 **Fixed (FLD-006, `901280af`), AC1 driven.** It was never a fit: the button routed to a *centre* whose scale is the literal `1` | ✅ **SENT + CLOSED 2026-09-10** — [comment 5616099308](https://github.com/The-Low-Code-Foundation/NodeGX/issues/33#issuecomment-5616099308) (cause) + [comment 5616228302](https://github.com/The-Low-Code-Foundation/NodeGX/issues/33#issuecomment-5616228302) (the drive: HUD 100% → 12%, 0 of 10 nodes outside the pane) |
-| #32 | @dishant-kumar-thakur | their proposed discriminator **misses the slider thumb** — say so before agreeing with it. FLD-012 | ⬜ |
+| #32 | @dishant-kumar-thakur | FLD-012 shipped. Reply said what their two suggested discriminators actually do: `ndl-controls-*` works for the radio and **misses the slider** (unclassed track/thumb), and `appearance: none` is a plain div's **computed default** and would have suppressed everything | ✅ **replied + CLOSED 2026-09-10** ([comment](https://github.com/The-Low-Code-Foundation/NodeGX/issues/32#issuecomment-5617357956)) |
 | #22 | @richardosborne14 | FLD-002/FLD-003; the breakpoint read-out is unblocked by FLD-001, the prefab needs ruling R3 | ⬜ |
 | #26 | @dishant-kumar-thakur | register row **N2**: `node.ts:135` seeds a units port as `{value, type}` and `:402` reads `.unit`. Present since `b9c60b07d`, found independently from two directions. Needs ruling R4 | ⬜ |
 | #29 | @dishant-kumar-thakur | FLD-016 — AppImage/FUSE 2 and the X11 default. Both halves confirmed unmeasured on a current distribution | ⬜ |
