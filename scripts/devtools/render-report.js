@@ -1149,6 +1149,29 @@ function httpJson(port, urlPath) {
   });
 }
 
+/**
+ * The settle rows as the two numbers a reader needs and one they must not skip.
+ *
+ * `savedMs` is measured against the ceilings THIS run used, not against a
+ * remembered baseline: the saving is the budget that was not spent, and it is
+ * arithmetic on rows this run produced rather than a comparison with a number
+ * from another machine.
+ */
+function settleSummary(settles) {
+  if (!settles || !settles.length) return undefined;
+  const waited = settles.reduce((n, s) => n + s.waitedMs, 0);
+  const ceiling = settles.reduce((n, s) => n + s.ceilingMs, 0);
+  return {
+    count: settles.length,
+    waitedMs: waited,
+    /** What the fixed timers would have slept for the same run. */
+    fixedTimerMs: ceiling,
+    savedMs: ceiling - waited,
+    atCeiling: settles.filter((s) => !s.quiet).length,
+    rows: settles
+  };
+}
+
 function connect(wsUrl, onEvent) {
   const WebSocket = require(WS_MODULE);
   return new Promise((resolve, reject) => {
@@ -1207,11 +1230,167 @@ const REFLOW_MS = 1200;
 const PAGE_NAV_MS = 2000;
 
 /**
+ * FLD-011 — how long nothing may change before the page counts as settled.
+ *
+ * The three constants above are **ceilings now, not costs.** They were bare
+ * `await wait(ms)`: on the ten-page report [#40] measured, that is 45.5s of
+ * sleeping against 5.3s of CPU, and every millisecond of it was spent whether
+ * the page had finished in 200ms or was still loading at the buzzer. Nothing
+ * observed the page.
+ *
+ * 🔴 **The ceiling stays exactly what it was**, so this can never be slower
+ * than the code it replaces, and at the ceiling it IS that code — a settle that
+ * runs out of budget waits precisely as long as the fixed timer did and then
+ * measures, which is the old behaviour, not a new failure.
+ *
+ * The floor is what needs defending. A budget that returns too early does not
+ * report a faster number, it reports a DIFFERENT one: images that have not
+ * finished loading read as broken, fonts that have not swapped read as the
+ * fallback, and a real finding becomes a flake. So quiescence here is four
+ * things and not one — the document loaded, the fonts ready, no image still in
+ * flight, and then `QUIET_MS` with the DOM not changing.
+ */
+const QUIET_MS = 150;
+
+/**
+ * The gap between two polls of the quiet window.
+ *
+ * Small enough that `QUIET_MS` is not rounded up to something much larger than
+ * itself, large enough not to be a busy loop competing with the render it is
+ * waiting for.
+ */
+const SETTLE_POLL_MS = 25;
+
+/**
+ * Wait, in the page, until it stops changing — or until `ceilingMs` runs out.
+ *
+ * Runs as ONE `Runtime.evaluate` rather than a poll loop over CDP, because a
+ * poll loop pays a round trip per sample and would put the thing doing the
+ * measuring in the same order of magnitude as the thing being measured.
+ *
+ * ⚠️ `rafs` exists for the reflow case. A viewport change is often a pure CSS
+ * relayout that mutates **nothing**, so mutation quiescence alone is satisfied
+ * instantly and would measure a layout the browser has not performed yet. Two
+ * animation frames put a real relayout between the resize and the read.
+ *
+ * @param {number} ceilingMs  Never wait longer than this. The old fixed timer.
+ * @param {number} rafs       Animation frames to burn before the quiet window opens.
+ */
+function settleExpression(ceilingMs, rafs) {
+  return `(async () => {
+  const started = Date.now();
+  const deadline = started + ${ceilingMs};
+  const left = () => Math.max(0, deadline - Date.now());
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const reasons = [];
+
+  // 1. The document. In hash routing a route change is not a document load at
+  //    all, so this is already 'complete' and costs nothing — which is most of
+  //    where PAGE_NAV_MS was going.
+  if (document.readyState !== 'complete') {
+    reasons.push('load');
+    await Promise.race([
+      new Promise((res) => window.addEventListener('load', res, { once: true })),
+      sleep(left())
+    ]);
+  }
+
+  // 2. Fonts. Measured text is compared against the font sets, and a page read
+  //    mid-swap reports the fallback family as if the author had chosen it.
+  try {
+    if (document.fonts && document.fonts.status !== 'loaded') {
+      reasons.push('fonts');
+      await Promise.race([document.fonts.ready, sleep(left())]);
+    }
+  } catch (e) {
+    /* no Font Loading API: fall through to the quiet window */
+  }
+
+  // 3. Images still in flight. \`broken-image\` is counted from naturalWidth, and
+  //    an image that has not loaded YET is indistinguishable from one that never
+  //    will — this is the finding a too-eager budget invents.
+  const pending = () => Array.prototype.filter.call(document.images, (im) => !im.complete).length;
+  if (pending()) reasons.push('images');
+  while (left() > 0 && pending() > 0) await sleep(${SETTLE_POLL_MS});
+
+  // 4. Two frames — which is also what lets step 5 see anything. A transition
+  //    does not exist until the style recalc that starts it, so asking for the
+  //    running animations before a frame has passed returns an empty list and
+  //    the wait below is skipped on exactly the pages that need it.
+  for (let i = 0; i < ${rafs} && left() > 0; i++) {
+    // Raced against a sleep: a headless page that is never composited never
+    // fires rAF, and an unraced await would burn the whole budget waiting for a
+    // frame that is not coming — turning every settle back into the fixed timer.
+    await Promise.race([new Promise((res) => requestAnimationFrame(() => res())), sleep(50)]);
+  }
+
+  // 5. 🔴 CSS transitions and animations, which are the reason this step exists.
+  //
+  //    MEASURED, not anticipated: \`project-examples/lessons/snacks\` at 390px has
+  //    ONE element still at opacity 0 at 190ms and opaque at 1200ms. FLD-012's
+  //    \`visible\` correctly excludes a transparent element, so the eager read
+  //    counted 9 text elements where the fixed timer counted 10 — and
+  //    \`flat-type-scale\` gates at **>= 10**. A settle budget with this step
+  //    missing does not report a page differently; it DELETES a real finding and
+  //    reports the page clean.
+  //
+  //    ⚠️ Only animations that will actually END are waited for. A spinner
+  //    iterates forever, and \`await\`ing its \`finished\` would spend the entire
+  //    budget on every page that has one — which is the fixed timer again, on the
+  //    pages least able to afford it.
+  try {
+    const finite = (document.getAnimations ? document.getAnimations() : []).filter((anim) => {
+      try {
+        const timing = anim.effect.getComputedTiming();
+        return Number.isFinite(timing.iterations) && Number.isFinite(timing.endTime);
+      } catch (e) {
+        return false;
+      }
+    });
+    if (finite.length) {
+      reasons.push('animations:' + finite.length);
+      await Promise.race([Promise.allSettled(finite.map((anim) => anim.finished)), sleep(left())]);
+    }
+  } catch (e) {
+    /* no Web Animations API: the quiet window is the only guard left */
+  }
+
+  // 6. And finally the quiet window.
+  let lastChange = Date.now();
+  const observer = new MutationObserver(() => {
+    lastChange = Date.now();
+  });
+  observer.observe(document.documentElement, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    characterData: true
+  });
+  try {
+    while (left() > 0 && Date.now() - lastChange < ${QUIET_MS}) await sleep(${SETTLE_POLL_MS});
+  } finally {
+    observer.disconnect();
+  }
+
+  return {
+    waitedMs: Date.now() - started,
+    ceilingMs: ${ceilingMs},
+    // 🔴 The honest field. \`false\` means the budget ran out and this is the OLD
+    // fixed-timer behaviour — the same wait, and the same reading. A run where
+    // this is false everywhere has not been sped up; it has been re-measured.
+    quiet: Date.now() - lastChange >= ${QUIET_MS},
+    waitedFor: reasons
+  };
+})()`;
+}
+
+/**
  * A booted page, handed to the body of {@link withRenderedPage}.
  *
  * @typedef {object} RenderedPage
  * @property {object} client                      Raw CDP client, for anything the helpers do not cover.
  * @property {string[]} consoleErrors             Appended to as they arrive; slice it around a step to attribute them.
+ * @property {Array} settles                      FLD-011 — one row per settle performed, in order.
  * @property {() => string} serverLog             Everything `render-from-disk.js` has printed so far.
  * @property {(expression: string) => Promise<any>} evaluate  `Runtime.evaluate`, by value, throwing on exceptions.
  * @property {(viewport: object) => Promise<void>} setViewport  Set device metrics and let the reflow settle.
@@ -1439,11 +1618,24 @@ async function withRenderedPage(options, fn) {
     await client.send('Page.enable', {});
     await client.send('Runtime.enable', {});
     await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
-    await wait(BOOT_MS);
+
+    /**
+     * FLD-011 — every settle this drive performed, so the speed claim can be
+     * read rather than believed. `quiet: false` is a settle that ran out of
+     * budget and therefore behaved exactly like the fixed timer it replaced.
+     */
+    const settles = [];
+    const settle = async (what, ceilingMs, rafs) => {
+      const stat = await evaluate(client, settleExpression(ceilingMs, rafs));
+      settles.push({ what, ...stat });
+      return stat;
+    };
+    await settle('boot', BOOT_MS, 2);
 
     return await fn({
       client,
       consoleErrors,
+      settles,
       serverLog: () => serverLog,
       servePort,
       evaluate: (expression) => evaluate(client, expression),
@@ -1459,7 +1651,7 @@ async function withRenderedPage(options, fn) {
        */
       async navigate(urlPath) {
         await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}${urlPath}` });
-        await wait(PAGE_NAV_MS);
+        await settle(`navigate ${urlPath}`, PAGE_NAV_MS, 2);
       },
       async setViewport(vp) {
         await client.send('Emulation.setDeviceMetricsOverride', {
@@ -1468,7 +1660,7 @@ async function withRenderedPage(options, fn) {
           deviceScaleFactor: 1,
           mobile: Boolean(vp.mobile)
         });
-        await wait(REFLOW_MS);
+        await settle(`viewport ${vp.name}`, REFLOW_MS, 2);
       }
     });
   } finally {
@@ -1783,6 +1975,16 @@ async function renderReport(options) {
         project: projectDir,
         projectName: project.name,
         durationMs: Date.now() - started,
+        /**
+         * FLD-011 — what the settle budget actually cost, beside what the fixed
+         * timers it replaced would have.
+         *
+         * 🔴 `atCeiling` is the field that keeps the speed claim honest: those
+         * settles waited the full old timer and read what the old code read. A
+         * run where `atCeiling` equals `count` was not made faster at all, and
+         * `savedMs` on such a run is zero rather than a number to quote.
+         */
+        settle: settleSummary(page.settles),
         tokens: (log.match(/\[render\] design tokens: (.*)/) || [])[1] || 'unknown',
         components: (log.match(/\[render\] rootComponent=\S+\s+(\d+) components/) || [])[1],
         viewports: measured,

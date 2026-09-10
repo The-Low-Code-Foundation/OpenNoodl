@@ -1,5 +1,23 @@
 # FLD-011 — The render report writes to disk and stops sleeping
 
+🟡 **PARTLY BUILT — session 7, 2026-09-10.** Read
+[FLD-011-WHAT-WAS-BUILT.md](./FLD-011-WHAT-WAS-BUILT.md).
+
+🔴 **Deliberately NOT marked `🟢 BUILT`, so the board's grep keeps counting this as open.** Two of
+the three scope items are built and measured — `out_dir` (AC1, AC5) and the settle budget (AC2, and
+AC4 re-read as fixed-vs-settled). **Parallelise by tab is not built, so AC3 and AC6 are not met**,
+and AC3 is the one the task itself calls the arm that matters.
+
+Measured: the corpus went **205.1s → 55.0s (3.73x)** with **17 of 20 projects reporting identical
+findings**; `templates/members-area` — eleven pages, which is AC2's ten-page fixture — went
+**53.8s → 10.3s (5.21x)**. The three that differ are explained and controlled for in §3 of the
+what-was-built; they are an artefact of the OLD sleep lengths, proved by reproducing the new arm's
+reading with the old mechanism at half the timers.
+
+🔴 **And one thing this task did not know: the MCP tool surface had 7 tokens of headroom.** Adding
+`out_dir` broke `toolDisclosure`'s 8280-token budget gate. It was paid for rather than waived, and
+**FLD-014 does not fit at all** — see §4 of the what-was-built.
+
 *"`render_report` is the best thing in the product… it caught every real bug I made. I ran it six
 times in one session."* The complaint is that verifying is expensive, and the cost is almost entirely
 fixed timers.

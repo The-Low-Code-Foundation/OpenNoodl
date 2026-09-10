@@ -74,6 +74,26 @@ export interface RenderReportPayload {
   viewports: Record<string, RenderViewportPayload>;
   findings: RenderFindingPayload[];
   summary: string;
+  /**
+   * UNI-010 §8.2's per-page rows — one per page the router registers, `measured: false` for a page
+   * the harness could not address.
+   *
+   * Optional because the field was never declared here while every report since UNI-010 has
+   * carried it: this type described a one-page report the harness stopped producing. Declared now
+   * rather than cast at the one call site that reads it (FLD-011's screenshot manifest), because a
+   * cast would leave the next reader believing the field does not exist.
+   */
+  pages?: RenderPagePayload[];
+}
+
+/** One routed page's row in the report. `screenshot` is set only by `--out-dir`. */
+export interface RenderPagePayload {
+  component?: string;
+  urlPath?: string;
+  isStart?: boolean;
+  measured?: boolean;
+  unreachable?: string;
+  viewports?: Record<string, { screenshot?: string }>;
 }
 
 export interface RenderScreenshot {
@@ -90,6 +110,14 @@ export interface RenderOptions {
   timeoutMs?: number;
   /** EL-009 AC1/AC3 — measure only this page, by `urlPath` or component name. */
   page?: string;
+  /**
+   * FLD-011 AC1 — write the images into this directory instead of returning them as base64.
+   *
+   * Absolute, and already resolved by the caller: the CLI joins relative paths against ITS OWN
+   * cwd, which is this server's, not the agent's — so a relative path would write somewhere the
+   * caller cannot name and hand back a path that does not resolve for it.
+   */
+  outDir?: string;
 }
 
 /**
@@ -408,7 +436,20 @@ export async function runRenderReport(
 
   const screenshot = options.screenshot ?? 'full';
   const args = [projectDir, '--json', '--screenshot', screenshot];
-  if (screenshot !== 'none') args.push('--inline-screenshots', '--scale', String(options.scale ?? 0.4));
+  if (screenshot !== 'none') {
+    /**
+     * FLD-011 AC1. The two flags are **exclusive here** although the CLI accepts both together:
+     * asking for files and then also inlining the base64 pays exactly the context cost `out_dir`
+     * exists to avoid, so the report would carry the paths AND the half-megabyte.
+     *
+     * `--out-dir` also turns on the per-page sweep inside the harness (`screenshotPages: 'all'`),
+     * so this is one image per measured page per viewport, not the two the start-page default
+     * returns. That is the reason it is worth writing to disk at all.
+     */
+    if (options.outDir !== undefined) args.push('--out-dir', options.outDir);
+    else args.push('--inline-screenshots');
+    args.push('--scale', String(options.scale ?? 0.4));
+  }
   if (options.viewports) args.push('--viewports', options.viewports);
   if (options.backendPort) args.push('--backend-port', String(options.backendPort));
   if (options.page) args.push('--page', options.page);
