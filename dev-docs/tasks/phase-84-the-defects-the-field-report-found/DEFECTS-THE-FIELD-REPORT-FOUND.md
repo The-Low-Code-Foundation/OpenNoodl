@@ -65,8 +65,29 @@ of them hide a real gap that is smaller or different than the issue claims.
 
 ## 5. Replies owed — the phase does not close until this table is empty
 
-🔴 **The table was SHORT BY TWO.** #21 and #41 are among the fifteen and had no row here until
-2026-09-10. A reply table that does not list an issue reads as a reply that is not owed.
+🔴 **The table was SHORT BY TWO on 2026-09-10 (#21, #41) — and then SHORT BY EIGHT AGAIN.** A
+reply table that does not list an issue reads as a reply that is not owed, and patching it one row
+at a time is how it stayed wrong twice.
+
+✅ **Fixed by a sweep, not by a row.** Session 5 ran every task file's own issue number against this
+table: 17 task files carry 15 distinct issues, and **eight of them had no row** — #22, #26, #29,
+**#32**, **#33**, #35, #39, #42. README §6 says *every task in this phase carries a reply*, so each
+of those was a reply this table said nobody owed. All eight are in it now, and all eight were
+confirmed **OPEN on GitHub** on 2026-09-10 (`gh issue view`), not assumed.
+
+🔴 **Re-run the sweep, do not read the table.** It is one command, and it has caught the same
+omission twice:
+
+```sh
+cd dev-docs/tasks/phase-84-the-defects-the-field-report-found
+for f in FLD-*.md; do grep -oE '\[#[0-9]+\]' "$f" | head -1; done | sort -u   # issues with a task
+awk '/^## 5\./,/^## 6\./' DEFECTS-THE-FIELD-REPORT-FOUND.md | grep -oE '^\| #[0-9]+'  # issues with a row
+```
+
+⚠️ **The count does not reconcile, and that is a real finding, not a typo.** README §6 says
+*fifteen* issues; this table now holds **24 rows** — 15 that carry a task plus 9 that are answered
+without one (#1, #9, #12, #13, #15, #25, #27, #30, #34). Whichever number is right, "fifteen" is not
+the number of replies owed, and the end condition should be read off **this table**.
 
 ✅ **No approval is needed to send these.** Richard granted standing authorisation 2026-09-10:
 post and close from his account, no ask. Every reply carries two mandatory things — a first line
@@ -95,6 +116,14 @@ nobody was told about gets re-reported.
 | #37 | @dishant-kumar-thakur | the field as asked would have read green on `Circle` | ⬜ |
 | #40 | @dishant-kumar-thakur | screenshots are per viewport, not per page | ⬜ |
 | #43 | @dishant-kumar-thakur | inputs are majority camelCase; the round-trip pair is the sharper bug | ⬜ |
+| #33 | @dishant-kumar-thakur | 🟢 **Fixed (FLD-006).** It was never a fit: the button routed to a *centre* whose scale is the literal `1`, which is why the HUD read exactly 100% and a second click did nothing. Say both faults — the literal scale **and** the centroid-instead-of-bounding-box. ⚠️ The "viewport dimensions are wrong" hypothesis FLD-006 §2 warns against is **not in the issue body** (it is in the linked field report), so the reply does not need to rebut it | ⬜ |
+| #32 | @dishant-kumar-thakur | their proposed discriminator **misses the slider thumb** — say so before agreeing with it. FLD-012 | ⬜ |
+| #22 | @richardosborne14 | FLD-002/FLD-003; the breakpoint read-out is unblocked by FLD-001, the prefab needs ruling R3 | ⬜ |
+| #26 | @dishant-kumar-thakur | register row **N2**: `node.ts:135` seeds a units port as `{value, type}` and `:402` reads `.unit`. Present since `b9c60b07d`, found independently from two directions. Needs ruling R4 | ⬜ |
+| #29 | @dishant-kumar-thakur | FLD-016 — AppImage/FUSE 2 and the X11 default. Both halves confirmed unmeasured on a current distribution | ⬜ |
+| #35 | @dishant-kumar-thakur | 🔴 **the same defect as phase 81's VIB-005 (register row P13) — do not answer either side before the collision is resolved.** FLD-005 | ⬜ |
+| #39 | @dishant-kumar-thakur | 🔴 **collides with phase 83's HLS-005 over `WIRED_STYLE_SINKS` (P9)**, and needs ruling R2 (kit or core nodes). FLD-015 | ⬜ |
+| #42 | @dishant-kumar-thakur | FLD-017; R5 gates the minification half only, the never-executed-asar half is not gated | ⬜ |
 
 ## 6. Rows this phase found
 

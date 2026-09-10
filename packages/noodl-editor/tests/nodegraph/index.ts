@@ -35,3 +35,7 @@ export * from './def-028-build-determinism.spec';
 // connection keys (FB-021's gated port, FIX-025's unconverted cast) describe wires that
 // work, and the export used to drop them exactly like a wire to a deleted port.
 export * from './def-034-warning-level-wires-survive-the-build.spec';
+
+// FLD-006 (#33): "Fit view" is a fit, not a centre at scale 1 — and the camera a
+// project opens with is deliberately left where it was.
+export * from './fld-006-fit-view-fits.spec';

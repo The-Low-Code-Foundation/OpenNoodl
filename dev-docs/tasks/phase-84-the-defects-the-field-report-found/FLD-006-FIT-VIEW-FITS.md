@@ -84,3 +84,69 @@ Secondary: `centerToFit` calls `setPanAndScale` directly (`ViewportActions.ts:92
   before the bounding box maths meets it.
 - ⚠️ Padding in graph space and padding in screen space are not the same number once scale ≠ 1.
   Pick one, name it in the signature.
+
+---
+
+## 6. 🟢 **BUILT** — 2026-09-10 (session 5)
+
+### What changed
+
+**`canvas/CanvasViewport.ts`**
+- **`fitTo(rects, screenPadding = FitPadding)`** — new. Bounding box via the existing
+  `rectsAABB`, a *computed* scale, and the pan derived from `canvas = (graph + pan) * s`, so the
+  pan terms divide by the scale. At scale 1 it collapses to the same shape as `centerOn`.
+- **`minScale()`** — **extracted verbatim** from `zoomAtPoint`, which now calls it. The arithmetic
+  is unchanged, including the negative number it returns for an unset (inverted) `graphAABB` — that
+  is what makes it impose no floor before a layout, exactly as before. `hasGraphBounds()` is how a
+  caller asks whether the number is real.
+- `centerOn` is **untouched**. Its docstring now says what it is not.
+
+**`ViewportActions.ts`**
+- `centerToFit(AllNodes)` routes to `getFitPanAndScale()` and is now **clamped**, like every other
+  viewport mutation. It was the only one that skipped `clampPanAndScale`.
+- `allGraphRects()` feeds the fit the **same rect set `CanvasPainter.calculateAABB` feeds
+  `updateGraphAABB`** — roots at `measuredSize` **plus comments**. A comment parked away from the
+  nodes is part of the graph you asked to see, and using one rect set means the fit and the zoom
+  floor cannot disagree about where the graph ends.
+
+### The three decisions §3 asked to be made explicitly
+
+1. **Padding is in screen space** — CSS pixels of the canvas, named in the signature as
+   `screenPadding`, default `CanvasViewport.FitPadding = 40`. Graph-space padding would shrink the
+   visible margin to nothing on a large graph.
+2. **The initial camera is deliberately unchanged.** Only the `AllNodes` arm moved. `RootNodes` —
+   the camera `getPanAndScale` falls back to, i.e. what **every project opens with** — still routes
+   to `centerOn` at scale 1. Migrating it is a separate decision, not a side effect of this one.
+   Asserted in both the characterisation spec (unchanged, still green) and AC5's own arm.
+3. **The fit is floored at `minScale()`.** A fit below the floor is a zoom the +/− buttons snap away
+   from on the very next click. When the requested 40px margin would need a scale under the floor,
+   **the margin is reduced, not the floor breached** — and the floor still fits the box, because the
+   floor is itself a fit (with `ScalePadding` = 200 graph units of margin). On a 400px pane the
+   crossover is a graph about 1600 units wide.
+
+**Empty component:** `fitTo([])` returns the identity camera. `centerOn([])` still divides by zero —
+left alone, because nothing routes an empty graph to it (`getPanAndScale` guards on `roots.length`).
+
+### Acceptance criteria
+
+| AC | where | note |
+|---|---|---|
+| 1 (person) | `tests/nodegraph/fld-006-fit-view-fits.spec.js` — *puts every node inside the pane, below 100%* | real `NodeGraphEditor`, 400×800 pane, graph ~1600 units wide |
+| 2 | `tests/canvas/CanvasViewport.test.ts` — *returns a scale below 1 and puts the whole box inside the pane* | + reverted arm |
+| 3 | same file — *centres the bounding box, not the centroid* | 8-node cluster + 2 outliers; the centroid is >200 units off |
+| 4 | same file — *never returns a scale below the floor the zoom buttons enforce* | asserts the unfloored value **is** below the floor first, so the floor is shown load-bearing |
+| 5 | `fld-006-fit-view-fits.spec.js` — *the camera a project opens with is UNCHANGED* | plus the untouched characterisation test at `canvas-characterisation.spec.js:141` |
+
+🔴 **The reverted arms are not patched copies of the source — the pre-fix behaviour is still
+callable.** `centerOn` *is* what Fit view used to call, and `editor.getCenterPanAndScale()` *is* the
+route `centerToFit(AllNodes)` used to take; both are still public. Every fit assertion is paired
+with the same fixture through the old path, and the pair is what separates the **two** faults: the
+literal `scale: 1`, and the centroid-instead-of-box. A fix for the scale alone passes AC2 and fails
+AC3.
+
+### Trap 5.1, resolved
+
+`tests/canvas/CanvasViewport.test.ts` and `tests/nodegraph/canvas-characterisation.spec.js` pin the
+current formulas — and **neither needed an assertion changed**. `centerOn`, `zoomAtPoint` and
+`clamp` all behave identically; `minScale` was an extraction, not a rewrite. Nothing here turned a
+red green.

@@ -16,7 +16,7 @@ built.** That is the file count, not a copied status.
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
 | FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built | R4 |
 | FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built | 🔴 **P13 collision** |
-| FLD-006 | Fit view fits | #33 | 🔨 **IN FLIGHT — `opennoodl-d4`, from 2026-09-10 ~10:57. DO NOT START** | — |
+| FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `PLACEHOLDER` · ⚠️ reply owed | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
@@ -54,19 +54,22 @@ strength of someone else's fix. **Check what the issue asked for, not what you f
 ⚠️ **The register's §5 table was short by two.** #21 and #41 were among the fifteen and had no row
 at all. A reply table that omits an issue reads as a reply that is not owed. Both are in it now.
 
-**Distance: 4 of 17 built. 4 replies sent, 12 still owed** (§5 of the
+**Distance: 5 of 17 built. 4 replies sent, 20 still owed** (§5 of the
 [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md)).
 
-## 3. The next task to build — FLD-012 (FLD-006 is TAKEN)
+🔴 **"12 still owed" was wrong, and it was wrong because the table was short.** Session 5 swept
+every task file's own issue number against §5 and found **eight** issues with a task and no row —
+#22, #26, #29, #32, #33, #35, #39, #42, all confirmed open on GitHub. The table now holds 24 rows.
+⚠️ **It does not reconcile with README §6's "fifteen issues", and that is a finding, not a typo:**
+15 of the 24 carry a task, 9 are answered without one. Read the end condition off the **table**, and
+re-run the sweep (it is two commands, recorded in §5) rather than trusting either number.
 
-🔴 **FLD-006 was claimed within twenty minutes of this board naming it, and this section said
-"FLD-006" for those twenty minutes.** Session `opennoodl-d4` was building it at 10:57 on 2026-09-10
-— `ViewportActions.ts`, `CanvasViewport.ts`, a registered
-`tests/nodegraph/fld-006-fit-view-fits.spec.js` — and running `test:ci` over it.
-**Re-measure before you inherit this line**: `git log --oneline -5` and
-`git status --porcelain` will say whether it landed. Do not start it on the strength of this file.
+## 3. The next task to build — FLD-012 (FLD-006 is DONE)
 
-Track A outranks track B. Of the four track-A tasks left, two are gated or collided and one is taken:
+✅ **FLD-006 landed** (`PLACEHOLDER`, session 5) — the claim above resolved. It was claimed within
+twenty minutes of this board naming it, which is why the in-flight marker exists; it worked.
+
+Track A outranks track B. Of the three track-A tasks left, two are gated or collided:
 
 1. **[FLD-012 — the empty-box warning stops crying wolf](./FLD-012-THE-EMPTY-BOX-WARNING-STOPS-CRYING-WOLF.md)**
    (#32). Ungated, but read its §3 first: #32's own proposed discriminator **misses the slider
