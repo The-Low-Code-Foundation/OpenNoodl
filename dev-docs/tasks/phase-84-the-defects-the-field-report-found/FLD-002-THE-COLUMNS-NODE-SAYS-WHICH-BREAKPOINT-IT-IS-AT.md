@@ -133,7 +133,34 @@ handled. The sink has to be able to run for the port's own answer to be the one 
 diffed first: **33 lines added, 0 removed, `node-catalog.d.ts` byte-identical** — the regeneration
 is purely additive, which is what made it safe to write in place over a shared generated file.
 
-## 7. The drive
+## 7. The drive — AC1, in a real browser, live-narrowed
 
-See the session notes. AC1 is a person criterion and a spec calling a handler is not a person
-watching text change.
+A three-card Columns page with `Breakpoint` wired into a Text node, served from disk against the
+**working-tree** runtime (`render-from-disk.js`) and narrowed in one browser session. The viewer
+bundle was checked for the ports before believing anything it rendered — mtime is not evidence,
+`grep -c onBreakpointChanged packages/noodl-editor/src/external/viewer/noodl.viewer.js` is.
+
+```
+ 1200px  readout: Default    columns: 33.3333% | 33.3333% | 33.3333%
+  900px  readout: Medium     columns: 50% | 50% | 50%
+  950px  readout: Medium     columns: 50% | 50% | 50%
+  700px  readout: Medium     columns: 50% | 50% | 50%
+  500px  readout: Small      columns: 100% | 100% | 100%
+  900px  readout: Medium     columns: 50% | 50% | 50%
+ 1200px  readout: Default    columns: 33.3333% | 33.3333% | 33.3333%
+```
+
+The text and the layout agree at every width, it reads its way back up as the window widens, and
+950 → 700 is a real resize inside one band that moves nothing. Screenshots at the three bands are
+in the session scratchpad.
+
+🔴 **`Emulation.setDeviceMetricsOverride` is scoped to the CDP session that set it.** Resizing in
+one `drive-page.js` invocation and reading in the next measures the **original** width — the same
+trap `cdp.js` already documents for network emulation, one verb over. The first attempt at this
+drive did exactly that and produced a table that was partly right by luck. Everything above happens
+on **one connection**: resize, settle, read, in a single process.
+
+⚠️ **Do not drive this through the editor's preview webview.** `drive-page.js`'s own header records
+why (SBR-014 s46): `setDeviceMetricsOverride` on it reports success and then
+`Page.captureScreenshot` returns the OLD surface tiled across the larger frame. Every number reads
+correct and the picture is an artefact.
