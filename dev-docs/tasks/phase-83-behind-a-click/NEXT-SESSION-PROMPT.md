@@ -117,12 +117,15 @@ If HLS-014 is not the session's job, the honest alternatives are unchanged from 
   nobody is watching, because in CI nobody is.
 - ⚠️ **C65 — 7 tokens of resident MCP headroom.** Measure before you place a tool.
 - ⚠️ **C52 unchanged**: `sbr009ThemeEditorDrive` (2) and `def018-def020-layout-drive` (1), **NONE**.
-- 🔴 **"GREEN ALONE, RED UNDER LOAD" DOES NOT DISTINGUISH A FLAKE FROM A CEILING THAT IS TOO SMALL.**
+- 🔴 **"GREEN ALONE, RED UNDER LOAD" IS NOT A DIAGNOSIS, AND TWO CONFIDENT ONES WERE ALREADY WRONG.**
   `test:main` came back 446/7,359 with one red — **phase 84's** `fld-009/projectLevelWatch`, 276 ms
-  alone. I re-ran it, read green, and filed it as a flake. The session that owns it read the spec
-  instead and found a **4,000 ms** latency ceiling that had taken REL-009b's stopwatch note only
-  half way; it now carries REL-009b's own 30,000. Re-running is the cheap check and it answers a
-  different question from the one you have.
+  alone. I re-ran it, read green, filed a flake. The owning session read the spec instead, found a
+  4,000 ms ceiling half-applied from REL-009b's stopwatch note, raised it to 30,000 — and **both**
+  real-filesystem watcher specs then went red, including REL-009b's, **which had been at 30,000 all
+  along**. The event does not arrive at all under a 446-suite run; the two specs together are 25/25
+  green in 10 s. **Open, unexplained, owned by phase 84 — do not spend anything on it here, and do
+  not treat a passing re-run as the answer.**
+
 - ⚠️ **`noodl-mcp`'s jest runs `diagnostics: false`.** The suite is not the typecheck there.
 - ⚠️ **`nodegx serve` defaults to 8575**, which collides with the editor's design-tool import socket
   (`NOODLPORT + 1`). Pass `--port`, or move the editor with `NOODLPORT=8674`.

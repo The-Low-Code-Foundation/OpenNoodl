@@ -224,16 +224,17 @@ export or deploy?
   (from 1 / 14) · root `tsc --noEmit` **0** · `typecheck:editor` **0** · `typecheck:editor-tests`
   **0** · editor `test:main` **446 suites / 7,359, one red**.
 
-- ⚠️ **That one red is not this task's, and it was not a flake.**
-  `tests-unit/fld-009/projectLevelWatch.test.ts` — *"reports the project file when a real atomic
-  write lands on it"* — went red under full-suite load and passed **in 276 ms** run alone, which is
-  what a flake looks like and is also what a **too-tight ceiling** looks like. I recorded it as a
-  flake; the session that owns it (phase 84) re-measured and found the real cause: the spec set its
-  latency ceiling to **4,000 ms**, took REL-009b's stopwatch note only half way, and read >4,000 ms
-  under this 446-suite run. Raised to REL-009b's own 30,000 with the reason written in the file.
-  🔴 **"Green alone, red under load" does not distinguish nondeterminism from a budget that is
-  simply too small**, and only the second one is fixable. Re-running told me the wrong thing;
-  reading the ceiling told them the right one.
+- ⚠️ **That one red is not this task's, and its cause is still unknown.**
+  `tests-unit/fld-009/projectLevelWatch.test.ts` — phase 84's, landed the same day — went red under
+  full-suite load and passed **in 276 ms** run alone. 🔴 **Two diagnoses have been offered and both
+  were wrong.** I filed it as a flake off the re-run; the owning session read the spec, found a
+  4,000 ms latency ceiling that had taken REL-009b's stopwatch note only half way, raised it to
+  30,000, and re-ran — **both real-filesystem watcher specs then failed, including REL-009b's, which
+  had been at 30,000 all along.** So the ceiling is not the cause: under a 446-suite run the
+  filesystem event **does not arrive at all**, rather than arriving late. The two specs run together
+  are 25/25 green in 10 s. It is a full-suite phenomenon, open, and owned by the phase-84 session.
+  ⚠️ The ceiling change may have made it worse, not neutral — `fld-009` now burns 30 s before
+  failing with a live `fs.watch` handle open.
 
 - ⚠️ `tests/hls015-drive.mjs` is **not** a CI gate. It needs Chrome, and calling a
   Chrome-dependent script a gate is this phase's own C46/C47 mistake. `.mjs`, so jest's
