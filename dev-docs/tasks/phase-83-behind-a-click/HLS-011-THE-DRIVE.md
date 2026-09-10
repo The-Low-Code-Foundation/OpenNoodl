@@ -1,5 +1,15 @@
 # HLS-011 — The drive
 
+> ✅ **BUILT + DRIVEN, session 13, 2026-09-10. 4 of 4 acceptance criteria.**
+> [HLS-011-WHAT-WAS-BUILT.md](HLS-011-WHAT-WAS-BUILT.md) ·
+> [the drive itself](../../../packages/nodegx-export/tests/hls011/) — `./run.sh`, one command.
+> The headless half ran in `node:22-bookworm-slim` (no `DISPLAY`, no X socket, no browser, asserted
+> before anything was measured); the comparison half ran here, in Chrome. **The viewer and the built
+> React app say character-for-character the same thing on both pages.** The one divergence — a
+> component input wired to a `width` — is named by `EXPORT-REPORT.md` and filed as **C75**;
+> `npm ci` fails on a fresh export and is filed as **C76**. AC4's mutant is HLS-004's `scopeCast`
+> removed, which brings issue #24's `TS18048` back on this drive's own app.
+
 The whole story, end to end, on a machine with no display server. Last task; nothing closes the
 phase without it.
 
