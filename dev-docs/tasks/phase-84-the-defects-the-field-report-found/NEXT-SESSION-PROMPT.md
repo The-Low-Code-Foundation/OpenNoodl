@@ -4,9 +4,9 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is now answered (0.2.3)** and
 four still gate tasks.
 
-## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 7)
+## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 8)
 
-Seventeen task files, each grepped for its own marker. **Six built, one PARTLY built, ten never
+Seventeen task files, each grepped for its own marker. **Seven built, one PARTLY built, nine never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
@@ -42,8 +42,8 @@ needs **P13**. Do not start either without the ruling.
 
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
-| FLD-002 | The Columns node says which breakpoint it is at | #22 | ⬜ never built | FLD-001 ✅ **unblocked** |
-| FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002, FLD-004, **R3** |
+| FLD-002 | The Columns node says which breakpoint it is at | #22 | 🟢 **BUILT** `4e8ce7ab5`, AC1 driven · ✅ **replied, issue STAYS OPEN** | — |
+| FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002 ✅ **unblocked**, FLD-004, **R3** |
 | FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅ unblocked, **R6** |
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟡 **PARTLY BUILT** `c7f5ea794` · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | ⬜ never built | — **ungated** |
@@ -71,11 +71,31 @@ and all four fixes were already in it. `git show v0.2.2:<path>` and
 `git merge-base --is-ancestor <sha> v0.2.2` settle it in seconds, and *"already published, in
 0.2.2"* is a far better answer to a reporter than *"it will ship in 0.2.3"*.
 
-**Eleven sent, thirteen owed — re-derived from GitHub, not from the table.** Session 7 sent one:
-#40 (FLD-011), **deliberately left OPEN**. ⚠️ Do not count replies with `grep replied` — the table
-spells them **SENT**, and that grep undercounts by five. The honest count is one `gh` loop over the
-24 rows asking each issue whether it carries a comment matching *"automated reply generated from
-Claude"*; it reconciles exactly with the table as it now stands.
+**Twelve sent, twelve owed — re-derived from GitHub, not from the table.** Session 8 sent one:
+#22 (FLD-002), **deliberately left OPEN**. ⚠️ Do not count replies with `grep replied` — the table
+spells them **SENT**, and that grep undercounts by five. The honest count is the `gh` loop below.
+
+🔴 **Run it case-INSENSITIVELY.** Session 8's first run used `test("automated reply generated from
+Claude")` and reported **3 sent, 21 owed** — a number that contradicted four rows carrying comment
+links, which is the only reason it got caught. The shipped disclosure line is *"**A**utomated reply
+generated from Claude."*, capitalised, and `jq`'s `test` is case-sensitive by default. **A count
+that disagrees with a documented row is the instrument, not the fact.**
+
+```sh
+for i in 1 5 9 12 13 14 15 21 22 25 26 27 29 30 32 33 34 35 37 39 40 41 42 43; do
+  n=$(gh issue view $i --repo The-Low-Code-Foundation/NodeGX --json comments \
+      --jq '[.comments[]|select(.body|test("(?i)automated reply generated from claude"))]|length')
+  [ "$n" != "0" ] && echo "sent  #$i" || echo "OWED  #$i"
+done
+```
+
+Sent (12): #1 #5 #9 #12 #14 #15 #21 #22 #32 #33 #40 #41.
+Owed (12): #13 #25 #26 #27 #29 #30 #34 #35 #37 #39 #42 #43.
+
+🔴 **#22 is now the third in the #41 shape.** It asks for two things — the state read-out and more
+breakpoint slots / an Advanced Columns prefab. FLD-002 built the first; the second is **FLD-003,
+unbuilt and gated on R3**. So it was replied to and **left open**, with the reply saying which half
+is which. Three issues now stand replied-and-open for that reason: **#22, #40, #41.**
 
 🔴 **#41 is still the lesson in one direction, and #15 is the lesson in the other.** #41 asks for
 the `session_status` tool (FLD-010, unbuilt) and stays open because FLD-009 fixed a *different*
@@ -87,24 +107,26 @@ says exactly that and invites a reopen. **Do not claim a verification you did no
 rows, nothing missing.** It has caught an omission twice before; it is one command and it is
 recorded in §5 of the [register](./DEFECTS-THE-FIELD-REPORT-FOUND.md).
 
-**Distance: 6 of 17 built, 1 partly built. 11 replies sent, 13 still owed.**
+**Distance: 7 of 17 built, 1 partly built. 12 replies sent, 12 still owed.**
 
 ## 3. The next task to build
 
 Track A outranks track B, and **track A still has nothing left that is not gated**. So either get
 R4 or P13 decided, or build the best ungated track-B task. Ranked, after session 7:
 
-1. **[FLD-002 — the Columns node says which breakpoint it is at](./FLD-002-THE-COLUMNS-NODE-SAYS-WHICH-BREAKPOINT-IT-IS-AT.md)**
-   (#22). Unblocked by FLD-001, no gate at all, and a reporter is still waiting on it. This is now
-   the top ungated task.
+1. **FLD-016** (#29) — the Linux install. Ungated, and the only track-B task that needs **no MCP
+   surface at all**, which matters while P25 stands. AppImage/FUSE 2 and the X11 default, both
+   halves confirmed unmeasured on a current distribution. ⚠️ Decide whether it is gradeable on this
+   machine **before** building — that answer is the task's real first question.
 2. **FLD-011's remaining half** — parallelise by tab. ⚠️ **The case for it is weaker than the task
    file assumed**, because the settle budget already took the corpus from 205s to 55s. It is
    strongest on many-page projects and it carries the AC3 trap: `page.consoleErrors` is ONE shared
    array attributed by index-slicing, so interleaving misattributes every console error.
 3. **FLD-013** (#37) — ungated MCP-surface work. ⚠️ Check P25 first; anything that adds to the
    resident tool surface is now gated by a budget with **5 tokens spare**.
-4. **FLD-016** (#29) — the Linux install. Ungated, and the only track-B task that needs no MCP
-   surface at all.
+4. **FLD-003** (#22) — 🔴 **now unblocked by FLD-002, but still gated on R3 and FLD-004.** It is the
+   open half of an issue that has just been answered, which makes R3 the ruling with the most
+   waiting behind it after R4. Worth putting in front of Richard.
 
 🔴 **FLD-014 is NO LONGER ungated — do not start it.** Register row **P25**: its scope is *"accept
 snake-case aliases for the 98 camelCase inputs in `backendTools.ts`"*, which **adds** to the
@@ -116,7 +138,44 @@ should not be a third"*. It needs a ruling, or the `$ref` fix the gate names as 
 the ruling.** **FLD-010 is unblocked** and R6 can reasonably be answered *no*. Ask before building a
 locking protocol.
 
-## 4. What session 7 learned that the next one should not re-learn
+## 4. What session 8 learned that the next one should not re-learn
+
+🔴 **A duplicate derivation is invisible wherever the two derivations agree — arm the case where
+the right answer is not the obvious one.** FLD-002's reverted arm C derived the breakpoint a second
+time beside the layout instead of out of it, which is the exact defect the ports exist to prevent.
+It reddened **one** spec out of twelve: *Auto Fit reports Default*. In `layoutString` mode the
+second derivation agrees with the first at every width, so the general "band matches layout"
+assertion passes on the broken code. **The arm that finds a duplicate is the one where the honest
+answer is "none of the above."** Register row **P27**.
+
+🔴 **`Emulation.setDeviceMetricsOverride` is scoped to the CDP session that set it.** Resize in one
+`drive-page.js` invocation and read in the next and you measure the **original** width. `cdp.js`
+already documents exactly this for network emulation, one verb over, and the same sentence applies
+here. The first pass at FLD-002's drive produced a table that was partly right by luck. Do the
+resize, the settle and the read **on one connection**, in one process.
+
+🔴 **`jq`'s `test()` is case-sensitive, and the reply-count loop depends on it.** The loop in §2 run
+as `test("automated reply...")` reported **3 sent, 21 owed**. The shipped disclosure is capitalised.
+It was caught only because the number contradicted four rows that carry comment links — **a count
+that disagrees with a documented row is the instrument, not the fact.**
+
+⚠️ **`dev:stop` would have killed a peer's suite.** `--list` showed a peer's
+`lerna exec --scope @noodl/platform-node -- npm test` inside the sweep set; `NEVER_SWEEP` shields
+`test:ci` and `test:main` **by name**, and a package's own `npm test` is neither. Run
+`dev:stop -- --list` and read it before stopping, not after. Waiting cost about twenty minutes.
+
+✅ **Regenerating a shared generated artifact with `--out-dir` and diffing first is cheap and it
+settles the question.** `node-catalog.json` came back **33 lines added, 0 removed, the `.d.ts`
+byte-identical** — purely additive, which is what made writing it in place safe with a peer holding
+uncommitted work elsewhere in the tree.
+
+⚠️ **A deferral note can be about the sink rather than the port under test.** FLD-002 AC5's first
+signal arm wired `onAtSmall` into a `Set Variable` with nothing feeding its value; the wire was
+dropped with *"nothing is wired into value"* — true, about the receiver, and it reads at a glance
+like the port having been handled. Give the sink what it needs to compile before you believe a
+sentence about the source.
+
+## 5. What session 7 learned that the next one should not re-learn
 
 🔴 **A self-agreement control detects nondeterminism, NOT time-dependence.** FLD-011's arms script
 ran the new arm twice to check it agreed with itself, and reported three projects as `CHANGED` with
@@ -150,7 +209,7 @@ Caught by `git status` before the commit, not by the suite. Point relative-path 
 ⚠️ **`FLD-*.md` now matches `FLD-011-WHAT-WAS-BUILT.md`.** The board one-liner needs
 `grep -v WHAT-WAS-BUILT` or it counts a report as a task.
 
-## 5. What session 6 learned that the next one should not re-learn
+## 6. What session 6 learned that the next one should not re-learn
 
 ✅ **One render, four arms — the shape to copy for anything measured inside the page.**
 `demo/fld-012-arms.js` renders each page **once** and evaluates four textually reverted builds of
@@ -190,9 +249,14 @@ identical 3 failed / 15 passed without the change. `def018-def020-layout-drive` 
 `sbr009ThemeEditorDrive` use `withRenderedPage` but never `measureExpression`, so they could not
 have been affected. **Never `git stash` here; snapshot and `cp` back.**
 
-## 6. Gates, as they stood at the end of session 7
+## 7. Gates, as they stood at the end of session 8
 
-`npm run test:main` **446 suites / 7359 tests, exit 0** — identical to sessions 5 and 6.
+`npm run test:main` **446 suites / 7359 tests, exit 0** — identical to sessions 5, 6 and 7.
+`packages/noodl-viewer-react` **101 suites / 1360 tests, exit 0** (session 8).
+`packages/nodegx-export` `tests/visual-controls.test.ts` **52 tests, exit 0** (session 8).
+🔴 **The three catalog gates are now part of any node-port change and all three passed:**
+`catalog:check`, `catalog:merge:check`, `catalog:groups:check`. A `group:` added to a node file and
+not folded into the catalog is invisible to the group gate, so run `catalog:check` beside it.
 `npx lerna run test --scope @nodegx/render-measure` **2 suites / 13 tests, exit 0**.
 `packages/noodl-mcp` **99 of 101 suites, 1416 of 1419 tests** — the two reds below.
 
@@ -217,7 +281,7 @@ into the log file itself.
 checkout at the start of session 7 and committed it during. **Commit by pathspec**, and `git add`
 untracked files first — a pathspec commit skips them.
 
-## 7. 🔴 Rulings — one down, four still gating
+## 8. 🔴 Rulings — one down, four still gating
 
 ✅ **R1 ANSWERED: 0.2.3, not split** (Richard, 2026-09-10) — but see §2: what is *already published*
 is **0.2.2**, and four replies were corrected to say so before they went out.
@@ -230,10 +294,10 @@ the lock (**answered "probably not" in public on #41 — confirm**). Full wordin
 🔴 **R4 and P13 are now the phase's critical path**, because they are the only things standing
 between the next session and the last two track-A tasks.
 
-## 8. The end condition has not moved
+## 9. The end condition has not moved
 
 The phase closes when the issues are each **fixed and closed, or answered on the thread with the
 measurement that changed our mind**. Read the count off §5 of the register, not off README §6's
 "fifteen".
 
-**Eleven sent, thirteen to go.**
+**Twelve sent, twelve to go.**
