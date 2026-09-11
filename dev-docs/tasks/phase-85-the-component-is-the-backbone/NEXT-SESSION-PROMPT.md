@@ -4,125 +4,169 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## The board, re-derived from the task FILES on 2026-09-10 (session 7)
+## The board, re-derived from the task FILES on 2026-09-11 (session 8)
 
 | task | AC | state |
 |---|---|---|
 | CMP-001 | AC1 the `States.currentState` enum input | ✅ s2, four assertions over the wire |
-| CMP-001 | AC2 the playbook ships as a doctrine field | ✅ s6 — `interfaceDoctrine` on `get_project_info`; **s7 added an eleventh rule** (the repeated row) and 4 specs |
-| CMP-001 | AC3 four new corpus examples | 🟡 **s6 built the four; s7 judged the remainder and closed it as a judgement** — 26% publishing, floor still FAIL, deliberately |
+| CMP-001 | AC2 the playbook ships as a doctrine field | ✅ s6 — `interfaceDoctrine` on `get_project_info`; s7 added an eleventh rule and 4 specs |
+| CMP-001 | AC3 four new corpus examples | 🟡 s6 built four; s7 judged the remainder and closed it as a judgement — 26% publishing, floor still FAIL, deliberately |
 | CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
-| CMP-002 | the graded baseline build | **NEXT, and the only thing left.** 🔴 s7 could not run it — see below |
-| CMP-003 | AC1 the doctrine stops forbidding the named utility | ✅ s2, both copies |
-| CMP-003 | AC2 P10 in the playbook | ✅ s6 |
+| CMP-002 | the graded baseline build | **FIRST JOB, and still the only AC-moving work.** 🔴 s7 and s8 both could not run it — see below, the reason is now fully measured |
+| CMP-003 | AC1/AC2/AC4 | ✅ s2 / s6 / s2 |
 | CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
-| CMP-003 | AC4 the ledger column | ✅ s2 |
 | CMP-004 | AC1–AC4 | ✅ s2/s3/s4/s5 |
 | CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
 | CMP-005 | all five | ✅ CLOSED s4 + s5 |
+| **CMP-006** | AC1 `full` relays `patterns`/`antiPatterns` · AC2 the description routes there | ✅ **CLOSED s8** — 5 specs over the wire, 4 control arms |
+| **CMP-006** | AC3 should the DEFAULT carry `antiPatterns`? | 🔴 OPEN — **needs a phase-55-style REPLAY, not a ruling.** Do not close it from the armchair |
 
-## The first job
+## 🔴 The first job is still CMP-002, and s8 MEASURED why two sessions have bounced off it
 
-🔴 **CMP-002. Nothing else is unblocked.** It alone grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5.
+It alone grades CMP-001 AC4, CMP-003 AC3 and CMP-004 AC5.
 
-🔴 **WHY SESSION 7 COULD NOT RUN IT, MEASURED — CHECK BOTH BEFORE YOU START.**
+**s7's two stated preconditions were both correct. They reproduced exactly in s8, and s8 found the
+root cause of the first one.**
 
-1. **Its MCP servers predated the doctrine.** Both of s7's servers started `14:26:46`;
-   `packages/noodl-mcp/dist/noodl-mcp.cjs` was rebuilt at `22:12:07` the same day. A server bound
-   before the build sends the August doctrine and the response looks *identical* — an absent field
-   is not an error. Worse: the **bound project server was the INSTALLED APP**
-   (`/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs`), which contains **zero**
-   occurrences of the anchor string, so it can never carry this work however recently it started.
-   ✅ **The check, and run it first:** `get_project_info` must contain
-   *"What goes on a component's interface"* **and** *"A repeated row publishes to the repeater"*.
-   The second string is s7's and dates the bundle to this session or later.
-2. **A session that has read this folder cannot produce the baseline** — session 1's rule, still
-   binding, and the reason s7 stopped rather than building anyway.
+### The blocker, named precisely: an MCP server is a child of the CLI PROCESS, and `/clear` does not restart it
 
-⚠️ **`dist/` is gitignored and untracked**, so it is *always* a local artefact: whatever you inherit
-in a fresh session may be any age. Rebuild it, then check the two strings. Do not infer from the
-commit that the running server has the code.
+s8 walked `$$` up the process tree and its CLI pid was **`89837`, started Thu 2026-09-10 14:26:46 —
+the same CLI process as session 7.** `/clear` wiped the conversation and left the MCP children
+running. `ps` showed one server pair per CLI process, four pairs on the box, and s8's `nodegx` server
+was pid `89857`, started 14:26:46 against a `dist/noodl-mcp.cjs` that was **rewritten at 22:34:12**
+the same evening.
 
-## What session 7 built — the CMP-001 AC3 remainder, and it was not a percentage problem
+🔴 **Measured, not inferred.** `list_examples({query: 'badge states variant'})` returned `[]` while
+the control `list_examples({query: 'component'})` returned **24** examples including
+`comp-repeater-set-item-object` — so the `comp-` prefix was not being filtered, and **none of s6's
+four `comp-*` examples existed in the running bundle.** That dates the server's image to before
+`b438e8c05`.
 
-🔴 **The corpus had ZERO `itemOutputSignal-…` connections across all 72 examples.** Not "the rows are
-thin" — *the mechanism by which a repeated row talks back to its page was undemonstrated*, and both
-examples that reached for it were broken by it.
+⚠️ **A subagent cannot escape this.** Subagents share the parent CLI's MCP connections — the `ps`
+output shows one server pair per CLI process, not per agent. So spawning a fresh-context agent gives
+you a fresh *reader* and the *same stale server*.
 
-**The mechanism, read from `foreach.tsx` rather than assumed.** A `For Each` mints
-`itemOutputSignal-<name>` for every `signal` output on its template component and `itemOutput-<name>`
-for every value (`:1029-1046`), sets `itemActionItemId = model.getId()` synchronously and sends the
-signal in one scheduled pass (`:905-928`). **A repeater template's interface IS reachable — it
-surfaces on the repeater, not on the instance.** 🔴 **And the id only moves if the signal is
-consumed**: `itemOutputSignals[name]` is written only by `registerOutputIfNeeded` (`:939-941`) and
-read by `onOutputChanged` (`:628`), so an `itemActionItemId` wire with no `itemOutputSignal-…` wire
-beside it reads `undefined` forever.
+### ✅ What s8 fixed so the next session is not blocked
 
-**Two examples fixed, each broken by its own description:**
+**`dist/noodl-mcp.cjs` was rebuilt at 2026-09-11 07:25:30** and carries all four anchors:
 
-- `data-shared-array-add-remove` — title says *"insert, **remove** and clear"*. `modifyId` was wired
-  from `itemActionItemId`; **nothing ever fired `remove`**, and with no item signal consumed the id
-  was never set either. `/Todo Row` now publishes `remove`.
-- `cloud-record-crud` — buttons read *"Rename **selected**"* / *"Delete **selected**"* with both
-  writers on `idSource: "value"`; **nothing selected anything and no `modelId` was wired**. Rename
-  and Delete moved onto `/Note Row`, which is the only thing that knows which record it is, and the
-  row's title became a field so Rename writes a real value through `itemOutput-title`.
+- *"What goes on a component's interface"* (s6's doctrine)
+- *"A repeated row publishes to the repeater"* (s7's eleventh rule)
+- *"relatedNodes, patterns, antiPatterns"* (s8's CMP-006)
+- `comp-variant-badge-states` (s6's example)
 
-**Twelve rows judged and deliberately left silent**, each for its example's own subject — the full
-table is in CMP-001 §AC3 remainder. The one that matters: `comp-repeater-set-item-object::/Task Row`
-is the **contrast case** — it writes to its own record from inside via `For Each Actions.itemId`, and
-publishing would contradict its lesson. **A row acting on itself stays internal; a row asking the
-page to act publishes.**
+**So any CLI session started after 07:25:30 on 2026-09-11 gets a server that carries the work.**
 
-**The doctrine gained an eleventh rule** — *"A repeated row publishes to the repeater, not to
-nowhere"* — because P7 already told agents a row should publish a click while nothing told them where
-it lands. Armed by 4 new specs that re-derive the three port names **from `foreach.tsx`**, not from
-prose; all four controls red (doctrine renames the ports 2/24; runtime gate removed 1/24; corpus
-reverted 3/24; the id wired with no signal beside it 2/24).
+### 🔴 The unblock, and it is RICHARD'S action, not the next session's
 
-## 🔴 Traps — session 7's, then the standing ones
+CMP-002 needs a session that has read **only** the build brief. A session told *"continue phase 85"*
+reads this file and is disqualified by its first line. So the run has to be started deliberately:
 
-- 🔴 **THE EXAMPLES GATE PASSED A PARAMETER THAT DOES NOT EXIST.** `Group.gap`, copied in from CSS
-  habit, validated **72/72 clean** — `Group` is one of the 172 skipped runtime-discovered-port nodes.
-  The real port is `columnGap`. **Every new wire and parameter on `For Each`, `Group`, `States` or
-  `JavaScriptFunction` must be checked by hand against `node-catalog.json`**; the gate cannot.
-- 🔴 **THE AC2 GATE CAUGHT THE DOCTRINE GOING STALE AGAIN — the literal has now moved TWICE**
-  (10 → 21 → 26). Both times the artefacts moved first and the spec said the sentence was wrong,
-  in the same session. **Count the artefact, never bump the literal**: `measure-interfaces.py corpus`
-  and the spec agreed independently on 26.
-- ⚠️ **The percentage is quoted in FIVE places** beyond the doctrine text: `editor-deps.ts:399`,
-  `tools/read.ts:172`, `tools/responses.ts:114`, and two tables in CMP-001. Grep `21%`-style literals
-  before believing any one of them.
-- ⚠️ **A background command's completion notice reported `exit code 0` for a run that exited 1** —
-  the `;`-eats-the-exit-code trap, caught only because `EXIT=$?` was written into the log. Gate on
-  the log, never the notification.
-- ⚠️ **A peer was live in `packages/noodl-editor` during the session** and ran a production webpack
-  build at 22:26–22:28, leaving `webpackconfigs/webpack.renderer.production.js` modified and two
-  `index.bundle.js.LICENSE.txt` files untracked. s7's commit used pathspecs and touched none of them.
-- 🔴 Sessions 3–6's still stand: **run the suite you are citing AFTER your last edit to it**;
-  **`npm run docs:nodes` wipes and rewrites the whole directory** (owner NONE, still stale);
-  **`npm run catalog:merge` rewrites a shared artefact — run `merge.js --check` with your inputs
-  moved aside first** (s7 did: *"up to date"*, so the 109/30 diff was provably all mine, and diffing
-  the example ids confirmed only two changed and no non-example key moved); **the thing you are
-  changing may ship twice**; **an inert parameter in a corpus example teaches a lie** (which is why
-  Rename got a real value to write); **a `*/` inside a JSDoc block ends the comment**; **editing JSON
+> **In a NEW Claude Code session (not `/clear` — a new session, so the MCP server is a new process),
+> say exactly: `Read dev-docs/tasks/phase-85-the-component-is-the-backbone/CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md and do what it says.`**
+
+🔴 **And that session must run the freshness check FIRST**, because `dist/` is gitignored and
+untracked and whatever it inherits may be any age:
+
+1. `get_project_info` must contain *"What goes on a component's interface"* **and** *"A repeated row
+   publishes to the repeater"*.
+2. Cheaper and it needs no bound project: `list_examples({query: 'badge'})` must return
+   `comp-variant-badge-states`. If it returns `[]` while `list_examples({query: 'component'})`
+   returns two dozen, the server is stale — **rebuild `packages/noodl-mcp` and start a new session.**
+3. The general form: `stat` the dist, `ps` the server, and compare. A server older than the bundle
+   cannot carry it, and an absent field is not an error.
+
+⚠️ **The bound PROJECT server on this machine (`nodegx-puppy-test-3`) is the INSTALLED APP**
+(`/Applications/NodeGX.app/.../noodl-mcp.cjs`) and contains **zero** occurrences of the anchor
+strings, so it can never carry this work however recently it started. The repo-built server is
+`nodegx`, which is unbound — `create_project` is the door, and it binds ONCE per process.
+
+## What session 8 built — CMP-006, promoted from §7's owner-NONE gap
+
+Everything on §A of the board needs CMP-002, which s8 could not be the instrument for. So it took the
+phase's only other 🔴 owner-NONE row, and it was on-thesis: **§2's shape for the fifth time — the
+doctrine existed and nobody measured whether it arrived.**
+
+`get_node_type` emitted neither `patterns` nor `antiPatterns` at any detail level. **130 of 176 types
+carry `patterns`** (259 entries) and **113 carry `antiPatterns`** (203 entries) — ~14.9k tokens of
+authored guidance whose only reader was the EDITOR's node-docs panel, i.e. a person.
+
+🔴 **The root cause §7 did not have: `NodeEnrichment` in `catalog.ts` never DECLARED `antiPatterns`.**
+`patterns` was declared and not copied; `antiPatterns` was not in the interface at all, so no copy of
+it could have typechecked. The hole was in the server's own type, which is why it survived five
+sessions of people reading that function.
+
+**AC3 was deliberately left open, and the reason is a measurement.** Putting them on the DEFAULT
+summary is the obvious next thought and it is not free: `antiPatterns` alone is a **median 36%** of a
+summary payload and **up to 151%** — on `noodl.cloud.request`, 528 chars of anti-pattern against ~349
+of summary — while costing 0.8% on `Group`. It is most expensive exactly where summaries are cheapest
+and most numerous. AWP-005 §2 measured that doc volume was *anti*-correlated with building, so
+overturning it wants a replay, not an opinion. Arm D holds that line on purpose.
+
+## 🔴 Traps — session 8's, then the standing ones
+
+- 🔴 **THE RESIDENT TOOL SURFACE HAD FIVE TOKENS OF HEADROOM.** 8275 against
+  `toolDisclosure.test.ts`'s 8280. CMP-006's first description wording cost 19 tokens and put it at
+  **8294, 14 OVER** — and the red arrived in a suite about *tool disclosure*, nowhere near the change.
+  The literal was **not** bumped: the text was funded by naming the real response keys instead of
+  paraphrasing them, and by collapsing a sentence `get_node_type`'s schema was paying for **twice**.
+  Final **8272, 8 under — 3 tokens cheaper than before the work.** ✅ The only reason this was legible
+  is CN-006's `[surface] … under the … budget` line, which prints the margin **on a passing run**.
+  **A description edit is a product change with a price**, re-sent every turn of every session.
+- 🔴 **A SPEC THAT BATCHES `detail: "full"` FAILS ON ITS OWN CONSTRUCTION.** Five sampled types are
+  ~100 KB against the 60 KB byte budget (DEBT-009), which degrades the tail to **summaries** in-band
+  — and a summary carries neither field by design. It reads as a broken relay. `Group` alone is
+  ~47.8 KB. One type per call, and assert `summarized` is `undefined`.
+- ⚠️ **Arms A and B red the SAME two tests**; only the failure *messages* distinguish which half of
+  the relay went missing. If you add a field, add the content assertion that names it.
+- ⚠️ **The corpus row in `STUDIED-APPS.md` was stale by 16 points** (10% from the 67-example reading)
+  while three source literals and CMP-001 had all moved to 26%. A dated row is history and was left
+  intact; a second dated row now carries the current measurement. **Re-measure before quoting a
+  ledger.** `./measure-interfaces.py corpus ../../../packages/noodl-types/src/node-catalog-enriched.json`
+  reproduced 34 / 26% / 12% / 0.06 independently.
+- 🔴 Sessions 3–7's still stand: **the examples gate passed `Group.gap`, a parameter that does not
+  exist** — check every new port by hand against `node-catalog.json`; **count the artefact, never bump
+  the literal**; **run the suite you are citing AFTER your last edit to it**; **`npm run docs:nodes`
+  wipes and rewrites the whole directory** (owner NONE, still stale); **`catalog:merge` rewrites a
+  shared artefact — `merge.js --check` with your inputs moved aside first**; **the thing you are
+  changing may ship twice**; **an inert parameter in a corpus example teaches a lie**; **editing JSON
   with `json.dumps` reformats every array — do the surgery on the text**.
 - 🔴 Session 1's still stand: two obvious metrics were **green before the work** (mean ports, variant
   port — do not reintroduce them), and **a session that has read this phase cannot grade a build of
   it**.
 
-## Numbers, measured this session
+## Numbers, measured 2026-09-11 at `8898a7171` + s8's work
 
-- `noodl-mcp`: **3 failed / 1532 passed / 1535 total**, the two pre-existing `*Drive` suites
-  (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`) — neither references anything here.
-  ✅ The delta reconciles: 1535 − 1531 = **4**, all in `cmp001InterfaceDoctrine.test.ts` (20 → 24).
-  🔴 The run's own log said `EXIT=1`; the harness notification said *"exit code 0"*. Believe the log.
-- `npm run catalog:examples`: **72/72 clean**, strict, warnings-as-errors — and see the `Group.gap`
-  trap above for what that sentence does not cover.
-- `catalog:merge --check` before the work: *"Committed enriched catalog is up to date"*. After
-  regenerating, exactly **two** examples differ and **no** non-example key moved.
-- `tsc --noEmit -p packages/noodl-mcp`: clean, 0 lines of output.
-- `measure-interfaces.py corpus`, re-measured after: **34 components, 26% / 12% / 0.06**
-  (s6 read 21% / 12% / 0.06). All three floors still **FAIL**, which is the honest reading —
-  twelve rows were examined and twelve were deliberately left alone.
-- Resident tool budget unchanged; the doctrine ships as a `get_project_info` result field, outside it.
+- `npx jest` in `packages/noodl-mcp`: **3 failed / 1537 passed / 1540 total, EXIT=1.** The three reds
+  are in the two pre-existing `*Drive` suites (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`),
+  neither referencing anything here. ✅ **Delta reconciles: 1540 − 1535 = 5**, all in the new
+  `cmp006PatternsOnTheWire.test.ts`. This is s7's floor exactly, re-taken.
+- `npx tsc --noEmit -p packages/noodl-mcp`: **0 lines, EXIT=0.**
+- `toolDisclosure.test.ts`: **18/18**, `[surface] 8272 tokens / 20 resident tools — 8 under the 8280 budget`.
+- `measure-interfaces.py corpus`: **34 components, 26% / 12% / 0.06.** All three floors still FAIL,
+  which is the honest reading — re-measured, not inherited.
+- Four control arms, **5 of 5 tests running in every arm**, both sources restored **md5-identical**.
+- `dist/noodl-mcp.cjs` rebuilt **07:25:30**, four anchors present.
+- ⚠️ **`test:ci` NOT run** — s8 touched only `packages/noodl-mcp` and `dev-docs`, and the editor suite
+  is untouched by both. **NOT PUSHED** — Richard's standing decision.
+
+## Ordered next steps
+
+1. 🔴 **CMP-002, and it needs Richard to start it** — a NEW session (not `/clear`), pointed at the
+   build brief by name, with the freshness check run first. Nothing else on §A moves until it lands.
+2. Then grade it: `./measure-interfaces.py v2 <project>/components` against the 50/20/0.15 floors,
+   `./measure-logic-components.py` for the CMP-003 column, and run the §3 **six questions** over the
+   graph — a ledger row without the reading is three columns and no insight.
+3. CMP-006 AC3, **if and only if** you are willing to build the replay: same brief, two servers, one
+   with `antiPatterns` on the default, graded on whether the built graph avoids the named
+   anti-patterns. Not on token count.
+4. Still owner NONE, untouched: **`install_prefab` never carries design-token overrides** (§7, first
+   bullet) — a part built against a token project A invented falls back to `DEFAULT_TOKENS` in project
+   B and renders the wrong colour without reporting anything.
+
+### Needs Richard, not the next session
+
+- **Starting the CMP-002 run** (above) — the one thing blocking every open AC on the board.
+- The cadence itself: §3.1 is event-driven, *"whenever Richard gets time"*. The Friday routine
+  (`trig_01MFceQCDiZvLy7cuSyeU877`, first fire **2026-09-11**) reports where the loop stands and never
+  does the work.

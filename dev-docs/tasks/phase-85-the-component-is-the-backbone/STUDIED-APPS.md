@@ -17,6 +17,7 @@ beside the visuals?
 | 2026-09-09 | **LearnBook v5.1** | Richard | 204 | 73% | 20% | 0.72 | **37** in two shared folders, **107** uses | ✅ reference | 🔴 **Logic components** — P10. The `Collapsable group` `pointerEventsEnabled` wire |
 | 2026-09-09 | **Landing page template** (TPL-003) | the MCP | 14 | 14% | 0% | 0.00 | 🔴 **0** of 21 | 🔴 FAIL ×4 | The reverted arm. Content-only leaves, no outputs, no state machines, no named logic, 233 nodes of un-sectioned page |
 | 2026-09-09 | **MCP corpus** (67 examples) | us | 30 | 10% | 3% | 0.03 | — | 🔴 FAIL ×3 | What the MCP is actually taught from. 29 of 30 components are content-only |
+| 2026-09-10 | **MCP corpus** (72 examples) | us | 34 | 26% | 12% | 0.06 | — | 🔴 FAIL ×3 | s6's four interface examples plus s7's remainder, re-measured independently on 2026-09-11. 🔴 **The corpus had ZERO `itemOutputSignal-…` connections across all 72 examples** — a repeated row talking back to its page was undemonstrated, and both examples that reached for it were broken by it. Earned doctrine rule 11. Still FAIL ×3, deliberately: twelve rows were judged and left silent for their own example's subject |
 | — | *CMP-002 — a fresh MCP business landing page* | the MCP | | | | | | **pending** | |
 
 ## Reading a row

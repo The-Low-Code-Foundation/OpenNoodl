@@ -66,10 +66,10 @@ export function registerCatalogTools(server: McpServer): void {
         'Up to ' +
         MAX_TYPES_PER_CALL +
         ' named node types. By default: every port as one line with its type and allowed values, plus the ' +
-        'examples demonstrating the type (fetch one with get_example — the title says which is worth the call). ' +
+        'examples demonstrating it (fetch one with get_example — the title says which is worth the call). ' +
         'That is enough to author from. Pass `ports` for the authored semantics of just the ports you are ' +
-        'setting; pass detail: "full" for the whole type — every port\'s prose, when to use it, runtime ' +
-        'behavior, related nodes. Full is large (Group is ~11k tokens for 111 ports) and is re-sent on every ' +
+        'setting; pass detail: "full" for the whole type — every port\'s prose, whenToUse, runtimeBehavior, ' +
+        'relatedNodes, patterns, antiPatterns. Full is large (Group is ~11k tokens for 111 ports) and is re-sent on every ' +
         'later turn, so spend it on choosing between types, not on setting a value. ' +
         'Unknown names return a nearest-match suggestion; an oversized full response degrades its tail to ' +
         'summaries in-band (see `summarized`).',
@@ -82,7 +82,7 @@ export function registerCatalogTools(server: McpServer): void {
         detail: z
           .enum(['summary', 'full'])
           .optional()
-          .describe('summary (default) = every port as one line with its type and enum values; full = everything'),
+          .describe('summary (default) = one line per port, as above; full = everything'),
         ports: z
           .array(z.string())
           .optional()

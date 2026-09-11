@@ -45,6 +45,7 @@ export interface NodeEnrichment {
   ports?: Record<string, string>;
   examples?: string[];
   patterns?: string[];
+  antiPatterns?: string[];
   relatedNodes?: string[];
 }
 
@@ -467,6 +468,26 @@ export interface NodeTypeDetail {
   description?: string;
   whenToUse?: string;
   runtimeBehavior?: string;
+  /**
+   * CMP-006 — the authored shapes to reach for, and the ones to avoid.
+   *
+   * Both fields have been in the enrichment corpus since SUB-005 and reached
+   * exactly one reader: the EDITOR's node-docs panel
+   * (`noodl-editor/src/editor/src/utils/nodeDocs.ts:161`, "Watch out for"),
+   * which is a person. `getNodeTypeDetail` copied five enrichment fields and
+   * stopped, so every anti-pattern authored for an agent was invisible to the
+   * agent doing the authoring — 130 types carry `patterns` and 113 carry
+   * `antiPatterns` out of 176.
+   *
+   * Full detail only, deliberately. `getNodeTypeSummary` is the default and its
+   * cheapness is a measured contract (AWP-005 §2); `antiPatterns` alone is a
+   * median 36% of a summary payload and up to 151% of one on a small logic node
+   * (`noodl.cloud.request`: 528 chars of anti-pattern against ~349 of summary),
+   * so carrying them by default would overturn that measurement rather than
+   * extend it. See the phase 85 README §7 for the open question.
+   */
+  patterns?: string[];
+  antiPatterns?: string[];
   relatedNodes?: string[];
   inputs: PortDetail[];
   outputs: PortDetail[];
@@ -841,6 +862,8 @@ export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLo
   if (e?.description) detail.description = e.description;
   if (e?.whenToUse) detail.whenToUse = e.whenToUse;
   if (e?.runtimeBehavior) detail.runtimeBehavior = e.runtimeBehavior;
+  if (e?.patterns?.length) detail.patterns = e.patterns;
+  if (e?.antiPatterns?.length) detail.antiPatterns = e.antiPatterns;
   if (e?.relatedNodes?.length) detail.relatedNodes = e.relatedNodes;
   if (n.dynamicPorts) {
     const dp = n.dynamicPorts as {

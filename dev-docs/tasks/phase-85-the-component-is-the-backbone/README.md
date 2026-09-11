@@ -147,6 +147,7 @@ format set a **moment.js pattern this node cannot read** — validating clean, t
 | [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅** both doctrine copies corrected · **AC2 ✅ 2026-09-10 (s6)** — P10 travels with the playbook into `interfaceDoctrine` · **AC4 ✅** the ledger column · **AC3 open** (needs CMP-002) |
 | [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅** (step 3 of THE ORDER) · **AC4 ✅** (`export_to_library`, step 4) · **AC2 ✅ s4** — `list_library({query})` · **AC3 ✅ 2026-09-10 (s5)** — three exported parts, and `size` on every row instead of a label. **AC5 open** (graded inside CMP-002) |
 | [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | ✅ **CLOSED 2026-09-10.** AC1–AC4 (s4) — the decision, **13 new tokens**, a `Locale` port, byte-identity for the eight that shipped. **AC5 (s5)** — the exported `format-date` entry, its presets rendered through the real node, and the two date answers naming each other |
+| [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md) | The authored `patterns`/`antiPatterns` reached the editor's panel and never the agent. Relay them | **AC1 ✅ AC2 ✅ 2026-09-11 (s8)** — `detail: "full"` relays both verbatim, armed by 5 specs over the wire and 4 control arms; the resident surface came out **3 tokens cheaper** than before the work · **AC3 open** — whether the DEFAULT should carry `antiPatterns` needs a phase-55-style replay, not a ruling |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
 ## 6. Instruments
@@ -171,11 +172,19 @@ task file**, because the pass that produced them was never committed. One was a 
   lists the tokens a part reads, in the response and in the generated README, which is as far as
   either side can go without deciding whose theme wins. Found 2026-09-10 building AC4.
 
-- 🔴 **`get_node_type` emits neither `patterns` nor `antiPatterns`, at any detail level.**
-  `catalog.ts`'s `getNodeTypeDetail` copies `summary`, `description`, `whenToUse`,
-  `runtimeBehavior`, `relatedNodes` and `dynamicPorts` out of the enrichment and stops. Both fields
-  reach exactly one reader — the EDITOR's node-docs panel (`nodeDocs.ts:161`, "Watch out for"),
-  which is a person. So every pattern and anti-pattern authored into the enrichment corpus is
-  invisible to the agent doing the authoring. Found 2026-09-10 while arming CMP-001 AC1; it is not
-  that AC's to fix, and it is the natural home for CMP-001 AC2's playbook if that lands per-node
-  rather than as a fifth doctrine field.
+- ✅ **CLOSED 2026-09-11 (s8) as [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md).**
+  `get_node_type` emitted neither `patterns` nor `antiPatterns` at any detail level; `detail: "full"`
+  now relays both, verbatim from the corpus. **130 of 176 types carry `patterns` and 113 carry
+  `antiPatterns`** — ~14.9k tokens of authored guidance that reached only the EDITOR's node-docs
+  panel, i.e. a person. 🔴 **And the reason it was not a one-line oversight: `NodeEnrichment` in
+  `catalog.ts` never DECLARED `antiPatterns`**, so no copy of it could have typechecked. The gap was
+  in the server's own type, not just in the copy. **AC3 is still open and needs a REPLAY, not a
+  ruling**: whether the DEFAULT summary should carry `antiPatterns` too — median 36% of a summary
+  payload, up to 151% on a small logic node, against AWP-005 §2's measured finding that doc volume
+  was *anti*-correlated with building.
+
+- ⚠️ **The resident tool surface has 8 tokens of headroom** (`toolDisclosure.test.ts`, budget 8280,
+  measured 8272 on 2026-09-11). It had **five** before CMP-006, and CMP-006's own first wording put
+  it 14 OVER. The gate was not bumped — the text was funded by naming the real response keys instead
+  of paraphrasing them and by collapsing a sentence the `get_node_type` schema was paying for twice.
+  **A description edit is a product change with a price**, re-sent on every turn of every session.
