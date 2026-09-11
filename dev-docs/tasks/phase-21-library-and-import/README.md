@@ -38,7 +38,7 @@ This is **not** the marketplace (ECO-002, gated on Gate G3 and community critica
 | B | [LIB-004](./LIB-004-IMPORT-ENGINE.md) | Import engine v2 | 1–1.5 wks | 🟠 Opus 4.8 |
 | B | [LIB-005](./LIB-005-IMPORT-UX.md) | Import experience overhaul | 1.5–2 wks | 🔵 Fable 5 |
 | B | [LIB-006](./LIB-006-LEGACY-IMPORT-ASSIST.md) | Legacy project import — best effort, honest report, AI repair | 1–1.5 wks | 🔵 Fable 5 |
-| C | [LIB-007](./LIB-007-PUBLISHING-THE-SHELF.md) | Publishing the shelf stops being a manual copy | — | **UNASSIGNED** |
+| C | [LIB-007](./LIB-007-PUBLISHING-THE-SHELF.md) | Publishing the shelf stops being a manual copy | — | 🟣 **Opus 5** — machinery built ([notes](./LIB-007-NOTES.md), PR [#44](https://github.com/The-Low-Code-Foundation/NodeGX/pull/44)); **blocked on a merge + the deploy key**, so nothing is published and the caveat still stands |
 | C | [LIB-008](./LIB-008-THE-DOCS-ORIGIN-IS-A-404.md) | Every documentation link in the shipped editor is a 404 | — | **UNASSIGNED** |
 
 🔴 **Sprint C was opened on 2026-09-11, the day v0.2.3 shipped, by two things that release
