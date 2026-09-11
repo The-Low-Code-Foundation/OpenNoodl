@@ -4,13 +4,13 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
-🔴 **READ §6 BEFORE ANYTHING ELSE.** CI was blind for 34 days, session 10 restored it, and it came
+🔴 **READ §7 BEFORE ANYTHING ELSE.** CI was blind for 34 days, session 10 restored it, and it came
 back with **six red gates**. Three of them are one command each. That is now the largest pile of
 loose work attached to this phase and none of it is FLD work.
 
-## 1. The board — re-derived from the task FILES, 2026-09-10 (end of session 11)
+## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 12)
 
-Seventeen task files, each grepped for its own marker. **NINE built, two partly built, six never
+Seventeen task files, each grepped for its own marker. **TEN built, ONE partly built, six never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
@@ -50,18 +50,88 @@ needs **P13**. Do not start either without the ruling.
 | FLD-002 | The Columns node says which breakpoint it is at | #22 | 🟢 **BUILT** `4e8ce7ab5`, AC1 driven · ✅ **replied, STAYS OPEN** | — |
 | FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002 ✅, FLD-004, **R3** |
 | FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅, **R6** |
-| FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟡 **PARTLY** `c7f5ea794` · ✅ **replied, STAYS OPEN** | — |
+| FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
 | FLD-015 | Charts that export | #39 | ⬜ never built | **R2**, 🔴 **P9 collision** |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
 | FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
-🔴 **TWO tasks are `🟡 PARTLY BUILT` and NEITHER is done.** FLD-011 is missing parallelise-by-tab
-(AC3, AC6). FLD-016 has all four fixes in and AC2/AC4/AC5 measured, but **AC1 and AC3 cannot be
-measured on any machine we have** — see §8.
+🔴 **ONE task is `🟡 PARTLY BUILT`: FLD-016.** All four fixes are in and AC2/AC4/AC5 are measured,
+but **AC1 and AC3 cannot be measured on any machine we have** — see §9. FLD-011 stopped being the
+other one in session 12.
 
-## 2. What session 11 built — FLD-017, `07f6a7e74` + `aedc51f64`
+🔴 **There is now NO ungated FLD work left at all.** Every remaining task is behind a ruling
+(FLD-004/R4, FLD-005/P13, FLD-014/P25, FLD-015/R2+P9, FLD-003/R3, FLD-010/R6) or behind a Linux box
+(FLD-016). The next session's first job is therefore §7's red CI or a register row, **not** an FLD
+task — unless a ruling has been answered in the meantime, in which case that ruling's task is the job.
+
+## 2. What session 12 built — FLD-011's last half, `01ea605cc`
+
+**The routed-page sweep runs on four tabs. FLD-011 is 🟢, 6/6 ACs, and #40 is CLOSED** — the third
+issue this phase has closed by answering its second half rather than by arguing the first.
+
+`withRenderedPage` gained `openTab`/`closeTab`; the per-tab plumbing it already had for one tab is now
+`attachTab`, so the primary tab and every helper are built by the **same** function. One Chrome, one
+server, N tabs — `PAGE_TABS = 4`, `concurrency` per call, `--concurrency` on the CLI.
+🔴 **`concurrency: 1` IS the serial sweep, navigation for navigation**, which is why every number
+below is one build against itself rather than a build against a `git show HEAD:` copy.
+
+| lanes | `templates/members-area`, 11 pages |
+|---|---|
+| 1 (serial) | 9.33s |
+| 2 | 6.65s |
+| **4 (default)** | **6.13s** |
+| 6 | 6.77s — *slower* |
+
+**20 of 20 corpus projects IDENTICAL, both arms run twice**, 0 CHANGED, 0 unstable either side. The
+whole report is byte-identical at 1/2/4/6 lanes once the clocks and the ephemeral port go — **92,793
+bytes, one md5**. End to end on #40's fixture: **53.8s → 10.3s → 6.13s, 8.8x.**
+
+🔴 **The honest reading: 1.52x on the one many-page project and 1.00x on the other nineteen** —
+eighteen have no routed pages to sweep, and a single-page drive is mostly ~1.76s of fixed cost (server
+spawn, Chrome spawn, port polling) that no number of tabs touches. **Session 7 predicted this exactly.**
+It also **corrects s7's own reply to #40**, which said the remaining serial cost was "real CPU": 1.52x
+is how wrong that was, and the correction went out on the thread.
+
+🔴 **Building AC3's fixture found P33, which is bigger than the speed work: the report was DROPPING
+every console error a page logged while LOADING.** The attribution window opened *after* the
+navigation, so both shouting fixture pages came back **silent** — and so did every start page's boot.
+**13 findings across 3 corpus projects had been invisible**: `members-area` 61 → 71 (start page plus
+nine of ten routed pages), `landing-pages` 18 → 20, `log-a-thing/solution` 5 → 6.
+✅ **It surfaced only because the fixture carries a known-firing control.** Without *"heard both pages
+shout"*, four assertions about *which* page an error landed on all passed on a report with no errors
+in it at all. Register rows **P33** (fixed), **P34** (three 404ing images in a shipped template, real
+and unowned), **P35** (the noise this creates for a cloud project rendered with no backend — a
+**decision**, not a defect, and it needs a ruling).
+
+⚠️ **Two things about driving Chrome that cost a wrong arm each:** opening a second tab
+**backgrounds the first**, and a backgrounded page does not render — the first parallel arm read a
+good page as two `blank-render` findings, 2,953ms of navigation and both viewport settles out of
+budget, against 308ms clean on one lane. `Emulation.setFocusEmulationEnabled` +
+`Page.setWebLifecycleState` on **every** tab including the one already there, per session. And a
+**fresh tab's first navigation is a document load**, so it needs the BOOT ceiling, not the route one.
+
+⚠️ **`execFile` resolves when the child's STDIO closes, not when it exits.** AC6's orphan-maker
+(`sh -c '… & echo $!'`) hung the suite for five minutes at 0% CPU, looking exactly like a hung drive,
+until `>/dev/null 2>&1` was put on the backgrounded sleeper.
+
+⚠️ **An assertion written from the shape of the loop instead of from the fixture will fail and be
+right to.** *"counted each shout"* expected one error per viewport because two viewports are measured;
+the page loads once. It now asserts **exactly once, in the window that holds the navigation** — the
+half of the fix the "right page" assertions cannot see.
+
+Gates: noodl-mcp **107 of 109 suites, 1,548 of 1,551 tests**; the two red are
+`def018-def020-layout-drive` and `sbr009ThemeEditorDrive`, **re-proved pre-existing against THIS
+change** (`git show HEAD:` over both changed files, the new spec moved aside, identical **3 failed /
+15 passed by name**, restored, md5-verified all three ways — s7's lesson applied, since this change
+touches `withRenderedPage` itself). `tsc --noEmit` 0. `@nodegx/render-measure` 13/13.
+⚠️ **`packages/nodegx-backend`'s drive specs were NOT run** — they share `withRenderedPage` through
+`helpers/site-drive` and need PostgreSQL a peer may hold. What makes that risk low and not zero: the
+page object **gained** three members and lost none, the raw `consoleErrors` array those callers slice
+themselves is untouched, and eight render-drive specs inside noodl-mcp exercise the primary-tab path.
+
+## 3. What session 11 built — FLD-017, `07f6a7e74` + `aedc51f64`
 
 **#42 reported a 271 MB archive and a 4%-of-a-core idle launcher. Both were real. Neither cause was
 where the issue — or the task's own §2 — said it was.**
@@ -110,17 +180,24 @@ Gates: `test:main` **448 / 7,372, exit 0**; `typecheck:editor` 0; `typecheck:cor
 the identical set at HEAD** (proved with `git show HEAD:` over the changed file, md5 both ways).
 New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two reverted arms run**.
 
-## 3. The next task to build
+## 4. The next task to build
 
-🔴 **R5 was answered mid-session and FLD-017 is CLOSED, so the ungated pile is back to one item.**
-Ranked:
+🔴 **The ungated pile is EMPTY. Session 12 took the last item in it.** Every remaining FLD task is
+behind a ruling or a Linux box, so the honest ranking is no longer a ranking of FLD tasks:
 
-1. **FLD-011's remaining half** — parallelise by tab. The only remaining work behind **no ruling at
-   all**. ⚠️ Weaker case than the task file assumed; the settle budget already took the corpus
-   205s → 55s. AC3's shared `consoleErrors` array is the trap.
-2. **FLD-010** (#41) — unblocked, and **R6 can reasonably be answered *no*** (in public, on #41).
-   Ask before building a lock; the tool itself does not need one.
-3. **FLD-003** (#22) — unblocked by FLD-002 but still gated on **R3** and FLD-004.
+1. 🔴 **§7's red CI**, and specifically the **two gates that are one command each** (`cloud-library:check`,
+   `starter-iconset:check`) — they would take the red from six to four. ⚠️ A regenerate is an
+   unperformed merge: `--out-dir` or `git diff` the artefact first, and check whose work made it stale.
+   **Nothing has looked at CI since `aedc51f64` added 40s to the renderer build** (§9(c)).
+2. **Register rows P32 and P34** — both small, both user-visible, both unowned, both proved against a
+   shipped artefact rather than argued. P32: the canvas icons have never shipped in any release.
+   P34: three images that 404 in `templates/members-area`.
+3. **FLD-010** (#41) — needs **R6**, and R6 can reasonably be answered *no* in public on #41. That is
+   a ruling a session can ask for and then build the same day, which makes it the cheapest FLD task.
+4. **FLD-003** (#22) — needs **R3** and FLD-004.
+
+🔴 **If a ruling has been answered since this was written, its task outranks all of the above** —
+R4 (FLD-004, and #26's reply) has the most behind it, then R3, then P13.
 
 ⚠️ **Register row P32 is small, user-visible and unowned**: the node-graph canvas icons have never
 shipped in any packaged release. Found by the R5 QA drive, proved pre-existing against
@@ -128,15 +205,15 @@ shipped in any packaged release. Found by the R5 QA drive, proved pre-existing a
 
 🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
 FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**).
-**FLD-016 needs a Linux box, not a ruling** — see §8.
+**FLD-016 needs a Linux box, not a ruling** — see §9.
 
-⚠️ **But read §6 first and decide honestly whether a red CI outranks all of these.** It is not FLD
+⚠️ **§7 is where the red CI is, and §4 above already puts it first.** It is not FLD
 work and it is not this phase's, and it is the reason a month of drift went unseen. Session 11 did
 not touch it — and it now has **one more reason to be read**: minification takes the renderer build
 from 58–73 s to 113 s, and the macOS runners are the ones that OOMed at 2048 MB
 (`scripts/webpackHeapCeiling.ts`). **Watch the first CI run after `aedc51f64`.**
 
-## 4. 🔴 The reply gate — 20 sent, 4 owed, ELEVEN closed
+## 5. 🔴 The reply gate — 20 sent, 4 owed, TWELVE closed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -153,24 +230,27 @@ for i in 1 5 9 12 13 14 15 21 22 25 26 27 29 30 32 33 34 35 37 39 40 41 42 43; d
 done
 ```
 
-**Re-derived from GitHub at the end of session 11, with the loop above:**
+**Re-derived from GitHub at the end of session 12, with the loop above:**
 
-**Sent (20):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #27 #29 #30 #32 #33 #34 #37 #40 #41 **#42**.
-**Closed (11):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37 **#42**.
+**Sent (20):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #27 #29 #30 #32 #33 #34 #37 #40 #41 #42.
+**Closed (12):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37 **#40** #42.
 
 **Owed (4): #26 #35 #39 #43.** Every one is behind a ruling: #26 = FLD-004 (**R4**),
 #35 = FLD-005 (**P13**), #39 = FLD-015 (**R2** + **P9**), #43 = FLD-014 (**P25**). 🔴 **There are no
 replies left that a build alone can unlock** — from here the count moves only when a ruling does.
 
-🔴 **NINE issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #40, #41.**
+🔴 **EIGHT issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #41.**
 All the same shape — *the issue asked for two things, one is built, closing it would close the
-other*. Say which half is which, in the reply. ✅ **#42 stopped being one of them the moment R5 was
-answered** — that is the pattern to copy: the open half of a two-half issue is usually a ruling, and
-answering the ruling closes the issue.
+other*. Say which half is which, in the reply. ✅ **#40 stopped being one of them in session 12 and
+#42 did in session 11** — that is the pattern, and it is now the phase's main way of closing an
+issue: **build or rule on the second half, then close.** For #42 the second half was a ruling; for
+#40 it was a build. 🔴 **The reply on #40 also CORRECTED its own predecessor** — s7 had told the
+reporter the remaining cost was "real CPU" and it was not. A follow-up reply that only adds good news
+is not the only kind owed.
 
 ⚠️ Do not count with `grep replied` — the table spells them **SENT**, and that grep undercounts.
 
-## 5. 🔴 What session 11 learned, and it is mostly about instruments
+## 6. 🔴 What session 11 learned, and it is mostly about instruments
 
 🔴 **`opacity: 0` is not "not rendered", and only `display: none` stops a CSS animation.** An
 invisible spinner mounted at startup and never removed was the whole of a 4%-of-a-core idle CPU
@@ -209,7 +289,7 @@ with it set a packaged Electron binary parses argv with **Node's** option parser
 wrapper keeps its `is-loading` class either way. Renamed to what it grades. **Run the second
 reverted arm — the one in the other direction.**
 
-## 6. 🔴 Gates — CI is alive again, and it came back with six red
+## 7. 🔴 Gates — CI is alive again, and it came back with six red
 
 **`9b3017f8b` fixed the cause** (`package-lock.json` was missing `@nodegx/project-contract`, added
 2026-09-09 in `55f657b8a`). Pushed. Run **34512521036** is the first in 34 days to reach the gates.
@@ -249,7 +329,7 @@ work made it stale.
 - 🔴 `npx jest tests/toolDisclosure.test.ts` in `packages/noodl-mcp` prints the margin on a
   **passing** run. **8,275 of 8,280 — 5 tokens.** Check it BEFORE adding to the MCP surface. P25.
 
-## 7. 🔴 Rulings — TWO down, three still gating
+## 8. 🔴 Rulings — TWO down, three still gating
 
 ✅ **R1 ANSWERED: 0.2.3, not split.** What is *published* is **0.2.2** (2026-09-07) — re-derive per
 issue with `gh release list`.
@@ -265,7 +345,7 @@ the units-port fix ship in a patch · **R6** does FLD-010 include the lock (answ
 ruling, a collision or a Linux box except FLD-011's second half. **R4 has the most behind it:** it
 gates FLD-004, which in turn gates FLD-003, and it owes #26 a reply.
 
-## 8. 🔴 Three things for Richard
+## 9. 🔴 Three things for Richard
 
 **(a) FLD-016's AC1 and AC3 need a real Linux box, and AC3 has teeth.** Re-enabling Chromium's
 sandbox is a genuine behaviour change on older kernels and under restrictive AppArmor profiles.
@@ -304,10 +384,12 @@ minutes: `npm run build:bundles`, then
 ⚠️ Two stray untracked files sit at the repo root — `-d` and `2026-09-10 15:00`. Not session 11's;
 they look like the fallout of a mis-quoted command. Left alone.
 
-## 9. The end condition has not moved
+## 10. The end condition has not moved
 
 The phase closes when the issues are each **fixed and closed, or answered on the thread with the
-measurement that changed our mind**. Read the count off §5 of the register, not off README §6's
+measurement that changed our mind**. Read the count off the register's §5, not off README §6's
 "fifteen".
 
-**Twenty sent, four to go, eleven closed — and all four remaining are behind a RULING, not a build.**
+**Twenty sent, four to go, TWELVE closed — and all four remaining are behind a RULING, not a build.**
+🔴 **Which means the phase can no longer be advanced by building.** #26 needs R4, #35 needs P13, #39
+needs R2+P9, #43 needs P25. Session 12 spent the last ungated build there was.
