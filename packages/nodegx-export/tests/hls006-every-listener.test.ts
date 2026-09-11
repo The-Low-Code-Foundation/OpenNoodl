@@ -61,11 +61,14 @@ const ENROLLED: Record<string, string> = {
   'noodl-mcp/src/backend/provision.ts': 'Literal 127.0.0.1.',
 
   // ── Not a local listener ───────────────────────────────────────────────────────────────────
-  'noodl-editor/src/external/ssr/index.js':
-    'NOT a listener in this app: it is the SSR server template copied into a user`s deploy, run ' +
-    'on their host, where binding every interface is the whole point. Nothing in the editor ' +
-    'starts it.',
-  'noodl-editor/src/external/ssr 3/index.js': 'As above — a second copy of the same deploy template.'
+  // 🔴 Two rows used to sit here for the SSR deploy template under `noodl-editor/src/external`.
+  // That whole directory is GITIGNORED (`.gitignore:206`), so those files exist on a machine that
+  // has built the editor and NEVER on a fresh clone — which made this gate red in CI from the day
+  // they were added (2026-09-09) and green locally, and nobody saw it because `test:packages` was
+  // dying in an earlier package. `external` is in SKIP now, so the scanner does not reach them and
+  // there is nothing to enrol. The template still binds every interface; it still runs on the
+  // user's host, not this one. See `noodl-viewer-react/static/ssr/index.js` in the note below —
+  // the same file, outside SCANNED, which is why it never needed a row either.
 };
 
 /**
@@ -80,8 +83,15 @@ const ENROLLED: Record<string, string> = {
  */
 const SCANNED = ['src', 'scripts', 'bin'];
 
-/** Directories whose contents are build output, vendored code, or tests. */
+/**
+ * Directories whose contents are build output, vendored code, or tests.
+ *
+ * 🔴 `external` is here because `packages/noodl-editor/src/external` is GITIGNORED in its entirety.
+ * Scanning it makes this gate answer a different question on every machine — a gate that reads
+ * untracked files is describing one working tree, not the repository. See the ENROLLED note above.
+ */
 const SKIP = new Set([
+  'external',
   'node_modules',
   'dist',
   'build',
