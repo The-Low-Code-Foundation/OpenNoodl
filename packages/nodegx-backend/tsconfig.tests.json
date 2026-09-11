@@ -46,7 +46,16 @@
       "@cloud-runtime/*": ["../noodl-viewer-cloud/src/*"],
       "@noodl-models/*": ["../noodl-editor/src/editor/src/models/*"],
       "@noodl-utils/*": ["../noodl-editor/src/editor/src/utils/*"],
-      "@noodl-constants/*": ["../noodl-editor/src/editor/src/constants/*"]
+      "@noodl-constants/*": ["../noodl-editor/src/editor/src/constants/*"],
+
+      // `noodl-mcp/src` imports `@nodegx/export`, and under `node16` that
+      // resolves through the package's `exports`/`types` — which point into
+      // `dist/`, a build artefact CI does not have. It appeared to work locally
+      // only because `packages/nodegx-export/dist` happened to be built.
+      // The root tsconfig already aliases this to source; repeated here because
+      // a `paths` block REPLACES the inherited one rather than extending it.
+      "@nodegx/export": ["../nodegx-export/src/index.ts"],
+      "@nodegx/export/*": ["../nodegx-export/src/*"]
     }
   },
   "include": ["tests/**/*.ts", "src/**/*"],

@@ -115,6 +115,14 @@
   /* Absolute white — theme-invariant surfaces (e.g. toggle knob, mock `.toggle::after`) */
   --base-color-white: #ffffff;
 
+  /* Near-black ink for marks drawn ON media rather than on a themed surface — a
+     play triangle over a video poster reads the same in every theme, so it does
+     not follow `--theme-color-fg-*`. Literal on purpose, like `--base-color-white`
+     above. Added by REL-020: `Community.module.scss` had been writing this value
+     as a fallback to `var(--base-color-black, #111)`, a token that has never been
+     defined, so the fallback was the only thing ever used. */
+  --base-color-ink: #111111;
+
   /* Transparent variants */
   --base-color-black-transparent-90: rgba(0, 0, 0, 0.9);
   --base-color-black-transparent-80: rgba(0, 0, 0, 0.8);
@@ -128,6 +136,8 @@
   --base-color-white-transparent-15: rgba(255, 255, 255, 0.15);
   --base-color-white-transparent-16: rgba(255, 255, 255, 0.16); /* PAR-001: card ghost initial */
   --base-color-white-transparent-50: rgba(255, 255, 255, 0.5);
+  /* REL-020: was written as a fallback to the undefined `--base-color-white-transparent-80`. */
+  --base-color-white-transparent-85: rgba(255, 255, 255, 0.85);
 
   /* ---------------------------------------------------------------------------
      SEMANTIC COLORS (Status indicators)
