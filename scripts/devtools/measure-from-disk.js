@@ -17,6 +17,7 @@
  *   --screenshot <mode>      full | viewport | none        (default: full)
  *   --scale <n>              screenshot scale              (default: 0.5)
  *   --backend-port <n>       proxy /__backend to this port
+ *   --concurrency <n>        FLD-011 — tabs the routed-page sweep drives at once (default 4; 1 = serial)
  *   --page <path>            measure ONLY this page, by its urlPath ("quiz",
  *                            "/quiz", "#quiz" or the component name; "/" is the
  *                            start page). A path no router registers is a usage
@@ -35,7 +36,16 @@ const path = require('path');
 const { renderReport, parseViewports } = require('./render-report');
 
 const argv = process.argv.slice(2);
-const VALUE_FLAGS = new Set(['--out', '--out-dir', '--viewports', '--screenshot', '--scale', '--backend-port', '--page']);
+const VALUE_FLAGS = new Set([
+  '--out',
+  '--out-dir',
+  '--viewports',
+  '--screenshot',
+  '--scale',
+  '--backend-port',
+  '--page',
+  '--concurrency'
+]);
 const flag = (name, fallback) => {
   const i = argv.indexOf(name);
   return i === -1 ? fallback : argv[i + 1];
@@ -121,7 +131,11 @@ async function main() {
     deviceScaleFactor: Number(flag('--scale', 0.5)),
     backendPort: flag('--backend-port') ? Number(flag('--backend-port')) : undefined,
     editorTokens: argv.includes('--editor-tokens'),
-    page: flag('--page')
+    page: flag('--page'),
+    // FLD-011 — `--concurrency 1` is the serial sweep, and it is here so the arms
+    // that grade the parallel one are two runs of the SAME build differing by a
+    // number, rather than a run of this build against a `git show HEAD:` copy.
+    ...(flag('--concurrency') ? { concurrency: Number(flag('--concurrency')) } : {})
   });
 
   const out = flag('--out');

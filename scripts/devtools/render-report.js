@@ -1230,6 +1230,23 @@ const REFLOW_MS = 1200;
 const PAGE_NAV_MS = 2000;
 
 /**
+ * How many tabs a routed-page sweep may drive at once.
+ *
+ * 🔴 **Tabs, never processes.** The reaper's own measurement puts one
+ * `withRenderedPage` at ~260MB of Chrome plus server, and this repo routinely
+ * has several sessions running one, so N drives is how a shared box goes down.
+ * N tabs is N renderer processes inside ONE Chrome against ONE project server —
+ * the server is a stateless `http.createServer` (`render-from-disk.js`) and does
+ * not care.
+ *
+ * ⚠️ Four rather than "one per page": the settle budget already took the corpus
+ * from 205s to 55s, so what is left to win is mostly on many-page projects, and
+ * a lane that is starved of CPU settles slower, which spends the saving on
+ * scheduling. Four is measured in FLD-011's what-was-built, §7.
+ */
+const PAGE_TABS = 4;
+
+/**
  * FLD-011 — how long nothing may change before the page counts as settled.
  *
  * The three constants above are **ceilings now, not costs.** They were bare
@@ -1394,6 +1411,11 @@ function settleExpression(ceilingMs, rafs) {
  * @property {() => string} serverLog             Everything `render-from-disk.js` has printed so far.
  * @property {(expression: string) => Promise<any>} evaluate  `Runtime.evaluate`, by value, throwing on exceptions.
  * @property {(viewport: object) => Promise<void>} setViewport  Set device metrics and let the reflow settle.
+ * @property {(urlPath: string, ceilingMs: number) => Promise<void>} goto  Navigate with an explicit settle ceiling.
+ * @property {(label?: string) => Promise<RenderedPage>} openTab  FLD-011 — another tab in the same
+ *   Chrome, with its OWN console buffer and its OWN viewport. The returned object is page-shaped:
+ *   `client`, `consoleErrors`, `evaluate`, `goto`, `navigate`, `setViewport`.
+ * @property {(tab: object) => Promise<void>} closeTab  Give a tab back.
  */
 
 /**
@@ -1496,6 +1518,143 @@ function reapOrphanedRenderProcesses() {
   return reaped;
 }
 
+/**
+ * Tell one tab it is visible and focused, whatever the browser thinks.
+ *
+ * 🔴 **This is the difference between a parallel sweep that works and one that
+ * reports `blank-render`, and it was found by measuring, not by reading.** In a
+ * single headless Chrome only ONE tab is foreground. The moment
+ * `Target.createTarget` opens the second, the first is backgrounded: its
+ * `requestAnimationFrame` stops being serviced, so the viewer never finishes
+ * mounting, the settle waits out its whole ceiling and the page is measured
+ * **empty**. The first arm of this measured `/business` as two `blank-render`
+ * findings, in 2,953ms of navigation and two viewport settles at the ceiling,
+ * against 308ms and a clean read on the same page in the same build with one
+ * lane. A faster report that reads a rendered page as blank is not a faster
+ * report.
+ *
+ * `setFocusEmulationEnabled` is the same call
+ * [[cdp-keys-need-focus-emulation-on-the-same-connection]] records for keyboard
+ * input, for the same underlying reason, and it has the same constraint: it is
+ * **per session**, so it must be sent on the connection that does the measuring
+ * and it dies with it.
+ *
+ * ⚠️ Best-effort on purpose. Both calls are optional-domain conveniences, and a
+ * Chrome that refuses one must not take the drive down — the settle ceiling is
+ * what catches a page that then fails to render, which is the behaviour this
+ * whole function exists to avoid relying on.
+ */
+async function unthrottle(client) {
+  for (const [method, params] of [
+    ['Emulation.setFocusEmulationEnabled', { enabled: true }],
+    ['Page.setWebLifecycleState', { state: 'active' }]
+  ]) {
+    try {
+      await client.send(method, params);
+    } catch {
+      /* an older Chrome, or a target that does not take it */
+    }
+  }
+}
+
+/**
+ * One CDP page session: its own client, its own console buffer, its own viewport.
+ *
+ * 🔴 **FLD-011 AC3 — the console buffer is per TAB, and that is the whole of why
+ * parallelising the page sweep is safe.** This used to be one array closed over
+ * by `withRenderedPage`, with errors attributed to pages by slicing it around
+ * each measurement (`slice(loggedBefore)`). **Index slicing is a claim that
+ * nothing else wrote to the array in between** — true of a serial loop, false
+ * the moment two pages are live at once, and the failure is silent: page 7's
+ * exception lands in page 3's row and both rows read plausibly. A buffer per tab
+ * **removes** the shared state rather than locking it; there is no interleaving
+ * left to attribute.
+ *
+ * ⚠️ `Emulation.setDeviceMetricsOverride` is per SESSION, not per document, which
+ * is the other half of why tabs work where one tab could not: two pages being
+ * measured at two viewports would otherwise be resizing each other.
+ *
+ * @param {object} o
+ * @param {string} o.wsUrl        `webSocketDebuggerUrl` of the page target.
+ * @param {number} o.servePort    The project server this tab navigates against.
+ * @param {Array}  o.settles      The drive's settle log; every tab appends to it.
+ * @param {string} [o.label]      Which tab a settle row came from. **Absent on the
+ *   primary tab**, so a serial drive's rows are shaped exactly as they were.
+ */
+async function attachTab({ wsUrl, servePort, settles, label }) {
+  const consoleErrors = [];
+  const client = await connect(wsUrl, (msg) => {
+    if (msg.method === 'Runtime.exceptionThrown') {
+      const d = msg.params.exceptionDetails || {};
+      consoleErrors.push(String((d.exception && d.exception.description) || d.text || '').slice(0, 300));
+    } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
+      consoleErrors.push(
+        msg.params.args
+          .map((a) => String(a.value !== undefined ? a.value : a.description || ''))
+          .join(' ')
+          .slice(0, 300)
+      );
+    }
+  });
+  await client.send('Page.enable', {});
+  await client.send('Runtime.enable', {});
+
+  const settle = async (what, ceilingMs, rafs) => {
+    const stat = await evaluate(client, settleExpression(ceilingMs, rafs));
+    settles.push({ what, ...(label ? { tab: label } : {}), ...stat });
+    return stat;
+  };
+
+  /**
+   * Go somewhere and let it settle, with the ceiling the caller knows applies.
+   *
+   * 🔴 The ceiling is a **parameter** because a fresh tab's first navigation is a
+   * document load and every later one is a `hashchange`. Handing a fresh tab
+   * `PAGE_NAV_MS` would budget a whole viewer boot against a route change — the
+   * settle would run out of budget rather than observe quiescence, and the page
+   * would be measured mid-boot. That is a wrong reading, not a slow one.
+   */
+  const goto = async (urlPath, ceilingMs) => {
+    await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}${urlPath}` });
+    await settle(`navigate ${urlPath}`, ceilingMs, 2);
+  };
+
+  return {
+    client,
+    consoleErrors,
+    settle,
+    goto,
+    evaluate: (expression) => evaluate(client, expression),
+    /**
+     * Go to another route and let it settle.
+     *
+     * UNI-010 §8.2. `PAGE_NAV_MS` rather than `BOOT_MS`: the runtime is already
+     * booted, and in the default `hash` mode this is a `hashchange` the router
+     * listens for rather than a document load. The viewport emulation set by
+     * `setViewport` survives it — `Emulation.setDeviceMetricsOverride` is
+     * per-session, not per-document — so a caller that has already sized the
+     * page does not have to size it again.
+     */
+    navigate: (urlPath) => goto(urlPath, PAGE_NAV_MS),
+    async setViewport(vp) {
+      await client.send('Emulation.setDeviceMetricsOverride', {
+        width: vp.width,
+        height: vp.height,
+        deviceScaleFactor: 1,
+        mobile: Boolean(vp.mobile)
+      });
+      await settle(`viewport ${vp.name}`, REFLOW_MS, 2);
+    },
+    close() {
+      try {
+        client.close();
+      } catch {
+        /* already gone */
+      }
+    }
+  };
+}
+
 async function withRenderedPage(options, fn) {
   const { projectDir, backendPort, editorTokens = false } = options;
 
@@ -1545,10 +1704,25 @@ async function withRenderedPage(options, fn) {
     { stdio: 'ignore' }
   );
 
+  /**
+   * The extra tabs `openTab` handed out, and the browser-level session that made
+   * them. Declared out here, above `cleanup`, because a lane that throws mid-sweep
+   * must not leak a socket: `cleanup` closes whatever is still open, and a caller
+   * that never asks for a tab pays for neither.
+   */
+  const extraTabs = [];
+  let browserClient;
+
   let cleanedUp = false;
   const cleanup = (client) => {
     if (cleanedUp) return;
     cleanedUp = true;
+    for (const tab of extraTabs) tab.close();
+    try {
+      if (browserClient) browserClient.close();
+    } catch {
+      /* already gone */
+    }
     try {
       if (client) client.close();
     } catch {
@@ -1600,68 +1774,94 @@ async function withRenderedPage(options, fn) {
     }
     if (!targets) throw new Error(`Chrome never opened a debugging port (${pre.chrome}).`);
 
-    const page = targets.find((t) => t.type === 'page');
-    const consoleErrors = [];
-    client = await connect(page.webSocketDebuggerUrl, (msg) => {
-      if (msg.method === 'Runtime.exceptionThrown') {
-        const d = msg.params.exceptionDetails || {};
-        consoleErrors.push(String((d.exception && d.exception.description) || d.text || '').slice(0, 300));
-      } else if (msg.method === 'Runtime.consoleAPICalled' && msg.params.type === 'error') {
-        consoleErrors.push(
-          msg.params.args
-            .map((a) => String(a.value !== undefined ? a.value : a.description || ''))
-            .join(' ')
-            .slice(0, 300)
-        );
-      }
-    });
-    await client.send('Page.enable', {});
-    await client.send('Runtime.enable', {});
-    await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
+    const target = targets.find((t) => t.type === 'page');
 
     /**
      * FLD-011 — every settle this drive performed, so the speed claim can be
      * read rather than believed. `quiet: false` is a settle that ran out of
      * budget and therefore behaved exactly like the fixed timer it replaced.
+     *
+     * One array for the whole drive, including the tabs `openTab` hands out: a
+     * per-tab log would make `report.settle` an account of the primary tab only,
+     * and the sweep is where most of the waiting is. Rows from a helper tab carry
+     * a `tab` field; rows from this one do not.
      */
     const settles = [];
-    const settle = async (what, ceilingMs, rafs) => {
-      const stat = await evaluate(client, settleExpression(ceilingMs, rafs));
-      settles.push({ what, ...stat });
-      return stat;
+    const main = await attachTab({ wsUrl: target.webSocketDebuggerUrl, servePort, settles });
+    client = main.client;
+
+    /**
+     * Another tab in the SAME Chrome, against the SAME server.
+     *
+     * 🔴 **One Chrome, one server, N tabs — never N processes.** See `PAGE_TABS`.
+     *
+     * The browser-level session is opened **lazily**, on the first tab anybody
+     * asks for, so a drive that never sweeps in parallel opens exactly the one
+     * socket it always did.
+     *
+     * ⚠️ Each tab gets a `webSocketDebuggerUrl` of its own rather than a flat
+     * `Target.attachToTarget` session on this socket. The flat protocol would put
+     * every tab's `Runtime.consoleAPICalled` on one connection — which is the
+     * shared state {@link attachTab} exists to remove, re-introduced one layer
+     * down and harder to see.
+     */
+    const openTab = async (label) => {
+      if (!browserClient) {
+        const version = await httpJson(cdpPort, '/json/version');
+        browserClient = await connect(version.webSocketDebuggerUrl);
+        // 🔴 The primary tab too, and BEFORE the second tab exists. See
+        // `unthrottle`: creating a tab is what backgrounds the one that was
+        // there, and the first thing that happened to it was being measured.
+        await unthrottle(main.client);
+      }
+      const { targetId } = await browserClient.send('Target.createTarget', { url: 'about:blank' });
+      let described;
+      for (let i = 0; i < 40 && !described; i++) {
+        const list = await httpJson(cdpPort, '/json/list');
+        described = list.find((t) => t.id === targetId && t.webSocketDebuggerUrl);
+        if (!described) await wait(50);
+      }
+      if (!described) throw new Error('a tab was created and never appeared in /json/list with a debugger URL');
+      const tab = await attachTab({ wsUrl: described.webSocketDebuggerUrl, servePort, settles, label });
+      await unthrottle(tab.client);
+      tab.targetId = targetId;
+      extraTabs.push(tab);
+      return tab;
     };
-    await settle('boot', BOOT_MS, 2);
+
+    /**
+     * Give a tab back: close its session, then close the tab itself.
+     *
+     * A sweep that left its tabs open until `cleanup` would hold four renderer
+     * processes for the rest of the drive — the screenshots, the summary and the
+     * project read all happen after it — for no reason.
+     */
+    const closeTab = async (tab) => {
+      tab.close();
+      const at = extraTabs.indexOf(tab);
+      if (at !== -1) extraTabs.splice(at, 1);
+      try {
+        if (tab.targetId) await browserClient.send('Target.closeTarget', { targetId: tab.targetId });
+      } catch {
+        /* the browser is going away anyway */
+      }
+    };
+
+    await main.client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}/` });
+    await main.settle('boot', BOOT_MS, 2);
 
     return await fn({
       client,
-      consoleErrors,
+      consoleErrors: main.consoleErrors,
       settles,
       serverLog: () => serverLog,
       servePort,
-      evaluate: (expression) => evaluate(client, expression),
-      /**
-       * Go to another route and let it settle.
-       *
-       * UNI-010 §8.2. `PAGE_NAV_MS` rather than `BOOT_MS`: the runtime is already
-       * booted, and in the default `hash` mode this is a `hashchange` the router
-       * listens for rather than a document load. The viewport emulation set by
-       * `setViewport` survives it — `Emulation.setDeviceMetricsOverride` is
-       * per-session, not per-document — so a caller that has already sized the
-       * page does not have to size it again.
-       */
-      async navigate(urlPath) {
-        await client.send('Page.navigate', { url: `http://127.0.0.1:${servePort}${urlPath}` });
-        await settle(`navigate ${urlPath}`, PAGE_NAV_MS, 2);
-      },
-      async setViewport(vp) {
-        await client.send('Emulation.setDeviceMetricsOverride', {
-          width: vp.width,
-          height: vp.height,
-          deviceScaleFactor: 1,
-          mobile: Boolean(vp.mobile)
-        });
-        await settle(`viewport ${vp.name}`, REFLOW_MS, 2);
-      }
+      evaluate: main.evaluate,
+      goto: main.goto,
+      navigate: main.navigate,
+      setViewport: main.setViewport,
+      openTab,
+      closeTab
     });
   } finally {
     cleanup(client);
@@ -1688,6 +1888,9 @@ async function withRenderedPage(options, fn) {
  *   (UNI-010 §8.2). Defaults to **on**: leaving it off by default would have shipped the fix and
  *   left every existing caller — F4 included — reading the same one-page report it always did.
  *   Each extra page costs one navigation plus one measurement per viewport.
+ * @param {number} [options.concurrency=PAGE_TABS] FLD-011 — how many tabs the routed-page sweep may
+ *   drive at once. `1` is the serial sweep this replaced, navigation for navigation, and is the
+ *   baseline every speed claim on this function is measured against.
  * @param {string} [options.page]              Measure only this page, named by its `urlPath` (EL-009
  *   AC1/AC3) — `quiz`, `/quiz`, `#quiz` or the component name; `/` is the start page. A path no
  *   router registers is an **actionable throw**, never an empty report. Implies no sweep: the
@@ -1708,7 +1911,8 @@ async function renderReport(options) {
     backendPort,
     editorTokens = false,
     renderRoutedPages = true,
-    page: requestedPage
+    page: requestedPage,
+    concurrency = PAGE_TABS
   } = options;
 
   const started = Date.now();
@@ -1793,8 +1997,8 @@ async function renderReport(options) {
      * or **true** for a page that is not the start page. Neither is a thing to
      * be wrong about in a field a filename is keyed on.
      */
-    const capture = async (vp, raw, component, subject) => {
-      const shot = await page.client.send('Page.captureScreenshot', {
+    const capture = async (vp, raw, component, subject, client = page.client) => {
+      const shot = await client.send('Page.captureScreenshot', {
         format: 'png',
         captureBeyondViewport: screenshot === 'full',
         optimizeForSpeed: true,
@@ -1817,17 +2021,32 @@ async function renderReport(options) {
 
     const expression = measureExpression(placeholders, probesFor(subjectComponent));
 
+    /**
+     * How far into the console buffer has already been attributed to a row.
+     *
+     * 🔴 **It starts at 0, and FLD-011 AC3 is why.** The comment this replaces said the first
+     * viewport's window *"includes the boot, which is where it belongs"* — and the code read
+     * `page.consoleErrors.length` at the top of the loop, which is the length **after** the boot, so
+     * every error the boot produced was in neither row. The watermark also **closes** each window at
+     * the read rather than leaving it open, so the windows are disjoint and every error lands in
+     * exactly one of them: nothing is dropped and nothing is counted twice.
+     *
+     * ⚠️ This was invisible from the report and from the code, and it is a hole shaped like the
+     * finding it hides: `console-error` is the one rule whose whole evidence is this array, and the
+     * errors most worth reporting are the ones a page throws while it is loading. It took a fixture
+     * that shouted on purpose to see it.
+     */
+    let loggedThrough = 0;
     for (const vp of viewports) {
-      // Everything logged from here to the read belongs to this viewport; for
-      // the first one that includes the boot, which is where it belongs.
-      const loggedBefore = page.consoleErrors.length;
+      const loggedBefore = loggedThrough;
       await page.setViewport(vp);
 
       const raw = await page.evaluate(expression);
+      loggedThrough = page.consoleErrors.length;
       measured[vp.name] = {
         requested: { width: vp.width, height: vp.height },
         ...raw,
-        consoleErrors: page.consoleErrors.slice(loggedBefore)
+        consoleErrors: page.consoleErrors.slice(loggedBefore, loggedThrough)
       };
 
       if (screenshot !== 'none') {
@@ -1875,6 +2094,12 @@ async function renderReport(options) {
     // consumer exactly as blind as before.
     const pageReports = [];
     const extraFindings = [];
+    /**
+     * FLD-011 — how the sweep was driven, when there was one to drive. Absent on
+     * a report that swept nothing, so `sweep` in a report always describes work
+     * that happened; `tabs: 1` is the serial path saying so in the artefact.
+     */
+    let sweep;
 
     if (focus) {
       // Named-page mode: `pages` still carries a row, because a report whose
@@ -1882,34 +2107,72 @@ async function renderReport(options) {
       // no-router control legitimately reports, and the two must not look alike.
       pageReports.push({ ...focus, measured: true, viewports: measured });
     } else if (renderRoutedPages) {
-      for (const p of routes.pages) {
+      /**
+       * FLD-011 — the sweep, across tabs.
+       *
+       * 🔴 **Rows are filled BY INDEX and the findings flattened in index order
+       * afterwards, so a parallel report is in route order exactly like a serial
+       * one.** A faster report that lists its pages in finishing order is a
+       * *different* report, and AC4 asks for the same one. The nondeterminism of
+       * a race is not allowed to reach the artefact — only the wall clock.
+       *
+       * 🔴 **`concurrency: 1` takes lane 0 and nothing else**, which is the same
+       * navigate/measure sequence on the same tab the serial loop performed. That
+       * is what makes it the honest baseline for the speed claim: the arms differ
+       * by the number of lanes and by nothing else.
+       */
+      const rows = new Array(routes.pages.length);
+      const findingsByPage = new Array(routes.pages.length);
+      const shotsByPage = new Array(routes.pages.length);
+      const todo = [];
+      routes.pages.forEach((p, i) => {
         if (p.isStart) {
-          pageReports.push({ ...p, measured: true, viewports: measured });
-          continue;
-        }
-        if (!p.reachable) {
+          rows[i] = { ...p, measured: true, viewports: measured };
+        } else if (!p.reachable) {
           // Reported, not dropped. A page this harness cannot address is a limit
           // of the instrument, and an instrument that hides its own blind spots
           // is what this whole section exists to correct.
-          pageReports.push({ ...p, measured: false });
-          continue;
+          rows[i] = { ...p, measured: false };
+        } else {
+          todo.push({ p, i });
         }
+      });
 
-        await page.navigate(p.url);
+      /**
+       * One routed page, on whichever tab is free.
+       *
+       * `firstInTab` is not a detail: a tab that has just been created is at
+       * `about:blank`, so its first navigation is a document load and gets the
+       * boot ceiling. Every later one is a `hashchange` and gets the route
+       * ceiling. Lane 0 is the primary tab, which has already booted, so it is
+       * never "first" — its first sweep navigation is the same route change the
+       * serial loop performed.
+       */
+      const measureRoutedPage = async (p, i, tab, firstInTab) => {
+        // 🔴 Read BEFORE the navigation, so the errors the page logs *while loading* belong to it.
+        // Taken after, they belonged to nobody — see `loggedThrough` on the start page above, which
+        // is the same defect on the same array, and the reason this fixture had to shout to be heard.
+        let loggedThrough = tab.consoleErrors.length;
+        await tab.goto(p.url, firstInTab ? BOOT_MS : PAGE_NAV_MS);
         const pageExpression = measureExpression(placeholders, probesFor(p.component));
         const pageMeasured = {};
+        const shots = [];
         for (const vp of viewports) {
-          const loggedBefore = page.consoleErrors.length;
-          await page.setViewport(vp);
-          const raw = await page.evaluate(pageExpression);
+          // 🔴 The window is over THIS tab's buffer. See `attachTab`: one buffer
+          // per tab is what makes this attribution true under parallelism, and
+          // slicing a shared one is what made it false.
+          const loggedBefore = loggedThrough;
+          await tab.setViewport(vp);
+          const raw = await tab.evaluate(pageExpression);
+          loggedThrough = tab.consoleErrors.length;
           pageMeasured[vp.name] = {
             requested: { width: vp.width, height: vp.height },
             ...raw,
-            consoleErrors: page.consoleErrors.slice(loggedBefore)
+            consoleErrors: tab.consoleErrors.slice(loggedBefore, loggedThrough)
           };
           // HLS-007 / C40 — a picture of page four, which nothing produced before.
           if (screenshot !== 'none' && screenshotPages === 'all') {
-            screenshots.push(await capture(vp, raw, p.component, false));
+            shots.push(await capture(vp, raw, p.component, false, tab.client));
           }
         }
 
@@ -1919,23 +2182,53 @@ async function renderReport(options) {
         // it against", which is false — a project was available. The message is
         // rewritten below instead, to say only what was actually established.
         const perPage = summarise(pageMeasured, undefined, overridden);
-        for (const f of perPage.findings) {
-          extraFindings.push({
-            ...f,
-            page: p.component,
-            message:
-              f.code === RenderFinding.BlankRender
-                ? `The routed page "${p.component}" rendered nothing at all — no text and no images. ` +
-                  'Only the start page is diagnosed against the graph, so the cause was not determined here.'
-                : `On the routed page "${p.component}": ${f.message}`
-          });
-        }
+        findingsByPage[i] = perPage.findings.map((f) => ({
+          ...f,
+          page: p.component,
+          message:
+            f.code === RenderFinding.BlankRender
+              ? `The routed page "${p.component}" rendered nothing at all — no text and no images. ` +
+                'Only the start page is diagnosed against the graph, so the cause was not determined here.'
+              : `On the routed page "${p.component}": ${f.message}`
+        }));
+        shotsByPage[i] = shots;
+        rows[i] = { ...p, measured: true, viewports: pageMeasured, summary: perPage.summary };
+      };
 
-        pageReports.push({ ...p, measured: true, viewports: pageMeasured, summary: perPage.summary });
+      if (todo.length) {
+        const lanes = Math.max(1, Math.min(Math.floor(Number(concurrency)) || 1, todo.length));
+        // A shared cursor rather than a slice per lane: the pages cost different
+        // amounts (a blank one settles in milliseconds, a template's eleventh does
+        // not), and a fixed split leaves the last lane holding the expensive half.
+        let cursor = 0;
+        const lane = async (tab, ownTab) => {
+          let firstInTab = ownTab;
+          for (;;) {
+            const at = cursor++;
+            if (at >= todo.length) return;
+            await measureRoutedPage(todo[at].p, todo[at].i, tab, firstInTab);
+            firstInTab = false;
+          }
+        };
+
+        const helpers = [];
+        try {
+          for (let k = 1; k < lanes; k++) helpers.push(await page.openTab(`tab${k}`));
+          await Promise.all([lane(page, false), ...helpers.map((tab) => lane(tab, true))]);
+        } finally {
+          // Handed back here rather than left to `cleanup`: everything after this
+          // — the screenshots, the summary, the project read — would otherwise
+          // hold four renderer processes for no reason. In a `finally` because a
+          // lane that throws must not leak them either.
+          for (const tab of helpers) await page.closeTab(tab);
+        }
+        sweep = { pages: todo.length, tabs: lanes };
       }
 
-      // Back to where the caller found us. A screenshot taken after this function
-      // would otherwise be of whichever page happened to be measured last.
+      for (const row of rows) if (row) pageReports.push(row);
+      for (const list of findingsByPage) if (list) extraFindings.push(...list);
+      for (const list of shotsByPage) if (list) screenshots.push(...list);
+
       if (pageReports.some((p) => p.measured && !p.isStart)) await page.navigate('/');
     }
 
@@ -1985,6 +2278,7 @@ async function renderReport(options) {
          * `savedMs` on such a run is zero rather than a number to quote.
          */
         settle: settleSummary(page.settles),
+        ...(sweep ? { sweep } : {}),
         tokens: (log.match(/\[render\] design tokens: (.*)/) || [])[1] || 'unknown',
         components: (log.match(/\[render\] rootComponent=\S+\s+(\d+) components/) || [])[1],
         viewports: measured,
@@ -2041,6 +2335,8 @@ module.exports = {
   RenderFinding,
   DEFAULT_VIEWPORTS,
   DESKTOP_WIDTH,
+  // FLD-011 — the default tab count, so a spec asserts the shipped number rather than restating it.
+  PAGE_TABS,
   VIEWER_BUNDLE,
   RENDER_SCRIPT
 };

@@ -1,18 +1,26 @@
 # FLD-011 — The render report writes to disk and stops sleeping
 
-🟡 **PARTLY BUILT** — session 7, 2026-09-10. Read
-[FLD-011-WHAT-WAS-BUILT.md](./FLD-011-WHAT-WAS-BUILT.md).
+🟢 **BUILT** — sessions 7 and 12, 2026-09-10 and 2026-09-11. Read
+[FLD-011-WHAT-WAS-BUILT.md](./FLD-011-WHAT-WAS-BUILT.md). **All six ACs met.**
 
-🔴 **Deliberately NOT marked `🟢 BUILT`, so the board's grep keeps counting this as open.** Two of
-the three scope items are built and measured — `out_dir` (AC1, AC5) and the settle budget (AC2, and
-AC4 re-read as fixed-vs-settled). **Parallelise by tab is not built, so AC3 and AC6 are not met**,
-and AC3 is the one the task itself calls the arm that matters.
+Session 7 built `out_dir` (AC1, AC5) and the settle budget (AC2, AC4-as-fixed-vs-settled). Session 12
+built the third scope item — **parallelise by tab** — and with it **AC3 and AC6**, each with a
+reverted arm: `tests/fld011ParallelTabs.test.ts`, 11 tests.
 
-Measured: the corpus went **205.1s → 55.0s (3.73x)** with **17 of 20 projects reporting identical
-findings**; `templates/members-area` — eleven pages, which is AC2's ten-page fixture — went
-**53.8s → 10.3s (5.21x)**. The three that differ are explained and controlled for in §3 of the
-what-was-built; they are an artefact of the OLD sleep lengths, proved by reproducing the new arm's
-reading with the old mechanism at half the timers.
+Measured end to end on #40's own eleven-page fixture, `templates/members-area`:
+**53.8s (fixed timers) → 10.3s (settle budget) → 6.13s (four tabs) — 8.8x.** The corpus went
+**205.1s → 55.0s** on the settle budget, and **20 of 20 projects report identical findings serial and
+parallel**, both arms run twice.
+
+🔴 **The honest reading of the tab work: 1.52x on the one many-page project in the corpus and 1.00x
+on the other nineteen** — eighteen have no routed pages to sweep at all. Session 7 predicted exactly
+this. The end-to-end number for a ten-page project is what makes it worth having.
+
+🔴 **And building AC3's fixture found a defect nothing else could see: the report was DROPPING every
+console error a page logged while loading**, because the attribution window opened after the
+navigation. Thirteen `console-error` findings across three corpus projects had been invisible,
+including one on **every page** of `members-area`. See §7(c) of the what-was-built — it has a
+consequence that needs a decision, and it names it.
 
 🔴 **And one thing this task did not know: the MCP tool surface had 7 tokens of headroom.** Adding
 `out_dir` broke `toolDisclosure`'s 8280-token budget gate. It was paid for rather than waived, and

@@ -1,24 +1,25 @@
 # FLD-011 — what was built
 
-**Session 7, 2026-09-10.** Two of the task's three scope items are built and measured. The third —
-parallelising by tab — is **not built**, and with it AC3 and AC6 are **not met**. Everything below
-is a measurement taken on this machine today, with the command that produced it.
+**Sessions 7 and 12, 2026-09-10 and 2026-09-11.** Session 7 built two of the task's three scope
+items; session 12 built the third — parallelise by tab — and with it AC3 and AC6. Everything below
+is a measurement taken on this machine, with the command that produced it. §§2–5 are session 7's;
+§§6–9 are session 12's.
 
 ## 1. State against the acceptance criteria
 
 | AC | what it asks | state |
 |---|---|---|
 | AC1 | `out_dir` returns paths, response carries no base64 | ✅ **met** — 8 specs + a reverted arm |
-| AC2 | wall time recorded **before and after**, same fixture, same machine | ✅ **met** — 20 projects, both arms |
-| AC3 | console errors attributed correctly **under parallelism** | ⬜ **not met** — no parallel path exists |
-| AC4 | findings identical serial and parallel | ⚠️ **re-read as fixed-vs-settled** — 17/20 identical, 3 differ and are explained below |
+| AC2 | wall time recorded **before and after**, same fixture, same machine | ✅ **met** — 20 projects, three pairs of arms |
+| AC3 | console errors attributed correctly **under parallelism** | ✅ **met** — s12, 8-page fixture, **two** reverted arms |
+| AC4 | findings identical serial and parallel | ✅ **met** — s12, 20/20 IDENTICAL, both arms run twice |
 | AC5 | `out_dir` unset ⇒ behaviour byte-identical to HEAD | ✅ **met** — argv asserted element by element |
-| AC6 | the orphan reaper still reaps under the parallel path | ⬜ **not met** — no parallel path exists |
+| AC6 | the orphan reaper still reaps under the parallel path | ✅ **met** — s12, a real orphan, plus the safety arm |
 
-🔴 **AC4 is answered about the change that was actually made.** The AC is written against
-*serial vs parallel*; there is no parallel path, so it is graded as *fixed timers vs settle budget*,
-which is the substitution the settle work actually needs. It is not the AC as written, and the
-parallel version of it is still owed.
+⚠️ **AC4 has two readings and both are recorded, because the task changed twice.** Session 7 could
+only grade *fixed timers vs settle budget* (§3) — there was no parallel path to compare. Session 12
+graded the AC as written, *serial vs parallel* (§7). Neither reading replaces the other: the first
+says the settle budget did not move the findings, the second says the lane count does not either.
 
 ## 2. `out_dir` — AC1, AC5
 
@@ -148,12 +149,147 @@ gate's own comment names as the honest answer) **before** FLD-014 is started. Re
 - `npx lerna run test --scope @nodegx/render-measure` — 2 suites / 13 tests, exit 0.
 - `npm run test:main` — see the session note.
 
-## 6. What is still owed on this task
+## 6. Parallelise by tab — what was built (session 12)
 
-- **Parallelise by tab** (`Target.createTarget`, a per-tab client, a **per-tab console buffer**),
-  with AC3 and AC6 against it. AC3 is the arm that matters: `page.consoleErrors` is one shared array
-  attributed by index slicing, and interleaving would misattribute every console error.
-- 🔴 **Do not parallelise by process.** Each `withRenderedPage` is a Chrome plus a server at ~260MB.
-- ⚠️ The settle budget has removed most of what parallelism was going to buy on small projects — the
-  corpus is now 55s where it was 205s. The case for tabs is now strongest on **many-page** projects
-  (`members-area` at 10.3s), and weaker elsewhere than the task file assumed.
+`withRenderedPage` grew two calls, `openTab(label)` and `closeTab(tab)`, and the per-tab plumbing it
+already had for one tab was extracted into `attachTab` so the primary tab and every helper are built
+by the **same** function. One Chrome, one server, N tabs — `PAGE_TABS = 4`, overridable per call as
+`concurrency` and on the CLI as `--concurrency`.
+
+🔴 **`concurrency: 1` is the serial sweep navigation for navigation**, which is what makes every
+number below an arm of the same build against itself rather than a build against a `git show HEAD:`
+copy. The report says which it did: `sweep: { pages, tabs }`, absent when there was nothing to sweep.
+
+- **AC3 — attribution.** `attachTab` gives each tab its **own** `consoleErrors` array. The old shape
+  was one array sliced by index around each measurement, which is a claim that nothing else appended
+  in between: true of a serial loop, false the moment two pages are live, and **silent** when false.
+- **AC6 — the reaper is untouched, because tabs are not processes.** `reapOrphanedRenderProcesses`
+  still runs at the start of every drive and still only kills `ppid === 1`.
+- ⚠️ **No MCP tool parameter was added.** `toolDisclosure` has **5 tokens** of headroom (P25), so the
+  lane count is a default and not a question an agent is asked. The win arrives without being priced.
+
+## 7. 🔴 Three things the drive said that reading the code could not
+
+**(a) In one headless Chrome, opening a second tab BACKGROUNDS the first, and a backgrounded page
+does not render.** The very first parallel arm came back **slower and wrong**: `templates/landing-pages`
+took 10.1s against 4.2s serial, and `/Pages/Business` — measured on the primary tab while a helper
+tab booted — reported **two `blank-render` findings**, its navigation settle taking **2,953ms** and
+both viewport settles running out of budget (`quiet: false`) against **308ms and a clean read** on the
+same page in the same build with one lane. `requestAnimationFrame` is not serviced for a hidden tab,
+so the viewer never finished mounting and the settle correctly reported a page that never settled.
+
+✅ Fixed by `Emulation.setFocusEmulationEnabled` plus `Page.setWebLifecycleState` on **every** tab
+including the primary, sent when the first helper is opened. That is the same call
+[[cdp-keys-need-focus-emulation-on-the-same-connection]] records for keyboard input, for the same
+reason, and with the same constraint: **per session**, so it goes on the connection that measures.
+After it: 18 findings against 18, and 3.57s against 3.82s.
+
+**(b) A fresh tab's first navigation is a document load, so it needs the BOOT ceiling.** Handing it
+`PAGE_NAV_MS` budgets a whole viewer boot against a hash change; the settle then runs out of budget
+rather than observing quiescence, and the page is measured mid-boot. The ceiling is a parameter of
+`goto` for exactly this reason, and lane 0 — the already-booted primary — is never "first".
+
+**(c) 🔴 The report was dropping every console error a page logged while LOADING, and the fixture is
+what found it.** `loggedBefore` was read **after** the navigation, so the window a page's errors were
+attributed by began after the errors had already arrived. Both shouting pages came back **silent**,
+and so did every boot error on every start page — `console-error` is the one rule whose entire
+evidence is that array. The window now opens **before** the navigation (and at **0** on the start
+page, which is what the comment there already claimed) and **closes at each read**, so the windows
+are disjoint: nothing is dropped and nothing is counted twice.
+
+⚠️ **This is a hole shaped like the rule that hides it, and it was invisible from both the report and
+the code.** The only reason it surfaced is that AC3's fixture has a known-firing signal in it — see
+[[assert-an-absence-with-a-known-firing-signal-beside-it]]. Without the "heard both pages shout"
+control, four assertions about *which page* an error landed on would all have passed on a report that
+contained no errors at all.
+
+### What (c) costs: 13 findings the corpus had been hiding
+
+| project | findings before | after | what appeared |
+|---|---|---|---|
+| `templates/members-area` | 61 | **71** | a `console-error` on the start page and on **nine** of its ten routed pages |
+| `templates/landing-pages` | 18 | **20** | the start page and `/Pages/Business` |
+| `lessons/log-a-thing/solution` | 5 | **6** | the start page |
+
+The errors themselves, read off a real drive of `members-area` — three classes, and only one of them
+is noise this task created:
+
+- **×11 rows: three `starter-imagery` images that 404.** `people-cafe.webp`, `people-market.webp`,
+  `work-potter.webp`, referenced by `/Members/InsideTile`. A **real defect in a shipped template**,
+  already reported by the `broken-image` rule and apparently never acted on.
+- **×6 rows: `CloudFunction2 (/Members/Standing): No cloud services defined in this project.`**
+- **×8 rows: `TypeError: Cannot read properties of undefined (reading 'results')`** inside the
+  runtime — `ParseWireAdapter.query`'s success path (`:359`; `distinct` has the same shape at `:454`)
+  reading `response.results` on a response that has none.
+
+⚠️ **The last two are a property of rendering a cloud project with NO backend**, which is how
+`render_report` renders. 🔴 **It is NOT established that a deployed app can reach them** — the
+harness's own `/__backend` proxy, with no upstream, may be the only producer, and saying otherwise
+would be [[a-client-property-read-as-a-fact-about-the-source]]. Registered, not chased.
+
+🔴 **The decision this forces, stated rather than made quietly:** the fix is correct — a report that
+silently drops the errors its own rule exists to report is broken — but it makes `render_report`
+noisier on exactly one shape of project, one that FLD-012 spent a session making quieter. Shipped as
+the correctness fix, with the noise named: **a project with cloud services rendered without a
+backend now earns a `console-error` per page.** Suppressing it needs its own task and a ruling on
+what "rendered without a backend" ought to report; inventing one at the end of a session is how a
+real signal gets lost.
+
+## 8. AC2 and AC4 — serial vs parallel, both arms run twice, 20 projects
+
+`node dev-docs/tasks/phase-84-.../demo/fld-011-arms.js --tabs --corpus`
+
+| fixture | pages | serial | parallel | speedup | findings |
+|---|---|---|---|---|---|
+| `templates/members-area` | **11** | 9,330ms | **6,127ms** | **1.52x** | 71, IDENTICAL |
+| `templates/landing-pages` | 3 | 3,534ms | 3,480ms | 1.02x | 20, IDENTICAL |
+| 18 single-page lessons | 1 | ~1,760ms | ~1,765ms | **1.00x** | IDENTICAL |
+| **whole corpus** | 32 | **44.6s** | **41.4s** | 1.08x | **20/20 IDENTICAL** |
+
+**0 CHANGED, 0 parallel-unstable, 0 serial-unstable.** Both arms self-agree on all twenty before
+they are compared to each other, which is the control §3 explains at length and needs more here, not
+less: a lane count changes *when* each page is read as well as how fast.
+
+Measured twice, an hour apart and across the attribution fix: **1.53x then 1.52x** on `members-area`.
+
+🔴 **And the honest reading of that table: tabs buy 1.5x on the one many-page project in the corpus
+and nothing at all on the other nineteen.** Eighteen have no routed pages to sweep, so `sweep` is
+absent and the two arms are the same code — which is the control that the default changes nothing
+where there is nothing to change. The fixed cost of a drive (~1.76s of server spawn, Chrome spawn and
+port polling) is what a single-page project is made of, and no number of tabs touches it.
+
+⚠️ **Session 7 predicted this and it was right**: *"the settle budget has removed most of what
+parallelism was going to buy… the case for tabs is now strongest on many-page projects, and weaker
+elsewhere than the task file assumed."* The end-to-end number for #40's own fixture is what makes it
+worth having anyway: **53.8s → 10.3s → 6.13s, 8.8x**, for eleven pages.
+
+Lane counts measured on `members-area` before 4 was chosen: **1 → 9.53s, 2 → 6.65s, 4 → 6.20s,
+6 → 6.77s.** Six is *slower* than four. The report is byte-identical at all four lane counts once the
+clock fields and the ephemeral server port are removed — **92,793 bytes, one md5 across all of them**.
+
+## 9. Gates, and the two instruments that lied on the way
+
+- `packages/noodl-mcp` — `tests/fld011ParallelTabs.test.ts` **11 tests**, `tests/fld011OutDir.test.ts`
+  8, exit 0. Two reverted arms in the new file, one per half of the fix.
+- The rest of the suite, `tsc --noEmit`, and the pre-existing proof: see the session note.
+
+⚠️ **`execFile` resolves when the child's STDIO CLOSES, not when it exits.** AC6's orphan is made by
+`sh -c 'node … & echo $!'`, and the backgrounded sleeper inherits `sh`'s stdout — so without
+`>/dev/null 2>&1` on it the helper waits out the entire sleep. The suite sat at 0% CPU for five
+minutes and looked exactly like a hung drive.
+
+⚠️ **An assertion written from the shape of the loop instead of from the fixture.** The first version
+of *"counted each shout"* expected one error **per viewport**, because two viewports are measured —
+but the page loads once, so the error is logged once. It failed, and the assertion was what was
+wrong. It now asserts **exactly once, in the window that holds the navigation**, which is the half of
+the fix the "landed on the right page" assertions cannot see.
+
+## 10. What is still owed on this task
+
+**Nothing.** All six ACs are met and the task is 🟢. Two things it leaves for somebody else, both
+registered:
+
+- 🔴 the three 404ing `starter-imagery` images in `templates/members-area`, which are a real defect
+  in a shipped template;
+- 🔴 what `render_report` should say about a cloud project rendered with no backend, which is now a
+  `console-error` per page and was silence before.

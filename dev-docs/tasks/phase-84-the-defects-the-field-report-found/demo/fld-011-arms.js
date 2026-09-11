@@ -5,7 +5,20 @@
  * Usage:
  *   node dev-docs/tasks/phase-84-.../demo/fld-011-arms.js --corpus [--json <file>]
  *   node dev-docs/tasks/phase-84-.../demo/fld-011-arms.js <project-dir> [...]
+ *   node dev-docs/tasks/phase-84-.../demo/fld-011-arms.js --tabs --corpus  # AC4: serial vs parallel
  *   node dev-docs/tasks/phase-84-.../demo/fld-011-arms.js --report <file>   # re-derive, no renders
+ *
+ * ## `--tabs` — AC3/AC4's other pair, and it needs no reverted module at all
+ *
+ * The settle arms above have to build a textually reverted copy of the module, because the old
+ * behaviour no longer exists in the source. The parallel arms do not: `concurrency` is a parameter,
+ * `1` **is** the serial sweep navigation for navigation, and both arms are the same build differing
+ * by a number. That removes the whole class of error the `buildFixedArm` assertions exist to catch.
+ *
+ * 🔴 The two-sided control matters more here, not less. A lane count changes *when* each page is
+ * read as well as how fast, so a project whose page moves on a timer can legitimately read
+ * differently — and the only way to tell that from a regression is to ask each arm whether it
+ * agrees with itself first.
  *
  * 🔴 **These arms cannot share one render, and that is the difference from FLD-012.**
  * `fld-012-arms.js` evaluates four measurement expressions against ONE DOM, because what varied was
@@ -53,8 +66,12 @@ const SOURCE = path.join(REPO, 'scripts', 'devtools', 'render-report.js');
 function buildFixedArm() {
   let src = fs.readFileSync(SOURCE, 'utf8');
   const reverts = [
-    ["await settle('boot', BOOT_MS, 2);", 'await wait(BOOT_MS);'],
-    ["await settle(`navigate ${urlPath}`, PAGE_NAV_MS, 2);", 'await wait(PAGE_NAV_MS);'],
+    ["await main.settle('boot', BOOT_MS, 2);", 'await wait(BOOT_MS);'],
+    // ⚠️ Moved by the parallel-tabs work: the navigation settle lives in `attachTab` now and takes
+    // its ceiling as a parameter, so the revert is `wait(ceilingMs)` rather than `wait(PAGE_NAV_MS)`.
+    // In the serial sweep the ceiling handed in IS `PAGE_NAV_MS`, so the arm is the same old timer;
+    // in a fresh tab it is `BOOT_MS`, which is what the old code had no fresh tab to spend.
+    ['await settle(`navigate ${urlPath}`, ceilingMs, 2);', 'await wait(ceilingMs);'],
     ["await settle(`viewport ${vp.name}`, REFLOW_MS, 2);", 'await wait(REFLOW_MS);']
   ];
   for (const [from, to] of reverts) {
@@ -77,11 +94,12 @@ const findingKeys = (report) =>
     .map((f) => `${f.code}|${f.severity}|${f.viewport}|${f.page || ''}|${f.message}`)
     .sort();
 
-async function runArm(renderReport, projectDir) {
+async function runArm(renderReport, projectDir, extra = {}) {
   const started = Date.now();
-  const { report } = await renderReport({ projectDir, screenshot: 'none' });
+  const { report } = await renderReport({ projectDir, screenshot: 'none', ...extra });
   return {
     wallMs: Date.now() - started,
+    sweep: report.sweep,
     durationMs: report.durationMs,
     findings: findingKeys(report),
     pages: (report.pages || []).filter((p) => p.measured).length,
@@ -104,6 +122,42 @@ async function main() {
   if (!dirs.length) {
     console.error('usage: fld-011-arms.js <project-dir> [...] | --corpus  [--json <file>] | --report <file>');
     process.exit(2);
+  }
+
+  /**
+   * `--tabs` — the same build twice, at one lane and at `PAGE_TABS`.
+   *
+   * Keyed `fixed`/`settled` like the other mode so the two-sided control below is literally the
+   * same code reading both pairs. Only the printed labels differ.
+   */
+  if (argv.includes('--tabs')) {
+    const mod = require(SOURCE);
+    const results = {};
+    for (const dir of dirs) {
+      const rel = path.relative(REPO, dir);
+      process.stderr.write(`\n${rel}\n`);
+      try {
+        process.stderr.write('  serial…     ');
+        const fixed = await runArm(mod.renderReport, dir, { concurrency: 1 });
+        process.stderr.write(`${fixed.wallMs}ms\n  serial2…    `);
+        const fixed2 = await runArm(mod.renderReport, dir, { concurrency: 1 });
+        process.stderr.write(`${fixed2.wallMs}ms\n  parallel…   `);
+        const settled = await runArm(mod.renderReport, dir, { concurrency: mod.PAGE_TABS });
+        process.stderr.write(`${settled.wallMs}ms\n  parallel2…  `);
+        const settled2 = await runArm(mod.renderReport, dir, { concurrency: mod.PAGE_TABS });
+        process.stderr.write(`${settled2.wallMs}ms\n`);
+        results[rel] = { fixed, fixed2, settled, settled2 };
+      } catch (e) {
+        process.stderr.write(`  ERROR ${e.message}\n`);
+        results[rel] = { error: e.message };
+      }
+    }
+    report(results, { a: 'serial', b: 'parallel' });
+    if (jsonOut) {
+      fs.writeFileSync(jsonOut, JSON.stringify(results, null, 2) + '\n');
+      process.stderr.write(`\nwrote ${jsonOut}\n`);
+    }
+    return;
   }
 
   const fixedFile = buildFixedArm();
@@ -164,10 +218,12 @@ function corpus() {
 
 const same = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
 
-function report(results) {
+function report(results, labels = { a: 'fixed', b: 'settled' }) {
   const rows = Object.entries(results).filter(([, r]) => !r.error);
-  console.log('\n== FLD-011 AC2/AC4 — settle budget, per project ==\n');
-  console.log('  pages   fixed   settled   speedup   findings   verdict            project');
+  console.log(`\n== FLD-011 AC2/AC4 — ${labels.a} vs ${labels.b}, per project ==\n`);
+  console.log(
+    `  pages  ${labels.a.padStart(7)}  ${labels.b.padStart(8)}   speedup   findings   verdict            project`
+  );
 
   let stable = 0;
   let regressed = 0;
@@ -184,12 +240,12 @@ function report(results) {
     const matches = same(r.fixed.findings, r.settled.findings);
     let verdict;
     if (!settledAgrees) {
-      verdict = 'SETTLED UNSTABLE';
+      verdict = `${labels.b.toUpperCase()} UNSTABLE`;
       unstable += 1;
     } else if (!fixedAgrees) {
       // The old code disagreed with itself on this project: it was reading a page that is still
       // moving. Any difference from it measures the length of the old sleeps.
-      verdict = '🔴 OLD ARM UNSTABLE';
+      verdict = `🔴 ${labels.a.toUpperCase()} UNSTABLE`;
       oldUnstable += 1;
     } else if (matches) {
       verdict = 'IDENTICAL';
@@ -210,23 +266,27 @@ function report(results) {
     if (verdict !== 'IDENTICAL') {
       const a = new Set(r.fixed.findings);
       const b = new Set(r.settled.findings);
-      for (const x of r.fixed.findings) if (!b.has(x)) console.log(`      ONLY FIXED   ${x.slice(0, 150)}`);
-      for (const x of r.settled.findings) if (!a.has(x)) console.log(`      ONLY SETTLED ${x.slice(0, 150)}`);
+      for (const x of r.fixed.findings)
+        if (!b.has(x)) console.log(`      ONLY ${labels.a.toUpperCase()} ${x.slice(0, 150)}`);
+      for (const x of r.settled.findings)
+        if (!a.has(x)) console.log(`      ONLY ${labels.b.toUpperCase()} ${x.slice(0, 150)}`);
       const drift = (label, one, two) => {
         const s1 = new Set(one);
         const s2 = new Set(two);
         for (const x of one) if (!s2.has(x)) console.log(`      ${label} ${x.slice(0, 150)}`);
         for (const x of two) if (!s1.has(x)) console.log(`      ${label} ${x.slice(0, 150)}`);
       };
-      if (!settledAgrees) drift('SETTLED≠SETTLED', r.settled.findings, r.settled2.findings);
-      if (!fixedAgrees) drift('FIXED≠FIXED  ', r.fixed.findings, r.fixed2.findings);
+      if (!settledAgrees) drift(`${labels.b}≠${labels.b}`, r.settled.findings, r.settled2.findings);
+      if (!fixedAgrees) drift(`${labels.a}≠${labels.a}`, r.fixed.findings, r.fixed2.findings);
     }
   }
 
   console.log('\n== totals ==');
-  console.log(`  ${rows.length} projects rendered three times each (fixed, settled, settled again).`);
-  console.log(`  wall: ${(fixedTotal / 1000).toFixed(1)}s fixed → ${(settledTotal / 1000).toFixed(1)}s settled ` +
-    `(${(fixedTotal / settledTotal).toFixed(2)}x).`);
+  console.log(`  ${rows.length} projects rendered FOUR times each — ${labels.a} twice, ${labels.b} twice.`);
+  console.log(
+    `  wall: ${(fixedTotal / 1000).toFixed(1)}s ${labels.a} → ${(settledTotal / 1000).toFixed(1)}s ${labels.b} ` +
+      `(${(fixedTotal / settledTotal).toFixed(2)}x).`
+  );
   console.log(
     `  findings: ${stable} identical, ${regressed} CHANGED, ${unstable} settled-unstable, ` +
       `${oldUnstable} old-arm-unstable.`
