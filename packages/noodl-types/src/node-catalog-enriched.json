@@ -21808,10 +21808,60 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "enum",
+            "enums": [
+              {
+                "label": "website",
+                "value": "website"
+              },
+              {
+                "label": "article",
+                "value": "article"
+              },
+              {
+                "label": "book",
+                "value": "book"
+              },
+              {
+                "label": "profile",
+                "value": "profile"
+              },
+              {
+                "label": "video.movie",
+                "value": "video.movie"
+              },
+              {
+                "label": "video.episode",
+                "value": "video.episode"
+              },
+              {
+                "label": "video.tv_show",
+                "value": "video.tv_show"
+              },
+              {
+                "label": "video.other",
+                "value": "video.other"
+              },
+              {
+                "label": "music.song",
+                "value": "music.song"
+              },
+              {
+                "label": "music.album",
+                "value": "music.album"
+              },
+              {
+                "label": "music.playlist",
+                "value": "music.playlist"
+              },
+              {
+                "label": "music.radio_station",
+                "value": "music.radio_station"
+              }
+            ]
           },
           "isSignal": false,
-          "description": "What kind of thing this page is, e.g. website or article, which changes how the preview is laid out",
+          "description": "What kind of thing this page is, which changes how the preview is laid out. The legal values are fixed by the Open Graph protocol, so this is a closed list rather than free text.",
           "index": 80005
         },
         {
@@ -22034,10 +22084,28 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "enum",
+            "enums": [
+              {
+                "label": "summary",
+                "value": "summary"
+              },
+              {
+                "label": "summary_large_image",
+                "value": "summary_large_image"
+              },
+              {
+                "label": "app",
+                "value": "app"
+              },
+              {
+                "label": "player",
+                "value": "player"
+              }
+            ]
           },
           "isSignal": false,
-          "description": "Shape of the preview on X/Twitter, e.g. summary or summary_large_image",
+          "description": "Shape of the preview on X/Twitter. A closed list: anything else is ignored and the card falls back to a small summary.",
           "index": 80009
         },
         {

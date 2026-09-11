@@ -11,7 +11,11 @@ type MetaTag = {
   displayName: string;
   editorName?: string;
   group: string;
-  type?: string;
+  /**
+   * Port type. A bare string names a primitive; the object form is the runtime's enum shape, and
+   * COM-004 uses it for the two tags whose legal values are a closed set defined by someone else.
+   */
+  type?: string | { name: string; enums: { label: string; value: string }[] };
   popout?: TSFixme;
   /** NDA-012 (Visual), check C1. Forwarded onto the port by `page.ts`'s `inputProps` reduce. */
   description?: string;
@@ -28,6 +32,33 @@ const twitterPopout = {
   label: 'Twitter',
   parentGroup: 'Experimental SEO'
 };
+
+/**
+ * COM-004 AC4 — the closed value sets for `og:type` and `twitter:card`.
+ *
+ * 🔴 **These lists are not ours and must not be edited to taste.** They are defined by the Open
+ * Graph protocol and by X/Twitter's card documentation respectively, and the failure mode for a
+ * wrong value is the quiet one: nothing errors, the scraper falls back to its default, and the
+ * author sees a preview that is subtly not the one they asked for. Taken verbatim from the
+ * community's own `SEO Meta Tag setter`, which had constrained both with `States` nodes years
+ * before this node offered anything but free text.
+ */
+const OG_TYPES = [
+  'website',
+  'article',
+  'book',
+  'profile',
+  'video.movie',
+  'video.episode',
+  'video.tv_show',
+  'video.other',
+  'music.song',
+  'music.album',
+  'music.playlist',
+  'music.radio_station'
+];
+
+const TWITTER_CARDS = ['summary', 'summary_large_image', 'app', 'player'];
 
 export const META_TAGS: MetaTag[] = [
   {
@@ -74,10 +105,19 @@ export const META_TAGS: MetaTag[] = [
   {
     isProperty: true,
     key: 'og:type',
-    description: 'What kind of thing this page is, e.g. website or article, which changes how the preview is laid out',
+    description:
+      'What kind of thing this page is, which changes how the preview is laid out. The legal values ' +
+      'are fixed by the Open Graph protocol, so this is a closed list rather than free text.',
     displayName: 'Type',
     editorName: 'OG Type',
     group: 'General',
+    // COM-004 AC4. The values are og's, not ours, and a typo here is invisible: a preview with an
+    // unrecognised og:type is not an error anywhere — the scraper simply falls back to `website`
+    // and the author sees a preview that is subtly not the one they asked for.
+    // ⚠️ Deliberately NOT `allowEditOnly`: a CMS-driven site legitimately drives this from data
+    // (`article` for a post, `website` for a landing page), and locking it to the editor would
+    // take that away to gain nothing.
+    type: { name: 'enum', enums: OG_TYPES.map((value) => ({ label: value, value })) },
     popout: ogPopout
   },
   {
@@ -110,10 +150,14 @@ export const META_TAGS: MetaTag[] = [
   {
     isProperty: false,
     key: 'twitter:card',
-    description: 'Shape of the preview on X/Twitter, e.g. summary or summary_large_image',
+    description:
+      'Shape of the preview on X/Twitter. A closed list: anything else is ignored and the card ' +
+      'falls back to a small summary.',
     displayName: 'Card',
     editorName: 'Twitter Card',
     group: 'General',
+    // COM-004 AC4, as og:type above.
+    type: { name: 'enum', enums: TWITTER_CARDS.map((value) => ({ label: value, value })) },
     popout: twitterPopout
   },
   {

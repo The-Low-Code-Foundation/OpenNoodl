@@ -150,3 +150,125 @@ ports that already ship. The live question is narrower and better: *should `og:t
 `twitter:card` become enums, should `og:image:width`/`height` be computed, should `og:url` default,
 and is "Experimental" still true?* — plus whether that surface is **discoverable**, which is the one
 real thing a prefab or a node would buy and the ports do not.
+
+---
+
+# 🟢 BUILT — 2026-09-11, session 4. 5 of 5 ACs.
+
+```
+npm run typecheck:viewer   EXIT=0
+npx jest (noodl-viewer-react)  107 suites / 1410 tests, all passing   (was 105 / 1399)
+npm run catalog:check      EXIT=0     npm run catalog:merge:check  EXIT=0
+npm run docs:nodes:check   EXIT=0     npm run catalog:examples     EXIT=0   101/101
+```
+
+## AC1 ✅ — the decision
+
+🔴 **Neither a node nor a prefab. The surface already exists on the `Page` node, and the work is to
+finish it.** Richard's call, 2026-09-11, taken against §7's correction rather than §2's premise.
+
+The reason is the measurement: **11 of the community graph's 13 fields already ship as `Page`
+parameters**, in the catalog, settable with no JavaScript. A new node would duplicate all 11 and
+leave two surfaces that write the same tags — and the one thing a node or prefab genuinely buys,
+*discoverability*, is not worth a second writer for the same `<head>`. **What was rejected:** a
+prefab (ships fast, but every project carries a copy that drifts, and it duplicates the ports); a
+picker node (same duplication, plus a catalog change); and doing nothing (AC4 was a real hole —
+nonsense was settable and nothing said so).
+
+## AC2 ✅ — a builder sets Open Graph tags with no JavaScript
+
+Already true before this session; **now tested end to end**, which it was not. The pieces each had
+a test and the seam between them had none:
+
+```
+Page parameters -> Page.tsx render -> Noodl.SEO.setMeta -> injectSeo -> <head>
+└ catalog:check ┘                  └ seo-api.test.ts ┘  └ ssr-inject-seo ┘
+```
+
+`tests/com004-meta-tags-reach-the-head.test.tsx` runs the whole chain and asserts the tags in the
+served HTML — including that Open Graph is emitted on `property` (Facebook's scraper ignores a
+`name`-only tag), that a blank tag is **not** emitted as `content=""`, that values are escaped, and
+that the per-process SEO buffer does not bleed one page's preview onto the next.
+
+## AC3 ✅ — the tags reach a crawler, and the dependency is named
+
+🔴 **The criterion COM-004 flagged as able to fail silently, and it is now graded.**
+`jest.config.js` sets `testEnvironment: 'node'`, so `document` is genuinely undefined — the SSR
+condition itself, not a simulation. The tags are asserted present in markup produced by
+`renderToStaticMarkup`, i.e. **before any JavaScript could run**.
+
+**Armed:** flipping `Page.tsx`'s server branch to `if (false)` — the exact regression
+`nda-012-render-body-effects` warns about — turns 5 of the 6 red. `ssr-inject-seo.test.js` stays
+green through that mutation, which is precisely why this test had to exist.
+
+⚠️ **The named dependency, as AC3 required rather than discovered later:** this grades the *chain*,
+not the *deployment choice*. On a client-only deploy the tags are still written after load and a
+non-executing crawler still sees nothing. **That is P16 RUN-002** and it is not this task's.
+
+## AC4 ✅ — the enum fields cannot be set to nonsense
+
+`og:type` and `twitter:card` were plain `string` ports. They are now enums, with the value sets
+taken **verbatim from the community's own `States` nodes** — which had constrained them years before
+this node offered anything but free text.
+
+**A control pair, both arms run** — the same probe against the catalog before and after:
+
+| | before | after |
+|---|---|---|
+| `og:type: "artical"` (typo) | accepted | 🔴 **REJECTED** `invalid-parameter-value` |
+| `og:type: "article"` | accepted | accepted |
+| `twitter:card: "big"` | accepted | 🔴 **REJECTED** |
+| `twitter:card: "summary_large_image"` | accepted | accepted |
+
+⚠️ **Deliberately not `allowEditOnly`.** A CMS-driven site legitimately drives `og:type` from data —
+`article` for a post, `website` for a landing page — and locking it to the editor would remove the
+case that most needs it.
+
+`tests/com004-meta-tag-enums.test.ts` pins the sets **verbatim rather than by count**, so widening
+one is a deliberate edit and not a drift; adding a 13th value turns it red. It also asserts the
+*counterpart* — that only these two are constrained, because a rule that enumerated every meta tag
+would pass the first two assertions and be badly wrong, `og:title` being prose.
+
+## AC5 ✅ — the image dimensions are **left out, deliberately**, which is the AC's second branch
+
+*"Either the width/height publication works … or it is left out rather than shipped broken."*
+**It is left out, and here is the reason it cannot work as the community wrote it.**
+
+`injectSeo` builds the served `<head>` from the buffer `setMeta` fills **during render**. The
+community computes `og:image:width`/`height` by *loading the image* and reading its natural size —
+asynchronous, browser-only. That value can never be in the buffer at render time, so it would reach
+the DOM and **never reach a crawler** — a feature that works perfectly in the editor preview and
+does nothing for the only audience it exists for. That is AC3's silent failure wearing a different
+hat, and shipping it would have been worse than the gap.
+
+✅ The §3 `encodeURIComponent` question resolves with it: we are not adopting that code, and the
+concern was right — `encodeURIComponent` on a path then concatenated onto an href produces
+`https://host/page%2Fimg.png`. Recorded so nobody copies it later.
+
+⚠️ **The lead for whoever closes this properly:** `Noodl.Env['BaseUrl']` is a deploy-time value
+available at render time on both paths (`fontloader.ts:77`, `router.tsx:689`), and the `Page` node
+already knows its own `urlPath` (`getUrlPath()`). A canonical `og:url` — and a resolved absolute
+`og:image` — are derivable at render time from those two. **That is the right shape and it is a
+task, not a leftover**: trailing slashes, query strings and the router's path resolution all have to
+be decided, and it belongs next to RUN-002.
+
+## The "Experimental SEO" label — revisited, and kept
+
+🔴 **Measured, and the answer is that it is still honest.** The group looks wrong at first —
+`description` and `robots` carry it while the 11 Open Graph and Twitter ports beside them do not —
+but that is a misreading: the popouts declare `parentGroup: 'Experimental SEO'`, so it is the parent
+of the whole SEO surface, not a label on two ports.
+
+And "experimental" is the accurate word *today*, for AC3's reason: on a client-only deploy these
+tags do not reach a crawler at all. Dropping the qualifier would be a support promise the rendering
+mode cannot yet keep. **Revisit it when RUN-002 lands**, not before.
+
+## What changed
+
+- `packages/noodl-viewer-react/src/components/navigation/Page/Page.tsx` — `OG_TYPES` (12) and
+  `TWITTER_CARDS` (4); both ports become enums; `MetaTag.type` widened to the enum shape; two
+  descriptions rewritten to say the list is closed.
+- `packages/noodl-types/src/node-catalog.json` — regenerated; the diff is exactly those two ports
+  moving from `"name": "string"` to the enum, and nothing else.
+- `tests/com004-meta-tag-enums.test.ts` — **new**, 5 tests.
+- `tests/com004-meta-tags-reach-the-head.test.tsx` — **new**, 6 tests, the chain AC2/AC3 needed.

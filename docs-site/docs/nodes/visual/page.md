@@ -37,7 +37,7 @@ Do not add Page from the node picker or use it outside a Router page component �
 | `og:image:height` | String | — | Height of the share image in pixels |
 | `og:image:width` | String | — | Width of the share image in pixels, which lets a preview reserve space before the image loads |
 | `og:title` | String | — | Title shown when this page is shared on Facebook, LinkedIn and most chat apps; falls back to the page title |
-| `og:type` | String | — | What kind of thing this page is, e.g. website or article, which changes how the preview is laid out |
+| `og:type` | Enum (`website`, `article`, `book`, `profile`, `video.movie`, `video.episode`, `video.tv_show`, `video.other`, `music.song`, `music.album`, `music.playlist`, `music.radio_station`) | — | What kind of thing this page is, which changes how the preview is laid out. The legal values are fixed by the Open Graph protocol, so this is a closed list rather than free text. |
 | `og:url` | String | — | Canonical address of this page, so shares of different URLs are counted as the same page |
 | `paddingBottom` | Number | `0` | Space inside the element's bottom edge, between it and its content |
 | `paddingLeft` | Number | `0` | Space inside the element's left edge, between it and its content |
@@ -49,7 +49,7 @@ Do not add Page from the node picker or use it outside a Router page component �
 | `sitemapPriority` | Number | `0.5` | This page's importance relative to the rest of the site, from 0 to 1, in the sitemap |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
 | `title` | String | — | The page's title, used as the document title while this page is showing; defaults to the component name |
-| `twitter:card` | String | — | Shape of the preview on X/Twitter, e.g. summary or summary_large_image |
+| `twitter:card` | Enum (`summary`, `summary_large_image`, `app`, `player`) | — | Shape of the preview on X/Twitter. A closed list: anything else is ignored and the card falls back to a small summary. |
 | `twitter:description` | String | — | Summary shown when this page is shared on X/Twitter |
 | `twitter:image` | String | — | Image shown in the X/Twitter preview; it must be an absolute URL |
 | `twitter:title` | String | — | Title shown when this page is shared on X/Twitter; falls back to the Open Graph title |
