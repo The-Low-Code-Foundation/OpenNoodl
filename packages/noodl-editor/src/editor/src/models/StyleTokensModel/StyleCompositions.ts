@@ -36,14 +36,35 @@
  * and drift in the corpus an agent imitates is phase 55's F23 all over again.
  * `styleVocabularyPorts.test.ts` checks that every id still names a file.
  *
- * ## Two traps this file is built around
+ * ## Three traps this file is built around
  *
  * 1. **A parameter with no matching port is dropped at apply with only a
  *    warning, which never blocks.** `boxShadow`, the `padding` shorthand and
  *    `fontWeight` all got taught here before a port existed for them. Every
  *    property below is checked against the enriched catalog by a spec, not by a
  *    reviewer.
- * 2. **A dimension is `{ value, unit }`, never `"1200px"`.** `defineRegularInputProp`
+ * 2. **A `width` without a `sizeMode` is a Group that fills its parent.**
+ *    `Group`'s `sizeMode` defaults to `explicit` and both dimension ports default
+ *    to `100%`, so `layout.ts` stamps `height: 100%; flex-grow: 100` on any Group
+ *    that does not say otherwise. Thirteen compositions here set `width` and left
+ *    `sizeMode` alone, which is what #35 reported and what register row **V1**
+ *    had open, with an owner, and no fix. Measured under a parent with a definite
+ *    height (`fld005ColumnMultipliesOut.test.ts`): five rows carrying one to five
+ *    lines each all render at **exactly one fifth of the parent**, and a `card` —
+ *    which ships `clip: true` — loses **six of its ten lines** off the bottom,
+ *    with zero validation errors. `styleVocabularyPorts.test.ts` now asserts that
+ *    **every composition setting `width` also sets `sizeMode`**, so composition
+ *    number fourteen cannot arrive without one.
+ *
+ *    ⚠️ What #35 called it — *"a column of Groups multiplies out"* — is NOT what
+ *    happens, and the difference decides what a diagnostic may say: `layout.ts`
+ *    sets `flex-shrink: 1` on the same branch that sets `flex-grow`, so the
+ *    siblings **share** the parent rather than overflowing it, and with no
+ *    ancestor holding a definite height there is no free space to share and
+ *    nothing goes wrong at all. The defect is that the share silently
+ *    **overwrites** the content, not that the page grows.
+ *
+ * 3. **A dimension is `{ value, unit }`, never `"1200px"`.** `defineRegularInputProp`
  *    reads `value.value`, so a `"1200px"` string is silently dropped (AIB-001,
  *    measured across ~4,000 real parameter values). That is why the value type
  *    here is a union and not `string` — the doctrine's own `maxWidth` cannot be
@@ -101,6 +122,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'and a band whose content is not inside one runs edge to edge. Sections alternate band and bandSurface.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       alignItems: 'center',
       paddingTop: 'var(--space-20)',
@@ -116,6 +138,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The alternate band: raised surface with hairlines top and bottom, so the page reads as parts, not a scroll.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       alignItems: 'center',
       backgroundColor: 'var(--surface)',
@@ -138,6 +161,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The one centred container inside a band. Content that touches the viewport edge is the loudest sign nobody designed the page.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       maxWidth: { value: 1200, unit: 'px' },
       flexDirection: 'column',
       paddingLeft: 'var(--space-6)',
@@ -152,6 +176,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     description: 'Wrapper for eyebrow + sectionHeading + lead, with the air before the content built in.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       rowGap: 'var(--space-3)',
       paddingBottom: 'var(--space-10)'
@@ -168,6 +193,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The card shell. width 100% lets the column size it, so the same card works in a grid, a 2-up row and a sidebar.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       backgroundColor: 'var(--surface)',
       borderRadius: 'var(--radius-xl)',
       borderStyle: 'solid',
@@ -202,6 +228,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'A band that sits above the surface it is on — a table header, a toolbar, the head of a list. Only reads as raised on a var(--surface) ground, never on the page background.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: 'var(--surface-raised)',
@@ -233,6 +260,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'One row in a list, separated from the next by a hairline instead of being boxed. Carries no fill on purpose — it inherits the surface it sits on.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'row',
       alignItems: 'center',
       borderBottomStyle: 'solid',
@@ -251,6 +279,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The padded half of a card, below the media. Gap ports between siblings, never margins on the children.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       rowGap: 'var(--space-2)',
       paddingLeft: 'var(--space-5)',
@@ -279,6 +308,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The empty half of a list: a dashed, centred panel saying there is nothing here yet. Dashed on purpose — a solid edge reads as a card that failed to load.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       alignItems: 'center',
       rowGap: 'var(--space-4)',
@@ -370,6 +400,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'A tile whose only large thing is the number. Pair with the type ramp: an uppercase --text-xs label in --muted-foreground, one --text-3xl value, a --text-sm delta. A tile whose label competes with its number reads as a form, not a dashboard.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       backgroundColor: 'var(--surface)',
       borderRadius: 'var(--radius-xl)',
       borderStyle: 'solid',
@@ -467,6 +498,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'The band a landing page opens with: a gradient ground instead of a flat fill. Light text only — pair with var(--primary-foreground). Swap the token for var(--gradient-brand) or var(--gradient-deep) to change the mood without touching the layout.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'column',
       alignItems: 'center',
       backgroundGradient: 'var(--gradient-spotlight)',
@@ -485,16 +517,22 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
     // whose only child is a heading collapses to the heading's height and the
     // picture becomes a stripe.
     //
-    // 🔴 **And the `shell` you put inside it needs `sizeMode: 'contentHeight'`.**
-    // Measured, not predicted: the first render of `ui-image-scrim-band` put its
-    // copy at the TOP of the band with 250px of empty photograph below it, and
-    // `justifyContent: 'flex-end'` was set correctly the whole time. The default
-    // `shell` above carries no `sizeMode`, so it is the runtime's 100%×100%,
-    // becomes `flexGrow:100` in a column and fills the band — leaving
-    // `justifyContent` nothing to justify. That is register **V1** biting a
-    // brand-new, gate-clean recipe written by a session that had just read the
-    // diagnosis of it. VIB-005 owns the door diagnostic; this comment is the
-    // stopgap.
+    // 🔴 **The `shell` you put inside it carries `sizeMode: 'contentHeight'` —
+    // and until FLD-005 it did not.** Measured, not predicted: the first render
+    // of `ui-image-scrim-band` put its copy at the TOP of the band with 250px of
+    // empty photograph below it, and `justifyContent: 'flex-end'` was set
+    // correctly the whole time. The old `shell` carried no `sizeMode`, so it was
+    // the runtime's 100%×100%, became `flexGrow:100` in a column and filled the
+    // band — leaving `justifyContent` nothing to justify. That was register
+    // **V1** biting a brand-new, gate-clean recipe written by a session that had
+    // just read the diagnosis of it, and this comment was the stopgap.
+    //
+    // ✅ Re-measured under FLD-005 (`fld005ColumnMultipliesOut.test.ts`, arm
+    // `/g`): un-`sizeMode`d, the shell renders **520px** — the whole band — with
+    // the headline's top equal to the band's top. With the `contentHeight` the
+    // recipe now ships, the shell is **18px** and the headline sits at the
+    // bottom, which is what `justifyContent: 'flex-end'` was asking for all
+    // along. **V1 and V17 close here.**
     id: 'imageGround',
     nodeType: 'Group',
     group: 'spine',
@@ -528,6 +566,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'A translucent, frosted panel for sitting ON a gradient or image ground — a stat strip, a quote, a signup card over a hero. Only reads on a dark ground; on the page background it is invisible.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'row',
       backgroundColor: 'var(--surface-glass)',
       borderStyle: 'solid',
@@ -686,6 +725,7 @@ export const STYLE_COMPOSITIONS: VocabComposition[] = [
       'One item of a feature or trust strip: a glyph, then a column of title and body, with the gap between them set rather than left at zero. alignItems flex-start keeps the glyph on the first line of the title instead of centring it against a two-line paragraph.',
     parameters: {
       width: GROUP,
+      sizeMode: 'contentHeight',
       flexDirection: 'row',
       columnGap: 'var(--space-3)',
       alignItems: 'flex-start'

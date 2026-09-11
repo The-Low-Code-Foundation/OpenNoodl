@@ -257,6 +257,39 @@ describe('DSG-005 — the style vocabulary compositions', () => {
     expect(conditional).toBeGreaterThan(20);
   });
 
+  /**
+   * FLD-005 (#35) — a `width` with no `sizeMode` is a Group that fills its parent.
+   *
+   * `Group`'s `sizeMode` defaults to `explicit` and both dimension ports default to `100%`, so
+   * `layout.ts` stamps `height: 100%; flex-grow: 100` on any Group that does not say otherwise.
+   * Thirteen compositions set `width` and left `sizeMode` alone, and an author copying one of them
+   * verbatim into a column got a box sized by its share of the parent rather than by its content —
+   * measured in `noodl-mcp/tests/fld005ColumnMultipliesOut.test.ts`: five rows of one to five lines
+   * all render at exactly one fifth of a definite-height parent, and a `card` (which ships
+   * `clip: true`) loses six of its ten lines off the bottom with zero validation errors.
+   *
+   * 🔴 There is deliberately NO exemption list. A composition that genuinely wants to fill its
+   * parent says so with `sizeMode: 'explicit'` — which is what `imageGround` and `cardImage` do,
+   * and both pass this check by setting the port rather than by being excused from it. If a
+   * fourteenth composition ever needs to leave `sizeMode` alone, the reason belongs in this spec,
+   * beside the name, where the next person reads it.
+   */
+  it('every composition that sets a width also sets a sizeMode', () => {
+    const unsized = compositions.filter((c) => c.parameters.width !== undefined && c.parameters.sizeMode === undefined);
+    expect(unsized.map((c) => c.id)).toEqual([]);
+  });
+
+  it('has width-setting compositions for that gate to be about at all', () => {
+    // The denominator, for the same reason the conditional-port count above exists: the check
+    // passes just as cleanly over a composition set in which nothing sets `width`.
+    const widthSetters = compositions.filter((c) => c.parameters.width !== undefined);
+    expect(widthSetters.length).toBeGreaterThanOrEqual(13);
+    // And the `sizeMode` values must be ones the port actually defines, or the check above is
+    // satisfied by a typo.
+    const declared = new Set(['explicit', 'contentHeight', 'contentWidth', 'contentSize']);
+    for (const c of widthSetters) expect(declared.has(String(c.parameters.sizeMode))).toBe(true);
+  });
+
   it('renders every composition into the prompt block, terse and by name', () => {
     const block = renderStyleVocabulary(vocab);
     expect(block).toContain('COMPOSITIONS');

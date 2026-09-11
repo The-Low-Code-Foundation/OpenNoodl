@@ -220,6 +220,12 @@ describe('AIX-006 style MCP tools', () => {
       // /4 to match `toolDisclosure`'s convention, so the two budgets are comparable.
       const promptTokens = Math.round(wireChars(promptResult) / 4);
       const fullTokens = Math.round(wireChars(fullResult) / 4);
+      // 🔴 FLD-005: printed, not just asserted. V24's lesson is that this number moves under
+      // tasks whose authors never run this package, and a gate that only says "within budget"
+      // hides the trend the comment above says to watch. Read 2026-09-11, before FLD-005's
+      // thirteen `sizeMode` lines: 4,032 / 13,869. After: 4,110 / 13,989.
+      // eslint-disable-next-line no-console
+      console.log('        BUDGET READING prompt=' + promptTokens + ' full=' + fullTokens);
       expect({
         prompt: promptTokens <= 4_400 ? 'within budget' : promptTokens,
         full: fullTokens <= 14_400 ? 'within budget' : fullTokens
