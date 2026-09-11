@@ -1,0 +1,12 @@
+{
+  "label": "Advanced Columns",
+  "description": "A Columns node with as many breakpoints as you want. A States node holds the layout string and both gaps for each band, an Expression holds the widths the bands change at, and the whole thing is driven by the Columns node's own measured width — not the viewport, so it behaves the same in a sidebar, a modal or a repeater cell. Ships with four bands set up: drop your content straight into it, and move a breakpoint width from the instance without opening the component.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Layout"
+  ],
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "minEditorVersion": "0.2.2"
+}

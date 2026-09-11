@@ -58323,7 +58323,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert"
+          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert. For more bands than these two, install the Advanced Columns prefab from the library — it drives these same inputs from a States node, so each band can set its own layout and gaps"
         },
         {
           "name": "styleCss",
@@ -58504,7 +58504,7 @@
           "mediumBreakpoint": "Number value in px (Medium Below): container width below which mediumLayout replaces layoutString. This is the width of this node's container, not the viewport. Inert unless mediumLayout is also set.",
           "mediumLayout": "String value, the layout string to use below mediumBreakpoint. Leaving it blank makes the medium breakpoint inert rather than half-applied.",
           "smallBreakpoint": "Number value in px (Small Below): container width below which smallLayout replaces the others. It wins over mediumBreakpoint. Inert unless smallLayout is also set.",
-          "smallLayout": "String value, the layout string to use below smallBreakpoint. Leaving it blank makes the small breakpoint inert.",
+          "smallLayout": "String value, the layout string to use below smallBreakpoint. Leaving it blank makes the small breakpoint inert. Two bands is where this node stops: for more, install the Advanced Columns prefab from the library, which drives these same inputs from a States node so each band can set its own layout string and gaps.",
           "onBreakpointChanged": "String output (Breakpoint): which layout is in force — 'Default', 'Medium' or 'Small'. It reads 'Default' until the node has been measured and while sizing is Auto Fit, where no layout string is used at all.",
           "onAtMedium": "Signal output (At Medium): fires once each time the container crosses into the Medium band, in either direction. It does not fire while the container resizes within a band.",
           "onAtSmall": "Signal output (At Small): fires once each time the container crosses into the Small band, in either direction."

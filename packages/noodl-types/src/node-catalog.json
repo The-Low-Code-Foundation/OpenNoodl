@@ -54095,7 +54095,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert"
+          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert. For more bands than these two, install the Advanced Columns prefab from the library — it drives these same inputs from a States node, so each band can set its own layout and gaps"
         },
         {
           "name": "styleCss",

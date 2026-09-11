@@ -1,5 +1,15 @@
 # FLD-003 — Advanced Columns, as a prefab
 
+🟢 **BUILT 2026-09-11 (s17) — 5 of 5 ACs, driven in a real browser and opened in the real editor.**
+`library/prefabs/advanced-columns`, four bands, plus the pointer to it on the Columns node's
+`Small Layout` port. 🔴 **Read
+[FLD-003-WHAT-WAS-BUILT.md](./FLD-003-WHAT-WAS-BUILT.md) §1 before believing anything below: two of
+this file's claims are wrong, and one of them is the blocker this task was held on.** In short —
+the gaps were **never** broken by the FLD-004 typo (static library ports never reach it; the value
+path is byte-identical to `v0.2.2`), so this never hard-depended on FLD-004; and AC1's *"change one
+breakpoint width in the States node"* is not a thing a States node can hold, because it publishes
+only the state it is in.
+
 **Severable.** Richard's own proposal, in his own words, and the honest answer to "we need more
 breakpoint settings" without a hundred new ports. Gated on **R3**.
 

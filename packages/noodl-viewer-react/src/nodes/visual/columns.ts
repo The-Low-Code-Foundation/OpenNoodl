@@ -276,11 +276,36 @@ const ColumnsNode: ReactNodeDefinition = {
       description: 'Container width below which Small Layout replaces the others; it wins over Medium Below',
       type: { name: 'number', units: ['px'], defaultUnit: 'px' }
     },
+    // FLD-003 (#22), and it is the whole of that issue's first half. Two bands is
+    // where this node stops, and the answer to "I need more" is deliberately NOT a
+    // third pair of ports — #22 asked for it and then argued against it in the same
+    // breath ("adding a hundred new fields to the Columns node isn't the right way
+    // to go about this"). It is a prefab that drives THESE inputs from a States
+    // node, and the one place a person is standing when they want it is this port.
+    //
+    // The pointer is the port's own text, so it reaches three surfaces from one
+    // edit: the panel tooltip below, the generated node catalog, and the MCP
+    // authoring loop that reads it. `library/prefabs/advanced-columns/` is the
+    // other half; `fld003-advanced-columns-pointer.test.ts` fails if either end
+    // of that pair moves without the other.
     smallLayout: {
       group: 'Breakpoints',
       displayName: 'Small Layout',
-      description: 'Layout String to use below Small Below; leaving it blank makes the breakpoint inert',
+      description:
+        'Layout String to use below Small Below; leaving it blank makes the breakpoint inert. ' +
+        'For more bands than these two, install the Advanced Columns prefab from the library — it ' +
+        'drives these same inputs from a States node, so each band can set its own layout and gaps',
       type: 'string',
+      tooltip: createTooltip({
+        title: 'More than two breakpoints',
+        body: [
+          'Medium and Small are the two this node has. They swap the layout string and nothing else.',
+          'For a third band, or for a different gap at each one, install the <b>Advanced Columns</b> ' +
+            'prefab from the library — Prefabs tab of the node picker. It is a Columns node with a ' +
+            'States node wired into these same inputs, shipped with four bands already set up, and ' +
+            'you add or change a band by editing that States node.'
+        ]
+      }),
       onChange() {
         this.revalidateLayoutStrings();
       }

@@ -604,12 +604,23 @@ function pickShowcase(components, label) {
   const norm = (s) => String(s).toLowerCase().replace(/[^a-z0-9]/g, '');
   const wanted = norm(label);
 
-  const byLabel = visual.find((c) => norm(c.name.split('/').pop()) === wanted);
-  if (byLabel) return byLabel;
-
   const demo = visual
     .filter((c) => /(example|demo|sample|showcase)/i.test(c.name))
     .sort((a, b) => a.name.split('/').length - b.name.split('/').length)[0];
+
+  const byLabel = visual.find((c) => norm(c.name.split('/').pop()) === wanted);
+  // A component whose content is a `Component Children` slot draws what its
+  // CALLER puts in it, so rendering it on its own is a fact about the harness:
+  // `advanced-columns` reported DREW NOTHING against a prefab that lays six
+  // tiles out in four bands. When such an entry ships a demo, the demo is the
+  // showcase. An entry with a slot and no demo (page-header, table) is
+  // unaffected, and so is one whose slot sits beside its own chrome — it is the
+  // pick that changes here, never the render.
+  const isSlotOnly = (c) =>
+    flatten(c.roots).some((n) => n.type === 'Component Children') &&
+    !flatten(c.roots).some((n) => n.type === 'Text' || n.type === 'net.noodl.visual.image');
+  if (byLabel && !(demo && isSlotOnly(byLabel))) return byLabel;
+
   if (demo) return demo;
 
   // Depth first, then "not obviously a part of a sibling": a component whose

@@ -4,6 +4,27 @@
 Read [README.md](./README.md) first — §2 carries the rulings. ✅ **All six R-rulings are
 answered.** Only **P25** (a token budget) and a **Linux box** still gate anything.
 
+✅ **SESSION 17 BUILT FLD-003 — 🟢, 5 of 5 ACs, #22 REPLIED and CLOSED.**
+`library/prefabs/advanced-columns` — a Columns node with **four** bands instead of two, driven by a
+States node — plus the pointer to it on the node's `Small Layout` port, which reaches the panel
+tooltip, the catalog the MCP loop reads and the picker preview from one edit. Driven in a real
+browser (4 / 3 / 2 / 1 columns at 1280 / 1000 / 800 / 500px, **and back up**) and opened in the real
+editor (9 connections, **0 dangling, 0 warnings**). Read
+[FLD-003-WHAT-WAS-BUILT.md](./FLD-003-WHAT-WAS-BUILT.md).
+**Board re-derived from the task FILES: 14 built / 1 partly / 2 never** (FLD-010, FLD-014).
+Replies re-derived from GitHub: **23 of 24 issues answered, 1 owed (#43), 15 CLOSED.**
+
+🔴 **FLD-003's own file was wrong about the blocker it was held on.** *"Hard-depends on FLD-004 —
+wiring a number into Horizontal Gap does nothing, and for the gaps it zeroes them"* is false:
+`marginX` is a **static library port** and the typo FLD-004 fixed is reached only by dynamic
+registration. `git diff v0.2.2 HEAD -- packages/noodl-runtime/src/node.ts` is **that one hunk**, so
+the path is byte-identical to the released editor, and the drive measures 24 / 20 / 16px arriving
+over exactly those wires. **Fourth task out of four in this phase whose file was wrong in more than
+one place** — the phase's standing instruction has now paid every single time.
+
+🔴 **ONE UNGATED TASK IS LEFT: FLD-010** (`session_status` only, R6 ✅). FLD-014 needs **P25** and
+FLD-016 needs **a Linux box**. Neither is a ruling, and **neither unblocks the last reply (#43)**.
+
 ✅ **SESSION 16 BUILT FLD-015 — 🟢, 4 of 4 applicable ACs, #39 REPLIED (and deliberately left
 OPEN).** A `nodegx-charts` kit — Bar Chart and Sparkline — plus **three holes in `nodegx-export`
 the task file said were not there**. Driven twice: in the real editor's preview AND in an app
@@ -83,19 +104,26 @@ back with **six red gates**; session 13 took **four**. Three remain and none is 
 
 ## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13)
 
-Seventeen task files, each grepped for its own marker. **TWELVE built, ONE partly built, four never
-built** (re-derived 2026-09-11, end of s15). That is the file count, not a copied status. Re-derive
-it, do not inherit this table:
+Seventeen task files, each grepped for its own marker. **FOURTEEN built, ONE partly built, TWO never
+built** — FLD-010 and FLD-014 (re-derived 2026-09-11, end of s17). That is the file count, not a
+copied status. Re-derive it, do not inherit this table:
 
 ```sh
 cd dev-docs/tasks/phase-84-the-defects-the-field-report-found
 for f in $(ls FLD-*.md | grep -v WHAT-WAS-BUILT); do
   id=$(echo "$f" | cut -d- -f1,2)
-  if grep -q '🟢 \*\*BUILT\*\*' "$f"; then echo "$id BUILT"
+  if grep -q '🟢 \*\*BUILT' "$f"; then echo "$id BUILT"
   elif grep -q '🟡 \*\*PARTLY BUILT\*\*' "$f"; then echo "$id PARTLY"
   else echo "$id --"; fi
 done
 ```
+
+🔴 **The `BUILT` pattern lost its closing `**` on purpose, 2026-09-11 (s17).** Three files now open
+`🟢 **BUILT 2026-09-11 (s15) — …**`, with the date inside the bold, so the old
+`'🟢 \*\*BUILT\*\*'` reported **FLD-005, FLD-015 and FLD-003 as never built** — three green tasks
+read as a buildable pile, which is the direction a session acts on. A marker grep that anchors on
+punctuation the marker is free to move is an instrument that fails silently the day somebody writes
+a slightly longer sentence.
 
 ⚠️ **Do not pipe that into a counter that greps `BUILT`** — `🟡 **PARTLY BUILT**` contains it, and
 session 9's first count came out `5 / 2 / 8`. The three states are mutually exclusive only because
@@ -123,7 +151,7 @@ its reporter's own request). **Nothing in track A is buildable and nothing in it
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
 | FLD-002 | The Columns node says which breakpoint it is at | #22 | 🟢 **BUILT** `4e8ce7ab5`, AC1 driven · ✅ **replied, STAYS OPEN** | — |
-| FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built — 🔴 **UNGATED** | FLD-002 ✅, FLD-004 ✅, **R3 ✅ 09-11** |
+| FLD-003 | Advanced Columns, as a prefab | #22 | 🟢 **BUILT** s17 — 5/5 ACs, driven in Chrome and in the editor; 6 spec mutants + 2 drive mutants · ✅ **replied + CLOSED** | — |
 | FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built — 🔴 **UNGATED, and smaller** | FLD-009 ✅, **R6 ✅ 09-11 — `session_status` only** |
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
@@ -335,14 +363,19 @@ hour.** Session 15 built FLD-005, reported that nothing was left, and Richard an
 R6** in reply. **Three tasks are ungated. Build FLD-015 first** — it is the only one of the three
 that owes a reply, and #39 is one of the two the phase's end condition is waiting on.
 
-1. ✅ **FLD-015 — DONE, session 16.** 🟢 4/4 applicable ACs, #39 replied and left open. The reply
-   carried the cost, as this section asked: two of four nodes, and a kit is not in the picker.
-2. 🔴 **FLD-003 — the Advanced Columns prefab** (R3, as Richard originally proposed). #22 is
-   replied and open; this is the half that closes it. **Ranked first of what is left.**
-3. **FLD-010 — `session_status` only, no advisory lock** (R6). Smaller than it was scoped, because
-   FLD-009 already refuses to clobber. #41 is replied and stays open by its reporter's request.
-   ⚠️ Neither of these two moves the reply gate — **#43 (FLD-014) is the last reply owed**, and it
-   is still gated on P25.
+1. ✅ **FLD-015 — DONE, session 16.** 🟢 4/4 applicable ACs, #39 replied and left open.
+2. ✅ **FLD-003 — DONE, session 17.** 🟢 5/5 ACs, #22 replied and **CLOSED** — both halves of that
+   issue are in. ⚠️ The prefab is **not in the Prefabs tab until the library is published**, which
+   is a manual copy to the content site; the reply says so rather than implying otherwise.
+3. 🔴 **FLD-010 — `session_status` only, no advisory lock** (R6). **The only ungated task left.**
+   Smaller than it was scoped, because FLD-009 already refuses to clobber. #41 is replied and stays
+   open by its reporter's request.
+   ⚠️ It does not move the reply gate — **#43 (FLD-014) is the last reply owed**, and it is still
+   gated on P25.
+4. **Publishing `library/`** is the chore this phase has now created twice: **five** entries are
+   authored and unpublished (Advanced Columns, Charts, and three from phase 65), recorded with the
+   reason in `scripts/library/origin-baseline.json`. Until that copy happens, two of this phase's
+   replies describe something a reader cannot install.
 
 🔴 **Re-derive the rulings before inheriting this** — §1 has been wrong for a day twice, and this
 block is one hour old.
@@ -386,8 +419,11 @@ from 58–73 s to 113 s and the macOS runners are the ones that OOMed at 2048 MB
 (`scripts/webpackHeapCeiling.ts`) — **and `aedc51f64` is not pushed**, so there has been no first
 CI run after it to watch. That is item 0.
 
-## 6. 🔴 The reply gate — 23 sent, ONE owed (#43), FOURTEEN closed
+## 6. 🔴 The reply gate — 23 of 24 answered, ONE owed (#43), FIFTEEN closed
 
+✅ **Session 17 sent a second comment on #22 and CLOSED it** (FLD-003). ⚠️ The *sent* count does not
+move, because #22 was already answered in session 8 — what moved is **closed, 14 → 15**. Re-derived
+from GitHub with the loop below on 2026-09-11: `sent=23 owed: #43 closed=15`.
 ✅ **Session 16 sent #39** (FLD-015). 🔴 **#43 is the last reply this phase owes, and no build can
 unlock it**: it is FLD-014, gated on **P25**, a token budget with 8 tokens of headroom. So the
 phase's remaining distance to its end condition is **one engineering problem**, not a ruling.

@@ -138,6 +138,16 @@ function buildDriveProject(slug, drive, stamp) {
   );
 
   const probes = drive.nodes || [];
+  // A probe carrying `parent` is placed inside that node — which is how a drive
+  // gives the subject the content a user would drop into it. The tree is written
+  // BOTH ways, `children` on the parent and `parent` on the child, because the
+  // loader builds from `children` and a probe that only names its parent renders
+  // nowhere: the first version of the advanced-columns drive put six tiles inside
+  // the prefab and measured an empty page.
+  const childrenOf = (id) => {
+    const kids = probes.filter((n) => (n.onPage ? 'page' : n.parent) === id).map((n) => n.id);
+    return kids.length ? { children: kids } : {};
+  };
   write(
     '/Drive',
     [
@@ -147,8 +157,18 @@ function buildDriveProject(slug, drive, stamp) {
         children: ['subject', ...probes.filter((n) => n.onPage).map((n) => n.id)],
         parameters: { title: 'Drive', urlPath: '' }
       },
-      { id: 'subject', type: rootName, parent: 'page', parameters: drive.subjectParameters || {} },
-      ...probes.map(({ onPage, ...n }) => (onPage ? { ...n, parent: 'page' } : n))
+      {
+        id: 'subject',
+        type: rootName,
+        parent: 'page',
+        parameters: drive.subjectParameters || {},
+        ...childrenOf('subject')
+      },
+      ...probes.map(({ onPage, ...n }) => ({
+        ...n,
+        ...(onPage ? { parent: 'page' } : {}),
+        ...childrenOf(n.id)
+      }))
     ],
     drive.connections || [],
     'd0000000-0000-4000-8000-000000000002'
