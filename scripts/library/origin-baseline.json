@@ -2,15 +2,8 @@
   "$comment": "CN-016 / D21. The origin-vs-library/ divergence AS MEASURED, so the gate fails when it CHANGES rather than being red on the day it was written. Rule: the measured divergence must EQUAL this file. A new entry is drift nobody chose; a stale entry means the situation improved and the line should be deleted. Both are red, both print the exact edit. EMPTY FROM 2026-08-22 TO 2026-09-11: phase 65 LBR-001 published library/ to the origin (twice — the repaired 59, then the post-blitz 65), so origin coverage exactly matched source. FIVE ROWS SINCE, and every one of them is the SAME fact — an entry authored here after that publish and never published, because publishing is a manual copy into the docs repo (see library/README.md §Publish) and nothing in CI can do it. Four predate FLD-003 and are not its doing: Format Date, Format Full Name and Sanitise Email (phase 65's blitz, also the three `library:verify-dist` fails for a missing icon — P38, phase 85's), and Charts (phase 84 FLD-015, 2026-09-11). Advanced Columns is FLD-003's. 🔴 THE ROWS ARE THE BACKLOG, NOT AN EXEMPTION: publish these five and this gate goes red again saying so, with the exact edit, which is the direction it is meant to fail in. The next growth step this gate owes (per verify-origin.ts §When LBR-001 lands): a payload-hash check comparing published zips against a fresh build — coverage-by-label is still the only thing checked. Regenerate with `npm run library:verify-origin -- --update-baseline` and say WHY in the commit.",
   "measuredOn": "2026-09-11",
   "unpublished": {
-    "prefabs": [
-      "Advanced Columns",
-      "Format Date",
-      "Format Full Name",
-      "Sanitise Email"
-    ],
-    "modules": [
-      "Charts"
-    ]
+    "prefabs": [],
+    "modules": []
   },
   "orphaned": {
     "prefabs": [],
