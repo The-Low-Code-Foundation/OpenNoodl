@@ -166,6 +166,21 @@ task file**, because the pass that produced them was never committed. One was a 
 
 ## 7. Known gaps, owner NONE
 
+- ✅ **CLOSED 2026-09-11 (s12) as [CMP-009](CMP-009-THE-CHEAP-PATH-ANSWERS-WITH-CONFIDENCE-IT-HAS-NOT-GOT.md).**
+  🔴 **The row's traffic was right and its proposed fix was aimed at the weak half.** The counts below
+  reproduce EXACTLY when re-derived (45 calls, 18 on this path, **26 of 27 type-requests COLD**) — but
+  *"returns NO prose at all… no `runtimeBehavior`"* is **wrong**: `runtimeBehavior` has travelled on
+  this path since AWP-005. Measuring the response instead of reading the row found two sharper holes
+  the proposed fix does not touch: **`notFound` is a bare absence claim against a list the server
+  knows is partial** (16 of 27 requests claimed an absence, **13 of those 16** on a dynamic-ports
+  type — worst case `Component Inputs`, which has ZERO static ports and answered a real call with
+  `inputs: [], outputs: [], notFound: [all four]`), and **the port-scoped response dropped the
+  port-scoped export warning** (3 live hits in 27; one caller asked `net.noodl.visual.columns` about
+  nine ports, **all nine `structurePorts`**). Deprecation is a third: 30 of 176 types, and
+  `antiPatterns` — half the proposed fix — covers **1 of the 30**. All four now travel; `examples`
+  deliberately does not (27.1% of the base, the most expensive and least port-scoped).
+  See [[measure-the-artefact-before-believing-the-task-file]]. The original row, as filed:
+
 - 🔴 **The `ports: [...]` path returns NO prose at all, and it is 40% of all traffic.**
   `get_node_type({type_names, ports})` short-circuits above the summary
   (`catalogTools.ts:95`) and returns per-port detail only — no `summary`, no `whenToUse`, no

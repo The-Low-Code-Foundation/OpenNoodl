@@ -12,7 +12,15 @@
  * than silently at the consumer.
  */
 
-import type { CatalogExample, ExampleRow, NodeTypeDetail, NodeTypeLookupMiss, NodeTypeRow, NodeTypeSummary } from '../catalog';
+import type {
+  CatalogExample,
+  ExampleRow,
+  NodeTypeDetail,
+  NodeTypeExportForPorts,
+  NodeTypeLookupMiss,
+  NodeTypeRow,
+  NodeTypeSummary
+} from '../catalog';
 import type { ComponentDescription } from '../describe';
 import type {
   AttachedExample,
@@ -252,10 +260,59 @@ export interface ListNodeTypesResponse {
   };
 }
 
-/** AWP-005 §2 — what `get_node_type({ports: [...]})` returns per type. */
+/**
+ * AWP-005 §2 — what `get_node_type({ports: [...]})` returns per type.
+ *
+ * 🔴 CMP-009 — this path short-circuits above the summary, and for four fields
+ * that was a hole rather than a saving. Measured over the 27 real type-requests
+ * on it (every transcript on the authoring machine, 25 files, all post-dating
+ * `detail` shipping 2026-07-25): **26 of 27 were COLD** — the session had never
+ * surveyed that type. The cheap path is a FIRST contact, not a top-up, so
+ * everything it withholds is withheld from someone who has seen nothing else.
+ *
+ * What it costs to answer that properly, measured through these functions on
+ * that traffic against a 1,193 B/request base: `export` ports-filtered ~11
+ * tok/request, `summary` ~31, `antiPatterns` ~23, `deprecated` 0. ~65 together.
+ *
+ * ⚠️ `examples` is deliberately NOT carried: 8,739 B — **27.1% of the base, the
+ * single most expensive dropped field and the least port-scoped**. Carrying
+ * everything the summary carries costs +58.3% and undercuts the only reason
+ * this path exists. Recorded here rather than silently omitted, the way
+ * CMP-006 AC3 recorded `patterns`.
+ */
 export interface NodeTypePortsView {
   typeName: string;
   displayName: string;
+  /**
+   * CMP-009 §4 — one line saying what the type is. 26 of 27 callers on this
+   * path had never surveyed it.
+   */
+  summary?: string;
+  /**
+   * CMP-009 §3 — the type is retired. 30 of the 176 catalog types are, and this
+   * path said nothing about any of them: `getNodeTypePorts('Animation', …)`
+   * returned a clean, detailed, entirely unqualified answer.
+   *
+   * ⚠️ `antiPatterns` does NOT cover this — **1 of the 30 carries one**. The row
+   * that proposed `summary` + `antiPatterns` as the whole fix would have warned
+   * on 1 deprecated type in 30.
+   */
+  deprecated?: true;
+  /**
+   * CMP-009 §2 — the port-scoped half of FLD-013's `export`, filtered to the
+   * ports actually asked for.
+   *
+   * 🔴 `structurePorts`/`contentPorts` **name ports**: a value arriving on one
+   * over a WIRE leaves the node out of the exported code. The path where you
+   * are setting a port is the one place that matters, and it was the one place
+   * that did not say. Three live hits in the 27 real requests — including
+   * `net.noodl.visual.columns` asked for **nine ports, all nine of them
+   * `structurePorts`**, answered with nine detailed port docs and no warning.
+   *
+   * Filtered rather than whole because the unfiltered field costs 7.2% against
+   * 3.6%, and the ports the caller did not ask about are the summary's job.
+   */
+  export?: NodeTypeExportForPorts;
   inputs: NodeTypeDetail['inputs'];
   outputs: NodeTypeDetail['outputs'];
   runtimeBehavior?: string;
@@ -266,6 +323,36 @@ export interface NodeTypePortsView {
    * Keyed by the name in `notFound`; absent when nothing has a reason to give.
    */
   notFoundNotes?: Record<string, string>;
+  /**
+   * 🔴 CMP-009 §1 — `notFound` is an absence claim, and on a type with dynamic
+   * ports it is made against a list that is incomplete **by construction**.
+   *
+   * **16 of the 27 real requests returned `notFound`; 13 of those 16 were on a
+   * type with dynamic ports**, and only one carried a `notFoundNote`. The worst
+   * case is the node this phase exists to teach: `Component Inputs` has **zero**
+   * static inputs — every port on it is author-declared — and a real call asked
+   * it for four ports and got `inputs: [], outputs: [], notFound: [all four]`.
+   * A confidently empty answer.
+   *
+   * Emitted only alongside a non-empty `notFound`, because that is where the
+   * claim is made: a request whose ports all resolved is asserting nothing and
+   * pays nothing. A type with NO dynamic ports never gets it — there the
+   * absence claim is sound, and qualifying it would teach a lie.
+   *
+   * See [[assert-an-absence-with-a-known-firing-signal-beside-it]].
+   */
+  notFoundCaveat?: string;
+  /**
+   * CMP-009 §4 — the shapes to avoid. s11 counted that `ports` short-circuits
+   * above the summary, so 44 of the 45 recorded `get_node_type` calls returned
+   * neither `patterns` nor `antiPatterns`; CMP-006 AC3 closed the summary half
+   * and this closes the other.
+   *
+   * `patterns` stays off, where CMP-006 AC3 left it: 259 entries over 130 types
+   * against 203 over 113, the larger half, and a session that wants it must
+   * price it the same way.
+   */
+  antiPatterns?: string[];
 }
 
 export interface GetNodeTypeResponse {

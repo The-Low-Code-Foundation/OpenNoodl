@@ -4,6 +4,100 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
+## The board, re-derived from the task FILES on 2026-09-11 (session 12)
+
+| task | AC | state |
+|---|---|---|
+| CMP-001 | AC1 / AC2 / AC3 | ✅ s2 / s6+s7 / s6+s7 |
+| CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
+| CMP-002 | the graded baseline build | **FIRST JOB, and still the only AC-bearing work in the phase.** 🔴 s7–s12 all measured themselves unable to run it |
+| CMP-003 | AC1/AC2/AC4 ✅ · **AC3** | OPEN — needs CMP-002 |
+| CMP-004 | AC1–AC4 ✅ · **AC5** | OPEN — graded inside CMP-002 |
+| CMP-005 / CMP-006 / CMP-007 / CMP-008 | all | ✅ CLOSED s4–s11 |
+| **CMP-009** | **AC1–AC6 — the `ports` path answers with confidence it has not got** | ✅ **BUILT s12, 6 of 6** |
+
+## 🔴 s12 — the promotable row was real, and its proposed fix was aimed at the weak half
+
+s12 was a `/clear` told *"let's finish phase 85"*, so it is disqualified from CMP-002 by this file's
+first line — and it MEASURED the second disqualifier rather than inheriting it: CLI pid **`89837`,
+started 2026-09-10 14:26:46**, the SIXTH session on that process, against a bundle written 22 hours
+later. ⚠️ It also checked the whole box: **every OpenNoodl CLI then running predated the bundle.**
+No session on this machine could have run CMP-002.
+
+So it took s11's §7 row and promoted it — and **re-measuring first changed what the task is**.
+
+✅ **s11's traffic counts reproduce EXACTLY**, re-derived independently over the same 25 transcripts:
+45 calls (26 default / 18 `ports` / 1 `full`), 27 type-requests on the `ports` path, **26 of them
+COLD**. That half of the row is sound and is the reason the task exists.
+
+🔴 **But the row's own fix — "carry `summary` and `antiPatterns`" — was the two WEAKEST of four
+holes, and one of its claims was wrong.** `runtimeBehavior` *is* carried on the `ports` path and has
+been since AWP-005. What the measurement found instead, ranked:
+
+| # | hole | measured |
+|---|---|---|
+| 1 | `notFound` is a bare absence claim against a list it knows is partial | **16 of 27** requests claimed an absence; **13 of the 16** on a dynamic-ports type; 1 had a note |
+| 2 | the port-scoped response drops the port-scoped export warning | **3 live hits in 27** |
+| 3 | nothing says the type is retired | 30 of 176 types; `antiPatterns` covers **1 of the 30** |
+| 4 | a first contact with no `summary` | 26 of 27 |
+
+🔴 **The worst real case is the node this phase exists to teach.** `Component Inputs` has **zero**
+static inputs — every port on it is author-declared — and a recorded call asked it for four ports and
+got `inputs: [], outputs: [], notFound: [all four]`. A confidently empty answer.
+And one caller asked `net.noodl.visual.columns` about **nine ports, all nine of them
+`structurePorts`** — every one drops the node from the export if it arrives over a wire — and got
+nine detailed port docs and no warning.
+
+## 🔴 s12's traps, and two of them are about instruments
+
+- 🔴 **THE DISK WAS FULL — 297 MB of 460 GB — AND THE SUITE LIED ABOUT IT.** The first full run came
+  back *"5 suites failed"* with **no `Tests:` summary line at all**; the cause was `ENOSPC` in the
+  tail, not the code. Three of those five reds were the disk. ✅ 13 GB reclaimed (npm + uv caches,
+  both pure cache); Docker holds **73 GB** and is Richard's call — its daemon was not even running.
+  **A red without a summary line is a DEAD RUN, not a failing one — read the tail before the reds.**
+- 🔴 **`tsc -p .` TYPECHECKS `tests/` HERE AND JEST DOES NOT.** `jest.config.js` sets
+  `diagnostics: false`, so a bad cast in a brand-new spec passed 26/26 and was invisible. It showed
+  up only because the control arms ran `tsc` too — and it was IDENTICAL in all five arms, which is
+  what proved it was the spec rather than the arm. **Run `tsc -p .` after writing a spec, not just
+  jest.** (Contrast `noodl-editor`, where the jest run *is* the typecheck.)
+- 🔴 **A LITERAL WRITTEN FROM ONE POPULATION, COUNTED OVER ANOTHER.** An assertion carried the real
+  traffic's "16 of 27" into a test that counts 8 fixtures, read 6, and went red. The literal was NOT
+  bumped: the expectation became *derived* — "every absence claim on a partial list is qualified, and
+  only those" — which is the rule that must hold rather than a count that must be maintained.
+- ⚠️ **`tpl001Template` / `tpl003Template` are RED AT HEAD AND NOT s12's.** Proven, not assumed:
+  snapshotted both modified sources, `git checkout --`, re-ran, got the **same 21 differing files and
+  the same first diff**, restored md5-identical. *"`templates/members-area` is not what the door
+  writes today"* — the committed template no longer matches its generator, and the diff is layout
+  (`flexDirection` / `sizeMode`). It arrived with **P84's** work and is P84's to judge: whether the
+  new output is correct is exactly the question FLD-004/FLD-005 were about. **Not fixed here.**
+- ⚠️ **A PEER IS COMMITTING TO THIS CHECKOUT RIGHT NOW.** HEAD moved twice during the session
+  (`fed588edf` 13:25:49, then `cc2734305`), both P84. Commit with **pathspecs**.
+
+## Numbers, measured 2026-09-11 (session 12)
+
+- `noodl-mcp` `npx jest`: **4 suites / 5 tests failed, 1595 passed, 1600 total, EXIT=1.**
+  ✅ **Delta reconciles: 1564 (s11) + 10 (P84's `fld005ColumnMultipliesOut` + `styleTools`, landed
+  mid-session) + 26 (CMP-009) = 1600.** Reds: the two long-standing `*Drive` suites, plus
+  `tpl001Template`/`tpl003Template` — **shown above to fail identically without s12's change.**
+- `npx tsc --noEmit -p packages/noodl-mcp`: **0 lines, EXIT=0.**
+- `toolDisclosure.test.ts`: **18/18, 8275 tokens / 5 under — UNCHANGED.** 🔴 No tool description was
+  touched *on purpose*: the warning arrives in the RESPONSE, and the description's job is routing
+  between summary / ports / full, which CMP-009 does not change. A response costs zero resident
+  tokens; a description is re-sent every turn. With 5 tokens of headroom that is the difference
+  between shipping and a red in a suite nowhere near the change.
+- **Cost of CMP-009, measured on the real traffic through the real functions** (base 1,193 B/request):
+  `export` ports-filtered ~11 tok, `summary` ~31, `antiPatterns` ~23, `deprecated` 0 — **~65 together.**
+  🔴 `examples` deliberately NOT carried: **8,739 B, 27.1% of base, the most expensive dropped field
+  and the least port-scoped.** Carrying everything the summary carries costs **+58.3%**. The ports
+  path still returns **48.5% of a survey**, printed on a passing run.
+- **Five control arms (A–E), one per field.** Each reddens EXACTLY its own AC, and **26 of 26 tests
+  RAN in every arm** — no fail-to-run. `catalog.ts` restored md5-identical
+  (`19af5b3a6abf09e57419ccd9029adfe0`). Graded by RUNNING, which is what
+  [[a-static-gate-cannot-see-reachability]] asks for after s10's `if (false && …)`.
+- ✅ **`dist/noodl-mcp.cjs` rebuilt 13:40:27.** New anchor, and the newest so it dates a bundle most
+  precisely: **`"notFound is not conclusive for"`**.
+- ⚠️ `test:ci` NOT run — s12 touched `packages/noodl-mcp` and `dev-docs` only. **NOT PUSHED.**
+
 ## The board, re-derived from the task FILES on 2026-09-11 (session 11)
 
 | task | AC | state |

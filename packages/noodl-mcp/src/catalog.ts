@@ -17,6 +17,11 @@ import type { CatalogNode, CatalogPort, NodeCatalog } from './editor-deps';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { KIT_PROVENANCE, mergeOverlay } = require('@nodegx/kit-catalog');
 import type { NodeCatalogLike, OverlayCatalogNode } from '@nodegx/kit-catalog';
+// Type-only, so it is erased and creates no runtime cycle with `tools/responses`
+// (which imports this module for `NodeTypeDetail`). CMP-009 — the alternative was
+// a second copy of the shape in the inline return type, which is exactly the
+// drift `a-second-copy-of-a-palette-drifts-silently` is about.
+import type { NodeTypePortsView } from './tools/responses';
 
 // require() instead of import: keeps TypeScript from inferring a 1.45 MB
 // literal type, while esbuild still inlines the JSON into the bundle.
@@ -832,15 +837,7 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
  * answering three of four asked-for ports is how a model concludes a port does
  * not exist.
  */
-export function getNodeTypePorts(
-  typeName: string,
-  portNames: readonly string[]
-): (Pick<NodeTypeDetail, 'typeName' | 'displayName' | 'runtimeBehavior'> & {
-  inputs: PortDetail[];
-  outputs: PortDetail[];
-  notFound?: string[];
-  notFoundNotes?: Record<string, string>;
-}) | NodeTypeLookupMiss {
+export function getNodeTypePorts(typeName: string, portNames: readonly string[]): NodeTypePortsView | NodeTypeLookupMiss {
   const full = getNodeTypeDetail(typeName);
   if ('error' in full) return full;
   const wanted = new Set(portNames);
@@ -862,17 +859,108 @@ export function getNodeTypePorts(
     const note = noBoxExit(catalogIndex(), typeName, name);
     if (note) notFoundNotes[name] = note;
   }
+  const caveat = notFound.length > 0 ? partialPortListCaveat(full) : undefined;
+  const exportInfo = exportForPorts(full.export, wanted);
   return {
     typeName: full.typeName,
     displayName: full.displayName,
+    // CMP-009 §4 — 26 of the 27 real requests on this path were a COLD first
+    // contact with the type, so `summary` is not a top-up here, it is the only
+    // sentence the caller gets.
+    ...(full.summary ? { summary: full.summary } : {}),
+    // CMP-009 §3 — 30 of 176 types, and `antiPatterns` covers 1 of the 30.
+    ...(full.deprecated ? { deprecated: true as const } : {}),
+    // CMP-009 §2 — the port-scoped half of the export ledger, narrowed to what
+    // was asked. See `NodeTypePortsView.export`.
+    ...(exportInfo ? { export: exportInfo } : {}),
     inputs,
     outputs,
     // Carried whenever it exists here, not only for misses: a port this call
     // could not find may be one `runtimeBehavior` is the only record of.
     ...(full.runtimeBehavior ? { runtimeBehavior: full.runtimeBehavior } : {}),
     ...(notFound.length > 0 ? { notFound } : {}),
-    ...(Object.keys(notFoundNotes).length > 0 ? { notFoundNotes } : {})
+    ...(Object.keys(notFoundNotes).length > 0 ? { notFoundNotes } : {}),
+    ...(caveat ? { notFoundCaveat: caveat } : {}),
+    ...(full.antiPatterns?.length ? { antiPatterns: full.antiPatterns } : {})
   };
+}
+
+/**
+ * CMP-009 §2 — `export`, narrowed to the ports this call asked about.
+ *
+ * `status` and `badge` always travel: "this type does not translate at all" is
+ * an answer to *any* question about it, and 52 of the 176 types are in that
+ * position (`deferred` 35, `backend-only` 16, `stubbed` 1). The port lists are
+ * filtered because the ports the caller did not ask about belong to the summary
+ * — measured, the unfiltered field costs 7.2% of the base against 3.6%.
+ *
+ * ⚠️ An empty filtered list is OMITTED, not emitted as `[]`. `structurePorts: []`
+ * on a response about three ports reads as "none of these three are structure
+ * ports", which is the same sentence as the field being absent and costs bytes
+ * on all 124 translated types to say it.
+ */
+/**
+ * CMP-009 — `NodeTypeExportInfo` narrowed for the `ports` path, where both port
+ * lists are OPTIONAL rather than always-present-and-possibly-empty.
+ *
+ * 🔴 The difference is not cosmetic. On the full/summary paths `structurePorts:
+ * []` means "this type refuses on no port" — a real, useful claim about the
+ * type. On the `ports` path the same `[]` would mean "none of the three ports
+ * you named", which is what an absent field already says, and it would be paid
+ * for on all 124 `translated` types. Same bytes, two different sentences: give
+ * them two different shapes rather than one field meaning two things.
+ * See [[a-field-that-means-two-things-breaks-on-a-fallback]].
+ */
+export type NodeTypeExportForPorts = Omit<NodeTypeExportInfo, 'structurePorts' | 'contentPorts'> & {
+  structurePorts?: string[];
+  contentPorts?: string[];
+};
+
+function exportForPorts(
+  info: NodeTypeExportInfo | undefined,
+  wanted: ReadonlySet<string>
+): NodeTypeExportForPorts | undefined {
+  if (!info) return undefined;
+  const structurePorts = (info.structurePorts ?? []).filter((p) => wanted.has(p));
+  const contentPorts = (info.contentPorts ?? []).filter((p) => wanted.has(p));
+  return {
+    status: info.status,
+    ...(info.badge ? { badge: info.badge } : {}),
+    ...(structurePorts.length ? { structurePorts } : {}),
+    ...(contentPorts.length ? { contentPorts } : {})
+  };
+}
+
+/**
+ * 🔴 CMP-009 §1 — why a `notFound` on this type is not conclusive.
+ *
+ * See `NodeTypePortsView.notFoundCaveat` for the measurement. The sentence is
+ * built from the type's OWN `mechanisms` rather than a generic hedge, because a
+ * generic one ("some ports are dynamic") tells the caller to stop trusting the
+ * answer without telling them what to do instead — and the five mechanisms have
+ * genuinely different answers. `component-ports` in particular means the static
+ * list is not incomplete, it is EMPTY by design.
+ *
+ * Returns undefined for a type with no dynamic ports: there the absence claim is
+ * sound, and hedging a sound answer teaches the caller to distrust every answer.
+ */
+const PARTIAL_PORT_LIST_REASONS: Readonly<Record<string, string>> = {
+  'component-ports': 'its ports are the names listed in the node\'s own `ports` parameter, so the author creates them',
+  'runtime-discovered': 'ports are discovered at runtime from user code, parameters or connected components',
+  'declared-port-groups': 'ports appear and disappear with the values of other parameters',
+  'numbered-inputs': 'numbered inputs are added on demand',
+  'editor-adapter': 'an editor adapter supplies ports the static catalog does not hold'
+};
+
+function partialPortListCaveat(full: NodeTypeDetail): string | undefined {
+  const mechanisms = full.dynamicPorts?.mechanisms ?? [];
+  if (!mechanisms.length) return undefined;
+  const reasons = mechanisms.map((m) => PARTIAL_PORT_LIST_REASONS[m] ?? m);
+  return (
+    `notFound is not conclusive for ${full.typeName}: ${reasons.join('; ')}. ` +
+    'A name listed there may still be a real port on a configured instance — check the node, ' +
+    'or get_node_type with detail:"full" for the declared groups.'
+  );
 }
 
 export function getNodeTypeDetail(typeName: string): NodeTypeDetail | NodeTypeLookupMiss {
