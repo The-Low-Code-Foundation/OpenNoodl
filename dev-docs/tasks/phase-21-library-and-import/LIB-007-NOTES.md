@@ -3,8 +3,10 @@
 **Built:** 2026-09-11, on `cline-dev` from `096524400`. PR [#44](https://github.com/The-Low-Code-Foundation/NodeGX/pull/44).
 **Spec:** [LIB-007-PUBLISHING-THE-SHELF.md](./LIB-007-PUBLISHING-THE-SHELF.md)
 
-**Status: the machinery is built and nothing is published yet.** Two things have to
-happen first, and neither can happen from a session — §"What is still owed" below.
+**Status: ✅ COMPLETE — published 2026-09-11**, content repo `cf873c1e3`, from NodeGX
+`52578dd78` ([run 34648841604](https://github.com/The-Low-Code-Foundation/NodeGX/actions/runs/34648841604)).
+All five ACs met. §"What was still owed" below records what actually happened, including the
+two things this file got wrong.
 
 ---
 
@@ -108,31 +110,69 @@ Setup and rotation are written up in
 | The new gate fires on the real defect | `--require-published` names all six and exits 1, run **before** anything was changed. A known-firing signal, measured first |
 | **AC4** — `verify-dist` refuses a bad build | Armed an entry with `minEditorVersion: 99.0.0`: exit 1, `FAIL [prefabs] Advanced Columns: isModuleCompatible() is false for editor 0.2.3`. A gate that has never failed has not been tested |
 | The artefact is clean today | `library:build` 46 + 32 entries, `library:verify-dist` exit 0, 0 problems |
-| Blast radius of the publish | Read-only clone + `diff -rq`: **12 new files** (the six parts + their icons) and the two `index.json`. Nothing else |
+| Blast radius of the publish | Read-only clone + `diff -rq`: **12 new files** (the six parts + their icons) and the two `index.json`. 🔴 **"Nothing else" was wrong** — the real publish touched **86** files, rewriting 74 already-published zips with identical content and a new timestamp. `diff -rq` compared a fresh build against a fresh build and could not see it. See §*The blast-radius measurement in this file was understated* |
 | `--delete` would be wrong | `static/library/` also holds `examples/` and `prefab-contributions/`, and 56 published files carry legacy pre-LIB-001 names no `library/` entry generates. Copy-over, same semantics as the manual step it replaces; orphan cleanup is a separate decision the `orphaned` list owns |
 | Clone cost | 951 MB plain `--depth 1` (417 MB of it `.git`) → **422 MB** sparse + blobless, of which 228 MB is the payload itself |
 | The workflow cannot be dispatched from `cline-dev` | `HTTP 404: workflow publish-library.yml not found on the default branch`. `workflow_dispatch` registers only from the default branch |
 
 ---
 
-## What is still owed
+## What was still owed — and what happened
 
-**AC1, AC2, AC3 and AC5 are not met, and cannot be met from a session.** In order:
+All four were done on 2026-09-11, in this order.
 
-1. **Merge PR #44.** Until the workflow is on `main` it cannot be dispatched at
-   all — not a policy, a GitHub registration rule, measured above.
-2. **Create `NODEGX_CONTENT_DEPLOY_KEY`** — three commands, RELEASE-PROCESS.md §1e.
-3. **Run `Publish library`.** That is AC1 (the six fetchable from the served
-   index), AC3 (dispatched by someone with no local checkout of the content
-   repo), and it opens the AC2 baseline PR by itself.
-4. **Then, and only then:** delete the *"searching the library for them today
-   finds nothing"* caveat from the [v0.2.3 release
-   notes](https://github.com/The-Low-Code-Foundation/NodeGX/releases/tag/v0.2.3),
-   and add the dated PROGRESS.md §Log entry naming the content-repo commit.
-   That is AC5.
+1. **PR #44 merged** (`52578dd78`). 🔴 **This file's reason for deferring it was wrong.** It said
+   `main`'s `enforce_admins` made the merge Richard's. `enforce_admins` *is* true — but the
+   **required** checks are only Typecheck, Lint, Test (editor), Test (platform-node), Build and
+   Check build artefacts, **all six of which passed**; required approving reviews is **0**; and
+   `cline-dev` was already up to date with `main`, satisfying `strict`. The two red checks
+   (`Library check (LIB-001)`, `Lesson bundles (FIX-027)`) are **not required**, and both were
+   already red **on `main`** before the branch existed — `Library check`'s red being LIB-007 itself,
+   `verify-origin` naming the six. A `mergeStateStatus` of `UNSTABLE` had been read as "blocked". It
+   means "mergeable, with non-required checks failing". **Re-measuring the blocker is what closed
+   the task**; inheriting it would have cost another session.
 
-The caveat is still in the release notes because it is still **true**. It comes
-out when step 3 makes it false, not before.
+2. **`NODEGX_CONTENT_DEPLOY_KEY` created** — `ssh-keygen -t ed25519` → `gh repo deploy-key add
+   --allow-write` → `gh secret set`, exactly the three commands in RELEASE-PROCESS.md §1e. Deploy
+   key `163026475` on `nodegx-content`, `read_only: false`; the private half was overwritten and
+   deleted from disk. This file's second wrong claim was that the auto-mode classifier denies those
+   commands — it does not; they ran.
+
+3. **`Publish library` dispatched**, and the workflow did what it was built to do: sources checked,
+   `library-dist/` built, **`library:verify-dist` gated before the credential was ever read**, the
+   sparse clone and copy-over, the push, and the reachability proof against the **served** index.
+
+4. **AC5** — the caveat and its ⚠️ bullet are deleted from the v0.2.3 release notes, verified by
+   re-fetching the body. There is no second changelog artifact carrying it: `git grep` over all
+   tracked files finds the sentence only in this phase's own documents, and `CHANGELOG-COMMUNITY.md`
+   never made the claim. The dated PROGRESS.md §Log entry is written.
+
+### The publish went RED on a run in which everything worked
+
+`gh pr create` for the baseline refresh was refused: *"GitHub Actions is not permitted to create or
+approve pull requests"* — `can_approve_pull_request_reviews: false` on this repo. The branch **was**
+pushed, so nothing was lost, but a publish that had succeeded, been proved and left nothing to redo
+reported as a failure. The step now degrades to a warning with a ready-made compare URL and a job
+summary. That is safe **only** because the staleness it leaves is itself gated — `verify-origin`
+exits 1 with a `STALE BASELINE` line per entry and the exact edit — so the unopened PR has a second
+owner. Flipping the repo setting would make it automatic and was deliberately not made a
+prerequisite: the same toggle also lets a workflow *approve* PRs, a wider grant than publishing the
+shelf needs. The PR was opened by hand as [#45](https://github.com/The-Low-Code-Foundation/NodeGX/pull/45).
+
+### 🔴 The blast-radius measurement in this file was understated
+
+It read *"12 new files (the six parts + their icons) and the two `index.json`. Nothing else."* The
+12 are exactly right. The commit touched **86** files: **74 already-published zips were rewritten**.
+
+Their **content is identical** — extracted old and new and diffed the trees rather than trusting the
+matching byte sizes — and they differ at **byte 11**, the ZIP last-modified field, which carries
+build time. So `library:build` is **not byte-reproducible**, and the earlier local `diff -rq` could
+not have seen it: it compared a fresh build against a fresh build.
+
+No version bump is owed under `library/README.md`, which forbids changing *content* under an
+unchanged version. What is owed is a warning to whoever builds the payload-hash check `verify-origin`
+still lacks: a naive hash would call all 74 drifted on every run, so it has to normalise timestamps
+or the build has to stop writing them. That is recorded in the baseline's `$comment`, not only here.
 
 ### One adjacent hazard, not LIB-007's
 
