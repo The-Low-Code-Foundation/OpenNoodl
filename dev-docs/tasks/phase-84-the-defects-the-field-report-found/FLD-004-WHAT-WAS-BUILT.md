@@ -83,7 +83,7 @@ arms, six mutants, all green, against a report that never fired on the node in t
 instruments that caught it were the **drive** (`WarningsModel.instance` after opening a fixture in
 the real editor) and the mutant the specs could not express until they went through the caller —
 *unhook the one call*, which now reddens four arms. Same family as
-[[a-substring-match-cannot-tell-called-from-mentioned]]: **grade the wiring, not the function.**
+`an-incidental-substring-match-is-not-an-answer`: **grade the wiring, not the function.**
 
 ## 5. AC1, driven
 
