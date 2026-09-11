@@ -1,8 +1,13 @@
 {
   "id": "bubble-write-a-list-out-as-csv",
   "title": "Write a list of records out as CSV",
-  "description": "Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10.",
-  "demonstrates": ["net.noodl.ToCSV", "String Format", "Component Inputs", "Text"],
+  "description": "Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10. Both the text and the row count are published, because the thing that wants the CSV is whatever hands it to a download or a request — not this component.",
+  "demonstrates": [
+    "net.noodl.ToCSV",
+    "String Format",
+    "Component Inputs",
+    "Text"
+  ],
   "components": [
     {
       "name": "/Export Members",
@@ -11,35 +16,111 @@
           "id": "root",
           "type": "Group",
           "label": "Export",
-          "parameters": { "flexDirection": "column" },
-          "children": ["count_text", "csv_text"]
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "count_text",
+            "csv_text"
+          ]
         },
-        { "id": "count_text", "type": "Text", "label": "10 rows ready to export", "parent": "root" },
-        { "id": "csv_text", "type": "Text", "label": "The CSV text", "parent": "root" },
+        {
+          "id": "count_text",
+          "type": "Text",
+          "label": "10 rows ready to export",
+          "parent": "root"
+        },
+        {
+          "id": "csv_text",
+          "type": "Text",
+          "label": "The CSV text",
+          "parent": "root"
+        },
         {
           "id": "export_inputs",
           "type": "Component Inputs",
           "label": "Records in",
-          "ports": [{ "name": "members", "plug": "output", "type": "array" }]
+          "ports": [
+            {
+              "name": "members",
+              "plug": "output",
+              "type": "array"
+            }
+          ]
         },
         {
           "id": "to_csv",
           "type": "net.noodl.ToCSV",
           "label": "Three named columns, in this order",
-          "parameters": { "columns": "name,email,signedUpAt", "includeHeader": true, "delimiter": "," }
+          "parameters": {
+            "columns": "name,email,signedUpAt",
+            "includeHeader": true,
+            "delimiter": ","
+          }
         },
         {
           "id": "count_label",
           "type": "String Format",
           "label": "Row count for the person",
-          "parameters": { "format": "{n} rows ready to export" }
+          "parameters": {
+            "format": "{n} rows ready to export"
+          }
+        },
+        {
+          "id": "comp_outputs",
+          "type": "Component Outputs",
+          "label": "Interface out — plugged \"input\"",
+          "ports": [
+            {
+              "name": "csv",
+              "plug": "input",
+              "type": "string"
+            },
+            {
+              "name": "rowCount",
+              "plug": "input",
+              "type": "number"
+            }
+          ]
         }
       ],
       "connections": [
-        { "fromId": "export_inputs", "fromProperty": "members", "toId": "to_csv", "toProperty": "items" },
-        { "fromId": "to_csv", "fromProperty": "text", "toId": "csv_text", "toProperty": "text" },
-        { "fromId": "to_csv", "fromProperty": "count", "toId": "count_label", "toProperty": "n" },
-        { "fromId": "count_label", "fromProperty": "formatted", "toId": "count_text", "toProperty": "text" }
+        {
+          "fromId": "export_inputs",
+          "fromProperty": "members",
+          "toId": "to_csv",
+          "toProperty": "items"
+        },
+        {
+          "fromId": "to_csv",
+          "fromProperty": "text",
+          "toId": "csv_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "to_csv",
+          "fromProperty": "count",
+          "toId": "count_label",
+          "toProperty": "n"
+        },
+        {
+          "fromId": "count_label",
+          "fromProperty": "formatted",
+          "toId": "count_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "to_csv",
+          "fromProperty": "text",
+          "toId": "comp_outputs",
+          "toProperty": "csv"
+        },
+        {
+          "fromId": "to_csv",
+          "fromProperty": "count",
+          "toId": "comp_outputs",
+          "toProperty": "rowCount"
+        }
       ]
     }
   ]

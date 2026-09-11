@@ -337,14 +337,21 @@ describe('CMP-001 AC2 — the numbers it argues from are the numbers the artefac
     );
     // The population is not empty and not the shelf — a rate over nothing is not a rate.
     expect(comps.filter((c) => c.inputs.length > 0).length).toBeGreaterThan(20);
-    // 🔴 This literal has moved TWICE now, and correctly both times: 10 until CMP-001 AC3
+    // 🔴 This literal has moved THREE times now, and correctly each time: 10 until CMP-001 AC3
     // added four examples that publish, then 21 until the AC3 remainder gave `/Note Row` and
-    // `/Todo Row` the outputs their own examples already claimed. Each time this spec is what
-    // said the doctrine's sentence had gone stale, within the same session that moved it.
+    // `/Todo Row` the outputs their own examples already claimed, then 26 until P86's COM-001
+    // added seventeen examples — and this spec is what said four of them were computing an
+    // answer and publishing nothing, which is the doctrine's own anti-pattern. Each time this
+    // spec said the doctrine's sentence had gone stale within the session that moved it.
     // Re-run `measure-interfaces.py corpus` before touching it — count the artefact, never the
     // literal.
-    expect(publishRate(comps)).toBe(26);
-    expect(received).toMatch(/\*\*26%\*\*/);
+    // ⚠️ The count is 13 of 40, which is 32.5% — a knife-edge. `measure-interfaces.py` prints
+    // **32** here and this spec reads **33**, because Python's round() breaks a tie to even and
+    // JavaScript's Math.round breaks it upward. Same numerator, same denominator, different
+    // rounding rule; the doctrine states the figure this spec pins. If the two ever need to
+    // agree exactly, fix the tie-break, not the literal.
+    expect(publishRate(comps)).toBe(33);
+    expect(received).toMatch(/\*\*33%\*\*/);
   });
 
   it('the fifty-four components that publish a failure port are still fifty-four', () => {

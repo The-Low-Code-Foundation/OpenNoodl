@@ -7,9 +7,11 @@
  * AAQ-008. Nothing anywhere said what to put ON one. Phase 85 measured the
  * consequence across three populations with a single instrument
  * (`measure-interfaces.py`, beside the phase-85 task): of the components in the
- * examples an agent learns from, **26%** publish any `Component Outputs` — 10% until
- * CMP-001 AC3 added four that do and repaired two rows that could not; of the
- * components the original Noodl team shipped in `library/prefabs`, **84%** do.
+ * examples an agent learns from, **33%** publish any `Component Outputs` — 10%
+ * until CMP-001 AC3 added four that do and repaired two rows that could not, then
+ * 26% until P86's COM-001 added seventeen examples and gave four of them the
+ * outputs their own subjects already computed; of the components the original
+ * Noodl team shipped in `library/prefabs`, **84%** do.
  * The corpus teaches a component that receives text and draws it. The library
  * teaches a two-way part. A model copying the corpus builds display sinks, and
  * the landing-page template (TPL-003) is what that looks like at scale: 233
@@ -62,7 +64,7 @@ export const INTERFACE_DOCTRINE_MD = `## What goes on a component's interface
 You know what becomes a component. This is the other half — what its interface carries — and it is
 the half that decides whether the next person can use the thing you built.
 
-**Why this is written down.** Across the examples an agent learns from, **26%** of components publish
+**Why this is written down.** Across the examples an agent learns from, **33%** of components publish
 any \`Component Outputs\`. Across the components the original Noodl team shipped in the prefab
 library, **84%** do. That gap is the whole difference between a part and a display sink: a sink takes
 text, draws it in one fixed place, and tells nobody anything, so every wire it should have owned ends

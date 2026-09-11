@@ -1,8 +1,13 @@
 {
   "id": "bubble-do-two-date-ranges-overlap",
   "title": "Do these two bookings overlap?",
-  "description": "Bubble has a date range as a first-class type, so it can write `DateRange1 overlaps with DateRange2` and be done. NodeGX has no range type, and the honest translation is not a missing feature — it is two Date Compares and one line of boolean. Two intervals overlap exactly when each one starts before the other ends, so `requestStart < bookedEnd AND bookedStart < requestEnd`; that single identity also answers Bubble's `contains point` (a point is a range of zero length), `is contained by`, `is after` and `is before` on ranges, which is why one worked example covers a dozen dictionary rows. Note what is deliberately NOT here: no test for `requestStart < requestEnd`. Comparing the two ends of one range is what `<-min->` and `<-max->` are for in Bubble, and a range whose end precedes its start makes this expression answer `false` — no clash — which is the wrong answer to a malformed request rather than the right answer to a valid one. Validate the range before you ask this question. Granularity is set to Minute rather than left at Millisecond because bookings are made in minutes: at Millisecond, a slot ending at 10:00:00.000 and one starting at 10:00:00.000 are already non-overlapping, which is correct and also not what anyone booking a room means by back-to-back. Both comparisons share one failure Log — a date that will not parse makes `Before` false on that node, and false here reads as 'no clash', so an unreported failure is an accepted double booking.",
-  "demonstrates": ["net.noodl.DateCompare", "Expression", "net.noodl.Log", "Component Inputs"],
+  "description": "Bubble has a date range as a first-class type, so it can write `DateRange1 overlaps with DateRange2` and be done. NodeGX has no range type, and the honest translation is not a missing feature — it is two Date Compares and one line of boolean. Two intervals overlap exactly when each one starts before the other ends, so `requestStart < bookedEnd AND bookedStart < requestEnd`; that single identity also answers Bubble's `contains point` (a point is a range of zero length), `is contained by`, `is after` and `is before` on ranges, which is why one worked example covers a dozen dictionary rows. Note what is deliberately NOT here: no test for `requestStart < requestEnd`. Comparing the two ends of one range is what `<-min->` and `<-max->` are for in Bubble, and a range whose end precedes its start makes this expression answer `false` — no clash — which is the wrong answer to a malformed request rather than the right answer to a valid one. Validate the range before you ask this question. Granularity is set to Minute rather than left at Millisecond because bookings are made in minutes: at Millisecond, a slot ending at 10:00:00.000 and one starting at 10:00:00.000 are already non-overlapping, which is correct and also not what anyone booking a room means by back-to-back. Both comparisons share one failure Log — a date that will not parse makes `Before` false on that node, and false here reads as 'no clash', so an unreported failure is an accepted double booking. The answer is published on a Component Outputs port rather than only lighting a Text, because the caller that placed this row is the thing that has to decide whether to let the booking through — a component that computes the answer and keeps it to itself forces every caller to recompute it.",
+  "demonstrates": [
+    "net.noodl.DateCompare",
+    "Expression",
+    "net.noodl.Log",
+    "Component Inputs"
+  ],
   "components": [
     {
       "name": "/Booking Request",
@@ -11,39 +16,76 @@
           "id": "root",
           "type": "Group",
           "label": "Booking request",
-          "parameters": { "flexDirection": "column" },
-          "children": ["clash_text", "available_text"]
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "clash_text",
+            "available_text"
+          ]
         },
-        { "id": "clash_text", "type": "Text", "label": "That slot is already taken", "parent": "root" },
-        { "id": "available_text", "type": "Text", "label": "That slot is free", "parent": "root" },
+        {
+          "id": "clash_text",
+          "type": "Text",
+          "label": "That slot is already taken",
+          "parent": "root"
+        },
+        {
+          "id": "available_text",
+          "type": "Text",
+          "label": "That slot is free",
+          "parent": "root"
+        },
         {
           "id": "range_inputs",
           "type": "Component Inputs",
           "label": "The two ranges in",
           "ports": [
-            { "name": "requestStart", "plug": "output", "type": "date" },
-            { "name": "requestEnd", "plug": "output", "type": "date" },
-            { "name": "bookedStart", "plug": "output", "type": "date" },
-            { "name": "bookedEnd", "plug": "output", "type": "date" }
+            {
+              "name": "requestStart",
+              "plug": "output",
+              "type": "date"
+            },
+            {
+              "name": "requestEnd",
+              "plug": "output",
+              "type": "date"
+            },
+            {
+              "name": "bookedStart",
+              "plug": "output",
+              "type": "date"
+            },
+            {
+              "name": "bookedEnd",
+              "plug": "output",
+              "type": "date"
+            }
           ]
         },
         {
           "id": "request_starts_first",
           "type": "net.noodl.DateCompare",
           "label": "Request starts before the booking ends",
-          "parameters": { "granularity": "minute" }
+          "parameters": {
+            "granularity": "minute"
+          }
         },
         {
           "id": "booking_starts_first",
           "type": "net.noodl.DateCompare",
           "label": "Booking starts before the request ends",
-          "parameters": { "granularity": "minute" }
+          "parameters": {
+            "granularity": "minute"
+          }
         },
         {
           "id": "overlap",
           "type": "Expression",
           "label": "Each starts before the other ends",
-          "parameters": { "expression": "requestStartsFirst && bookingStartsFirst" }
+          "parameters": {
+            "expression": "requestStartsFirst && bookingStartsFirst"
+          }
         },
         {
           "id": "unreadable_log",
@@ -53,19 +95,87 @@
             "level": "error",
             "message": "Booking request: a date could not be read, so the overlap test answered 'no clash' without testing anything."
           }
+        },
+        {
+          "id": "comp_outputs",
+          "type": "Component Outputs",
+          "label": "Interface out — plugged \"input\"",
+          "ports": [
+            {
+              "name": "overlaps",
+              "plug": "input",
+              "type": "boolean"
+            }
+          ]
         }
       ],
       "connections": [
-        { "fromId": "range_inputs", "fromProperty": "requestStart", "toId": "request_starts_first", "toProperty": "a" },
-        { "fromId": "range_inputs", "fromProperty": "bookedEnd", "toId": "request_starts_first", "toProperty": "b" },
-        { "fromId": "range_inputs", "fromProperty": "bookedStart", "toId": "booking_starts_first", "toProperty": "a" },
-        { "fromId": "range_inputs", "fromProperty": "requestEnd", "toId": "booking_starts_first", "toProperty": "b" },
-        { "fromId": "request_starts_first", "fromProperty": "before", "toId": "overlap", "toProperty": "requestStartsFirst" },
-        { "fromId": "booking_starts_first", "fromProperty": "before", "toId": "overlap", "toProperty": "bookingStartsFirst" },
-        { "fromId": "overlap", "fromProperty": "isTrue", "toId": "clash_text", "toProperty": "visible" },
-        { "fromId": "overlap", "fromProperty": "isFalse", "toId": "available_text", "toProperty": "visible" },
-        { "fromId": "request_starts_first", "fromProperty": "failure", "toId": "unreadable_log", "toProperty": "log" },
-        { "fromId": "booking_starts_first", "fromProperty": "failure", "toId": "unreadable_log", "toProperty": "log" }
+        {
+          "fromId": "range_inputs",
+          "fromProperty": "requestStart",
+          "toId": "request_starts_first",
+          "toProperty": "a"
+        },
+        {
+          "fromId": "range_inputs",
+          "fromProperty": "bookedEnd",
+          "toId": "request_starts_first",
+          "toProperty": "b"
+        },
+        {
+          "fromId": "range_inputs",
+          "fromProperty": "bookedStart",
+          "toId": "booking_starts_first",
+          "toProperty": "a"
+        },
+        {
+          "fromId": "range_inputs",
+          "fromProperty": "requestEnd",
+          "toId": "booking_starts_first",
+          "toProperty": "b"
+        },
+        {
+          "fromId": "request_starts_first",
+          "fromProperty": "before",
+          "toId": "overlap",
+          "toProperty": "requestStartsFirst"
+        },
+        {
+          "fromId": "booking_starts_first",
+          "fromProperty": "before",
+          "toId": "overlap",
+          "toProperty": "bookingStartsFirst"
+        },
+        {
+          "fromId": "overlap",
+          "fromProperty": "isTrue",
+          "toId": "clash_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "overlap",
+          "fromProperty": "isFalse",
+          "toId": "available_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "request_starts_first",
+          "fromProperty": "failure",
+          "toId": "unreadable_log",
+          "toProperty": "log"
+        },
+        {
+          "fromId": "booking_starts_first",
+          "fromProperty": "failure",
+          "toId": "unreadable_log",
+          "toProperty": "log"
+        },
+        {
+          "fromId": "overlap",
+          "fromProperty": "asBoolean",
+          "toId": "comp_outputs",
+          "toProperty": "overlaps"
+        }
       ]
     }
   ]

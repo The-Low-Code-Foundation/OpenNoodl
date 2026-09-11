@@ -63903,7 +63903,7 @@
     {
       "id": "bubble-do-two-date-ranges-overlap",
       "title": "Do these two bookings overlap?",
-      "description": "Bubble has a date range as a first-class type, so it can write `DateRange1 overlaps with DateRange2` and be done. NodeGX has no range type, and the honest translation is not a missing feature — it is two Date Compares and one line of boolean. Two intervals overlap exactly when each one starts before the other ends, so `requestStart < bookedEnd AND bookedStart < requestEnd`; that single identity also answers Bubble's `contains point` (a point is a range of zero length), `is contained by`, `is after` and `is before` on ranges, which is why one worked example covers a dozen dictionary rows. Note what is deliberately NOT here: no test for `requestStart < requestEnd`. Comparing the two ends of one range is what `<-min->` and `<-max->` are for in Bubble, and a range whose end precedes its start makes this expression answer `false` — no clash — which is the wrong answer to a malformed request rather than the right answer to a valid one. Validate the range before you ask this question. Granularity is set to Minute rather than left at Millisecond because bookings are made in minutes: at Millisecond, a slot ending at 10:00:00.000 and one starting at 10:00:00.000 are already non-overlapping, which is correct and also not what anyone booking a room means by back-to-back. Both comparisons share one failure Log — a date that will not parse makes `Before` false on that node, and false here reads as 'no clash', so an unreported failure is an accepted double booking.",
+      "description": "Bubble has a date range as a first-class type, so it can write `DateRange1 overlaps with DateRange2` and be done. NodeGX has no range type, and the honest translation is not a missing feature — it is two Date Compares and one line of boolean. Two intervals overlap exactly when each one starts before the other ends, so `requestStart < bookedEnd AND bookedStart < requestEnd`; that single identity also answers Bubble's `contains point` (a point is a range of zero length), `is contained by`, `is after` and `is before` on ranges, which is why one worked example covers a dozen dictionary rows. Note what is deliberately NOT here: no test for `requestStart < requestEnd`. Comparing the two ends of one range is what `<-min->` and `<-max->` are for in Bubble, and a range whose end precedes its start makes this expression answer `false` — no clash — which is the wrong answer to a malformed request rather than the right answer to a valid one. Validate the range before you ask this question. Granularity is set to Minute rather than left at Millisecond because bookings are made in minutes: at Millisecond, a slot ending at 10:00:00.000 and one starting at 10:00:00.000 are already non-overlapping, which is correct and also not what anyone booking a room means by back-to-back. Both comparisons share one failure Log — a date that will not parse makes `Before` false on that node, and false here reads as 'no clash', so an unreported failure is an accepted double booking. The answer is published on a Component Outputs port rather than only lighting a Text, because the caller that placed this row is the thing that has to decide whether to let the booking through — a component that computes the answer and keeps it to itself forces every caller to recompute it.",
       "demonstrates": [
         "net.noodl.DateCompare",
         "Expression",
@@ -63997,6 +63997,18 @@
                 "level": "error",
                 "message": "Booking request: a date could not be read, so the overlap test answered 'no clash' without testing anything."
               }
+            },
+            {
+              "id": "comp_outputs",
+              "type": "Component Outputs",
+              "label": "Interface out — plugged \"input\"",
+              "ports": [
+                {
+                  "name": "overlaps",
+                  "plug": "input",
+                  "type": "boolean"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64059,6 +64071,12 @@
               "fromProperty": "failure",
               "toId": "unreadable_log",
               "toProperty": "log"
+            },
+            {
+              "fromId": "overlap",
+              "fromProperty": "asBoolean",
+              "toId": "comp_outputs",
+              "toProperty": "overlaps"
             }
           ]
         }
@@ -64067,7 +64085,7 @@
     {
       "id": "bubble-hash-a-value",
       "title": "Turn an email address into a stable fingerprint",
-      "description": "The dictionary asks for `:formatted as MD5 hash` and `:formatted as SHA1 Hash`, and the honest answer is that this node offers neither — SHA-256, SHA-384 and SHA-512 only. That is a decision, not a gap: WebCrypto, which Hash runs on in both the browser and a cloud function, does not implement MD5 or SHA-1 for digesting, and hand-rolling one would mean shipping a hash that is broken for every purpose either was ever used for. If you are migrating a Bubble app that stored MD5 fingerprints, they will not reproduce here and no setting will make them; treat that as a re-hash of the source data, not a translation. Two details decide whether this works. Hash is ASYNCHRONOUS — the digest is computed off a later turn than the `Do` that started it — so Digest is wired to the Text and the button is wired to `Do`; reading Digest in the same pass as the click would read the previous answer. And hashing is exact, so the normalisation in front of it is doing real work: `Foo@Example.com ` and `foo@example.com` are different bytes and therefore entirely different digests, which is how a 'stable fingerprint' quietly stops matching. Trim and lower-case first, deliberately, and write down that you did. Failure fires only when WebCrypto is unavailable, which in a browser means the page is not on a secure origin — worth a Log, because the symptom is a blank fingerprint rather than an error.",
+      "description": "The dictionary asks for `:formatted as MD5 hash` and `:formatted as SHA1 Hash`, and the honest answer is that this node offers neither — SHA-256, SHA-384 and SHA-512 only. That is a decision, not a gap: WebCrypto, which Hash runs on in both the browser and a cloud function, does not implement MD5 or SHA-1 for digesting, and hand-rolling one would mean shipping a hash that is broken for every purpose either was ever used for. If you are migrating a Bubble app that stored MD5 fingerprints, they will not reproduce here and no setting will make them; treat that as a re-hash of the source data, not a translation. Two details decide whether this works. Hash is ASYNCHRONOUS — the digest is computed off a later turn than the `Do` that started it — so Digest is wired to the Text and the button is wired to `Do`; reading Digest in the same pass as the click would read the previous answer. And hashing is exact, so the normalisation in front of it is doing real work: `Foo@Example.com ` and `foo@example.com` are different bytes and therefore entirely different digests, which is how a 'stable fingerprint' quietly stops matching. Trim and lower-case first, deliberately, and write down that you did. Failure fires only when WebCrypto is unavailable, which in a browser means the page is not on a secure origin — worth a Log, because the symptom is a blank fingerprint rather than an error. The digest is published as well as rendered: a fingerprint that only ever reaches a Text is a fingerprint nothing can be compared against.",
       "demonstrates": [
         "net.noodl.Hash",
         "Expression",
@@ -64139,6 +64157,18 @@
                 "level": "error",
                 "message": "Fingerprint: WebCrypto was unavailable, so no digest was produced. In a browser this means the page is not on a secure origin."
               }
+            },
+            {
+              "id": "comp_outputs",
+              "type": "Component Outputs",
+              "label": "Interface out — plugged \"input\"",
+              "ports": [
+                {
+                  "name": "digest",
+                  "plug": "input",
+                  "type": "string"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64177,6 +64207,12 @@
               "fromProperty": "error",
               "toId": "no_crypto_log",
               "toProperty": "message"
+            },
+            {
+              "fromId": "fingerprint",
+              "fromProperty": "digest",
+              "toId": "comp_outputs",
+              "toProperty": "digest"
             }
           ]
         }
@@ -64666,7 +64702,7 @@
     {
       "id": "bubble-round-a-date-down-to-the-month",
       "title": "Group these records by month",
-      "description": "Bubble spells this `Date1 rounded down to month`, and it is really two different questions wearing one phrase. If you want a KEY to group by, that is Date To String — and it must be Date To String rather than Date Parts, because of a difference this example exists to show: Date Parts gives Month as a NUMBER 1-12, so `{year}-{month}` through String Format renders September as `2026-9`, which sorts after `2026-10` as text and quietly scrambles a grouped list. Date To String's `{month}` token is the zero-padded one, so the same key comes out `2026-09` and sorts correctly. The unpadded tokens there are `{m}` and `{d}`; the padded ones are `{month}` and `{date}`. If instead you want to COMPARE two dates rounded down — Bubble's `equals rounded down to month` — do not round at all: Date Compare's Granularity does the truncation internally, so setting it to Month answers 'same month' directly and there is no intermediate value to get wrong. Date Parts is still the right node when you want the fields themselves, and this shows that too: Day Name and ISO Week come off it, and ISO Week is genuinely ISO-8601, so 1 January 2027 is week 53 of 2026 rather than week 1 of 2027. Every field here is read in the host's local zone — on a server, whatever the container's TZ says — so when the zone is part of the answer, format through Date To String's Timezone input instead.",
+      "description": "Bubble spells this `Date1 rounded down to month`, and it is really two different questions wearing one phrase. If you want a KEY to group by, that is Date To String — and it must be Date To String rather than Date Parts, because of a difference this example exists to show: Date Parts gives Month as a NUMBER 1-12, so `{year}-{month}` through String Format renders September as `2026-9`, which sorts after `2026-10` as text and quietly scrambles a grouped list. Date To String's `{month}` token is the zero-padded one, so the same key comes out `2026-09` and sorts correctly. The unpadded tokens there are `{m}` and `{d}`; the padded ones are `{month}` and `{date}`. If instead you want to COMPARE two dates rounded down — Bubble's `equals rounded down to month` — do not round at all: Date Compare's Granularity does the truncation internally, so setting it to Month answers 'same month' directly and there is no intermediate value to get wrong. Date Parts is still the right node when you want the fields themselves, and this shows that too: Day Name and ISO Week come off it, and ISO Week is genuinely ISO-8601, so 1 January 2027 is week 53 of 2026 rather than week 1 of 2027. Every field here is read in the host's local zone — on a server, whatever the container's TZ says — so when the zone is part of the answer, format through Date To String's Timezone input instead. The month key is published because grouping happens in the parent: the row can compute its own bucket, but only the list above it can put rows into buckets.",
       "demonstrates": [
         "net.noodl.DateParts",
         "net.noodl.DateCompare",
@@ -64753,6 +64789,18 @@
               "parameters": {
                 "granularity": "month"
               }
+            },
+            {
+              "id": "comp_outputs",
+              "type": "Component Outputs",
+              "label": "Interface out — plugged \"input\"",
+              "ports": [
+                {
+                  "name": "monthKey",
+                  "plug": "input",
+                  "type": "string"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64809,6 +64857,12 @@
               "fromProperty": "same",
               "toId": "this_month_text",
               "toProperty": "visible"
+            },
+            {
+              "fromId": "month_key",
+              "fromProperty": "currentValue",
+              "toId": "comp_outputs",
+              "toProperty": "monthKey"
             }
           ]
         }
@@ -64817,7 +64871,7 @@
     {
       "id": "bubble-write-a-list-out-as-csv",
       "title": "Write a list of records out as CSV",
-      "description": "Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10.",
+      "description": "Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10. Both the text and the row count are published, because the thing that wants the CSV is whatever hands it to a download or a request — not this component.",
       "demonstrates": [
         "net.noodl.ToCSV",
         "String Format",
@@ -64881,6 +64935,23 @@
               "parameters": {
                 "format": "{n} rows ready to export"
               }
+            },
+            {
+              "id": "comp_outputs",
+              "type": "Component Outputs",
+              "label": "Interface out — plugged \"input\"",
+              "ports": [
+                {
+                  "name": "csv",
+                  "plug": "input",
+                  "type": "string"
+                },
+                {
+                  "name": "rowCount",
+                  "plug": "input",
+                  "type": "number"
+                }
+              ]
             }
           ],
           "connections": [
@@ -64907,6 +64978,18 @@
               "fromProperty": "formatted",
               "toId": "count_text",
               "toProperty": "text"
+            },
+            {
+              "fromId": "to_csv",
+              "fromProperty": "text",
+              "toId": "comp_outputs",
+              "toProperty": "csv"
+            },
+            {
+              "fromId": "to_csv",
+              "fromProperty": "count",
+              "toId": "comp_outputs",
+              "toProperty": "rowCount"
             }
           ]
         }
