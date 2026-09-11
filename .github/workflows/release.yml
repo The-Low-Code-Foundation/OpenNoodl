@@ -277,6 +277,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # LIB-007. A release is not complete when the parts it names cannot be
+  # installed, and 0.2.3 proved that is not a hypothetical: six parts shipped
+  # authored, gated, rendered, drive-tested and named in the release notes,
+  # while the origin the editor fetches had none of them. The notes had to carry
+  # a caveat saying so.
+  #
+  # 🔴 The existing gate did not miss this — it is not the gate for it.
+  # `library:verify-origin` compares the origin against `origin-baseline.json`
+  # and answers *"has the divergence CHANGED?"*. Five of the six were written
+  # down in that baseline, so they printed `known`, and the run had been red for
+  # days, which is the state in which a red run reads as furniture. Nobody owned
+  # *"is everything we authored REACHABLE?"* — so `--require-published` ignores
+  # the baseline entirely and fails on any entry with no published counterpart.
+  #
+  # It runs at the moment the claim is made — a version tag — and it does NOT
+  # `needs:` the packaging matrix, so it answers in a minute instead of ninety
+  # and can never hold up shipping an urgent fix. What it does is make the
+  # release run red, next to a draft a human still has to press publish on.
+  # If it is red: run the "Publish library" workflow, then re-run this job.
+  library-reachable:
+    name: every authored library entry is installable
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Needs egress by construction: an origin it cannot reach is an origin it
+      # cannot compare, and it exits 2 as UNAVAILABLE rather than ever reading
+      # "could not check" as "checked and fine".
+      - run: npm run library:verify-origin -- --require-published
+
   # F73's general lesson, made into a job: **electron-builder uploads as it goes,
   # so a draft with files in it is not evidence of a green run.** The v0.1.0
   # Linux leg uploaded its AppImage and then aborted on the `.deb`; the release

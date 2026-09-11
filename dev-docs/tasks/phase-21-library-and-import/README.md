@@ -38,6 +38,16 @@ This is **not** the marketplace (ECO-002, gated on Gate G3 and community critica
 | B | [LIB-004](./LIB-004-IMPORT-ENGINE.md) | Import engine v2 | 1–1.5 wks | 🟠 Opus 4.8 |
 | B | [LIB-005](./LIB-005-IMPORT-UX.md) | Import experience overhaul | 1.5–2 wks | 🔵 Fable 5 |
 | B | [LIB-006](./LIB-006-LEGACY-IMPORT-ASSIST.md) | Legacy project import — best effort, honest report, AI repair | 1–1.5 wks | 🔵 Fable 5 |
+| C | [LIB-007](./LIB-007-PUBLISHING-THE-SHELF.md) | Publishing the shelf stops being a manual copy | — | 🟣 **Opus 5** — machinery built ([notes](./LIB-007-NOTES.md), PR [#44](https://github.com/The-Low-Code-Foundation/NodeGX/pull/44)); **blocked on a merge + the deploy key**, so nothing is published and the caveat still stands |
+| C | [LIB-008](./LIB-008-THE-DOCS-ORIGIN-IS-A-404.md) | Every documentation link in the shipped editor is a 404 | — | **UNASSIGNED** |
+
+🔴 **Sprint C was opened on 2026-09-11, the day v0.2.3 shipped, by two things that release
+exposed.** LIB-007: six parts were authored, gated, drive-tested, named in the public release notes
+and **published nowhere** — the release notes carry a caveat saying so, and removing that sentence
+is the acceptance criterion. LIB-008: `getDocsEndpoint` still names a Pages site that was renamed
+on 2026-08-07 and is a hard 404, so every in-editor docs link has been dead since. Both are the
+same shape — *an origin moved and only some of the callers were told* — which is why they sit
+together. **No time estimates: dependency order only** (standing rule, phase 77).
 
 **Anytime fixes** (independent, land immediately, don't wait for their parent task): the import-from-URL untick bug (LIB-004 step 0), the `startsWith` loader bug (LIB-003 step 0), loud fetch failure in the library tabs (LIB-001 step 0).
 
