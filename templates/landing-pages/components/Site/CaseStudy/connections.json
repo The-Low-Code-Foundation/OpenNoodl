@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "fbb7e46a-cf46-5715-82a6-9c3c90f80ebf",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "csInputs",
+      "fromProperty": "picture",
+      "toId": "csPhoto",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "alt",
+      "toId": "csPhoto",
+      "toProperty": "alt"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "title",
+      "toId": "csTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "client",
+      "toId": "csClient",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "year",
+      "toId": "csYear",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "category",
+      "toId": "csTagText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "brief",
+      "toId": "csBrief",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "did",
+      "toId": "csDid",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csInputs",
+      "fromProperty": "outcome",
+      "toId": "csOutcome",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "csClose",
+      "fromProperty": "onClick",
+      "toId": "csClosePopup",
+      "toProperty": "closeAction-close"
+    },
+    {
+      "fromId": "csBackdrop",
+      "fromProperty": "onClick",
+      "toId": "csClosePopup",
+      "toProperty": "closeAction-close"
+    }
+  ]
+}

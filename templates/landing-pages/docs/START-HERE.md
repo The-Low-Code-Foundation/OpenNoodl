@@ -77,19 +77,93 @@ text, or delete the node if it does not apply to you.
 | **EDIT — About — heading** | A short story about you |
 | **EDIT — About — second paragraph** | What you care about in the work, and what working with you is like. One paragraph is enough. |
 | **EDIT — About — where you are** | Based in your town · working with people everywhere |
-| **EDIT — Recent work — heading** | Three pieces of work you are proud of |
+| **EDIT — Recent work — heading** | The work, and the story behind each piece |
 | **EDIT — the badge on the hero** | Taking new projects from next month |
 | **EDIT — the first client’s words** | quote: “A sentence or two a client actually said about working with you. Ask them; most people are glad to.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-4.webp · alt: A man smiling, arms folded |
-| **EDIT — the first piece of work** | picture: noodl_modules/starter-imagery/work-leather-bench.webp · alt: A leather workbench with tools laid out · title: A piece of work · line: Who it was for, and what changed. |
+| **EDIT — the first kind of work** | label: The first kind of work · value: The first kind of work |
 | **EDIT — the first service** | icon: pencil · title: The first service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you. · deliverable: What lands in their inbox at the end, and in what form. |
 | **EDIT — the headline** | One line that says what you do, and who it is for |
 | **EDIT — the line under the headline** | Two sentences on the difference it makes for the people who hire you. Keep it plain; this is the first thing they read. |
 | **EDIT — the second client’s words** | quote: “Another client, in their own words. Two quotes is plenty; three is a wall.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-5.webp · alt: A woman smiling outdoors |
-| **EDIT — the second piece of work** | picture: noodl_modules/starter-imagery/food-bakery.webp · alt: A bakery counter · title: Another piece of work · line: Who it was for, and what changed. |
+| **EDIT — the second kind of work** | label: The second kind of work · value: The second kind of work |
 | **EDIT — the second service** | icon: layout-grid · title: The second service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: The same three things for this one. If two services have the same answer here, they are probably one service. · deliverable: What they end up with, described as a thing rather than an activity. |
-| **EDIT — the third piece of work** | picture: noodl_modules/starter-imagery/people-desk.webp · alt: Someone working at a laptop by a window · title: A third piece of work · line: Who it was for, and what changed. |
+| **EDIT — the third kind of work** | label: The third kind of work · value: The third kind of work |
 | **EDIT — the third service** | icon: line-chart · title: The third service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: Three services is the most a page like this can carry. If you have five, the other two belong on their own page. · deliverable: What they end up with, described as a thing rather than an activity. |
 | **EDIT — the three nav links at the top** | nav1: What I do · nav1Target: section-flServices · nav2: Work · nav2Target: section-flWork · nav3: About · nav3Target: section-flAbout |
+| **EDIT — the work itself — this list IS the page** | type: json · json: [
+  {
+    "picture": "noodl_modules/starter-imagery/work-leather-bench.webp",
+    "alt": "A leather workbench with tools laid out",
+    "category": "The first kind of work",
+    "title": "A piece of work",
+    "client": "Who it was for",
+    "year": "2026",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  },
+  {
+    "picture": "noodl_modules/starter-imagery/food-bakery.webp",
+    "alt": "A bakery counter with loaves on it",
+    "category": "The first kind of work",
+    "title": "Another of the same kind",
+    "client": "Who it was for",
+    "year": "2025",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  },
+  {
+    "picture": "noodl_modules/starter-imagery/people-desk.webp",
+    "alt": "Someone working at a laptop by a window",
+    "category": "The second kind of work",
+    "title": "A piece of a different kind",
+    "client": "Who it was for",
+    "year": "2026",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  },
+  {
+    "picture": "noodl_modules/starter-imagery/work-machine-shop.webp",
+    "alt": "A machine shop with a lathe in use",
+    "category": "The second kind of work",
+    "title": "Another of that kind",
+    "client": "Who it was for",
+    "year": "2025",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  },
+  {
+    "picture": "noodl_modules/starter-imagery/people-meeting.webp",
+    "alt": "Three people talking around a table",
+    "category": "The third kind of work",
+    "title": "A piece of the third kind",
+    "client": "Who it was for",
+    "year": "2024",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  },
+  {
+    "picture": "noodl_modules/starter-imagery/work-potter.webp",
+    "alt": "A potter shaping a bowl on a wheel",
+    "category": "The third kind of work",
+    "title": "The last one on the list",
+    "client": "Who it was for",
+    "year": "2024",
+    "summary": "One line on what it was and what changed. This is all the card shows.",
+    "brief": "What they came to you with, and what was hard about it. Two sentences.",
+    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
+    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
+  }
+] |
 | **EDIT — What I do — heading** | Three things I can take off your plate |
 
 ### `Pages/Launch`

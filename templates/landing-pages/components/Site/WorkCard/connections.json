@@ -1,0 +1,115 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "4550ca70-324a-53e7-8e16-bf394c02391e",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "picture",
+      "toId": "wcPhoto",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "alt",
+      "toId": "wcPhoto",
+      "toProperty": "alt"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "title",
+      "toId": "wcTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "category",
+      "toId": "wcTagText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "summary",
+      "toId": "wcLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "client",
+      "toId": "wcMetaFmt",
+      "toProperty": "client"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "year",
+      "toId": "wcMetaFmt",
+      "toProperty": "year"
+    },
+    {
+      "fromId": "wcMetaFmt",
+      "fromProperty": "formatted",
+      "toId": "wcMeta",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wcCard",
+      "fromProperty": "onClick",
+      "toId": "wcPopup",
+      "toProperty": "show"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "picture",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-picture"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "alt",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-alt"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "title",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-title"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "client",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-client"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "year",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-year"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "category",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-category"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "brief",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-brief"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "did",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-did"
+    },
+    {
+      "fromId": "wcInputs",
+      "fromProperty": "outcome",
+      "toId": "wcPopup",
+      "toProperty": "popupParam-outcome"
+    }
+  ]
+}

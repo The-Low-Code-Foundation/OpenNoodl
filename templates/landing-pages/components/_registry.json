@@ -83,6 +83,30 @@
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
+    "Site/FilterPill": {
+      "path": "Site/FilterPill",
+      "type": "visual",
+      "nodeCount": 8,
+      "connectionCount": 10,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/CaseStudy": {
+      "path": "Site/CaseStudy",
+      "type": "visual",
+      "nodeCount": 21,
+      "connectionCount": 11,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/WorkCard": {
+      "path": "Site/WorkCard",
+      "type": "visual",
+      "nodeCount": 12,
+      "connectionCount": 18,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
     "Site/Quote": {
       "path": "Site/Quote",
       "type": "visual",
@@ -174,8 +198,8 @@
     "Pages/Freelancer": {
       "path": "Pages/Freelancer",
       "type": "page",
-      "nodeCount": 65,
-      "connectionCount": 2,
+      "nodeCount": 76,
+      "connectionCount": 11,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -197,8 +221,8 @@
     }
   },
   "stats": {
-    "totalComponents": 24,
-    "totalNodes": 433,
-    "totalConnections": 145
+    "totalComponents": 27,
+    "totalNodes": 485,
+    "totalConnections": 193
   }
 }

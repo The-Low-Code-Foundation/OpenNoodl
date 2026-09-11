@@ -14,6 +14,60 @@
       "fromProperty": "onClick",
       "toId": "flGoSecond",
       "toProperty": "go"
+    },
+    {
+      "fromId": "flWorkData",
+      "fromProperty": "items",
+      "toId": "flWorkFilter",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flWorkVariable",
+      "fromProperty": "value",
+      "toId": "flWorkFilter",
+      "toProperty": "filterFilterValue-category"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "items",
+      "toId": "flWorkRepeat",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "count",
+      "toId": "flWorkCountFmt",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "flWorkData",
+      "fromProperty": "count",
+      "toId": "flWorkCountFmt",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "flWorkCountFmt",
+      "fromProperty": "formatted",
+      "toId": "flWorkCount",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "count",
+      "toId": "flWorkIsEmpty",
+      "toProperty": "shown"
+    },
+    {
+      "fromId": "flWorkIsEmpty",
+      "fromProperty": "asBoolean",
+      "toId": "flWorkEmpty",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "flWorkEmptyButton",
+      "fromProperty": "onClick",
+      "toId": "flWorkClear",
+      "toProperty": "do"
     }
   ]
 }

@@ -1,0 +1,440 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "fbb7e46a-cf46-5715-82a6-9c3c90f80ebf",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "csBackdrop",
+      "type": "Group",
+      "label": "Over the page",
+      "children": [
+        "csPanel"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-start",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "scrollEnabled": true,
+        "nativeScroll": true,
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "csPanel",
+      "type": "Group",
+      "label": "The panel",
+      "parent": "csBackdrop",
+      "children": [
+        "csMedia",
+        "csBody"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-2xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "clickBubbling": "never"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "csMedia",
+      "type": "Group",
+      "label": "The photograph",
+      "parent": "csPanel",
+      "children": [
+        "csPhoto"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "csPhoto",
+      "type": "Image",
+      "label": "The photograph",
+      "parent": "csMedia",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 300,
+          "unit": "px"
+        },
+        "src": "",
+        "alt": ""
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "csCloseRow",
+      "type": "Group",
+      "label": "The way out",
+      "parent": "csBody",
+      "children": [
+        "csClose"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "justifyContent": "flex-end"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "csClose",
+      "type": "net.noodl.controls.button",
+      "label": "Close",
+      "parent": "csCloseRow",
+      "parameters": {
+        "label": "Close",
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "cssClassName": "pressable"
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "csBody",
+      "type": "Group",
+      "label": "The story",
+      "parent": "csPanel",
+      "children": [
+        "csCloseRow",
+        "csMetaRow",
+        "csTitle",
+        "csClient",
+        "csBriefLabel",
+        "csBrief",
+        "csDidLabel",
+        "csDid",
+        "csOutcomeLabel",
+        "csOutcome"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "csMetaRow",
+      "type": "Group",
+      "label": "The kind, and the year",
+      "parent": "csBody",
+      "children": [
+        "csTag",
+        "csYear"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "csTag",
+      "type": "Group",
+      "label": "What kind of work",
+      "parent": "csMetaRow",
+      "children": [
+        "csTagText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)"
+      },
+      "x": 280,
+      "y": 1000
+    },
+    {
+      "id": "csTagText",
+      "type": "Text",
+      "label": "The kind",
+      "parent": "csTag",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 340,
+      "y": 1120
+    },
+    {
+      "id": "csYear",
+      "type": "Text",
+      "label": "The year",
+      "parent": "csMetaRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 1240
+    },
+    {
+      "id": "csTitle",
+      "type": "Text",
+      "label": "What it was",
+      "parent": "csBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "csClient",
+      "type": "Text",
+      "label": "Who it was for",
+      "parent": "csBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "csBriefLabel",
+      "type": "Text",
+      "label": "What they came with — the label",
+      "parent": "csBody",
+      "parameters": {
+        "text": "What they came with",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 1600
+    },
+    {
+      "id": "csBrief",
+      "type": "Text",
+      "label": "What they came with",
+      "parent": "csBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 1720
+    },
+    {
+      "id": "csDidLabel",
+      "type": "Text",
+      "label": "What you did — the label",
+      "parent": "csBody",
+      "parameters": {
+        "text": "What you did",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 1840
+    },
+    {
+      "id": "csDid",
+      "type": "Text",
+      "label": "What you did",
+      "parent": "csBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 1960
+    },
+    {
+      "id": "csOutcomeLabel",
+      "type": "Text",
+      "label": "What happened — the label",
+      "parent": "csBody",
+      "parameters": {
+        "text": "What happened",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "x": 220,
+      "y": 2080
+    },
+    {
+      "id": "csOutcome",
+      "type": "Text",
+      "label": "What happened",
+      "parent": "csBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 2200
+    },
+    {
+      "id": "csClosePopup",
+      "type": "NavigationClosePopup",
+      "label": "Put it away",
+      "parameters": {
+        "closeActions": "close"
+      },
+      "x": 590,
+      "y": 760
+    },
+    {
+      "id": "csInputs",
+      "type": "Component Inputs",
+      "label": "The story",
+      "ports": [
+        {
+          "name": "picture",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "alt",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "client",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "year",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "category",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "brief",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "did",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "outcome",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 590,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "csBackdrop"
+  ]
+}

@@ -2199,6 +2199,1134 @@
       }
     },
     {
+      "name": "/Site/FilterPill",
+      "graph": {
+        "roots": [
+          {
+            "id": "fpPill",
+            "type": "Group",
+            "children": [
+              {
+                "id": "fpLabel",
+                "type": "Text",
+                "children": [],
+                "label": "What it says",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "text": "",
+                  "fontSize": "var(--text-sm)",
+                  "color": "var(--muted-foreground)",
+                  "fontWeight": "var(--font-medium)",
+                  "sizeMode": "contentSize"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One pill",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentSize",
+              "flexDirection": "row",
+              "alignItems": "center",
+              "borderRadius": "var(--radius-full)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border-control)",
+              "backgroundColor": "transparent",
+              "paddingLeft": "var(--space-4)",
+              "paddingRight": "var(--space-4)",
+              "paddingTop": "var(--space-2)",
+              "paddingBottom": "var(--space-2)",
+              "cssClassName": "pill pressable"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpCurrent",
+            "type": "Variable2",
+            "children": [],
+            "label": "What is selected, app-wide",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "name": "workFilter"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpState",
+            "type": "Expression",
+            "children": [],
+            "label": "Am I the selected one?",
+            "x": 350,
+            "y": 520,
+            "parameters": {
+              "expression": "((selected || '') === (mine || '')) ? 'on' : 'off'"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpLook",
+            "type": "States",
+            "children": [],
+            "label": "Off / on",
+            "x": 350,
+            "y": 40,
+            "parameters": {
+              "states": "off,on",
+              "values": "bg,fg,edge",
+              "type-bg": "color",
+              "type-fg": "color",
+              "type-edge": "color",
+              "value-off-bg": "transparent",
+              "value-on-bg": "var(--primary)",
+              "value-off-fg": "var(--foreground)",
+              "value-on-fg": "var(--primary-foreground)",
+              "value-off-edge": "var(--border-control)",
+              "value-on-edge": "var(--primary)",
+              "useTransitions": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpValue",
+            "type": "Expression",
+            "children": [],
+            "label": "The category, or nothing at all",
+            "x": 350,
+            "y": 640,
+            "parameters": {
+              "expression": "v || ''"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpWrite",
+            "type": "Set Variable",
+            "children": [],
+            "label": "Select this category",
+            "x": 350,
+            "y": 160,
+            "parameters": {
+              "name": "workFilter",
+              "setWith": "string"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fpInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The pill",
+            "x": 350,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "label",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "value",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "fpInputs",
+            "fromProperty": "label",
+            "toId": "fpLabel",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "fpInputs",
+            "fromProperty": "value",
+            "toId": "fpState",
+            "toProperty": "mine"
+          },
+          {
+            "fromId": "fpInputs",
+            "fromProperty": "value",
+            "toId": "fpValue",
+            "toProperty": "v"
+          },
+          {
+            "fromId": "fpCurrent",
+            "fromProperty": "value",
+            "toId": "fpState",
+            "toProperty": "selected"
+          },
+          {
+            "fromId": "fpState",
+            "fromProperty": "asString",
+            "toId": "fpLook",
+            "toProperty": "currentState"
+          },
+          {
+            "fromId": "fpLook",
+            "fromProperty": "bg",
+            "toId": "fpPill",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "fpLook",
+            "fromProperty": "edge",
+            "toId": "fpPill",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "fpLook",
+            "fromProperty": "fg",
+            "toId": "fpLabel",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "fpValue",
+            "fromProperty": "asString",
+            "toId": "fpWrite",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "fpPill",
+            "fromProperty": "onClick",
+            "toId": "fpWrite",
+            "toProperty": "do"
+          }
+        ],
+        "visualRoots": [
+          "fpPill"
+        ]
+      }
+    },
+    {
+      "name": "/Site/CaseStudy",
+      "graph": {
+        "roots": [
+          {
+            "id": "csBackdrop",
+            "type": "Group",
+            "children": [
+              {
+                "id": "csPanel",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "csMedia",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "csPhoto",
+                        "type": "Image",
+                        "children": [],
+                        "label": "The photograph",
+                        "x": 220,
+                        "y": 400,
+                        "parameters": {
+                          "sizeMode": "explicit",
+                          "objectFit": "cover",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 300,
+                            "unit": "px"
+                          },
+                          "src": "",
+                          "alt": ""
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The photograph",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "csBody",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "csCloseRow",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "csClose",
+                            "type": "net.noodl.controls.button",
+                            "children": [],
+                            "label": "Close",
+                            "x": 280,
+                            "y": 760,
+                            "parameters": {
+                              "label": "Close",
+                              "sizeMode": "contentSize",
+                              "backgroundColor": "transparent",
+                              "color": "var(--foreground)",
+                              "borderRadius": "var(--radius-full)",
+                              "borderStyle": "solid",
+                              "borderWidth": "var(--border-1)",
+                              "borderColor": "var(--border-control)",
+                              "paddingLeft": "var(--space-5)",
+                              "paddingRight": "var(--space-5)",
+                              "paddingTop": "var(--space-2)",
+                              "paddingBottom": "var(--space-2)",
+                              "fontSize": "var(--text-sm)",
+                              "cssClassName": "pressable"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "The way out",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "row",
+                          "justifyContent": "flex-end"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csMetaRow",
+                        "type": "Group",
+                        "children": [
+                          {
+                            "id": "csTag",
+                            "type": "Group",
+                            "children": [
+                              {
+                                "id": "csTagText",
+                                "type": "Text",
+                                "children": [],
+                                "label": "The kind",
+                                "x": 340,
+                                "y": 1120,
+                                "parameters": {
+                                  "text": "",
+                                  "fontSize": "var(--text-sm)",
+                                  "color": "var(--accent-foreground)",
+                                  "fontWeight": "var(--font-semibold)",
+                                  "sizeMode": "contentSize"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              }
+                            ],
+                            "label": "What kind of work",
+                            "x": 280,
+                            "y": 1000,
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "flexDirection": "row",
+                              "alignItems": "center",
+                              "backgroundColor": "var(--accent)",
+                              "borderRadius": "var(--radius-full)",
+                              "paddingLeft": "var(--space-3)",
+                              "paddingRight": "var(--space-3)",
+                              "paddingTop": "var(--space-1)",
+                              "paddingBottom": "var(--space-1)"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          },
+                          {
+                            "id": "csYear",
+                            "type": "Text",
+                            "children": [],
+                            "label": "The year",
+                            "x": 280,
+                            "y": 1240,
+                            "parameters": {
+                              "text": "",
+                              "fontSize": "var(--text-sm)",
+                              "color": "var(--muted-foreground)",
+                              "sizeMode": "contentSize"
+                            },
+                            "ports": [],
+                            "dynamicports": []
+                          }
+                        ],
+                        "label": "The kind, and the year",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "sizeMode": "contentSize",
+                          "flexDirection": "row",
+                          "alignItems": "center",
+                          "columnGap": "var(--space-3)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csTitle",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What it was",
+                        "x": 220,
+                        "y": 1360,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-3xl)",
+                          "fontWeight": "var(--font-semibold)",
+                          "lineHeight": "var(--leading-tight)",
+                          "letterSpacing": "var(--tracking-tight)",
+                          "color": "var(--foreground)",
+                          "as": "h2"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csClient",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Who it was for",
+                        "x": 220,
+                        "y": 1480,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-base)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csBriefLabel",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What they came with — the label",
+                        "x": 220,
+                        "y": 1600,
+                        "parameters": {
+                          "text": "What they came with",
+                          "fontSize": "var(--text-xs)",
+                          "fontWeight": "var(--font-semibold)",
+                          "letterSpacing": "var(--tracking-widest)",
+                          "textTransform": "uppercase",
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csBrief",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What they came with",
+                        "x": 220,
+                        "y": 1720,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-base)",
+                          "color": "var(--foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csDidLabel",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What you did — the label",
+                        "x": 220,
+                        "y": 1840,
+                        "parameters": {
+                          "text": "What you did",
+                          "fontSize": "var(--text-xs)",
+                          "fontWeight": "var(--font-semibold)",
+                          "letterSpacing": "var(--tracking-widest)",
+                          "textTransform": "uppercase",
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csDid",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What you did",
+                        "x": 220,
+                        "y": 1960,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-base)",
+                          "color": "var(--foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csOutcomeLabel",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What happened — the label",
+                        "x": 220,
+                        "y": 2080,
+                        "parameters": {
+                          "text": "What happened",
+                          "fontSize": "var(--text-xs)",
+                          "fontWeight": "var(--font-semibold)",
+                          "letterSpacing": "var(--tracking-widest)",
+                          "textTransform": "uppercase",
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "csOutcome",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What happened",
+                        "x": 220,
+                        "y": 2200,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-base)",
+                          "color": "var(--foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The story",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-3)",
+                      "paddingLeft": "var(--space-5)",
+                      "paddingRight": "var(--space-5)",
+                      "paddingTop": "var(--space-5)",
+                      "paddingBottom": "var(--space-5)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "The panel",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "maxWidth": {
+                    "value": 720,
+                    "unit": "px"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "backgroundColor": "var(--background)",
+                  "borderRadius": "var(--radius-2xl)",
+                  "borderStyle": "solid",
+                  "borderWidth": "var(--border-1)",
+                  "borderColor": "var(--border)",
+                  "clip": true,
+                  "clickBubbling": "never"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "Over the page",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "explicit",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "height": {
+                "value": 100,
+                "unit": "%"
+              },
+              "flexDirection": "column",
+              "alignItems": "center",
+              "justifyContent": "flex-start",
+              "backgroundGradient": "var(--gradient-scrim)",
+              "scrollEnabled": true,
+              "nativeScroll": true,
+              "paddingTop": "var(--space-16)",
+              "paddingBottom": "var(--space-16)",
+              "paddingLeft": "var(--space-4)",
+              "paddingRight": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "csClosePopup",
+            "type": "NavigationClosePopup",
+            "children": [],
+            "label": "Put it away",
+            "x": 590,
+            "y": 760,
+            "parameters": {
+              "closeActions": "close"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "csInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The story",
+            "x": 590,
+            "y": 400,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "picture",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "alt",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "title",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "client",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "year",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "category",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "brief",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "did",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "outcome",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "csInputs",
+            "fromProperty": "picture",
+            "toId": "csPhoto",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "alt",
+            "toId": "csPhoto",
+            "toProperty": "alt"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "title",
+            "toId": "csTitle",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "client",
+            "toId": "csClient",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "year",
+            "toId": "csYear",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "category",
+            "toId": "csTagText",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "brief",
+            "toId": "csBrief",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "did",
+            "toId": "csDid",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csInputs",
+            "fromProperty": "outcome",
+            "toId": "csOutcome",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "csClose",
+            "fromProperty": "onClick",
+            "toId": "csClosePopup",
+            "toProperty": "closeAction-close"
+          },
+          {
+            "fromId": "csBackdrop",
+            "fromProperty": "onClick",
+            "toId": "csClosePopup",
+            "toProperty": "closeAction-close"
+          }
+        ],
+        "visualRoots": [
+          "csBackdrop"
+        ]
+      }
+    },
+    {
+      "name": "/Site/WorkCard",
+      "graph": {
+        "roots": [
+          {
+            "id": "wcCard",
+            "type": "Group",
+            "children": [
+              {
+                "id": "wcPhoto",
+                "type": "Image",
+                "children": [],
+                "label": "The photograph",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "sizeMode": "explicit",
+                  "objectFit": "cover",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 220,
+                    "unit": "px"
+                  },
+                  "src": "",
+                  "alt": ""
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "wcBody",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "wcTag",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "wcTagText",
+                        "type": "Text",
+                        "children": [],
+                        "label": "The kind",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--accent-foreground)",
+                          "fontWeight": "var(--font-semibold)",
+                          "sizeMode": "contentSize"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "What kind of work",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "backgroundColor": "var(--accent)",
+                      "borderRadius": "var(--radius-full)",
+                      "paddingLeft": "var(--space-3)",
+                      "paddingRight": "var(--space-3)",
+                      "paddingTop": "var(--space-1)",
+                      "paddingBottom": "var(--space-1)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "wcTitle",
+                    "type": "Text",
+                    "children": [],
+                    "label": "What it was",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-xl)",
+                      "fontWeight": "var(--font-semibold)",
+                      "lineHeight": "var(--leading-snug)",
+                      "color": "var(--foreground)",
+                      "as": "h3"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "wcMeta",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Who it was for, and when",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "wcLine",
+                    "type": "Text",
+                    "children": [],
+                    "label": "What changed",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "wcMore",
+                    "type": "Text",
+                    "children": [],
+                    "label": "The way in",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "text": "Read the story →",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--primary)",
+                      "fontWeight": "var(--font-semibold)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "The words",
+                "x": 100,
+                "y": 280,
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "rowGap": "var(--space-2)",
+                  "paddingLeft": "var(--space-5)",
+                  "paddingRight": "var(--space-5)",
+                  "paddingTop": "var(--space-5)",
+                  "paddingBottom": "var(--space-5)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One piece of work",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "sizeMode": "contentHeight",
+              "backgroundColor": "var(--surface)",
+              "borderRadius": "var(--radius-xl)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border)",
+              "clip": true,
+              "flexDirection": "column",
+              "cssClassName": "card-lift photo-zoom pressable"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "wcMetaFmt",
+            "type": "String Format",
+            "children": [],
+            "label": "Client · year",
+            "x": 470,
+            "y": 760,
+            "parameters": {
+              "format": "{client} · {year}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "wcPopup",
+            "type": "NavigationShowPopup",
+            "children": [],
+            "label": "Open this story",
+            "x": 470,
+            "y": 40,
+            "parameters": {
+              "target": "/Site/CaseStudy",
+              "stackPolicy": "replace"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "wcInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The piece of work",
+            "x": 470,
+            "y": 160,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "picture",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "alt",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "title",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "client",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "year",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "category",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "summary",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "brief",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "did",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "outcome",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "picture",
+            "toId": "wcPhoto",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "alt",
+            "toId": "wcPhoto",
+            "toProperty": "alt"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "title",
+            "toId": "wcTitle",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "category",
+            "toId": "wcTagText",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "summary",
+            "toId": "wcLine",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "client",
+            "toId": "wcMetaFmt",
+            "toProperty": "client"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "year",
+            "toId": "wcMetaFmt",
+            "toProperty": "year"
+          },
+          {
+            "fromId": "wcMetaFmt",
+            "fromProperty": "formatted",
+            "toId": "wcMeta",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "wcCard",
+            "fromProperty": "onClick",
+            "toId": "wcPopup",
+            "toProperty": "show"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "picture",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-picture"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "alt",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-alt"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "title",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-title"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "client",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-client"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "year",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-year"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "category",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-category"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "brief",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-brief"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "did",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-did"
+          },
+          {
+            "fromId": "wcInputs",
+            "fromProperty": "outcome",
+            "toId": "wcPopup",
+            "toProperty": "popupParam-outcome"
+          }
+        ],
+        "visualRoots": [
+          "wcCard"
+        ]
+      }
+    },
+    {
       "name": "/Site/Quote",
       "graph": {
         "roots": [
@@ -5592,7 +6720,7 @@
                                     "x": 400,
                                     "y": 3760,
                                     "parameters": {
-                                      "text": "Three pieces of work you are proud of",
+                                      "text": "The work, and the story behind each piece",
                                       "fontSize": "var(--text-3xl)",
                                       "fontWeight": "var(--font-semibold)",
                                       "lineHeight": "var(--leading-tight)",
@@ -5621,110 +6749,135 @@
                                 "dynamicports": []
                               },
                               {
+                                "id": "flWorkPills",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "flWorkPillAll",
+                                    "type": "/Site/FilterPill",
+                                    "children": [],
+                                    "label": "Everything",
+                                    "x": 400,
+                                    "y": 4000,
+                                    "parameters": {
+                                      "label": "Everything",
+                                      "value": ""
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "flWorkPill1",
+                                    "type": "/Site/FilterPill",
+                                    "children": [],
+                                    "label": "EDIT — the first kind of work",
+                                    "x": 400,
+                                    "y": 4120,
+                                    "parameters": {
+                                      "label": "The first kind of work",
+                                      "value": "The first kind of work"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "flWorkPill2",
+                                    "type": "/Site/FilterPill",
+                                    "children": [],
+                                    "label": "EDIT — the second kind of work",
+                                    "x": 400,
+                                    "y": 4240,
+                                    "parameters": {
+                                      "label": "The second kind of work",
+                                      "value": "The second kind of work"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "flWorkPill3",
+                                    "type": "/Site/FilterPill",
+                                    "children": [],
+                                    "label": "EDIT — the third kind of work",
+                                    "x": 400,
+                                    "y": 4360,
+                                    "parameters": {
+                                      "label": "The third kind of work",
+                                      "value": "The third kind of work"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "The filter",
+                                "x": 340,
+                                "y": 3880,
+                                "parameters": {
+                                  "width": {
+                                    "value": 100,
+                                    "unit": "%"
+                                  },
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "row",
+                                  "flexWrap": "wrap",
+                                  "alignItems": "center",
+                                  "columnGap": "var(--space-2)",
+                                  "rowGap": "var(--space-2)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "flWorkCountRow",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "flWorkCount",
+                                    "type": "Text",
+                                    "children": [],
+                                    "label": "Showing n of m",
+                                    "x": 400,
+                                    "y": 4600,
+                                    "parameters": {
+                                      "text": "",
+                                      "fontSize": "var(--text-sm)",
+                                      "color": "var(--muted-foreground)",
+                                      "fontVariantNumeric": "tabular-nums"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "How many are showing",
+                                "x": 340,
+                                "y": 4480,
+                                "parameters": {
+                                  "width": {
+                                    "value": 100,
+                                    "unit": "%"
+                                  },
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "row",
+                                  "alignItems": "center",
+                                  "paddingTop": "var(--space-5)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
                                 "id": "flWorkGrid",
                                 "type": "net.noodl.visual.columns",
                                 "children": [
                                   {
-                                    "id": "flWork1Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "flWork1",
-                                        "type": "/Site/PhotoCard",
-                                        "children": [],
-                                        "label": "EDIT — the first piece of work",
-                                        "x": 460,
-                                        "y": 4120,
-                                        "parameters": {
-                                          "picture": "noodl_modules/starter-imagery/work-leather-bench.webp",
-                                          "alt": "A leather workbench with tools laid out",
-                                          "title": "A piece of work",
-                                          "line": "Who it was for, and what changed."
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the first piece of work",
+                                    "id": "flWorkRepeat",
+                                    "type": "For Each",
+                                    "children": [],
+                                    "label": "One card per piece of work",
                                     "x": 400,
-                                    "y": 4000,
+                                    "y": 4840,
                                     "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  },
-                                  {
-                                    "id": "flWork2Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "flWork2",
-                                        "type": "/Site/PhotoCard",
-                                        "children": [],
-                                        "label": "EDIT — the second piece of work",
-                                        "x": 460,
-                                        "y": 4360,
-                                        "parameters": {
-                                          "picture": "noodl_modules/starter-imagery/food-bakery.webp",
-                                          "alt": "A bakery counter",
-                                          "title": "Another piece of work",
-                                          "line": "Who it was for, and what changed."
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the second piece of work",
-                                    "x": 400,
-                                    "y": 4240,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  },
-                                  {
-                                    "id": "flWork3Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "flWork3",
-                                        "type": "/Site/PhotoCard",
-                                        "children": [],
-                                        "label": "EDIT — the third piece of work",
-                                        "x": 460,
-                                        "y": 4600,
-                                        "parameters": {
-                                          "picture": "noodl_modules/starter-imagery/people-desk.webp",
-                                          "alt": "Someone working at a laptop by a window",
-                                          "title": "A third piece of work",
-                                          "line": "Who it was for, and what changed."
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the third piece of work",
-                                    "x": 400,
-                                    "y": 4480,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
+                                      "template": "/Site/WorkCard",
+                                      "templateType": "explicit"
                                     },
                                     "ports": [],
                                     "dynamicports": []
@@ -5732,7 +6885,7 @@
                                 ],
                                 "label": "The grid",
                                 "x": 340,
-                                "y": 3880,
+                                "y": 4720,
                                 "parameters": {
                                   "sizing": "autoFit",
                                   "minWidth": {
@@ -5747,6 +6900,78 @@
                                     "value": 24,
                                     "unit": "px"
                                   }
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "flWorkEmpty",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "flWorkEmptyText",
+                                    "type": "Text",
+                                    "children": [],
+                                    "label": "Nothing here",
+                                    "x": 400,
+                                    "y": 5080,
+                                    "parameters": {
+                                      "text": "Nothing of that kind yet.",
+                                      "fontSize": "var(--text-base)",
+                                      "color": "var(--muted-foreground)",
+                                      "sizeMode": "contentSize"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "flWorkEmptyButton",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Show everything",
+                                    "x": 400,
+                                    "y": 5200,
+                                    "parameters": {
+                                      "label": "Show everything",
+                                      "backgroundColor": "transparent",
+                                      "color": "var(--foreground)",
+                                      "borderRadius": "var(--radius-full)",
+                                      "borderStyle": "solid",
+                                      "borderWidth": "var(--border-1)",
+                                      "borderColor": "var(--border-control)",
+                                      "paddingLeft": "var(--space-6)",
+                                      "paddingRight": "var(--space-6)",
+                                      "paddingTop": "var(--space-3)",
+                                      "paddingBottom": "var(--space-3)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-semibold)",
+                                      "sizeMode": "contentSize",
+                                      "cssClassName": "pressable"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "When the filter matches nothing",
+                                "x": 340,
+                                "y": 4960,
+                                "parameters": {
+                                  "width": {
+                                    "value": 100,
+                                    "unit": "%"
+                                  },
+                                  "sizeMode": "contentHeight",
+                                  "flexDirection": "column",
+                                  "alignItems": "center",
+                                  "rowGap": "var(--space-3)",
+                                  "backgroundColor": "var(--surface-raised)",
+                                  "borderRadius": "var(--radius-xl)",
+                                  "borderStyle": "solid",
+                                  "borderWidth": "var(--border-1)",
+                                  "borderColor": "var(--border)",
+                                  "paddingTop": "var(--space-12)",
+                                  "paddingBottom": "var(--space-12)",
+                                  "mounted": false
                                 },
                                 "ports": [],
                                 "dynamicports": []
@@ -5823,7 +7048,7 @@
                                         "children": [],
                                         "label": "EDIT — a photograph of you at work",
                                         "x": 460,
-                                        "y": 5200,
+                                        "y": 5800,
                                         "parameters": {
                                           "sizeMode": "explicit",
                                           "objectFit": "cover",
@@ -5844,7 +7069,7 @@
                                     ],
                                     "label": "The photograph, rounded",
                                     "x": 400,
-                                    "y": 5080,
+                                    "y": 5680,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -5868,7 +7093,7 @@
                                         "children": [],
                                         "label": "About — eyebrow",
                                         "x": 460,
-                                        "y": 5440,
+                                        "y": 6040,
                                         "parameters": {
                                           "text": "About",
                                           "fontSize": "var(--text-xs)",
@@ -5887,7 +7112,7 @@
                                         "children": [],
                                         "label": "EDIT — About — heading",
                                         "x": 460,
-                                        "y": 5560,
+                                        "y": 6160,
                                         "parameters": {
                                           "text": "A short story about you",
                                           "fontSize": "var(--text-3xl)",
@@ -5906,7 +7131,7 @@
                                         "children": [],
                                         "label": "EDIT — About — first paragraph",
                                         "x": 460,
-                                        "y": 5680,
+                                        "y": 6280,
                                         "parameters": {
                                           "text": "How you came to do this work, and how long you have been doing it. Say it the way you would say it to a client across a table.",
                                           "fontSize": "var(--text-base)",
@@ -5921,7 +7146,7 @@
                                         "children": [],
                                         "label": "EDIT — About — second paragraph",
                                         "x": 460,
-                                        "y": 5800,
+                                        "y": 6400,
                                         "parameters": {
                                           "text": "What you care about in the work, and what working with you is like. One paragraph is enough.",
                                           "fontSize": "var(--text-base)",
@@ -5936,7 +7161,7 @@
                                         "children": [],
                                         "label": "EDIT — About — where you are",
                                         "x": 460,
-                                        "y": 5920,
+                                        "y": 6520,
                                         "parameters": {
                                           "text": "Based in your town · working with people everywhere",
                                           "fontSize": "var(--text-sm)",
@@ -5948,7 +7173,7 @@
                                     ],
                                     "label": "The story",
                                     "x": 400,
-                                    "y": 5320,
+                                    "y": 5920,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -5964,7 +7189,7 @@
                                 ],
                                 "label": "The photograph beside the story",
                                 "x": 340,
-                                "y": 4960,
+                                "y": 5560,
                                 "parameters": {
                                   "layoutString": "1 1",
                                   "marginX": {
@@ -5992,7 +7217,7 @@
                             ],
                             "label": "Shell",
                             "x": 280,
-                            "y": 4840,
+                            "y": 5440,
                             "parameters": {
                               "width": {
                                 "value": 100,
@@ -6015,7 +7240,7 @@
                         ],
                         "label": "About",
                         "x": 220,
-                        "y": 4720,
+                        "y": 5320,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -6050,7 +7275,7 @@
                                     "children": [],
                                     "label": "Kind words — eyebrow",
                                     "x": 400,
-                                    "y": 6400,
+                                    "y": 7000,
                                     "parameters": {
                                       "text": "Kind words",
                                       "fontSize": "var(--text-xs)",
@@ -6069,7 +7294,7 @@
                                     "children": [],
                                     "label": "Kind words — heading",
                                     "x": 400,
-                                    "y": 6520,
+                                    "y": 7120,
                                     "parameters": {
                                       "text": "What clients say",
                                       "fontSize": "var(--text-3xl)",
@@ -6085,7 +7310,7 @@
                                 ],
                                 "label": "Kind words — head",
                                 "x": 340,
-                                "y": 6280,
+                                "y": 6880,
                                 "parameters": {
                                   "width": {
                                     "value": 100,
@@ -6113,7 +7338,7 @@
                                         "children": [],
                                         "label": "EDIT — the first client’s words",
                                         "x": 460,
-                                        "y": 6880,
+                                        "y": 7480,
                                         "parameters": {
                                           "quote": "“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”",
                                           "name": "Their name",
@@ -6127,7 +7352,7 @@
                                     ],
                                     "label": "the first client’s words",
                                     "x": 400,
-                                    "y": 6760,
+                                    "y": 7360,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -6149,7 +7374,7 @@
                                         "children": [],
                                         "label": "EDIT — the second client’s words",
                                         "x": 460,
-                                        "y": 7120,
+                                        "y": 7720,
                                         "parameters": {
                                           "quote": "“Another client, in their own words. Two quotes is plenty; three is a wall.”",
                                           "name": "Their name",
@@ -6163,7 +7388,7 @@
                                     ],
                                     "label": "the second client’s words",
                                     "x": 400,
-                                    "y": 7000,
+                                    "y": 7600,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -6178,7 +7403,7 @@
                                 ],
                                 "label": "The grid",
                                 "x": 340,
-                                "y": 6640,
+                                "y": 7240,
                                 "parameters": {
                                   "sizing": "autoFit",
                                   "minWidth": {
@@ -6200,7 +7425,7 @@
                             ],
                             "label": "Shell",
                             "x": 280,
-                            "y": 6160,
+                            "y": 6760,
                             "parameters": {
                               "width": {
                                 "value": 100,
@@ -6223,7 +7448,7 @@
                         ],
                         "label": "Kind words",
                         "x": 220,
-                        "y": 6040,
+                        "y": 6640,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -6257,7 +7482,7 @@
                             "children": [],
                             "label": "The contact band",
                             "x": 280,
-                            "y": 7360,
+                            "y": 7960,
                             "parameters": {
                               "heading": "Tell me about your project",
                               "line": "A few lines on what you need and when you need it by. I reply to everything.",
@@ -6269,7 +7494,7 @@
                         ],
                         "label": "Where \"Get in touch\" lands",
                         "x": 220,
-                        "y": 7240,
+                        "y": 7840,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -6304,7 +7529,7 @@
                     "children": [],
                     "label": "The foot of the page",
                     "x": 160,
-                    "y": 7480,
+                    "y": 8080,
                     "parameters": {},
                     "ports": [],
                     "dynamicports": []
@@ -6365,6 +7590,89 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "flWorkData",
+            "type": "Static Data",
+            "children": [],
+            "label": "EDIT — the work itself — this list IS the page",
+            "x": 710,
+            "y": 5320,
+            "parameters": {
+              "type": "json",
+              "json": "[\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-leather-bench.webp\",\n    \"alt\": \"A leather workbench with tools laid out\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"A piece of work\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/food-bakery.webp\",\n    \"alt\": \"A bakery counter with loaves on it\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"Another of the same kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-desk.webp\",\n    \"alt\": \"Someone working at a laptop by a window\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"A piece of a different kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-machine-shop.webp\",\n    \"alt\": \"A machine shop with a lathe in use\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"Another of that kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-meeting.webp\",\n    \"alt\": \"Three people talking around a table\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"A piece of the third kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-potter.webp\",\n    \"alt\": \"A potter shaping a bowl on a wheel\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"The last one on the list\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  }\n]"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flWorkVariable",
+            "type": "Variable2",
+            "children": [],
+            "label": "Which kind is selected",
+            "x": 710,
+            "y": 5440,
+            "parameters": {
+              "name": "workFilter"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flWorkFilter",
+            "type": "Filter Collection",
+            "children": [],
+            "label": "Narrow to the selected kind",
+            "x": 710,
+            "y": 4840,
+            "parameters": {
+              "filterFilter": "category",
+              "filterFilterType-category": "string",
+              "filterFilterOp-category": "regex",
+              "filterFilterOption-case-category": false
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flWorkCountFmt",
+            "type": "String Format",
+            "children": [],
+            "label": "Showing n of m",
+            "x": 710,
+            "y": 4600,
+            "parameters": {
+              "format": "Showing {n} of {total}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flWorkIsEmpty",
+            "type": "Expression",
+            "children": [],
+            "label": "Did it match nothing?",
+            "x": 710,
+            "y": 4960,
+            "parameters": {
+              "expression": "shown === 0"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flWorkClear",
+            "type": "Set Variable",
+            "children": [],
+            "label": "Show everything again",
+            "x": 710,
+            "y": 5200,
+            "parameters": {
+              "name": "workFilter",
+              "setWith": "emptyString"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -6379,6 +7687,60 @@
             "fromProperty": "onClick",
             "toId": "flGoSecond",
             "toProperty": "go"
+          },
+          {
+            "fromId": "flWorkData",
+            "fromProperty": "items",
+            "toId": "flWorkFilter",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "flWorkVariable",
+            "fromProperty": "value",
+            "toId": "flWorkFilter",
+            "toProperty": "filterFilterValue-category"
+          },
+          {
+            "fromId": "flWorkFilter",
+            "fromProperty": "items",
+            "toId": "flWorkRepeat",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "flWorkFilter",
+            "fromProperty": "count",
+            "toId": "flWorkCountFmt",
+            "toProperty": "n"
+          },
+          {
+            "fromId": "flWorkData",
+            "fromProperty": "count",
+            "toId": "flWorkCountFmt",
+            "toProperty": "total"
+          },
+          {
+            "fromId": "flWorkCountFmt",
+            "fromProperty": "formatted",
+            "toId": "flWorkCount",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "flWorkFilter",
+            "fromProperty": "count",
+            "toId": "flWorkIsEmpty",
+            "toProperty": "shown"
+          },
+          {
+            "fromId": "flWorkIsEmpty",
+            "fromProperty": "asBoolean",
+            "toId": "flWorkEmpty",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "flWorkEmptyButton",
+            "fromProperty": "onClick",
+            "toId": "flWorkClear",
+            "toProperty": "do"
           }
         ],
         "visualRoots": [

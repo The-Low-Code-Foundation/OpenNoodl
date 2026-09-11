@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f9412d92-9641-50b2-8933-38cb08152db2",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fpInputs",
+      "fromProperty": "label",
+      "toId": "fpLabel",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fpInputs",
+      "fromProperty": "value",
+      "toId": "fpState",
+      "toProperty": "mine"
+    },
+    {
+      "fromId": "fpInputs",
+      "fromProperty": "value",
+      "toId": "fpValue",
+      "toProperty": "v"
+    },
+    {
+      "fromId": "fpCurrent",
+      "fromProperty": "value",
+      "toId": "fpState",
+      "toProperty": "selected"
+    },
+    {
+      "fromId": "fpState",
+      "fromProperty": "asString",
+      "toId": "fpLook",
+      "toProperty": "currentState"
+    },
+    {
+      "fromId": "fpLook",
+      "fromProperty": "bg",
+      "toId": "fpPill",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "fpLook",
+      "fromProperty": "edge",
+      "toId": "fpPill",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "fpLook",
+      "fromProperty": "fg",
+      "toId": "fpLabel",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "fpValue",
+      "fromProperty": "asString",
+      "toId": "fpWrite",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "fpPill",
+      "fromProperty": "onClick",
+      "toId": "fpWrite",
+      "toProperty": "do"
+    }
+  ]
+}

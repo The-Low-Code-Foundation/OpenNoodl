@@ -85,6 +85,12 @@ export const SERVICE_CARD_COMPONENT = '/Site/ServiceCard';
 export const STEP_COMPONENT = '/Site/Step';
 export const STAT_COMPONENT = '/Site/Stat';
 export const PHOTO_CARD_COMPONENT = '/Site/PhotoCard';
+export const WORK_CARD_COMPONENT = '/Site/WorkCard';
+export const CASE_STUDY_COMPONENT = '/Site/CaseStudy';
+export const FILTER_PILL_COMPONENT = '/Site/FilterPill';
+
+/** The app-wide variable the pills write and the work list reads. One name, spelled once. */
+export const WORK_FILTER_VARIABLE = 'workFilter';
 export const QUOTE_COMPONENT = '/Site/Quote';
 export const FAQ_ROW_COMPONENT = '/Site/FaqRow';
 export const HOURS_ROW_COMPONENT = '/Site/HoursRow';
@@ -948,6 +954,290 @@ const SERVICE_CARD: Tpl003Component = {
   ]
 };
 
+// ── Site/FilterPill — one category, lit or not ──────────────────────────────
+
+/**
+ * TPL-004. A pill that writes `workFilter` and lights up when it is the one
+ * selected.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **It emits a state NAME, not a boolean.** An `Expression` reading
+ * `((selected || '') === (mine || '')) ? 'on' : 'off'` wires straight into
+ * `States.currentState`, which the door's own `States` documentation says is an
+ * enum input that selects a state in one wire. A `Condition` driving
+ * `to-on`/`to-off` is two more nodes saying the same thing.
+ *
+ * 🔴 **The `|| ''` on BOTH sides is what makes "All" work on first load.**
+ * Nobody has written the variable when the page opens, and the All pill's own
+ * value is the empty string — without the guards that is `undefined === ''`,
+ * which is false, and the page opens with no pill lit and every card showing.
+ * That reads as broken, and it is a two-character fix rather than a `Set
+ * Variable` fired from a `didMount`.
+ */
+const FILTER_PILL: Tpl003Component = {
+  path: 'Site/FilterPill',
+  nodes: [
+    group(
+      'fpPill',
+      'One pill',
+      undefined,
+      {
+        sizeMode: 'contentSize',
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 'var(--radius-full)',
+        borderStyle: 'solid',
+        borderWidth: 'var(--border-1)',
+        borderColor: 'var(--border-control)',
+        backgroundColor: 'transparent',
+        paddingLeft: 'var(--space-4)',
+        paddingRight: 'var(--space-4)',
+        paddingTop: 'var(--space-2)',
+        paddingBottom: 'var(--space-2)',
+        cssClassName: 'pill pressable'
+      },
+      ['fpLabel']
+    ),
+    text('fpLabel', 'What it says', 'fpPill', '', { ...T_META, fontWeight: 'var(--font-medium)', sizeMode: 'contentSize' }),
+    logic('fpCurrent', VARIABLE_NODE, 'What is selected, app-wide', { name: WORK_FILTER_VARIABLE }),
+    logic('fpState', EXPRESSION_NODE, 'Am I the selected one?', { expression: "((selected || '') === (mine || '')) ? 'on' : 'off'" }),
+    logic('fpLook', STATES_NODE, 'Off / on', {
+      states: 'off,on',
+      values: 'bg,fg,edge',
+      'type-bg': 'color',
+      'type-fg': 'color',
+      'type-edge': 'color',
+      'value-off-bg': 'transparent',
+      'value-on-bg': 'var(--primary)',
+      'value-off-fg': 'var(--foreground)',
+      'value-on-fg': 'var(--primary-foreground)',
+      'value-off-edge': 'var(--border-control)',
+      'value-on-edge': 'var(--primary)',
+      useTransitions: true
+    }),
+    // An unset `value` would write `undefined` into the variable, and `undefined`
+    // is not the empty string the filter reads as "everything".
+    logic('fpValue', EXPRESSION_NODE, 'The category, or nothing at all', { expression: "v || ''" }),
+    logic('fpWrite', SET_VARIABLE_NODE, 'Select this category', { name: WORK_FILTER_VARIABLE, setWith: 'string' }),
+    inputs('fpInputs', 'The pill', ['label', 'value'])
+  ],
+  connections: [
+    wire('fpInputs', 'label', 'fpLabel', 'text'),
+    wire('fpInputs', 'value', 'fpState', 'mine'),
+    wire('fpInputs', 'value', 'fpValue', 'v'),
+    wire('fpCurrent', 'value', 'fpState', 'selected'),
+    wire('fpState', 'asString', 'fpLook', 'currentState'),
+    wire('fpLook', 'bg', 'fpPill', 'backgroundColor'),
+    wire('fpLook', 'edge', 'fpPill', 'borderColor'),
+    wire('fpLook', 'fg', 'fpLabel', 'color'),
+    wire('fpValue', 'asString', 'fpWrite', 'value'),
+    wire('fpPill', 'onClick', 'fpWrite', 'do')
+  ]
+};
+
+// ── Site/WorkCard — one piece of work, and the way into it ──────────────────
+
+/**
+ * TPL-004. What `For Each` draws once per row of the work list.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **The card owns its own `Show Popup`, and that is a race the design
+ * removes rather than a race it wins.** The obvious wiring is the other way
+ * round: the repeater publishes `itemOutputSignal-clicked` and
+ * `itemOutput-title`, and the section holds one `NavigationShowPopup` fed from
+ * those. But a signal is not a promise that the values beside it have arrived —
+ * they are queued per input name and drained a pass at a time — so that version
+ * is correct only if `show` happens to be delivered last.
+ *
+ * Here every data input is wired from this instance's OWN `Component Inputs`,
+ * which the repeater settled when it built the row, long before anybody clicked.
+ * The click carries the signal and nothing else. No ordering assumption exists
+ * to be wrong about.
+ *
+ * ⚠️ **The nine data ports are `popupParam-<name>`, not `<name>`.** The node's
+ * own description says its inputs "mirror the component inputs of the target
+ * popup component", which is true of what they are called in the panel and not
+ * of what a connection has to name — the same prefix trap the `Function` node
+ * carries, and the write gate accepts the bare name in silence.
+ */
+const WORK_CARD: Tpl003Component = {
+  path: 'Site/WorkCard',
+  nodes: [
+    group('wcCard', 'One piece of work', undefined, { ...CARD, cssClassName: 'card-lift photo-zoom pressable' }, ['wcPhoto', 'wcBody']),
+    {
+      id: 'wcPhoto',
+      type: 'Image',
+      label: 'The photograph',
+      parent: 'wcCard',
+      parameters: { ...composition('cardImage'), height: px(220), src: '', alt: '' }
+    },
+    group('wcBody', 'The words', 'wcCard', { ...CARD_BODY, sizeMode: 'contentHeight', rowGap: 'var(--space-2)' }, ['wcTag', 'wcTitle', 'wcMeta', 'wcLine', 'wcMore']),
+    group('wcTag', 'What kind of work', 'wcBody', { sizeMode: 'contentSize', flexDirection: 'row', alignItems: 'center', backgroundColor: 'var(--accent)', borderRadius: 'var(--radius-full)', paddingLeft: 'var(--space-3)', paddingRight: 'var(--space-3)', paddingTop: 'var(--space-1)', paddingBottom: 'var(--space-1)' }, ['wcTagText']),
+    text('wcTagText', 'The kind', 'wcTag', '', { ...T_META, fontWeight: 'var(--font-semibold)', color: 'var(--accent-foreground)', sizeMode: 'contentSize' }),
+    text('wcTitle', 'What it was', 'wcBody', '', H_CARD),
+    text('wcMeta', 'Who it was for, and when', 'wcBody', '', T_META),
+    text('wcLine', 'What changed', 'wcBody', '', { ...T_BODY, color: 'var(--muted-foreground)' }),
+    text('wcMore', 'The way in', 'wcBody', 'Read the story →', { ...T_META, fontWeight: 'var(--font-semibold)', color: 'var(--primary)' }),
+    logic('wcMetaFmt', FORMAT_NODE, 'Client · year', { format: '{client} · {year}' }),
+    logic('wcPopup', SHOW_POPUP_NODE, 'Open this story', { target: CASE_STUDY_COMPONENT, stackPolicy: 'replace' }),
+    inputs('wcInputs', 'The piece of work', ['picture', 'alt', 'title', 'client', 'year', 'category', 'summary', 'brief', 'did', 'outcome'])
+  ],
+  connections: [
+    wire('wcInputs', 'picture', 'wcPhoto', 'src'),
+    wire('wcInputs', 'alt', 'wcPhoto', 'alt'),
+    wire('wcInputs', 'title', 'wcTitle', 'text'),
+    wire('wcInputs', 'category', 'wcTagText', 'text'),
+    wire('wcInputs', 'summary', 'wcLine', 'text'),
+    wire('wcInputs', 'client', 'wcMetaFmt', 'client'),
+    wire('wcInputs', 'year', 'wcMetaFmt', 'year'),
+    wire('wcMetaFmt', 'formatted', 'wcMeta', 'text'),
+    wire('wcCard', 'onClick', 'wcPopup', 'show'),
+    // 🔴 `popupParam-`, on every one of the nine.
+    ...['picture', 'alt', 'title', 'client', 'year', 'category', 'brief', 'did', 'outcome'].map((name) =>
+      wire('wcInputs', name, 'wcPopup', `popupParam-${name}`)
+    )
+  ]
+};
+
+// ── Site/CaseStudy — the story behind a card, over the page ─────────────────
+
+/**
+ * TPL-004 — the popup `Site/WorkCard` opens. Three headings, because a case
+ * study that is one paragraph is a caption: what they came with, what was done,
+ * what happened.
+ *
+ * 🔴 **`clickBubbling: 'never'` on the panel is not tidiness — without it the
+ * popup closes when you click inside it.** The backdrop closes on a click, the
+ * panel sits inside the backdrop, and a click on a child runs the ancestor's
+ * `Click` as well unless the child's own click is wired or it says never
+ * (`pointerlisteners.ts`). Nothing on the panel is clickable, so `auto` does not
+ * save it. This is the shape of a defect that renders perfectly.
+ */
+const CASE_STUDY: Tpl003Component = {
+  path: 'Site/CaseStudy',
+  nodes: [
+    group(
+      'csBackdrop',
+      'Over the page',
+      undefined,
+      {
+        sizeMode: 'explicit',
+        width: pct(100),
+        height: pct(100),
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        backgroundGradient: 'var(--gradient-scrim)',
+        scrollEnabled: true,
+        nativeScroll: true,
+        paddingTop: 'var(--space-16)',
+        paddingBottom: 'var(--space-16)',
+        paddingLeft: 'var(--space-4)',
+        paddingRight: 'var(--space-4)'
+      },
+      ['csPanel']
+    ),
+    group(
+      'csPanel',
+      'The panel',
+      'csBackdrop',
+      {
+        width: pct(100),
+        maxWidth: px(720),
+        sizeMode: 'contentHeight',
+        flexDirection: 'column',
+        backgroundColor: 'var(--background)',
+        borderRadius: 'var(--radius-2xl)',
+        borderStyle: 'solid',
+        borderWidth: 'var(--border-1)',
+        borderColor: 'var(--border)',
+        clip: true,
+        clickBubbling: 'never'
+      },
+      ['csMedia', 'csBody']
+    ),
+    group('csMedia', 'The photograph', 'csPanel', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column' }, ['csPhoto']),
+    {
+      id: 'csPhoto',
+      type: 'Image',
+      label: 'The photograph',
+      parent: 'csMedia',
+      parameters: { ...composition('cardImage'), height: px(300), src: '', alt: '' }
+    },
+    // 🔴 The way out is IN FLOW and it says "Close" in words.
+    //
+    // It was an absolutely-positioned round button floating over the
+    // photograph — prettier, and two things wrong with it. The door refused it
+    // (`unsized-absolute-box`: an absolute box with no width or height defaults
+    // to 100% of its parent and paints its background across all of it), and the
+    // fix that keeps the float is an icon-only button — which this Button node
+    // has no way to label, so a screen reader would announce nothing at all.
+    group('csCloseRow', 'The way out', 'csBody', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'row', justifyContent: 'flex-end' }, ['csClose']),
+    button('csClose', 'Close', 'csCloseRow', {
+      sizeMode: 'contentSize',
+      backgroundColor: 'transparent',
+      color: 'var(--foreground)',
+      borderRadius: 'var(--radius-full)',
+      borderStyle: 'solid',
+      borderWidth: 'var(--border-1)',
+      borderColor: 'var(--border-control)',
+      paddingLeft: 'var(--space-5)',
+      paddingRight: 'var(--space-5)',
+      paddingTop: 'var(--space-2)',
+      paddingBottom: 'var(--space-2)',
+      fontSize: 'var(--text-sm)',
+      cssClassName: 'pressable'
+    }),
+    group('csBody', 'The story', 'csPanel', { ...CARD_BODY, sizeMode: 'contentHeight', rowGap: 'var(--space-3)' }, [
+      'csCloseRow',
+      'csMetaRow',
+      'csTitle',
+      'csClient',
+      'csBriefLabel',
+      'csBrief',
+      'csDidLabel',
+      'csDid',
+      'csOutcomeLabel',
+      'csOutcome'
+    ]),
+    group('csMetaRow', 'The kind, and the year', 'csBody', { sizeMode: 'contentSize', flexDirection: 'row', alignItems: 'center', columnGap: 'var(--space-3)' }, ['csTag', 'csYear']),
+    group('csTag', 'What kind of work', 'csMetaRow', { sizeMode: 'contentSize', flexDirection: 'row', alignItems: 'center', backgroundColor: 'var(--accent)', borderRadius: 'var(--radius-full)', paddingLeft: 'var(--space-3)', paddingRight: 'var(--space-3)', paddingTop: 'var(--space-1)', paddingBottom: 'var(--space-1)' }, ['csTagText']),
+    text('csTagText', 'The kind', 'csTag', '', { ...T_META, fontWeight: 'var(--font-semibold)', color: 'var(--accent-foreground)', sizeMode: 'contentSize' }),
+    text('csYear', 'The year', 'csMetaRow', '', { ...T_META, sizeMode: 'contentSize' }),
+    text('csTitle', 'What it was', 'csBody', '', { ...H_SECTION, fontSize: 'var(--text-3xl)' }),
+    text('csClient', 'Who it was for', 'csBody', '', { ...T_BODY, color: 'var(--muted-foreground)' }),
+    ...[
+      ['Brief', 'What they came with'],
+      ['Did', 'What you did'],
+      ['Outcome', 'What happened']
+    ].flatMap(([key, heading]) => [
+      text(`cs${key}Label`, `${heading} — the label`, 'csBody', heading, {
+        fontSize: 'var(--text-xs)',
+        fontWeight: 'var(--font-semibold)',
+        letterSpacing: 'var(--tracking-widest)',
+        textTransform: 'uppercase',
+        color: 'var(--primary)'
+      }),
+      text(`cs${key}`, heading, 'csBody', '', T_BODY)
+    ]),
+    logic('csClosePopup', CLOSE_POPUP_NODE, 'Put it away', { closeActions: 'close' }),
+    inputs('csInputs', 'The story', ['picture', 'alt', 'title', 'client', 'year', 'category', 'brief', 'did', 'outcome'])
+  ],
+  connections: [
+    wire('csInputs', 'picture', 'csPhoto', 'src'),
+    wire('csInputs', 'alt', 'csPhoto', 'alt'),
+    wire('csInputs', 'title', 'csTitle', 'text'),
+    wire('csInputs', 'client', 'csClient', 'text'),
+    wire('csInputs', 'year', 'csYear', 'text'),
+    wire('csInputs', 'category', 'csTagText', 'text'),
+    wire('csInputs', 'brief', 'csBrief', 'text'),
+    wire('csInputs', 'did', 'csDid', 'text'),
+    wire('csInputs', 'outcome', 'csOutcome', 'text'),
+    wire('csClose', 'onClick', 'csClosePopup', 'closeAction-close'),
+    wire('csBackdrop', 'onClick', 'csClosePopup', 'closeAction-close')
+  ]
+};
+
 // ── Site/Quote — what a client said ──────────────────────────────────────────
 
 const QUOTE: Tpl003Component = {
@@ -1709,6 +1999,24 @@ function heroWires(p: string): unknown[] {
   ];
 }
 
+/**
+ * TPL-004 — the freelancer page's work, as data.
+ *
+ * ⚠️ **§E-ii survives the move to a list.** Nothing here is an invented studio or
+ * a fictional client: every row is written in the shape of the thing it stands
+ * for, the same rule the hand-placed cards followed. What changed is that a
+ * person edits six rows in one node instead of three copies of a subtree.
+ *
+ * 🔴 **`category` is the field the pills filter on, and the pill labels are the
+ * category strings themselves.** Those two are in different nodes, which is a
+ * pair that can be mistyped — so the gate asserts every pill's value appears as
+ * a category in this list. Rename a kind of work here and the gate names the
+ * pill you forgot.
+ */
+export const WORK_CATEGORIES = ["The first kind of work", "The second kind of work", "The third kind of work"];
+
+export const WORK_JSON = JSON.stringify([{"picture": "noodl_modules/starter-imagery/work-leather-bench.webp","alt": "A leather workbench with tools laid out","category": "The first kind of work","title": "A piece of work","client": "Who it was for","year": "2026","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."},{"picture": "noodl_modules/starter-imagery/food-bakery.webp","alt": "A bakery counter with loaves on it","category": "The first kind of work","title": "Another of the same kind","client": "Who it was for","year": "2025","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."},{"picture": "noodl_modules/starter-imagery/people-desk.webp","alt": "Someone working at a laptop by a window","category": "The second kind of work","title": "A piece of a different kind","client": "Who it was for","year": "2026","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."},{"picture": "noodl_modules/starter-imagery/work-machine-shop.webp","alt": "A machine shop with a lathe in use","category": "The second kind of work","title": "Another of that kind","client": "Who it was for","year": "2025","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."},{"picture": "noodl_modules/starter-imagery/people-meeting.webp","alt": "Three people talking around a table","category": "The third kind of work","title": "A piece of the third kind","client": "Who it was for","year": "2024","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."},{"picture": "noodl_modules/starter-imagery/work-potter.webp","alt": "A potter shaping a bowl on a wheel","category": "The third kind of work","title": "The last one on the list","client": "Who it was for","year": "2024","summary": "One line on what it was and what changed. This is all the card shows.","brief": "What they came to you with, and what was hard about it. Two sentences.","did": "What you actually did — the decisions, not the deliverables. Two or three sentences.","outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."}], null, 2);
+
 // ── Pages/Freelancer — one person, three services, the work, a word ──────────
 
 const FL_CONTACT = {
@@ -1786,12 +2094,76 @@ const FREELANCER: Tpl003Component = {
         }
       }
     ]),
-    ...section('flWork', 'flMain', 'surface', { eyebrow: 'Recent work', heading: 'Three pieces of work you are proud of' }, ['flWorkGrid']),
-    ...grid('flWorkGrid', 'flWorkShell', [
-      { id: 'flWork1', type: PHOTO_CARD_COMPONENT, label: 'the first piece of work', parameters: { picture: photo('work-leather-bench.webp'), alt: 'A leather workbench with tools laid out', title: 'A piece of work', line: 'Who it was for, and what changed.' } },
-      { id: 'flWork2', type: PHOTO_CARD_COMPONENT, label: 'the second piece of work', parameters: { picture: photo('food-bakery.webp'), alt: 'A bakery counter', title: 'Another piece of work', line: 'Who it was for, and what changed.' } },
-      { id: 'flWork3', type: PHOTO_CARD_COMPONENT, label: 'the third piece of work', parameters: { picture: photo('people-desk.webp'), alt: 'Someone working at a laptop by a window', title: 'A third piece of work', line: 'Who it was for, and what changed.' } }
+    // ── TPL-004: the work is a LIST, and the page reads it ────────────────
+    //
+    // 🔴 **This was three hand-placed cards.** Adding a fourth meant copying a
+    // node and rewiring four parameters; changing how a card looks meant doing
+    // it three times. It is now one `Static Data` node a person edits like a
+    // spreadsheet, narrowed by a `Filter Collection` and drawn by a `For Each` —
+    // so the page has as many pieces of work as the list has rows, and the card
+    // is one component.
+    //
+    // 🔴 **The filter is nodes, not six lines of JavaScript.** `Filter
+    // Collection`'s own documentation is what makes it possible: `filterFilter`
+    // is a list of property names, and each one mints
+    // `filterFilterType-<p>`, `filterFilterOp-<p>` and a **connectable**
+    // `filterFilterValue-<p>`. The obvious `items.filter(i => ...)` would work
+    // and would put the one decision a person is most likely to change — which
+    // field the pills filter on — inside a code editor.
+    //
+    // ⚠️ An empty filter value with `op: regex` matches everything, which is the
+    // "All" pill for free rather than a special case anywhere in the graph.
+    ...section('flWork', 'flMain', 'surface', { eyebrow: 'Recent work', heading: 'The work, and the story behind each piece' }, [
+      'flWorkPills',
+      'flWorkCountRow',
+      'flWorkGrid',
+      'flWorkEmpty'
     ]),
+    group('flWorkPills', 'The filter', 'flWorkShell', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--space-2)', rowGap: 'var(--space-2)' }, [
+      'flWorkPillAll',
+      'flWorkPill1',
+      'flWorkPill2',
+      'flWorkPill3'
+    ]),
+    place('flWorkPillAll', FILTER_PILL_COMPONENT, 'Everything', 'flWorkPills', { label: 'Everything', value: '' }),
+    ...WORK_CATEGORIES.map((category, i) =>
+      place(`flWorkPill${i + 1}`, FILTER_PILL_COMPONENT, `${EDIT}the ${['first', 'second', 'third'][i]} kind of work`, 'flWorkPills', { label: category, value: category })
+    ),
+    group('flWorkCountRow', 'How many are showing', 'flWorkShell', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'row', alignItems: 'center', paddingTop: 'var(--space-5)' }, ['flWorkCount']),
+    text('flWorkCount', 'Showing n of m', 'flWorkCountRow', '', { ...T_META, fontVariantNumeric: 'tabular-nums' }),
+    {
+      id: 'flWorkGrid',
+      type: COLUMNS_NODE,
+      label: 'The grid',
+      parent: 'flWorkShell',
+      parameters: { ...composition('gridAutoFit'), minWidth: px(300), marginY: px(24) },
+      children: ['flWorkRepeat']
+    },
+    logic('flWorkRepeat', FOR_EACH_NODE, 'One card per piece of work', { template: WORK_CARD_COMPONENT, templateType: 'explicit' }),
+    // The one screen a filter can produce that nothing else on the page can, and
+    // the one nobody writes until they have seen it empty.
+    group('flWorkEmpty', 'When the filter matches nothing', 'flWorkShell', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', alignItems: 'center', rowGap: 'var(--space-3)', backgroundColor: 'var(--surface-raised)', borderRadius: 'var(--radius-xl)', borderStyle: 'solid', borderWidth: 'var(--border-1)', borderColor: 'var(--border)', paddingTop: 'var(--space-12)', paddingBottom: 'var(--space-12)', mounted: false }, [
+      'flWorkEmptyText',
+      'flWorkEmptyButton'
+    ]),
+    text('flWorkEmptyText', 'Nothing here', 'flWorkEmpty', 'Nothing of that kind yet.', { ...T_BODY, color: 'var(--muted-foreground)', sizeMode: 'contentSize' }),
+    button('flWorkEmptyButton', 'Show everything', 'flWorkEmpty', { ...OUTLINE, cssClassName: 'pressable' }),
+    {
+      id: 'flWorkData',
+      type: STATIC_DATA_NODE,
+      label: `${EDIT}the work itself — this list IS the page`,
+      parameters: { type: 'json', json: WORK_JSON }
+    },
+    logic('flWorkVariable', VARIABLE_NODE, 'Which kind is selected', { name: WORK_FILTER_VARIABLE }),
+    logic('flWorkFilter', FILTER_NODE, 'Narrow to the selected kind', {
+      filterFilter: 'category',
+      'filterFilterType-category': 'string',
+      'filterFilterOp-category': 'regex',
+      'filterFilterOption-case-category': false
+    }),
+    logic('flWorkCountFmt', FORMAT_NODE, 'Showing n of m', { format: 'Showing {n} of {total}' }),
+    logic('flWorkIsEmpty', EXPRESSION_NODE, 'Did it match nothing?', { expression: 'shown === 0' }),
+    logic('flWorkClear', SET_VARIABLE_NODE, 'Show everything again', { name: WORK_FILTER_VARIABLE, setWith: 'emptyString' }),
     // About — a photograph beside a short story, two-up, one column on a phone.
     // 🔴 A hand-built band, so `section()` did not give it its class — and the
     // nav link aimed at it scrolled nowhere until the target gate said so.
@@ -1824,7 +2196,20 @@ const FREELANCER: Tpl003Component = {
       { id: 'flQuote2', type: QUOTE_COMPONENT, label: 'the second client’s words', parameters: { quote: '“Another client, in their own words. Two quotes is plenty; three is a wall.”', name: 'Their name', role: 'What they do, and where', portrait: photo('avatar-5.webp'), alt: 'A woman smiling outdoors' } }
     ], 440)
   ],
-  connections: [...FREELANCER_FRAME.connections, ...heroWires('fl')]
+  connections: [
+    ...FREELANCER_FRAME.connections,
+    ...heroWires('fl'),
+    // TPL-004 — the list, the filter, the count, the empty state.
+    wire('flWorkData', 'items', 'flWorkFilter', 'items'),
+    wire('flWorkVariable', 'value', 'flWorkFilter', 'filterFilterValue-category'),
+    wire('flWorkFilter', 'items', 'flWorkRepeat', 'items'),
+    wire('flWorkFilter', 'count', 'flWorkCountFmt', 'n'),
+    wire('flWorkData', 'count', 'flWorkCountFmt', 'total'),
+    wire('flWorkCountFmt', 'formatted', 'flWorkCount', 'text'),
+    wire('flWorkFilter', 'count', 'flWorkIsEmpty', 'shown'),
+    wire('flWorkIsEmpty', 'asBoolean', 'flWorkEmpty', 'mounted'),
+    wire('flWorkEmptyButton', 'onClick', 'flWorkClear', 'do')
+  ]
 };
 
 // ── Pages/Business — a place people visit ────────────────────────────────────
@@ -2226,7 +2611,7 @@ const LAUNCH: Tpl003Component = {
 // ── Author order ─────────────────────────────────────────────────────────────
 
 /** The parts a page places, before the pages that place them. */
-export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, SERVICE_CARD, STEP, STAT, PHOTO_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
+export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, SERVICE_CARD, STEP, STAT, PHOTO_CARD, FILTER_PILL, CASE_STUDY, WORK_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
 
 /** The pages. 🔴 The first one written becomes the router's start page, and it must be the freelancer look at `/`. */
 export const TPL003_PAGES: Tpl003Component[] = [FREELANCER, BUSINESS, LAUNCH];

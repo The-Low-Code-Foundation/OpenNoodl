@@ -32,12 +32,15 @@ import {
   PAGE_BUSINESS,
   PAGE_FREELANCER,
   PAGE_LAUNCH,
+  CASE_STUDY_COMPONENT,
+  FILTER_PILL_COMPONENT,
   PLACEHOLDER_ADDRESS,
   ROUTER,
   SCROLL_TO_COMPONENT,
   SENT_TEXT,
   SWITCHER_COMPONENT,
-  TPL003_COMPONENTS
+  TPL003_COMPONENTS,
+  WORK_CARD_COMPONENT
 } from './tpl003Components';
 import {
   buildLandingTemplateProject,
@@ -522,12 +525,129 @@ describe('TPL-003 — the three pages share the frame and each has one heading',
     }
   });
 
+  /**
+   * 🔴 **TPL-004 nearly took this check's eyes out, and the check said so.**
+   *
+   * It read parameter VALUES, which was every photograph in the template until
+   * six of them moved inside a `Static Data` node's `json` string. That string
+   * does not start with the prefix, so those six became invisible: a mistyped
+   * path in the work list would have rendered as a broken image and passed here.
+   * The floor dropping from 12 to 10 is the only reason anybody noticed.
+   *
+   * So the collector reads INSIDE the JSON too. The floor is a control on the
+   * collector, not a target — it is what tells you the reader has gone blind
+   * again the next time the copy moves somewhere new.
+   */
+  const PHOTO_PREFIX = 'noodl_modules/starter-imagery/';
+  const photographsIn = (n: StoredNode): string[] => {
+    const found: string[] = [];
+    for (const [key, value] of Object.entries(n.parameters ?? {})) {
+      if (typeof value !== 'string') continue;
+      if (value.startsWith(PHOTO_PREFIX)) found.push(value);
+      // A data node's copy is a JSON string; the paths in it are real references.
+      else if (key === 'json' && value.includes(PHOTO_PREFIX)) {
+        for (const m of value.matchAll(/noodl_modules\/starter-imagery\/[A-Za-z0-9._-]+/g)) found.push(m[0]);
+      }
+    }
+    return found;
+  };
+
   it('every photograph a page or a part names is a starter asset every project has', () => {
-    const refs = shipped.flatMap((c) =>
-      c.nodes.flatMap((n) => Object.values(n.parameters ?? {}).filter((v) => typeof v === 'string' && v.startsWith('noodl_modules/starter-imagery/')) as string[])
-    );
-    expect(refs.length).toBeGreaterThan(10);
+    const refs = shipped.flatMap((c) => c.nodes.flatMap(photographsIn));
+    expect(refs.length).toBeGreaterThan(14);
     for (const ref of refs) expect(fs.existsSync(path.join(STARTER_IMAGERY, path.basename(ref)))).toBe(true);
+  });
+
+  it('control: the reader can see inside a data node, which is where six of them now live', () => {
+    const inData = shipped.flatMap((c) => c.nodes.filter((n) => n.type === 'Static Data').flatMap(photographsIn));
+    expect(inData.length).toBeGreaterThanOrEqual(6);
+  });
+});
+
+// ── 6b. TPL-004: the work is a list, and the list agrees with the pills ──────
+
+describe('TPL-004 — the work list, the filter and the popup', () => {
+  const freelancer = byName(PAGE_FREELANCER);
+  const workRows = (): Array<Record<string, unknown>> => {
+    const node = freelancer.nodes.find((n) => n.type === 'Static Data');
+    expect(node).toBeDefined();
+    return JSON.parse(String(node!.parameters?.json)) as Array<Record<string, unknown>>;
+  };
+
+  it('control: the page holds a list, a filter, a repeater and no hand-placed work card', () => {
+    const types = freelancer.nodes.map((n) => n.type);
+    expect(types).toContain('Static Data');
+    expect(types).toContain('Filter Collection');
+    expect(types).toContain('For Each');
+    // The thing this replaced. A hand-placed card here would mean the page has
+    // two ways of saying what the work is, and only one of them filters.
+    expect(types).not.toContain(WORK_CARD_COMPONENT);
+    expect(workRows().length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('🔴 every pill filters on a kind of work that is actually in the list', () => {
+    const categories = new Set(workRows().map((row) => String(row.category)));
+    const pills = freelancer.nodes.filter((n) => n.type === FILTER_PILL_COMPONENT);
+    // Control: there are pills, and one of them is the "everything" pill whose
+    // empty value is what makes a regex filter match the whole list.
+    expect(pills.length).toBeGreaterThanOrEqual(3);
+    expect(pills.some((n) => n.parameters?.value === '')).toBe(true);
+
+    const dangling = pills
+      .map((n) => String(n.parameters?.value ?? ''))
+      .filter((value) => value !== '' && !categories.has(value));
+    expect(dangling).toEqual([]);
+  });
+
+  it('🔴 every field a card or the popup reads is a field the list actually has', () => {
+    const row = workRows()[0];
+    // The repeater binds an item's properties to the template component's
+    // declared inputs BY NAME. A card input the list never supplies is a card
+    // that renders with one line permanently blank — and renders, and reports
+    // nothing.
+    const cardInputs = declaredPorts(byName(WORK_CARD_COMPONENT), 'inputs');
+    expect([...cardInputs].filter((name) => !(name in row))).toEqual([]);
+    const popupInputs = declaredPorts(byName(CASE_STUDY_COMPONENT), 'inputs');
+    expect([...popupInputs].filter((name) => !(name in row))).toEqual([]);
+  });
+
+  it('🔴 the popup is opened through `popupParam-`, not through the bare names', () => {
+    const card = byName(WORK_CARD_COMPONENT);
+    const popup = card.nodes.find((n) => n.type === 'NavigationShowPopup');
+    expect(popup?.parameters?.target).toBe(CASE_STUDY_COMPONENT);
+
+    const into = card.connections.filter((w) => w.toId === popup!.id);
+    const shows = into.filter((w) => w.toProperty === 'show');
+    const params = into.filter((w) => w.toProperty !== 'show');
+    expect(shows).toHaveLength(1);
+    expect(params.length).toBeGreaterThanOrEqual(8);
+    // The trap: the node's description says its inputs "mirror the component
+    // inputs of the target popup", and the write gate accepts the bare name in
+    // silence. Nine parameters arriving as undefined renders clean.
+    const bare = params.filter((w) => !String(w.toProperty).startsWith('popupParam-'));
+    expect(bare).toEqual([]);
+    const popupInputs = declaredPorts(byName(CASE_STUDY_COMPONENT), 'inputs');
+    const unknown = params.filter((w) => !popupInputs.has(String(w.toProperty).replace('popupParam-', '')));
+    expect(unknown).toEqual([]);
+  });
+
+  it('🔴 a click inside the popup cannot close it', () => {
+    const popup = byName(CASE_STUDY_COMPONENT);
+    const backdrop = popup.nodes.find((n) => n.id === 'csBackdrop');
+    const panel = popup.nodes.find((n) => n.id === 'csPanel');
+    // The backdrop closes on a click and the panel sits inside it, so without
+    // this the popup shuts the moment somebody clicks the text they opened it
+    // to read. `auto` does not save it: nothing on the panel is itself wired.
+    expect(popup.connections.some((w) => w.fromId === backdrop!.id && w.fromProperty === 'onClick')).toBe(true);
+    expect(panel?.parameters?.clickBubbling).toBe('never');
+  });
+
+  it('every For Each names a component that exists', () => {
+    const repeaters = shipped.flatMap((c) => c.nodes.filter((n) => n.type === 'For Each').map((n) => ({ c, n })));
+    expect(repeaters.length).toBeGreaterThanOrEqual(1);
+    for (const { n } of repeaters) {
+      expect(shipped.map((c) => c.legacyName)).toContain(String(n.parameters?.template));
+    }
   });
 });
 

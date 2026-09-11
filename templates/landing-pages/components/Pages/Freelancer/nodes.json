@@ -111,7 +111,7 @@
         "cssClassName": "site-contact"
       },
       "x": 220,
-      "y": 7240
+      "y": 7840
     },
     {
       "id": "flContact",
@@ -124,7 +124,7 @@
         "button": "Send"
       },
       "x": 280,
-      "y": 7360
+      "y": 7960
     },
     {
       "id": "flFooter",
@@ -132,7 +132,7 @@
       "label": "The foot of the page",
       "parent": "flGround",
       "x": 160,
-      "y": 7480
+      "y": 8080
     },
     {
       "id": "flGoContact",
@@ -654,7 +654,10 @@
       "parent": "flWork",
       "children": [
         "flWorkHead",
-        "flWorkGrid"
+        "flWorkPills",
+        "flWorkCountRow",
+        "flWorkGrid",
+        "flWorkEmpty"
       ],
       "parameters": {
         "width": {
@@ -720,7 +723,7 @@
       "label": "EDIT — Recent work — heading",
       "parent": "flWorkHead",
       "parameters": {
-        "text": "Three pieces of work you are proud of",
+        "text": "The work, and the story behind each piece",
         "fontSize": "var(--text-3xl)",
         "fontWeight": "var(--font-semibold)",
         "lineHeight": "var(--leading-tight)",
@@ -732,14 +735,121 @@
       "y": 3760
     },
     {
+      "id": "flWorkPills",
+      "type": "Group",
+      "label": "The filter",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkPillAll",
+        "flWorkPill1",
+        "flWorkPill2",
+        "flWorkPill3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 3880
+    },
+    {
+      "id": "flWorkPillAll",
+      "type": "/Site/FilterPill",
+      "label": "Everything",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "Everything",
+        "value": ""
+      },
+      "x": 400,
+      "y": 4000
+    },
+    {
+      "id": "flWorkPill1",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the first kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The first kind of work",
+        "value": "The first kind of work"
+      },
+      "x": 400,
+      "y": 4120
+    },
+    {
+      "id": "flWorkPill2",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the second kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The second kind of work",
+        "value": "The second kind of work"
+      },
+      "x": 400,
+      "y": 4240
+    },
+    {
+      "id": "flWorkPill3",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the third kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The third kind of work",
+        "value": "The third kind of work"
+      },
+      "x": 400,
+      "y": 4360
+    },
+    {
+      "id": "flWorkCountRow",
+      "type": "Group",
+      "label": "How many are showing",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkCount"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "paddingTop": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 4480
+    },
+    {
+      "id": "flWorkCount",
+      "type": "Text",
+      "label": "Showing n of m",
+      "parent": "flWorkCountRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontVariantNumeric": "tabular-nums"
+      },
+      "x": 400,
+      "y": 4600
+    },
+    {
       "id": "flWorkGrid",
       "type": "net.noodl.visual.columns",
       "label": "The grid",
       "parent": "flWorkShell",
       "children": [
-        "flWork1Cell",
-        "flWork2Cell",
-        "flWork3Cell"
+        "flWorkRepeat"
       ],
       "parameters": {
         "sizing": "autoFit",
@@ -757,15 +867,28 @@
         }
       },
       "x": 340,
-      "y": 3880
+      "y": 4720
     },
     {
-      "id": "flWork1Cell",
-      "type": "Group",
-      "label": "the first piece of work",
+      "id": "flWorkRepeat",
+      "type": "For Each",
+      "label": "One card per piece of work",
+      "parameters": {
+        "template": "/Site/WorkCard",
+        "templateType": "explicit"
+      },
       "parent": "flWorkGrid",
+      "x": 400,
+      "y": 4840
+    },
+    {
+      "id": "flWorkEmpty",
+      "type": "Group",
+      "label": "When the filter matches nothing",
+      "parent": "flWorkShell",
       "children": [
-        "flWork1"
+        "flWorkEmptyText",
+        "flWorkEmptyButton"
       ],
       "parameters": {
         "width": {
@@ -773,90 +896,124 @@
           "unit": "%"
         },
         "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-3)",
+        "backgroundColor": "var(--surface-raised)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 4960
+    },
+    {
+      "id": "flWorkEmptyText",
+      "type": "Text",
+      "label": "Nothing here",
+      "parent": "flWorkEmpty",
+      "parameters": {
+        "text": "Nothing of that kind yet.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
       },
       "x": 400,
-      "y": 4000
+      "y": 5080
     },
     {
-      "id": "flWork1",
-      "type": "/Site/PhotoCard",
-      "label": "EDIT — the first piece of work",
-      "parent": "flWork1Cell",
+      "id": "flWorkEmptyButton",
+      "type": "net.noodl.controls.button",
+      "label": "Show everything",
+      "parent": "flWorkEmpty",
       "parameters": {
-        "picture": "noodl_modules/starter-imagery/work-leather-bench.webp",
-        "alt": "A leather workbench with tools laid out",
-        "title": "A piece of work",
-        "line": "Who it was for, and what changed."
-      },
-      "x": 460,
-      "y": 4120
-    },
-    {
-      "id": "flWork2Cell",
-      "type": "Group",
-      "label": "the second piece of work",
-      "parent": "flWorkGrid",
-      "children": [
-        "flWork2"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "label": "Show everything",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "cssClassName": "pressable"
       },
       "x": 400,
-      "y": 4240
+      "y": 5200
     },
     {
-      "id": "flWork2",
-      "type": "/Site/PhotoCard",
-      "label": "EDIT — the second piece of work",
-      "parent": "flWork2Cell",
+      "id": "flWorkData",
+      "type": "Static Data",
+      "label": "EDIT — the work itself — this list IS the page",
       "parameters": {
-        "picture": "noodl_modules/starter-imagery/food-bakery.webp",
-        "alt": "A bakery counter",
-        "title": "Another piece of work",
-        "line": "Who it was for, and what changed."
+        "type": "json",
+        "json": "[\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-leather-bench.webp\",\n    \"alt\": \"A leather workbench with tools laid out\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"A piece of work\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/food-bakery.webp\",\n    \"alt\": \"A bakery counter with loaves on it\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"Another of the same kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-desk.webp\",\n    \"alt\": \"Someone working at a laptop by a window\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"A piece of a different kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-machine-shop.webp\",\n    \"alt\": \"A machine shop with a lathe in use\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"Another of that kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-meeting.webp\",\n    \"alt\": \"Three people talking around a table\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"A piece of the third kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-potter.webp\",\n    \"alt\": \"A potter shaping a bowl on a wheel\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"The last one on the list\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  }\n]"
       },
-      "x": 460,
-      "y": 4360
+      "x": 710,
+      "y": 5320
     },
     {
-      "id": "flWork3Cell",
-      "type": "Group",
-      "label": "the third piece of work",
-      "parent": "flWorkGrid",
-      "children": [
-        "flWork3"
-      ],
+      "id": "flWorkVariable",
+      "type": "Variable2",
+      "label": "Which kind is selected",
       "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "name": "workFilter"
       },
-      "x": 400,
-      "y": 4480
+      "x": 710,
+      "y": 5440
     },
     {
-      "id": "flWork3",
-      "type": "/Site/PhotoCard",
-      "label": "EDIT — the third piece of work",
-      "parent": "flWork3Cell",
+      "id": "flWorkFilter",
+      "type": "Filter Collection",
+      "label": "Narrow to the selected kind",
       "parameters": {
-        "picture": "noodl_modules/starter-imagery/people-desk.webp",
-        "alt": "Someone working at a laptop by a window",
-        "title": "A third piece of work",
-        "line": "Who it was for, and what changed."
+        "filterFilter": "category",
+        "filterFilterType-category": "string",
+        "filterFilterOp-category": "regex",
+        "filterFilterOption-case-category": false
       },
-      "x": 460,
+      "x": 710,
+      "y": 4840
+    },
+    {
+      "id": "flWorkCountFmt",
+      "type": "String Format",
+      "label": "Showing n of m",
+      "parameters": {
+        "format": "Showing {n} of {total}"
+      },
+      "x": 710,
       "y": 4600
+    },
+    {
+      "id": "flWorkIsEmpty",
+      "type": "Expression",
+      "label": "Did it match nothing?",
+      "parameters": {
+        "expression": "shown === 0"
+      },
+      "x": 710,
+      "y": 4960
+    },
+    {
+      "id": "flWorkClear",
+      "type": "Set Variable",
+      "label": "Show everything again",
+      "parameters": {
+        "name": "workFilter",
+        "setWith": "emptyString"
+      },
+      "x": 710,
+      "y": 5200
     },
     {
       "id": "flAbout",
@@ -880,7 +1037,7 @@
         "cssClassName": "section-flAbout"
       },
       "x": 220,
-      "y": 4720
+      "y": 5320
     },
     {
       "id": "flAboutShell",
@@ -907,7 +1064,7 @@
         "rowGap": "var(--space-6)"
       },
       "x": 280,
-      "y": 4840
+      "y": 5440
     },
     {
       "id": "flAboutColumns",
@@ -940,7 +1097,7 @@
         }
       },
       "x": 340,
-      "y": 4960
+      "y": 5560
     },
     {
       "id": "flAboutPhotoBox",
@@ -961,7 +1118,7 @@
         "clip": true
       },
       "x": 400,
-      "y": 5080
+      "y": 5680
     },
     {
       "id": "flAboutPhoto",
@@ -983,7 +1140,7 @@
         "alt": "A person working at a laptop in a café"
       },
       "x": 460,
-      "y": 5200
+      "y": 5800
     },
     {
       "id": "flAboutWords",
@@ -1007,7 +1164,7 @@
         "rowGap": "var(--space-4)"
       },
       "x": 400,
-      "y": 5320
+      "y": 5920
     },
     {
       "id": "flAboutEyebrow",
@@ -1024,7 +1181,7 @@
         "as": "span"
       },
       "x": 460,
-      "y": 5440
+      "y": 6040
     },
     {
       "id": "flAboutHeading",
@@ -1041,7 +1198,7 @@
         "as": "h2"
       },
       "x": 460,
-      "y": 5560
+      "y": 6160
     },
     {
       "id": "flAboutBody1",
@@ -1054,7 +1211,7 @@
         "color": "var(--foreground)"
       },
       "x": 460,
-      "y": 5680
+      "y": 6280
     },
     {
       "id": "flAboutBody2",
@@ -1067,7 +1224,7 @@
         "color": "var(--foreground)"
       },
       "x": 460,
-      "y": 5800
+      "y": 6400
     },
     {
       "id": "flAboutWhere",
@@ -1080,7 +1237,7 @@
         "color": "var(--muted-foreground)"
       },
       "x": 460,
-      "y": 5920
+      "y": 6520
     },
     {
       "id": "flQuotes",
@@ -1111,7 +1268,7 @@
         "cssClassName": "section-flQuotes"
       },
       "x": 220,
-      "y": 6040
+      "y": 6640
     },
     {
       "id": "flQuotesShell",
@@ -1139,7 +1296,7 @@
         "rowGap": "var(--space-6)"
       },
       "x": 280,
-      "y": 6160
+      "y": 6760
     },
     {
       "id": "flQuotesHead",
@@ -1161,7 +1318,7 @@
         "paddingBottom": "var(--space-10)"
       },
       "x": 340,
-      "y": 6280
+      "y": 6880
     },
     {
       "id": "flQuotesEyebrow",
@@ -1178,7 +1335,7 @@
         "as": "span"
       },
       "x": 400,
-      "y": 6400
+      "y": 7000
     },
     {
       "id": "flQuotesHeading",
@@ -1195,7 +1352,7 @@
         "as": "h2"
       },
       "x": 400,
-      "y": 6520
+      "y": 7120
     },
     {
       "id": "flQuotesGrid",
@@ -1222,7 +1379,7 @@
         }
       },
       "x": 340,
-      "y": 6640
+      "y": 7240
     },
     {
       "id": "flQuote1Cell",
@@ -1241,7 +1398,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 6760
+      "y": 7360
     },
     {
       "id": "flQuote1",
@@ -1256,7 +1413,7 @@
         "alt": "A man smiling, arms folded"
       },
       "x": 460,
-      "y": 6880
+      "y": 7480
     },
     {
       "id": "flQuote2Cell",
@@ -1275,7 +1432,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 7000
+      "y": 7600
     },
     {
       "id": "flQuote2",
@@ -1290,7 +1447,7 @@
         "alt": "A woman smiling outdoors"
       },
       "x": 460,
-      "y": 7120
+      "y": 7720
     }
   ],
   "visualRoots": [
