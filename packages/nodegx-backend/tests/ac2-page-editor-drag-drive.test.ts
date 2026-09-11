@@ -469,7 +469,9 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
   let pressHit = '';
   /** Whatever the page showed for a refusal — the template mounts one on `reorder.failure`. */
   let refusalText = '';
-  let moveUpFound = { ok: false } as { ok: boolean; why?: string; card?: string; hits?: string };
+  let moveUpFound = { ok: false } as
+    | { ok: false; why?: string; card?: string; hits?: string }
+    | { ok: true; x: number; y: number; why?: string; card?: string; hits?: string };
   /** The SHIPPED artefact, opened and left alone. Quiet since s32 fixed D31. */
   let watchShipped: Watch = NO_WATCH;
   /** The defect put back on `merge` — what says the three parameters are load-bearing. */
@@ -774,7 +776,7 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         // eslint-disable-next-line no-console
         console.log('        Move up on the card a client sees LAST:', JSON.stringify(moveUpFound));
         if (moveUpFound.ok) {
-          await clickAt(page, (moveUpFound as { x: number }).x, (moveUpFound as { y: number }).y);
+          await clickAt(page, moveUpFound.x, moveUpFound.y);
           await wait(3000);
         }
         storedAfterBottomMoveUp = await readOrders(gesturePage);
@@ -798,7 +800,7 @@ describe('SBR-007 AC2 — dragging a section on the REAL page editor, against an
         // eslint-disable-next-line no-console
         console.log(`        Move up on the LAST STORED card (${lastStoredKind}):`, JSON.stringify(found));
         if (found.ok) {
-          await clickAt(page, (found as { x: number }).x, (found as { y: number }).y);
+          await clickAt(page, found.x, found.y);
           await wait(3000);
         }
         storedAfterMoveUp = await readOrders(gesturePage);

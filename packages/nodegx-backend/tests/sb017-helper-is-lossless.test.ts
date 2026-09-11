@@ -68,7 +68,7 @@ interface TemplateNode {
 }
 
 /** Every node in a graph — `children` is a tree. */
-function flatten(roots: TemplateNode[], out: TemplateNode[] = []): TemplateNode[] {
+function flatten(roots: TemplateNode[] | undefined, out: TemplateNode[] = []): TemplateNode[] {
   for (const node of roots || []) {
     out.push(node);
     flatten(node.children, out);

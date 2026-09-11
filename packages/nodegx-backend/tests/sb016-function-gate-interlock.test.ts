@@ -141,7 +141,7 @@ async function authorCloudHalf(): Promise<string> {
 }
 
 /** A data dir holding the deployed bundle, and the given policy — or none at all. */
-function makeDataDir(security: Record<string, unknown> | null, label: string): string {
+function makeDataDir(security: SecurityConfig | Record<string, unknown> | null, label: string): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `sb016-${label}-`));
   fs.mkdirSync(path.join(dir, 'workflows'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'workflows', 'site.workflow.json'), JSON.stringify(bundle));
@@ -158,7 +158,7 @@ function makeDataDir(security: Record<string, unknown> | null, label: string): s
  * the refusal — see the spec that asks it.
  */
 async function tryStart(
-  security: Record<string, unknown> | null,
+  security: SecurityConfig | Record<string, unknown> | null,
   host: string,
   label: string
 ): Promise<{ started: boolean; code: string | null; message: string; port: number; stop: () => Promise<void> }> {
@@ -264,9 +264,11 @@ describe('SB-016 — the gate with no defaults tier', () => {
       // "what is an endpoint" is how a gate starts refusing a deploy over a name
       // nothing serves. They share a predicate; this asserts the sharing works
       // rather than trusting that it must.
+      const executions = new ExecutionHistory();
+      executions.open(dataDir);
       const runner = new WorkflowRunner({
         workflowsPath: path.join(dataDir, 'workflows'),
-        executions: new ExecutionHistory(dataDir),
+        executions,
         backendId: 'sb016-agree',
         backendName: 'SB-016 agreement'
       });

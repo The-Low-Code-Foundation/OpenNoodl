@@ -57,7 +57,7 @@ export async function request<T = unknown>(
   const res = await fetch(`${base}${pathName}`, {
     method,
     headers: hasBody && !raw ? { 'content-type': 'application/json', ...headers } : headers,
-    body: hasBody ? (raw ? (body as string | Buffer) : JSON.stringify(body)) : undefined
+    body: hasBody ? (raw ? (body as unknown as BodyInit) : JSON.stringify(body)) : undefined
   });
 
   const text = await res.text();

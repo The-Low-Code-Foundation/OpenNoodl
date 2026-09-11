@@ -42,7 +42,7 @@ EventSender.prototype.on = function (eventName, callback, ref) {
       this.listenersWithRefs[eventName].set(ref, []);
     }
 
-    this.listenersWithRefs[eventName].get(ref).push(callback);
+    this.listenersWithRefs[eventName].get(ref)!.push(callback);
   } else {
     if (!this.listeners.hasOwnProperty(eventName)) {
       this.listeners[eventName] = [];

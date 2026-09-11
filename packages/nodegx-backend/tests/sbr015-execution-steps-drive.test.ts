@@ -183,7 +183,7 @@ async function publishOnce(
 
   const history = new ExecutionHistory();
   history.open(dataDir);
-  const readRun = (previous: string): Omit<Arm, 'http' | 'body'> => {
+  const readRun = (previous: string): Omit<Arm, 'http' | 'body' | 'stored'> => {
     const runs = history.list({ workflowId: 'publishPage', limit: 10 });
     if (!runs[0] || runs[0].id === previous) return { runId: '', runStatus: '', steps: [] };
     return {
