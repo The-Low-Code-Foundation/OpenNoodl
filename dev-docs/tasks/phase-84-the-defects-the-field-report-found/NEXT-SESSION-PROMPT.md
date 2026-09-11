@@ -1,8 +1,8 @@
 # Phase 84 — next session
 
 **Phase:** 84, *the defects the field report found*. **Prefix `FLD`.** Scoped 2026-09-09.
-Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
-still gate tasks.
+Read [README.md](./README.md) first — §2 carries the rulings. ✅ **All six R-rulings are
+answered.** Only **P25** (a token budget) and a **Linux box** still gate anything.
 
 ✅ **SESSION 16 BUILT FLD-015 — 🟢, 4 of 4 applicable ACs, #39 REPLIED (and deliberately left
 OPEN).** A `nodegx-charts` kit — Bar Chart and Sparkline — plus **three holes in `nodegx-export`
