@@ -111,7 +111,7 @@
         "cssClassName": "site-contact"
       },
       "x": 220,
-      "y": 8320
+      "y": 7840
     },
     {
       "id": "bzContact",
@@ -124,7 +124,7 @@
         "button": "Send"
       },
       "x": 280,
-      "y": 8440
+      "y": 7960
     },
     {
       "id": "bzFooter",
@@ -132,7 +132,7 @@
       "label": "The foot of the page",
       "parent": "bzGround",
       "x": 160,
-      "y": 8560
+      "y": 8080
     },
     {
       "id": "bzGoContact",
@@ -1281,7 +1281,7 @@
       "parent": "bzQuotes",
       "children": [
         "bzQuotesHead",
-        "bzQuotesGrid"
+        "bzQuotesCarousel"
       ],
       "parameters": {
         "width": {
@@ -1359,99 +1359,23 @@
       "y": 7600
     },
     {
-      "id": "bzQuotesGrid",
-      "type": "net.noodl.visual.columns",
-      "label": "The grid",
+      "id": "bzQuotesCarousel",
+      "type": "/Site/QuoteCarousel",
+      "label": "The quotes, one at a time",
       "parent": "bzQuotesShell",
-      "children": [
-        "bzQuote1Cell",
-        "bzQuote2Cell"
-      ],
-      "parameters": {
-        "sizing": "autoFit",
-        "minWidth": {
-          "value": 440,
-          "unit": "px"
-        },
-        "marginX": {
-          "value": 12,
-          "unit": "px"
-        },
-        "marginY": {
-          "value": 24,
-          "unit": "px"
-        }
-      },
       "x": 340,
       "y": 7720
     },
     {
-      "id": "bzQuote1Cell",
-      "type": "Group",
-      "label": "the first regular’s words",
-      "parent": "bzQuotesGrid",
-      "children": [
-        "bzQuote1"
-      ],
+      "id": "bzQuotesData",
+      "type": "Static Data",
+      "label": "EDIT — what regulars said — add a row for each one",
       "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "type": "json",
+        "json": "[\n  {\n    \"quote\": \"“A sentence or two a customer actually said about working with you. Ask them; most people are glad to.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-4.webp\",\n    \"alt\": \"A man smiling, arms folded\"\n  },\n  {\n    \"quote\": \"“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-5.webp\",\n    \"alt\": \"A woman smiling outdoors\"\n  },\n  {\n    \"quote\": \"“A third. Four or five is plenty: a person will read two and trust the rest exist.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-3.webp\",\n    \"alt\": \"A woman smiling in a hooded coat\"\n  },\n  {\n    \"quote\": \"“The last one. If you have none yet, delete this whole band rather than write them yourself.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-1.webp\",\n    \"alt\": \"A young man laughing\"\n  }\n]"
       },
-      "x": 400,
-      "y": 7840
-    },
-    {
-      "id": "bzQuote1",
-      "type": "/Site/Quote",
-      "label": "EDIT — the first regular’s words",
-      "parent": "bzQuote1Cell",
-      "parameters": {
-        "quote": "“A sentence or two a customer actually said. Pull it from a review if you have one.”",
-        "name": "Their name",
-        "role": "A regular since whenever",
-        "portrait": "noodl_modules/starter-imagery/avatar-3.webp",
-        "alt": "A woman smiling in a hooded coat"
-      },
-      "x": 460,
-      "y": 7960
-    },
-    {
-      "id": "bzQuote2Cell",
-      "type": "Group",
-      "label": "the second regular’s words",
-      "parent": "bzQuotesGrid",
-      "children": [
-        "bzQuote2"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
-      },
-      "x": 400,
-      "y": 8080
-    },
-    {
-      "id": "bzQuote2",
-      "type": "/Site/Quote",
-      "label": "EDIT — the second regular’s words",
-      "parent": "bzQuote2Cell",
-      "parameters": {
-        "quote": "“Another one. Real words beat polished ones; leave the typos in if you like.”",
-        "name": "Their name",
-        "role": "A regular since whenever",
-        "portrait": "noodl_modules/starter-imagery/avatar-1.webp",
-        "alt": "A young man laughing"
-      },
-      "x": 460,
-      "y": 8200
+      "x": 710,
+      "y": 7720
     }
   ],
   "visualRoots": [

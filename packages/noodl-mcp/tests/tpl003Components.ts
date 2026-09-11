@@ -92,6 +92,7 @@ export const FILTER_PILL_COMPONENT = '/Site/FilterPill';
 /** The app-wide variable the pills write and the work list reads. One name, spelled once. */
 export const WORK_FILTER_VARIABLE = 'workFilter';
 export const QUOTE_COMPONENT = '/Site/Quote';
+export const QUOTE_CAROUSEL_COMPONENT = '/Site/QuoteCarousel';
 export const FAQ_ROW_COMPONENT = '/Site/FaqRow';
 export const HOURS_ROW_COMPONENT = '/Site/HoursRow';
 export const CHECK_COMPONENT = '/Site/Check';
@@ -1278,6 +1279,88 @@ const QUOTE: Tpl003Component = {
   ]
 };
 
+// ── Site/QuoteCarousel — one quote at a time, and a way to the next ─────────
+
+/**
+ * TPL-004. Both the freelancer page and the business page ended on two quotes
+ * side by side, which is the most a row can hold — and two is exactly the number
+ * that reads as *"we could only find two"*. A carousel holds as many as somebody
+ * has, shows one, and takes up the room of one.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **There is no "the item at index N" node, and this is what there is
+ * instead.** `Filter Collection` exposes `filterEnableLimit`, which mints
+ * `filterLimit` and `filterSkip` — so a `Counter` driving `filterSkip` with
+ * `filterLimit: 1` is a one-item repeater that steps. `limitsEnabled` on the
+ * Counter is what stops it walking off either end.
+ *
+ * ⚠️ **`count` is an input and not worked out from `items`.** An `Expression`
+ * reading `(v || []).length` would do it, and `parsePorts` is a text scan that
+ * would mint a second port called `length` and then wait for a value nobody is
+ * ever going to send it. The page wires both ports from the same `Static Data`
+ * node, so the two cannot disagree without somebody rewiring one of them.
+ *
+ * ⚠️ **The buttons disable at the ends rather than wrapping.** A carousel that
+ * wraps gives a person no way to know they have seen all of them.
+ */
+const QUOTE_CAROUSEL: Tpl003Component = {
+  path: 'Site/QuoteCarousel',
+  nodes: [
+    group('qcRoot', 'The quotes', undefined, { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', alignItems: 'center', rowGap: 'var(--space-6)' }, ['qcStage', 'qcControls']),
+    group('qcStage', 'The one showing', 'qcRoot', { width: pct(100), maxWidth: px(720), sizeMode: 'contentHeight', flexDirection: 'column' }, ['qcRepeat']),
+    logic('qcRepeat', FOR_EACH_NODE, 'The quote the filter let through', { template: QUOTE_COMPONENT, templateType: 'explicit' }),
+    group('qcControls', 'Back, where you are, forward', 'qcRoot', { sizeMode: 'contentSize', flexDirection: 'row', alignItems: 'center', columnGap: 'var(--space-4)' }, ['qcPrev', 'qcPosition', 'qcNext']),
+    ...['Prev', 'Next'].map((which) =>
+      button(`qc${which}`, which === 'Prev' ? 'Back' : 'Next', 'qcControls', {
+        sizeMode: 'contentSize',
+        backgroundColor: 'transparent',
+        color: 'var(--foreground)',
+        borderRadius: 'var(--radius-full)',
+        borderStyle: 'solid',
+        borderWidth: 'var(--border-1)',
+        borderColor: 'var(--border-control)',
+        paddingLeft: 'var(--space-5)',
+        paddingRight: 'var(--space-5)',
+        paddingTop: 'var(--space-2)',
+        paddingBottom: 'var(--space-2)',
+        fontSize: 'var(--text-sm)',
+        fontWeight: 'var(--font-medium)',
+        cssClassName: 'pressable'
+      })
+    ),
+    text('qcPosition', 'Which one of how many', 'qcControls', '', { ...T_META, sizeMode: 'contentSize', fontVariantNumeric: 'tabular-nums' }),
+    logic('qcCounter', COUNTER_NODE, 'Which quote is showing', { limitsEnabled: true, limitsMin: 0, startValue: 0 }),
+    logic('qcLast', EXPRESSION_NODE, 'The last valid index', { expression: 'total - 1' }),
+    logic('qcFilter', FILTER_NODE, 'One quote, skipping to the current index', { filterEnableLimit: true, filterLimit: 1 }),
+    logic('qcHuman', EXPRESSION_NODE, 'Where a person would say they are', { expression: 'i + 1' }),
+    logic('qcFmt', FORMAT_NODE, 'n of m', { format: '{pos} of {total}' }),
+    logic('qcCanPrev', EXPRESSION_NODE, 'Is there one before this?', { expression: 'i > 0' }),
+    logic('qcCanNext', EXPRESSION_NODE, 'Is there one after this?', { expression: 'i < total - 1' }),
+    typedInputs('qcInputs', 'The quotes', [
+      ['items', 'array'],
+      ['count', 'number']
+    ])
+  ],
+  connections: [
+    wire('qcInputs', 'items', 'qcFilter', 'items'),
+    wire('qcFilter', 'items', 'qcRepeat', 'items'),
+    wire('qcInputs', 'count', 'qcLast', 'total'),
+    wire('qcLast', 'asNumber', 'qcCounter', 'limitsMax'),
+    wire('qcCounter', 'currentCount', 'qcFilter', 'filterSkip'),
+    wire('qcPrev', 'onClick', 'qcCounter', 'decrease'),
+    wire('qcNext', 'onClick', 'qcCounter', 'increase'),
+    wire('qcCounter', 'currentCount', 'qcHuman', 'i'),
+    wire('qcHuman', 'asNumber', 'qcFmt', 'pos'),
+    wire('qcInputs', 'count', 'qcFmt', 'total'),
+    wire('qcFmt', 'formatted', 'qcPosition', 'text'),
+    wire('qcCounter', 'currentCount', 'qcCanPrev', 'i'),
+    wire('qcCanPrev', 'asBoolean', 'qcPrev', 'enabled'),
+    wire('qcCounter', 'currentCount', 'qcCanNext', 'i'),
+    wire('qcInputs', 'count', 'qcCanNext', 'total'),
+    wire('qcCanNext', 'asBoolean', 'qcNext', 'enabled')
+  ]
+};
+
 // ── Site/FaqRow — a question, and the answer under it ───────────────────────
 
 /**
@@ -2190,15 +2273,22 @@ const FREELANCER: Tpl003Component = {
     text('flAboutBody1', `${EDIT}About — first paragraph`, 'flAboutWords', 'How you came to do this work, and how long you have been doing it. Say it the way you would say it to a client across a table.', T_BODY),
     text('flAboutBody2', `${EDIT}About — second paragraph`, 'flAboutWords', 'What you care about in the work, and what working with you is like. One paragraph is enough.', T_BODY),
     text('flAboutWhere', `${EDIT}About — where you are`, 'flAboutWords', 'Based in your town · working with people everywhere', T_META),
-    ...section('flQuotes', 'flMain', 'surface', { eyebrow: 'Kind words', heading: 'What clients say', editHeading: false }, ['flQuotesGrid']),
-    ...grid('flQuotesGrid', 'flQuotesShell', [
-      { id: 'flQuote1', type: QUOTE_COMPONENT, label: 'the first client’s words', parameters: { quote: '“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”', name: 'Their name', role: 'What they do, and where', portrait: photo('avatar-4.webp'), alt: 'A man smiling, arms folded' } },
-      { id: 'flQuote2', type: QUOTE_COMPONENT, label: 'the second client’s words', parameters: { quote: '“Another client, in their own words. Two quotes is plenty; three is a wall.”', name: 'Their name', role: 'What they do, and where', portrait: photo('avatar-5.webp'), alt: 'A woman smiling outdoors' } }
-    ], 440)
+    // TPL-004 — two quotes side by side read as "we could only find two". One at
+    // a time, with a way to the next, holds as many as somebody actually has.
+    ...section('flQuotes', 'flMain', 'surface', { eyebrow: 'Kind words', heading: 'What clients say', editHeading: false }, ['flQuotesCarousel']),
+    place('flQuotesCarousel', QUOTE_CAROUSEL_COMPONENT, 'The quotes, one at a time', 'flQuotesShell'),
+    {
+      id: 'flQuotesData',
+      type: STATIC_DATA_NODE,
+      label: `${EDIT}what clients said — add a row for each one`,
+      parameters: { type: 'json', json: JSON.stringify([{"quote": "“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”","name": "Their name","role": "What they do, and where","portrait": "noodl_modules/starter-imagery/avatar-4.webp","alt": "A man smiling, arms folded"},{"quote": "“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”","name": "Their name","role": "What they do, and where","portrait": "noodl_modules/starter-imagery/avatar-5.webp","alt": "A woman smiling outdoors"},{"quote": "“A third. Four or five is plenty: a person will read two and trust the rest exist.”","name": "Their name","role": "What they do, and where","portrait": "noodl_modules/starter-imagery/avatar-3.webp","alt": "A woman smiling in a hooded coat"},{"quote": "“The last one. If you have none yet, delete this whole band rather than write them yourself.”","name": "Their name","role": "What they do, and where","portrait": "noodl_modules/starter-imagery/avatar-1.webp","alt": "A young man laughing"}], null, 2) }
+    }
   ],
   connections: [
     ...FREELANCER_FRAME.connections,
     ...heroWires('fl'),
+    wire('flQuotesData', 'items', 'flQuotesCarousel', 'items'),
+    wire('flQuotesData', 'count', 'flQuotesCarousel', 'count'),
     // TPL-004 — the list, the filter, the count, the empty state.
     wire('flWorkData', 'items', 'flWorkFilter', 'items'),
     wire('flWorkVariable', 'value', 'flWorkFilter', 'filterFilterValue-category'),
@@ -2324,13 +2414,21 @@ const BUSINESS: Tpl003Component = {
       parent: 'bzVisitPhotoBox',
       parameters: { ...composition('cardImage'), height: px(420), src: photo('food-grocer.webp'), alt: 'A greengrocer stall with a customer' }
     },
-    ...section('bzQuotes', 'bzMain', 'surface', { eyebrow: 'Kind words', heading: 'What regulars say', editHeading: false }, ['bzQuotesGrid']),
-    ...grid('bzQuotesGrid', 'bzQuotesShell', [
-      { id: 'bzQuote1', type: QUOTE_COMPONENT, label: 'the first regular’s words', parameters: { quote: '“A sentence or two a customer actually said. Pull it from a review if you have one.”', name: 'Their name', role: 'A regular since whenever', portrait: photo('avatar-3.webp'), alt: 'A woman smiling in a hooded coat' } },
-      { id: 'bzQuote2', type: QUOTE_COMPONENT, label: 'the second regular’s words', parameters: { quote: '“Another one. Real words beat polished ones; leave the typos in if you like.”', name: 'Their name', role: 'A regular since whenever', portrait: photo('avatar-1.webp'), alt: 'A young man laughing' } }
-    ], 440)
+    ...section('bzQuotes', 'bzMain', 'surface', { eyebrow: 'Kind words', heading: 'What regulars say', editHeading: false }, ['bzQuotesCarousel']),
+    place('bzQuotesCarousel', QUOTE_CAROUSEL_COMPONENT, 'The quotes, one at a time', 'bzQuotesShell'),
+    {
+      id: 'bzQuotesData',
+      type: STATIC_DATA_NODE,
+      label: `${EDIT}what regulars said — add a row for each one`,
+      parameters: { type: 'json', json: JSON.stringify([{"quote": "“A sentence or two a customer actually said about working with you. Ask them; most people are glad to.”","name": "Their name","role": "A regular since whenever","portrait": "noodl_modules/starter-imagery/avatar-4.webp","alt": "A man smiling, arms folded"},{"quote": "“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”","name": "Their name","role": "A regular since whenever","portrait": "noodl_modules/starter-imagery/avatar-5.webp","alt": "A woman smiling outdoors"},{"quote": "“A third. Four or five is plenty: a person will read two and trust the rest exist.”","name": "Their name","role": "A regular since whenever","portrait": "noodl_modules/starter-imagery/avatar-3.webp","alt": "A woman smiling in a hooded coat"},{"quote": "“The last one. If you have none yet, delete this whole band rather than write them yourself.”","name": "Their name","role": "A regular since whenever","portrait": "noodl_modules/starter-imagery/avatar-1.webp","alt": "A young man laughing"}], null, 2) }
+    }
   ],
-  connections: [...BUSINESS_FRAME.connections, ...heroWires('bz')]
+  connections: [
+    ...BUSINESS_FRAME.connections,
+    ...heroWires('bz'),
+    wire('bzQuotesData', 'items', 'bzQuotesCarousel', 'items'),
+    wire('bzQuotesData', 'count', 'bzQuotesCarousel', 'count')
+  ]
 };
 
 // ── Pages/Launch — something that does not exist yet ─────────────────────────
@@ -2611,7 +2709,7 @@ const LAUNCH: Tpl003Component = {
 // ── Author order ─────────────────────────────────────────────────────────────
 
 /** The parts a page places, before the pages that place them. */
-export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, SERVICE_CARD, STEP, STAT, PHOTO_CARD, FILTER_PILL, CASE_STUDY, WORK_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
+export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, SERVICE_CARD, STEP, STAT, PHOTO_CARD, FILTER_PILL, CASE_STUDY, WORK_CARD, QUOTE, QUOTE_CAROUSEL, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
 
 /** The pages. 🔴 The first one written becomes the router's start page, and it must be the freelancer look at `/`. */
 export const TPL003_PAGES: Tpl003Component[] = [FREELANCER, BUSINESS, LAUNCH];

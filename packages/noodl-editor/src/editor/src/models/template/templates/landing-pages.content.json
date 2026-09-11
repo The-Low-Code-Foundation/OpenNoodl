@@ -3594,6 +3594,376 @@
       }
     },
     {
+      "name": "/Site/QuoteCarousel",
+      "graph": {
+        "roots": [
+          {
+            "id": "qcRoot",
+            "type": "Group",
+            "children": [
+              {
+                "id": "qcStage",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "qcRepeat",
+                    "type": "For Each",
+                    "children": [],
+                    "label": "The quote the filter let through",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "template": "/Site/Quote",
+                      "templateType": "explicit"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "The one showing",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "maxWidth": {
+                    "value": 720,
+                    "unit": "px"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "qcControls",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "qcPrev",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Back",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "label": "Back",
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--foreground)",
+                      "borderRadius": "var(--radius-full)",
+                      "borderStyle": "solid",
+                      "borderWidth": "var(--border-1)",
+                      "borderColor": "var(--border-control)",
+                      "paddingLeft": "var(--space-5)",
+                      "paddingRight": "var(--space-5)",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "fontSize": "var(--text-sm)",
+                      "fontWeight": "var(--font-medium)",
+                      "cssClassName": "pressable"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "qcPosition",
+                    "type": "Text",
+                    "children": [],
+                    "label": "Which one of how many",
+                    "x": 160,
+                    "y": 640,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-sm)",
+                      "color": "var(--muted-foreground)",
+                      "sizeMode": "contentSize",
+                      "fontVariantNumeric": "tabular-nums"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "qcNext",
+                    "type": "net.noodl.controls.button",
+                    "children": [],
+                    "label": "Next",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "label": "Next",
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--foreground)",
+                      "borderRadius": "var(--radius-full)",
+                      "borderStyle": "solid",
+                      "borderWidth": "var(--border-1)",
+                      "borderColor": "var(--border-control)",
+                      "paddingLeft": "var(--space-5)",
+                      "paddingRight": "var(--space-5)",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "fontSize": "var(--text-sm)",
+                      "fontWeight": "var(--font-medium)",
+                      "cssClassName": "pressable"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "Back, where you are, forward",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "columnGap": "var(--space-4)"
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "The quotes",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "sizeMode": "contentHeight",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "rowGap": "var(--space-6)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcCounter",
+            "type": "Counter",
+            "children": [],
+            "label": "Which quote is showing",
+            "x": 410,
+            "y": 520,
+            "parameters": {
+              "limitsEnabled": true,
+              "limitsMin": 0,
+              "startValue": 0
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcLast",
+            "type": "Expression",
+            "children": [],
+            "label": "The last valid index",
+            "x": 410,
+            "y": 1000,
+            "parameters": {
+              "expression": "total - 1"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcFilter",
+            "type": "Filter Collection",
+            "children": [],
+            "label": "One quote, skipping to the current index",
+            "x": 410,
+            "y": 280,
+            "parameters": {
+              "filterEnableLimit": true,
+              "filterLimit": 1
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcHuman",
+            "type": "Expression",
+            "children": [],
+            "label": "Where a person would say they are",
+            "x": 410,
+            "y": 1120,
+            "parameters": {
+              "expression": "i + 1"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcFmt",
+            "type": "String Format",
+            "children": [],
+            "label": "n of m",
+            "x": 410,
+            "y": 760,
+            "parameters": {
+              "format": "{pos} of {total}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcCanPrev",
+            "type": "Expression",
+            "children": [],
+            "label": "Is there one before this?",
+            "x": 410,
+            "y": 640,
+            "parameters": {
+              "expression": "i > 0"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcCanNext",
+            "type": "Expression",
+            "children": [],
+            "label": "Is there one after this?",
+            "x": 410,
+            "y": 880,
+            "parameters": {
+              "expression": "i < total - 1"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "qcInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The quotes",
+            "x": 410,
+            "y": 1240,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "items",
+                "plug": "output",
+                "type": "array"
+              },
+              {
+                "name": "count",
+                "plug": "output",
+                "type": "number"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "qcInputs",
+            "fromProperty": "items",
+            "toId": "qcFilter",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "qcFilter",
+            "fromProperty": "items",
+            "toId": "qcRepeat",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "qcInputs",
+            "fromProperty": "count",
+            "toId": "qcLast",
+            "toProperty": "total"
+          },
+          {
+            "fromId": "qcLast",
+            "fromProperty": "asNumber",
+            "toId": "qcCounter",
+            "toProperty": "limitsMax"
+          },
+          {
+            "fromId": "qcCounter",
+            "fromProperty": "currentCount",
+            "toId": "qcFilter",
+            "toProperty": "filterSkip"
+          },
+          {
+            "fromId": "qcPrev",
+            "fromProperty": "onClick",
+            "toId": "qcCounter",
+            "toProperty": "decrease"
+          },
+          {
+            "fromId": "qcNext",
+            "fromProperty": "onClick",
+            "toId": "qcCounter",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "qcCounter",
+            "fromProperty": "currentCount",
+            "toId": "qcHuman",
+            "toProperty": "i"
+          },
+          {
+            "fromId": "qcHuman",
+            "fromProperty": "asNumber",
+            "toId": "qcFmt",
+            "toProperty": "pos"
+          },
+          {
+            "fromId": "qcInputs",
+            "fromProperty": "count",
+            "toId": "qcFmt",
+            "toProperty": "total"
+          },
+          {
+            "fromId": "qcFmt",
+            "fromProperty": "formatted",
+            "toId": "qcPosition",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "qcCounter",
+            "fromProperty": "currentCount",
+            "toId": "qcCanPrev",
+            "toProperty": "i"
+          },
+          {
+            "fromId": "qcCanPrev",
+            "fromProperty": "asBoolean",
+            "toId": "qcPrev",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "qcCounter",
+            "fromProperty": "currentCount",
+            "toId": "qcCanNext",
+            "toProperty": "i"
+          },
+          {
+            "fromId": "qcInputs",
+            "fromProperty": "count",
+            "toId": "qcCanNext",
+            "toProperty": "total"
+          },
+          {
+            "fromId": "qcCanNext",
+            "fromProperty": "asBoolean",
+            "toId": "qcNext",
+            "toProperty": "enabled"
+          }
+        ],
+        "visualRoots": [
+          "qcRoot"
+        ]
+      }
+    },
+    {
       "name": "/Site/FaqRow",
       "graph": {
         "roots": [
@@ -7325,100 +7695,13 @@
                                 "dynamicports": []
                               },
                               {
-                                "id": "flQuotesGrid",
-                                "type": "net.noodl.visual.columns",
-                                "children": [
-                                  {
-                                    "id": "flQuote1Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "flQuote1",
-                                        "type": "/Site/Quote",
-                                        "children": [],
-                                        "label": "EDIT — the first client’s words",
-                                        "x": 460,
-                                        "y": 7480,
-                                        "parameters": {
-                                          "quote": "“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”",
-                                          "name": "Their name",
-                                          "role": "What they do, and where",
-                                          "portrait": "noodl_modules/starter-imagery/avatar-4.webp",
-                                          "alt": "A man smiling, arms folded"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the first client’s words",
-                                    "x": 400,
-                                    "y": 7360,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  },
-                                  {
-                                    "id": "flQuote2Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "flQuote2",
-                                        "type": "/Site/Quote",
-                                        "children": [],
-                                        "label": "EDIT — the second client’s words",
-                                        "x": 460,
-                                        "y": 7720,
-                                        "parameters": {
-                                          "quote": "“Another client, in their own words. Two quotes is plenty; three is a wall.”",
-                                          "name": "Their name",
-                                          "role": "What they do, and where",
-                                          "portrait": "noodl_modules/starter-imagery/avatar-5.webp",
-                                          "alt": "A woman smiling outdoors"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the second client’s words",
-                                    "x": 400,
-                                    "y": 7600,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  }
-                                ],
-                                "label": "The grid",
+                                "id": "flQuotesCarousel",
+                                "type": "/Site/QuoteCarousel",
+                                "children": [],
+                                "label": "The quotes, one at a time",
                                 "x": 340,
                                 "y": 7240,
-                                "parameters": {
-                                  "sizing": "autoFit",
-                                  "minWidth": {
-                                    "value": 440,
-                                    "unit": "px"
-                                  },
-                                  "marginX": {
-                                    "value": 12,
-                                    "unit": "px"
-                                  },
-                                  "marginY": {
-                                    "value": 24,
-                                    "unit": "px"
-                                  }
-                                },
+                                "parameters": {},
                                 "ports": [],
                                 "dynamicports": []
                               }
@@ -7482,7 +7765,7 @@
                             "children": [],
                             "label": "The contact band",
                             "x": 280,
-                            "y": 7960,
+                            "y": 7480,
                             "parameters": {
                               "heading": "Tell me about your project",
                               "line": "A few lines on what you need and when you need it by. I reply to everything.",
@@ -7494,7 +7777,7 @@
                         ],
                         "label": "Where \"Get in touch\" lands",
                         "x": 220,
-                        "y": 7840,
+                        "y": 7360,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -7529,7 +7812,7 @@
                     "children": [],
                     "label": "The foot of the page",
                     "x": 160,
-                    "y": 8080,
+                    "y": 7600,
                     "parameters": {},
                     "ports": [],
                     "dynamicports": []
@@ -7597,7 +7880,7 @@
             "children": [],
             "label": "EDIT — the work itself — this list IS the page",
             "x": 710,
-            "y": 5320,
+            "y": 7360,
             "parameters": {
               "type": "json",
               "json": "[\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-leather-bench.webp\",\n    \"alt\": \"A leather workbench with tools laid out\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"A piece of work\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/food-bakery.webp\",\n    \"alt\": \"A bakery counter with loaves on it\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"Another of the same kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-desk.webp\",\n    \"alt\": \"Someone working at a laptop by a window\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"A piece of a different kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-machine-shop.webp\",\n    \"alt\": \"A machine shop with a lathe in use\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"Another of that kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-meeting.webp\",\n    \"alt\": \"Three people talking around a table\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"A piece of the third kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-potter.webp\",\n    \"alt\": \"A potter shaping a bowl on a wheel\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"The last one on the list\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  }\n]"
@@ -7611,7 +7894,7 @@
             "children": [],
             "label": "Which kind is selected",
             "x": 710,
-            "y": 5440,
+            "y": 7480,
             "parameters": {
               "name": "workFilter"
             },
@@ -7673,6 +7956,20 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "flQuotesData",
+            "type": "Static Data",
+            "children": [],
+            "label": "EDIT — what clients said — add a row for each one",
+            "x": 710,
+            "y": 7240,
+            "parameters": {
+              "type": "json",
+              "json": "[\n  {\n    \"quote\": \"“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-4.webp\",\n    \"alt\": \"A man smiling, arms folded\"\n  },\n  {\n    \"quote\": \"“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-5.webp\",\n    \"alt\": \"A woman smiling outdoors\"\n  },\n  {\n    \"quote\": \"“A third. Four or five is plenty: a person will read two and trust the rest exist.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-3.webp\",\n    \"alt\": \"A woman smiling in a hooded coat\"\n  },\n  {\n    \"quote\": \"“The last one. If you have none yet, delete this whole band rather than write them yourself.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-1.webp\",\n    \"alt\": \"A young man laughing\"\n  }\n]"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -7687,6 +7984,18 @@
             "fromProperty": "onClick",
             "toId": "flGoSecond",
             "toProperty": "go"
+          },
+          {
+            "fromId": "flQuotesData",
+            "fromProperty": "items",
+            "toId": "flQuotesCarousel",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "flQuotesData",
+            "fromProperty": "count",
+            "toId": "flQuotesCarousel",
+            "toProperty": "count"
           },
           {
             "fromId": "flWorkData",
@@ -8981,100 +9290,13 @@
                                 "dynamicports": []
                               },
                               {
-                                "id": "bzQuotesGrid",
-                                "type": "net.noodl.visual.columns",
-                                "children": [
-                                  {
-                                    "id": "bzQuote1Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "bzQuote1",
-                                        "type": "/Site/Quote",
-                                        "children": [],
-                                        "label": "EDIT — the first regular’s words",
-                                        "x": 460,
-                                        "y": 7960,
-                                        "parameters": {
-                                          "quote": "“A sentence or two a customer actually said. Pull it from a review if you have one.”",
-                                          "name": "Their name",
-                                          "role": "A regular since whenever",
-                                          "portrait": "noodl_modules/starter-imagery/avatar-3.webp",
-                                          "alt": "A woman smiling in a hooded coat"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the first regular’s words",
-                                    "x": 400,
-                                    "y": 7840,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  },
-                                  {
-                                    "id": "bzQuote2Cell",
-                                    "type": "Group",
-                                    "children": [
-                                      {
-                                        "id": "bzQuote2",
-                                        "type": "/Site/Quote",
-                                        "children": [],
-                                        "label": "EDIT — the second regular’s words",
-                                        "x": 460,
-                                        "y": 8200,
-                                        "parameters": {
-                                          "quote": "“Another one. Real words beat polished ones; leave the typos in if you like.”",
-                                          "name": "Their name",
-                                          "role": "A regular since whenever",
-                                          "portrait": "noodl_modules/starter-imagery/avatar-1.webp",
-                                          "alt": "A young man laughing"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": []
-                                      }
-                                    ],
-                                    "label": "the second regular’s words",
-                                    "x": 400,
-                                    "y": 8080,
-                                    "parameters": {
-                                      "width": {
-                                        "value": 100,
-                                        "unit": "%"
-                                      },
-                                      "sizeMode": "contentHeight",
-                                      "flexDirection": "column"
-                                    },
-                                    "ports": [],
-                                    "dynamicports": []
-                                  }
-                                ],
-                                "label": "The grid",
+                                "id": "bzQuotesCarousel",
+                                "type": "/Site/QuoteCarousel",
+                                "children": [],
+                                "label": "The quotes, one at a time",
                                 "x": 340,
                                 "y": 7720,
-                                "parameters": {
-                                  "sizing": "autoFit",
-                                  "minWidth": {
-                                    "value": 440,
-                                    "unit": "px"
-                                  },
-                                  "marginX": {
-                                    "value": 12,
-                                    "unit": "px"
-                                  },
-                                  "marginY": {
-                                    "value": 24,
-                                    "unit": "px"
-                                  }
-                                },
+                                "parameters": {},
                                 "ports": [],
                                 "dynamicports": []
                               }
@@ -9138,7 +9360,7 @@
                             "children": [],
                             "label": "The contact band",
                             "x": 280,
-                            "y": 8440,
+                            "y": 7960,
                             "parameters": {
                               "heading": "Book a table, or just ask",
                               "line": "Questions, bookings, orders for a crowd. Say when you would like to come and how many of you there are.",
@@ -9150,7 +9372,7 @@
                         ],
                         "label": "Where \"Get in touch\" lands",
                         "x": 220,
-                        "y": 8320,
+                        "y": 7840,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -9185,7 +9407,7 @@
                     "children": [],
                     "label": "The foot of the page",
                     "x": 160,
-                    "y": 8560,
+                    "y": 8080,
                     "parameters": {},
                     "ports": [],
                     "dynamicports": []
@@ -9246,6 +9468,20 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "bzQuotesData",
+            "type": "Static Data",
+            "children": [],
+            "label": "EDIT — what regulars said — add a row for each one",
+            "x": 710,
+            "y": 7720,
+            "parameters": {
+              "type": "json",
+              "json": "[\n  {\n    \"quote\": \"“A sentence or two a customer actually said about working with you. Ask them; most people are glad to.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-4.webp\",\n    \"alt\": \"A man smiling, arms folded\"\n  },\n  {\n    \"quote\": \"“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-5.webp\",\n    \"alt\": \"A woman smiling outdoors\"\n  },\n  {\n    \"quote\": \"“A third. Four or five is plenty: a person will read two and trust the rest exist.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-3.webp\",\n    \"alt\": \"A woman smiling in a hooded coat\"\n  },\n  {\n    \"quote\": \"“The last one. If you have none yet, delete this whole band rather than write them yourself.”\",\n    \"name\": \"Their name\",\n    \"role\": \"A regular since whenever\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-1.webp\",\n    \"alt\": \"A young man laughing\"\n  }\n]"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -9260,6 +9496,18 @@
             "fromProperty": "onClick",
             "toId": "bzGoSecond",
             "toProperty": "go"
+          },
+          {
+            "fromId": "bzQuotesData",
+            "fromProperty": "items",
+            "toId": "bzQuotesCarousel",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "bzQuotesData",
+            "fromProperty": "count",
+            "toId": "bzQuotesCarousel",
+            "toProperty": "count"
           }
         ],
         "visualRoots": [

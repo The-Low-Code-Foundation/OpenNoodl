@@ -649,6 +649,63 @@ describe('TPL-004 — the work list, the filter and the popup', () => {
       expect(shipped.map((c) => c.legacyName)).toContain(String(n.parameters?.template));
     }
   });
+
+  /**
+   * 🔴 **The generalised form of the card check, and the one that reaches the
+   * carousel.** A repeater binds each row's properties to the template
+   * component's declared inputs BY NAME. An input the rows never supply is a
+   * line that is permanently blank — on every row, in a page that renders clean
+   * and reports nothing. There is no runtime complaint for it and no screenshot
+   * that distinguishes it from copy somebody chose to leave short.
+   *
+   * The wire is followed rather than assumed: `Static Data` → (`Filter
+   * Collection`) → `For Each`, across a component boundary when the repeater
+   * lives inside one, as the quote carousel's does.
+   */
+  it('🔴 every repeated component is fed rows that carry every field it reads', () => {
+    const checked: string[] = [];
+
+    for (const owner of shipped) {
+      for (const data of owner.nodes.filter((n) => n.type === 'Static Data')) {
+        const rows = JSON.parse(String(data.parameters?.json ?? '[]')) as Array<Record<string, unknown>>;
+        if (rows.length === 0) continue;
+
+        // Walk `items` forward until it reaches a repeater, or a component that
+        // holds one.
+        const templates = new Set<string>();
+        const seen = new Set<string>([data.id]);
+        let frontier = [data.id];
+        for (let hop = 0; hop < 6 && frontier.length > 0; hop++) {
+          const next: string[] = [];
+          for (const w of owner.connections) {
+            if (!frontier.includes(w.fromId) || w.fromProperty !== 'items') continue;
+            const target = owner.nodes.find((n) => n.id === w.toId);
+            if (!target || seen.has(target.id)) continue;
+            seen.add(target.id);
+            if (target.type === 'For Each') templates.add(String(target.parameters?.template));
+            else if (target.type.startsWith('/')) {
+              // The repeater is inside that component; find it there.
+              for (const inner of byName(target.type).nodes) {
+                if (inner.type === 'For Each') templates.add(String(inner.parameters?.template));
+              }
+            } else next.push(target.id);
+          }
+          frontier = next;
+        }
+
+        for (const template of templates) {
+          const reads = declaredPorts(byName(template), 'inputs');
+          const missing = [...reads].filter((name) => !rows.every((row) => name in row));
+          checked.push(`${owner.legacyName} › ${data.id} → ${template}: ${missing.join(', ') || 'ok'}`);
+          expect(missing).toEqual([]);
+        }
+      }
+    }
+
+    // Control: the walk actually reached something. Three lists feed three
+    // repeaters — the work, and a quote list on each of two pages.
+    expect(checked.length).toBeGreaterThanOrEqual(3);
+  });
 });
 
 // ── 7. The design system is opened, and finished ─────────────────────────────

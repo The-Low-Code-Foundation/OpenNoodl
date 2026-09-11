@@ -115,6 +115,14 @@
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
+    "Site/QuoteCarousel": {
+      "path": "Site/QuoteCarousel",
+      "type": "visual",
+      "nodeCount": 15,
+      "connectionCount": 16,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
     "Site/FaqRow": {
       "path": "Site/FaqRow",
       "type": "visual",
@@ -198,16 +206,16 @@
     "Pages/Freelancer": {
       "path": "Pages/Freelancer",
       "type": "page",
-      "nodeCount": 76,
-      "connectionCount": 11,
+      "nodeCount": 73,
+      "connectionCount": 13,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
     "Pages/Business": {
       "path": "Pages/Business",
       "type": "page",
-      "nodeCount": 74,
-      "connectionCount": 2,
+      "nodeCount": 71,
+      "connectionCount": 4,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -221,8 +229,8 @@
     }
   },
   "stats": {
-    "totalComponents": 27,
-    "totalNodes": 485,
-    "totalConnections": 193
+    "totalComponents": 28,
+    "totalNodes": 494,
+    "totalConnections": 213
   }
 }

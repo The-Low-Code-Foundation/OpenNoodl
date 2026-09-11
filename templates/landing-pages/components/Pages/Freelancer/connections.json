@@ -16,6 +16,18 @@
       "toProperty": "go"
     },
     {
+      "fromId": "flQuotesData",
+      "fromProperty": "items",
+      "toId": "flQuotesCarousel",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flQuotesData",
+      "fromProperty": "count",
+      "toId": "flQuotesCarousel",
+      "toProperty": "count"
+    },
+    {
       "fromId": "flWorkData",
       "fromProperty": "items",
       "toId": "flWorkFilter",

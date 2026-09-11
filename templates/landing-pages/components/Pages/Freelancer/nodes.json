@@ -111,7 +111,7 @@
         "cssClassName": "site-contact"
       },
       "x": 220,
-      "y": 7840
+      "y": 7360
     },
     {
       "id": "flContact",
@@ -124,7 +124,7 @@
         "button": "Send"
       },
       "x": 280,
-      "y": 7960
+      "y": 7480
     },
     {
       "id": "flFooter",
@@ -132,7 +132,7 @@
       "label": "The foot of the page",
       "parent": "flGround",
       "x": 160,
-      "y": 8080
+      "y": 7600
     },
     {
       "id": "flGoContact",
@@ -959,7 +959,7 @@
         "json": "[\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-leather-bench.webp\",\n    \"alt\": \"A leather workbench with tools laid out\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"A piece of work\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/food-bakery.webp\",\n    \"alt\": \"A bakery counter with loaves on it\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"Another of the same kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-desk.webp\",\n    \"alt\": \"Someone working at a laptop by a window\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"A piece of a different kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-machine-shop.webp\",\n    \"alt\": \"A machine shop with a lathe in use\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"Another of that kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-meeting.webp\",\n    \"alt\": \"Three people talking around a table\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"A piece of the third kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-potter.webp\",\n    \"alt\": \"A potter shaping a bowl on a wheel\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"The last one on the list\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  }\n]"
       },
       "x": 710,
-      "y": 5320
+      "y": 7360
     },
     {
       "id": "flWorkVariable",
@@ -969,7 +969,7 @@
         "name": "workFilter"
       },
       "x": 710,
-      "y": 5440
+      "y": 7480
     },
     {
       "id": "flWorkFilter",
@@ -1277,7 +1277,7 @@
       "parent": "flQuotes",
       "children": [
         "flQuotesHead",
-        "flQuotesGrid"
+        "flQuotesCarousel"
       ],
       "parameters": {
         "width": {
@@ -1355,99 +1355,23 @@
       "y": 7120
     },
     {
-      "id": "flQuotesGrid",
-      "type": "net.noodl.visual.columns",
-      "label": "The grid",
+      "id": "flQuotesCarousel",
+      "type": "/Site/QuoteCarousel",
+      "label": "The quotes, one at a time",
       "parent": "flQuotesShell",
-      "children": [
-        "flQuote1Cell",
-        "flQuote2Cell"
-      ],
-      "parameters": {
-        "sizing": "autoFit",
-        "minWidth": {
-          "value": 440,
-          "unit": "px"
-        },
-        "marginX": {
-          "value": 12,
-          "unit": "px"
-        },
-        "marginY": {
-          "value": 24,
-          "unit": "px"
-        }
-      },
       "x": 340,
       "y": 7240
     },
     {
-      "id": "flQuote1Cell",
-      "type": "Group",
-      "label": "the first client’s words",
-      "parent": "flQuotesGrid",
-      "children": [
-        "flQuote1"
-      ],
+      "id": "flQuotesData",
+      "type": "Static Data",
+      "label": "EDIT — what clients said — add a row for each one",
       "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "type": "json",
+        "json": "[\n  {\n    \"quote\": \"“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-4.webp\",\n    \"alt\": \"A man smiling, arms folded\"\n  },\n  {\n    \"quote\": \"“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-5.webp\",\n    \"alt\": \"A woman smiling outdoors\"\n  },\n  {\n    \"quote\": \"“A third. Four or five is plenty: a person will read two and trust the rest exist.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-3.webp\",\n    \"alt\": \"A woman smiling in a hooded coat\"\n  },\n  {\n    \"quote\": \"“The last one. If you have none yet, delete this whole band rather than write them yourself.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-1.webp\",\n    \"alt\": \"A young man laughing\"\n  }\n]"
       },
-      "x": 400,
-      "y": 7360
-    },
-    {
-      "id": "flQuote1",
-      "type": "/Site/Quote",
-      "label": "EDIT — the first client’s words",
-      "parent": "flQuote1Cell",
-      "parameters": {
-        "quote": "“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”",
-        "name": "Their name",
-        "role": "What they do, and where",
-        "portrait": "noodl_modules/starter-imagery/avatar-4.webp",
-        "alt": "A man smiling, arms folded"
-      },
-      "x": 460,
-      "y": 7480
-    },
-    {
-      "id": "flQuote2Cell",
-      "type": "Group",
-      "label": "the second client’s words",
-      "parent": "flQuotesGrid",
-      "children": [
-        "flQuote2"
-      ],
-      "parameters": {
-        "width": {
-          "value": 100,
-          "unit": "%"
-        },
-        "sizeMode": "contentHeight",
-        "flexDirection": "column"
-      },
-      "x": 400,
-      "y": 7600
-    },
-    {
-      "id": "flQuote2",
-      "type": "/Site/Quote",
-      "label": "EDIT — the second client’s words",
-      "parent": "flQuote2Cell",
-      "parameters": {
-        "quote": "“Another client, in their own words. Two quotes is plenty; three is a wall.”",
-        "name": "Their name",
-        "role": "What they do, and where",
-        "portrait": "noodl_modules/starter-imagery/avatar-5.webp",
-        "alt": "A woman smiling outdoors"
-      },
-      "x": 460,
-      "y": 7720
+      "x": 710,
+      "y": 7240
     }
   ],
   "visualRoots": [

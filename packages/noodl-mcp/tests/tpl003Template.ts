@@ -314,11 +314,38 @@ function writeStartHere(output: string): void {
     list.push(m);
     byComponent.set(m.component, list);
   }
+  /**
+   * 🔴 **A row has to survive being a table cell, and TPL-004 broke that.**
+   *
+   * Until the work list and the two quote lists arrived, every marked node's
+   * words were one short line. A `Static Data` node's words are a formatted JSON
+   * document: dropped into a markdown cell verbatim it ends the table at the
+   * first newline and prints the rest as loose text, so the note stops being
+   * readable exactly where it starts describing the biggest thing a person
+   * edits. A list is summarised by what it IS — how many rows, and what a row
+   * carries — because the rows themselves are in the node and the note's job is
+   * to send somebody to it.
+   */
+  const cell = (text: string): string => {
+    const listMatch = /json:\s*(\[[\s\S]*)$/.exec(text);
+    if (listMatch) {
+      try {
+        const rows = JSON.parse(listMatch[1]) as Array<Record<string, unknown>>;
+        const fields = Object.keys(rows[0] ?? {}).join(', ');
+        return `a list of **${rows.length} rows** — open the node and edit them there. Each row has: ${fields}`;
+      } catch {
+        // Fall through: an unparseable list is still better flattened than
+        // printed across four lines of a table.
+      }
+    }
+    return text.replace(/\s*\n\s*/g, ' ').replace(/\|/g, '\\|');
+  };
+
   const sections = [...byComponent.entries()]
     .map(
       ([component, rows]) =>
         `### \`${component}\`\n\n| node | what it says today |\n|---|---|\n` +
-        rows.map((m) => `| **${m.label}** | ${m.text.replace(/\|/g, '\\|')} |`).join('\n')
+        rows.map((m) => `| **${m.label}** | ${cell(m.text)} |`).join('\n')
     )
     .join('\n\n');
 
@@ -341,22 +368,48 @@ The strip across the top of every page flicks between the three:
 
 | page | route | for |
 |---|---|---|
-| \`Pages/Freelancer\` | \`/\` | one person selling a skill — services, recent work, a word from a client |
+| \`Pages/Freelancer\` | \`/\` | one person selling a skill — services that open, work you can filter, a story behind each piece |
 | \`Pages/Business\` | \`/business\` | a place people visit — a photograph, what it sells, where it is, when it opens |
-| \`Pages/Launch\` | \`/launch\` | something that does not exist yet — the promise, how it works, the numbers, the questions |
+| \`Pages/Launch\` | \`/launch\` | something that does not exist yet — the promise, how it works, the price two ways, the questions |
 
 When you have chosen: delete the two page components you do not want, and if
 the one you kept is not \`Pages/Freelancer\`, open the **App** component, select
 the **Main** router and make your page the start page with an empty URL path.
 Then delete \`Site/Switcher\` — the strip is for choosing, not for visitors.
 
-## 2. The address the form sends to — change this first
+## 2. The parts of it that move
+
+These pages are not a printed flyer. Before you change anything, click on them:
+
+- **The three links at the top of every page** scroll to a section, and the
+  header stays with you. Their words and their destinations are set on the
+  **header instance** on each page — \`nav1\`/\`nav1Target\` and so on. A destination
+  is a **class name** that the section itself carries, so if you rename one you
+  must rename both. (\`Site/ScrollTo\` is the one node that does the scrolling.)
+- **The services, the things a business sells, and the questions** open when you
+  click them. Each is one \`States\` node named *Closed / open* inside its own
+  component — \`Site/ServiceCard\`, \`Site/PhotoCard\`, \`Site/FaqRow\`.
+- **The freelancer's work is a list**, not three cards: one \`Static Data\` node
+  holds every piece, the pills above it filter on the \`category\` field, and
+  clicking a card opens \`Site/CaseStudy\` over the page. 🔴 **A pill's \`value\`
+  must be one of the \`category\` strings in that list**, exactly, or it filters
+  to nothing.
+- **The kind words step one at a time** (\`Site/QuoteCarousel\`), from a list of
+  their own on each page. Add a row and the *n of m* keeps up on its own.
+- **The launch page's price switches** between monthly and yearly. Both prices
+  and the line under them live on the one \`States\` node marked *EDIT — the two
+  prices*.
+- **The form will not send until it can.** Send stays dim until there is a name,
+  an address that could receive a reply and twenty characters of message; the
+  line under it says what is still missing.
+
+## 3. The address the form sends to — change this first
 
 \`Site/Contact\` has one node named **${address.label}**. It says
 \`${PLACEHOLDER_ADDRESS}\` today. Put your own address in it; the form and the
 line beside the form both read from that one node.
 
-## 3. Everything else that is yours to write
+## 4. Everything else that is yours to write
 
 No business, client or number on these pages is invented. Every string you have
 to replace is written in the shape of the thing it stands for and its node is

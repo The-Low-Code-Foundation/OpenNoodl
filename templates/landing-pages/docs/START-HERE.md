@@ -17,22 +17,48 @@ The strip across the top of every page flicks between the three:
 
 | page | route | for |
 |---|---|---|
-| `Pages/Freelancer` | `/` | one person selling a skill — services, recent work, a word from a client |
+| `Pages/Freelancer` | `/` | one person selling a skill — services that open, work you can filter, a story behind each piece |
 | `Pages/Business` | `/business` | a place people visit — a photograph, what it sells, where it is, when it opens |
-| `Pages/Launch` | `/launch` | something that does not exist yet — the promise, how it works, the numbers, the questions |
+| `Pages/Launch` | `/launch` | something that does not exist yet — the promise, how it works, the price two ways, the questions |
 
 When you have chosen: delete the two page components you do not want, and if
 the one you kept is not `Pages/Freelancer`, open the **App** component, select
 the **Main** router and make your page the start page with an empty URL path.
 Then delete `Site/Switcher` — the strip is for choosing, not for visitors.
 
-## 2. The address the form sends to — change this first
+## 2. The parts of it that move
+
+These pages are not a printed flyer. Before you change anything, click on them:
+
+- **The three links at the top of every page** scroll to a section, and the
+  header stays with you. Their words and their destinations are set on the
+  **header instance** on each page — `nav1`/`nav1Target` and so on. A destination
+  is a **class name** that the section itself carries, so if you rename one you
+  must rename both. (`Site/ScrollTo` is the one node that does the scrolling.)
+- **The services, the things a business sells, and the questions** open when you
+  click them. Each is one `States` node named *Closed / open* inside its own
+  component — `Site/ServiceCard`, `Site/PhotoCard`, `Site/FaqRow`.
+- **The freelancer's work is a list**, not three cards: one `Static Data` node
+  holds every piece, the pills above it filter on the `category` field, and
+  clicking a card opens `Site/CaseStudy` over the page. 🔴 **A pill's `value`
+  must be one of the `category` strings in that list**, exactly, or it filters
+  to nothing.
+- **The kind words step one at a time** (`Site/QuoteCarousel`), from a list of
+  their own on each page. Add a row and the *n of m* keeps up on its own.
+- **The launch page's price switches** between monthly and yearly. Both prices
+  and the line under them live on the one `States` node marked *EDIT — the two
+  prices*.
+- **The form will not send until it can.** Send stays dim until there is a name,
+  an address that could receive a reply and twenty characters of message; the
+  line under it says what is still missing.
+
+## 3. The address the form sends to — change this first
 
 `Site/Contact` has one node named **EDIT — the address the form sends to**. It says
 `EDIT ME — you@example.com` today. Put your own address in it; the form and the
 line beside the form both read from that one node.
 
-## 3. Everything else that is yours to write
+## 4. Everything else that is yours to write
 
 No business, client or number on these pages is invented. Every string you have
 to replace is written in the shape of the thing it stands for and its node is
@@ -55,16 +81,15 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the address** | Your street address, your town, your postcode. Delete this and write yours. |
 | **EDIT — the badge on the hero** | Open today until six |
 | **EDIT — the first reason** | icon: leaf · title: The first reason · line: Where things come from, who makes them, what you refuse to do. |
-| **EDIT — the first regular’s words** | quote: “A sentence or two a customer actually said. Pull it from a review if you have one.” · name: Their name · role: A regular since whenever · portrait: noodl_modules/starter-imagery/avatar-3.webp · alt: A woman smiling in a hooded coat |
 | **EDIT — the first thing you sell** | picture: noodl_modules/starter-imagery/food-bread.webp · alt: Sourdough loaves · title: The first thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the headline** | What you make, and why people cross town for it |
 | **EDIT — the line under the headline** | One sentence on the place itself: the street it is on, the people behind the counter, what it smells like at eight in the morning. |
 | **EDIT — the second reason** | icon: heart · title: The second reason · line: The people. Say who is behind the counter and how long they have been. |
-| **EDIT — the second regular’s words** | quote: “Another one. Real words beat polished ones; leave the typos in if you like.” · name: Their name · role: A regular since whenever · portrait: noodl_modules/starter-imagery/avatar-1.webp · alt: A young man laughing |
 | **EDIT — the second thing you sell** | picture: noodl_modules/starter-imagery/food-plate.webp · alt: A plated dish · title: The second thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the third reason** | icon: truck · title: The third reason · line: Something practical: delivery, parking, a room for a party. |
 | **EDIT — the third thing you sell** | picture: noodl_modules/starter-imagery/texture-coffee.webp · alt: Roasted coffee beans · title: The third thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the three nav links at the top** | nav1: What we make · nav1Target: section-bzOffer · nav2: Why here · nav2Target: section-bzWhy · nav3: Visit · nav3Target: section-bzVisit |
+| **EDIT — what regulars said — add a row for each one** | a list of **4 rows** — open the node and edit them there. Each row has: quote, name, role, portrait, alt |
 | **EDIT — What we make — heading** | Three things people come in for |
 | **EDIT — Why here — heading** | Three reasons this is the place |
 
@@ -79,91 +104,17 @@ text, or delete the node if it does not apply to you.
 | **EDIT — About — where you are** | Based in your town · working with people everywhere |
 | **EDIT — Recent work — heading** | The work, and the story behind each piece |
 | **EDIT — the badge on the hero** | Taking new projects from next month |
-| **EDIT — the first client’s words** | quote: “A sentence or two a client actually said about working with you. Ask them; most people are glad to.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-4.webp · alt: A man smiling, arms folded |
 | **EDIT — the first kind of work** | label: The first kind of work · value: The first kind of work |
 | **EDIT — the first service** | icon: pencil · title: The first service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you. · deliverable: What lands in their inbox at the end, and in what form. |
 | **EDIT — the headline** | One line that says what you do, and who it is for |
 | **EDIT — the line under the headline** | Two sentences on the difference it makes for the people who hire you. Keep it plain; this is the first thing they read. |
-| **EDIT — the second client’s words** | quote: “Another client, in their own words. Two quotes is plenty; three is a wall.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-5.webp · alt: A woman smiling outdoors |
 | **EDIT — the second kind of work** | label: The second kind of work · value: The second kind of work |
 | **EDIT — the second service** | icon: layout-grid · title: The second service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: The same three things for this one. If two services have the same answer here, they are probably one service. · deliverable: What they end up with, described as a thing rather than an activity. |
 | **EDIT — the third kind of work** | label: The third kind of work · value: The third kind of work |
 | **EDIT — the third service** | icon: line-chart · title: The third service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: Three services is the most a page like this can carry. If you have five, the other two belong on their own page. · deliverable: What they end up with, described as a thing rather than an activity. |
 | **EDIT — the three nav links at the top** | nav1: What I do · nav1Target: section-flServices · nav2: Work · nav2Target: section-flWork · nav3: About · nav3Target: section-flAbout |
-| **EDIT — the work itself — this list IS the page** | type: json · json: [
-  {
-    "picture": "noodl_modules/starter-imagery/work-leather-bench.webp",
-    "alt": "A leather workbench with tools laid out",
-    "category": "The first kind of work",
-    "title": "A piece of work",
-    "client": "Who it was for",
-    "year": "2026",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  },
-  {
-    "picture": "noodl_modules/starter-imagery/food-bakery.webp",
-    "alt": "A bakery counter with loaves on it",
-    "category": "The first kind of work",
-    "title": "Another of the same kind",
-    "client": "Who it was for",
-    "year": "2025",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  },
-  {
-    "picture": "noodl_modules/starter-imagery/people-desk.webp",
-    "alt": "Someone working at a laptop by a window",
-    "category": "The second kind of work",
-    "title": "A piece of a different kind",
-    "client": "Who it was for",
-    "year": "2026",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  },
-  {
-    "picture": "noodl_modules/starter-imagery/work-machine-shop.webp",
-    "alt": "A machine shop with a lathe in use",
-    "category": "The second kind of work",
-    "title": "Another of that kind",
-    "client": "Who it was for",
-    "year": "2025",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  },
-  {
-    "picture": "noodl_modules/starter-imagery/people-meeting.webp",
-    "alt": "Three people talking around a table",
-    "category": "The third kind of work",
-    "title": "A piece of the third kind",
-    "client": "Who it was for",
-    "year": "2024",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  },
-  {
-    "picture": "noodl_modules/starter-imagery/work-potter.webp",
-    "alt": "A potter shaping a bowl on a wheel",
-    "category": "The third kind of work",
-    "title": "The last one on the list",
-    "client": "Who it was for",
-    "year": "2024",
-    "summary": "One line on what it was and what changed. This is all the card shows.",
-    "brief": "What they came to you with, and what was hard about it. Two sentences.",
-    "did": "What you actually did — the decisions, not the deliverables. Two or three sentences.",
-    "outcome": "What happened afterwards. A number here is worth a paragraph of adjectives."
-  }
-] |
+| **EDIT — the work itself — this list IS the page** | a list of **6 rows** — open the node and edit them there. Each row has: picture, alt, category, title, client, year, summary, brief, did, outcome |
+| **EDIT — what clients said — add a row for each one** | a list of **4 rows** — open the node and edit them there. Each row has: quote, name, role, portrait, alt |
 | **EDIT — What I do — heading** | Three things I can take off your plate |
 
 ### `Pages/Launch`
