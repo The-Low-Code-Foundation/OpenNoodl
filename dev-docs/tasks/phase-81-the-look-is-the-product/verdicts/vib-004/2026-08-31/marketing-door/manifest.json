@@ -1,0 +1,117 @@
+{
+  "task": "vib-004",
+  "subject": "marketing",
+  "state": "door",
+  "headSha": "e5b68d30684fac7c983f08f60e54691bc2c76f63",
+  "artefactMd5": "3e1ea80c9f7c341a8dab4d98f09f0266",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door",
+  "starterAssets": {
+    "written": [
+      "noodl_modules/inter/manifest.json",
+      "noodl_modules/inter/styles.css",
+      "noodl_modules/inter/LICENSE.txt",
+      "noodl_modules/inter/Inter-Regular.ttf",
+      "noodl_modules/inter/Inter-Medium.ttf",
+      "noodl_modules/inter/Inter-SemiBold.ttf",
+      "noodl_modules/inter/Inter-Bold.ttf",
+      "noodl_modules/lucide-icons/manifest.json",
+      "noodl_modules/lucide-icons/styles.css",
+      "noodl_modules/lucide-icons/lucide.woff2",
+      "noodl_modules/starter-imagery/manifest.json",
+      "noodl_modules/starter-imagery/ground-aurora.svg",
+      "noodl_modules/starter-imagery/ground-ridge.svg",
+      "noodl_modules/starter-imagery/tile-1.svg",
+      "noodl_modules/starter-imagery/tile-2.svg",
+      "noodl_modules/starter-imagery/tile-3.svg",
+      "noodl_modules/starter-imagery/portrait.svg"
+    ],
+    "skipped": [],
+    "failed": []
+  },
+  "shots": [
+    {
+      "task": "vib-004",
+      "subject": "marketing",
+      "state": "door",
+      "page": "marketing",
+      "url": "/",
+      "as": "six bands from six shipped recipes, four grounds, nobody signed in",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-preview-full.png",
+      "contentBottom": 2744,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 1671,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-004",
+      "subject": "marketing",
+      "state": "door",
+      "page": "marketing",
+      "url": "/",
+      "as": "six bands from six shipped recipes, four grounds, nobody signed in",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-desktop-full.png",
+      "contentBottom": 2840,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 1671,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-004",
+      "subject": "marketing",
+      "state": "door",
+      "page": "marketing",
+      "url": "/",
+      "as": "six bands from six shipped recipes, four grounds, nobody signed in",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-wide-full.png",
+      "contentBottom": 2852,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 1671,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-004",
+      "subject": "marketing",
+      "state": "door",
+      "page": "marketing",
+      "url": "/",
+      "as": "six bands from six shipped recipes, four grounds, nobody signed in",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-004/2026-08-31/marketing-door/marketing-phone-full.png",
+      "contentBottom": 4811,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 1671,
+      "headings": [],
+      "errors": []
+    }
+  ]
+}

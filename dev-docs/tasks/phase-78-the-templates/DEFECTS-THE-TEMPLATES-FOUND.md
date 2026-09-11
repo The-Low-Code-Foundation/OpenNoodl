@@ -1,0 +1,1862 @@
+# Defects the templates found
+
+**Richard, 2026-08-28:** *"If you find a problem with the codebase or MCP or whatever, add it to
+the next session prompt to fix please. We're making templates to surface bugs and issues with the
+whole NodeGX concept as well."*
+
+So this file is a **standing output of phase 78**, not a one-off. Building a real app through the
+real doors is the only thing that exercises them the way a customer will, and what it turns up
+belongs here the moment it is measured.
+
+⚠️ **Phase 77 keeps its own sibling register** —
+[DEFECTS-THE-SITE-BUILDER-FOUND.md](../phase-77-the-site-builder-rescue/DEFECTS-THE-SITE-BUILDER-FOUND.md).
+Its D1 (nothing warns that a `Failure` reaches nobody) is the same family as **D1 below**: the
+door accepts a graph whose defect it has everything it needs to see.
+
+## House rules for this file
+
+- 🔴 **A row is a measurement, not an impression.** Say what was done and what happened. A defect
+  filed on a hunch costs the next session more than it saves.
+- ⚠️ **Disproved candidates stay, marked.** "I thought this was broken and it is not" is worth as
+  much as a real row — it stops the next person re-deriving it. See D6.
+- Each row names **where it bites a person**, not just where the code is wrong.
+- 🔴 **Every row carries an owner, or the word NONE.** Added 2026-08-29 after the three-register
+  sweep created [phase 80](../phase-80-the-defects-the-templates-found/TASKS.md). A row with no
+  owner is not a record, it is a thing that will be found again — which is exactly what happened to
+  twenty rows across three phases. **A new row is not finished until this table has a line for it.**
+
+## The register
+
+⚠️ **The `status` column is AS RECORDED by the session that filed each row, not a re-measurement at
+HEAD.** Only the rows dated 08-29 were measured today. A sweep that re-measures the rest is owed and
+is not this table — writing "still real" over twenty rows I did not re-run would be the exact
+failure this file's first house rule exists to prevent.
+
+| row | status (as recorded) | owner | side | who it bites |
+|---|---|---|---|---|
+| D1 | ✅ **FIXED — re-measured by sabotage 08-29 (s11), all three classes** | DEF-002 | product | (was: every agent-authored app) |
+| D2 | 🟠 open | **DEF-005** 🔒 ruling | product | every membership app |
+| D3 | 🔴 open | **DEF-005** 🔒 ruling | product | every membership app |
+| D4 | ✅ answered — not a defect | — | — | — |
+| D5 | ⚠️ open | **DEF-008** | product | an author reading port names |
+| D6 | ✅ disproved | — | — | — |
+| D7 | ✅ fixed s6 | — | template | (was: everyone gated against) |
+| D8 | ✅ disproved | — | — | — |
+| D9 | 🔴 residual open | **DEF-007** | product | the next template |
+| D10 | ✅ **FIXED — re-measured on the artefact 08-29 (s17)** | — | template | (was: every generated app) |
+| D11 | 🔴 open | **DEF-001** | product | every end user |
+| D12 | 🔴 open | **DEF-006** | product | every agent styling on-system |
+| D13 | 🔴 open | **DEF-001** | product | every end user |
+| D14 | ✅ fixed s6 | — | product behaviour, worked around in template | (was: every gated reveal) |
+| D15 | ⚠️ open | **DEF-006** | product | every agent styling on-system |
+| D16 | ✅ fixed s6 | — | template | (was: every gated screen) |
+| D17 | ✅ answered s5 | — | — | — |
+| **D18** | 🔴 open (08-29) | **DEF-017** — filed as Track C **C2** (was `NONE`, s17) | product | every person filling in any form |
+| **D19** | ⚠️ open (08-29) | **DEF-017** — filed as Track C **C2** (was `NONE`, s17) | product | every person filling in any form |
+| **D20** | 🔴 open (08-29) | **DEF-006** — **filed** as §0(c) (was `NONE`, s17) | product | every agent styling on-system |
+| **D21** | ✅ disproved (08-29) | — | — | (would have been: every agent placing a component) |
+| **D22** | 🔴 open (08-29) | **phase 78 T6** — template, before publication | template | every install — the directory's first row |
+| **D23** | ⚠️ open (08-29) | **phase 78 T6** — template, before publication | template | anyone reading two pages titled the same |
+| **D24** | ⚠️ open (08-29) | **phase 78 T6** — template, before publication | template | a moderator approving somebody |
+| **D25** | ✅ fixed in Track A — **re-measured 08-29 (s10)** | — | template | (was: every person reading a date or filling the meeting form) |
+| **D26** | ✅ **fixed by P80 C1 (`2c6a8876`, 08-29)** — `raised` and `ruled` compositions added; B3 unblocked | P80 | product | (was: every template we ship) |
+| **D27** | ✅ fixed s8 (08-29) | — | template | (was: anyone whose setup, join or approval threw) |
+| **D28** | ✅ **FIXED by DEF-018 (08-30) — re-driven at HEAD first, 14px overlap exactly as recorded** | DEF-018 | product | (was: every agent who lays controls out in the one node that reflows) |
+| **D29** | ✅ **FIXED s13 (08-29)** — measured at the browser, both halves | — | template | (was: every member — a second auth round trip on every page) |
+| **D30** | ✅ **FIXED by DEF-019 (08-30, `f14a1faa`) — re-driven at HEAD first; the shipped Inter's proportional figures made the rag 19.45px on four digits, `tabular-nums` renders both strings at exactly 82.921875px** | DEF-019 | product | (was: every app with a column of numbers — money, times, scores) |
+| **D31** | ✅ fixed s11 (08-29) | — | template | (was: every moderator who posted something wrong) |
+| **D32** | ✅ **FIXED by DEF-020 (08-30) — re-driven at HEAD first, 640/640 gap-0 exactly as recorded; the maxWidth false-positive shape found and excluded** | DEF-020 | product | (was: every agent laying two things out along a row) |
+| **D33** | ✅ **FIXED by DEF-021 (`4adab228`, 08-30) — re-driven at HEAD first, red exactly as recorded** | DEF-021 | product | (was: every member who was told they would be emailed) |
+| **D34** | 🔴 open (08-29, s14) | **DEF-022** (registered 08-29) | product | everyone an app ever emails a link to |
+| **D35** | ✅ **FIXED by DEF-023 (`acd053e0`, 08-30) — the behaviour held, the recorded mechanism was the browser's; see the section note** | DEF-023 | product | (was: every graph that accumulates anything server-side) |
+| **D36** | ✅ **product half CLOSED by DEF-024 (08-30)** — `gate-only-turns-on` warns at both doors; Condition/Switch descriptions name the two-way shape. 🔴 **The s15 workaround covered `Pages/Account` ONLY: the shipped artefact still carries 12 one-way latches** (see the section) — template work, this phase's | **DEF-024** (closed 08-30) | product | every screen whose answer has more than one form |
+| **D37** | 🔴 open — worked around in template (08-29, s15) | **DEF-025** (registered 08-29) | product | every person tapping the words beside a checkbox |
+| **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
+| **D39** | ✅ **RULED 08-29 by Richard — no change, and now pinned** | — | template | — (ruled: it stays one sentence) |
+
+🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
+day of the process being put in place.** That is the argument for the column, not an argument
+against the timing.
+
+🔴 **And D36–D39 were filed as sections with no table line at all** — added 08-29 (s16), a day
+after the house rule that says a row is not finished until this table has a line for it. Worth
+saying plainly, because it is a **worse** failure than an unowned row and it reads as a milder one:
+an unowned row is at least *visible* to a sweep that reads the table, which is what a sweep reads.
+Four rows filed by the session that also wrote the rule were invisible to it. The count in s15's
+next-session prompt — *"twelve unowned rows"* — was derived from the sections, not the table; had
+anyone derived it from the table it would have said eight and been wrong in the safe direction.
+
+✅ **RESOLVED 2026-08-29 (s17): all three now have an owner, and each was flipped by re-running
+the test this file itself set** — not by reading phase 80's status column. Where they landed:
+
+- **D20 → DEF-006.** The test written here was *"grep DEF-006 for `D20` and it is absent"*. It is no
+  longer absent: `DEF-006-THE-DESIGN-SYSTEM-PUNISHES-ITS-USER.md` names D20 in its source line and
+  carries **§0(c)** — *"the vocabulary has no composition for a field, a notice or an empty
+  state"* — as a section of its own. Same mechanism as D12 and D15, as predicted.
+- **D18, D19 → DEF-017**, phase 80's registration of **Track C**, which this phase handed over.
+  [TRACK-C-HANDOFF.md](TRACK-C-HANDOFF.md) §**C2** is titled *"D18 / D19: nine of ten control
+  classes never receive the app's font"* and carries D18's fidelity-not-a11y ruling verbatim. The
+  *"re-measure before filing"* note above was discharged by whoever wrote C2, not by this session.
+
+✅ **The other eleven are now owned too — and the register has NO `NONE` rows left.** They had been
+unowned in the strongest sense: measured 2026-08-29 (s17), each of the eleven was named in **zero**
+files outside this register, and phases 77 and 80 mentioned not one of them.
+
+🔴 **Richard's instruction, 2026-08-29:** *"We need to add the defects to phase 80 please."* Done —
+but the eleven **did not all go there**, and the split is the part worth recording:
+
+- **Eight are product-surface → phase 80, as `DEF-018`–`DEF-025`**, carried **by reference** in that
+  phase's [TASKS.md](../phase-80-the-defects-the-templates-found/TASKS.md#carried-forward-from-phase-78-by-reference).
+  D28→018, D30→019, D32→020, D33→021, D34→022, D35→023, D36→024, D37→025. The measurements stay
+  here; that table points at this file rather than restating it.
+- **Three are template-side → phase 78 `T6`**, work owed **before publication**: D22, D23, D24.
+  Phase 80's own README scopes it to *"the product surface… never on a template being fixed
+  downstream of it"*, so filing three template edits there would have put them behind a product
+  phase's dependencies and out of reach of the thing they affect — the template about to ship.
+
+🔴 **`phase 78 T6` is itself an owner in a closing phase — the very thing this session flagged, and
+it is acceptable only because of WHEN T6 runs.** T6 is scoped *before publication*, so it completes
+while the phase is still open. ⚠️ **If phase 78 ever closes with T6 undone, these three rows become
+unowned again and must be carried, not dropped silently** — a phase closes by naming both lists, and
+these three belong on one of them. The guard is written here because the owner cell cannot hold it.
+
+⚠️ **Eight-and-three was found by reading the rows, not the table — and the table was right.** The
+`side` column already said `template` for D22–D24. A first pass this session read their sections as
+`product` and was wrong: the `awk` used had no Severity line to stop on in those three rows, so it
+ran forward into a **later** section's and reported that. ✅ **A scan that searches "from here until
+a pattern" silently attributes the next match to a row that simply lacks the field** — and it fails
+toward *looking complete*. The rows' own words settle it: D22 says *"template-side and cheap"*.
+
+🔴 **And the belief that someone had them was built out of a sentence about the past.** s16's
+next-session prompt said *"**Phase 80 owns the register sweep**, not this phase"*, and that sentence
+exists in exactly one place — that prompt. What phase 80 actually records (`TASKS.md`, its history
+line) is *"Phase created from the three-register sweep"*: a **completed** act on 08-29 that produced
+`DEF-001`–`DEF-017`, not a standing commitment to sweep anything again. ✅ **A phase created *by* a
+sweep does not thereby own the *next* one.** The rows that sweep did not pick up were left where
+they were, and a phase name in the prose above them read like a plan.
+
+⚠️ **The count was wrong in the safe-looking direction too.** That same prompt said *"Ten unowned
+rows"* and then enumerated eleven (*"D22–D24, D28, D30, D32–D37"*). The list was right; the total
+was not. This is the third counting error in this table's short life, after s15's *"twelve"* (from
+the sections) and the *"eight"* the table would then have given — 🔴 **so the standing fix is to
+derive the number from the table with a command and paste the output, never to count by eye.** The
+one used here:
+
+    awk -F'|' '/^\| *\*?\*?D[0-9]+\*?\*? *\|/ {r=$2;o=$4; gsub(/[ *]/,"",r); gsub(/^[ *]+/,"",o);
+      if (o ~ /^NONE/) {printf "%s ", r; n++}} END{print "\ncount: " n}' \
+      dev-docs/tasks/phase-78-the-templates/DEFECTS-THE-TEMPLATES-FOUND.md
+
+⚠️ **Match on the owner cell's FIRST token, not on the word `NONE` anywhere in it.** The first run
+of this command returned **14** — it was matching the *"(was `NONE`, s17)"* annotations that the
+flips above had just added. A checker that reads a field's history as its value overcounts exactly
+the rows someone has just fixed.
+
+🔴 **The lesson is the shape of the delay, not the delay.** Each of these three sat at `NONE` for a
+day *after* the work had a home, because the flip depended on a session that was not scheduled to
+look. The owner column is written here and satisfied over there, so nothing reddens when they
+disagree — and the failure direction is the dangerous one: a row that reads `NONE` gets re-derived
+at full price, which is the exact cost this column was added to stop. ✅ **A row whose owner cell
+states a test must have that test re-run by the next session that touches this table** — three
+greps, and they were the whole of it.
+
+⚠️ **Naming.** `D17` was briefly a second `D10` in this file and was renumbered; every historical
+`D10` reference means the generators bypassing the design system. Settled 2026-08-29 (`56c9b372`):
+**this register mints the `D` ids, phase 80 mints the `DEF` ids** — on a collision, the file that
+issues the identifier is the one to match.
+
+---
+
+## D1 — ✅ FIXED. (Was: the MCP door accepts wires to ports that do not exist.)
+
+**Severity: was high.** This is the class SB-018 (1) lived in for five sessions.
+
+> 🔴 **Closed 2026-08-29 (s11), by re-running the original sabotages rather than by reading the
+> commit.** All three classes below are now **blocking errors** with a named suggestion. Richard
+> landed the first in `d419f295` (`fix(def-002/1a)`, 09:49) and the other two are covered by
+> `connection-unknown-derived-port`. Measured by regenerating the members' area with each sabotage
+> in turn:
+>
+> | class | sabotage | what the door does now |
+> |---|---|---|
+> | component instance | `Chrome.isModerator` → `isModeratorXX` | `ERROR [connection-unknown-instance-port]`, refuses, *"did you mean `isModeratorXX`?"* |
+> | `CloudFunction2` | `send.in-name` → `in-nameXX` | `ERROR [connection-unknown-derived-port]`, refuses, lists all four real ports |
+> | `RouterNavigate` | `goDetail.pm-announcementId` → `pm-noSuchParam` | `ERROR [connection-unknown-derived-port]`, refuses, names `pm-announcementId` |
+>
+> ⚠️ **This was found by accident, and that is the finding about the process.** s11 sabotaged its
+> own new wire expecting the silence this row describes, and got a refusal. The row had been stale
+> for four hours. Nothing in this file's workflow re-measures a row when the thing it is about is
+> fixed by somebody else — the fixer has no reason to read a template phase's register, and the
+> register's own house rule says its statuses are *as recorded*, never re-measured. A fixed row
+> that still reads 🔴 costs whatever the next session spends working around a hole that is closed.
+>
+> ✅ **The interim cover stays.** `tpl001Template.test.ts`'s instance-port block grades what is **on
+> disk**, so it still covers a component edited by any route that is not the door — and a check is
+> retired on a higher bar than the one that added it.
+
+**What it was**, kept because the shape is what SB-018 lived in:
+
+Measured by sabotage during TPL-001 authoring. In each case the run came back `isError: false`
+with **exactly the same 46 `info dynamic-port-skipped` diagnostics as the clean run** — no error,
+no warning, and not even an info about the wire:
+
+| what was sabotaged | what the door said |
+|---|---|
+| `standing.isMember` → `standing.isMemberXX` (a **component-instance** output) | nothing |
+| `send.in-name` → `send.in-nameXX` on a **`CloudFunction2`** whose endpoint declares `name,email,password,message` | nothing |
+| `goDetail.pm-announcementId` → `pm-noSuchParam` on a **`RouterNavigate`** whose target page declares `announcementId` | nothing |
+
+🔴 **All three targets are components the door has already resolved on disk**, and each declares
+its ports in a file the door reads:
+
+- a component instance → the `Component Inputs` / `Component Outputs` node in the target component
+  (⚠️ note the inversion: `Component Inputs` declares *output*-plugged ports inside the component,
+  and those are the *inputs* an instance exposes);
+- `CloudFunction2` `in-*`/`out-*` → the target cloud component's `noodl.cloud.request` `params`
+  stringlist and its `noodl.cloud.response` `params`;
+- `RouterNavigate` `pm-*` → the target page's `PageInputs.pathParams` and the `{braces}` in its
+  `Page.urlPath`.
+
+**Where it bites a person.** Every gate in the members' area is a component-instance port —
+`isMember` reveals the content, `isModerator` reveals the moderator's tools, `Member`/`Moderator`
+are the *only* triggers the queries have. A typo in any of them fails **shut and silently**: a
+screen that stays empty, a list that never loads, and a green authoring run. An agent authoring
+through this door has no way to learn it made the mistake.
+
+**Fix.** Extend the connection check to resolve these three references the same way
+`For Each.template` already is (`repeater-template-unresolved` is blocking, and it is the proof
+this is the door's job). ⚠️ If a full check is too strong to land at once, the cheap half is worth
+having on its own: **emit an info naming the wires that were not verified**, the way
+`dynamic-port-skipped` does for parameters. Today the door is silent about connections in a way
+that reads as "checked and fine".
+
+**Interim cover:** `packages/noodl-mcp/tests/tpl001Template.test.ts` §3 does the instance-port
+check over the shipped artefact, and since 2026-08-28 `tpl001-members-drive.test.ts` **executes**
+every class named above — the eight instance ports, `in-*`/`out-*` on all four `CloudFunction2`
+nodes, `prop-*` on both records nodes, `qp-today` on the meetings filter — and none of them was
+wrong. ⚠️ That is evidence about **this template**, not about the door: it says the silence hid
+nothing here, and costs a drive per template to say it anywhere else. The door is still silent.
+
+---
+
+## D2 — 🟠 The browser cannot read the current user's roles at all
+
+**Severity: was high; ⬇️ MEDIUM since D4 was answered on the drive (2026-08-28).** It is still a
+hole in the concept — but D4 shows an app *can* branch on the refusal of the query it was going to
+run, so this is a convenience and a quality-of-result question rather than the only way through.
+Read D4 before acting on this row.
+
+- `_Role` is a system class: `isSystemCollection` gives every `_`-prefixed class a fixed `nobody`
+  posture **regardless of config**, so no query reaches it.
+- The `User` node's outputs are the columns of `_User`, and role membership is not one.
+- The whole roles family (`getuserroles`, `addusertorole`, `removeuserfromrole`) is **cloud-only**,
+  deliberately — *"adding the current user to a role from client-side graph is one wire from a
+  button to 'make me an admin'"*, which is right for the writes.
+
+**Where it bites a person.** Every membership app — which is to say the entire category this
+template is aimed at — needs a bespoke cloud function (`myStanding`, here) *just to decide whether
+to show a page*. That is a round trip, a security policy entry and four nodes before a single
+screen can branch. Anyone building this without our findings will instead infer membership from
+whether a query came back empty, which is D3's trap and is wrong.
+
+**Fix candidate.** A read-only `roles` output on the `User` node, resolved from the session the
+same way enforcement resolves it (`SecurityState.rolesForUser`). Reading one's own roles grants
+nothing — the server still decides every request — and it would remove the round trip from the
+most common branch in the product.
+
+⚠️ **What D4 changed about the "where it bites" above.** Inferring membership from an empty query
+is wrong, but inferring it from a **refused** one is not — `failure` fires. So the cost of not
+having this is a screen that must issue a members-only query, have it refused, and *then* say "you
+may not", flickering through "nothing here" on the way. That is worse than a round trip, not
+impossible without one.
+
+---
+
+## D3 — 🔴 Nothing enumerates the members of a role
+
+**Severity: medium-high. It makes an ordinary screen unbuildable.**
+
+`getuserroles` answers *"which roles is this user in"*. There is no inverse. So **"show me the
+member list"** — the most ordinary screen in a membership app, and named in TPL-001 §3 — cannot be
+built at all without maintaining a projection collection that duplicates `_Role`, which then goes
+stale the first time somebody changes a role by hand.
+
+**Fix candidate.** A cloud `List Users In Role` node. The junction is already there and the
+resolver already walks it in one direction.
+
+**Until then** TPL-001 ships without the member list, and the decision is Richard's (TPL-001 §10).
+
+---
+
+## D4 — ✅ ANSWERED on the drive, 2026-08-28: **yes, `failure` fires.** Not a defect.
+
+**Closed. The answer reverses what a prior session recorded, so read this before trusting any
+note that says a refused query looks empty.**
+
+`DbCollection2` has a `failure` signal and an `error` output, and `setError` raises a runtime error
+code — so **if** a 403 reaches that path, an app can tell "you may not read this" from "there is
+nothing here". Prior sessions recorded the opposite (a refused query publishing `[]` like an empty
+one), which is why every members-only screen in TPL-001 is branched on `myStanding` instead.
+
+**What was measured** (`packages/nodegx-backend/tests/tpl001-refused-query.test.ts`), with the
+shipped policy enforcing, on one backend, in one browser, two arms minutes apart:
+
+| arm | server | the page |
+|---|---|---|
+| an approved **member** | `200`, one row | list drew the row, stayed on `/members`, console clean |
+| a **pending** person | `403` | **navigated away** — `failure` fired — and the console named `query-records/query-failed` |
+
+TPL-001 never runs a members-only query as a non-member, so the twin adds **two wires and nothing
+else**: `page.didMount → announcements.storageFetch` (so the query runs whoever you are) and
+`announcements.failure → toLanding.navigate` (so a refusal, if legible, is unmissable). The member
+arm is the control that the added fetch is live; without it a silent pending arm would be equally
+consistent with "the mutation did nothing".
+
+🔴 **The first version of this twin got the opposite answer, and it was the instrument's fault.**
+It wired `failure` → `unknownNotice.visible` — a **signal** into a **value** port — and the notice
+painted for the person whose query **succeeded** and not for the one who was **refused**. Exactly
+inverted. That is the SB-018 class, and it is the reason the twin is now signal-to-signal
+throughout. **An instrument built out of a seam you already know is broken measures the seam.**
+
+⚠️ **TPL-001's design still stands.** Branching on `failure` means issuing the members-only query
+for every stranger and flickering through "nothing here" on the way to "you may not"; the standing
+check stops the query being made at all.
+
+---
+
+## D5 — ⚠️ `net.noodl.user.LogOut`'s signal input is named `login`
+
+**Severity: low, and unfixable in the obvious direction.** `logout.ts:67` says why: the port name
+is persisted in every project that uses the node, so renaming it breaks them. It is displayed as
+"Do".
+
+✅ **The door already handles this well** — it refused `logout` and named `login` as the
+alternative, which is how it was found in one minute rather than one hour. Recorded only so the
+next person does not re-derive it. If anything is worth doing, it is accepting `logout` as an
+alias in the door's suggestion path.
+
+---
+
+## D6 — ✅ DISPROVED: "the door hides its node id remapping"
+
+**Filed and then withdrawn in the same session, kept as a row on purpose.**
+
+The door de-duplicates node ids **project-wide**, so a second component reusing `emptyState` is
+written as `emptyState-2` — which broke two assertions written against authored ids. The first
+reading was "the door rewrites ids and does not say so".
+
+**It does say so.** `create_component` returns `remappedNodeIds` and `remapNote`, and
+`responses.ts` states the reason in exactly the terms that were needed: *"a caller that intends a
+follow-up `update_component` keyed on the id it just sent needs to know the id changed"*. **The
+generator was throwing the payload away** — the same mistake it was making with the door's
+diagnostics.
+
+Both are now collected and printed (`built.remaps`, `built.diagnostics`). 🔴 **The lesson is about
+the caller, not the door: an absence you have not looked for is not an absence the tool has.**
+
+---
+
+## D7 — ✅ FIXED 2026-08-28 (s6): a `visible: false` group shipped its whole subtree to everyone
+
+**Severity: low as a defect, high as a habit.** Measured on TPL-001's drive: an approved member
+loading `/post` receives the moderator's announcement form, meeting form and both submit buttons
+in their document, behind `display: none`. `Post it` is absent from what is *painted* and present
+in what is *in the document*, in the same reading.
+
+It is **not** a leak here — the forms are empty and the server answers `403` to the write — and
+`visible` is documented as holding its space rather than removing the node. It is filed because of
+what it makes false: *"the member's UI does not offer it"* is a claim about painting, and anyone
+who reaches for `visible` to hide **content** rather than a control has built a leak that every
+structural spec will pass. The template itself gets this right — every members-only **fetch** is
+gated on a standing signal, so hiding is never what keeps data out.
+
+**Where it bites a person.** The first builder who puts a members-only announcement inside a
+`visible: false` group instead of gating its query. `mounted` removes the subtree; `visible` does
+not, and nothing in the editor says which one this decision needs.
+
+### ✅ The fix, and how it is held
+
+Every gate in the template is now `mounted` — **27 wires and 25 parameters**, changed at the source
+(`tpl001Components.ts`) and regenerated, so the artefact diff is exactly those 52 lines and nothing
+else. The drive spec that **recorded** this defect is inverted rather than deleted, because a
+deleted spec cannot notice the regression back:
+
+> `✅ D7/D16 — the form is not in the member’s document at all, not merely unpainted`
+
+🔴 **It carries two controls**, because a bare absence proves nothing: the same reading holds the
+refusal sentence (so the document rendered), and the *moderator's* reading through the same helper
+DOES hold the form (so the instrument can see one when it is there).
+
+A second ratchet in `tpl001Template.test.ts` fails on **any** `visible` wire or parameter anywhere
+in the shipped artefact, and asserts the 27 `mounted` gates beside it — an empty offender census
+that is a measurement rather than a walk over an empty population.
+
+⚠️ **The race that made this worth thinking twice about does not exist here, and the reason is
+worth keeping.** An unmounted node is **not destroyed** — it stays in the graph and its inputs keep
+arriving, so a `For Each` inside a gated group still receives rows published while it is away
+(`foreach.tsx` either applies them immediately or queues them and replays on `didMount`). Beyond
+that, every query in this template is a **parentless logic node triggered *by* the same standing
+signal that mounts the group**, so the group is always mounted first. Read, then measured: the
+drive suite's list-rendering arms (§2, §6, §8) all pass.
+
+---
+
+## D8 — ✅ DISPROVED: "the viewer bundle was stale, so the drive measured an old runtime"
+
+**Filed and withdrawn in one session, kept because the reasoning was seductive and wrong.**
+
+`packages/noodl-editor/src/external/viewer/noodl.viewer.js` had an mtime of **08-27 20:23** and
+three commits touching `noodl-runtime` / `noodl-viewer-react` carried later timestamps, so it was
+rebuilt before driving anything.
+
+**It was already current.** The pre-existing bundle was **byte-for-byte the same size** as a fresh
+build, and grepping it found `_inputCauseQueue`, `_inputValuesQueue` (FB-025) and `textInputValue`
+(FB-026) already present: the changes were in the working tree when the bundle was built and were
+committed thirty-two minutes later. And the third commit blamed — 354b4525, SB-018 — touched
+**no runtime source at all**, only tests and template content.
+
+🔴 **The lesson is the inverse of the usual one.** *Commit time is not authorship time*, so an
+artefact older than a commit may still contain it. ✅ **Grep the artefact for a marker.** Never
+infer staleness from an mtime against a commit date — in either direction.
+
+⚠️ **What was worth doing anyway**: the drive now stamps the bundle at both ends of the run and
+reddens if it moved. On a shared checkout a peer's dev stack rewrites that file, and a bundle
+swapped mid-drive would surface as a flake in whichever spec happened to be running.
+
+---
+
+## D9 — 🔴 A generated project can ship with no HOME node, and every headless gate passes over it
+
+**Severity: high.** It is the first thing a person does after picking a template, and it fails.
+
+Measured 2026-08-28 (s4) by doing the one thing nothing had done: **opening the artefact as a
+project in the editor and pressing preview.** The viewer rendered
+
+```
+ERROR
+No  HOME component selected
+Click Make home as shown below.
+```
+
+— not the landing page, not a white void, not a routing error. Nothing in the app was reachable.
+
+**The cause.** `ProjectModel.fromJSON` resolves the app's home from `rootNodeId`
+(`projectmodel.ts:235`). The skeleton `tpl001Template.ts` wrote had no such field, so `rootNode`
+stayed `undefined` and the viewer had no root to render. Everything else about the project was
+correct — 21 components, 11 pages registered, the router present, the start page right.
+
+🔴 **The control that makes this a defect rather than a guess.** The only other template in the
+repository, `site-builder.content.json`, carries `rootComponent: '/App'`. Same mechanism, two
+arms, and the arm that omits it is the arm that errors. One template had it because it was
+hand-shaped; the other was generated by a script that never wrote the field.
+
+⚠️ **And the two spellings are not interchangeable.** `rootComponent` is the **legacy** field — a
+component *name* — which `import-engine/legacy/assess.ts:356` reports as something it rewrites on
+load, and which `project-v2.schema.json` (`additionalProperties: false`) does not permit. A v2
+project file carrying it is not a project file that validates. The v2 spelling is `rootNodeId`, a
+node id. `fromJSON` accepts the legacy one only as a fallback while upgrading.
+
+**Fixed** in `prepareArtefact` → `pinRootNode`, which reads the root back out of `App/nodes.json`
+rather than typing `app_root`: the door de-duplicates node ids project-wide, so that id is stable
+only because `App` is written first and nothing claims it earlier.
+
+### 🔴 Why 45 headless specs and a 41-spec byte gate all passed over it
+
+This is the part worth carrying to every future template.
+
+- **The drive serves pages directly.** `withRenderedPage` navigates to a URL and reads what comes
+  back. It never asks the project what its home is, so the field being absent is invisible to it —
+  all 45 specs, including every one that renders a page in a real browser, pass on a project the
+  editor cannot open.
+- **The byte gate compares the artefact to a fresh run of the same generator.** A field neither
+  side writes is a field both sides agree about. Byte-identity is a *drift* check, and it cannot
+  see a defect that was present from the first run.
+
+✅ **The gap is the same shape as the one P67 named**: a checker run over fixtures it authored
+agrees with itself. What found this was running the artefact through **the door a person uses**,
+which for a project template is *open it in the editor and press preview* — and that door was
+outside every sweep in this phase. **Where it bites a person: they pick the template, press
+preview, and the app does not exist.**
+
+### The curated path carries no repair, and the embedded one says why it would need one
+
+Read after the fix, and it settles which arm this defect lives on:
+
+- 🔴 **`PlatformTemplateProvider` does no home resolution at all** — neither `rootComponent` nor
+  `rootNodeId` appears in it. A curated template is a prepared directory, and what the directory
+  carries is what the person gets. So before this fix, a curated install of TPL-001 gave a project
+  with no home, exactly as the launcher-opened copy did.
+- ✅ **`EmbeddedTemplateProvider` resolves the name into a concrete `rootNodeId` at install, and
+  its own comment states the trap** (`:119-125`): `fromJSON`'s `rootComponent` hint calls
+  `setRootComponent()`, which *"silently no-ops unless the NodeLibrary already has the root node's
+  type loaded"* — and at project-creation time the editor is **on the launcher with an empty
+  NodeLibrary**, so the hint is lost and *"the project is saved with no home component"*.
+
+⚠️ **That is the same failure this row opens with, already known and already written down for the
+other arm.** The embedded provider repairs it per-install; the curated path has no such step, so
+the repair has to be *in the artefact*. Writing a concrete `rootNodeId` is what that comment
+prescribes: resolved by id lookup, independent of the NodeLibrary.
+
+⚠️ **What is measured and what is inferred.** The error, the cause and the fix were **driven** —
+opened from the launcher, previewed, `rootNodeId` absent, added, app renders. That the *wizard*
+install has the same hole is read **from the code above**, not driven: a curated template cannot
+be installed through the picker until it is published, which is T5. **Grade it there**, and do not
+let this row stand in for that reading.
+
+---
+
+## D10 — ✅ FIXED. (Was: the template generators bypass the design system the product ships.)
+
+**Severity: was high.** It is what a person judges the whole product by, before they test anything.
+
+> ✅ **Closed 2026-08-29 (s17), by re-measuring the artefact rather than by reading a task file.**
+> The fix has a named home — [`tpl001Theme.ts`](../../../packages/noodl-mcp/tests/tpl001Theme.ts),
+> whose header opens *"the look, and the only reason the members' area has one"* and quotes this
+> row's own measurement back as the defect it exists to end. It landed across `e5922d21`,
+> `556c9dc3`, `392fecc6` and `e337325c`. Re-run over `templates/members-area/` today:
+>
+> | | as recorded (08-28) | at HEAD (08-29) |
+> |---|---|---|
+> | nodes counted | 137 visual | **431** (all components, incl. cloud) |
+> | colour / background / border params | **0** | **555** |
+> | design tokens referenced | **2** | **1,197 references, 39 distinct** |
+> | `metadata.designTokens` | absent | **present**, with a custom palette |
+>
+> ⚠️ **What this measurement cannot see, stated because Richard's appearance criterion is graded by
+> looking.** Every number above counts **parameters in the artefact**, not pixels on a screen. It
+> establishes that the generator now goes *through* the design system instead of past it — which is
+> precisely what this row alleged and all it alleged. It does **not** establish that the result
+> looks good, and a session that reads "555 colour parameters" as "Richard would like it" has
+> substituted a proxy for the judgement he reserved. The instrument for that is still the one this
+> row named: **a screenshot**, via `tpl001-rows.look.ts`. Not run this session.
+>
+> 🔴 **And the row's own open question is answered by the artefact.** It asked *"whether recording a
+> preset alone visibly changes the rendered app, or whether nodes must also reference `var(--token)`
+> — that decides whether the fix is one call or a sweep over 137 nodes."* It was the sweep: the
+> palette is recorded **and** the nodes reference it, 1,197 times. The cheap answer was the wrong one.
+>
+> ⚠️ **Two things this closure does NOT cover, stated so neither is read as included:**
+>
+> 1. **`variant` parameters are still 0** across all 431 nodes. Not a residual of this row: the
+>    template instantiates **no `Button` nodes at all** — its buttons are `Group` + `Text` — so the
+>    node types that take variants are never placed. Whether that is the right construction is an
+>    appearance question for whoever grades the look, not a generator bypass.
+> 2. **The second template is fixed too — by a different mechanism, and looking for the first one
+>    reads as a defect that is not there.** This row claimed *"two templates, one failure: it is the
+>    process, not the template"*, so both had to be checked. `site-builder.content.json` at HEAD
+>    references **278 tokens, 33 distinct** — but carries **no `metadata.designTokens` block**, and
+>    that absence is **correct, not a gap**. The two templates ship by different paths: the members'
+>    area is **curated**, a project directory, so its palette must be *in* the artefact; the site
+>    builder is **embedded**, so `site-builder.template.ts:105` sets `designTokens:
+>    buildSiteDesignTokens()` on the `ProjectTemplate` record and
+>    `EmbeddedTemplateProvider.install` writes it into `metadata.designTokens` **at install**
+>    (`ProjectTemplate.ts:138-148`). Phase 77's SBR-003 owns that contract and
+>    [`siteTheme.ts`](../../../packages/noodl-editor/src/editor/src/models/template/templates/siteTheme.ts)
+>    is its single source.
+>
+>    🔴 **This session read that absence as the defect first, and was wrong.** Checking one delivery
+>    path's artefact for the *other* path's evidence finds nothing and the nothing looks like the
+>    original bug. ✅ **When a row spans two things delivered differently, name the mechanism for
+>    each before reading either one's absence as a finding.**
+>
+> 🔴 **This row was owned by `phase 78` — the phase that has nothing left to build.** Phase 80
+> bounced it back explicitly (*"template-generator work with a named home in phase 78"*), and phase
+> 78's next-session prompt said every buildable thing was built. **A phase name is not an owner once
+> that phase is closing; it is `NONE` wearing something that reads like a task id**, and the row
+> survived only because the work had already been done by a session doing something else.
+
+Richard, 2026-08-28, after driving TPL-001 by hand: *"it doesn't even look like a website… I'm at
+a loss about how both templates we've tried to create so far have been fucking shit on the front
+end."*
+
+**Measured, not impressionistic**, over `templates/members-area/`:
+
+| | |
+|---|---|
+| visual nodes | 137 |
+| **colour or background parameters set** | **0** |
+| design tokens used | **2** — `--font-bold`, `--font-semibold` |
+| style parameters set | 125, and every one is layout plumbing: `flexDirection`, `padding`, `width/height`, `sizeMode` |
+| the project's `settings` | `{htmlTitle, navigationPathType}` |
+
+No font sizes, no max-width, no radius, no borders, no gaps, no shadows, no text-align, no
+variants. 🔴 **And `site-builder.content.json`'s settings block is byte-identical in shape** — the
+same two keys, no styles. Two templates, one failure: it is the process, not the template.
+
+### What exists and is not being used
+
+- **Five style presets** — `Enterprise`, `Modern`, `Playful`, `Minimal`, `Soft`
+  (`StylePresets/presets/`).
+- **Semantic tokens** by category, **legal variants/sizes per element type**, **named
+  compositions** — all reported by `get_style_vocabulary`, whose own tool description tells an
+  author to call it before setting any colour or spacing.
+- **`set_project_tokens` and `set_style_preset`**, write tools that already ship.
+- 🔴 **The project wizard already offers the presets to a person creating a project**
+  (`ProjectsPage.tsx:109,1614`).
+
+So a human who creates a project is offered a look. **A generated template is not**, because both
+generators author behaviour graphs through the door and call none of the above.
+
+### ✅ DISPROVED, in the same session: "a template cannot carry a look"
+
+The obvious hypothesis — that this is a *product* gap and templates are structurally unable to
+record a design — **is wrong, and it was worth ten minutes to check rather than file.**
+`upsertTokens` persists to `nodegx.project.json → metadata.designTokens`
+(`ProjectStore.ts:153-175`), `metadata` is a permitted property of `project-v2.schema.json`, and
+the artefact ships that file.
+
+🔴 **So the whole fix lives in the generator** — no product change, no editor source, no collision
+with P77. Filing this as a platform limitation would have pointed the next session at the wrong
+codebase.
+
+⚠️ **Still open**: whether recording a preset alone visibly changes the rendered app, or whether
+nodes must also reference `var(--token)` and carry variants for it to show. That decides whether
+the fix is one call or a sweep over 137 nodes. **The instrument is a screenshot** — no spec in this
+repository can see it.
+
+### Where it bites a person
+
+They open the shelf, pick the one template on it, press preview, and get black text left-aligned in
+a full-width column. **Every gate in this phase passes on that**: 41 byte-gate specs, 66 drive
+specs, 840 MCP specs. Not one of them can see it, because not one acceptance criterion mentions
+appearance — which is P76's closing ruling (*correct and usable were never the same criterion*)
+recurring for the third time.
+
+✅ **Richard's standing ruling, 2026-08-28**: appearance is an acceptance criterion on every
+template in this phase, graded **before** the behaviour work. The ratchet that enforces it — *no
+preset recorded · zero colour tokens · no `maxWidth` anywhere · every page a single full-bleed
+column* — is the first task of the next session, deliberately **before** any layout work, so the
+pass is not marking its own homework.
+
+---
+
+## D17 — ✅ ANSWERED, s5: applying a preset alone changes **nothing a person can see**
+
+⚠️ **Recorded as a second `D10` until 2026-08-29, and renumbered here.** There were two different
+defects under that number and a reader could close one meaning the other. Nothing else moved: the
+references to "D10" in this file (including the first line of this entry) all mean the *other* one
+— the generators bypassing the design system — which is what this entry answers a question about.
+
+D10 left one question open — *"whether recording a preset alone visibly changes the rendered app,
+or whether nodes must also reference `var(--token)`"*. It is answered, and the answer is the
+expensive one.
+
+**It is a sweep, not one call.** Two measurements, neither of which needed a screenshot:
+
+- `buildEffectiveTokens` merges the shipped defaults **as the floor** and
+  `generateProjectTokenCss` stamps the whole set into `:root` — `StyleTokenCoverage.test.ts:116`
+  already asserts `generateProjectTokenCss(null)` contains `--primary:`. So `var(--primary)`
+  **already resolved** in the members' area before this session. There was simply nothing
+  referencing it.
+- Confirmed on the artefact: with the token block written and not one node changed, the appearance
+  ratchet's §2 went green and §3 and §4 stayed red. The render harness reported *"182 shipped
+  defaults + 34 project override(s)"* and the page looked identical.
+
+⚠️ **And picking Modern would have been worse than doing nothing.** `ModernPreset.ts` says *"Modern
+IS the defaults"* and ships `tokens: {}`; `styleTools.ts`'s `entries.length === 0` branch then
+**clears** the block. A preset that writes nothing is indistinguishable from a preset never applied.
+
+---
+
+## D11 — 🔴 Three of the five shipped style presets fail WCAG AA on their own primary button
+
+**Severity: high — the default is one of them.**
+
+`--primary-foreground` on `--primary`, computed from the preset files
+(`StylePresets/presets/*.ts`), against the 4.5:1 floor for normal text:
+
+| preset | ratio | |
+|---|---|---|
+| `modern` | **3.68** | 🔴 **the wizard's default** |
+| `playful` | **4.23** | 🔴 |
+| `soft` | **4.47** | 🔴 — misses by 0.03 |
+| `minimal` | 17.72 | ✅ |
+| `enterprise` | 17.85 | ✅ |
+
+🔴 **Where it bites a person.** Every project created through the wizard inherits Modern, so the
+filled button — the one control on every page a person is meant to press — is sub-AA out of the box.
+It is not a template defect and no template can fix it: a template that picks a passing preset only
+moves itself out of the way.
+
+✅ **What TPL-001 did about it**: based itself on `enterprise` and overrode the hue, with every pair
+measured in `tpl001Theme.ts`. That is a workaround for one template, not a fix.
+
+---
+
+## D12 — 🔴 The `primaryButton` composition ships a parameter the runtime never reads, and the door warns on every instance
+
+Measured: applying `composition('primaryButton')` verbatim to the template's buttons produced **12
+`warning inactive-conditional-parameter` diagnostics** on the first generation run —
+
+> *`net.noodl.controls.button`'s "borderWidth" only applies when borderStyle is solid or dashed or
+> dotted, so this parameter is never read.*
+
+The composition sets `borderStyle: 'none'` **and** `borderWidth: 0`. Both are its own.
+
+🔴 **Where it bites a person.** `get_style_vocabulary` presents compositions as *"ready-made
+parameter sets… each naming the recipe that shows it assembled"*. An agent that follows the design
+system exactly as instructed is rewarded with a warning per button, and its only options are to
+ignore a real diagnostic or to diverge from the system. Both are bad lessons.
+
+✅ Repaired at the point of use in `tpl001Components.ts` (`withoutInertBorderWidth`), stated as a
+rule rather than a special case so it lapses by itself when the composition is fixed.
+
+---
+
+## D13 — 🔴 The `textinput` `default` variant's border is 1.33:1 — the fix `outlineButton` documents was never carried across
+
+The vocabulary reports `net.noodl.controls.textinput` `variantStyles.default` as
+`{ borderColor: 'var(--border)', backgroundColor: 'var(--background)' }`. `--border` measures
+**1.33:1** against the background, under the **3:1** WCAG 1.4.11 requires of a control boundary.
+
+⚠️ **The product already knows.** `outlineButton`'s own description says it in as many words —
+*"A control border needs 3:1 and no `--border*` token reaches it (best 1.48:1), so this uses
+`--muted-foreground` (4.76:1)"* — and `--border-control` exists in every preset for exactly this.
+The knowledge is one composition away from the element that needs it and never made the trip.
+
+🔴 **Where it bites a person.** Every form in every project built on the system variant has invisible
+field edges, which is the single most common accessibility complaint about a form. Seventeen fields
+in this template alone.
+
+✅ TPL-001's `FIELD` uses `--border-control` (**5.49:1** on this palette).
+
+---
+
+## D14 — 🔴 A `Condition` with a constant parameter fires on load, so every reveal it gates was visible from the first frame
+
+**Severity: high. It shipped, and it is what a person met first.**
+
+Seven `Condition` nodes in TPL-001 carry `condition: true` and are triggered by `eval`. The node
+declares `runOnValueChange: { controlSignal: 'eval', inputs: ['condition'] }`, and wiring `eval`
+**adds** a trigger rather than replacing one — the port's own description says so: *"This is
+additional to Condition re-testing on change; untick it under Run On Value Change to stop that."*
+So the constant parameter arriving at load counted as a change, every gate tested true before
+anything had happened, and every `visible: false` it governed was overridden.
+
+⚠️ **What a person saw.** The setup page greeted them with *"This members' area cannot be set up
+with those details"* **before they typed a character** — on the exact screen Richard could not get
+past.
+
+🔴 **How it survived.** The artefact on disk is correct: `visible: false` is on the node, and
+`refusalGate` is wired only to `eval`. 41 byte-identity specs, 45 drive specs and two typechecks
+were green. **Only the running app disagreed, and only a picture could tell.** Found by rendering
+the artefact headless and looking at it; confirmed pre-existing by rendering `HEAD`'s artefact as a
+control arm, which shows the same sentence.
+
+### 🔴 s6 — the drive spec that should have caught it was **passing because of it**
+
+Fixing D14 turned two §7 specs red, and they were the specs whose whole job was to check the
+confirmation appears after a post. They were not a regression. They read:
+
+```ts
+await clickButton(page, 'Post it');
+await look('moderator.posted', '/post');   // ← navigates: a FRESH page load
+expect(visits['moderator.posted'].text).toContain('Posted. Members can see it now.');
+```
+
+`look` navigates. So the assertion was *"a freshly booted `/post` shows **Posted**"* — which is
+true only of a page whose gate fires on load. **That is the defect, stated as an expectation.**
+While D14 lived the spec passed; the moment it was fixed the spec failed, and a session reading the
+red without reading the spec would have reverted the fix.
+
+✅ **Repaired by reading in place.** `readHere` (`helpers/site-drive.ts`) reads the current document
+without navigating, so the assertion grades the *click* rather than the *boot*. And the arm that was
+missing is now written down:
+
+> `it('does NOT say so before anything is posted — the D14 arm')`
+
+🔴 **The pair is the point.** "The confirmation is on the page" and "the confirmation is not on the
+page until you post" are the two halves, and D14 is exactly the state in which the first is true and
+the second is false. One alone measures nothing.
+
+✅ Fixed by `runOnChange-condition: false` on all seven (`CONDITION_GATE`). ⚠️ Set explicitly rather
+than left to the load-time migration that writes the same flag: a migration runs where projects are
+loaded, and the render path that caught this reads from disk without it. **A template must be
+correct as written.**
+
+🔴 Third appearance of this family in this template — `Run` is additive for JavaScript guard nodes
+(fixed s4), for the two `decideMembership` guards (fixed s4), and now for `Condition`.
+
+---
+
+## D15 — ⚠️ `find_tools` free-text searches tool NAMES, so the word on the group reveals nothing
+
+`find_tools`'s `query` filters with `name.toLowerCase().includes(needle)` over tool names only. The
+group whose title is **"Design tokens"** and whose purpose is *"change the design system"* holds
+`set_project_tokens` and `set_style_preset` — so `query: "theme"`, `"design"`, `"colour"`, `"style
+guide"` and `"palette"` all reveal **nothing**, while `group: "theme"` reveals both.
+
+🔴 **Where it bites.** This is a contributing cause of D10 itself. The style write tools are
+deferred; an agent that has been told to style on-system searches for the words it is thinking in
+and is told there is nothing there. Matching group titles and purposes as well as tool names is a
+small change with a direct line to "the generators bypass the design system".
+
+---
+
+## D16 — ✅ FIXED 2026-08-28 (s6): `visible: false` kept the element's box, so every gated screen had a hole in it
+
+Known and recorded (D7, and the runtime is explicit: `node-shared-port-definitions.ts:215` —
+*"Hides the element while keeping the space it occupies in the layout"*, implemented as
+`visibility: hidden`). What is new is the **measurement of what it looks like**: the rendered
+`Pages/Post` is a heading, roughly 500px of nothing, and a back button, because the moderator's two
+forms are hidden rather than unmounted.
+
+`mounted` is a standard input on every visual node (*"a false value keeps the node out of the
+tree"*) and would remove both the hole and the shipped-to-everyone subtree of D7.
+
+~~⚠️ **NOT changed this session, deliberately.**~~ Done in s6, with the drives — see D7 for the
+mechanism, the ratchets and why the `For Each` race does not arise.
+
+### The measurement, same page, same harness
+
+| | `visible` (before) | `mounted` (after) |
+|---|---|---|
+| what `Pages/Post` renders to a non-moderator | heading, **~500px of nothing**, back button | heading, back button |
+| texts in the document | **15** | **2** |
+
+🔴 **The text count is the D7 half and the picture is the D16 half, from one reading.** Fifteen
+texts is the entire moderator form — two labelled inputs, a textarea, five more fields and both
+submit buttons — sitting in the document of somebody who is not a moderator. Two is the heading and
+the back button, which is all that page has to say to them.
+
+---
+
+## D18 — 🔴 Form controls ignore the project's `--font-sans`: an `input` renders Arial and a `textarea` renders **monospace**
+
+Measured 2026-08-29 (s7) on `Pages/Setup` of the shipped artefact, rendered from disk through
+`scripts/devtools/render-report.js` and read with `getComputedStyle`:
+
+| element | `font-family` |
+|---|---|
+| the page's `label` | `"Source Sans Pro", "Segoe UI", …` — **the project's `--font-sans`** ✅ |
+| `net.noodl.controls.textinput` → `<input>` | **`Arial`** |
+| the same node with `type: 'textArea'` → `<textarea>` | **`monospace`** |
+
+🔴 **The label proves the token is reaching the page.** It is the controls that never receive it —
+these are the browser's UA defaults for form elements, which is what you get when nothing sets
+`font-family` on them at all. So the same node type renders in two different typefaces depending on
+one parameter, and neither is the app's.
+
+🔴 **Where it bites a person.** Every form in every NodeGX app is in a typeface the app does not
+use, and any multi-line field looks like a code editor sitting in the middle of a sign-up form. It
+is on the setup screen of this template — the first screen the person who installs it ever fills
+in. **Found by looking at a screenshot**; five drive specs, a 42-spec byte gate and the appearance
+ratchet are all green over it, and none of them can see a font.
+
+⚠️ **Not repairable from the template.** `FIELD` in `tpl001Components.ts` already sets nine style
+parameters and there is no `fontFamily` among the ones the door accepts for this node, so a template
+author cannot fix their own form. Product-side, and it is one line of CSS.
+
+### 🔴 Widened 2026-08-29 (s8): it is not "forms", it is **every control** — including buttons
+
+Measured on `Pages/Landing` of the shipped artefact, same instrument, same run as the hero work:
+
+| element | `font-family` |
+|---|---|
+| the eyebrow, the headline, the blurb (`Text`) | `"Source Sans Pro", …` ✅ |
+| **"Members sign in"** — `net.noodl.controls.button` | **`Arial`** |
+| **"Ask to join"** — the same node type | **`Arial`** |
+
+🔴 **This moves the blast radius from "any app with a form" to "any app at all".** A button is on
+every page of every template; the landing page a stranger sees before they have typed anything is
+already in two typefaces. It also means the defect is visible in the screenshots in this repo and
+has been all along — nobody looked at the *buttons*.
+
+⚠️ **And the vocabulary actively tells an agent not to fix it.** The `body` composition's own
+description reads *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"*.
+That is true for `Text` and false for every control: `<button>`, `<input>` and `<textarea>` do not
+inherit `font-family` from `body` in any browser. An agent doing exactly what the design system says
+produces an app in three typefaces.
+
+🔴 **This is the strongest argument yet that D18 is not a `DEF-001` a11y row.** Nothing here is
+illegible — it is the product failing to apply its own design token to the elements a person
+actually touches. Whatever task takes it should be about **fidelity**, and the `body` composition's
+description has to change in the same breath or the next agent re-derives the same wrong conclusion.
+
+### 🔴 Narrowed at source, 2026-08-29: it is every control **except `select`**
+
+Found by phase 80's owner and **re-measured here rather than relayed**, because the whole point of
+this file is that a row is a measurement. `packages/noodl-viewer-react/src/assets/style.css` contains
+**exactly one `font-family` declaration in the whole file**:
+
+```
+98:  .ndl-controls-select {
+…
+107:   font-family: inherit;
+```
+
+Ten `.ndl-controls-*` classes ship — `button`, `textinput`, `checkbox`, `radio`, `radiobutton`,
+`range`, `fieldset`, `abs-center`, `pointer`, `select`. **One** of them inherits the page's font.
+The rendering measurements above (Arial on `input` and `button`, monospace on `textarea`) and this
+are the same fact from opposite ends.
+
+Two things follow, and both change how the fix should be scoped:
+
+- ✅ **The correct rule already exists in the file, for one of the ten.** That marks the other nine
+  as an omission rather than a decision, and it means the fix is the line that is already there,
+  repeated — not a design question anybody needs to settle first.
+- ⚠️ **`select` is exactly the control that would have looked right.** Anyone who spot-checked
+  "does the app's font reach the controls" using a dropdown would have seen it work and stopped.
+  That is a plausible account of how this survived to a shipped template, and it is a reason to
+  distrust single-control checks of any design token.
+
+🔴 **`StyleCompositions.ts:382` is part of the fix, not a footnote.** The `body` composition's
+description — *"Never set `fontFamily` — the project body already carries `var(--font-sans)`"* — is
+what an agent reads **before deciding not to set a font**. Repairing the CSS and leaving that line
+regenerates the defect the next time a generator styles a control.
+
+---
+
+## D19 — ⚠️ A control's own label is pure `#000`, not `--foreground`, and no composition can reach it
+
+Same reading as D18. The `useLabel` label renders `rgb(0, 0, 0)` while the input's text beside it
+renders `rgb(20, 32, 26)` — `--foreground`, correctly tokenised. Pure black is not in this
+template's palette and is not in any preset's.
+
+⚠️ Smaller than D18 and the same family: the parts of a control the design system does not reach.
+The label gets the font token and not the colour token, which is the kind of half-wiring that only
+shows up when somebody renders it and reads the pixels.
+
+---
+
+## D20 — 🔴 The vocabulary ships 18 compositions and not one for a form field, a notice, or an empty state
+
+`get_style_vocabulary` reports `card`, `cardBody`, `band`, `shell`, `primaryButton`,
+`outlineButton`, the type ramp, two grid helpers — and nothing for the three things an app is mostly
+made of:
+
+| what an app needs constantly | composition | what this template had to do |
+|---|---|---|
+| a field a person types into | **none** | hand-author `FIELD`, 9 parameters, 17 instances |
+| a notice / refusal / confirmation | **none** | hand-author `NOTICE`, and a `notice()` node-pair helper |
+| an empty state | **none** | the same `NOTICE` |
+
+🔴 **This is the mechanism behind D10, not a separate taste question.** A generator told to style
+on-system opens the vocabulary, finds nothing for the element in front of it, and writes bare text —
+which is exactly the artefact Richard drove and called *"so basic, black and white"*. The 31 unstyled
+`Text` nodes s7 fixed were not laziness; for the notices and empty states there was **nothing to
+reach for**.
+
+⚠️ It also means every template that ships will hand-author its own, and they will differ. Two
+templates now have two unrelated ideas of what a form field looks like.
+
+⚠️ **And a composition alone would not be enough for a notice**, which is worth recording because it
+is the non-obvious half: a notice is a `Group` wrapping a `Text`, because `Group` carries the
+surfaces and `Text` carries the type ramp. A composition names parameters for **one** node, so the
+vocabulary would need a two-node *pattern*, which is a shape it currently has no way to express.
+
+---
+
+## D21 — ✅ Disproved. A component instance's parameters *are* checked; the `info` line saying they are not is about a different check
+
+**Kept because it cost a measurement and looks exactly like D1.** Filed under this file's second
+house rule: a candidate that turns out to be nothing is worth as much as a real row.
+
+Authoring `Pages/Landing`'s three tiles as instances of `Members/InsideTile` (s8) added **six new
+`info` diagnostics** to a generation run that had reported `55 × dynamic-port-skipped` and nothing
+else for several sessions. All six read:
+
+> The **"parameter values"** check did not run on this node: type `/Members/InsideTile` is not in the
+> node catalog, so there is nothing to check it against. The node is unverified by this check rather
+> than verified as correct.
+
+That is D1's exact shape — *the door does not check the thing that carries all the meaning* — and the
+three instances carry every visible word on those tiles in two parameters.
+
+🔴 **It is not a hole. Measured by sabotage, not by reading the code.** `titel` (a typo of `title`)
+and `nonsenseXyz: 42` were put on one instance and the template regenerated:
+
+```
+create_component "Pages/Landing" rejected — nothing was written.
+  instance-unknown-parameter (warning, blocking):
+  "titel" is not an input of /Members/InsideTile. A component instance has only the ports its
+  Component Inputs node declares — it carries no layout, style or lifecycle ports of its own —
+  and this one declares 2: "title", "line"
+```
+
+**Both** bad parameters were caught, the message named the fix, and nothing was written. The
+catalog-driven check genuinely does not run on a project component type; a **dedicated** check
+covers the same ground and is stricter than the generic one would have been.
+
+⚠️ **The trap, for whoever reads the census next.** The generation summary prints
+`6 × info unknown-type-check-skipped` with no location, so it reads as "six unverified nodes". The
+control that settles it is cheap: regenerate from `HEAD` (55, nothing else), then with the change
+(61). The six are three instances × two passes, and they are the *absence of a check that is not
+needed*, beside a check that fired.
+
+✅ This also confirms, from the other side, the standing note that **the door checks parameters and
+not wires** on a component instance. Parameters: refused, by name. Wires: D1.
+
+---
+
+## D22 — 🔴 The directory shows the founding moderator's email address as their name, twice
+
+Found 2026-08-29 (s8) by the first tour of every page **with content seeded** — which is exactly the
+reading TPL-001 §12 recorded as owed and nobody had taken. On a fresh install the directory's only
+row reads:
+
+```
+ruth@stanywhere.invalid          <- the name
+ruth@stanywhere.invalid          <- the email
+Moderator · since 2026-08-29
+```
+
+`claimAssociation` takes `associationName`, `blurb`, `email` and `password` and **never asks for a
+person's name**, so it writes the address into `Member.name`. Every install, on the first screen a
+moderator opens when they click "Who belongs".
+
+⚠️ **Template-side and cheap**: the setup form should ask the founder their name. It is also the one
+place the template can demonstrate that the directory is about people.
+
+---
+
+## D23 — ⚠️ Two different pages are both headed "Members"
+
+`/members` (the noticeboard) and `/directory` (who belongs). Measured off `body.innerText` on both:
+the first line of each is the word `Members`. The directory's own button on the members page says
+**"Who belongs"**, which is the better heading and is already written.
+
+---
+
+## D24 — ⚠️ Approve and Decline are touching
+
+The request row's button pair sets no gap, so the two controls share an edge. `Pages/Landing`'s pair
+sets `columnGap: var(--space-3)` and reads correctly; this row was never given one. It is the same
+class as the s7 finding about announcement cards with no gap between them — **a pair with no gap
+reads as one object**, and here the two objects are *approve* and *decline*.
+
+---
+
+## D25 — ✅ FIXED in Track A. Re-measured 2026-08-29 (s10) and the row was stale.
+
+🔴 **The row said `open` for a day after the fix shipped.** Track A (`98bfdea0`) replaced all three
+formats with one `humanDay()` snippet and wrote the reason into `HUMAN_DAY_FN`'s own doc comment —
+including that `new Date('2026-09-14')` parses as **UTC midnight**, so every meeting rendered a day
+early west of Greenwich. Nobody came back and moved this row. Recorded because it is the failure the
+table's own preamble warns about: a `status` column is as-recorded, and an unread row is worse than
+no row.
+
+**Measured on the artefact, 2026-08-29** — not on the task file:
+
+| | |
+|---|---|
+| `toLocaleDateString` call sites in `templates/members-area/` | **5, all identical** (`day: 'numeric', month: 'long', year: 'numeric'`) |
+| occurrences of `YYYY-MM-DD` anywhere in the artefact | **0** |
+| what the drives render | `20 August 2026`, `29 August 2026`, `1 January 2099` |
+
+### What it was
+
+| where | renders |
+|---|---|
+| announcement rows | `26/08/2026` |
+| the directory | `2026-08-29` |
+| the meeting form's label | `Date (YYYY-MM-DD)` |
+
+The third is the worst: a **storage format shown to a person filling in a form**. Same family as the
+P75 finding where a template card drew the machine slug `starter` at a builder.
+
+---
+
+## D26 — ✅ Fixed by P80 C1 (`2c6a8876`, 08-29). The vocabulary had no composition that made two things look *different* from each other
+
+**This is D20's larger half and it is the reason a NodeGX app reads as generic.** D20 says the
+vocabulary ships nothing for a field, a notice or an empty state. Touring all eleven pages says
+something worse: of the eighteen compositions, there is exactly **one surface** — `card`.
+
+So announcement rows, meeting rows, request rows, directory rows, notices, form panels, the moderator
+toolbar and the landing tiles — **nine kinds of thing** — all wear the same `--surface` fill, the same
+`--radius-xl` and the same 1px hairline, because that is the only box on offer. An agent told to style
+on-system reaches for the only surface there is, every time.
+
+🔴 **Where it bites.** Richard, 2026-08-29, on seeing the landing page: *"It's definitely got that
+standard bootstrap feel about it."* That is the accurate description of a kit whose whole visual
+vocabulary is one rounded rectangle. It will hit **every** template we ship, so it is worth more than
+this template's own styling work.
+
+⚠️ **Not a request for more compositions — a request for contrast between them.** A second surface
+that is flat and edged rather than filled and rounded, or a row treatment that is a rule rather than a
+box, would do more than ten more variants of `card`. Related: the template uses **none** of `band`,
+`bandSurface`, `columnsTwoUp` or `gridAutoFit`, so part of the sameness is ours and part is the kit's;
+D26 is the kit's part.
+
+### ✅ How it was closed, and what the template did with it (s12)
+
+P80 C1 added two compositions, both lifted from `ui-data-table` rather than designed: **`ruled`** (a
+row separated by a hairline, no fill at all) and **`raised`** (`--surface-raised` with a `--border`
+hairline under it). TPL-001 s12 consumed `ruled` on three of its four repeater rows — the
+noticeboard, the diary and the directory — and the eight-announcement page went from **1,879px to
+1,199px**, reading as one list rather than eight objects. The fourth row, a request to join, **stays
+a `card` on purpose**: it is a decision with two consequential buttons on it, not a record being
+scanned.
+
+⚠️ **`raised` still has no reader, and the reason is worth recording.** It only reads as raised on a
+`var(--surface)` ground, and every list in TPL-001 sits on `--background`; grounding one would mean
+filling a repeater's container, which that template's §3 ratchet forbids on a measurement
+(`--surface` rows on a `--surface` container measure 1.26:1). A list rebuilt as a true
+`ui-data-table` — `card` container, `raised` head, `ruled` rows — is reachable and would need §3
+revisited. It is a second design rather than a completion of this one, so it was not taken.
+
+---
+
+## D27 — ✅ Fixed s8. Ten nodes across all four cloud functions whose `failure` reached nothing
+
+**Found by a validation rule a peer was writing at the same moment**, not by this phase: generation
+suddenly refused with `failure-reaches-nothing`, from `failureReachesNothing.ts` sitting untracked in
+the working tree. The rule is right and it caught a real defect in this template.
+
+### What it was
+
+A cloud function's request ends only when a response node fires. Ten nodes could throw and had no
+connection on their `Failure` output at all, so the caller waited the full **30 seconds for a 504**
+with no message — **P77's D1, inside our own template**, while phase 78 was busy filing product
+defects about exactly this class.
+
+| function | nodes | now answers |
+|---|---|---|
+| `claimAssociation` | `gate`, `founding`, `founder` | `deny` for the gate's throw; **`res`** for the two directory writes |
+| `requestAccess` | `prep`, `stamp`, `received` | `deny` |
+| `myStanding` | `gate`, `decide` | **`unknown`** |
+| `decideMembership` | `prep`, `route` | `deny` |
+
+### 🔴 The comment that made it invisible
+
+`claimAssociation`'s wiring carried, in writing, since the function was authored:
+
+> *"🔴 `founder` reaches NEITHER response, and that is the whole decision about it."*
+
+It reads as settled, and the reasoning under it is sound — telling a moderator who already holds
+`role:admin` that setup failed would be worse, with no second setup possible. But **"do not tell them
+it failed" and "send nothing at all" are different things**, and the graph did the second. The
+decision was right; its implementation hung the request.
+
+⚠️ **This is the shape to watch for.** A confident comment explaining why a node deliberately does
+not reach one response reads, to every later reader, as an explanation of why it reaches nothing.
+
+### Where the judgement was not mechanical
+
+Two of the four functions needed a real decision rather than "wire it to `deny`":
+
+- **`claimAssociation`'s two directory writes answer `res`** — by that point the account exists and
+  holds the role, so success is the honest answer, and `mark.failure → res` was already the precedent.
+- **`myStanding` answers `unknown`**, a third response that exists precisely for *"we could not check
+  your membership just now"*. Answering `res` would have sent a standing nobody computed — the one
+  thing that endpoint must never invent, because every gated screen in the template reads it.
+
+---
+
+## D28 — ✅ FIXED by DEF-018 (2026-08-30). (Was: a button inside a `Columns` overlaps the next one, because both button compositions pin `sizeMode: 'contentSize'`.)
+
+> ✅ **Closed by re-running this row's own repro at HEAD first** — the composition verbatim in an
+> autoFit Columns at 1280×900: "Announcements board" (158px of content into a 128px box) drew
+> **14px across** "Meetings calendar"; the `inColumn` control arm in the identical Columns had
+> zero overlap (`noodl-mcp/tests/def018-def020-layout-drive.test.ts`). The product took two of
+> the three exits this row offered: the door now warns (`columns-child-keeps-own-width`, per
+> offending child, resolved against catalog defaults — a BARE button fires too, its type default
+> is `contentSize`), and `gridAutoFit`'s description carries the sentence this row called the
+> cheapest honest fix. Corpus: 13 firings / 562 Columns children over 178 projects, all authored,
+> all true. Advisory, with non-promotion pinned. Same module as D32's fix — the two rows are one
+> mechanism a step apart, and were read against each other before either was built. Full account:
+> phase 80 TASKS.md s19, `layoutInertCombination.ts`.
+
+**Measured, s9, by rendering the members' band at 1280×900 and looking at it:** the five nav items
+were laid out in a `net.noodl.visual.columns`, and "Announcements" was drawn **straight across the
+left edge of "Meetings"**.
+
+The mechanism is a disagreement between two parts of the product that are meant to be used together:
+
+- `calcAutoFit` (`Columns.tsx`) divides the container into `floor((width + marginX) / (minWidth +
+  marginX))` equal boxes and hands each child exactly one.
+- `outlineButton` and `primaryButton` (`StyleCompositions.ts`) both ship `sizeMode: 'contentSize'`,
+  which tells the node to keep its own intrinsic width and ignore the box.
+
+So **following the design system verbatim, inside the one node in the runtime that reflows, produces
+overlapping controls.** `gridAutoFit`'s own description — *"fits as many columns as the CONTAINER
+holds and reflows itself — no breakpoints to maintain"* — is what sends an author here, and nothing
+in either description mentions the other.
+
+🔴 **Where it bites.** Any agent told to build a responsive row of actions. The vocabulary offers
+exactly one node that reflows and exactly two button recipes, and the three of them do not compose.
+
+⚠️ **And it hides at the width people check.** The overlap is a function of how much room a column
+has, so it appears at **wide** viewports, where the auto-fit makes many narrow columns, and vanishes
+at 390px, where two wide ones fit the words. Every layout habit built up this phase — *check 390px
+before committing* — points away from it.
+
+⚠️ **It was already shipped, two pixels from visible.** `Pages/Members`' three moderator actions have
+been in a `Columns` since s8: "Requests to join" measures ~163px of content into a ~165px box at
+390px. It cleared, so it read as correct, and it would have failed on a different font. The template
+side is fixed by `inColumn()` in `tpl001Components.ts` — a rule over *being a child of a `Columns`*
+rather than a fix on the node that showed the symptom — and gated by a whole-artefact sweep in
+`tpl001Template.test.ts` that reddens on any content-sized child.
+
+**What the product needs** is one of: `Columns` clamping its children's width, a `contentHeight`
+variant of the button compositions, or — cheapest and most honest — the `gridAutoFit` description
+saying that a `contentSize` child will overflow its column.
+
+---
+
+## D29 — ✅ FIXED s13. (Was: `Members/Chrome` asked the server who you are a second time, on every page.)
+
+**Filed by the session that caused it, s9, rather than left for a reader to find.** The band carries
+three moderator-only destinations, so something has to gate them, and the band now places its own
+`Members/Standing` and fires it from its root `Group`'s `didMount`. Every signed-in page therefore
+makes **two `myStanding` calls**: the page's and the band's.
+
+⚠️ **Why the cheaper shape was not taken.** The band could publish standing as component outputs and
+the five pages that own an instance could consume it instead — one call, less graph. That is a better
+app and it was a worse change to make this session: **every gate AC2, AC3 and AC4 rest on is one of
+those wires**, and rewiring them means re-grading the boundary, not the layout. It is a change worth
+making beside a drive, not before one.
+
+⚠️ **Why the band could not simply borrow the page's answer.** Two of the seven pages carrying it —
+`Pages/Announcement` and `Pages/Meeting` — have no `Members/Standing` at all, deliberately: the record
+read is their gate. Taking the answer from the page would have given a moderator their navigation on
+five screens and silently removed it on the two they reach by clicking a row.
+
+**Not a correctness defect** — the two calls are reads, they cannot disagree in a way that matters,
+and the drive passes 71/71 with both in place. It is a cost, and it is written down so the next
+session decides about it rather than discovers it.
+
+---
+
+### ✅ How it was closed (s13, 2026-08-29)
+
+The band now publishes the whole answer — `isMember`, `isModerator`, `isPending`, `isUnknown` and
+the three signals `Member`, `Moderator`, `Visitor` — and the five pages that owned a
+`Members/Standing` dropped it and read those ports. **Seven ports, not eight:** `Members/Standing`
+also publishes the raw `standing` string and no page consumes it, so adding it here would have been
+a dimension that will never be read.
+
+🔴 **The count was measured at the browser, not inferred from the graph.** A spec counting
+`Members/Standing` instances would pass on a template that placed one and called it twice, and fail
+on one that placed two and called neither — neither of which is what a person pays for. What costs
+them a round trip is a request, so §10 of the drive counts requests, off
+`performance.getEntriesByType('resource')`, per page load.
+
+| page load | before | after |
+|---|---|---|
+| the five that owned a standing gate — members, meetings, post, requests, directory | **2** | **1** |
+| the two detail pages, which never had one | 1 | 1 |
+| `anon.landing`, which carries no band | **0** | **0** |
+
+⚠️ **The `0` is the control and it is why the `1`s are a reading.** Without a page that asks nobody,
+"1 everywhere" would be equally consistent with an instrument that cannot tell requests apart at
+all. The `2`s in the *before* column are the other control: they are what this spec would report if
+the fix were reverted, and they were read from the same instrument on the same run at HEAD before
+anything was changed.
+
+**The gates did not move, and that is the half the drive says.** §2–§9 — AC2, AC3, AC4, AC5 against
+a real enforcing backend in a real browser — pass unchanged: **79/79**, up from 75 by exactly the
+four new specs. `tpl001Template.test.ts` is **71/71**, up from 67 by two D29 specs and two the
+peer's DEF-006 work added.
+
+🔴 **Two source-side gates were widened rather than relaxed, and both were sabotaged.**
+
+- *"each members-only query's only trigger comes from the standing gate"* now accepts a trigger from
+  the band — but only on a port it first **proves**, from `Members/Chrome`'s own graph, is wired
+  from that component's `Members/Standing`. Accepting any port on a chrome instance would have been
+  a hole shaped exactly like the defect. **Sabotage: stop forwarding `Member` from the standing gate
+  → that one spec reddens.**
+- A new **census**: the whole project places exactly one standing gate and the band holds it.
+  Written as a count rather than as "these five pages have none", because a regression here is an
+  *addition* and a page-list rule would not see a sixth page appear with one. **Sabotage: give
+  `Pages/Directory` its gate back → that one spec reddens.**
+
+⚠️ **Both sabotages generated with exit 0.** The door accepts a band forwarding an unproven port and
+a page placing a redundant standing gate, silently — so these two specs are the only thing between
+either defect and the shelf.
+
+---
+
+## D30 — ✅ FIXED by DEF-019 (08-30, `f14a1faa`). (Was: the type ramp cannot reach `font-variant-numeric`, so no app built here can align a column of numbers)
+
+**Severity: was medium. Owner: DEF-019 (closed). Side: product.** Found by TPL-001 Track B4, whose
+third item — *"tabular numerals on dates"* — turned out to be unreachable through the door.
+
+**The fix (2026-08-30):** a tenth port in the shared group — `fontVariantNumeric` ('Numerals',
+enum Normal/`tabular-nums`), in the `textStyle` picker's childPorts and the `useLabel` dynamic
+list, passed through the code exporter as `font-variant-numeric`. Re-driven at HEAD before
+building, and the measurement sharpened who it bites: **the shipped Inter itself** (v3.019, the
+file `starterAssets.ts` copies into every new project) has proportional default figures (`1` =
+1308/2048 em, `8` = 1736) *and* a `tnum` feature — so the rag was the default in every new
+project, and the fix was always one feature-flag away. Driven in real Chrome against the shipped
+TTF: `1111` = 59.47px vs `8888` = 78.92px without the port; both exactly 82.921875px with it.
+`noodl-mcp/tests/def019-numerals-drive.test.ts` holds the drive; the "no escape hatch" paragraph
+below is the record of why a template could not work around it.
+
+### The measurement
+
+Every `Text` in the runtime gets its type ramp from one shared port group,
+[`node-shared-port-definitions.ts:1452`](../../../packages/noodl-viewer-react/src/node-shared-port-definitions.ts).
+The group is exactly nine ports:
+
+`textStyle` · `fontFamily` · `fontSize` · `fontWeight` · `fontStyle` · `color` · `letterSpacing` ·
+`lineHeight` · `textTransform`
+
+There is no `fontVariantNumeric`, and a parameter naming a port that does not exist is dropped — so
+**tabular figures cannot be set on any node, by any template, by an agent, or by a person in the
+style panel.**
+
+⚠️ **Beside a known-firing signal, so the absence is a reading and not a failed search.** The same
+grep over the same file finds `letterSpacing` (line 1686) and `textTransform` (line 1733) — two
+ports of the same kind, declared the same way, in the same block. The instrument fires; the port is
+not there.
+
+🔴 **And there is no escape hatch.** A template's `nodegx.project.json` carries `settings` and
+`metadata.designTokens` and nothing else — no stylesheet, no class, no CSS. A design token is a
+*value*; `font-variant-numeric` needs a *property* to consume it, and no port exposes one. So this
+cannot be worked around in a template the way `--border-control` was.
+
+### Where it bites a person
+
+Any app with a column of numbers: subscriptions and amounts, kick-off times, scores, stock counts,
+invoice totals. With proportional figures a right-aligned money column is visibly ragged — `1` is
+narrower than `8` in most sans faces — and the usual one-line CSS fix is unavailable. This is the
+first template to look for it and it will not be the last: an association's treasurer's report is
+the obvious second screen of the members' area.
+
+### ⚠️ Why TPL-001 does not need it, and why that is not a reason to close this
+
+The template's one date format, since Track A, is `20 August 2026` — prose, not a numeric grid.
+Month names differ in width, so tabular figures would align nothing here even if they were
+reachable. **B4 therefore shipped without them deliberately**, on the merits rather than because the
+port was missing, and the two reasons are independent: the item was worth dropping *and* it could
+not have been done. The gap is filed because the next template will have a table in it.
+
+---
+
+## D31 — ✅ FIXED s11. (Was: the policy let a moderator delete, and the app never offered it.)
+
+**Severity: was medium-high. Owner: — (closed in the template). Side: template.**
+
+`nodegx.security.json` has granted `role:admin` **`delete`** on `Announcement` and `Meeting` since
+the policy was first written — obviously, because the person who may post is the person who may
+take a post down. **No browser graph in the template ever placed a `Delete Record.`** The node type
+was used exactly once, server-side, in `decideMembership`, to take a decided request off the queue.
+
+So a moderator who posted the harvest supper on the wrong Saturday, or published a notice meant for
+the committee, could correct it only through the backend's own admin surface. For §1's person — a
+church secretary — that is the same word as "no". It is also the failure mode of every hand-rolled
+version of this app: **the thing you published by mistake stays published.**
+
+### 🔴 How it was found, which is the part worth keeping
+
+**Costing the sample content.** Track B's last item was "seed sample content", and the question that
+settles it turns out not to be a design question at all: anything seeded lands in a *real*
+association's live noticeboard, so seeding is only defensible if the moderator can take it out
+again. Checking whether they could is what found this.
+
+⚠️ **The census that found it was nearly the wrong instrument.** A first pass counted node *types*
+across the template and reported "no delete anywhere" — which was false: `decideMembership` has one.
+The true statement is narrower and is the one that matters: no delete **in the browser half**, on a
+collection **a person can see**. A finding stated one notch too broadly would have been disproved by
+the first person who grepped, and the real gap with it.
+
+### The ruling
+
+Richard, 2026-08-29, given the gap and the seeding question together: **close the delete, seed
+nothing.** AC6's designed empty state stays the first impression, which it already was, and the
+seed item is dropped on the merits rather than left open — examples a person cannot remove are
+worse than an empty noticeboard.
+
+### What shipped
+
+| | |
+|---|---|
+| where | `Pages/Announcement` and `Pages/Meeting` — the detail pages, never the rows |
+| why not the row | a row lives in a `For Each` where a mis-tap is one pixel from the tap that opens it, and it does not show enough to be sure what you are deleting |
+| the reveal | `chrome.isModerator` — **the band publishes the standing it already fetched**, so the two pages that deliberately own no `Members/Standing` need no third `myStanding` |
+| the confirm | a `PANEL` with `--destructive` words and two **unfilled** buttons; `PRIMARY_LABELS` emphasises what a screen is *for*, and that is never the irreversible half |
+| after it goes | `del.done` → back to the list it came from |
+| graded | `tpl001Template.test.ts` ×9, sabotaged five ways · the drive's **§9**, four specs, real backend and browser · **looked at** at 1280 and 390 |
+
+⚠️ **It is a strict subset of [D29](#d29) and stops there deliberately.** D29 is the five pages that
+own a `Members/Standing` dropping it for the band's answer — which touches every wire AC2/AC3/AC4
+rest on. Adding the output port changes nothing for those five: they neither read it nor lose theirs.
+
+🔴 **And the drive's first draft measured this with the wrong instrument.** Three §9 specs asserted
+the absence of a control off `outerHTML`, the discipline this file uses everywhere for leaks. A
+deployed page carries the **whole project graph** in `window.projectData`, so every static button
+label is in every visitor's document, including a stranger's — all three failed, and each would have
+read as a leak. `html` is honest about **records**; a **control** is read off the `<button>`
+elements and a **sentence** off `body.innerText`. s8 learned half of this on one spec; it is a rule
+now.
+
+---
+
+## D32 — ✅ FIXED by DEF-020 (2026-08-30). (Was: two children of a row both grow, and nothing says so: `justifyContent` silently does nothing.)
+
+> ✅ **Closed by re-running this row's own repro at HEAD first** — two default Texts under
+> `space-between` split a 1280px row **640/640 with a 0px gap**; the content-sized control showed
+> a 1108px gap with both children at the edges. The suggested shape shipped almost verbatim:
+> `justify-content-distributes-nothing`, a warning on a row Group with a distributing
+> `justifyContent` when **two or more** children would grow (one grower stays silent — that row
+> renders what the author meant). 🔴 **Calibration found the one shape where this row's predicate
+> is WRONG rather than noisy**: a maxWidth-capped grower leaves real free space, and there
+> justifyContent works — 10 of 43 corpus firings were that shape and are now excluded. The 33
+> that remain include the reference build's own footer and sonnet's Basket ("Subtotal" /
+> "£33.50" splitting evenly instead of label-left, price-right) — read from disk, true.
+> §7's template gate stays; the door half this row said was missing now exists. Full account:
+> phase 80 TASKS.md s19, `layoutInertCombination.ts`.
+
+**Measured, s12, by building it wrong and rendering it.** Owner: **NONE**.
+
+### What it is
+
+Every visual node's `width` port **defaults to `100%`** (`node-shared-port-definitions.ts:813-823`),
+and `layout.ts:79-88` turns a percentage width inside a `row` parent into `flexGrow`. So **growing
+is what a child of a row does unless something stops it** — and the only things that stop it are a
+non-percentage width or `sizeMode: contentSize`/`contentWidth`.
+
+Put two such children in a row with `justifyContent: 'space-between'` and the free space they were
+meant to be pushed apart by does not exist: they take half each. The parameter is not refused, not
+warned about, and not inert in any way the door can see — it is simply asked to distribute nothing.
+
+### The two readings that make it a defect rather than a preference
+
+| arm | what happened |
+|---|---|
+| directory row, standing at the far edge | **348px per side** at 1280 — an even split, not a split; at 390 the addresses broke mid-word, `ada@example.invali / d` |
+| announcement row, `Read` button given `sizeMode: 'contentHeight'` | an 84px button became **361px**. Generation **clean**, door silent, every other gate green |
+
+🔴 **The door already has the neighbouring rule and it is a good one.** Set `contentSize` *and* a
+width and it refuses with `inert-dimension`, naming the port, the node, and both fixes — that
+sabotage could not even reach the artefact. So the door checks a dimension that will never be read.
+What it does not check is a dimension that **will** be read, by more children than the layout can
+satisfy. Each parameter is individually valid; only their combination on one row is wrong.
+
+### Why it will bite an agent harder than a person
+
+A person drags a row out and sees it. An agent authoring through the door gets a clean write, a
+green validation and a diagnostic count of zero, and the only witness is a screenshot nobody took.
+It is the same family as **D28** — controls laid out in the one node that reflows — one step out:
+there a content-sized child ignored the box it was handed, here it ignores the room the row has
+left.
+
+⚠️ **Suggested shape, not a design.** A `warning` on a `Group` with `flexDirection: row` and a
+`justifyContent` that distributes free space, when more than one child would grow. It is decidable
+from the graph alone: the children, their types' `defaultSizeMode`, and their declared widths are
+all the door already has.
+
+✅ **Held on the template side meanwhile** — `tpl001Template.test.ts` §7 asserts that a split row has
+exactly one growing child, proved by the 361px-button sabotage. That is one template's gate, not a
+product fix, and it is why this row has an owner of `NONE` rather than being marked handled.
+
+## D33 — ✅ FIXED by DEF-021 (`4adab228`, 2026-08-30). (Was: a fan-out send delivers ONE email and reports N successes.)
+
+> ✅ **Closed by re-running this row's own repro at HEAD first** — the one-pass arm went red
+> exactly as the table below records (1 call, last address, 3 dones). `Send Email` now stamps
+> each queued outcome token with the `To` it was minted under: stamps agree → today's batch
+> exactly (one send, fields read after inputs settle); stamps disagree → one send per
+> consecutive run of the minted address, in pulse order, each run settled by its own call, a
+> blank or refused address failing only its own invocations. The suggested shape's first
+> option ("the node keys its batch on To"), taken over the refusal. erg-001 §4's constant-To
+> pin is untouched. ⚠️ **TPL-002's serial pump stays as shipped** — it is still the right
+> construction for per-recipient content, which the stamp does not carry (a fan-out batch
+> reads subject/body at dispatch time, so all runs share the pass's settled content).
+> Full account: phase 80 TASKS.md s16, `def021-send-email-fanout.test.ts`.
+
+**Measured, s14, with a control pair that varies one thing.** Owner: **DEF-021 — done**.
+
+### What it is
+
+TPL-002 needs the oldest shape in notification software: *one announcement, one email each to the
+members who asked for them.* There is no way to express it, and the way that looks like it works
+loses mail silently.
+
+**Half one — there is no loop.** `For Each` is `noodl-viewer-react/src/nodes/std-library/data/foreach.tsx`,
+a visual repeater that instantiates a component per item. `noodl-viewer-cloud/src/nodes/index.ts`
+does not register it and could not: there is nothing to instantiate server-side. So the only thing
+in a cloud function that can iterate is a `JavaScriptFunction` node's script — and a script's loop
+body cannot pulse a node's port, which is the only way to reach `Send Email`.
+
+**Half two — and this is the defect.** Pulse `Do` N times with a different `To` each time, which is
+what any author would try next, and the node's coalescing guard collapses the sends while settling
+every outcome:
+
+| arm | pulses | **`_noodl_send_email` calls** | outcomes reported |
+|---|---|---|---|
+| three addresses, **one pass** | 3 | **1** — `["c@x.invalid"]` | `done ×3` |
+| three addresses, **one pass each** (control) | 3 | 3 — `["a@…","b@…","c@…"]` | `done ×3` |
+
+The two arms differ in exactly one thing: whether an update pass separates the pulses. Same node,
+same mailer, same three addresses, same harness (`erg-001-cloud-node-outcomes.test.ts`'s probe).
+
+🔴 **The first arm is silent, and it reports success.** Two of three members never receive the mail,
+and the graph is told three times that the mail server accepted the message. `sendemail.ts`'s
+`scheduleSend` pushes each pulse's outcome token and returns early when `sendScheduled` is set; the
+one `doSend` that eventually runs reads `this._internal.to` — whichever address was written last —
+and calls `reportOutcomes(this, tokens, 'done')` for the whole batch.
+
+### Why this is not the same as the behaviour already pinned
+
+`erg-001` §4 has a row — *"two Dos coalesced into one pass still report two outcomes"* — which
+asserts `calls` is 1 and two `done`s fire, and it is **correct for what it is about**: the guard
+exists so that "set the fields, then press Do" batches, and Rule 1 says every invocation gets
+exactly one outcome. That row holds `To` constant. The defect is what the same mechanism does when
+`To` **varies**, which no row asks: the collapse stops being a de-duplication and becomes a
+delivery failure that the outcome contract then certifies as a success.
+
+### Where it bites a person
+
+The church secretary posts the harvest supper. Twenty-four members ticked the box. One of them gets
+the email — the last row the query returned — and the admin screen says it went to twenty-four.
+Nobody finds out until somebody does not turn up.
+
+⚠️ **Suggested shape, not a design.** Either the node keys its batch on `To` (a pulse that changes
+the address is a different invocation, not a re-press of the same one), or it refuses outright —
+`send-email/coalesced-recipients`, naming the addresses it dropped. The information is all present
+at the point of collapse: `scheduleSend` could compare `this._internal.to` against the address the
+queued tokens were minted under. Silently keeping the last one is the only option that cannot be
+right.
+
+✅ **Worked around on the template side** — TPL-002's fan-out is a **serial pump**: a
+`JavaScriptFunction` holding the cursor emits one address and one `Do`, and `Send Email`'s `done`
+**and** `failure` both wire back to advance it. The mailer resolves asynchronously, so every pulse
+lands in its own pass — the control arm above, built deliberately. That is one template's shape, not
+a product fix, and it is why this row's owner is `NONE`. It also means **every app that ever needs
+to mail two people has to rediscover it.**
+
+### Reproducing
+
+`erg-001-cloud-node-outcomes.test.ts` §4's `makeProbe`, three `to.set` / `send.valueChangedToTrue`
+pairs, `probe.flush()` once at the end for the first arm and after each pair for the control.
+
+## D34 — ✅ FIXED by DEF-022 (2026-08-30). (Was: A cloud function cannot find out what the app's own public address is.)
+
+> ✅ **Closed — the Request node now has an `Origin` output** (`requestOrigin.ts` holds the one
+> derivation: the caller's `Origin` header when it sent a usable one, else the forwarded/host
+> pair, else honestly blank). A browser's cloud-function call is a POST and a POST always
+> carries `Origin` — the page's own address, the thing TPL-002 had to be told from outside.
+> ⚠️ **One sentence below was too strong and is corrected here rather than silently:** *"Nothing
+> exposes it to a graph"* — an Object node with Id `Request` and property `Headers` reads the
+> raw header bag today (probed through the real runner before building). That route is
+> undocumented and leaves every builder re-deriving origin by hand (`Origin: null`, comma-listed
+> forwarded headers, array values), which is why the port is still the fix — but the register
+> should not overstate what was impossible. **The broader half stays open as a row in phase 80's
+> TASKS.md (owner `NONE`)**: a workflow with no request still has no way to learn an address, and
+> `effectiveBaseUrl` — the configured, non-caller-supplied answer, the one a password-reset email
+> must use — is still unreachable from a graph. Full account: phase 80 TASKS.md s18,
+> `def022-request-origin.test.ts`.
+
+**Measured, s14, by needing it and failing to find it.** Owner: **DEF-022 — done**.
+
+### What it is
+
+TPL-002's emails carry an unsubscribe link, and a link in an email must be absolute. There is no
+way for a graph to learn its own origin:
+
+- `EmailConfigState.effectiveBaseUrl(fallback)` exists, is tested, and is what the product's own
+  flows use — `oauth-routes.ts:164`, `email-routes.ts:152`, `admin-auth.ts:72`. **All three are HTTP
+  routes inside the backend.** Nothing exposes it to a graph: no node, no process global beside
+  `_noodl_send_email` / `_noodl_get_secret` / `_noodl_system_users` / `_noodl_system_roles`.
+- The Request node **has** the incoming headers — `request.ts:257` does
+  `requestModel.set('Headers', req.headers)` — but they are set on a model with **no output port**.
+  The node's declared outputs are `Received`, `Authenticated`, `User Id`, `Allow Unauthenticated`
+  and the `{{*}}` parameter ports. A graph cannot read `Host` or `Origin`.
+
+So an app whose emails contain links has to be *told* where it lives, by something outside itself.
+
+### Where it bites a person
+
+Every app that mails anybody a link: a password reset it built itself, an invitation, a receipt, a
+confirmation, an unsubscribe. This is not an edge — it is most of what transactional email is.
+
+⚠️ **Suggested shape, not a design.** The narrow fix is an output port on the Request node for the
+request's own origin (`Origin`, falling back to `Host` + protocol), which the node already holds and
+throws away. The broader one is a read-only `Site Address` node resolving `effectiveBaseUrl` — the
+same seam shape `Secret` uses, and the one that also answers it for a workflow with no request.
+
+✅ **Worked around on the template side, and the workaround has a cost worth naming.** TPL-002's
+`notifyMembers` takes `siteUrl` as a parameter, and the Post page publishes `location.origin` — by
+construction the address this members' area is served from. `hold` then keeps **only the scheme and
+host** of what it is handed, because a caller-supplied string that reaches twenty-four inboxes must
+not be able to carry a path, a query or a fragment. The cost: the endpoint trusts its caller for a
+value that appears in an email, and only `role:admin` may call it, which is why that is tolerable
+here and would not be on a public endpoint.
+
+## D35 — ✅ FIXED by DEF-023 (`acd053e0`, 2026-08-30). (Was: `Component` scope in a cloud function is NOT per-request.)
+
+> ✅ **Closed — and the mechanism this row recorded was the wrong runtime's.** The behaviour
+> held (reproduced through `CloudRunner.run` before building: the second request read the
+> first's flag), but the cloud runtime never reaches `_componentScopes` or its reused
+> instance ids — `noodl-js-api.js` overrode `getComponentScopeForNode` to return ONE
+> module-level object, so the scope was shared across all scripts, all functions, all
+> requests, all CONCURRENT requests, and even two runners in one process. Now a WeakMap
+> keyed on the component-owner INSTANCE: scripts in one component instance share (the
+> contract this template's `plan`/`pump` pair rests on), a new request starts clean, and
+> entries die with the request's graph — the leak the old override existed to stop, held by
+> construction. ⚠️ **This template's `plan` comment ("`Component` is not per-request… the
+> only safe use is state overwritten on the way in") is now STALE as a statement of the
+> product**, though the write-whole discipline it prescribes remains harmless; it lapses
+> whenever the members-area is next regenerated. Full account: phase 80 TASKS.md s16,
+> `def023-component-scope-lifetime.test.ts`.
+
+**Measured, s14, by four thirty-second timeouts.** Owner: **DEF-023 — done**.
+
+### What it is
+
+A `JavaScriptFunction`'s script is handed four arguments, the last being a component scope object —
+`JavascriptNodeParser.getComponentScopeForNode`, keyed by `node.nodeScope.componentOwner.getInstanceId()`
+into a **module-level `_componentScopes` map**. It is the only place a graph can hold state across
+two runs of a node, which is what any loop needs.
+
+The reasonable assumption — a cloud function builds its graph per request, so its component scope is
+per request — is **false**. Instance ids are reused between invocations, so the object survives the
+request that filled it and the next request finds the previous one's contents.
+
+### The reading
+
+TPL-002's fan-out keeps its queue and cursor there. A guard was added so a second `plan` could not
+reset the cursor under a pump still walking it:
+
+    if (Component.tpl002 && Component.tpl002.planned === true) return;
+
+The first request worked. **Every later one returned before answering** — `plan` saw a `planned` flag
+left over from the previous request, returned, fired no outcome, and the Response node was never
+reached: `Cloud function "notifyMembers" did not send a response within 30000ms`, four times, in one
+suite run. Removing the guard restored it. Same code, same data, one flag.
+
+### Where it bites a person
+
+Anything that accumulates: a batch, a retry counter, a running total, a de-duplication set. The first
+request is correct and the second is wrong, which is the worst possible order for finding it — and in
+a cloud function the symptom is a **hang**, not an error, because a graph that returns early fires no
+Response.
+
+⚠️ **Suggested shape, not a design.** Either clear the scope when a request's `NodeScope` is reset
+(`NoodlCloudRuntime.run` already calls `requestScope.reset()` and `_onNodeDeleted()`), or — if
+process-lifetime is the intended semantics — say so on the port documentation and in
+`BACKEND-AUTHORING-MODEL.md`, because at present nothing in either states the lifetime at all.
+
+✅ **Held on the template side by never reading it back:** `plan` writes `Component.tpl002` **whole**
+on every run, so a stale scope is overwritten rather than inherited. That is one template's
+discipline, not a product fix.
+
+---
+
+## D36 — 🔴 A `Condition` can only ever turn a gate ON, so a screen accumulates contradictory answers
+
+**Found s15, by driving `Pages/Account` rather than by reading it.** Owner: **NONE** (held on the
+template side; see below).
+
+### What it is
+
+`Condition` pushes its `result` when it evaluates, and every gate in this template is a `Condition`
+feeding a `mounted` port. There is no shape that means *"and put the other one away"* — so a node
+whose answer has more than one form needs **one Condition per answer plus one clear per answer**, and
+nothing in the product says so.
+
+`Pages/Account` has three notices for one question: saved-on, saved-off, could-not-save. Each had a
+gate. A member who ticked the box and then unticked it, in one page life, was shown:
+
+> Saved. We will email you when something is posted.
+> Saved. We will not email you about new announcements.
+
+both at once, one directly under the other, with nothing to say which had won.
+
+### Why the specs could not see it
+
+Every reading taken before s15 was of a **first** change: the endpoint suites set the flag over HTTP,
+and the drive ticked the box once. A single transition leaves exactly one notice up and looks
+perfect. The defect needs two transitions **without a reload**, because a fresh load re-mounts from
+the parameters and clears everything — which is also why `§9 the fresh load shows no stale
+confirmation` passes and says nothing about this.
+
+⚠️ **The generic form is worth stating**: any spec that grades a confirmation by asserting the right
+sentence is present will pass while the wrong one is present too. The row that catches it is
+`not.toContain` on the sentence that should have gone.
+
+### Where it bites a person
+
+Anywhere a screen answers a question that has more than one answer and the person can change their
+mind without navigating: a setting, a filter, a form that can succeed after it has failed. The two
+sentences contradict each other, and the one the person acted on last is not distinguishable from the
+one that is stale.
+
+✅ **Held on the template side:** `Pages/Account` now carries `onClear`, `offClear` and `failClear` —
+constant-`false` Conditions on the same `mounted` inputs, fired by the paths that should undo each
+notice. That is the `missingClear` shape `Pages/Setup` established, applied properly. It is one
+template's discipline, not a product fix: nothing stops the next author wiring one gate and shipping.
+
+⚠️ **Suggested shape, not a design.** A `mounted` port that took a signal meaning "off", or a
+`Condition` that pushed `false` when its condition is false rather than not pushing at all, would
+make the correct graph the short one. At present the correct graph is twice the size of the wrong
+one, which is the wrong way round.
+
+### Corrected and closed by P80 DEF-024 (2026-08-30) — the mechanism claim was too strong, and the two-way node already existed
+
+🔴 **"There is no shape that means *and put the other one away*" was FALSE when written.** The
+`Switch` node — the same Logic category as `Condition` — has taken `On`/`Off`/`Flip` signals and
+pushed `Current State` on every change the whole time. One Switch per answer (`state → mounted`,
+each path switching the others off) shows exactly one answer, with FEWER nodes than the paired
+constant-`false` Conditions this section prescribes. Driven in real Chrome at HEAD beside the
+latch shape (`noodl-mcp/tests/def024-gate-drive.test.ts`): the latch's tick-then-untick leaves
+both notices in the document; the same transitions through Switches leave exactly one. The node
+is also more honest than the title: `Condition.result` pushes `false` whenever a test finds
+false — what can only turn a gate on is the AUTHORED shape (constant `condition: true`,
+`Evaluate`-pulsed), which was this template's `CONDITION_GATE` and nothing else. So the suggested
+redesigns above were never needed; the defect was that **nothing said so at the moment of need**.
+
+✅ **What P80 shipped**: `gate-only-turns-on` (advisory warning, editor + MCP doors,
+`oneWayGate.ts`) — fires when every writer into a `mounted`/`visible` is a constant-condition
+Condition and the pushable set is exactly `{true}`; the paired-clear workaround and the Switch
+shape are both silent by construction. Plus one sentence each on `Condition.result` ("a Switch is
+the two-way shape") and `Switch.state` ("wire it into mounted or visible"). Corpus over 178
+projects: 3,287 written gate ports, 75 firings, every one a notice/confirmation/refusal, zero
+false positives read.
+
+🔴 **The s15 workaround fixed ONE page, and the calibrator run over `templates/members-area/`
+says so: 12 one-way latches remain in the shipped artefact** — `/Pages/Join` ("Request received"
++ "The one refusal" — the accumulating pair, verbatim), `/Pages/Post` ("Announcement posted" +
+"Meeting added"), `/Pages/SignIn`, `/Pages/Setup` ("The one refusal"), `/Pages/Announcement` and
+`/Pages/Meeting` ("Not available" + "It did not go"), `/Pages/Unsubscribe` (both notices).
+`Pages/Account`'s three clears and the Setup/Post `missingClear`/`confirmClear` pairs are the 6
+two-way pairs the calibrator counts. **Template work, this phase's** — same T6 family as
+D22/23/24; regenerating after the fix will surface any leftovers as `gate-only-turns-on`
+warnings in the generation run. The sister finding in the site-builder template is P77's **D29**
+(`/Site/ContactForm`'s confirmation+refusal pair, 2 more in `/Pages/Setup`).
+
+---
+
+## D37 — 🔴 A control's label is only a click target if it comes from the control's own `label` port, and that port defaults OFF
+
+**Found s15, by measuring the rendered DOM rather than reading the graph.** Owner: **NONE**.
+
+### What it is
+
+`net.noodl.controls.checkbox` — and every control built with `addLabelInputs` — emits its
+`<label for="…">` only when `useLabel` is true, and `useLabel` **defaults to `false`**
+(`node-shared-port-definitions.ts:1440`). `Checkbox.tsx` returns the bare box in that case.
+
+So the obvious way to build a labelled checkbox — a `Text` node beside it in a row — produces a
+control whose words **do nothing when tapped**. The graph looks right, the screen looks right, and
+the only hit area is the box itself.
+
+### The reading
+
+`templates/members-area`'s account page was authored exactly that way. Measured:
+
+| | before | after |
+|---|---|---|
+| `<label for>` in the document | absent | present |
+| the sentence is a click target | **no** | yes |
+| hit area | the 24×24 box only | box + label |
+
+24×24 is exactly WCAG 2.2 SC 2.5.8's minimum and no more. The page's entire product is one decision,
+and on a phone the whole of it was a 24px square.
+
+### Where it bites a person
+
+Every consent box, every "remember me", every filter checkbox an agent or a person builds the obvious
+way. It fails silently — nothing is refused, nothing is logged, and the defect is invisible in the
+editor, in the graph, and in any spec that asserts the text is on the page.
+
+⚠️ **Suggested shape, not a design.** Either default `useLabel` on for controls whose label is the
+thing a person reads, or raise a diagnostic when a `Text` sibling of a control carries text and the
+control's own `label` port is unset. The second is what the door is for.
+
+✅ **Held on the template side:** the account page's box now sets `useLabel`, `label`,
+`labelSpacing` and the two `label*` text-style ports, and `tpl002-account-drive.test.ts` §11 grades
+`labelIsTarget` on the rendered DOM.
+
+---
+
+## D38 — ⚠️ The render harness inlines the whole project into every page, so an `outerHTML` reading cannot be trusted about a project string
+
+**Found s15.** Owner: **NONE**. Harness, not product — but it silently disarmed a shipped gate.
+
+### What it is
+
+`scripts/devtools/render-from-disk.js:452` writes `window.projectData = ${JSON.stringify(projectData)}`
+into a `<script>` in the body of every page it serves. A script element's `textContent` is its
+source, so **every sentence, label and node name the project is authored out of is in
+`document.documentElement.outerHTML` on every page**, whether or not anything rendered.
+
+### What it disarmed
+
+`helpers/members-drive.ts`'s `sentence()` walked `document.querySelectorAll('*')` for its `present`
+reading. `present` was therefore **true for every project string, always** — and
+`tpl001-empty-states.test.ts` carried a row asserting exactly that, under the heading *"…while still
+being IN the document, which is why `painted` is the reading"*. It would have gone green on a page
+that rendered nothing at all.
+
+Corrected: `sentence()` now excludes `SCRIPT`, `STYLE` and `NOSCRIPT`. With the instrument honest the
+row's claim turns out to be **false** — these gates are `mounted` (D7/D16), so a seeded arm's empty
+state is not in the document at all — and the row now says so. Nothing shipped wrong: `painted` was
+always the load-bearing half, and it was correct throughout.
+
+### The rule this leaves
+
+🔴 **An absence check on a PROJECT string read off `html` cannot pass; a PRESENCE check on one cannot
+fail.** The second is the expensive direction — it goes green on a blank page. Every `html` assertion
+in the drives today is `not.toContain` on **row data** (an announcement's title, a member's address),
+which reaches the document only by being fetched, so all of them remain sound. The one place a
+project sentence needed an absence reading is `tpl002-account-drive.test.ts` §1, and it takes it off
+`text`, with the reason written where the reading is.
+
+---
+
+## D39 — ✅ RULED: the unsubscribe page stays one sentence
+
+**Found s15, by looking at it. Ruled by Richard 2026-08-29 (s16): it stays as it is.** Owner: **—**.
+
+`Pages/Unsubscribe` is opened from an email by somebody with no session, and its eyebrow is the
+literal `Members' area` — every other page's band carries the association's name. So a person who
+belongs to two associations running this template cannot tell which one they have just left. It also
+offers no link anywhere, while its own sentence says *"you can turn them back on from your account at
+any time"*.
+
+🔴 **It is not an oversight, which is why it is a ruling and not a fix.** The page's stated design is
+one sentence and no auth round trip — *"a band here would be an auth round trip on a page whose
+entire point is not needing one"*. The association name **is** publicly readable (`Pages/Landing`
+fetches it with no session), so it could be shown — but that is a second request on a page built to
+make none, and the cost lands on somebody on a phone in a mail client.
+
+**The question for Richard:** does the unsubscribe page name the association and offer a way back
+into the site, at the price of one public query, or does it stay a single sentence?
+
+### ✅ The ruling, 2026-08-29 — **it stays a single sentence**
+
+Richard chose the status quo. No change to the artefact; the page ships exactly as s15 built it.
+
+🔴 **What s16 corrected before asking, and it changes what the question was.** D39 filed the
+name and the way back as ONE ruling at ONE price — *"at the price of one public query"*. That is
+true of the **name** only. A link back is a `RouterNavigate` at a static target: no data, no
+session, no round trip, free. So the write-up attached the expensive half's cost to a pair whose
+other half was free, and a ruling made on it would have declined the free half on the expensive
+half's reasoning. Both were put to Richard separately priced; he declined both.
+
+Re-measured at HEAD before asking, because a row is a hypothesis until it is:
+
+- the eyebrow is still the literal `Members’ area` (`tpl001Components.ts`, the `pageHead` call);
+- the page still carries no band — 8 of 9 band-carrying pages, this one deliberately excluded;
+- the association row is still `acl-world-read: true` (`ASSOCIATION_RULES`,
+  `tpl001Vocabulary.ts:194`) and `Pages/Landing` still runs the fetch with no session, so the name
+  genuinely was available for the asking.
+
+### 🔴 Why a ruling to change **nothing** still cost a spec
+
+Before today the page's silence was a property of *what nobody had added yet*. Nothing failed if a
+later session looked at the same screen, reached D39's conclusion independently, and "fixed" it —
+which is precisely how a ruling gets silently reversed by someone who never knew there was one. A
+ruling names a place; it is not the same act as checking that place.
+
+`tpl001Template.test.ts` §5 *"the unsubscribe page fetches nothing and leads nowhere"* now reads it:
+nothing in `FETCHES`, nothing in `LEADS_AWAY`, exactly one `CloudFunction2` **pinned by name** to
+`unsubscribe`, and the four strings on the page pinned exactly. Beside a known-firing control on
+`Pages/Landing` — the other page a signed-out stranger opens, which does all three things this one
+declines — so the emptiness cannot be an emptiness produced by a misspelt node type.
+
+✅ **Proved by a control pair on the artefact the spec actually reads**, restored byte-identically
+afterwards (md5 match). Each of the four routes back to a reversal reddens its own row, alone:
+
+| sabotage on the shipped `Pages/Unsubscribe` | row that caught it |
+|---|---|
+| add a `DbCollection2` for the association | `FETCHES` — red |
+| add a button + `RouterNavigate` back to the landing page | `LEADS_AWAY` — red |
+| fetch the name through a **second** `CloudFunction2` | the by-name call pin — red |
+| just type the association’s name into a new `Text` | the four-string pin — red |
+
+⚠️ The third and fourth exist because the first two do not cover the page. A node-type absence
+says nothing about a cloud function that is already an allowed type, and nothing at all about
+words — and "add the name" is likeliest to arrive as words.

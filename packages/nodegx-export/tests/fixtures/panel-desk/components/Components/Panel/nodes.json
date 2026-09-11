@@ -1,0 +1,152 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c0a1b2c3-5b3f-4e8d-9c1a-000000000062",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "panelRoot",
+      "type": "Group",
+      "label": "Panel",
+      "children": [
+        "panelTitle",
+        "panelNote",
+        "bumpBtn",
+        "bumpText"
+      ],
+      "parameters": {
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "panelTitle",
+      "type": "Text",
+      "label": "Panel title",
+      "parent": "panelRoot",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "panelNote",
+      "type": "Text",
+      "label": "Panel note",
+      "parent": "panelRoot",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "bumpBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Bump",
+      "parent": "panelRoot",
+      "parameters": {
+        "label": "Bump"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "bumpText",
+      "type": "Text",
+      "label": "Bump status",
+      "parent": "panelRoot",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "parentState",
+      "type": "net.noodl.ParentComponentObject",
+      "label": "Parent panel state",
+      "parameters": {
+        "properties": "title,note"
+      },
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "bump",
+      "type": "net.noodl.SetParentComponentObjectProperties",
+      "label": "Bump the parent",
+      "parameters": {
+        "properties": "count",
+        "prop-count": 1
+      },
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "setBumped",
+      "type": "Set Variable",
+      "label": "Say it bumped",
+      "parameters": {
+        "name": "bumpStatus"
+      },
+      "x": 600,
+      "y": 280
+    },
+    {
+      "id": "setBumpFailed",
+      "type": "Set Variable",
+      "label": "Say it missed",
+      "parameters": {
+        "name": "bumpStatus"
+      },
+      "x": 600,
+      "y": 340
+    },
+    {
+      "id": "bumpStatusVar",
+      "type": "Variable2",
+      "label": "Bump status variable",
+      "parameters": {
+        "name": "bumpStatus"
+      },
+      "x": 350,
+      "y": 400
+    },
+    {
+      "id": "bumpedLabel",
+      "type": "String",
+      "label": "Bumped wording",
+      "parameters": {
+        "value": "Bumped."
+      },
+      "x": 600,
+      "y": 400
+    },
+    {
+      "id": "missedLabel",
+      "type": "String",
+      "label": "Missed wording",
+      "parameters": {
+        "value": "No parent panel."
+      },
+      "x": 600,
+      "y": 460
+    }
+  ],
+  "visualRoots": [
+    "panelRoot"
+  ]
+}

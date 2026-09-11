@@ -91,7 +91,7 @@ const DateDifferenceNode: NodeDefinitionOptions = {
     difference: {
       type: 'number',
       displayName: 'Difference',
-      group: 'Value',
+      group: 'Values',
       description: 'To minus From, counted in Unit. Unset while either date is missing or unreadable',
       getter: function (this: DateDifferenceNodeInstance) {
         return this._internal.difference;

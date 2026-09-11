@@ -1,0 +1,60 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d55708fd-eea7-5101-8d06-40bca25e18a1",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "app_root",
+      "type": "Group",
+      "label": "App",
+      "children": [
+        "app_router"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "app_router",
+      "type": "Router",
+      "label": "Main router",
+      "parent": "app_root",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Freelancer",
+          "routes": [
+            "/Pages/Freelancer",
+            "/Pages/Business",
+            "/Pages/Launch"
+          ]
+        }
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "app_css",
+      "type": "CSS Definition",
+      "label": "Hover and press — the whole site",
+      "parameters": {
+        "style": "/* The landing pages — interaction states.\n   Anything a node port can express is set on the node, not here.\n   Every rule is opt-in: a node joins by setting its \"cssClassName\" input. */\n\n.pressable { cursor: pointer; }\n/* A real <button disabled> — the Button control renders one, so this matches.\n   It is what tells somebody the form is not finished yet. */\nbutton.pressable:disabled { opacity: 0.45; cursor: not-allowed; }\n\n/* A card that answers the pointer. No shadow — this template's shadow tokens\n   are all \"none\", so a shadow here would be a rule that does nothing. */\n.card-lift {\n  transition: transform var(--duration-200) var(--ease-out),\n              border-color var(--duration-200) var(--ease-out);\n}\n.card-lift:hover { transform: translateY(-3px); border-color: var(--border-strong); }\n.card-lift:active { transform: translateY(-1px); }\n\n/* The photograph moves inside the card's own clip box, so the cut corners stay cut. */\n.photo-zoom img { transition: transform var(--duration-500) var(--ease-out); }\n.photo-zoom:hover img { transform: scale(1.04); }\n\n.nav-link { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }\n.nav-link:hover { color: var(--primary); }\n\n/* A row that opens: the question, the service, the thing with an answer under it. */\n.disclosure { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }\n.disclosure:hover { color: var(--primary); }\n\n.pill {\n  transition: background-color var(--duration-150) var(--ease-out),\n              border-color var(--duration-150) var(--ease-out),\n              color var(--duration-150) var(--ease-out);\n}\n.pill:hover { border-color: var(--primary); }\n\n@media (prefers-reduced-motion: reduce) {\n  .card-lift, .photo-zoom img, .nav-link, .disclosure, .pill { transition: none; }\n  .card-lift:hover, .card-lift:active { transform: none; }\n  .photo-zoom:hover img { transform: none; }\n}\n"
+      },
+      "x": 350,
+      "y": 40
+    }
+  ],
+  "visualRoots": [
+    "app_root"
+  ]
+}

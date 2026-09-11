@@ -21,6 +21,7 @@ import { z } from 'zod';
 
 import { IMPORT_REPORT_FORMAT_VERSION, IMPORT_REPORT_JSON_PATH, renderReportForAssistant } from '../editor-deps';
 import type { ImportReport } from '../editor-deps';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -51,7 +52,7 @@ export function readReport(projectDir: string): ImportReport | undefined {
   }
 }
 
-export function registerImportReportTool(server: McpServer, store: ProjectStore): void {
+export function registerImportReportTool(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'get_import_report',
     {
@@ -77,7 +78,7 @@ export function registerImportReportTool(server: McpServer, store: ProjectStore)
       }
     },
     guarded(({ outcome, format }: { outcome?: ImportReport['findings'][number]['outcome']; format?: 'json' | 'prose' }) => {
-      const report = readReport(store.projectDir);
+      const report = readReport(binding.require().projectDir);
       if (!report) {
         return jsonResult({
           notImported: true,

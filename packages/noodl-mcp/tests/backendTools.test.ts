@@ -15,7 +15,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 
-import { connect, TestSession, call } from './helpers';
+import { connect, TestSession, call, reveal } from './helpers';
 
 const BACKEND_DIR = path.join(__dirname, '..', '..', 'nodegx-backend');
 const BACKEND_CLI = path.join(BACKEND_DIR, 'dist', 'cli.js');
@@ -115,6 +115,10 @@ describeOrSkip('MCP backend permission tools (live backend)', () => {
     projectDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mcp-proj-'));
     fs.cpSync(FIXTURE, projectDir, { recursive: true });
     session = await connect(projectDir, true);
+    // AWP-006 — the backend group is deferred by default. Revealed here through
+    // find_tools rather than bypassed, so this whole suite doubles as the proof
+    // that the disclosure door reaches all 60 of them.
+    await reveal(session, 'backend');
   });
 
   afterAll(async () => {

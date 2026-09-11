@@ -4,6 +4,7 @@ import { stripCodeHistoryMetadata } from '@noodl-models/CodeHistory/codeHistoryM
 import { ComponentModel } from '@noodl-models/componentmodel';
 import { NodeGraphModel } from '@noodl-models/nodegraphmodel/NodeGraphModel';
 import { NodeGrapPort } from '@noodl-models/NodeGraphPort';
+import { replaceOrAppendPorts } from '@noodl-models/nodegraphmodel/portOverrides';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
@@ -499,11 +500,15 @@ export class NodeGraphNode extends Model {
 
   // Return all ports, filter is optional and can be 'input' or 'output'
   getPorts(filters?: 'input' | 'output'): NodeGrapPort[] {
-    var ports;
+    let ports;
 
     if (!this._ports) {
+      // The type is read once: whether it resolved decides whether the list
+      // below may be cached, and asking twice could give two answers.
+      const type = this.type;
+
       // Start with type ports
-      var ports = this.type.ports ? this.type.ports : [];
+      ports = type.ports ? type.ports : [];
 
       // Add instance ports from type
       // var instanceports = NodeLibrary.instance.getDynamicPortsForNode(this);
@@ -511,8 +516,9 @@ export class NodeGraphNode extends Model {
       // Any user defined ports
       if (this.ports) ports = ports.concat(this.ports);
 
-      // Dynamic instance ports on this instance
-      if (this.dynamicports) ports = ports.concat(this.dynamicports);
+      // Dynamic instance ports on this instance. FB-026 — these *replace* a static port of the
+      // same name and plug rather than appearing beside it; see `portOverrides.ts`.
+      if (this.dynamicports) ports = replaceOrAppendPorts(ports, this.dynamicports);
 
       // Sort on index (assign index in order if not present)
       each(ports, function (p, index) {
@@ -522,7 +528,25 @@ export class NodeGraphNode extends Model {
         return a.index > b.index ? 1 : -1;
       });
 
-      this._ports = ports;
+      // R8: only memoise a list derived from a type the library could actually
+      // answer for. The node library arrives *asynchronously* — the viewer
+      // delivers it over `ViewerConnection` and `NodeLibraryImporter` only then
+      // calls `NodeLibrary.instance.reload()` — so until it does, `type` is an
+      // `UnknownNodeType`, which declares no ports at all. Caching the `[]` that
+      // produces banks it permanently, because `[]` is truthy and the
+      // `if (!this._ports)` guard above never re-derives.
+      //
+      // That is a "don't know yet", not an answer, and in the editor it was
+      // paid for on the canvas: the first component a project opens on binds its
+      // connections before the library has loaded, so `resolvePorts()` cached
+      // the empty list, and when `libraryUpdated` fired and re-resolved every
+      // connection (`EditorEventBindings.ts`) it read the same stale `[]` back.
+      // `NodeGraphModel.scheduleUpdateTypes()` does clear the cache — one tick
+      // later, on a `setTimeout(…, 1)`, after the only thing that would have
+      // re-read it. So every wire in that graph kept `fromPort === undefined`,
+      // `NodeLibrary.nameForPortType` returned undefined, and a **signal wire
+      // painted in the data colour** until the builder navigated away and back.
+      if (!NodeLibrary.instance.typeIsMissing(type)) this._ports = ports;
     } else ports = this._ports;
 
     return filters
@@ -1587,7 +1611,13 @@ export class NodeGraphNode extends Model {
       dynamicports: this.dynamicports ? JSON.parse(JSON.stringify(this.dynamicports)) : undefined,
       conflicts: this.conflicts ? JSON.parse(JSON.stringify(this.conflicts)) : undefined,
       children: [],
-      metadata: this.metadata
+      // Deep-copied like every other field above. It used to be handed out by
+      // reference, which made `NodeGraphNodeSet.clone()` — `fromJSON(toJSON())` —
+      // produce a node sharing its source's metadata bag, so editing a pasted
+      // node's comment rewrote the original's. It also let the loop below mutate
+      // the live node while merely serialising it; the `[...new Set(...)]` dedupe
+      // on line 1624 is that same defect already patched once at the symptom.
+      metadata: this.metadata ? JSON.parse(JSON.stringify(this.metadata)) : undefined
     };
 
     for (const parameterName in json.parameters) {

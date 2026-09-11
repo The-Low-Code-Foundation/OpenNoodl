@@ -364,7 +364,7 @@ const StatesNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Which state was asked for and which ones this node actually has',
       getter: function (this: StatesInstance) {
         return this._internal.error;

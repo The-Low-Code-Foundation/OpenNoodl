@@ -14,7 +14,7 @@
  * @module AiAssistant/authoring/sandboxExport
  */
 
-import { SANDBOX_METADATA_KEY } from '@noodl/runtime/src/sandbox/types';
+import { SANDBOX_METADATA_KEY, type SandboxDataset } from '@noodl/runtime/src/sandbox/types';
 
 import { legacyNameToPath } from '../../../io/ProjectExporter';
 import { reconstructLegacyComponent, toLegacyName } from '../../../io/ProjectImporter';
@@ -45,6 +45,11 @@ export interface SandboxExportOptions {
   siblings?: ComponentFiles[];
   /** `sample_data` from the authoring model, when it supplied any. */
   sampleData?: AgentSampleData;
+  /**
+   * BEN-006 — records the user typed in the data editor, per class, layered
+   * above the agent's. Preview state: it reaches the export and nothing else.
+   */
+  userData?: AgentSampleData;
   /** False for the "Real backend" toggle: ship no dataset, so nothing is faked. */
   useSampleData?: boolean;
   /**
@@ -73,6 +78,13 @@ export interface SandboxExportJson {
 export interface SandboxExport {
   /** The export to send, or undefined when there is nothing to render. */
   json?: SandboxExportJson;
+  /**
+   * BEN-006 — the dataset that went into `json.metadata`, handed back so the
+   * data editor can prefill with the records the preview is *actually serving*
+   * rather than an empty box. Absent in "Real backend" mode, which is the same
+   * fact as "there is nothing to edit".
+   */
+  dataset?: SandboxDataset;
   /** Why there is no render, in one sentence, when `json` is undefined. */
   unrenderable?: string;
   /** Toolbar line describing the data the preview is running on. */
@@ -161,6 +173,7 @@ export function buildSandboxExport({
   files,
   siblings = [],
   sampleData,
+  userData,
   useSampleData = true,
   signedIn = true
 }: SandboxExportOptions): SandboxExport {
@@ -213,9 +226,10 @@ export function buildSandboxExport({
   const dataset = buildSandboxDataset({
     components: componentClosure(project, component, [...siblingsByName.values()]),
     sampleData,
+    userData,
     signedIn
   });
   json.metadata[SANDBOX_METADATA_KEY] = dataset;
 
-  return { json, summary: dataset.summary, notice: unknownShapeNotice(dataset.unknownShape) };
+  return { json, dataset, summary: dataset.summary, notice: unknownShapeNotice(dataset.unknownShape) };
 }

@@ -42,8 +42,8 @@ import {
   ClpOp,
   Principal,
   checkFunctionCall,
+  effectiveFunctionRateLimit,
   functionIdempotency,
-  functionRateLimit,
   functionTimeoutMs,
   ruleAllows,
   validateAclShape
@@ -187,7 +187,8 @@ function pathSegments(pathname: string): string[] {
 
 /**
  * Does a route pattern match these segments? Fills `params` with the captured
- * `:name` segments when one is given.
+ * `:name` segments when one is given, and with the whole remaining path for a
+ * final `*name` segment (DEF-045).
  *
  * Shared by `matchRoute` and FH-024's admin-plane test on purpose: two copies of
  * "which route is this?" that disagree is precisely how a CORS suppression stops
@@ -195,8 +196,17 @@ function pathSegments(pathname: string): string[] {
  */
 function segmentsMatch(pattern: string, seg: string[], params?: Record<string, string>): boolean {
   const parts = pattern.split('/');
-  if (parts.length !== seg.length) return false;
+  // DEF-045: a FINAL `*name` segment captures the rest of the path, joined back with `/`, and
+  // needs at least one segment to capture. Exactly one route uses it — `POST functions/*name` —
+  // because a cloud function may live in a folder and its name then carries a slash. Everything
+  // else stays exact-length, which is what keeps `admin/ops` from swallowing `admin/ops/x`.
+  const rest = parts.length > 0 && parts[parts.length - 1].startsWith('*');
+  if (rest ? seg.length < parts.length : parts.length !== seg.length) return false;
   for (let i = 0; i < parts.length; i++) {
+    if (rest && i === parts.length - 1) {
+      if (params) params[parts[i].slice(1)] = seg.slice(i).join('/');
+      return true;
+    }
     if (parts[i].startsWith(':')) {
       if (params) params[parts[i].slice(1)] = seg[i];
     } else if (parts[i] !== seg[i]) {
@@ -627,7 +637,14 @@ export class HttpServer {
       // ---- Functions -------------------------------------------------------
       {
         method: 'POST',
-        pattern: 'functions/:name',
+        // 🔴 DEF-045: `*name`, not `:name`. A cloud function may live in a folder — the editor
+        // creates them there, the shipped site-builder template puts three of its seven in
+        // `site/`, and `getCloudFunctionNames` deliberately preserves the nesting — so its name
+        // carries a slash. In-product callers all percent-encode it, so `site%2FpublishPage`
+        // always worked; the RAW address the name convention promises, and the one a person or a
+        // third-party webhook types, answered `404 Not found: POST /functions/site/publishPage`,
+        // which reads exactly like "no such function". Both addresses now reach the same graph.
+        pattern: 'functions/*name',
         access: { kind: 'function', nameParam: 'name' },
         handler: (ctx) => this.runFunction(ctx)
       },
@@ -1643,9 +1660,18 @@ export class HttpServer {
     // already been spent above, deliberately: a call refused here still cost the
     // caller its shared allowance, which is what stops a hammered function from
     // being a free way to probe the service.
+    //
+    // DEF-009 AC4: and a public door that WRITES rows has a budget whether or
+    // not anyone declared one — `effectiveFunctionRateLimit` is the resolver,
+    // and the only thing that changes here is which function computes the
+    // policy. The declared case is byte-for-byte what it was, including the
+    // zeroed-is-unlimited convention.
     if (route.access.kind === 'function') {
       const functionName = params[route.access.nameParam];
-      const policy = functionRateLimit(this.security.config, functionName);
+      const { policy } = effectiveFunctionRateLimit(this.security.config, functionName, {
+        allowNoAuth: this.functionAllowsNoAuth(functionName),
+        writesRecords: this.functionWritesRecords(functionName)
+      });
       if (policy) {
         const own = this.rateLimiter.checkPolicy(`function:${functionName}`, limitKey, policy);
         if (!own.allowed) refuse(own, `function:${functionName}`, `function "${functionName}"`);
@@ -1812,6 +1838,20 @@ export class HttpServer {
   private functionAllowsNoAuth(name: string): boolean {
     const runner = this.getRunner();
     return runner ? runner.functionAllowsNoAuth(name) : false;
+  }
+
+  /**
+   * DEF-009 AC4: does the function's graph write records? — the other half of
+   * what decides whether the public-write default applies.
+   *
+   * A function the runner does not know about answers `false`, which is the
+   * OPEN direction here rather than the closed one. It is bounded by the same
+   * fact that bounds the line above: a name the runner cannot find is 404'd
+   * before its graph could write anything.
+   */
+  private functionWritesRecords(name: string): boolean {
+    const runner = this.getRunner();
+    return runner ? runner.functionWritesRecords(name) : false;
   }
 
   /**

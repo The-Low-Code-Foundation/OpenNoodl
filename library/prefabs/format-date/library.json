@@ -1,0 +1,11 @@
+{
+  "label": "Format Date",
+  "description": "Formats a date you already have, by name: \"long\" gives Thursday 10th September 2026, \"time\" gives 3:05 pm, \"datetime\", \"short\", \"iso\" — or pass Format to write your own token string. Wraps the Date To String node so an app asks for a shape instead of remembering twenty-one tokens, and passes Locale through, so weekday and month names follow it. NOT the same thing as the intl-format module: that one formats against the clock (\"3 hours ago\", auto-refreshing) and formats numbers, lists and plurals. This part formats a date you hold. Logic only — wire Text into a Text node.",
+  "type": "prefab",
+  "tags": [
+    "Utility",
+    "Localization"
+  ],
+  "version": "1.0.0",
+  "icon": "icon.png"
+}

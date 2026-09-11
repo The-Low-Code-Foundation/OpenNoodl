@@ -46,6 +46,47 @@ export interface AuthoringLibrary {
 }
 
 /**
+ * One port a node declares, as far as writing code about it is concerned.
+ *
+ * `name` is the **display name** — what a consumer puts between the quotes of
+ * `Inputs["…"]`. It never carries the `in-`/`out-` prefix a Function node's
+ * internal port names use; see `utils/declaredPorts.ts` for why that prefix
+ * never reaches this shape in the first place.
+ *
+ * `type` is the declared port type as the runtime stores it — one of the
+ * `intype-`/`outtype-` enum values (`'string'`, `'number'`, `'boolean'`,
+ * `'object'`, `'array'`, `'date'`, `'color'`, …), `'signal'` for an output the
+ * author typed as one, or `'*'` where none was chosen. It is carried because a
+ * signal output is written `Outputs.Done()` and a value output is written
+ * `Outputs.x = `: an inserter that does not know which would silently create
+ * the wrong kind of port.
+ */
+export interface PortFact {
+  readonly name: string;
+  readonly type: string;
+}
+
+/**
+ * The node whose code is open, as far as its own ports are concerned (FUN-003).
+ *
+ * **Declared only.** The ports mined out of the document itself are `minePorts`
+ * (`utils/scriptPorts.ts`) and stay there; a consumer that wants everything
+ * unions the two. Keeping them apart is what lets a diagnostic say *"you
+ * declared this port and have not used it"* — a sentence that needs both lists
+ * and is impossible from either alone.
+ */
+export interface OpenNodeFact {
+  /** The graph node's id. */
+  readonly nodeId: string;
+  /** Its type name, e.g. `JavaScriptFunction` or `Javascript2`. */
+  readonly typeName: string;
+  /** Declared in the property panel's `scriptInputs` proplist. */
+  readonly declaredInputs: readonly PortFact[];
+  /** Declared in the property panel's `scriptOutputs` proplist. */
+  readonly declaredOutputs: readonly PortFact[];
+}
+
+/**
  * The project surface the code editor completes against.
  *
  * Deliberately not the whole project: this is what a *name* can be completed
@@ -64,6 +105,16 @@ export interface CodeAuthoringContext {
   readonly objects: readonly string[];
   /** Ids used with `Noodl.Arrays.` / an Expression's `Arrays.`. */
   readonly arrays: readonly string[];
+  /**
+   * The node whose code editor is open, when one is and when its mode has
+   * declared ports at all (FUN-003).
+   *
+   * ⚠️ Absent is **not** the same as "this node has no ports": a Function node
+   * with an empty proplist publishes an `openNode` with two empty lists.
+   * Consumers gate on `validationType`, never on emptiness — see
+   * `utils/declaredPorts.ts#modeHasDeclaredPorts`.
+   */
+  readonly openNode?: OpenNodeFact;
 }
 
 /**
@@ -81,14 +132,109 @@ export const EMPTY_AUTHORING_CONTEXT: CodeAuthoringContext = {
   arrays: []
 };
 
+/**
+ * Two slots, not one, and the reason is a live defect rather than tidiness.
+ *
+ * The project half is republished on a debounce whenever a parameter changes
+ * anywhere in the graph (`models/CodeAuthoringContext/install.ts`), which is
+ * every few keystrokes in a property field. The node half is written when a
+ * code popout opens and cleared when it closes. Held in one object, the first
+ * would erase the second while an editor was open, and the second would have to
+ * re-supply the whole project surface to write one field.
+ *
+ * `current` is the composed answer, rebuilt on write rather than on read, so
+ * `getCodeAuthoringContext()` stays a field read for the completion sources
+ * that call it per keystroke — and returns a stable reference between writes.
+ */
+let projectHalf: CodeAuthoringContext = EMPTY_AUTHORING_CONTEXT;
+let nodeHalf: OpenNodeFact | undefined;
 let current: CodeAuthoringContext = EMPTY_AUTHORING_CONTEXT;
 
+/** Live editors that want to know when the node half is rewritten. */
+const openNodeListeners = new Set<() => void>();
+
+function recompose(): void {
+  const composed: CodeAuthoringContext = { ...projectHalf };
+
+  // The node slot is owned by whoever opened the editor. A project refresh that
+  // happened to carry an `openNode` must not be able to write it, or a debounced
+  // republish becomes a second, unsynchronised source of the same field.
+  delete (composed as { openNode?: OpenNodeFact }).openNode;
+
+  current = nodeHalf ? { ...composed, openNode: nodeHalf } : composed;
+}
+
 /**
- * Publish what the code editor knows. Called by the editor when the project
- * changes; passing `null` (a project closing) restores the empty surface.
+ * Publish what the code editor knows about the **project**. Called by the editor
+ * when the project changes; passing `null` (a project closing) restores the
+ * empty surface. Leaves {@link setOpenNodeContext}'s slot untouched.
  */
 export function setCodeAuthoringContext(next: CodeAuthoringContext | null): void {
-  current = next ?? EMPTY_AUTHORING_CONTEXT;
+  projectHalf = next ?? EMPTY_AUTHORING_CONTEXT;
+  recompose();
+}
+
+/**
+ * Publish the node whose code editor just opened, or `null` when it closed
+ * (FUN-003).
+ *
+ * ⚠️ **Clearing is not optional.** Unlike the project half, which is pushed once
+ * per project and is merely stale-if-wrong, this slot describes one open editor.
+ * Left standing after a popout closes, the next editor opened over a different
+ * node answers with the previous node's ports — a live wrong answer, not an
+ * empty one, and the thing this seam is most likely to get wrong.
+ *
+ * Also pass `null` when opening an editor whose mode has no declared ports
+ * (`'expression'`, `'json'`, `'text'`, `'css'`, `'html'`): "no ports here"
+ * has to overwrite the previous node just as closing does.
+ *
+ * Call it again with the **same node** whenever its declared ports change while
+ * its editor is open — that is what {@link subscribeToOpenNode} exists to carry.
+ */
+export function setOpenNodeContext(next: OpenNodeFact | null): void {
+  const replacement = next ?? undefined;
+
+  // An identical write is not a change. Opening any editor whose mode has no
+  // declared ports clears an already-clear slot, and waking every live editor to
+  // tell it nothing happened is how a signal earns being ignored.
+  if (replacement === nodeHalf) return;
+
+  nodeHalf = replacement;
+  recompose();
+
+  // Copied, because a listener is entitled to unsubscribe from inside its own
+  // call — an editor unmounting in response is exactly the case.
+  for (const listener of [...openNodeListeners]) listener();
+}
+
+/**
+ * Hear about writes to the node half (FIX-016 §2 follow-up). Returns the
+ * unsubscribe.
+ *
+ * ## Why the editor is told rather than asked
+ *
+ * The registry's own header explains why the *project* half needs no
+ * notification: a completion source is a function called per keystroke, so
+ * reading at call time can never be stale. The node half has two consumers that
+ * are not like that — the port bar is computed during a React render, and
+ * `portDiagnostics` runs inside a linter that CodeMirror only re-runs when the
+ * **document** changes. Both hold their answer until something makes them
+ * recompute, and a panel setting changing is not something either can observe.
+ *
+ * That is FIX-016 §2's open wrinkle: the diagnostic telling an author to set the
+ * port's Type to `Signal` went on saying so after they did.
+ *
+ * ⚠️ Listeners hear clears too. No live editor currently observes one — every
+ * path that clears the slot has already disposed the popout that was open (see
+ * `CodeEditorType#dispose`, which is what `hidePopout` reaches before the next
+ * editor publishes) — but a subscriber that assumes a non-null `openNode` after
+ * being woken would be assuming something this contract does not promise.
+ */
+export function subscribeToOpenNode(listener: () => void): () => void {
+  openNodeListeners.add(listener);
+  return () => {
+    openNodeListeners.delete(listener);
+  };
 }
 
 /** Read the current surface. Cheap — call it per completion, not per mount. */

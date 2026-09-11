@@ -84,7 +84,7 @@ const RandomBytesNode: NodeDefinitionOptions = {
     value: {
       type: 'string',
       displayName: 'Value',
-      group: 'Value',
+      group: 'Values',
       description: 'The random bytes rendered in Encoding, replaced on every New',
       getter: function (this: RandomBytesNodeInstance) {
         return this._internal.value;

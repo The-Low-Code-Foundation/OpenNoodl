@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c7e41a90-0000-4000-8000-000000000013",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-09T12:00:00.000Z",
+  "description": "HLS-004 fixture: places the Gauge with its months input set, so the arithmetic has a value to be right about."
+}

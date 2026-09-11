@@ -1,0 +1,530 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cfe297c3-5935-5876-8b95-da86dd072854",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-11",
+      "type": "Page",
+      "label": "Directory",
+      "children": [
+        "pageShell-9"
+      ],
+      "parameters": {
+        "title": "Who belongs",
+        "urlPath": "directory"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-9",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-11",
+      "children": [
+        "pageBody-9",
+        "pageFooter-10"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-9",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-9",
+      "children": [
+        "chrome-7",
+        "pageMain-9"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-9",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-9",
+      "children": [
+        "headBand-7",
+        "ground-10"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "chrome-7",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "pageBody-9",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "headBand-7",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageMain-9",
+      "children": [
+        "headBandShell-7"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "headBandShell-7",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand-7",
+      "children": [
+        "headingHeadRow-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 340,
+      "y": 760
+    },
+    {
+      "id": "pageFooter-10",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-9",
+      "x": 160,
+      "y": 2560
+    },
+    {
+      "id": "ground-10",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-9",
+      "children": [
+        "notAllowed-3",
+        "directory"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "headingHeadRow-5",
+      "type": "Group",
+      "label": "Heading — the head, badged",
+      "parent": "headBandShell-7",
+      "children": [
+        "headingBadge-5",
+        "headingHead-8"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "headingBadge-5",
+      "type": "Group",
+      "label": "Heading — the badge",
+      "parent": "headingHeadRow-5",
+      "children": [
+        "headingGlyph-5"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "headingGlyph-5",
+      "type": "net.noodl.visual.icon",
+      "label": "Heading — the glyph",
+      "parent": "headingBadge-5",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-users",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 520,
+      "y": 1120
+    },
+    {
+      "id": "headingHead-8",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "headingHeadRow-5",
+      "children": [
+        "headingEyebrow-8",
+        "heading-9"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1240
+    },
+    {
+      "id": "headingEyebrow-8",
+      "type": "Text",
+      "label": "For moderators",
+      "parent": "headingHead-8",
+      "parameters": {
+        "text": "For moderators",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "heading-9",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-8",
+      "parameters": {
+        "text": "Who belongs",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h1"
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "notAllowed-3",
+      "type": "Group",
+      "label": "Not a moderator",
+      "parent": "ground-10",
+      "children": [
+        "notAllowedText-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "notAllowedText-3",
+      "type": "Text",
+      "label": "Not a moderator — the words",
+      "parent": "notAllowed-3",
+      "parameters": {
+        "text": "Only a moderator can see the member list.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "directory",
+      "type": "Group",
+      "label": "The list",
+      "parent": "ground-10",
+      "children": [
+        "projectionNote",
+        "list-4",
+        "emptyState-4"
+      ],
+      "parameters": {
+        "as": "section",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "projectionNote",
+      "type": "Text",
+      "label": "What this list is, and is not",
+      "parent": "directory",
+      "parameters": {
+        "text": "Everybody admitted through this app. Somebody given access directly on the backend will not appear here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 400,
+      "y": 2080
+    },
+    {
+      "id": "list-4",
+      "type": "For Each",
+      "label": "One row per member",
+      "parent": "directory",
+      "parameters": {
+        "templateType": "explicit",
+        "template": "/Members/MemberRow"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "emptyState-4",
+      "type": "Group",
+      "label": "Nobody admitted yet",
+      "parent": "directory",
+      "children": [
+        "emptyStateText-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 2320
+    },
+    {
+      "id": "emptyStateText-4",
+      "type": "Text",
+      "label": "Nobody admitted yet — the words",
+      "parent": "emptyState-4",
+      "parameters": {
+        "text": "Nobody has been admitted yet. People appear here once a moderator approves them.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 460,
+      "y": 2440
+    },
+    {
+      "id": "notModerator-3",
+      "type": "JavaScriptFunction",
+      "label": "Is this person not a moderator?",
+      "parameters": {
+        "functionScript": "if (Inputs.isModerator === undefined) return;\nOutputs.no = Inputs.isModerator !== true;"
+      },
+      "x": 770,
+      "y": 1720,
+      "ports": [
+        {
+          "name": "in-isModerator",
+          "displayName": "isModerator",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-no",
+          "displayName": "no",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "members",
+      "type": "DbCollection2",
+      "label": "Everybody this app admitted",
+      "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualSort": [
+          {
+            "property": "name",
+            "order": "ascending"
+          }
+        ]
+      },
+      "x": 770,
+      "y": 2200
+    },
+    {
+      "id": "emptyGate-4",
+      "type": "JavaScriptFunction",
+      "label": "Is the directory really empty?",
+      "parameters": {
+        "runOnChange-in-count": true,
+        "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
+      },
+      "x": 770,
+      "y": 2320,
+      "ports": [
+        {
+          "name": "in-count",
+          "displayName": "count",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-empty",
+          "displayName": "empty",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "toLanding-5",
+      "type": "RouterNavigate",
+      "label": "Send a refused reader to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 770,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "page-11"
+  ]
+}

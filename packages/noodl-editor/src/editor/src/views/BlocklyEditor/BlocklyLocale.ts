@@ -9,10 +9,17 @@
  *
  * Two things are localised:
  *  - the block text, by Blockly, from `blockly/msg/<code>`;
- *  - our own toolbox category names, from {@link TOOLBOX_LABELS}. Blockly has no messages for
- *    these — they are our strings. A language with no entry falls back to English category
- *    names while still getting localised block text, which is the right trade: partial
+ *  - our own toolbox category names, from `BlocklyToolbox.toolboxLabelsFor`. Blockly has no
+ *    messages for these — they are our strings. A language with no entry falls back to English
+ *    category names while still getting localised block text, which is the right trade: partial
  *    translation beats none, and it is obvious what is missing.
+ *
+ * 🔴 **The category-name table lives in `BlocklyToolbox.ts`, not here, and that is a testability
+ * decision.** This module imports `@noodl-utils/editorsettings`, which does not resolve under
+ * `tests-unit` — so for as long as the table lived here, **nothing could grade the translations
+ * at all**, and FIX-005's rename of one label across six languages would have been ungated.
+ * `BlocklyToolbox.ts` imports nothing that cannot be reached from a plain-Node runner, which is
+ * the same reason `convertModes.ts` and `objectData.ts` exist.
  *
  * Each bundle is a separate `import()`, so exactly one language's messages are ever fetched.
  *
@@ -21,7 +28,7 @@
 
 import { EditorSettings } from '@noodl-utils/editorsettings';
 
-import { DEFAULT_TOOLBOX_LABELS, ToolboxLabels } from './BlocklyToolbox';
+import { DEFAULT_TOOLBOX_LABELS, ToolboxLabels, toolboxLabelsFor } from './BlocklyToolbox';
 
 /** Editor-settings key holding the chosen language, or `'system'`. */
 export const BLOCK_LANGUAGE_SETTINGS_KEY = 'blockEditor.language';
@@ -102,97 +109,6 @@ const MESSAGE_LOADERS: Record<string, () => Promise<unknown>> = {
 };
 
 /**
- * Toolbox category names per language. Only languages translated with confidence appear
- * here; the rest fall back to {@link DEFAULT_TOOLBOX_LABELS}.
- */
-const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
-  fr: {
-    noodlInputsOutputs: 'Entrées / Sorties',
-    noodlSignals: 'Signaux',
-    noodlVariables: "Variables de l'app",
-    noodlObjects: "Objets de l'app",
-    noodlArrays: "Tableaux de l'app",
-    logic: 'Logique',
-    loops: 'Boucles',
-    math: 'Maths',
-    text: 'Texte',
-    lists: 'Listes',
-    variables: 'Variables',
-    functions: 'Fonctions'
-  },
-  es: {
-    noodlInputsOutputs: 'Entradas / Salidas',
-    noodlSignals: 'Señales',
-    noodlVariables: 'Variables de la app',
-    noodlObjects: 'Objetos de la app',
-    noodlArrays: 'Arreglos de la app',
-    logic: 'Lógica',
-    loops: 'Bucles',
-    math: 'Matemáticas',
-    text: 'Texto',
-    lists: 'Listas',
-    variables: 'Variables',
-    functions: 'Funciones'
-  },
-  de: {
-    noodlInputsOutputs: 'Eingänge / Ausgänge',
-    noodlSignals: 'Signale',
-    noodlVariables: 'App-Variablen',
-    noodlObjects: 'App-Objekte',
-    noodlArrays: 'App-Arrays',
-    logic: 'Logik',
-    loops: 'Schleifen',
-    math: 'Mathematik',
-    text: 'Text',
-    lists: 'Listen',
-    variables: 'Variablen',
-    functions: 'Funktionen'
-  },
-  it: {
-    noodlInputsOutputs: 'Ingressi / Uscite',
-    noodlSignals: 'Segnali',
-    noodlVariables: "Variabili dell'app",
-    noodlObjects: "Oggetti dell'app",
-    noodlArrays: "Array dell'app",
-    logic: 'Logica',
-    loops: 'Cicli',
-    math: 'Matematica',
-    text: 'Testo',
-    lists: 'Liste',
-    variables: 'Variabili',
-    functions: 'Funzioni'
-  },
-  nl: {
-    noodlInputsOutputs: 'Invoer / Uitvoer',
-    noodlSignals: 'Signalen',
-    noodlVariables: 'App-variabelen',
-    noodlObjects: 'App-objecten',
-    noodlArrays: 'App-arrays',
-    logic: 'Logica',
-    loops: 'Lussen',
-    math: 'Wiskunde',
-    text: 'Tekst',
-    lists: 'Lijsten',
-    variables: 'Variabelen',
-    functions: 'Functies'
-  },
-  'pt-br': {
-    noodlInputsOutputs: 'Entradas / Saídas',
-    noodlSignals: 'Sinais',
-    noodlVariables: 'Variáveis do app',
-    noodlObjects: 'Objetos do app',
-    noodlArrays: 'Arrays do app',
-    logic: 'Lógica',
-    loops: 'Laços',
-    math: 'Matemática',
-    text: 'Texto',
-    lists: 'Listas',
-    variables: 'Variáveis',
-    functions: 'Funções'
-  }
-};
-
-/**
  * Map a BCP-47 tag onto a supported bundle: exact match, then the Chinese script variants,
  * then the bare language subtag. `fr-CA` lands on `fr`; anything unknown lands on English.
  */
@@ -242,5 +158,6 @@ export async function applyLanguage(code: string): Promise<ToolboxLabels> {
     return DEFAULT_TOOLBOX_LABELS;
   }
 
-  return TOOLBOX_LABELS[resolved] || DEFAULT_TOOLBOX_LABELS;
+  return toolboxLabelsFor(resolved);
 }
+

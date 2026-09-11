@@ -1,6 +1,6 @@
 {
   "label": "Table",
-  "description": "Component for creating tables from data.",
+  "description": "A table built from data: columns are derived from your rows (or declared with a Headers array), each cell picks its own String/Number/Boolean/Date/Image renderer from the value's type, headers sort and cells can be made editable. Out of the box it renders five sample rows from a Static Data node; connect your own array to the Items input and it wins over the samples.",
   "type": "prefab",
   "tags": [
     "UI",
@@ -8,7 +8,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/table/",
-  "version": "0.7.0",
+  "version": "0.10.2",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

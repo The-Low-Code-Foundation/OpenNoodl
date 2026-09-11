@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "7568a224-ee61-5dd2-8887-065a6db656b3",
+  "name": "Landing",
+  "path": "/Pages/Landing",
+  "type": "page",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

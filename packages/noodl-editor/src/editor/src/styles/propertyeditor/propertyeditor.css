@@ -2,9 +2,33 @@
    Property editor
    ------------------------------------------------------------------- */
 
+/* 🔴 FB-017 AC6 — THESE TWO ELEMENTS WERE SCROLL CONTAINERS THAT NEVER SCROLLED,
+   and that one fact produced three separate defects across three sessions.
+
+   `.sidebar-property-editor` carried `overflow: hidden auto`. Its content has never
+   overflowed it (the panel sits inside `ScrollArea`, whose `.Container` is
+   `min-height: 100%` and simply grows), so its `scrollTop` was permanently 0 — which
+   is what made the panel's scroll-restore read, store and restore nothing for as
+   long as the panel has been inside a `ScrollArea`, and what made the AC7 filter
+   header's `position: sticky` inert: sticky binds to the nearest scrollport, and
+   this was it.
+
+   `.sidebar-panel` is the second one, for the same reason (`overflow: hidden`); it
+   is opted out through the `property-editor-shell` modifier below rather than
+   globally, because `componentports.ts` wears the same class.
+
+   Measured 2026-08-25 on `fb017-drive`, Group `…0030`, at `scrollTop: 400`: with
+   only one of the two cleared the filter box's top was still **-16px** — off the
+   screen. With both cleared it sits at **277px**, which is exactly the real
+   scrollport's own top. Neither half is sufficient alone, which is why the earlier
+   reading looked like "sticky cannot work here". */
 .sidebar-property-editor {
-  overflow: hidden auto;
+  overflow: visible;
   height: 100%;
+}
+
+.sidebar-panel.property-editor-shell {
+  overflow: visible;
 }
 
 /* UIX-011: was a `-webkit-mask-image` of editor/reset-to-default.svg tinted by
@@ -197,16 +221,176 @@
 }
 
 /* Section title (UIX-004): uppercase micro-label, muted, with wide tracking —
-   the mock's section rhythm. Reads as a divider label, not body text. */
+   the mock's section rhythm. Reads as a divider label, not body text.
+
+   FB-017 made it a real <button>: the collapse mechanism existed as a live reader
+   with no writer, so every group was permanently expanded. The reset below is what
+   keeps a button looking like the divider label it has always been — a heading that
+   suddenly grew a button's chrome would read as an action on the node, not as a
+   disclosure of the section. */
 .property-group-label {
   display: flex;
   align-items: center;
+  width: 100%;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
   color: var(--theme-color-fg-muted);
   font-size: 10.5px;
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.07em;
   text-transform: uppercase;
   margin-bottom: 10px;
+}
+
+.property-group-label:hover {
+  color: var(--theme-color-fg-default);
+}
+
+/* Keyboard reachability is the point of the button — so the focus ring has to be
+   visible. `:focus-visible` rather than `:focus` keeps it off the pointer path. */
+.property-group-label:focus-visible {
+  outline: 1px solid var(--theme-color-primary);
+  outline-offset: 2px;
+  color: var(--theme-color-fg-default);
+}
+
+/* The disclosure triangle. A text glyph rather than an icon component, following
+   `VariantSelector` — see PropertyGroups.tsx for why this module stays icon-free. */
+.property-group-chevron {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 8px;
+  font-size: 9px;
+  line-height: 1;
+  color: var(--theme-color-fg-default-shy);
+  transform: rotate(-90deg);
+  transition: transform 100ms ease-out;
+  pointer-events: none;
+}
+
+.property-group-chevron.is-expanded {
+  transform: rotate(0deg);
+}
+
+.property-group-name {
+  min-width: 0;
+}
+
+/* FB-017 AC2: what a collapsed section is still doing. Pushed to the trailing edge
+   so the eye can scan a column of counts without reading the headings. */
+.property-group-badge {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 7px;
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  text-transform: none;
+}
+
+/* The nested groups inside `Advanced CSS`. Indented so the folded headings read as
+   belonging to the section rather than as siblings of the basics above it, and with
+   the last child's divider suppressed — the super-group draws its own. */
+.property-group-children {
+  padding-left: 10px;
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+.property-group-children .property-group:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* FB-017 AC7 — the property filter.
+
+   ⚠️ THIS COMMENT USED TO SAY "NOT `position: sticky`", and the reasoning was right at
+   the time: session 23 drove it and measured this box at -16px with the panel scrolled
+   to 400, so the declaration was removed rather than shipped looking like it worked.
+   What that session read as "sticky cannot work here without re-parenting the box above
+   the `ScrollArea`" was really "TWO ancestors capture it and only one had been named".
+   Both are now opted out at the top of this file, and the box is sticky again — driven,
+   see the rule below.
+
+   It sits on the panel ground so it reads as chrome rather than as a first row. */
+.property-filter {
+  padding: 4px 0 10px 0;
+  background-color: var(--theme-color-bg-1);
+
+  /* ✅ Sticky, and this time it was measured working rather than assumed. Session 23
+     removed a `position: sticky` from here after driving it and finding it inert —
+     correctly, because at that point two ancestors above still captured it (see the
+     header above this file's first rule). With both of them opted out, the box pins
+     to the real scrollport: driven at `scrollTop: 400`, top = 277 = the scrollport's
+     own top, against -16 before.
+
+     It matters most where the filter is most useful: the properties it reaches are
+     mostly at the BOTTOM of a long panel, so a header that scrolls away is a header
+     you cannot clear without scrolling back. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* P82 §A4 — the filter field itself. `SearchInput.module.scss`'s `.SearchInput` paints
+   `border: none; background: transparent`, and this container is `bg-1` — the same token
+   as the panel ground behind it, so the field had no fill AND no edge: 1.00:1 in both
+   themes, nothing there to measure (NAT-001). `border-control` is what this panel's other
+   controls already use on a raised ground (`VariantSelector`, `TokenPicker`); NAT-001 grades
+   the identical (border-control, bg-1) pairing elsewhere on this same panel ground.
+   ⚠️ A single class selector here would tie with `.SearchInput`'s own rule on specificity and
+   the winner would depend on stylesheet load order — `input.property-filter-input` is an
+   element+class selector so it wins outright, regardless of order. */
+.property-filter input.property-filter-input {
+  /* `border-box` keeps the field at its existing 45px ($_search-bar-height in
+     SearchInput.module.scss) rather than growing it by the new border's 2px — that
+     box has no `box-sizing` of its own, so a border added outside it would nudge the
+     filter bar's stated height and its sticky offset math. */
+  box-sizing: border-box;
+  border: 1px solid var(--theme-color-border-control);
+}
+
+/* The match count is for screen readers only — the surviving rows are the sighted
+   answer, and a number beside the box would be chrome that case does not need. Not
+   `display: none`, which would take it out of the accessibility tree along with the
+   `aria-live` announcement that is the entire point of it. */
+.property-filter-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* What an empty result says. A panel that has gone blank reads as a panel that has
+   broken — see `NoMatchesNotice`. */
+.property-filter-empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.property-filter-empty-title {
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+}
+
+.property-filter-empty-hint {
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  line-height: 1.4;
 }
 
 /* Panel header (PAR-002, mock `.props-head`): column layout — name row +
@@ -299,9 +483,144 @@
   flex: none;
 }
 
+/* CN-006b AC2 — provenance ("from Cashflow Kit"), under the type chip.
+
+   ⚠️ P1 forbids visually demoting a kit node, so this is deliberately the
+   quietest thing in the header: muted foreground, no chip ground, no border, no
+   uppercase. It is a byline, not a badge. Anything that read as a warning here
+   would answer "is this node worth less?" instead of "who wrote it?", which is
+   the one distinction the ruling turns on. */
+.property-provenance-row {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  color: var(--theme-color-fg-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .property-panel-header-edit-bar {
   padding-right: 0;
   right: 0;
+}
+
+/* =============================================================================
+   LEG-005 — the comment row.
+
+   Sits between the header bar and the tab strip: *what this is* (the name and
+   the type chip), then *why it is* (this), then *what it is wired to* (the
+   ports). The order of the panel is a claim about importance.
+
+   ⚠️ Everything here states `box-sizing` for itself. There is no global
+   `border-box` rule in this repo, and the field's height is computed from a
+   mirror element that has to agree with the textarea to the pixel.
+   ============================================================================= */
+
+.property-comment-bar {
+  border-bottom: 1px solid var(--theme-color-border-default);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px 12px;
+}
+
+/* The tooltip wraps its child in a trigger div; hug the label so hovering the
+   empty space beside it does not open the tooltip. */
+.property-comment-label-trigger {
+  width: fit-content;
+  max-width: 100%;
+}
+
+/* Section micro-label, matching `.property-group-label`'s rhythm — but one step
+   brighter than that rule's `fg-muted`.
+   ⚠️ Measured, not chosen. Against the panel ground `bg-1`:
+     fg-muted        dark #6b7682 on #12161b = 3.93:1  ·  light #7c8894 on #ffffff = 3.62:1
+     fg-default-shy  dark #8b95a1 on #12161b = 5.98:1  ·  light #616c79 on #ffffff = 5.34:1
+   `fg-muted` is under AA in both themes at this size, so this row does not use
+   it — even though the neighbouring `.property-group-label` still does. */
+.property-comment-label {
+  display: block;
+  color: var(--theme-color-fg-default-shy);
+  font-family: var(--font-family);
+  font-size: 10.5px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+/* The field is two elements in one box: a hidden mirror that carries the text
+   (or the placeholder, when there is no text) and therefore sets the height,
+   and the real textarea absolutely positioned over it.
+
+   A textarea's `scrollHeight` ignores its placeholder, so an empty field sizes
+   to one line and clips a placeholder that wraps to two — and the placeholder
+   is the only copy most users will ever read about this field. This is that fix
+   with no JS measurement pass, and in particular no `ResizeObserver`, which a
+   backgrounded Electron renderer does not run at all. */
+.property-comment-field {
+  position: relative;
+}
+
+.property-comment-sizer,
+.property-comment-input {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-default);
+  font-family: var(--font-family);
+  font-size: 12px;
+  line-height: 17px;
+  letter-spacing: normal;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+.property-comment-sizer {
+  visibility: hidden;
+  pointer-events: none;
+  /* Ten lines of text drive the height; past that the field scrolls rather than
+     pushing the ports off the panel. 10 × 17 + 12 padding + 2 border. */
+  max-height: 184px;
+  overflow: hidden;
+}
+
+.property-comment-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  resize: none;
+  overflow-y: auto;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  /* The control edge, not the hairline `border-default` — DSG-006: a field you
+     can type into has to look like one before it is hovered. */
+  border-color: var(--theme-color-border-control);
+}
+
+/* ⚠️ A colour token, never opacity. Opacity cannot dim placeholder text and
+   keep it AA. `fg-default-shy` on the `bg-2` field ground is 5.57:1 dark and
+   5.06:1 light; `--base-color-grey-600`, which is what `TextArea` uses by
+   default, resolves to #2c3540 in dark and is 1.36:1 there. `opacity: 1` is not
+   redundant — several UA stylesheets still dim `::placeholder` by default. */
+.property-comment-input::placeholder {
+  color: var(--theme-color-fg-default-shy);
+  opacity: 1;
+}
+
+.property-comment-input:hover {
+  border-color: var(--theme-color-fg-default-shy);
+}
+
+.property-comment-input:focus {
+  outline: none;
+  border-color: var(--theme-color-primary);
 }
 
 .property-editor-highlight {
@@ -377,6 +696,63 @@
    The control is dimmed and inert; the sentence under it is the deliverable.
    Amber rather than red: phase 23's colour law reserves red for danger, and
    "this backend does not do that" is information, not an error. */
+/* DEF-036 AC1 — the panel-level note a data node shows when its schema could not be read.
+
+   Louder than `.property-capability-reason` and `.property-port-gate-reason` on purpose, and it
+   is the one place in this panel where that is right. Those two annotate a control that is on
+   screen: the control carries the weight and the sentence explains it. This one is drawn where
+   an author is looking for a list of fields that is not there, so there is nothing else on the
+   panel to notice — a 10px line beside a rule would be a second silence.
+
+   ⚠️ Same amber as both of them (`--theme-color-notice` aliases `--theme-color-warning` today),
+   because the language "coloured rule, short sentence, this is not doing what you expect" has
+   already shipped and been read in both themes. What separates this from them is size and
+   position, not hue. */
+.property-schema-notice {
+  margin: 8px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--theme-color-notice);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  line-height: 1.4;
+}
+
+.property-schema-notice-title {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.property-schema-notice-message {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+/* DEF-036 AC4 — the jump into the schema editor for the table this node names.
+
+   Quiet on purpose. It sits above a list of fields that is working, so it is a way out for the
+   author who cannot find one of them rather than an instruction to everybody else — the
+   opposite weighting from `.property-schema-notice`, which is drawn where nothing else is. */
+.property-schema-add-field {
+  margin: 6px 8px 0 8px;
+}
+
+.property-schema-add-field-button {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--theme-color-bg-3);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.property-schema-add-field-button:hover {
+  background-color: var(--theme-color-bg-2);
+}
+
 .property-capability-gated {
   display: block;
 }
@@ -400,4 +776,117 @@
 /* A `degraded` port still works, so it is not dimmed — only annotated. */
 .property-capability-gated[data-capability-state='degraded'] .property-capability-reason {
   border-left-color: var(--theme-color-notice-dim);
+}
+
+/* FB-017 AC4 — a property that is set but cannot take effect for a structural reason.
+   Deliberately the same shape as `.property-capability-reason` above: a short sentence under
+   the control with a coloured rule beside it. Same typography too, because that pairing has
+   already shipped and been read in both themes; only the token differs.
+
+   ⚠️ `--theme-color-notice` currently aliases `--theme-color-warning` (colors.css:483), so the
+   two rules are the same hue on screen today. The separate token is the point: a gate says
+   "this backend cannot do that", a hint says "this will not apply the way the node is arranged"
+   and leaves the control fully live. Those can be told apart later without editing this rule. */
+.property-structural-hint {
+  margin: 2px 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-notice);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+/* FB-021 — a port a `dynamicports` condition has switched off.
+
+   Same shape as `.property-capability-gated` above, and that is deliberate: an author who has
+   met one of these has learned to read "dimmed control, coloured rule, short sentence" as
+   "this is off, and here is why". Two visual languages for one idea would be a second thing to
+   learn for no gain. Note what that costs: `.property-capability-reason` resolves to the same
+   amber this does, so the two features are currently indistinguishable by colour and differ only
+   in their bottom margin. That is the intended trade — one language, learned once — but it does
+   mean nothing here is telling an author which of the two kinds of "off" they are looking at
+   except the sentence itself, so the sentence carries that weight alone.
+
+   ⚠️ Both the reason line and the dead-wire line are siblings of `.property-port-gated-control`,
+   not children of it (see `portGate.ts`), so neither is dimmed by its opacity. An earlier version
+   of this comment claimed being outside the control distinguished the dead-wire line; it does not,
+   because the reason line is outside it too. What actually separates them on screen is one step of
+   opacity — `.85` on the reason, full on the dead wire — and that is the whole of it today. */
+.property-port-gated {
+  display: block;
+}
+
+.property-port-gated-control {
+  pointer-events: none;
+  opacity: 0.35;
+  filter: saturate(0.4);
+}
+
+.property-port-gate-reason {
+  margin: 2px 8px 6px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-notice);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.85;
+}
+
+/* A real button rather than a styled span: this is the one interactive thing in a row that is
+   otherwise inert, and it has to be reachable by keyboard for the same reason every other
+   control in this panel is. */
+.property-port-gate-link {
+  display: inline;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-color-primary);
+  font-size: 10px;
+  line-height: 1.35;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.property-port-gate-link:hover,
+.property-port-gate-link:focus-visible {
+  color: var(--theme-color-primary-highlight);
+}
+
+/* Full opacity, unlike the reason line above it: a value is arriving and being discarded, which
+   is the more alarming of the two states and is the one thing here that must not read as faded.
+
+   ⚠️ The token is `warning` and the reason line's is `notice`, but `--theme-color-notice` aliases
+   `--theme-color-warning` (colors.css:483, which says so in as many words), so the two rules are
+   the SAME amber on screen — in both themes. The separate token is kept for the reason FB-017's
+   `.property-structural-hint` gives above: it lets the two be told apart later without editing
+   this rule. It is not a difference an author can see today, and a change here that means to make
+   one louder than the other has to move a colour, not just a token name. */
+.property-port-gate-dead-wire {
+  margin: 0 8px 8px 8px;
+  padding-left: 6px;
+  border-left: 2px solid var(--theme-color-warning);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+/* FB-021 AC3 — where the author just landed.
+
+   🔴 Not decoration. `SizeModeInput` — the gating control in the motivating case — is built
+   from `div`s with no focusable element in it, so focus alone produces no visible change
+   whatsoever. Without this rule, "Show Size Mode" scrolls silently and the author is left
+   looking for something that never announced itself. */
+.property-port-gate-target {
+  outline: 2px solid var(--theme-color-primary);
+  outline-offset: 1px;
+  border-radius: 2px;
+  transition: outline-color 220ms ease-out;
+}
+
+.property-port-gate-target:focus,
+.property-port-gate-target:focus-visible {
+  outline: 2px solid var(--theme-color-primary);
 }

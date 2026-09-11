@@ -40,10 +40,21 @@ describe('AI model registry', () => {
     }
   });
 
-  it('treats openai-compatible as sharing the OpenAI catalogue', () => {
+  it('offers openai-compatible its own gateway models FIRST, then the OpenAI catalogue', () => {
+    // ⚠️ This asserted plain equality with the OpenAI catalogue until LAS-011 / F35,
+    // which deliberately ended that: falling through meant a DeepInfra or vLLM user
+    // was offered `gpt-4.1`, an id their gateway does not serve. The OpenAI ids still
+    // FOLLOW, because Azure and similar shims genuinely do serve them — so the
+    // contract is "own entries first, catalogue after", not "no catalogue".
     const compatible = getModelsForProvider('openai-compatible').map((x) => x.id);
     const openai = getModelsForProvider('openai').map((x) => x.id);
-    expect(compatible).toEqual(openai);
+    const own = AI_MODELS.filter((x) => x.provider === 'openai-compatible').map((x) => x.id);
+
+    expect(own.length).toBeGreaterThan(0);
+    expect(compatible).toEqual([...own, ...openai]);
+    // The half that matters to a gateway user: what they are given by default is
+    // one of the gateway's own ids, never an OpenAI one.
+    expect(own).toContain(getDefaultModel('openai-compatible').id);
   });
 
   it('marks local models as not agent-capable', () => {

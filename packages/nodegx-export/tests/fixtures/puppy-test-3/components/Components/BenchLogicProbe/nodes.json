@@ -1,0 +1,56 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f835f776-e04c-4e0d-8f47-59f805bc3f41",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bl-ci",
+      "type": "Component Inputs",
+      "label": "Seed the counter, then step it",
+      "x": -280,
+      "y": 0,
+      "ports": [
+        {
+          "name": "Seed",
+          "plug": "output",
+          "type": "*",
+          "index": 0
+        },
+        {
+          "name": "Go",
+          "plug": "output",
+          "type": "*",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "id": "bl-counter",
+      "type": "Counter",
+      "label": "The only logic there is",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "bl-co",
+      "type": "Component Outputs",
+      "label": "One value and one signal",
+      "x": 300,
+      "y": 0,
+      "ports": [
+        {
+          "name": "Count",
+          "plug": "input",
+          "type": "*",
+          "index": 0
+        },
+        {
+          "name": "Changed",
+          "plug": "input",
+          "type": "*",
+          "index": 1
+        }
+      ]
+    }
+  ]
+}

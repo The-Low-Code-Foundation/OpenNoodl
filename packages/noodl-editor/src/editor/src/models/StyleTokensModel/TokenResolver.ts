@@ -128,12 +128,30 @@ export class TokenResolver {
    * It is a floor, not an override: `body` is the weakest place to say it, so
    * any node that sets its own family — every Text node whose author picked one
    * writes an inline style — still wins.
+   *
+   * ## P78 D19: the floor was font-only, and `--foreground` had no reader
+   *
+   * The same argument, one property across. Measured 2026-08-29: a control's own
+   * `<label>` rendered pure `#000` while the input's text beside it was correctly
+   * tokenised — and it was never label-specific. **Nothing set a colour, and there
+   * was no colour floor to inherit**: `color: var(--foreground)` appeared nowhere
+   * in the viewer CSS, either static `index.html`, or this block. So every element
+   * that did not set its own colour rendered the browser's black, and the label
+   * was simply the one somebody looked at. `--foreground` was a token nothing read
+   * — the same defect as `--surface-raised` in D26.
+   *
+   * ⚠️ **The blast radius, stated rather than discovered**: every element in every
+   * project that does not set a colour moves from `#000` to `var(--foreground)`.
+   * In the default theme that is `#0f172a` — a near-black, and a small change. In
+   * a **dark** theme it is a large one, and the correct one: it is the whole
+   * reason the token exists. The floor argument above transfers verbatim; a node
+   * that sets its own colour still wins.
    */
   generateCss(tokens: Map<string, StyleTokenRecord>): string {
     const lines: string[] = [];
     for (const [, token] of tokens) {
       lines.push(`  ${token.name}: ${token.value};`);
     }
-    return `:root {\n${lines.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n}`;
+    return `:root {\n${lines.join('\n')}\n}\n\nbody {\n  font-family: var(--font-sans);\n  color: var(--foreground);\n}`;
   }
 }

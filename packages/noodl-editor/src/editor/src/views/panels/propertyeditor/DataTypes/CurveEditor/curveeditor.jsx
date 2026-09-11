@@ -393,8 +393,10 @@ class CurveEditor extends React.Component {
   }
 
   render() {
+    // FIX-003 opt-out: dragging a curve control point must not select the
+    // duration/delay labels below the canvas.
     return (
-      <div style={{ width: '270px', height: '370px' }}>
+      <div style={{ width: '270px', height: '370px', userSelect: 'none' }}>
         <canvas
           style={{ position: 'relative', marginLeft: '10px', marginTop: '10px' }}
           ref="canvas"

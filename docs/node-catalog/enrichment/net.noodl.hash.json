@@ -13,7 +13,7 @@
     "failure": "Fires when WebCrypto is unavailable — in a browser that means the page is not in a secure context.",
     "error": "Why the digest could not be computed."
   },
-  "examples": [],
+  "examples": ["bubble-hash-a-value"],
   "patterns": [
     "Do → Done → the node that consumes Digest. The digest is asynchronous, so a wire off Done is the only way to sequence it correctly."
   ],

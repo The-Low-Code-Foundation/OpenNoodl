@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e7a1c4d2-5b3f-4e8d-9c1a-000000000091",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T23:00:00.000Z",
+  "description": "EXP-011 §54 fixture: Ping calls a cloud function that fails (no backend); the page shows what the app-wide boundary remembered, and a page-level boundary filtered to cloud-function errors shows the latest message directly and counts the node type."
+}

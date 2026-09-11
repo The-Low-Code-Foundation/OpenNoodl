@@ -1,0 +1,359 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "34c7ec70-9181-4806-8b9b-35c1b1371989",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "pc-inputs",
+      "type": "Component Inputs",
+      "label": "ProductCard Inputs",
+      "x": 0,
+      "y": 0,
+      "ports": [
+        {
+          "name": "image",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "price",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "compareAtPrice",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "isBestSeller",
+          "plug": "output",
+          "type": "boolean"
+        },
+        {
+          "name": "reviewCount",
+          "plug": "output",
+          "type": "number"
+        }
+      ]
+    },
+    {
+      "id": "pc-root",
+      "type": "Group",
+      "label": "Card Root",
+      "x": 300,
+      "y": 0,
+      "children": [
+        "pc-image-wrap",
+        "pc-body"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "backgroundColor": "var(--background)",
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        },
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderColor": "var(--border)",
+        "clip": true
+      }
+    },
+    {
+      "id": "pc-image-wrap",
+      "type": "Group",
+      "label": "Image Wrap",
+      "x": 300,
+      "y": 100,
+      "parent": "pc-root",
+      "children": [
+        "pc-image"
+      ],
+      "parameters": {
+        "flexDirection": "none",
+        "height": {
+          "value": 260,
+          "unit": "px"
+        },
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--muted)",
+        "clip": true
+      }
+    },
+    {
+      "id": "pc-image",
+      "type": "Image",
+      "label": "Product Photo",
+      "x": 300,
+      "y": 200,
+      "parent": "pc-image-wrap",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "objectFit": "cover"
+      }
+    },
+    {
+      "id": "pc-body",
+      "type": "Group",
+      "label": "Card Body",
+      "x": 300,
+      "y": 400,
+      "parent": "pc-root",
+      "children": [
+        "pc-badges",
+        "pc-name",
+        "pc-desc",
+        "pc-price-row",
+        "pc-reviews"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "paddingLeft": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 20,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "pc-badges",
+      "type": "Group",
+      "label": "Badges",
+      "x": 300,
+      "y": 460,
+      "parent": "pc-body",
+      "children": [
+        "pc-badge-discount",
+        "pc-badge-bestseller"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "pc-badge-discount",
+      "type": "Group",
+      "label": "Discount Badge",
+      "x": 300,
+      "y": 500,
+      "parent": "pc-badges",
+      "children": [
+        "pc-badge-discount-text"
+      ],
+      "parameters": {
+        "backgroundColor": "var(--destructive)",
+        "borderRadius": {
+          "value": 4,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 2,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 2,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "pc-badge-discount-text",
+      "type": "Text",
+      "label": "Sale",
+      "x": 300,
+      "y": 540,
+      "parent": "pc-badge-discount",
+      "parameters": {
+        "text": "Sale",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--destructive-foreground)"
+      }
+    },
+    {
+      "id": "pc-badge-bestseller",
+      "type": "Group",
+      "label": "Best Seller Badge",
+      "x": 300,
+      "y": 580,
+      "parent": "pc-badges",
+      "children": [
+        "pc-badge-bestseller-text"
+      ],
+      "parameters": {
+        "backgroundColor": "var(--primary)",
+        "borderRadius": {
+          "value": 4,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 8,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 2,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 2,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "pc-badge-bestseller-text",
+      "type": "Text",
+      "label": "Best Seller",
+      "x": 300,
+      "y": 620,
+      "parent": "pc-badge-bestseller",
+      "parameters": {
+        "text": "Best Seller",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary-foreground)"
+      }
+    },
+    {
+      "id": "pc-name",
+      "type": "Text",
+      "label": "Product Name",
+      "x": 300,
+      "y": 660,
+      "parent": "pc-body",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "lineHeight": "var(--leading-snug)"
+      }
+    },
+    {
+      "id": "pc-desc",
+      "type": "Text",
+      "label": "Description",
+      "x": 300,
+      "y": 720,
+      "parent": "pc-body",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-normal)"
+      }
+    },
+    {
+      "id": "pc-price-row",
+      "type": "Group",
+      "label": "Price Row",
+      "x": 300,
+      "y": 780,
+      "parent": "pc-body",
+      "children": [
+        "pc-price",
+        "pc-compare-at"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "pc-price",
+      "type": "Text",
+      "label": "Price",
+      "x": 300,
+      "y": 840,
+      "parent": "pc-price-row",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-bold)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "pc-compare-at",
+      "type": "Text",
+      "label": "Compare At Price",
+      "x": 300,
+      "y": 900,
+      "parent": "pc-price-row",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "styleCss": "text-decoration: line-through;"
+      }
+    },
+    {
+      "id": "pc-reviews",
+      "type": "Text",
+      "label": "Review Count",
+      "x": 300,
+      "y": 960,
+      "parent": "pc-body",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      }
+    }
+  ]
+}

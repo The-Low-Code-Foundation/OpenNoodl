@@ -1,0 +1,789 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6d8c5bb3-6024-52d7-8a41-859aae1dcbe4",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-4",
+      "type": "Page",
+      "label": "Announcement",
+      "children": [
+        "pageShell-3"
+      ],
+      "parameters": {
+        "title": "Announcement",
+        "urlPath": "announcements/{announcementId}"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-3",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-4",
+      "children": [
+        "pageBody-3",
+        "pageFooter-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-3",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-3",
+      "children": [
+        "chrome-2",
+        "pageMain-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-3",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-3",
+      "children": [
+        "headBand-2",
+        "ground-3"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "chrome-2",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "pageBody-3",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "headBand-2",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageMain-3",
+      "children": [
+        "headBandShell-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "headBandShell-2",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand-2",
+      "children": [
+        "titleHeadRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 340,
+      "y": 760
+    },
+    {
+      "id": "pageFooter-3",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-3",
+      "x": 160,
+      "y": 3400
+    },
+    {
+      "id": "ground-3",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-3",
+      "children": [
+        "readingBlock",
+        "refusal",
+        "removal"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "titleHeadRow",
+      "type": "Group",
+      "label": "Title — the head, badged",
+      "parent": "headBandShell-2",
+      "children": [
+        "titleBadge",
+        "titleHead"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "titleBadge",
+      "type": "Group",
+      "label": "Title — the badge",
+      "parent": "titleHeadRow",
+      "children": [
+        "titleGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "titleGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "Title — the glyph",
+      "parent": "titleBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-newspaper",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 520,
+      "y": 1120
+    },
+    {
+      "id": "titleHead",
+      "type": "Group",
+      "label": "Title — the head",
+      "parent": "titleHeadRow",
+      "children": [
+        "titleEyebrow",
+        "title"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1240
+    },
+    {
+      "id": "titleEyebrow",
+      "type": "Text",
+      "label": "Announcement",
+      "parent": "titleHead",
+      "parameters": {
+        "text": "Announcement",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "title",
+      "type": "Text",
+      "label": "Title",
+      "parent": "titleHead",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h1"
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "readingBlock",
+      "type": "Group",
+      "label": "The announcement, at a reading measure",
+      "parent": "ground-3",
+      "children": [
+        "date",
+        "body"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "date",
+      "type": "Text",
+      "label": "Posted",
+      "parent": "readingBlock",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "body",
+      "type": "Text",
+      "label": "Body",
+      "parent": "readingBlock",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 400,
+      "y": 1960
+    },
+    {
+      "id": "refusal",
+      "type": "Group",
+      "label": "Not available",
+      "parent": "ground-3",
+      "children": [
+        "refusalText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "refusalText",
+      "type": "Text",
+      "label": "Not available — the words",
+      "parent": "refusal",
+      "parameters": {
+        "text": "This announcement is not available to you.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "pageInputs",
+      "type": "PageInputs",
+      "label": "Which announcement",
+      "parameters": {
+        "pathParams": "announcementId"
+      },
+      "x": 770,
+      "y": 3280
+    },
+    {
+      "id": "hold-3",
+      "type": "JavaScriptFunction",
+      "label": "Hold the id",
+      "parameters": {
+        "runOnChange-in-announcementId": true,
+        "functionScript": "if (Inputs.announcementId === undefined || Inputs.announcementId === '') return;\nOutputs.announcementId = Inputs.announcementId;\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-announcementId",
+          "displayName": "announcementId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-announcementId",
+          "displayName": "announcementId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 770,
+      "y": 40
+    },
+    {
+      "id": "record-2",
+      "type": "DbModel2",
+      "label": "The announcement",
+      "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
+        "collectionName": "Announcement",
+        "idSource": "explicit"
+      },
+      "x": 770,
+      "y": 1480
+    },
+    {
+      "id": "when-2",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
+      },
+      "x": 770,
+      "y": 1840,
+      "ports": [
+        {
+          "name": "in-postedAt",
+          "displayName": "postedAt",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-label",
+          "displayName": "label",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "refusalGate",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2080
+    },
+    {
+      "id": "removal",
+      "type": "Group",
+      "label": "Taking it down again",
+      "parent": "ground-3",
+      "children": [
+        "removeButton",
+        "confirm",
+        "removeFailed"
+      ],
+      "parameters": {
+        "as": "section",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2320
+    },
+    {
+      "id": "removeButton",
+      "type": "net.noodl.controls.button",
+      "label": "Remove this announcement",
+      "parent": "removal",
+      "parameters": {
+        "label": "Remove this announcement",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 2440
+    },
+    {
+      "id": "confirm",
+      "type": "Group",
+      "label": "Are you sure",
+      "parent": "removal",
+      "children": [
+        "confirmText",
+        "confirmRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 2560
+    },
+    {
+      "id": "confirmText",
+      "type": "Text",
+      "label": "Are you sure — the words",
+      "parent": "confirm",
+      "parameters": {
+        "text": "This cannot be undone. Members will no longer see it.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 460,
+      "y": 2680
+    },
+    {
+      "id": "confirmRow",
+      "type": "Group",
+      "label": "The two answers",
+      "parent": "confirm",
+      "children": [
+        "confirmYes",
+        "confirmNo"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 460,
+      "y": 2800
+    },
+    {
+      "id": "confirmYes",
+      "type": "net.noodl.controls.button",
+      "label": "Yes, remove it",
+      "parent": "confirmRow",
+      "parameters": {
+        "label": "Yes, remove it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 2920
+    },
+    {
+      "id": "confirmNo",
+      "type": "net.noodl.controls.button",
+      "label": "Keep it",
+      "parent": "confirmRow",
+      "parameters": {
+        "label": "Keep it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 3040
+    },
+    {
+      "id": "removeFailed",
+      "type": "Group",
+      "label": "It did not go",
+      "parent": "removal",
+      "children": [
+        "removeFailedText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 3160
+    },
+    {
+      "id": "removeFailedText",
+      "type": "Text",
+      "label": "It did not go — the words",
+      "parent": "removeFailed",
+      "parameters": {
+        "text": "That could not be removed just now. Please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 460,
+      "y": 3280
+    },
+    {
+      "id": "confirmed",
+      "type": "JavaScriptFunction",
+      "label": "The id, and the go-ahead, from one node",
+      "parameters": {
+        "runOnChange-in-announcementId": false,
+        "functionScript": "if (Inputs.announcementId === undefined || Inputs.announcementId === '') return;\nOutputs.announcementId = Inputs.announcementId;\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-announcementId",
+          "displayName": "announcementId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-announcementId",
+          "displayName": "announcementId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 770,
+      "y": 2920
+    },
+    {
+      "id": "del",
+      "type": "DeleteDbModelProperties",
+      "label": "Remove it",
+      "parameters": {
+        "collectionName": "Announcement",
+        "idSource": "explicit"
+      },
+      "x": 770,
+      "y": 3400
+    },
+    {
+      "id": "confirmGate",
+      "type": "Condition",
+      "label": "Ask before doing it",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2560
+    },
+    {
+      "id": "confirmClear",
+      "type": "Condition",
+      "label": "Put the question away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2680
+    },
+    {
+      "id": "removeFailedGate",
+      "type": "Condition",
+      "label": "Say it did not go",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 3160
+    },
+    {
+      "id": "toList",
+      "type": "RouterNavigate",
+      "label": "Back to the list it came from",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 770,
+      "y": 3520
+    }
+  ],
+  "visualRoots": [
+    "page-4"
+  ]
+}

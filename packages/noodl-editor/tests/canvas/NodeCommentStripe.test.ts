@@ -39,6 +39,10 @@ function stubNode({ hasComment, comment = 'why this node exists' }: { hasComment
     // rather than on anything about the stripe. Matches the real one for an unlabelled node:
     // the label equals the type name.
     labelText: () => 'Group',
+    // FIX-018 gave the painter a second structural question to ask. Same trap as
+    // the FH-003 note above: a stub that does not follow dies on
+    // `node.isComponent is not a function`, nowhere near the stripe.
+    isComponent: () => false,
     owner: { isHighlighted: () => false },
     model: {
       label: 'Group',

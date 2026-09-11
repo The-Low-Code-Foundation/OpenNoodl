@@ -1,0 +1,36 @@
+[
+  {
+    "component": "Parts/Format Date",
+    "slug": "format-date",
+    "label": "Format Date",
+    "tags": [
+      "Utility",
+      "Localization"
+    ],
+    "description": "Formats a date you already have, by name: \"long\" gives Thursday 10th September 2026, \"time\" gives 3:05 pm, \"datetime\", \"short\", \"iso\" — or pass Format to write your own token string. Wraps the Date To String node so an app asks for a shape instead of remembering twenty-one tokens, and passes Locale through, so weekday and month names follow it. NOT the same thing as the intl-format module: that one formats against the clock (\"3 hours ago\", auto-refreshing) and formats numbers, lists and plurals. This part formats a date you hold. Logic only — wire Text into a Text node.",
+    "readme": "Inputs: **Date** (a date), **Style** (`short` | `date` | `long` | `time` | `datetime` | `iso`, default `date`), **Format** (a Date To String token string, which wins over Style when set), **Locale** (a BCP-47 tag such as `fr-FR`; empty means `en-US`). Output: **Text**.\n\nThe presets are written in the Date To String vocabulary, so anything you can put in Format, you could have put in a preset. `{dayName} {dayShort} {monthName} {monthShort}` follow Locale; `{ordinal}` is English and deliberately so.\n\n### When to install intl-format instead\n\nThis part answers \"what does this date say?\". The `intl-format` module answers \"how long ago was it?\" and \"how do I write 1,024, or a list, or 3 items?\" — a `Relative Time` node with an auto-refresh interval, plus `Format Number`, `Format List` and `Pluralize`. They do not overlap, and an app that shows both a post date and a \"posted 3 hours ago\" wants both.",
+    "version": "1.0.0"
+  },
+  {
+    "component": "Parts/Format Full Name",
+    "slug": "format-full-name",
+    "label": "Format Full Name",
+    "tags": [
+      "Utility"
+    ],
+    "description": "First name and last name into one display string, plus the initials an avatar needs. Handles the three cases a String Format node gets wrong: a missing surname leaves no trailing space, a single field holding \"Ada Lovelace\" still initials as AL, and an empty name falls back to whatever you pass. Logic only, no UI — wire Full Name into a Text node and Initials into an avatar.",
+    "readme": "Inputs: **First Name**, **Last Name**, **Fallback** (shown when there is no name at all — \"Someone\", \"Deleted user\"). Outputs: **Full Name**, **Initials**, **Has Name** (a boolean, for switching between the avatar image and the initials).\n\nNames are trimmed before they are joined, so a stray space in a database column does not become a double space on screen. When only First Name is set and it contains a space, the last word is taken as the surname — that is the commonest real shape of this data, and it is why the initials come out `AL` rather than `A`.",
+    "version": "1.0.0"
+  },
+  {
+    "component": "Parts/Sanitise Email",
+    "slug": "sanitise-email",
+    "label": "Sanitise Email",
+    "tags": [
+      "Utility"
+    ],
+    "description": "Turns the address someone typed into the one you can store and compare: trimmed, lower-cased, unwrapped from a mailto: link or from the angle brackets a mail client pastes, with the domain split out and a validity flag beside it. Logic only, no UI — put it between a Text Input and whatever you save to, so two sign-ups for the same person are the same row.",
+    "readme": "Input: **Email**. Outputs: **Email** (the cleaned address), **Domain**, **Is Valid**.\n\nThe whole address is lower-cased, local part included. RFC 5321 makes the local part case-sensitive; no mail host anyone uses treats it that way, and lower-casing is what makes `Ada@Example.com` and `ada@example.com` the same account. If you need the address exactly as typed, keep the input as well as the output.\n\n**Is Valid** is a shape check, not a deliverability check — it says the string could be an address, not that anyone reads it. Send a confirmation email; that is the only real test.",
+    "version": "1.0.0"
+  }
+]

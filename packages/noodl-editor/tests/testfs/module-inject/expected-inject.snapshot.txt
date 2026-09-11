@@ -6,7 +6,10 @@
 <style>.code-a { color: red; }</style>
 <link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="/styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
 </head><body>
+<script type="text/javascript">(function(){window.__noodl_module_failures = window.__noodl_module_failures || [];window.__noodl_module_loading = true;window.addEventListener("error", function(e){if (!window.__noodl_module_loading) return;var name = window.__noodl_module_name;if (!name) return;var t = e && e.target;var isResource = !!(t && t !== window && t.tagName === "SCRIPT");var file = (isResource ? (t && t.src) : (e && e.filename)) || "";var message = isResource ? ("its script could not be loaded (" + file + ")") : ((e && e.message) || "it threw while loading");if (!isResource && file) message += " (in " + file + ")";window.__noodl_module_failures.push({module: name,reason: isResource ? "script-not-loaded" : "threw",message: message});if (window.console && window.console.error) {window.console.error("Kit \"" + name + "\" failed to load: " + message + " — its nodes will be missing from the app until this is fixed.");}}, true);})();</script>
+<script type="text/javascript">window.__noodl_module_name = "code-a";</script>
 <script type="text/javascript" src="/noodl_modules/code-a/index.js"></script>
+<script type="text/javascript">window.__noodl_module_loading = false;</script>
 
 </body></html>
 
@@ -18,6 +21,9 @@
 <style>.code-a { color: red; }</style>
 <link href="https://cdn.example.com/theme.css" rel="stylesheet"><link href="styles/local.css" rel="stylesheet"><link href="https://fonts.example.com/css?family=Icons+B" rel="stylesheet">
 </head><body>
+<script type="text/javascript">(function(){window.__noodl_module_failures = window.__noodl_module_failures || [];window.__noodl_module_loading = true;window.addEventListener("error", function(e){if (!window.__noodl_module_loading) return;var name = window.__noodl_module_name;if (!name) return;var t = e && e.target;var isResource = !!(t && t !== window && t.tagName === "SCRIPT");var file = (isResource ? (t && t.src) : (e && e.filename)) || "";var message = isResource ? ("its script could not be loaded (" + file + ")") : ((e && e.message) || "it threw while loading");if (!isResource && file) message += " (in " + file + ")";window.__noodl_module_failures.push({module: name,reason: isResource ? "script-not-loaded" : "threw",message: message});if (window.console && window.console.error) {window.console.error("Kit \"" + name + "\" failed to load: " + message + " — its nodes will be missing from the app until this is fixed.");}}, true);})();</script>
+<script type="text/javascript">window.__noodl_module_name = "code-a";</script>
 <script type="text/javascript" src="noodl_modules/code-a/index.js"></script>
+<script type="text/javascript">window.__noodl_module_loading = false;</script>
 
 </body></html>

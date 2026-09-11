@@ -14,6 +14,7 @@ import {
   paramNames,
   requestParamSpecs
 } from './requestContract';
+import { requestOrigin } from './requestOrigin';
 
 /**
  * CWF-014 — the type picker offered per declared parameter.
@@ -132,6 +133,20 @@ export const node = {
       description: 'Id of the user the session token resolved to, and blank for an unauthenticated request',
       getter: function () {
         return this._internal.authUserId;
+      }
+    },
+    // DEF-022 — the node already held the answer and threw it away: the headers land on
+    // the `Request` model (below) with no port, so an emailed link had no way to be
+    // absolute without something OUTSIDE the app saying where it lives. Derivation and
+    // its traps live in `requestOrigin.ts`.
+    origin: {
+      displayName: 'Origin',
+      type: 'string',
+      group: 'Request',
+      description:
+        'The address the calling app is served from — its Origin header, or this backend’s own host when the caller sent none. Blank when neither is known (a workflow step has no caller). Caller-supplied like every header: right for links sent back to whoever called, not a proof of where the request came from.',
+      getter: function () {
+        return this._internal.origin;
       }
     }
   },
@@ -255,6 +270,11 @@ export const node = {
       requestModel.set('UserId', this._internal.authUserId);
       requestModel.set('Parameters', params);
       requestModel.set('Headers', req.headers);
+
+      // DEF-022 — derived once, before `receive` fires, so a wire from this output reads
+      // the answer for THIS request whether it is pulled at send time or pushed on dirty.
+      this._internal.origin = requestOrigin(req.headers);
+      this.flagOutputDirty('origin');
 
       this.flagOutputDirty('auth');
 

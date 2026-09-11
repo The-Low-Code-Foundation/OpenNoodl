@@ -285,6 +285,26 @@ export class ModelBindings {
       },
       this.editor
     );
+
+    // LEG-005. CAN-004's gutter stripe is painted straight off
+    // `node.model.hasComment()` (NodeGraphEditorNodePainter), so a comment
+    // written anywhere has to reach the canvas. Until now only one writer
+    // existed — the context-menu popup — and it called `owner.repaint()` by
+    // hand right after `setComment`. The property panel's comment row is the
+    // second writer and has no `owner`, and an *undo* is a third: it calls
+    // `setComment` from inside the undo queue, where no view is involved at
+    // all. Binding the model event is what makes all three repaint.
+    //
+    // Repaint only, no relayout: the stripe is filled inside the titlebar's
+    // existing box and changes no measurement (BINDING-CONTRACT §(b) is about
+    // things that change the titlebar's height — this is not one).
+    model.on(
+      'commentChanged',
+      function () {
+        _this.repaint();
+      },
+      this.editor
+    );
   }
 
   unbindNodeModel(model) {
@@ -367,6 +387,11 @@ export class ModelBindings {
     ProjectModel.instance.on(
       'componentRemoved',
       (e) => {
+        // REL-009b: a reload swaps one model for another under the same name, so
+        // the removal is not a deletion. Purging the history here would punch a
+        // hole in back/forward for a component that is still there — and the
+        // entry is repointed by the switch that follows the swap.
+        if (e.reloadingFromDisk) return;
         _this.navigationHistory.onComponentRemoved(e.model);
       },
       this.editor

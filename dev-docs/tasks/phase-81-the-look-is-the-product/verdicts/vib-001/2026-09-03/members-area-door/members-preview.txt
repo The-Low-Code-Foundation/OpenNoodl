@@ -1,0 +1,12 @@
+This members’ area is not connected yet
+The app cannot reach its backend, so it does not yet know which association this is or who you are. If you have just installed it, connect a backend and reload. If you are a member, this is usually temporary — please try again in a moment.
+What members can see
+Announcements
+What the moderators have posted, newest first.
+The diary
+Meetings and events, with the details and where to go.
+The directory
+Who else is a member.
+MEMBERS’ AREA
+EDIT ME — your association’s contact details go here.
+EDIT ME — registered charity number, or delete this line.

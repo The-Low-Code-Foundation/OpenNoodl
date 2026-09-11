@@ -283,7 +283,29 @@ describe('AIX-009 get_project_doc', () => {
       { id: '4', name: GET_PROJECT_DOC, arguments: { path: 'docs/SECRETS.md' } },
       context
     );
-    expect(result).toContain('can only read');
+    // BLD-007 replaced the scolding "can only read ARCHITECTURE.md" — correct
+    // when one file was the whole vocabulary — with the list the project
+    // actually has. The refusal must still name what was asked for, so the
+    // agent can tell a typo from a file that is not offered.
+    expect(result).toContain('SECRETS.md');
+    expect(result).toContain('ARCHITECTURE.md');
+    expect(result).not.toContain('no fetchable documents');
+  });
+
+  // Regression: the dispatcher must read the doc set from the context it was
+  // handed. BLD-007 briefly took it as a defaulted third argument, so a caller
+  // that passed only the context resolved against `{}` and denied the existence
+  // of a doc the same context was holding — with no type error to show for it.
+  it('answers from the context it was given, not from a doc set passed alongside it', () => {
+    const context = new AuthoringContextBuilder(GRAPH, {}, undefined, undefined, { architecture: ARCHITECTURE });
+    expect(
+      dispatchProjectDocTool({ id: '5', name: GET_PROJECT_DOC, arguments: { path: 'ARCHITECTURE.md' } }, context)
+    ).toBe(ARCHITECTURE);
+
+    const empty = new AuthoringContextBuilder(GRAPH, {}, undefined, undefined, {});
+    expect(
+      dispatchProjectDocTool({ id: '6', name: GET_PROJECT_DOC, arguments: { path: 'ARCHITECTURE.md' } }, empty)
+    ).toContain('no fetchable documents');
   });
 });
 
@@ -528,5 +550,127 @@ describe('AIX-009 doc proposals', () => {
     await proposeDocChange(docs, { path: 'docs/ARCHITECTURE.md', proposed: 'v2', source: 'test' });
     expect(DocProposalStore.instance.list().length).toBe(1);
     expect(DocProposalStore.instance.list()[0].proposed).toBe('v2');
+  });
+});
+
+/**
+ * BLD-007 — discovery on real files.
+ *
+ * The pure half of this task is covered offline in `tests-unit/bld-007/`
+ * (front-matter parsing, the descriptor defaults, and the byte-identical tool
+ * definition). What only a filesystem can answer is here: that a doc the user
+ * wrote is actually *found*, that its declaration decides where it lands, and
+ * that none of this rewrites a file on disk — `ProjectDocsModel` is written
+ * defensively about external edits and a format that "helpfully" added front
+ * matter to someone's file would break that promise on the first save.
+ */
+describe('BLD-007 docs are open', () => {
+  let dir: string;
+  let docs: ProjectDocsModel;
+
+  const write = (rel: string, text: string) => {
+    fs.mkdirSync(path.join(dir, path.dirname(rel)), { recursive: true });
+    fs.writeFileSync(path.join(dir, rel), text, 'utf8');
+  };
+
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bld007-docs-'));
+    docs = new ProjectDocsModel(dir);
+  });
+
+  afterEach(() => {
+    docs.dispose();
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('finds a doc the user invented and carries the injection it declared', async () => {
+    write('docs/CONVENTIONS.md', CONVENTIONS);
+    write(
+      'docs/uk-vat.md',
+      ['---', 'title: UK VAT rules', 'inject: pull', 'when: tax, invoices', '---', '', '# VAT', '20% standard.'].join('\n')
+    );
+
+    const content = await docs.content();
+
+    expect(content.conventions).toBe(CONVENTIONS);
+    expect(content.extra?.length).toBe(1);
+    const vat = content.extra![0];
+    expect(vat.path).toBe('docs/uk-vat.md');
+    expect(vat.title).toBe('UK VAT rules');
+    expect(vat.inject).toBe('pull');
+    expect(vat.when).toEqual(['tax', 'invoices']);
+    // The front matter configured the plumbing; it is not prose to read.
+    expect(vat.body).toBe('# VAT\n20% standard.');
+  });
+
+  it('never rewrites the file it read — front matter is opt-in, both ways', async () => {
+    const source = '# Brand voice\n\nPlain words.\n';
+    write('docs/brand-voice.md', source);
+
+    const content = await docs.content();
+    expect(content.extra?.[0].inject).toBe('pull');
+    // The bytes on disk are exactly what the user wrote.
+    expect(fs.readFileSync(path.join(dir, 'docs/brand-voice.md'), 'utf8')).toBe(source);
+  });
+
+  it('routes a seed doc that overrides its own default, and leaves the rest alone', async () => {
+    write('docs/CONVENTIONS.md', CONVENTIONS);
+    write('docs/ARCHITECTURE.md', ['---', 'inject: always', '---', '', '# Architecture'].join('\n'));
+
+    const content = await docs.content();
+
+    // CONVENTIONS declared nothing, so it takes the route it always took.
+    expect(content.conventions).toBe(CONVENTIONS);
+    // ARCHITECTURE asked to be always-injected, so it leaves the pull field.
+    expect(content.architecture).toBeUndefined();
+    expect(content.extra?.map((d) => [d.path, d.inject])).toEqual([['docs/ARCHITECTURE.md', 'always']]);
+  });
+
+  it('is byte-identical to the pre-BLD-007 shape for a project that declares nothing', async () => {
+    write('docs/CONVENTIONS.md', CONVENTIONS);
+    write('docs/BRIEF.md', BRIEF);
+    write('docs/ARCHITECTURE.md', ARCHITECTURE);
+
+    const content = await docs.content();
+
+    expect(content.conventions).toBe(CONVENTIONS);
+    expect(content.brief).toBe(BRIEF);
+    expect(content.architecture).toBe(ARCHITECTURE);
+    // The field that did not exist before does not exist now either — an empty
+    // array here would be a different object shape reaching every consumer.
+    expect(content.extra).toBeUndefined();
+  });
+
+  it('lists a user doc with its declaration, so the panel can say it is ignored or not', async () => {
+    write('docs/uk-vat.md', ['---', 'title: UK VAT rules', 'inject: always', '---', 'body'].join('\n'));
+
+    const entry = (await docs.list()).find((e) => e.path === 'docs/uk-vat.md');
+
+    expect(entry?.exists).toBe(true);
+    expect(entry?.inject).toBe('always');
+    expect(entry?.title).toBe('UK VAT rules');
+    expect(entry?.declared).toBe(true);
+  });
+
+  it('notices a doc created outside the editor, which is how one gets written', async () => {
+    write('docs/CONVENTIONS.md', CONVENTIONS);
+    await docs.refresh();
+
+    // The user writes a new doc in VS Code. Before BLD-007 the poll only ever
+    // re-read paths it had already seen, so this file produced no change event
+    // and the next build never saw it.
+    write('docs/uk-vat.md', '# VAT\n');
+    const changed = await docs.refresh();
+
+    expect(changed).toContain('docs/uk-vat.md');
+  });
+
+  it('reports front matter it cannot use rather than behaving as if the line were absent', async () => {
+    write('docs/uk-vat.md', ['---', 'inject: sometimes', '---', 'body'].join('\n'));
+
+    const entry = (await docs.list()).find((e) => e.path === 'docs/uk-vat.md');
+
+    expect(entry?.inject).toBe('pull');
+    expect((entry?.problems ?? []).join(' ')).toContain('sometimes');
   });
 });

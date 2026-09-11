@@ -2,8 +2,11 @@ import { TextInput } from '../../components/controls/TextInput';
 import guid from '../../guid';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent } from '../../react-component-node';
+import type { EditorConnectionLike, GraphModelLike, GraphNodeModel, NodeContextLike } from '@noodl/types';
+
 import { outcomeOutputs } from '@noodl/runtime/src/outcome';
 import Utils from './utils';
+import { emptyValueForFieldType, outwardValueForFieldType, portTypeForFieldType } from './textInputValue';
 
 function _styleTemplate(className, props) {
   return `
@@ -91,7 +94,21 @@ const TextInputNode = {
       group: 'Text',
       displayName: 'Placeholder',
       description: 'Greyed-out hint shown while the field is empty',
-      default: 'Type here...',
+      // REL-002a / register V14 — empty, not `'Type here...'`.
+      //
+      // 🔴 This default SHIPPED. Measured on `templates/members-area` at HEAD: 18 text inputs,
+      // **one** of which sets `placeholder` explicitly, so seventeen fields across the setup
+      // and join forms rendered *"Type here…"* — six on `/setup`, four on `/join`, every one
+      // of them under a real label that already said what the field was for. A runtime default
+      // that manufactures the rubric's own placeholder-grade-copy tell, on every shipped form,
+      // and nothing fired on it: `render-report`'s placeholder finding derives its strings from
+      // this very default, so the string it hunts for is one the product put there.
+      //
+      // ⚠️ A hint is still a good idea on a field whose format is not obvious, and authoring one
+      // costs a parameter. What is not defensible is shipping the same six words on every field
+      // of every form because nobody said otherwise. Empty is the honest unset: the label above
+      // the field is what names it, which is what these forms already do.
+      default: '',
       type: {
         name: 'string'
       }
@@ -124,7 +141,7 @@ const TextInputNode = {
       // Text to apply on demand" is telling the author to change one port's behaviour by
       // wiring another.
       description:
-        'Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that',
+        'Writes the current Value into the field now. This is additional to Value applying as it arrives; untick Value under Run On Value Change to stop that',
       type: 'signal',
       valueChangedToTrue() {
         const outcome = this.beginOutcome();
@@ -139,10 +156,16 @@ const TextInputNode = {
     },
     startValue: {
       index: 18,
-      displayName: 'Text',
-      type: 'string',
+      // FB-026 — Richard: *"we should rename it to 'value' I think because it's not always
+      // text"*. Display name only: `startValue` is the id in every saved `project.json` and in
+      // `runOnValueChange.inputs` above, so it is frozen in the sense `name` is.
+      displayName: 'Value',
+      // `'*'` rather than `'string'`, and `updatePorts` narrows it per instance. The static
+      // declaration is what a *deployed* viewer and the node catalog read, where no editor is
+      // connected to narrow anything, and there the honest answer is "it depends on Type".
+      type: '*',
       description:
-        'The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse',
+        'The value to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse',
       group: 'Text',
       set(value) {
         // NDA-012 (Visual), G1. `null` used to pass straight through to `props.startValue` and
@@ -156,7 +179,8 @@ const TextInputNode = {
         // to.
         if (value === undefined) return;
 
-        const text = value === null ? '' : value;
+        // FB-026: `''` on a text field, `null` on a number one — see `emptyValueForFieldType`.
+        const text = value === null ? emptyValueForFieldType(this.props.type) : value;
         if (this._internal.text === text) return;
 
         this._internal.text = text;
@@ -251,9 +275,12 @@ const TextInputNode = {
     // Value
     onTextChanged: {
       group: 'General',
-      displayName: 'Text',
-      type: 'string',
-      description: 'What the field currently contains, updated as the user types',
+      // FB-026, display name only — `onTextChanged` is the port id in every saved project.
+      displayName: 'Value',
+      // See `startValue` above for why this is `'*'` statically and narrowed per instance.
+      type: '*',
+      description:
+        'What the field currently contains, updated as the user types. A number when Type is Number, otherwise text',
       index: 1,
       onChange() {
         this.sendSignalOnOutput('textChanged');
@@ -270,10 +297,11 @@ const TextInputNode = {
   },
   outputs: {
     textChanged: {
-      displayName: 'Text Changed',
+      displayName: 'Value Changed',
       type: 'signal',
       group: 'General',
-      description: 'Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it',
+      description:
+        'Fires whenever the Value output changes, so a graph can sequence off the new value rather than poll it',
       index: 2
     },
 
@@ -306,14 +334,18 @@ const TextInputNode = {
     },
     /** @returns whether anything actually changed — ERG-001 §4 reports `Unchanged` when not. */
     clear() {
-      const wasEmpty = this._internal.text === '' && this.outputPropValues['onTextChanged'] === '';
+      // FB-026 — the empty value is `null` on a Number field, so both halves of this comparison
+      // have to ask what kind of field it is. Left as `''` it read "not empty" on every already
+      // empty number field, and `Clear` reported `Done` for doing nothing.
+      const empty = emptyValueForFieldType(this.props.type);
+      const wasEmpty = this._internal.text === empty && this.outputPropValues['onTextChanged'] === empty;
       // NDA-012 (Visual), A1. This blanked `props.startValue` and the DOM and left the node's own
       // copy of the text holding the old string. `Set` reads `_internal.text`, so a later `Set`
       // pulse **restored text the author had explicitly cleared** — and it also did not flag
       // `onTextChanged` while unmounted, which `setText` immediately below is careful to do, so a
       // `Clear` before first mount left the `Text` output reading the old value.
-      this._internal.text = '';
-      this.props.startValue = '';
+      this._internal.text = empty;
+      this.props.startValue = empty;
 
       if (this.innerReactComponentRef) {
         // Unconditional, unlike `setText`'s `hasFocus()` guard, and the asymmetry is deliberate:
@@ -321,9 +353,9 @@ const TextInputNode = {
         // focused field would be a dead button for the person using it. The component's own
         // `setText` flags `onTextChanged` on the way through.
         this.innerReactComponentRef.setText('');
-      } else if (this.outputPropValues['onTextChanged'] !== '') {
+      } else if (this.outputPropValues['onTextChanged'] !== empty) {
         //text component isn't mounted yet, set the output manually — as `setText` does
-        this.outputPropValues['onTextChanged'] = '';
+        this.outputPropValues['onTextChanged'] = empty;
         this.flagOutputDirty('onTextChanged');
       }
 
@@ -348,7 +380,10 @@ const TextInputNode = {
         return false;
       } else if (this.outputPropValues['onTextChanged'] !== text) {
         //text component isn't mounted yet, set the output manually
-        this.outputPropValues['onTextChanged'] = text;
+        // FB-026 — mounted, `TextInput.setText` converts on the way out; unmounted, nothing
+        // does, so a Number field that was `Set` before it mounted published the raw string and
+        // the two paths disagreed about the type of the same port.
+        this.outputPropValues['onTextChanged'] = outwardValueForFieldType(this.props.type, text);
         this.flagOutputDirty('onTextChanged');
         return true;
       }
@@ -359,7 +394,7 @@ const TextInputNode = {
 
 NodeSharedPortDefinitions.addDimensions(TextInputNode, {
   defaultSizeMode: 'contentSize',
-  contentLabel: 'Text'
+  contentLabel: 'Value'
 });
 NodeSharedPortDefinitions.addIconInputs(TextInputNode, {
   enableIconPlacement: true,
@@ -397,4 +432,63 @@ NodeSharedPortDefinitions.addShadowInputs(TextInputNode, {
 });
 Utils.addControlEventsAndStates(TextInputNode);
 
-export default createNodeFromReactComponent(TextInputNode);
+/**
+ * FB-026 — narrow the two value ports to what this instance's `Type` actually carries.
+ *
+ * The static declarations say `'*'`, which is the honest answer where nothing can be narrowed —
+ * a deployed viewer, the node catalog, the docs site. Here, with an editor connected, the answer
+ * is knowable per node: a **Number** field's `Value` really is a `number`, and every other Type
+ * is a `string`.
+ *
+ * Why this exists at all: before it, both ports were hard-declared `string`, so an author who
+ * set Type to Number got a `string` port carrying `5`, and FIX-025 dashed the wire into every
+ * `number` input they connected. The wire was right and the port was lying. Publishing `'*'` and
+ * stopping there would have silenced the warning by giving up the check instead of fixing it —
+ * a Text field wired into a `number` port still deserves the dashed wire, and still gets it.
+ *
+ * ⚠️ These are **overrides of statically declared ports**, which is new. `NodeGraphNode.getPorts`
+ * lets a dynamic port replace a static one of the same name and plug; before that change the two
+ * concatenated and the panel would have shown `Value` twice. See the note there.
+ */
+function updatePorts(nodeId: string, parameters: Record<string, unknown>, editorConnection: EditorConnectionLike) {
+  const type = portTypeForFieldType(parameters.type);
+
+  editorConnection.sendDynamicPorts(nodeId, [
+    {
+      name: 'startValue',
+      type,
+      plug: 'input',
+      group: 'Text',
+      index: 18,
+      displayName: 'Value'
+    },
+    {
+      name: 'onTextChanged',
+      type,
+      plug: 'output',
+      group: 'General',
+      index: 1,
+      displayName: 'Value'
+    }
+  ] as never);
+}
+
+const TextInputModule = createNodeFromReactComponent(TextInputNode);
+
+TextInputModule.setup = function (context: NodeContextLike, graphModel: GraphModelLike) {
+  if (!context.editorConnection || !context.editorConnection.isRunningLocally()) {
+    return;
+  }
+
+  graphModel.on('nodeAdded.net.noodl.controls.textinput', function (node: GraphNodeModel) {
+    updatePorts(node.id, node.parameters, context.editorConnection);
+
+    node.on('parameterUpdated', function (event: { name: string }) {
+      if (event.name === 'type') {
+        updatePorts(node.id, node.parameters, context.editorConnection);
+      }
+    });
+  });
+};
+
+export default TextInputModule;

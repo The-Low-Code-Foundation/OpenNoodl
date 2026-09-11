@@ -1,0 +1,164 @@
+/*
+ * UNI-001 AC2 — the launcher's account card.
+ *
+ * ⚠️ **`box-sizing` is set explicitly.** There is no global `border-box` rule in this repo, so a
+ * card with padding and a `max-width` overflows its column unless it says so itself.
+ *
+ * ⚠️ **Every class the component references is defined here.** An undefined CSS-module class
+ * resolves to `undefined` and renders *no class at all* — the element keeps working, looks
+ * unstyled, and nothing anywhere reports an error. (ConnectAgentCard's stylesheet carries the
+ * same warning because the same mistake was made once already.)
+ *
+ * ⚠️ Colours are theme tokens only. The launcher renders in both themes and a raw hex here is a
+ * pairing nobody graded.
+ */
+
+.Root {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  background: var(--theme-color-bg-2);
+  text-align: left;
+}
+
+/* First launch: this is where a new person actually looks, so it gets the room. */
+.is-prominent {
+  max-width: 520px;
+  width: 100%;
+  margin: var(--spacing-4) auto 0;
+  padding: var(--spacing-5);
+}
+
+/* They already have projects — same offer, quieter, and it does not push the grid down. */
+.is-row {
+  width: 100%;
+  margin: 0 0 var(--spacing-4);
+  padding: var(--spacing-4);
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.Body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+.Title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Text {
+  color: var(--theme-color-fg-muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Secondary, but still AA — "the editor works without an account" lives here, and it is the
+   sentence a reader must not miss on this particular card. */
+.Aside {
+  color: var(--theme-color-fg-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.Actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.Waiting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  min-width: 0;
+}
+
+/* Eight characters a person has to read off one window and type into another: as big and as
+   unambiguous as the card can make them. */
+.Code {
+  box-sizing: border-box;
+  font-family: var(--font-family-code);
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  line-height: 1.4;
+  color: var(--theme-color-fg-highlight);
+  background: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  padding: var(--spacing-2);
+  margin: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.Chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* The same 28px round gradient the header avatar uses — one avatar shape in the launcher. */
+.Avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--theme-color-avatar-fg);
+  background: var(--theme-color-avatar-gradient);
+
+  /* A session with no cached handle: the neutral glyph, never invented initials (PAR-001). */
+  &.is-anonymous {
+    svg {
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+}
+
+.ChipText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.Handle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  overflow-wrap: anywhere;
+}
+
+.Failure {
+  color: var(--theme-color-fg-highlight);
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 0;
+}

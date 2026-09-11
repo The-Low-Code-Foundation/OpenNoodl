@@ -10,7 +10,11 @@ import { CollapsableSection } from '@noodl-core-ui/components/sidebar/Collapsabl
 import { PanelRow } from '@noodl-core-ui/components/sidebar/PanelRow';
 
 import { BLOCK_LANGUAGE_SETTINGS_KEY, SUPPORTED_LANGUAGES } from '../../../BlocklyEditor/BlocklyLocale';
-import { ALWAYS_SHOW_WIRE_LABELS } from '../../../nodegrapheditor/NodeGraphEditorConnection';
+import {
+  ALWAYS_SHOW_WIRE_DIRECTION,
+  ALWAYS_SHOW_WIRE_LABELS,
+  SQUARE_WIRE_ROUTING
+} from '../../../nodegrapheditor/NodeGraphEditorConnection';
 import { ThemeSettingRow } from './ThemeSettingRow';
 
 const BLOCK_LANGUAGE_OPTIONS = [
@@ -27,6 +31,8 @@ const BLOCK_LANGUAGE_OPTIONS = [
 export function AppearanceSettingsSection() {
   const [blockLanguage, setBlockLanguage] = useState<string>('system');
   const [alwaysShowWireLabels, setAlwaysShowWireLabels] = useState(false);
+  const [alwaysShowWireDirection, setAlwaysShowWireDirection] = useState(true);
+  const [squareWireRouting, setSquareWireRouting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,6 +42,8 @@ export function AppearanceSettingsSection() {
         const saved = EditorSettings.instance.get(BLOCK_LANGUAGE_SETTINGS_KEY);
         setBlockLanguage(typeof saved === 'string' ? saved : 'system');
         setAlwaysShowWireLabels(!!EditorSettings.instance.get(ALWAYS_SHOW_WIRE_LABELS));
+        setAlwaysShowWireDirection(EditorSettings.instance.get(ALWAYS_SHOW_WIRE_DIRECTION) !== false);
+        setSquareWireRouting(EditorSettings.instance.get(SQUARE_WIRE_ROUTING) === true);
       })
       .catch(() => {
         /* keep the default */
@@ -55,6 +63,16 @@ export function AppearanceSettingsSection() {
     EditorSettings.instance.set(ALWAYS_SHOW_WIRE_LABELS, value);
   }
 
+  function onAlwaysShowWireDirectionChange(value: boolean) {
+    setAlwaysShowWireDirection(value);
+    EditorSettings.instance.set(ALWAYS_SHOW_WIRE_DIRECTION, value);
+  }
+
+  function onSquareWireRoutingChange(value: boolean) {
+    setSquareWireRouting(value);
+    EditorSettings.instance.set(SQUARE_WIRE_ROUTING, value);
+  }
+
   return (
     <CollapsableSection title="Appearance">
       <Box hasXSpacing>
@@ -67,6 +85,24 @@ export function AppearanceSettingsSection() {
             <Checkbox
               isChecked={alwaysShowWireLabels}
               onChange={(ev) => onAlwaysShowWireLabelsChange(ev.target.checked)}
+            />
+          </PanelRow>
+          <PanelRow
+            label="Always show wire direction"
+            helpText="Repeat a small chevron along every wire, pointing the way it runs. Only wires long enough that you cannot easily see both ends get them, so short hops stay clean. Turn this off to leave direction to the circle where a wire leaves, the arrowhead where it arrives, and the mark that runs along a wire you hover."
+          >
+            <Checkbox
+              isChecked={alwaysShowWireDirection}
+              onChange={(ev) => onAlwaysShowWireDirectionChange(ev.target.checked)}
+            />
+          </PanelRow>
+          <PanelRow
+            label="Square wire routing"
+            helpText="Draw wires as straight runs meeting at right angles, like a wiring diagram, instead of as curves. Wires route exactly where they do now — a curved wire's control points already describe the square path — so this changes how the graph looks, not how anything is connected. Anchor points you add become the corners, and their handles become squares."
+          >
+            <Checkbox
+              isChecked={squareWireRouting}
+              onChange={(ev) => onSquareWireRoutingChange(ev.target.checked)}
             />
           </PanelRow>
           <PanelRow

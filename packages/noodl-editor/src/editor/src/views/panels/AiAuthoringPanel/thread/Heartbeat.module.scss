@@ -1,0 +1,138 @@
+/*
+ * BLD-004 — motion that a provider event has to pay for.
+ *
+ * ## The animation expires on its own, and that is the mechanism
+ *
+ * The obvious build is an infinite keyframe loop toggled by a class. It is
+ * wrong in a way no screenshot shows: the class comes off only when React
+ * re-renders, so a stream that dies between ticks keeps pulsing until the next
+ * one — a spinner outliving its socket, which is the exact defect this task
+ * exists to remove, reintroduced by the polling interval that was supposed to
+ * catch it.
+ *
+ * So the pulse is a **finite** animation, exactly as long as the window it is
+ * allowed to claim (`ALIVE_MS`), restarted by remounting the dot on each new
+ * `lastActivityAt` (see the `key` in `Heartbeat.tsx`). Nothing has to notice
+ * that the stream stopped: the last event's animation simply runs out, on the
+ * compositor, `ALIVE_MS` after it. The one-second poll beside it is for the
+ * *words*, not the motion.
+ *
+ * ⚠️ Do not "simplify" this to `animation: … infinite` plus a `busy` class.
+ * `busy` stays true for the whole three-minute stall window.
+ */
+
+.Heartbeat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * ⚠️ Every state is declared, including the ones with nothing to say.
+ *
+ * BLD-005 lost a re-drive to this: a CSS-module lookup for a class the
+ * stylesheet does not define returns `undefined`, so the element renders with
+ * **no class at all** — and a five-row run map reported four roles the moment
+ * one row changed state. The row was not wrong, it had become *unmeasurable*.
+ * When a class encodes state, every value exists, so a drive can count them.
+ *
+ * ⚠️ **And none of them may carry paint, because the wrapper and the dot both
+ * take a state class.** The first build named the dot's animated modifier
+ * `is-alive` too, so the wrapper picked up the dot's
+ * `background-color: primary` and drew a solid blue bar behind the sentence —
+ * `fg-default-shy` on primary measures **1.16:1**, which is text you cannot
+ * read. Found by measuring composited pixels, not by looking: the screenshots
+ * of this component were all taken in `waiting`, where the collision does not
+ * paint, so it was invisible in every frame captured. The dot's modifiers are
+ * `Dot*`-prefixed below precisely so the collision cannot recur.
+ */
+.is-alive {
+  /* No declarations. The dot carries the liveness — see `.DotBeating`. */
+}
+
+.is-waiting {
+  /* No declarations. Waiting is the resting appearance; the class exists so
+     that "what is this heartbeat doing" is answerable from the DOM. */
+}
+
+.is-silent {
+  /* No declarations of its own — `.Silent` and `.DotSilent` below carry the
+     treatment. Declared for the same reason as `.is-waiting`. */
+}
+
+/*
+ * ⚠️ The `key` on this element in `Heartbeat.tsx` is the restart mechanism: a
+ * new `lastActivityAt` mounts a new node, which starts the animation at frame 0.
+ * Without it React reuses the element, the `forwards` animation is already
+ * finished, and the dot goes still after the first event of the turn — a
+ * heartbeat that beats once.
+ */
+.Dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  /* Steady state is the resting one: a dot that is *there* but not moving says
+     "open, nothing arriving", which is true far more of the time than the
+     alternative and is what the run header shows between tokens. */
+  background-color: var(--theme-color-fg-default-shy);
+}
+
+/* The dot's own modifier. `Dot`-prefixed so it can never collide with a
+   wrapper state class — see the state block above for what that cost. */
+.DotBeating {
+  background-color: var(--theme-color-primary);
+  /* `forwards` matters: when the animation ends the dot must stay at its final
+     frame (resting), not snap back to whatever frame 0 was mid-pulse. */
+  animation: heartbeat-pulse 2000ms ease-out forwards;
+}
+
+/*
+ * Three pulses over the two seconds, decaying to rest.
+ *
+ * Scale and opacity together, because opacity alone is not a legible signal at
+ * 6px — and because BLD-005 measured what opacity does to contrast. Here it is
+ * safe where it was not there: this is a **non-text affordance**, so AA does not
+ * bind it, and the accompanying sentence beside it never dims.
+ */
+@keyframes heartbeat-pulse {
+  0% { transform: scale(1); opacity: 1; }
+  15% { transform: scale(1.45); opacity: 1; }
+  35% { transform: scale(1); opacity: 0.75; }
+  55% { transform: scale(1.3); opacity: 1; }
+  75% { transform: scale(1); opacity: 0.75; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+/*
+ * POL/phase-41: motion is an enhancement, never the only carrier of the state.
+ * With it suppressed the dot still changes colour, and `silent` still says so in
+ * words — which is the half that actually answers "is it stuck".
+ */
+@media (prefers-reduced-motion: reduce) {
+  .DotBeating {
+    animation: none;
+  }
+}
+
+/*
+ * Silence, said out loud.
+ *
+ * ⚠️ `fg-default-shy`, not `fg-muted` and not an `opacity` — BLD-005 swept nine
+ * opacities in both themes and found no value that both reads as dimmed and
+ * clears AA (light binds ~0.1 stricter than dark), and `fg-muted` fails AA on
+ * all three surfaces. This sentence is the one thing on screen a worried user
+ * reads; it does not get to be the thing that fails contrast.
+ */
+.Silent {
+  color: var(--theme-color-fg-default-shy);
+}
+
+.DotSilent {
+  background-color: var(--theme-color-notice);
+}

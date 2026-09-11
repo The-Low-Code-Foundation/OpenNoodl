@@ -1,0 +1,445 @@
+{
+  "_note": "The record for every photograph in this module: what it is, what shape it was cut for, and where it came from. 🔴 It is ONE file on purpose — the door (get_style_vocabulary) reads its `subject` and `role` to tell an authoring model what is available, and a separate catalogue would be a second copy to keep in step with the licences. Each file was fetched from Wikimedia Commons and its licence read per file, not assumed from the collection it sat in. All are CC0 or public domain: no attribution is required, no share-alike applies, and there is no restriction on redistributing them as a collection — which is what shipping them inside an application and inside every app you deploy actually does. Built by scripts/library/make-stock-library.js from scripts/library/fetch-stock-imagery.js.",
+  "images": [
+    {
+      "file": "ground-city-dusk.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "a city skyline at dusk, purple and lit",
+      "title": "Pink and purple skyline (Unsplash).jpg",
+      "author": "srikanta H. U srikanta",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3APink_and_purple_skyline_(Unsplash).jpg"
+    },
+    {
+      "file": "ground-forest-fog.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "fog lying over a pine forest",
+      "title": "Foggy morning at the Gorge (Unsplash).jpg",
+      "author": "adrian aows",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AFoggy_morning_at_the_Gorge_(Unsplash).jpg"
+    },
+    {
+      "file": "ground-canyon.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "a slot canyon, deep orange",
+      "title": "Canyon (Unsplash).jpg",
+      "author": "Joe Gardner josephgardnerphotography",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACanyon_(Unsplash).jpg"
+    },
+    {
+      "file": "ground-dune.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "a dune ridge cutting the frame diagonally",
+      "title": "DuneCrest(byFabioRose).jpg",
+      "author": "Fabio Rose",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADuneCrest(byFabioRose).jpg"
+    },
+    {
+      "file": "ground-coast.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "a coastline from above, turquoise water",
+      "title": "North Friar's Bay - Saint Kitts - Driving near the shoreline (Unsplash).jpg",
+      "author": "Ma. Alejandra maalejandrag",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ANorth_Friar's_Bay_-_Saint_Kitts_-_Driving_near_the_shoreline_(Unsplash).jpg"
+    },
+    {
+      "file": "ground-shore.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "shallow sea meeting pale sand, from above",
+      "title": "Drone view of ocean waves 1 (Unsplash).jpg",
+      "author": "Matthew Kane matthewkane",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADrone_view_of_ocean_waves_1_(Unsplash).jpg"
+    },
+    {
+      "file": "ground-red-rock.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "red rock under a dusk sky",
+      "title": "Kings Canyon - Unsplash.jpeg",
+      "author": "Philippe Wuyts",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AKings_Canyon_-_Unsplash.jpeg"
+    },
+    {
+      "file": "ground-skyline.webp",
+      "subject": "hero",
+      "role": "ground",
+      "says": "a dense city skyline in daylight",
+      "title": "Beautiful NYC skyline (Unsplash).jpg",
+      "author": "Anthony DELANOIX anthonydelanoix",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABeautiful_NYC_skyline_(Unsplash).jpg"
+    },
+    {
+      "file": "work-welder.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a welder, sparks flying",
+      "title": "Welder in a workshop (Unsplash).jpg",
+      "author": "Uğur Gürcüoğlu sharkdesignstudio",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AWelder_in_a_workshop_(Unsplash).jpg"
+    },
+    {
+      "file": "work-potter.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "hands throwing a pot on a wheel",
+      "title": "Kala Ghoda pottery (Unsplash).jpg",
+      "author": "Shane Albuquerque creative_shane",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AKala_Ghoda_pottery_(Unsplash).jpg"
+    },
+    {
+      "file": "work-baker.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a baker loading a rack",
+      "title": "Focus point (Unsplash).jpg",
+      "author": "Giovanni Randisi phosleep",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AFocus_point_(Unsplash).jpg"
+    },
+    {
+      "file": "work-chef.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a chef prepping in a kitchen",
+      "title": "Michael (Unsplash).jpg",
+      "author": "Toa Heftiba heftiba",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AMichael_(Unsplash).jpg"
+    },
+    {
+      "file": "work-carpenter.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a carpenter marking a board",
+      "title": "Craft Workshop (Unsplash).jpg",
+      "author": "Igor Ovsyannykov igorovsyannykov",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACraft_Workshop_(Unsplash).jpg"
+    },
+    {
+      "file": "work-leather-bench.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a leather workbench with tools laid out",
+      "title": "Workbench and tools (Unsplash).jpg",
+      "author": "Jeff Sheldon ugmonk",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AWorkbench_and_tools_(Unsplash).jpg"
+    },
+    {
+      "file": "work-machine-shop.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "a row of machine-shop lathes",
+      "title": "Topman, West End, United Kingdom (Unsplash).jpg",
+      "author": "Janko Ferlic thepootphotographer",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ATopman%2C_West_End%2C_United_Kingdom_(Unsplash).jpg"
+    },
+    {
+      "file": "work-hands-clay.webp",
+      "subject": "work",
+      "role": "tile",
+      "says": "hands on wet clay, black and white",
+      "title": "Black and white pottery (Unsplash).jpg",
+      "author": "Quino Al quinoal",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABlack_and_white_pottery_(Unsplash).jpg"
+    },
+    {
+      "file": "people-cafe.webp",
+      "subject": "people",
+      "role": "tile",
+      "says": "a woman working at a laptop in a café",
+      "title": "Tattooed woman with laptop (Unsplash).jpg",
+      "author": "Brooke Cagle brookecagle",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ATattooed_woman_with_laptop_(Unsplash).jpg"
+    },
+    {
+      "file": "people-coffee-shop.webp",
+      "subject": "people",
+      "role": "tile",
+      "says": "a busy coffee shop interior",
+      "title": "The invisible attendant (Unsplash).jpg",
+      "author": "Toa Heftiba heftiba",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AThe_invisible_attendant_(Unsplash).jpg"
+    },
+    {
+      "file": "people-meeting.webp",
+      "subject": "people",
+      "role": "tile",
+      "says": "two people over a notebook and a tablet",
+      "title": "Two people meeting with iphone and ipad (Unsplash).jpg",
+      "author": "Alejandro Escamilla alejandroescamilla",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ATwo_people_meeting_with_iphone_and_ipad_(Unsplash).jpg"
+    },
+    {
+      "file": "people-market.webp",
+      "subject": "people",
+      "role": "tile",
+      "says": "a market seller weighing limes",
+      "title": "Street Fruit Seller at work (Unsplash).jpg",
+      "author": "Igor Ovsyannykov igorovsyannykov",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AStreet_Fruit_Seller_at_work_(Unsplash).jpg"
+    },
+    {
+      "file": "people-desk.webp",
+      "subject": "people",
+      "role": "tile",
+      "says": "someone working at a laptop by a window",
+      "title": "Man at a laptop in an office (Unsplash).jpg",
+      "author": "Bench Accounting benchaccounting",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AMan_at_a_laptop_in_an_office_(Unsplash).jpg"
+    },
+    {
+      "file": "food-market.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "a market spread of fruit and vegetables",
+      "title": "Farmer's Market Produce (Unsplash).jpg",
+      "author": "Julian Hanslmaier j_h",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AFarmer's_Market_Produce_(Unsplash).jpg"
+    },
+    {
+      "file": "food-bread.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "sourdough loaves",
+      "title": "Bread (Unsplash).jpg",
+      "author": "Kim Cruickshanks helloimkim",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABread_(Unsplash).jpg"
+    },
+    {
+      "file": "food-board.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "a red onion and peppercorns on a board",
+      "title": "Vegetables(byWebvilla).jpg",
+      "author": "Webvilla",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AVegetables(byWebvilla).jpg"
+    },
+    {
+      "file": "food-plate.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "a plated steak",
+      "title": "Steak Dinner 1 (Unsplash).jpg",
+      "author": "Alex Munsell alexmunsell",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASteak_Dinner_1_(Unsplash).jpg"
+    },
+    {
+      "file": "food-grocer.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "a greengrocer stall with a customer",
+      "title": "Pound a Bowl (Unsplash).jpg",
+      "author": "Clem Onojeghuo clemono2",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3APound_a_Bowl_(Unsplash).jpg"
+    },
+    {
+      "file": "food-carrots.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "carrots in a crate on dark wood",
+      "title": "Basket of Vegetables (Unsplash).jpg",
+      "author": "Markus Spiske markusspiske",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABasket_of_Vegetables_(Unsplash).jpg"
+    },
+    {
+      "file": "food-bakery.webp",
+      "subject": "food",
+      "role": "tile",
+      "says": "a bakery counter",
+      "title": "Bread at a Bakery (Unsplash).jpg",
+      "author": "Roman Kraft romankraft",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABread_at_a_Bakery_(Unsplash).jpg"
+    },
+    {
+      "file": "animal-cat.webp",
+      "subject": "animals",
+      "role": "tile",
+      "says": "a grey cat in a window",
+      "title": "My Cat (Unsplash).jpg",
+      "author": "Marko Blažević kerber",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AMy_Cat_(Unsplash).jpg"
+    },
+    {
+      "file": "animal-horse.webp",
+      "subject": "animals",
+      "role": "tile",
+      "says": "a horse, close",
+      "title": "Horse on wetlands (Unsplash).jpg",
+      "author": "Idella Maeland idellamaeland",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AHorse_on_wetlands_(Unsplash).jpg"
+    },
+    {
+      "file": "animal-sheep.webp",
+      "subject": "animals",
+      "role": "tile",
+      "says": "a flock of sheep in a field",
+      "title": "Sheep in field (Unsplash).jpg",
+      "author": "Ariana Prestes arianaprestes",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ASheep_in_field_(Unsplash).jpg"
+    },
+    {
+      "file": "animal-dog.webp",
+      "subject": "animals",
+      "role": "tile",
+      "says": "a dog looking at the camera",
+      "title": "Vancouver, Canada (Unsplash NH1d0xX6Ldk).jpg",
+      "author": "Justin Veenema justinveenema",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AVancouver%2C_Canada_(Unsplash_NH1d0xX6Ldk).jpg"
+    },
+    {
+      "file": "texture-brick.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "a brick wall",
+      "title": "Brick Wall Tarks.jpg",
+      "author": "railyaal",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ABrick_Wall_Tarks.jpg"
+    },
+    {
+      "file": "texture-soil.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "dark turned soil",
+      "title": "Dirt.jpg",
+      "author": "snarlingbunny",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADirt.jpg"
+    },
+    {
+      "file": "texture-snow.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "fresh snow",
+      "title": "Winter-260817.jpg",
+      "author": "Jarmoluk",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AWinter-260817.jpg"
+    },
+    {
+      "file": "texture-pebbles.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "white pebbles",
+      "title": "Light grey stones.jpg",
+      "author": "Silvia &amp; Frank (Pixel2013) from Germany",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ALight_grey_stones.jpg"
+    },
+    {
+      "file": "texture-coffee.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "roasted coffee beans",
+      "title": "Coffee-beans-399479.jpg",
+      "author": "Michal Jarmoluk (jarmoluk)",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ACoffee-beans-399479.jpg"
+    },
+    {
+      "file": "texture-earth.webp",
+      "subject": "texture",
+      "role": "surface",
+      "says": "cracked dry earth",
+      "title": "Drought-780088.jpg",
+      "author": "Luis Iranzo Navarro-Olivares",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3ADrought-780088.jpg"
+    },
+    {
+      "file": "avatar-1.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a young man laughing",
+      "title": "Always smile (Unsplash).jpg",
+      "author": "michael m_minimal",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AAlways_smile_(Unsplash).jpg"
+    },
+    {
+      "file": "avatar-2.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a young woman, close portrait",
+      "title": "Into the Deep (Unsplash).jpg",
+      "author": "JD  Mason jmason",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AInto_the_Deep_(Unsplash).jpg"
+    },
+    {
+      "file": "avatar-3.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a woman smiling in a hooded coat",
+      "title": "In front of pumpkin shelves (Unsplash).jpg",
+      "author": "Frank Marino frank_marino87",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AIn_front_of_pumpkin_shelves_(Unsplash).jpg"
+    },
+    {
+      "file": "avatar-4.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a man smiling, arms folded",
+      "title": "Man with crossed arms (Unsplash).jpg",
+      "author": "Warren Wong wflwong",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AMan_with_crossed_arms_(Unsplash).jpg"
+    },
+    {
+      "file": "avatar-5.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a woman smiling outdoors",
+      "title": "Outdoor portrait (Unsplash).jpg",
+      "author": "Anthony Ginsbrook aginsbrook",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AOutdoor_portrait_(Unsplash).jpg"
+    },
+    {
+      "file": "avatar-6.webp",
+      "subject": "avatar",
+      "role": "avatar",
+      "says": "a woman in a patterned headscarf",
+      "title": "Woman in the Desert (Unsplash).jpg",
+      "author": "Maria Darii french_phoenix",
+      "licence": "CC0",
+      "source": "https://commons.wikimedia.org/wiki/File%3AWoman_in_the_Desert_(Unsplash).jpg"
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+/**
+ * Extract-to-component dialog.
+ *
+ * Hosted by `PopupLayer.showPopup({ position: 'screen-center' })`, which paints
+ * the shell (bg-4, radius, shadow) and — importantly — **measures the content
+ * once and pins the popup to that size**. Nothing in here may change height as
+ * the user types, so the list is a fixed-height scroller and the message row
+ * reserves its line whether or not there is a message.
+ */
+
+.Root {
+  width: 480px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.Title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+.Field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.FieldLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+}
+
+.Input {
+  width: 100%;
+  // No global box-sizing in this repo, and this input is inside a fixed-width
+  // dialog — a percentage width plus padding would overflow it.
+  box-sizing: border-box;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-2);
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-control);
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--theme-color-primary);
+  }
+}
+
+.List {
+  height: 208px;
+  overflow-y: auto;
+  padding: 4px;
+  background-color: var(--theme-color-bg-2);
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-control);
+}
+
+.ListEmpty {
+  padding: 8px 6px;
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &.is-selected {
+    background-color: var(--theme-color-primary);
+    color: var(--theme-color-on-primary);
+  }
+}
+
+.RowLabel {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.RowTag {
+  flex: 0 0 auto;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+
+  .Row.is-selected & {
+    color: var(--theme-color-on-primary);
+    opacity: 0.8;
+  }
+}
+
+/**
+ * The result line and the error line share this row, at a height that already
+ * fits two lines, so the dialog does not resize as the message swaps — see the
+ * note at the top of the file.
+ */
+.Message {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--theme-color-fg-muted);
+  overflow: hidden;
+
+  > * {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+.MessageError {
+  color: var(--theme-color-danger);
+}
+
+.Preview {
+  color: var(--theme-color-fg-default);
+  font-weight: 600;
+}
+
+.Actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

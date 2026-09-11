@@ -1,0 +1,125 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "27777fec-91b1-5f1c-8a12-0e03bb0f0d94",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "root",
+      "type": "Group",
+      "label": "Empty state",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-4)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "dashed",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-strong)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "disc",
+        "title",
+        "body",
+        "action"
+      ]
+    },
+    {
+      "id": "disc",
+      "type": "Group",
+      "label": "Icon disc",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)"
+      },
+      "parent": "root",
+      "children": [
+        "disc_icon"
+      ]
+    },
+    {
+      "id": "disc_icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Icon",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-inbox",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 24,
+          "unit": "px"
+        },
+        "iconColor": "var(--muted-foreground)"
+      },
+      "parent": "disc"
+    },
+    {
+      "id": "title",
+      "type": "Text",
+      "label": "Heading",
+      "parameters": {
+        "text": "No orders yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "root"
+    },
+    {
+      "id": "body",
+      "type": "Text",
+      "label": "Explanation",
+      "parameters": {
+        "text": "When someone places an order it will appear here, newest first.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 380,
+          "unit": "px"
+        },
+        "textAlignX": "center",
+        "lineHeight": "var(--leading-relaxed)"
+      },
+      "parent": "root"
+    },
+    {
+      "id": "action",
+      "type": "net.noodl.controls.button",
+      "label": "Action",
+      "parameters": {
+        "label": "Add a product",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "root"
+    }
+  ],
+  "visualRoots": [
+    "root"
+  ]
+}

@@ -19,6 +19,7 @@ import { diffGraphs, fromLegacyComponent } from '../../versioning';
 import type { ComponentDiff } from '../../versioning';
 
 import type {
+  ImportOrigin,
   ImportPlan,
   ImportSelection,
   ItemPolicy,
@@ -46,6 +47,12 @@ export interface TargetProject {
 }
 
 export interface PlanOptions {
+  /**
+   * 🔴 **CN-017: required, so a new import route cannot omit it.** Where this
+   * import's files came from, carried onto the plan for `apply()`'s module copy
+   * loop. See {@link ImportOrigin}.
+   */
+  origin: ImportOrigin;
   /**
    * Per-source-component rename requests: source name → new name. A renamed
    * component's collision is evaluated against its NEW name, and references to it
@@ -84,7 +91,7 @@ export function plan(
   sourceProject: ProjectData,
   selection: ImportSelection,
   target: TargetProject,
-  options: PlanOptions = {}
+  options: PlanOptions
 ): ImportPlan {
   const renames = options.renames ?? {};
   const skip = options.skip ?? {};
@@ -242,6 +249,7 @@ export function plan(
 
   return {
     sourceDir: inventory.sourceDir,
+    origin: options.origin,
     components: plannedComponents,
     resources: plannedResources,
     modules: plannedModules,

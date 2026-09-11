@@ -50,6 +50,11 @@
  */
 
 import { getIpc } from '@noodl-utils/ipc';
+import { findReusableBackend, type LocalBackendMeta } from './backendReuse';
+import { startLocalBackend } from './startLocalBackend';
+
+export { findReusableBackend };
+export type { LocalBackendMeta };
 
 import type {
   AppliedPlanProvisionOperation,
@@ -64,13 +69,6 @@ import type { UndoActionGroup } from '../undo-queue-model';
 const START_TIMEOUT_MS = 20_000;
 const POLL_INTERVAL_MS = 250;
 
-interface LocalBackendMeta {
-  id: string;
-  name: string;
-  port: number;
-  /** AAQ-002/F4 — the projects that own this backend. See {@link findReusableBackend}. */
-  projectIds?: string[];
-}
 
 /** One column as the backend reports it, which is looser than a plan's. */
 interface ExistingColumn {
@@ -106,46 +104,6 @@ async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
   return (await ipc.invoke(channel, ...args)) as T;
 }
 
-/**
- * A backend this provision may reuse instead of creating a second one.
- *
- * ## ⚠️ Why this takes a project id (AAQ-002/F4)
- *
- * It used to match on **name alone**, justified by idempotence within one plan —
- * which it achieved. But the lookup is machine-wide and the name is a *constant*
- * (`provisionFromScope` called every backend "App backend"), so the real
- * behaviour was: **every AI-created project on a machine bound to the first
- * backend ever provisioned there.** Richard's puppy project came up pointing at
- * one created two days earlier, carrying `Conversation`, `Message` and `Inquiry`
- * from unrelated apps — two apps silently sharing one datastore, and the whole
- * live cause of `prop-age` / `prop-bio` not existing, because `createTable`
- * returned `created: false` for a `Puppy` it had never made.
- *
- * So reuse now needs **both**: this project must already own the backend, and
- * the name must still match.
- *
- * - *Ownership* is the correctness half. `projectIds` is stamped by
- *   `backend:create` and never widened, so one project's backend cannot be
- *   adopted by another — including every backend that predates the stamp, which
- *   has an empty `projectIds` and is therefore owned by nobody and reused by
- *   nobody. That is deliberate: a legacy "App backend" full of three apps'
- *   collections is exactly what must not be picked up again.
- * - *Name* is the intent half, and it is the rule that was already here: a user
- *   who renamed the backend gets a second one rather than having a repurposed
- *   one written into. Keeping it means a re-apply, a redo, and a second apply
- *   after an undo all still reuse — which is all the name-match was ever for.
- */
-export function findReusableBackend(
-  existing: readonly LocalBackendMeta[],
-  name: string,
-  projectId: string | undefined
-): LocalBackendMeta | undefined {
-  if (!projectId) return undefined;
-  const wanted = name.trim().toLowerCase();
-  return existing.find(
-    (b) => b.name.trim().toLowerCase() === wanted && (b.projectIds ?? []).includes(projectId)
-  );
-}
 
 /**
  * What has to happen to an existing collection to make it match the plan —
@@ -217,7 +175,7 @@ export function endpointRefusal(current: { endpoint?: string }): string | undefi
 }
 
 /** Poll `backend:status` until the process answers, or give up with a sentence. */
-async function waitForRunning(id: string, timeoutMs = START_TIMEOUT_MS): Promise<{ port: number }> {
+export async function waitForRunning(id: string, timeoutMs = START_TIMEOUT_MS): Promise<{ port: number }> {
   const deadline = Date.now() + timeoutMs;
   let lastError: string | undefined;
   for (;;) {
@@ -361,7 +319,10 @@ export function editorBackendProvisioner(options: EditorProvisionerOptions = {})
       const meta = reusable ?? (await invoke<LocalBackendMeta>('backend:create', spec.name, { projectId }));
       if (!meta?.id) throw new Error('the backend was not created');
 
-      await invoke('backend:start', meta.id, {});
+      // SB-015: the project comes with the start, so a project shipping a
+      // `nodegx.security.json` is provisioned onto its own policy rather than
+      // onto `defaultSecurityConfig()`.
+      await startLocalBackend(invoke, meta.id, project._retainedProjectDirectory);
       const { port } = await waitForRunning(meta.id);
       const endpoint = `http://localhost:${port}`;
 

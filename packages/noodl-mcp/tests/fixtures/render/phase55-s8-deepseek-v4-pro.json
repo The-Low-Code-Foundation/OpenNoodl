@@ -1,0 +1,86 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 900,
+    "contentBottom": 900,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "fontWeights": {},
+      "fontSizes": {},
+      "distinctFontSizes": 0,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [],
+    "layoutWidth": 390,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 390,
+    "pageHeight": 844,
+    "contentBottom": 844,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "fontWeights": {},
+      "fontSizes": {},
+      "distinctFontSizes": 0,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [],
+    "consoleErrors": []
+  }
+}

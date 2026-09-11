@@ -29,9 +29,11 @@ import { ExecutionHistory, ExecutionHistoryStatus } from './execution/ExecutionS
 import { IdempotencyStore } from './execution/IdempotencyStore';
 import { HttpServer, ListenInfo } from './server/HttpServer';
 import { WorkflowRunner } from './workflow/WorkflowRunner';
+import { scanDeployedFunctions } from './workflow/functionDeclarations';
 import { WorkflowSubsystem } from './workflow/WorkflowSubsystem';
 import { SecurityState, SecurityStartupError } from './security/state';
-import { functionTimeoutMs } from './security/model';
+import { applyProjectPolicy, describeProjectPolicyOutcome } from './security/projectPolicy';
+import { functionRateLimitAnnouncement, functionTimeoutMs } from './security/model';
 import { SearchState, SearchStartupError } from './search/SearchState';
 import { SearchIndexer, SearchCapabilityError } from './search/SearchIndexer';
 import { ChangeBus } from './realtime/ChangeBus';
@@ -205,15 +207,55 @@ export class BackendService {
     this.facade = new AdapterFacade(this.persistence.adapter);
     this.ensureSystemTables();
 
+    // 1.4 SB-015: the project's own policy, if it ships one and this backend has
+    //     none yet. 🔴 It has to be HERE — SecurityState mints the defaults in
+    //     its constructor two lines down, and a policy written after that would
+    //     be a correct file on disk that the running process is not enforcing,
+    //     which is a worse version of the bug it fixes. An invalid policy file
+    //     throws rather than falling back to the defaults: a policy that
+    //     silently does not apply is the whole of SB-015.
+    const policyOutcome = applyProjectPolicy({
+      projectDir: this.options.projectDir,
+      dataDir: this.options.dataDir
+    });
+    const policyNotice = describeProjectPolicyOutcome(policyOutcome);
+    if (policyNotice) {
+      // eslint-disable-next-line no-console
+      console.warn(policyNotice);
+    }
+
     // 1.5 Security (BAK-003): load/create security.json + the admin credential,
-    //     and run the deploy interlock (non-loopback + devOpen = refuse).
+    //     and run the deploy interlocks (non-loopback + devOpen = refuse;
+    //     SB-016: non-loopback + an endpoint no rule names = refuse).
+    //
+    //     🔴 The endpoint list is scanned off disk HERE rather than taken from
+    //     the WorkflowRunner, which does not exist until step 5 — by which point
+    //     the HTTP server at step 3 is already listening. A deploy interlock that
+    //     fires after the port is open is not an interlock. The predicate is
+    //     shared with the runner (`functionDeclarations.ts`) so the two cannot
+    //     disagree about what an endpoint is.
+    const deployedFunctions = scanDeployedFunctions(path.join(this.options.dataDir, 'workflows'));
     this.security = new SecurityState({
       dataDir: this.options.dataDir,
       loopback: !requiresAuth(this.options),
       cliToken: this.options.authToken,
       readonlyToken: this.options.readonlyToken,
+      deployedFunctions,
       facade: this.facade
     });
+
+    // DEF-009 AC4. Deliberately OUTSIDE the non-loopback block above: those
+    // warnings are about how this service is exposed, and this one is about a
+    // budget that now applies wherever it runs. An operator whose payment or
+    // delivery webhook is a public writing function has to find that out here,
+    // from their own log at start-up, rather than from the provider's dashboard
+    // after the retries started coming back 429 — the corpus behind the ruling
+    // holds three such endpoints. `null` when nothing is affected, which is the
+    // ordinary case and prints nothing.
+    const rateLimitDefaultNotice = functionRateLimitAnnouncement(this.security.config, deployedFunctions);
+    if (rateLimitDefaultNotice) {
+      logger.info('ratelimit.public-write-default', { detail: rateLimitDefaultNotice });
+    }
     if (!this.security.config.devOpen && this.persistence.status.ephemeral) {
       // The in-memory mock cannot evaluate ACL predicates; enforcing on top of
       // it would be silent non-enforcement. Refuse rather than pretend.

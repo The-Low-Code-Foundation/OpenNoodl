@@ -11,7 +11,7 @@
     "limitsEnabled": "Boolean value (default false); turns `limitsMin`/`limitsMax` enforcement on. Enabling it does not clamp an already out-of-range count — it only blocks further steps past a limit.",
     "countChanged": "Signal; fires once per actual change, after `currentCount` holds the new value."
   },
-  "examples": ["logic-quantity-stepper"],
+  "examples": ["logic-quantity-stepper", "comp-controlled-quantity-stepper"],
   "patterns": [
     "Plus/minus buttons' `onClick` → `increase`/`decrease` with limits enabled: a bounded quantity stepper.",
     "`currentCount` → a String Format input: display the count inside a sentence without a Function node."

@@ -1,0 +1,203 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "db7bd7ec-aacc-5fdc-8523-6f16da932799",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "inputs",
+      "type": "Component Inputs",
+      "label": "Ask",
+      "ports": [
+        {
+          "name": "Check",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "call",
+      "type": "CloudFunction2",
+      "label": "myStanding",
+      "parameters": {
+        "function": "myStanding"
+      },
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "decide-2",
+      "type": "JavaScriptFunction",
+      "label": "Turn the standing into what each screen needs",
+      "parameters": {
+        "runOnChange-in-standing": true,
+        "functionScript": "if (Inputs.standing === undefined) return;\nconst s = String(Inputs.standing);\nconst moderator = s === 'moderator';\nconst member = moderator || s === 'member';\nOutputs.standing = s;\n// 🔴 A moderator IS shown the members’ content. The roles are flat and\n// a moderator need not hold `member`, so every screen that asks \"may\n// this person read?\" has to ask for both — in the graph here, and in\n// the policy as a two-atom rule.\nOutputs.isMember = member;\nOutputs.isModerator = moderator;\nOutputs.isPending = s === 'pending';\nOutputs.isUnknown = false;\n// REL-002b. Whether there is a session at all is a different question\n// from whether this person may read anything, and the band needs the\n// first one: a `Sign out` button offered to somebody with no session\n// tells them they are signed in.\nOutputs.isSignedIn = s !== 'visitor';\nif (moderator) Outputs.moderator();\nif (member) Outputs.member();\nif (s === 'visitor') { Outputs.visitor(); Outputs.denied(); }"
+      },
+      "ports": [
+        {
+          "name": "out-member",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-moderator",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-visitor",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-denied",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-standing",
+          "displayName": "standing",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isMember",
+          "displayName": "isMember",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isModerator",
+          "displayName": "isModerator",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isPending",
+          "displayName": "isPending",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isUnknown",
+          "displayName": "isUnknown",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isSignedIn",
+          "displayName": "isSignedIn",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "failed",
+      "type": "JavaScriptFunction",
+      "label": "The roles could not be read",
+      "parameters": {
+        "functionScript": "Outputs.standing = 'unknown';\nOutputs.isUnknown = true;\nOutputs.denied();"
+      },
+      "ports": [
+        {
+          "name": "out-denied",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isUnknown",
+          "displayName": "isUnknown",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "outputs",
+      "type": "Component Outputs",
+      "label": "What the screen may show",
+      "ports": [
+        {
+          "name": "standing",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "isMember",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isModerator",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isPending",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isUnknown",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isSignedIn",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "Member",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Moderator",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Visitor",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Denied",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 520
+    }
+  ]
+}

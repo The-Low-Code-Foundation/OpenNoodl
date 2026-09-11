@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "648c34f8-bb4c-4832-b398-6dd482362993",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "topicInput",
+      "fromProperty": "onTextChanged",
+      "toId": "topicVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "topicVar",
+      "fromProperty": "value",
+      "toId": "getQuote",
+      "toProperty": "path-topic"
+    },
+    {
+      "fromId": "topicVar",
+      "fromProperty": "value",
+      "toId": "postNote",
+      "toProperty": "body-text"
+    },
+    {
+      "fromId": "getBtn",
+      "fromProperty": "onClick",
+      "toId": "getQuote",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "getQuote",
+      "fromProperty": "out-text",
+      "toId": "quoteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "getQuote",
+      "fromProperty": "out-author",
+      "toId": "authorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "getQuote",
+      "fromProperty": "out-echo",
+      "toId": "echoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "getQuote",
+      "fromProperty": "error",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "getQuote",
+      "fromProperty": "canceled",
+      "toId": "cancelSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "cancelWord",
+      "fromProperty": "savedValue",
+      "toId": "cancelSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "cancelRead",
+      "fromProperty": "value",
+      "toId": "cancelText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "postBtn",
+      "fromProperty": "onClick",
+      "toId": "postNote",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "postNote",
+      "fromProperty": "out-id",
+      "toId": "savedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "postNote",
+      "fromProperty": "failure",
+      "toId": "postErrSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "postNote",
+      "fromProperty": "error",
+      "toId": "postErrSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "postErrRead",
+      "fromProperty": "value",
+      "toId": "postErrText",
+      "toProperty": "text"
+    }
+  ]
+}

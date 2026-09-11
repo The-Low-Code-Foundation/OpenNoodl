@@ -33,6 +33,7 @@
 
 import { ElementConfigRegistry } from '../ElementConfigs/ElementConfigRegistry';
 import { buildEffectiveTokens, MetaDataSource, readStoredTokens } from './ProjectTokenCss';
+import { formatCompositionValue, STYLE_COMPOSITIONS, VocabComposition } from './StyleCompositions';
 import {
   StyleTokenRecord,
   TokenCategory,
@@ -81,12 +82,74 @@ export interface StyleVocabulary {
   categories: VocabTokenCategory[];
   /** Element types with a variant/size registry (Button, Text, …). */
   elements: VocabElement[];
+  /**
+   * DSG-005 — named parameter sets to reuse verbatim, and the recipe that shows
+   * each one arranged. Tokens and variants are the paint; this is the only
+   * field in here that is an arrangement of them. See {@link STYLE_COMPOSITIONS}.
+   */
+  compositions: VocabComposition[];
   /** Built-in presets a new project can adopt. */
   presets: VocabPreset[];
 }
 
+export type { VocabComposition, VocabCompositionGroup, VocabParamValue } from './StyleCompositions';
+export { STYLE_COMPOSITIONS } from './StyleCompositions';
+
 /** Categories whose members are raw scales the agent should rarely reach for. */
 const RAW_SCALE_CATEGORIES = new Set<TokenCategory>(['color-palette']);
+
+/**
+ * Rewrite an element config's CSS into the parameters a node actually has.
+ *
+ * The element configs are authored as CSS — they also drive the editor's own
+ * variant rendering, so they carry `transform`, `cursor` and shorthand
+ * properties. The vocabulary, though, is read by an agent as "copy these
+ * parameters onto the node", and a parameter with no matching port is dropped
+ * at apply with only a warning, which never blocks. So `boxShadow` and the
+ * `padding` shorthand were being taught as settable when the runtime declares
+ * neither: it has `boxShadowEnabled` plus five components, and one port per
+ * padding side.
+ *
+ * Only the two shorthands the configs actually use are expanded. Anything else
+ * is passed through untouched rather than filtered against a hardcoded port
+ * list, which would go stale the moment a port is added.
+ */
+function toPortParameters(styles: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  for (const [key, value] of Object.entries(styles)) {
+    if (key === 'padding' || key === 'margin') {
+      // `2px 4px` → top/bottom, left/right. CSS's 1–4 value box shorthand.
+      const parts = value.trim().split(/\s+/);
+      const [top, right, bottom, left] =
+        parts.length === 1
+          ? [parts[0], parts[0], parts[0], parts[0]]
+          : parts.length === 2
+            ? [parts[0], parts[1], parts[0], parts[1]]
+            : parts.length === 3
+              ? [parts[0], parts[1], parts[2], parts[1]]
+              : [parts[0], parts[1], parts[2], parts[3]];
+      out[`${key}Top`] = top;
+      out[`${key}Right`] = right;
+      out[`${key}Bottom`] = bottom;
+      out[`${key}Left`] = left;
+      continue;
+    }
+
+    if (key === 'boxShadow') {
+      // There is no shorthand port. Turning the shadow on gets the runtime's
+      // own subtle default; the components stay available for a node that wants
+      // to be specific. Emitting the token here would set a *colour* port to a
+      // full shadow value, which is what the authored pages ended up doing.
+      out.boxShadowEnabled = 'true';
+      continue;
+    }
+
+    out[key] = value;
+  }
+
+  return out;
+}
 
 /**
  * Build the full style vocabulary. Pass a metadata source (ProjectModel, a
@@ -124,7 +187,7 @@ export function buildStyleVocabulary(source?: MetaDataSource | null): StyleVocab
     const variantStyles: Record<string, Record<string, string>> = {};
     for (const variant of variants) {
       const resolved = ElementConfigRegistry.resolveVariant(nodeType, variant);
-      if (resolved) variantStyles[variant] = resolved.baseStyles;
+      if (resolved) variantStyles[variant] = toPortParameters(resolved.baseStyles);
     }
     const sizeStyles: Record<string, Record<string, string>> = {};
     for (const size of sizes) {
@@ -136,14 +199,19 @@ export function buildStyleVocabulary(source?: MetaDataSource | null): StyleVocab
           if (typeof v === 'string') applied[k] = v;
         }
       }
-      sizeStyles[size] = applied;
+      sizeStyles[size] = toPortParameters(applied);
     }
     return { nodeType, variants, sizes, variantStyles, sizeStyles };
   });
 
   const presets = listVocabularyPresets();
 
-  return { categories, elements, presets };
+  // Static by design: a composition is a set of token NAMES, and names are
+  // stable across projects — only the values a project overrides change, and
+  // those are already reflected in `categories`. Nothing here reads `source`.
+  const compositions = STYLE_COMPOSITIONS;
+
+  return { categories, elements, compositions, presets };
 }
 
 /**
@@ -200,6 +268,27 @@ export function renderStyleVocabulary(vocab: StyleVocabulary, options: RenderVoc
     }
   }
 
+  if (vocab.compositions.length > 0) {
+    lines.push('');
+    // Deliberately ahead of the variant catalogue: this is the part an agent
+    // acts on. Variants are a lookup; these are the decisions it should not be
+    // making one page at a time.
+    lines.push(
+      'COMPOSITIONS — named parameter sets lifted verbatim from the validated recipes; fix them ONCE and reuse ' +
+        'them rather than re-deciding a radius per card. Copy a set onto the node type in brackets exactly as ' +
+        'written: a dimension is {"value":N,"unit":"px"}, and a "Npx" string is dropped in silence. [recipe-id] ' +
+        'is the same thing assembled — fetch it with get_example.'
+    );
+    let group = '';
+    for (const c of vocab.compositions) {
+      if (c.group !== group) {
+        group = c.group;
+        lines.push(`  ${group}:`);
+      }
+      lines.push(`- ${c.id} (${c.nodeType}) [${c.recipe}]: ${formatCompositionParams(c)}`);
+    }
+  }
+
   if (vocab.elements.length > 0) {
     lines.push('');
     // The old wording offered two routes — "set the element type via the marker
@@ -231,6 +320,17 @@ export function renderStyleVocabulary(vocab: StyleVocabulary, options: RenderVoc
   }
 
   return lines.join('\n');
+}
+
+/**
+ * One composition's parameters as `k=v` pairs. The description is NOT rendered
+ * here — it is in `detail: "full"` — because the block has a budget and the name
+ * plus the recipe id already say what the set is for.
+ */
+function formatCompositionParams(composition: VocabComposition): string {
+  return Object.entries(composition.parameters)
+    .map(([k, v]) => `${k}=${formatCompositionValue(v)}`)
+    .join(', ');
 }
 
 function formatStyleMap(styles: Record<string, string>): string {

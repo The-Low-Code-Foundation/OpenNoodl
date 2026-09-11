@@ -104,6 +104,33 @@ describe('convertFilterOp', () => {
     expect(errors[0]).toMatch(/needs the collection schema/);
   });
 
+  it('reads the pointer target class from the built-in backend\'s cache shape too', () => {
+    // `dbCollections` metadata has two shapes: the Parse-era `schema.properties`
+    // above, and the `columns` array SchemaHandler caches from `backend:getSchema`.
+    // DEF-012: the second shape read as "no schema", so a `pointsTo` filter was
+    // refused on the one backend the product ships.
+    setCollections({
+      Person: {
+        columns: [
+          { name: 'name', type: 'String' },
+          { name: 'team', type: 'Pointer', targetClass: 'Team' }
+        ]
+      } as never
+    });
+    expect(convertFilterOp({ team: { pointsTo: 'T1' } }, options())).toEqual({
+      team: { $eq: { __type: 'Pointer', objectId: 'T1', className: 'Team' } }
+    });
+    expect(errors).toEqual([]);
+  });
+
+  it('still refuses when the cached column does not name its class', () => {
+    // The control beside the arm above: a Pointer column recorded before
+    // targetClass was kept (or typed by hand) must refuse, not guess.
+    setCollections({ Person: { columns: [{ name: 'team', type: 'Pointer' }] } as never });
+    expect(convertFilterOp({ team: { pointsTo: 'T1' } }, options())).toEqual({});
+    expect(errors[0]).toMatch(/needs the collection schema/);
+  });
+
   it('wraps a date so a range filter is not compared as text', () => {
     const where = convertFilterOp({ born: { greaterThan: '1815-12-10T00:00:00.000Z' } }, options());
     expect(where.born.$gt.__type).toBe('Date');

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e7a1c4d2-5b3f-4e8d-9c1a-000000000100",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 §63 fixture: a card inside a Drag inside a bounded board; Drag X/Y and Delta X/Y in four Texts; Drag Started / Ended / Done write a status Variable; a text input feeds a Variable that feeds Snap To Position X — Value, and a button fires both snaps."
+}

@@ -327,7 +327,7 @@ const HttpNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'What went wrong with the last request, in one sentence; unchanged when a request succeeds',
       getter: function (this: HttpNodeInstance) {
         return this._internal.error;
@@ -1205,15 +1205,24 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
     description: 'Every header the server returned, keyed by lower-cased header name'
   });
 
-  ports.push({
-    name: 'success',
-    displayName: 'Success',
-    type: 'signal',
-    plug: 'output',
-    group: 'Events',
-    description: 'Fires once the server has answered with a 2xx status and Response is up to date'
-  });
-
+  /*
+   * ⚠️ **`success` is deliberately absent, and its absence is load-bearing.**
+   *
+   * This list is a *second* declaration of the node's outputs, published over
+   * `sendDynamicPorts` because almost every input here is minted from configuration. It was
+   * written before ERG-001 renamed this node's 2xx outcome from `success` to `done`, and it
+   * kept the old name for a release — appended beside `Done` rather than colliding with it,
+   * because `NodeGraphNode.getPorts` only replaces a *static* port of the same name and plug
+   * (`portOverrides.ts`) and `success` had no static counterpart.
+   *
+   * 🔴 So the editor drew a `Success` output that nothing could ever fire. `reportOutcome`
+   * sends `done`, and a wire from `Success` ran nothing — which is the one kind of defect an
+   * author cannot see, because the wire is *there*.
+   *
+   * The rule this leaves behind: **every signal output published here must be one the node
+   * type declares**, since that is what `reportOutcome` gates on. `test/nodes/
+   * http-outcome-ports.test.ts` asserts the set, not the name.
+   */
   ports.push({
     name: 'failure',
     displayName: 'Failure',

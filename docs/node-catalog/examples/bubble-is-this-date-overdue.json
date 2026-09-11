@@ -1,0 +1,121 @@
+{
+  "id": "bubble-is-this-date-overdue",
+  "title": "Is this due date in the past?",
+  "description": "Bubble writes this as `Date1 is after Current date & time`, and the literal translation is the thing that goes wrong. Date Compare answers before, after and same together, as booleans and as signals, so you do not need three nodes or an Expression — but Granularity decides whether the answer means anything. Left at Millisecond a due date is essentially never `Same` as now, so an invoice due today reports as overdue the moment the clock passes midnight-plus-one-millisecond. Set Granularity to Day and the three answers become the three a person means: `Before` is overdue, `Same` is due today, `After` is still to come. Now is not a live clock — it reads the wall clock when it is created and again on every `Read`, so a card rendered at 23:59 and left open keeps yesterday's answer until something re-reads it. Truncation to the chosen granularity happens in the host's local zone, which on a server is whatever the container's zone is; if 'today' must mean the user's today, compare on values you have already normalised. The due date arrives as a `date` — a Date Compare fed an ISO string that will not parse fires `failure` rather than silently answering `After`, which is the outcome worth wiring when the date comes from a record someone else filled in. Here it goes to a Log at warning level, because a row that silently renders as 'Upcoming' because its date was a malformed string is the kind of bug nobody reports.",
+  "demonstrates": [
+    "net.noodl.DateCompare",
+    "net.noodl.Now",
+    "net.noodl.Log",
+    "Component Inputs"
+  ],
+  "components": [
+    {
+      "name": "/Invoice Row",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Invoice row",
+          "parameters": {
+            "flexDirection": "row"
+          },
+          "children": [
+            "overdue_text",
+            "today_text",
+            "upcoming_text"
+          ]
+        },
+        {
+          "id": "overdue_text",
+          "type": "Text",
+          "label": "Overdue",
+          "parent": "root"
+        },
+        {
+          "id": "today_text",
+          "type": "Text",
+          "label": "Due today",
+          "parent": "root"
+        },
+        {
+          "id": "upcoming_text",
+          "type": "Text",
+          "label": "Upcoming",
+          "parent": "root"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "Invoice in",
+          "ports": [
+            {
+              "name": "dueDate",
+              "plug": "output",
+              "type": "date"
+            }
+          ]
+        },
+        {
+          "id": "clock",
+          "type": "net.noodl.Now",
+          "label": "Now"
+        },
+        {
+          "id": "due_vs_now",
+          "type": "net.noodl.DateCompare",
+          "label": "Due date against now, by day",
+          "parameters": {
+            "granularity": "day"
+          }
+        },
+        {
+          "id": "unreadable_log",
+          "type": "net.noodl.Log",
+          "label": "Unreadable due date",
+          "parameters": {
+            "level": "warning",
+            "message": "Invoice row: the due date could not be read as a date."
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "dueDate",
+          "toId": "due_vs_now",
+          "toProperty": "a"
+        },
+        {
+          "fromId": "clock",
+          "fromProperty": "date",
+          "toId": "due_vs_now",
+          "toProperty": "b"
+        },
+        {
+          "fromId": "due_vs_now",
+          "fromProperty": "before",
+          "toId": "overdue_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "due_vs_now",
+          "fromProperty": "same",
+          "toId": "today_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "due_vs_now",
+          "fromProperty": "after",
+          "toId": "upcoming_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "due_vs_now",
+          "fromProperty": "failure",
+          "toId": "unreadable_log",
+          "toProperty": "log"
+        }
+      ]
+    }
+  ]
+}

@@ -198,7 +198,12 @@ describe('SUB-011 expression parameters — v2 round-trip', () => {
   it('keeps expression and plain parameters side by side on one node', () => {
     const out = params(after.get('expr-mixed-with-plain'));
     expect(out).toEqual(params(before.get('expr-mixed-with-plain')));
-    expect(out.textAlign).toBe('center');
+    // ⚠️ `textAlignX`, not `textAlign`: Text declares `textAlignX`/`textAlignY`
+    // and `textAlign` is only the CSS property the node sets internally, so the
+    // original fixture set a parameter nothing reads. It stood in for "a plain
+    // parameter beside an expression one" and a real port serves that better —
+    // the same dead parameter §2b⁗ found in noodl-preview's fixture.
+    expect(out.textAlignX).toBe('center');
     expect(out.fontSize).toBe(18);
     expect(expr(out, 'text').mode).toBe('expression');
   });

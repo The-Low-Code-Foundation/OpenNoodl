@@ -14,7 +14,13 @@ function getAppPath() {
     return __dirname;
   }
 
-  throw `[@noodl/platform] Cannot find package.json, to get the build version. (${__dirname})`;
+  // 🔴 C79 — an Error, not a bare string. This throws at construction time from any
+  // directory that is not an npm package, and a thrown string arrives with no stack,
+  // so the caller learns nothing about who reached for the platform.
+  throw new Error(
+    `[@noodl/platform] Cannot find package.json, to get the build version. ` +
+      `(cwd=${process.cwd()}, __dirname=${__dirname})`
+  );
 }
 
 export class PlatformNode implements IPlatform {

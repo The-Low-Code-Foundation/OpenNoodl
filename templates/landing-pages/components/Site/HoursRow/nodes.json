@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "1aab3311-6bb1-5a0b-8436-fb0e97c02dec",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hrRow",
+      "type": "Group",
+      "label": "One day",
+      "children": [
+        "hrDay",
+        "hrTime"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hrDay",
+      "type": "Text",
+      "label": "The day",
+      "parent": "hrRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "hrTime",
+      "type": "Text",
+      "label": "The hours",
+      "parent": "hrRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "hrInputs",
+      "type": "Component Inputs",
+      "label": "The day",
+      "ports": [
+        {
+          "name": "day",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "time",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "hrRow"
+  ]
+}

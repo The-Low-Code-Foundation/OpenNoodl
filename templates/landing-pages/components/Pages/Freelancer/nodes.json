@@ -1,0 +1,1380 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "491fb5c2-0090-5ede-803c-3126c8ca99b1",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "flPage",
+      "type": "Page",
+      "label": "Freelancer",
+      "children": [
+        "flGround"
+      ],
+      "parameters": {
+        "title": "Home",
+        "urlPath": ""
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "flGround",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "flPage",
+      "children": [
+        "flSwitcher",
+        "flHeader",
+        "flMain",
+        "flFooter"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "flSwitcher",
+      "type": "/Site/Switcher",
+      "label": "The look switcher",
+      "parent": "flGround",
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "flHeader",
+      "type": "/Site/Header",
+      "label": "EDIT — the three nav links at the top",
+      "parent": "flGround",
+      "parameters": {
+        "nav1": "What I do",
+        "nav1Target": "section-flServices",
+        "nav2": "Work",
+        "nav2Target": "section-flWork",
+        "nav3": "About",
+        "nav3Target": "section-flAbout"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "flMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "flGround",
+      "children": [
+        "flHero",
+        "flServices",
+        "flWork",
+        "flAbout",
+        "flQuotes",
+        "flContactAnchor"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "flContactAnchor",
+      "type": "Group",
+      "label": "Where \"Get in touch\" lands",
+      "parent": "flMain",
+      "children": [
+        "flContact"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "cssClassName": "site-contact"
+      },
+      "x": 220,
+      "y": 7360
+    },
+    {
+      "id": "flContact",
+      "type": "/Site/Contact",
+      "label": "The contact band",
+      "parent": "flContactAnchor",
+      "parameters": {
+        "heading": "Tell me about your project",
+        "line": "A few lines on what you need and when you need it by. I reply to everything.",
+        "button": "Send"
+      },
+      "x": 280,
+      "y": 7480
+    },
+    {
+      "id": "flFooter",
+      "type": "/Site/Footer",
+      "label": "The foot of the page",
+      "parent": "flGround",
+      "x": 160,
+      "y": 7600
+    },
+    {
+      "id": "flGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "To the form",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 710,
+      "y": 1600
+    },
+    {
+      "id": "flGoSecond",
+      "type": "/Site/ScrollTo",
+      "label": "To the section the hero’s second button names",
+      "parameters": {
+        "target": "section-flWork"
+      },
+      "x": 710,
+      "y": 1720
+    },
+    {
+      "id": "flHero",
+      "type": "Group",
+      "label": "The hero",
+      "parent": "flMain",
+      "children": [
+        "flHeroShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-deep)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "flHeroShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "flHero",
+      "children": [
+        "flHeroBadge",
+        "flHeroHeading",
+        "flHeroLead",
+        "flHeroActions"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "alignItems": "flex-start"
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "flHeroBadge",
+      "type": "Group",
+      "label": "The badge",
+      "parent": "flHeroShell",
+      "children": [
+        "flHeroBadgeGlyph",
+        "flHeroBadgeText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 880
+    },
+    {
+      "id": "flHeroBadgeGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The badge — glyph",
+      "parent": "flHeroBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 1000
+    },
+    {
+      "id": "flHeroBadgeText",
+      "type": "Text",
+      "label": "EDIT — the badge on the hero",
+      "parent": "flHeroBadge",
+      "parameters": {
+        "text": "Taking new projects from next month",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)",
+        "fontWeight": "var(--font-medium)"
+      },
+      "x": 400,
+      "y": 1120
+    },
+    {
+      "id": "flHeroHeading",
+      "type": "Text",
+      "label": "EDIT — the headline",
+      "parent": "flHeroShell",
+      "parameters": {
+        "text": "One line that says what you do, and who it is for",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 340,
+      "y": 1240
+    },
+    {
+      "id": "flHeroLead",
+      "type": "Text",
+      "label": "EDIT — the line under the headline",
+      "parent": "flHeroShell",
+      "parameters": {
+        "text": "Two sentences on the difference it makes for the people who hire you. Keep it plain; this is the first thing they read.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 1360
+    },
+    {
+      "id": "flHeroActions",
+      "type": "Group",
+      "label": "The two actions",
+      "parent": "flHeroShell",
+      "children": [
+        "flHeroPrimary",
+        "flHeroSecondary"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 340,
+      "y": 1480
+    },
+    {
+      "id": "flHeroPrimary",
+      "type": "net.noodl.controls.button",
+      "label": "Start a project",
+      "parent": "flHeroActions",
+      "parameters": {
+        "label": "Start a project",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "flHeroSecondary",
+      "type": "net.noodl.controls.button",
+      "label": "See recent work",
+      "parent": "flHeroActions",
+      "parameters": {
+        "label": "See recent work",
+        "backgroundColor": "var(--surface-glass)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1720
+    },
+    {
+      "id": "flServices",
+      "type": "Group",
+      "label": "What I do",
+      "parent": "flMain",
+      "children": [
+        "flServicesShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-flServices"
+      },
+      "x": 220,
+      "y": 1840
+    },
+    {
+      "id": "flServicesShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "flServices",
+      "children": [
+        "flServicesHead",
+        "flServicesGrid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 1960
+    },
+    {
+      "id": "flServicesHead",
+      "type": "Group",
+      "label": "What I do — head",
+      "parent": "flServicesShell",
+      "children": [
+        "flServicesEyebrow",
+        "flServicesHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "flServicesEyebrow",
+      "type": "Text",
+      "label": "What I do — eyebrow",
+      "parent": "flServicesHead",
+      "parameters": {
+        "text": "What I do",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "flServicesHeading",
+      "type": "Text",
+      "label": "EDIT — What I do — heading",
+      "parent": "flServicesHead",
+      "parameters": {
+        "text": "Three things I can take off your plate",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 2320
+    },
+    {
+      "id": "flServicesGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "flServicesShell",
+      "children": [
+        "flService1Cell",
+        "flService2Cell",
+        "flService3Cell"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 2440
+    },
+    {
+      "id": "flService1Cell",
+      "type": "Group",
+      "label": "the first service",
+      "parent": "flServicesGrid",
+      "children": [
+        "flService1"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 2560
+    },
+    {
+      "id": "flService1",
+      "type": "/Site/ServiceCard",
+      "label": "EDIT — the first service",
+      "parent": "flService1Cell",
+      "parameters": {
+        "icon": "pencil",
+        "title": "The first service",
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you.",
+        "deliverable": "What lands in their inbox at the end, and in what form."
+      },
+      "x": 460,
+      "y": 2680
+    },
+    {
+      "id": "flService2Cell",
+      "type": "Group",
+      "label": "the second service",
+      "parent": "flServicesGrid",
+      "children": [
+        "flService2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "flService2",
+      "type": "/Site/ServiceCard",
+      "label": "EDIT — the second service",
+      "parent": "flService2Cell",
+      "parameters": {
+        "icon": "layout-grid",
+        "title": "The second service",
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "The same three things for this one. If two services have the same answer here, they are probably one service.",
+        "deliverable": "What they end up with, described as a thing rather than an activity."
+      },
+      "x": 460,
+      "y": 2920
+    },
+    {
+      "id": "flService3Cell",
+      "type": "Group",
+      "label": "the third service",
+      "parent": "flServicesGrid",
+      "children": [
+        "flService3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 3040
+    },
+    {
+      "id": "flService3",
+      "type": "/Site/ServiceCard",
+      "label": "EDIT — the third service",
+      "parent": "flService3Cell",
+      "parameters": {
+        "icon": "line-chart",
+        "title": "The third service",
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "Three services is the most a page like this can carry. If you have five, the other two belong on their own page.",
+        "deliverable": "What they end up with, described as a thing rather than an activity."
+      },
+      "x": 460,
+      "y": 3160
+    },
+    {
+      "id": "flWork",
+      "type": "Group",
+      "label": "Recent work",
+      "parent": "flMain",
+      "children": [
+        "flWorkShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-flWork"
+      },
+      "x": 220,
+      "y": 3280
+    },
+    {
+      "id": "flWorkShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "flWork",
+      "children": [
+        "flWorkHead",
+        "flWorkPills",
+        "flWorkCountRow",
+        "flWorkGrid",
+        "flWorkEmpty"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 3400
+    },
+    {
+      "id": "flWorkHead",
+      "type": "Group",
+      "label": "Recent work — head",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkEyebrow",
+        "flWorkHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 3520
+    },
+    {
+      "id": "flWorkEyebrow",
+      "type": "Text",
+      "label": "Recent work — eyebrow",
+      "parent": "flWorkHead",
+      "parameters": {
+        "text": "Recent work",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 3640
+    },
+    {
+      "id": "flWorkHeading",
+      "type": "Text",
+      "label": "EDIT — Recent work — heading",
+      "parent": "flWorkHead",
+      "parameters": {
+        "text": "The work, and the story behind each piece",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 3760
+    },
+    {
+      "id": "flWorkPills",
+      "type": "Group",
+      "label": "The filter",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkPillAll",
+        "flWorkPill1",
+        "flWorkPill2",
+        "flWorkPill3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 3880
+    },
+    {
+      "id": "flWorkPillAll",
+      "type": "/Site/FilterPill",
+      "label": "Everything",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "Everything",
+        "value": ""
+      },
+      "x": 400,
+      "y": 4000
+    },
+    {
+      "id": "flWorkPill1",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the first kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The first kind of work",
+        "value": "The first kind of work"
+      },
+      "x": 400,
+      "y": 4120
+    },
+    {
+      "id": "flWorkPill2",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the second kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The second kind of work",
+        "value": "The second kind of work"
+      },
+      "x": 400,
+      "y": 4240
+    },
+    {
+      "id": "flWorkPill3",
+      "type": "/Site/FilterPill",
+      "label": "EDIT — the third kind of work",
+      "parent": "flWorkPills",
+      "parameters": {
+        "label": "The third kind of work",
+        "value": "The third kind of work"
+      },
+      "x": 400,
+      "y": 4360
+    },
+    {
+      "id": "flWorkCountRow",
+      "type": "Group",
+      "label": "How many are showing",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkCount"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "paddingTop": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 4480
+    },
+    {
+      "id": "flWorkCount",
+      "type": "Text",
+      "label": "Showing n of m",
+      "parent": "flWorkCountRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontVariantNumeric": "tabular-nums"
+      },
+      "x": 400,
+      "y": 4600
+    },
+    {
+      "id": "flWorkGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkRepeat"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 4720
+    },
+    {
+      "id": "flWorkRepeat",
+      "type": "For Each",
+      "label": "One card per piece of work",
+      "parameters": {
+        "template": "/Site/WorkCard",
+        "templateType": "explicit"
+      },
+      "parent": "flWorkGrid",
+      "x": 400,
+      "y": 4840
+    },
+    {
+      "id": "flWorkEmpty",
+      "type": "Group",
+      "label": "When the filter matches nothing",
+      "parent": "flWorkShell",
+      "children": [
+        "flWorkEmptyText",
+        "flWorkEmptyButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-3)",
+        "backgroundColor": "var(--surface-raised)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 4960
+    },
+    {
+      "id": "flWorkEmptyText",
+      "type": "Text",
+      "label": "Nothing here",
+      "parent": "flWorkEmpty",
+      "parameters": {
+        "text": "Nothing of that kind yet.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 5080
+    },
+    {
+      "id": "flWorkEmptyButton",
+      "type": "net.noodl.controls.button",
+      "label": "Show everything",
+      "parent": "flWorkEmpty",
+      "parameters": {
+        "label": "Show everything",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "cssClassName": "pressable"
+      },
+      "x": 400,
+      "y": 5200
+    },
+    {
+      "id": "flWorkData",
+      "type": "Static Data",
+      "label": "EDIT — the work itself — this list IS the page",
+      "parameters": {
+        "type": "json",
+        "json": "[\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-leather-bench.webp\",\n    \"alt\": \"A leather workbench with tools laid out\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"A piece of work\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/food-bakery.webp\",\n    \"alt\": \"A bakery counter with loaves on it\",\n    \"category\": \"The first kind of work\",\n    \"title\": \"Another of the same kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-desk.webp\",\n    \"alt\": \"Someone working at a laptop by a window\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"A piece of a different kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2026\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-machine-shop.webp\",\n    \"alt\": \"A machine shop with a lathe in use\",\n    \"category\": \"The second kind of work\",\n    \"title\": \"Another of that kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2025\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/people-meeting.webp\",\n    \"alt\": \"Three people talking around a table\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"A piece of the third kind\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  },\n  {\n    \"picture\": \"noodl_modules/starter-imagery/work-potter.webp\",\n    \"alt\": \"A potter shaping a bowl on a wheel\",\n    \"category\": \"The third kind of work\",\n    \"title\": \"The last one on the list\",\n    \"client\": \"Who it was for\",\n    \"year\": \"2024\",\n    \"summary\": \"One line on what it was and what changed. This is all the card shows.\",\n    \"brief\": \"What they came to you with, and what was hard about it. Two sentences.\",\n    \"did\": \"What you actually did — the decisions, not the deliverables. Two or three sentences.\",\n    \"outcome\": \"What happened afterwards. A number here is worth a paragraph of adjectives.\"\n  }\n]"
+      },
+      "x": 710,
+      "y": 7360
+    },
+    {
+      "id": "flWorkVariable",
+      "type": "Variable2",
+      "label": "Which kind is selected",
+      "parameters": {
+        "name": "workFilter"
+      },
+      "x": 710,
+      "y": 7480
+    },
+    {
+      "id": "flWorkFilter",
+      "type": "Filter Collection",
+      "label": "Narrow to the selected kind",
+      "parameters": {
+        "filterFilter": "category",
+        "filterFilterType-category": "string",
+        "filterFilterOp-category": "regex",
+        "filterFilterOption-case-category": false
+      },
+      "x": 710,
+      "y": 4840
+    },
+    {
+      "id": "flWorkCountFmt",
+      "type": "String Format",
+      "label": "Showing n of m",
+      "parameters": {
+        "format": "Showing {n} of {total}"
+      },
+      "x": 710,
+      "y": 4600
+    },
+    {
+      "id": "flWorkIsEmpty",
+      "type": "Expression",
+      "label": "Did it match nothing?",
+      "parameters": {
+        "expression": "shown === 0"
+      },
+      "x": 710,
+      "y": 4960
+    },
+    {
+      "id": "flWorkClear",
+      "type": "Set Variable",
+      "label": "Show everything again",
+      "parameters": {
+        "name": "workFilter",
+        "setWith": "emptyString"
+      },
+      "x": 710,
+      "y": 5200
+    },
+    {
+      "id": "flAbout",
+      "type": "Group",
+      "label": "About",
+      "parent": "flMain",
+      "children": [
+        "flAboutShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-flAbout"
+      },
+      "x": 220,
+      "y": 5320
+    },
+    {
+      "id": "flAboutShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "flAbout",
+      "children": [
+        "flAboutColumns"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 5440
+    },
+    {
+      "id": "flAboutColumns",
+      "type": "net.noodl.visual.columns",
+      "label": "The photograph beside the story",
+      "parent": "flAboutShell",
+      "children": [
+        "flAboutPhotoBox",
+        "flAboutWords"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 32,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 5560
+    },
+    {
+      "id": "flAboutPhotoBox",
+      "type": "Group",
+      "label": "The photograph, rounded",
+      "parent": "flAboutColumns",
+      "children": [
+        "flAboutPhoto"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "borderRadius": "var(--radius-2xl)",
+        "clip": true
+      },
+      "x": 400,
+      "y": 5680
+    },
+    {
+      "id": "flAboutPhoto",
+      "type": "Image",
+      "label": "EDIT — a photograph of you at work",
+      "parent": "flAboutPhotoBox",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 420,
+          "unit": "px"
+        },
+        "src": "noodl_modules/starter-imagery/people-cafe.webp",
+        "alt": "A person working at a laptop in a café"
+      },
+      "x": 460,
+      "y": 5800
+    },
+    {
+      "id": "flAboutWords",
+      "type": "Group",
+      "label": "The story",
+      "parent": "flAboutColumns",
+      "children": [
+        "flAboutEyebrow",
+        "flAboutHeading",
+        "flAboutBody1",
+        "flAboutBody2",
+        "flAboutWhere"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 5920
+    },
+    {
+      "id": "flAboutEyebrow",
+      "type": "Text",
+      "label": "About — eyebrow",
+      "parent": "flAboutWords",
+      "parameters": {
+        "text": "About",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 6040
+    },
+    {
+      "id": "flAboutHeading",
+      "type": "Text",
+      "label": "EDIT — About — heading",
+      "parent": "flAboutWords",
+      "parameters": {
+        "text": "A short story about you",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 460,
+      "y": 6160
+    },
+    {
+      "id": "flAboutBody1",
+      "type": "Text",
+      "label": "EDIT — About — first paragraph",
+      "parent": "flAboutWords",
+      "parameters": {
+        "text": "How you came to do this work, and how long you have been doing it. Say it the way you would say it to a client across a table.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 460,
+      "y": 6280
+    },
+    {
+      "id": "flAboutBody2",
+      "type": "Text",
+      "label": "EDIT — About — second paragraph",
+      "parent": "flAboutWords",
+      "parameters": {
+        "text": "What you care about in the work, and what working with you is like. One paragraph is enough.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 460,
+      "y": 6400
+    },
+    {
+      "id": "flAboutWhere",
+      "type": "Text",
+      "label": "EDIT — About — where you are",
+      "parent": "flAboutWords",
+      "parameters": {
+        "text": "Based in your town · working with people everywhere",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 460,
+      "y": 6520
+    },
+    {
+      "id": "flQuotes",
+      "type": "Group",
+      "label": "Kind words",
+      "parent": "flMain",
+      "children": [
+        "flQuotesShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-flQuotes"
+      },
+      "x": 220,
+      "y": 6640
+    },
+    {
+      "id": "flQuotesShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "flQuotes",
+      "children": [
+        "flQuotesHead",
+        "flQuotesCarousel"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 6760
+    },
+    {
+      "id": "flQuotesHead",
+      "type": "Group",
+      "label": "Kind words — head",
+      "parent": "flQuotesShell",
+      "children": [
+        "flQuotesEyebrow",
+        "flQuotesHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 6880
+    },
+    {
+      "id": "flQuotesEyebrow",
+      "type": "Text",
+      "label": "Kind words — eyebrow",
+      "parent": "flQuotesHead",
+      "parameters": {
+        "text": "Kind words",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 7000
+    },
+    {
+      "id": "flQuotesHeading",
+      "type": "Text",
+      "label": "Kind words — heading",
+      "parent": "flQuotesHead",
+      "parameters": {
+        "text": "What clients say",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 7120
+    },
+    {
+      "id": "flQuotesCarousel",
+      "type": "/Site/QuoteCarousel",
+      "label": "The quotes, one at a time",
+      "parent": "flQuotesShell",
+      "x": 340,
+      "y": 7240
+    },
+    {
+      "id": "flQuotesData",
+      "type": "Static Data",
+      "label": "EDIT — what clients said — add a row for each one",
+      "parameters": {
+        "type": "json",
+        "json": "[\n  {\n    \"quote\": \"“A sentence or two a client actually said about working with you. Ask them; most people are glad to.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-4.webp\",\n    \"alt\": \"A man smiling, arms folded\"\n  },\n  {\n    \"quote\": \"“Another one, in their own words. Leave the way they say things alone — polished quotes read as written by you.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-5.webp\",\n    \"alt\": \"A woman smiling outdoors\"\n  },\n  {\n    \"quote\": \"“A third. Four or five is plenty: a person will read two and trust the rest exist.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-3.webp\",\n    \"alt\": \"A woman smiling in a hooded coat\"\n  },\n  {\n    \"quote\": \"“The last one. If you have none yet, delete this whole band rather than write them yourself.”\",\n    \"name\": \"Their name\",\n    \"role\": \"What they do, and where\",\n    \"portrait\": \"noodl_modules/starter-imagery/avatar-1.webp\",\n    \"alt\": \"A young man laughing\"\n  }\n]"
+      },
+      "x": 710,
+      "y": 7240
+    }
+  ],
+  "visualRoots": [
+    "flPage"
+  ]
+}

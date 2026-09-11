@@ -36,6 +36,7 @@ const EventSender: NodeDefinitionOptions = {
   },
   inputs: {
     sendEvent: {
+      group: 'Actions',
       displayName: 'Send',
       description: 'Sends one event on Channel Name, after every payload input has settled',
       valueChangedToTrue: function (this: EventSenderInstance) {
@@ -141,7 +142,7 @@ const EventSender: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the last send failed, empty when the last send succeeded',
       getter: function (this: EventSenderInstance) {
         return this._internal.lastError;

@@ -47,7 +47,7 @@
           "id": "card_root",
           "type": "Group",
           "label": "Card",
-          "parameters": { "flexDirection": "column", "paddingLeft": 12, "paddingTop": 12 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-3)", "paddingRight": "var(--space-3)", "paddingTop": "var(--space-3)", "paddingBottom": "var(--space-3)" },
           "children": ["title_text"]
         },
         {
@@ -59,7 +59,8 @@
         {
           "id": "card_inputs",
           "type": "Component Inputs",
-          "label": "Record properties in"
+          "label": "Record properties in",
+          "ports": [{ "name": "title", "plug": "output", "type": "*" }]
         }
       ],
       "connections": [

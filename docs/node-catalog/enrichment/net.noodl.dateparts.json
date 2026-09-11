@@ -19,7 +19,7 @@
     "changed": "Fires after a new Date has been taken apart.",
     "failure": "Invalid Date — fires when a date arrived that could not be read, leaving every part unset."
   },
-  "examples": [],
+  "examples": ["bubble-round-a-date-down-to-the-month"],
   "patterns": [
     "Date Parts Month → String Mapper: a month name in your own wording, without a formatter."
   ],

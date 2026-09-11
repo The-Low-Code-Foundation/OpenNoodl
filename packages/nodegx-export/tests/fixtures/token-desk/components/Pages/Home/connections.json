@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000091",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "connectBtn",
+      "fromProperty": "onClick",
+      "toId": "stream",
+      "toProperty": "connect"
+    },
+    {
+      "fromId": "stopBtn",
+      "fromProperty": "onClick",
+      "toId": "stream",
+      "toProperty": "disconnect"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "text",
+      "toId": "acc",
+      "toProperty": "chunk"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "onMessage",
+      "toId": "acc",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "onOpen",
+      "toId": "setOpen",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "openStr",
+      "fromProperty": "savedValue",
+      "toId": "setOpen",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "onClose",
+      "toId": "setClosed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "closedStr",
+      "fromProperty": "savedValue",
+      "toId": "setClosed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "failure",
+      "toId": "setFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "failedStr",
+      "fromProperty": "savedValue",
+      "toId": "setFailed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "connectionState",
+      "toId": "stateText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "connected",
+      "toId": "connectedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "messageCount",
+      "toId": "countText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "stream",
+      "fromProperty": "lastError",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "acc",
+      "fromProperty": "accumulated",
+      "toId": "tokensText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

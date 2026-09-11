@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "8c1dd0f8-e737-477e-aadb-51b9305c106c",
+  "name": "GreetingCard",
+  "path": "/Components/GreetingCard",
+  "type": "visual",
+  "created": "2026-08-27T14:30:53.338Z",
+  "modified": "2026-08-27T14:30:53.338Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "EXP-002 session 12 fixture: a Component Object whose DisplayName mirrors the Name input (read into a Text) and whose Draft property has no static writer (read into a Text Input's start value)."
+}

@@ -1,0 +1,2414 @@
+{
+  "name": "Export",
+  "components": [
+    {
+      "name": "/Form Fields/Labelled Text Input",
+      "id": "c8077ec8-532c-5a54-9b60-aad1ab712a7b",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Label",
+            "toId": "e8680bca-a63d-5c7f-bd37-4a70f487aa9b",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Required",
+            "toId": "67e980cf-e383-5427-84f8-8895a52d1930",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Error",
+            "toId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "toProperty": "in-Error"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Helper Text",
+            "toId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "toProperty": "in-HelperText"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Disabled",
+            "toId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "toProperty": "in-Disabled"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-Enabled",
+            "toId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-BorderColor",
+            "toId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-Message",
+            "toId": "5f47a9aa-8402-56fc-b30a-eb73b864a7ca",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-MessageColor",
+            "toId": "5f47a9aa-8402-56fc-b30a-eb73b864a7ca",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-MessageVisible",
+            "toId": "5f47a9aa-8402-56fc-b30a-eb73b864a7ca",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "fromProperty": "out-HasError",
+            "toId": "ddbf99f4-db5c-53e6-9be9-b1c056db11d2",
+            "toProperty": "Has Error"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Value",
+            "toId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "fromProperty": "onTextChanged",
+            "toId": "ddbf99f4-db5c-53e6-9be9-b1c056db11d2",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "fromProperty": "textChanged",
+            "toId": "ddbf99f4-db5c-53e6-9be9-b1c056db11d2",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "fromProperty": "Placeholder",
+            "toId": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+            "toProperty": "placeholder"
+          }
+        ],
+        "roots": [
+          {
+            "id": "142aebc0-fee2-5633-8351-d905e24ef3e2",
+            "type": "Component Inputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Placeholder",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 3
+              },
+              {
+                "name": "Error",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Validation",
+                "index": 4
+              },
+              {
+                "name": "Required",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 5
+              },
+              {
+                "name": "Disabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 6
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": -700,
+            "y": 0
+          },
+          {
+            "id": "e5cb3b4d-03e6-5ce3-a5d8-74ddd619d076",
+            "type": "JavaScriptFunction",
+            "parameters": {
+              "functionScript": "// Field presentation state. Every input may be unconnected, so guard everything.\nconst rawError = Inputs.Error;\nconst rawHelper = Inputs.HelperText;\nconst error = typeof rawError === 'string' ? rawError.trim() : '';\nconst helper = typeof rawHelper === 'string' ? rawHelper : '';\nconst hasError = error.length > 0;\n\nOutputs.HasError = hasError;\nOutputs.BorderColor = hasError ? 'var(--destructive)' : 'var(--border)';\nOutputs.Message = hasError ? error : helper;\nOutputs.MessageColor = hasError ? 'var(--destructive)' : 'var(--muted-foreground)';\nOutputs.MessageVisible = hasError || helper.length > 0;\nOutputs.Enabled = Inputs.Disabled === true ? false : true;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Error",
+                "displayName": "Error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-HelperText",
+                "displayName": "HelperText",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Disabled",
+                "displayName": "Disabled",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasError",
+                "displayName": "HasError",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-BorderColor",
+                "displayName": "BorderColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-MessageColor",
+                "displayName": "MessageColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-MessageVisible",
+                "displayName": "MessageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Enabled",
+                "displayName": "Enabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Field state",
+            "x": -380,
+            "y": 260
+          },
+          {
+            "id": "a302629d-795a-55e6-90c2-a913e0c9060e",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 20,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ff0659c7-070a-5b81-8cb9-6ea2404f0357",
+                "type": "Group",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "e8680bca-a63d-5c7f-bd37-4a70f487aa9b",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "Label",
+                      "textStyle": "Label Medium",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Label"
+                  },
+                  {
+                    "id": "67e980cf-e383-5427-84f8-8895a52d1930",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "*",
+                      "textStyle": "Label Medium",
+                      "color": "var(--destructive)",
+                      "marginLeft": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Required marker"
+                  }
+                ],
+                "label": "Label row"
+              },
+              {
+                "id": "137beafa-e2b9-5d43-8fe0-44e7a8d03a47",
+                "type": "net.noodl.controls.textinput",
+                "parameters": {
+                  "type": "text",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "textStyle": "Label Medium",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Input",
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                }
+              },
+              {
+                "id": "5f47a9aa-8402-56fc-b30a-eb73b864a7ca",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "textStyle": "Helper Small",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Helper / error text"
+              }
+            ],
+            "label": "Field",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "ddbf99f4-db5c-53e6-9be9-b1c056db11d2",
+            "type": "Component Outputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              },
+              {
+                "name": "Has Error",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": 420,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Form Fields/Labelled Textarea",
+      "id": "4f3f2667-2ce6-5451-9238-64136c209ba2",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Label",
+            "toId": "2b386f64-04ef-5e80-b703-c4d2e34d274a",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Required",
+            "toId": "3e5767eb-0aee-58ad-beff-e44173bfb19d",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Error",
+            "toId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "toProperty": "in-Error"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Helper Text",
+            "toId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "toProperty": "in-HelperText"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Disabled",
+            "toId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "toProperty": "in-Disabled"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-Enabled",
+            "toId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-BorderColor",
+            "toId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-Message",
+            "toId": "da07ed75-2975-53ce-a7ff-50768b29524c",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-MessageColor",
+            "toId": "da07ed75-2975-53ce-a7ff-50768b29524c",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-MessageVisible",
+            "toId": "da07ed75-2975-53ce-a7ff-50768b29524c",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "fromProperty": "out-HasError",
+            "toId": "199fbd95-7ec8-51a8-a7cf-d2edf92a4e23",
+            "toProperty": "Has Error"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Value",
+            "toId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "fromProperty": "onTextChanged",
+            "toId": "199fbd95-7ec8-51a8-a7cf-d2edf92a4e23",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "fromProperty": "textChanged",
+            "toId": "199fbd95-7ec8-51a8-a7cf-d2edf92a4e23",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "fromProperty": "Placeholder",
+            "toId": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+            "toProperty": "placeholder"
+          }
+        ],
+        "roots": [
+          {
+            "id": "4bd3ff32-15b0-5b4c-b537-3441860e3b71",
+            "type": "Component Inputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Placeholder",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 3
+              },
+              {
+                "name": "Error",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Validation",
+                "index": 4
+              },
+              {
+                "name": "Required",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 5
+              },
+              {
+                "name": "Disabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 6
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": -700,
+            "y": 0
+          },
+          {
+            "id": "d966155f-dda4-5286-b1c7-becdc8589660",
+            "type": "JavaScriptFunction",
+            "parameters": {
+              "functionScript": "// Field presentation state. Every input may be unconnected, so guard everything.\nconst rawError = Inputs.Error;\nconst rawHelper = Inputs.HelperText;\nconst error = typeof rawError === 'string' ? rawError.trim() : '';\nconst helper = typeof rawHelper === 'string' ? rawHelper : '';\nconst hasError = error.length > 0;\n\nOutputs.HasError = hasError;\nOutputs.BorderColor = hasError ? 'var(--destructive)' : 'var(--border)';\nOutputs.Message = hasError ? error : helper;\nOutputs.MessageColor = hasError ? 'var(--destructive)' : 'var(--muted-foreground)';\nOutputs.MessageVisible = hasError || helper.length > 0;\nOutputs.Enabled = Inputs.Disabled === true ? false : true;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Error",
+                "displayName": "Error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-HelperText",
+                "displayName": "HelperText",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Disabled",
+                "displayName": "Disabled",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasError",
+                "displayName": "HasError",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-BorderColor",
+                "displayName": "BorderColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-MessageColor",
+                "displayName": "MessageColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-MessageVisible",
+                "displayName": "MessageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Enabled",
+                "displayName": "Enabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Field state",
+            "x": -380,
+            "y": 260
+          },
+          {
+            "id": "5035ffef-b019-5152-bb3e-8a1a0bebff07",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 20,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "da3a33de-b626-5d41-9218-9fcb8bb6c3e7",
+                "type": "Group",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "2b386f64-04ef-5e80-b703-c4d2e34d274a",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "Label",
+                      "textStyle": "Label Medium",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Label"
+                  },
+                  {
+                    "id": "3e5767eb-0aee-58ad-beff-e44173bfb19d",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "*",
+                      "textStyle": "Label Medium",
+                      "color": "var(--destructive)",
+                      "marginLeft": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Required marker"
+                  }
+                ],
+                "label": "Label row"
+              },
+              {
+                "id": "69a922ac-e73f-5b5e-ada6-c087f961df1a",
+                "type": "net.noodl.controls.textinput",
+                "parameters": {
+                  "type": "textArea",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 96,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "textStyle": "Label Medium",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingTop": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 10,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Input",
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                }
+              },
+              {
+                "id": "da07ed75-2975-53ce-a7ff-50768b29524c",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "textStyle": "Helper Small",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Helper / error text"
+              }
+            ],
+            "label": "Field",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "199fbd95-7ec8-51a8-a7cf-d2edf92a4e23",
+            "type": "Component Outputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              },
+              {
+                "name": "Has Error",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": 420,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Form Fields/Labelled Date",
+      "id": "445e1880-662c-57f2-bd52-73ec57d5b784",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Label",
+            "toId": "07352633-a46d-5191-91af-c63afa9acbf5",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Required",
+            "toId": "a6a79506-334e-59c2-a4e2-5cbd1642de3a",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Error",
+            "toId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "toProperty": "in-Error"
+          },
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Helper Text",
+            "toId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "toProperty": "in-HelperText"
+          },
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Disabled",
+            "toId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "toProperty": "in-Disabled"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-Enabled",
+            "toId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-BorderColor",
+            "toId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-Message",
+            "toId": "598dca5f-2a36-512e-a61b-9d7066fac8e2",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-MessageColor",
+            "toId": "598dca5f-2a36-512e-a61b-9d7066fac8e2",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-MessageVisible",
+            "toId": "598dca5f-2a36-512e-a61b-9d7066fac8e2",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "fromProperty": "out-HasError",
+            "toId": "4f54a8a2-b48a-575a-a8ef-d547beb893f9",
+            "toProperty": "Has Error"
+          },
+          {
+            "fromId": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "fromProperty": "Value",
+            "toId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "fromProperty": "onTextChanged",
+            "toId": "4f54a8a2-b48a-575a-a8ef-d547beb893f9",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "fromProperty": "textChanged",
+            "toId": "4f54a8a2-b48a-575a-a8ef-d547beb893f9",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "fromProperty": "didMount",
+            "toId": "73ebe814-20c5-582e-886e-fef84d764d9a",
+            "toProperty": "DidMount"
+          },
+          {
+            "fromId": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+            "fromProperty": "this",
+            "toId": "73ebe814-20c5-582e-886e-fef84d764d9a",
+            "toProperty": "TextInput"
+          }
+        ],
+        "roots": [
+          {
+            "id": "0964f8ac-c00a-5b6f-993a-257102f8aa30",
+            "type": "Component Inputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Error",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Validation",
+                "index": 3
+              },
+              {
+                "name": "Required",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 4
+              },
+              {
+                "name": "Disabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 5
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": -700,
+            "y": 0
+          },
+          {
+            "id": "63f08206-fe1a-50b6-a316-5f445a0d035b",
+            "type": "JavaScriptFunction",
+            "parameters": {
+              "functionScript": "// Field presentation state. Every input may be unconnected, so guard everything.\nconst rawError = Inputs.Error;\nconst rawHelper = Inputs.HelperText;\nconst error = typeof rawError === 'string' ? rawError.trim() : '';\nconst helper = typeof rawHelper === 'string' ? rawHelper : '';\nconst hasError = error.length > 0;\n\nOutputs.HasError = hasError;\nOutputs.BorderColor = hasError ? 'var(--destructive)' : 'var(--border)';\nOutputs.Message = hasError ? error : helper;\nOutputs.MessageColor = hasError ? 'var(--destructive)' : 'var(--muted-foreground)';\nOutputs.MessageVisible = hasError || helper.length > 0;\nOutputs.Enabled = Inputs.Disabled === true ? false : true;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Error",
+                "displayName": "Error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-HelperText",
+                "displayName": "HelperText",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Disabled",
+                "displayName": "Disabled",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasError",
+                "displayName": "HasError",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-BorderColor",
+                "displayName": "BorderColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-MessageColor",
+                "displayName": "MessageColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-MessageVisible",
+                "displayName": "MessageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Enabled",
+                "displayName": "Enabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Field state",
+            "x": -380,
+            "y": 260
+          },
+          {
+            "id": "379105a4-99ac-5737-970e-45c359a7a22d",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 20,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "a70fdfc3-2973-5094-9114-82419878d154",
+                "type": "Group",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "07352633-a46d-5191-91af-c63afa9acbf5",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "Label",
+                      "textStyle": "Label Medium",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Label"
+                  },
+                  {
+                    "id": "a6a79506-334e-59c2-a4e2-5cbd1642de3a",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "*",
+                      "textStyle": "Label Medium",
+                      "color": "var(--destructive)",
+                      "marginLeft": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Required marker"
+                  }
+                ],
+                "label": "Label row"
+              },
+              {
+                "id": "1fe29551-3672-583c-911a-1f9ec2aa0406",
+                "type": "net.noodl.controls.textinput",
+                "parameters": {
+                  "type": "text",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "textStyle": "Label Medium",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "placeholder": "YYYY-MM-DD"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Input",
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                }
+              },
+              {
+                "id": "598dca5f-2a36-512e-a61b-9d7066fac8e2",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "textStyle": "Helper Small",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Helper / error text"
+              }
+            ],
+            "label": "Field",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "4f54a8a2-b48a-575a-a8ef-d547beb893f9",
+            "type": "Component Outputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              },
+              {
+                "name": "Has Error",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": 420,
+            "y": 0
+          },
+          {
+            "id": "73ebe814-20c5-582e-886e-fef84d764d9a",
+            "type": "Javascript2",
+            "parameters": {
+              "code": "// Turn the underlying DOM input into a native date input.\n// Guarded: if anything is missing the field degrades to a plain\n// text input with a YYYY-MM-DD placeholder.\nScript.Signals.DidMount = () => {\n    const host = Script.Inputs.TextInput;\n    if (!host || typeof host.getDOMElement !== 'function') return;\n    const el = host.getDOMElement();\n    if (!el || typeof el.querySelector !== 'function') return;\n    const input = el.querySelector('input');\n    if (input) input.type = 'date';\n};\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "DidMount",
+                "displayName": "DidMount",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "TextInput",
+                "displayName": "TextInput",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              }
+            ],
+            "children": [],
+            "label": "Native date input",
+            "x": -380,
+            "y": 520
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Form Fields/Labelled Select",
+      "id": "4d08de1b-eb9b-5bdb-89ba-2f8a5579abe7",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Label",
+            "toId": "39ec6424-df54-5790-98c6-8b57177dde0b",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Required",
+            "toId": "c2e429ea-12c4-5749-8140-f58cf740c133",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Error",
+            "toId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "toProperty": "in-Error"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Helper Text",
+            "toId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "toProperty": "in-HelperText"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Disabled",
+            "toId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "toProperty": "in-Disabled"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-Enabled",
+            "toId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-BorderColor",
+            "toId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-Message",
+            "toId": "535e840b-0ddb-5a35-84f4-dc18584257ed",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-MessageColor",
+            "toId": "535e840b-0ddb-5a35-84f4-dc18584257ed",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-MessageVisible",
+            "toId": "535e840b-0ddb-5a35-84f4-dc18584257ed",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "fromProperty": "out-HasError",
+            "toId": "35de3a2f-d24c-525e-abe4-c89f3dc567f0",
+            "toProperty": "Has Error"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Placeholder",
+            "toId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "toProperty": "placeholder"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Items",
+            "toId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "fromProperty": "Value",
+            "toId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "fromProperty": "value",
+            "toId": "35de3a2f-d24c-525e-abe4-c89f3dc567f0",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+            "fromProperty": "onChange",
+            "toId": "35de3a2f-d24c-525e-abe4-c89f3dc567f0",
+            "toProperty": "Changed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "e2481351-8c32-57be-8e8b-f063f5b117b7",
+            "type": "Component Inputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Placeholder",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 3
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 4
+              },
+              {
+                "name": "Error",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Validation",
+                "index": 5
+              },
+              {
+                "name": "Required",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 6
+              },
+              {
+                "name": "Disabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 7
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": -700,
+            "y": 0
+          },
+          {
+            "id": "776885f6-a939-53be-ae2c-c1857b0f309d",
+            "type": "JavaScriptFunction",
+            "parameters": {
+              "functionScript": "// Field presentation state. Every input may be unconnected, so guard everything.\nconst rawError = Inputs.Error;\nconst rawHelper = Inputs.HelperText;\nconst error = typeof rawError === 'string' ? rawError.trim() : '';\nconst helper = typeof rawHelper === 'string' ? rawHelper : '';\nconst hasError = error.length > 0;\n\nOutputs.HasError = hasError;\nOutputs.BorderColor = hasError ? 'var(--destructive)' : 'var(--border)';\nOutputs.Message = hasError ? error : helper;\nOutputs.MessageColor = hasError ? 'var(--destructive)' : 'var(--muted-foreground)';\nOutputs.MessageVisible = hasError || helper.length > 0;\nOutputs.Enabled = Inputs.Disabled === true ? false : true;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Error",
+                "displayName": "Error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-HelperText",
+                "displayName": "HelperText",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Disabled",
+                "displayName": "Disabled",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasError",
+                "displayName": "HasError",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-BorderColor",
+                "displayName": "BorderColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-MessageColor",
+                "displayName": "MessageColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-MessageVisible",
+                "displayName": "MessageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Enabled",
+                "displayName": "Enabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Field state",
+            "x": -380,
+            "y": 260
+          },
+          {
+            "id": "2ba98be8-72fe-5776-aa99-b5eaf2aea3c4",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 20,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "78847ba3-2235-5674-9a2c-5cf4adeb6658",
+                "type": "Group",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "39ec6424-df54-5790-98c6-8b57177dde0b",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "Label",
+                      "textStyle": "Label Medium",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Label"
+                  },
+                  {
+                    "id": "c2e429ea-12c4-5749-8140-f58cf740c133",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "*",
+                      "textStyle": "Label Medium",
+                      "color": "var(--destructive)",
+                      "marginLeft": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Required marker"
+                  }
+                ],
+                "label": "Label row"
+              },
+              {
+                "id": "50ba8b8d-c1da-599e-ba34-c4b5e41dc090",
+                "type": "net.noodl.controls.options",
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "textStyle": "Label Medium",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Dropdown",
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                }
+              },
+              {
+                "id": "535e840b-0ddb-5a35-84f4-dc18584257ed",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "textStyle": "Helper Small",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Helper / error text"
+              }
+            ],
+            "label": "Field",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "35de3a2f-d24c-525e-abe4-c89f3dc567f0",
+            "type": "Component Outputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              },
+              {
+                "name": "Has Error",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": 420,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Form Fields/Labelled Checkbox",
+      "id": "01e8320a-1f6b-5d31-8601-3fe929f72319",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Label",
+            "toId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Checked",
+            "toId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "toProperty": "checked"
+          },
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Required",
+            "toId": "3afd7948-0bf3-5e03-bf09-fc8eb3409e02",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Error",
+            "toId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "toProperty": "in-Error"
+          },
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Helper Text",
+            "toId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "toProperty": "in-HelperText"
+          },
+          {
+            "fromId": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "fromProperty": "Disabled",
+            "toId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "toProperty": "in-Disabled"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-Enabled",
+            "toId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-BorderColor",
+            "toId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-Message",
+            "toId": "ce05d553-9af8-5b25-9a6f-e874d11f483c",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-MessageColor",
+            "toId": "ce05d553-9af8-5b25-9a6f-e874d11f483c",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-MessageVisible",
+            "toId": "ce05d553-9af8-5b25-9a6f-e874d11f483c",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "fromProperty": "out-HasError",
+            "toId": "9494a5a3-a410-512a-8364-81d25590ce73",
+            "toProperty": "Has Error"
+          },
+          {
+            "fromId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "fromProperty": "checked",
+            "toId": "9494a5a3-a410-512a-8364-81d25590ce73",
+            "toProperty": "Checked"
+          },
+          {
+            "fromId": "4e399f56-3729-5e9e-9ac6-36f608581881",
+            "fromProperty": "onChange",
+            "toId": "9494a5a3-a410-512a-8364-81d25590ce73",
+            "toProperty": "Changed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "c2b4d269-4b03-53e9-a51c-db17eecf09ae",
+            "type": "Component Inputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Checked",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Error",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Validation",
+                "index": 3
+              },
+              {
+                "name": "Required",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 4
+              },
+              {
+                "name": "Disabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 5
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": -700,
+            "y": 0
+          },
+          {
+            "id": "d09db8da-8b0d-549d-b72e-25a530057c04",
+            "type": "JavaScriptFunction",
+            "parameters": {
+              "functionScript": "// Field presentation state. Every input may be unconnected, so guard everything.\nconst rawError = Inputs.Error;\nconst rawHelper = Inputs.HelperText;\nconst error = typeof rawError === 'string' ? rawError.trim() : '';\nconst helper = typeof rawHelper === 'string' ? rawHelper : '';\nconst hasError = error.length > 0;\n\nOutputs.HasError = hasError;\nOutputs.BorderColor = hasError ? 'var(--destructive)' : 'var(--border)';\nOutputs.Message = hasError ? error : helper;\nOutputs.MessageColor = hasError ? 'var(--destructive)' : 'var(--muted-foreground)';\nOutputs.MessageVisible = hasError || helper.length > 0;\nOutputs.Enabled = Inputs.Disabled === true ? false : true;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Error",
+                "displayName": "Error",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-HelperText",
+                "displayName": "HelperText",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Disabled",
+                "displayName": "Disabled",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasError",
+                "displayName": "HasError",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-BorderColor",
+                "displayName": "BorderColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-MessageColor",
+                "displayName": "MessageColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-MessageVisible",
+                "displayName": "MessageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Enabled",
+                "displayName": "Enabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Field state",
+            "x": -380,
+            "y": 260
+          },
+          {
+            "id": "db11d768-29bc-51d3-b4cf-b5cd0d8fb208",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 20,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "7a9b8984-2e70-556f-93c9-3ba27e6a2b2b",
+                "type": "Group",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "4e399f56-3729-5e9e-9ac6-36f608581881",
+                    "type": "net.noodl.controls.checkbox",
+                    "parameters": {
+                      "width": {
+                        "value": 18,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 18,
+                        "unit": "px"
+                      },
+                      "backgroundColor": "var(--background)",
+                      "borderStyle": "solid",
+                      "borderWidth": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "borderColor": "var(--border)",
+                      "borderRadius": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "useLabel": true,
+                      "label": "Label",
+                      "labelSpacing": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "labelcolor": "var(--foreground)",
+                      "labeltextStyle": "Label Medium"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Checkbox",
+                    "stateParameters": {
+                      "hover": {
+                        "borderColor": "var(--border-strong)"
+                      },
+                      "focused": {
+                        "borderColor": "var(--ring)"
+                      },
+                      "checked": {
+                        "backgroundColor": "var(--primary)",
+                        "borderColor": "var(--primary)"
+                      },
+                      "disabled": {
+                        "backgroundColor": "var(--muted)"
+                      }
+                    }
+                  },
+                  {
+                    "id": "3afd7948-0bf3-5e03-bf09-fc8eb3409e02",
+                    "type": "Text",
+                    "parameters": {
+                      "text": "*",
+                      "textStyle": "Label Medium",
+                      "color": "var(--destructive)",
+                      "marginLeft": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Required marker"
+                  }
+                ],
+                "label": "Checkbox row"
+              },
+              {
+                "id": "ce05d553-9af8-5b25-9a6f-e874d11f483c",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "textStyle": "Helper Small",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "visible": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Helper / error text"
+              }
+            ],
+            "label": "Field",
+            "x": 0,
+            "y": 0
+          },
+          {
+            "id": "9494a5a3-a410-512a-8364-81d25590ce73",
+            "type": "Component Outputs",
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Checked",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              },
+              {
+                "name": "Has Error",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "x": 420,
+            "y": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Form Fields",
+      "id": "c60d9fc7-eb08-55a9-b31b-792feca6c638",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "c3354ad0-291d-54df-bf6d-7cdb2959245e",
+            "fromProperty": "items",
+            "toId": "f1bda80f-f6a4-5fff-80ae-9ac4315fdf54",
+            "toProperty": "Items"
+          }
+        ],
+        "roots": [
+          {
+            "id": "c3354ad0-291d-54df-bf6d-7cdb2959245e",
+            "type": "Static Data",
+            "parameters": {
+              "type": "json",
+              "json": "[{\"Label\": \"United Kingdom\", \"Value\": \"gb\"}, {\"Label\": \"Germany\", \"Value\": \"de\"}, {\"Label\": \"Sweden\", \"Value\": \"se\"}, {\"Label\": \"United States\", \"Value\": \"us\"}]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Country options",
+            "x": -420,
+            "y": 120
+          },
+          {
+            "id": "fb283c66-660e-58b2-a926-49c1b0c36a41",
+            "type": "Group",
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "maxWidth": {
+                "value": 520,
+                "unit": "px"
+              },
+              "paddingTop": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": 24,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "a650ab84-c4ba-5ebc-8783-849f4c168d81",
+                "type": "/Form Fields/Labelled Text Input",
+                "parameters": {
+                  "Label": "Full name",
+                  "Placeholder": "Jane Doe",
+                  "Helper Text": "First and last name",
+                  "Required": true
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Text input"
+              },
+              {
+                "id": "f1bda80f-f6a4-5fff-80ae-9ac4315fdf54",
+                "type": "/Form Fields/Labelled Select",
+                "parameters": {
+                  "Label": "Country",
+                  "Placeholder": "Choose a country",
+                  "Helper Text": "Where you live"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Select"
+              },
+              {
+                "id": "a9539b0c-2d01-5f4e-9074-16dbd84e9071",
+                "type": "/Form Fields/Labelled Checkbox",
+                "parameters": {
+                  "Label": "I agree to the terms",
+                  "Required": true
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Checkbox"
+              },
+              {
+                "id": "e885fb63-0a66-5047-a935-8fde346b698e",
+                "type": "/Form Fields/Labelled Textarea",
+                "parameters": {
+                  "Label": "Message",
+                  "Placeholder": "Tell us more",
+                  "Helper Text": "A few sentences",
+                  "Error": "Message is too short"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Textarea (error state)"
+              },
+              {
+                "id": "26980d55-018c-505e-b760-989848f35e3a",
+                "type": "/Form Fields/Labelled Date",
+                "parameters": {
+                  "Label": "Start date",
+                  "Helper Text": "When it begins"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Date"
+              },
+              {
+                "id": "f90f69a6-e173-594e-9ed0-d0e8db85b6ef",
+                "type": "/Form Fields/Labelled Text Input",
+                "parameters": {
+                  "Label": "Account id",
+                  "Value": "ACC-0042",
+                  "Helper Text": "Assigned automatically",
+                  "Disabled": true
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Text input (disabled)"
+              }
+            ],
+            "label": "Form fields demo",
+            "x": 0,
+            "y": 0
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {
+        "Label Medium": {
+          "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+          "fontSize": {
+            "value": "14",
+            "unit": "px"
+          },
+          "color": "#000000",
+          "letterSpacing": "Auto",
+          "lineHeight": {
+            "value": "120",
+            "unit": "%"
+          },
+          "textTransform": "none"
+        },
+        "Helper Small": {
+          "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+          "fontSize": {
+            "value": "12",
+            "unit": "px"
+          },
+          "color": "#000000",
+          "letterSpacing": "Auto",
+          "lineHeight": {
+            "value": "130",
+            "unit": "%"
+          },
+          "textTransform": "none"
+        }
+      },
+      "colors": {}
+    }
+  },
+  "variants": []
+}

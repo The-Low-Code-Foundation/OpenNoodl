@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "bbaeb530-7aa2-4c6c-8016-e9bb08206b44",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fnIn",
+      "fromProperty": "firstName",
+      "toId": "fnFn",
+      "toProperty": "in-firstName"
+    },
+    {
+      "fromId": "fnIn",
+      "fromProperty": "lastName",
+      "toId": "fnFn",
+      "toProperty": "in-lastName"
+    },
+    {
+      "fromId": "fnIn",
+      "fromProperty": "fallback",
+      "toId": "fnFn",
+      "toProperty": "in-fallback"
+    },
+    {
+      "fromId": "fnFn",
+      "fromProperty": "out-fullName",
+      "toId": "fnOut",
+      "toProperty": "fullName"
+    },
+    {
+      "fromId": "fnFn",
+      "fromProperty": "out-initials",
+      "toId": "fnOut",
+      "toProperty": "initials"
+    },
+    {
+      "fromId": "fnFn",
+      "fromProperty": "out-hasName",
+      "toId": "fnOut",
+      "toProperty": "hasName"
+    }
+  ]
+}

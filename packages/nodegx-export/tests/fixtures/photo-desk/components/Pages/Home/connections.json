@@ -1,0 +1,235 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "usernameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "passwordInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "loginBtn",
+      "fromProperty": "onClick",
+      "toId": "login",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "error",
+      "toId": "loginErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "me",
+      "fromProperty": "username",
+      "toId": "whoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pickBtn",
+      "fromProperty": "onClick",
+      "toId": "picker",
+      "toProperty": "open"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "name",
+      "toId": "pickedNameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "sizeInBytes",
+      "toId": "pickedSizeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "error",
+      "toId": "pickErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "done",
+      "toId": "pickNoteSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "name",
+      "toId": "pickNoteSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "unchanged",
+      "toId": "pickNoteCancel",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "pickNoteRead",
+      "fromProperty": "value",
+      "toId": "pickNoteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "picker",
+      "fromProperty": "file",
+      "toId": "upload",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "privateCheck",
+      "fromProperty": "checked",
+      "toId": "upload",
+      "toProperty": "private"
+    },
+    {
+      "fromId": "uploadBtn",
+      "fromProperty": "onClick",
+      "toId": "upload",
+      "toProperty": "upload"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "error",
+      "toId": "uploadErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "cloudFile",
+      "toId": "cloud",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "url",
+      "toId": "urlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "name",
+      "toId": "nameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "contentType",
+      "toId": "typeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "size",
+      "toId": "sizeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "url",
+      "toId": "preview",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "done",
+      "toId": "lastUploadSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "cloud",
+      "fromProperty": "name",
+      "toId": "lastUploadSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastUploadRead",
+      "fromProperty": "value",
+      "toId": "lastUploadText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "upload",
+      "fromProperty": "cloudFile",
+      "toId": "sign",
+      "toProperty": "file"
+    },
+    {
+      "fromId": "signBtn",
+      "fromProperty": "onClick",
+      "toId": "sign",
+      "toProperty": "sign"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "url",
+      "toId": "signedUrlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "urlKind",
+      "toId": "kindText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "isShareable",
+      "toId": "shareText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "expiresAt",
+      "toId": "expiresText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "ttlSeconds",
+      "toId": "ttlText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "error",
+      "toId": "signErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "done",
+      "toId": "lastSignedSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "sign",
+      "fromProperty": "url",
+      "toId": "lastSignedSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastSignedRead",
+      "fromProperty": "value",
+      "toId": "lastSignedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cancelWord",
+      "fromProperty": "savedValue",
+      "toId": "pickNoteCancel",
+      "toProperty": "value"
+    }
+  ]
+}

@@ -1,0 +1,670 @@
+{
+  "task": "sbr-005",
+  "subject": "site-builder",
+  "state": "living",
+  "headSha": "1784396c1e3a88097b5a9e13aefd93a174d9a18a",
+  "artefactMd5": "1cf235eb70a90d5fdfc1f8dc54beaba7",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living",
+  "starterAssets": {
+    "written": [
+      "noodl_modules/inter/manifest.json",
+      "noodl_modules/inter/styles.css",
+      "noodl_modules/inter/LICENSE.txt",
+      "noodl_modules/inter/Inter-Regular.ttf",
+      "noodl_modules/inter/Inter-Medium.ttf",
+      "noodl_modules/inter/Inter-SemiBold.ttf",
+      "noodl_modules/inter/Inter-Bold.ttf",
+      "noodl_modules/lucide-icons/manifest.json",
+      "noodl_modules/lucide-icons/styles.css",
+      "noodl_modules/lucide-icons/lucide.woff2",
+      "noodl_modules/starter-imagery/manifest.json",
+      "noodl_modules/starter-imagery/ground-aurora.svg",
+      "noodl_modules/starter-imagery/ground-ridge.svg",
+      "noodl_modules/starter-imagery/tile-1.svg",
+      "noodl_modules/starter-imagery/tile-2.svg",
+      "noodl_modules/starter-imagery/tile-3.svg",
+      "noodl_modules/starter-imagery/portrait.svg",
+      "noodl_modules/starter-imagery/LICENCES.json",
+      "noodl_modules/starter-imagery/ground-canyon.webp",
+      "noodl_modules/starter-imagery/ground-city-dusk.webp",
+      "noodl_modules/starter-imagery/ground-coast.webp",
+      "noodl_modules/starter-imagery/ground-dune.webp",
+      "noodl_modules/starter-imagery/ground-forest-fog.webp",
+      "noodl_modules/starter-imagery/ground-red-rock.webp",
+      "noodl_modules/starter-imagery/ground-shore.webp",
+      "noodl_modules/starter-imagery/ground-skyline.webp",
+      "noodl_modules/starter-imagery/texture-brick.webp",
+      "noodl_modules/starter-imagery/texture-coffee.webp",
+      "noodl_modules/starter-imagery/texture-earth.webp",
+      "noodl_modules/starter-imagery/texture-pebbles.webp",
+      "noodl_modules/starter-imagery/texture-snow.webp",
+      "noodl_modules/starter-imagery/texture-soil.webp",
+      "noodl_modules/starter-imagery/work-baker.webp",
+      "noodl_modules/starter-imagery/work-carpenter.webp",
+      "noodl_modules/starter-imagery/work-chef.webp",
+      "noodl_modules/starter-imagery/work-hands-clay.webp",
+      "noodl_modules/starter-imagery/work-leather-bench.webp",
+      "noodl_modules/starter-imagery/work-machine-shop.webp",
+      "noodl_modules/starter-imagery/work-potter.webp",
+      "noodl_modules/starter-imagery/work-welder.webp",
+      "noodl_modules/starter-imagery/people-cafe.webp",
+      "noodl_modules/starter-imagery/people-coffee-shop.webp",
+      "noodl_modules/starter-imagery/people-desk.webp",
+      "noodl_modules/starter-imagery/people-market.webp",
+      "noodl_modules/starter-imagery/people-meeting.webp",
+      "noodl_modules/starter-imagery/food-bakery.webp",
+      "noodl_modules/starter-imagery/food-board.webp",
+      "noodl_modules/starter-imagery/food-bread.webp",
+      "noodl_modules/starter-imagery/food-carrots.webp",
+      "noodl_modules/starter-imagery/food-grocer.webp",
+      "noodl_modules/starter-imagery/food-market.webp",
+      "noodl_modules/starter-imagery/food-plate.webp",
+      "noodl_modules/starter-imagery/animal-cat.webp",
+      "noodl_modules/starter-imagery/animal-dog.webp",
+      "noodl_modules/starter-imagery/animal-horse.webp",
+      "noodl_modules/starter-imagery/animal-sheep.webp",
+      "noodl_modules/starter-imagery/avatar-1.webp",
+      "noodl_modules/starter-imagery/avatar-2.webp",
+      "noodl_modules/starter-imagery/avatar-3.webp",
+      "noodl_modules/starter-imagery/avatar-4.webp",
+      "noodl_modules/starter-imagery/avatar-5.webp",
+      "noodl_modules/starter-imagery/avatar-6.webp"
+    ],
+    "skipped": [],
+    "failed": []
+  },
+  "shots": [
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "all-five",
+      "url": "/",
+      "as": "a visitor reading a page built of all five kinds",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-preview-full.png",
+      "contentBottom": 2058,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 648,
+      "headings": [
+        "Welcome",
+        "Kestrel Joinery",
+        "Work from the last year",
+        "Come and see the workshop",
+        "How we work",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "all-five",
+      "url": "/",
+      "as": "a visitor reading a page built of all five kinds",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-desktop-full.png",
+      "contentBottom": 2065,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 648,
+      "headings": [
+        "Welcome",
+        "Kestrel Joinery",
+        "Work from the last year",
+        "Come and see the workshop",
+        "How we work",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "all-five",
+      "url": "/",
+      "as": "a visitor reading a page built of all five kinds",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-wide-full.png",
+      "contentBottom": 2065,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 648,
+      "headings": [
+        "Welcome",
+        "Kestrel Joinery",
+        "Work from the last year",
+        "Come and see the workshop",
+        "How we work",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "all-five",
+      "url": "/",
+      "as": "a visitor reading a page built of all five kinds",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/all-five-phone-full.png",
+      "contentBottom": 2255,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 648,
+      "headings": [
+        "Welcome",
+        "Kestrel Joinery",
+        "Work from the last year",
+        "Come and see the workshop",
+        "How we work",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-hero",
+      "url": "/hero-only",
+      "as": "the hero kind, alone",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-preview-full.png",
+      "contentBottom": 641,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 212,
+      "headings": [
+        "Hero only",
+        "Kestrel Joinery"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-hero",
+      "url": "/hero-only",
+      "as": "the hero kind, alone",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 212,
+      "headings": [
+        "Hero only",
+        "Kestrel Joinery"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-hero",
+      "url": "/hero-only",
+      "as": "the hero kind, alone",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 212,
+      "headings": [
+        "Hero only",
+        "Kestrel Joinery"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-hero",
+      "url": "/hero-only",
+      "as": "the hero kind, alone",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-hero-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 212,
+      "headings": [
+        "Hero only",
+        "Kestrel Joinery"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-gallery",
+      "url": "/gallery-only",
+      "as": "the gallery kind, alone",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-preview-full.png",
+      "contentBottom": 868,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 169,
+      "headings": [
+        "Gallery only",
+        "Work from the last year"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-gallery",
+      "url": "/gallery-only",
+      "as": "the gallery kind, alone",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 169,
+      "headings": [
+        "Gallery only",
+        "Work from the last year"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-gallery",
+      "url": "/gallery-only",
+      "as": "the gallery kind, alone",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 169,
+      "headings": [
+        "Gallery only",
+        "Work from the last year"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-gallery",
+      "url": "/gallery-only",
+      "as": "the gallery kind, alone",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-gallery-phone-full.png",
+      "contentBottom": 936,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 169,
+      "headings": [
+        "Gallery only",
+        "Work from the last year"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-cta",
+      "url": "/cta-only",
+      "as": "the call-to-action kind, alone",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-preview-full.png",
+      "contentBottom": 654,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 234,
+      "headings": [
+        "Call to action only",
+        "Come and see the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-cta",
+      "url": "/cta-only",
+      "as": "the call-to-action kind, alone",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 234,
+      "headings": [
+        "Call to action only",
+        "Come and see the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-cta",
+      "url": "/cta-only",
+      "as": "the call-to-action kind, alone",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 234,
+      "headings": [
+        "Call to action only",
+        "Come and see the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-cta",
+      "url": "/cta-only",
+      "as": "the call-to-action kind, alone",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-cta-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 234,
+      "headings": [
+        "Call to action only",
+        "Come and see the workshop"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-richtext",
+      "url": "/text-only",
+      "as": "the rich-text kind, alone",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-preview-full.png",
+      "contentBottom": 570,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 369,
+      "headings": [
+        "Passage only",
+        "How we work"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-richtext",
+      "url": "/text-only",
+      "as": "the rich-text kind, alone",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 369,
+      "headings": [
+        "Passage only",
+        "How we work"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-richtext",
+      "url": "/text-only",
+      "as": "the rich-text kind, alone",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 369,
+      "headings": [
+        "Passage only",
+        "How we work"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-richtext",
+      "url": "/text-only",
+      "as": "the rich-text kind, alone",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-richtext-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 369,
+      "headings": [
+        "Passage only",
+        "How we work"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-contact",
+      "url": "/contact-only",
+      "as": "the contact kind, alone",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-preview-full.png",
+      "contentBottom": 870,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 253,
+      "headings": [
+        "Contact only",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-contact",
+      "url": "/contact-only",
+      "as": "the contact kind, alone",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 253,
+      "headings": [
+        "Contact only",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-contact",
+      "url": "/contact-only",
+      "as": "the contact kind, alone",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 253,
+      "headings": [
+        "Contact only",
+        "Get in touch"
+      ],
+      "errors": []
+    },
+    {
+      "task": "sbr-005",
+      "subject": "site-builder",
+      "state": "living",
+      "page": "kind-contact",
+      "url": "/contact-only",
+      "as": "the contact kind, alone",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/sbr-005/2026-09-03/site-builder-living/kind-contact-phone-full.png",
+      "contentBottom": 964,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 253,
+      "headings": [
+        "Contact only",
+        "Get in touch"
+      ],
+      "errors": []
+    }
+  ]
+}

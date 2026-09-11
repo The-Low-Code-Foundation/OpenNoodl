@@ -17,7 +17,9 @@
   },
   "examples": [
     "cloud-create-record-with-upload",
-    "cloud-sign-private-file-url"
+    "cloud-sign-private-file-url",
+    "media-record-audio-and-upload",
+    "media-record-video-from-a-live-preview"
   ],
   "patterns": [
     "Picker `done` → `upload`, upload `done` → record write: three nodes, each owning one step.",

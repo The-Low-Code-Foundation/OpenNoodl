@@ -1,0 +1,184 @@
+# SB-009 — A component named in a parameter is not checked by the authored gate
+
+> ✅ **CLOSED 2026-08-29 by phase 80 as DEF-010** (`44298914`). `checkComponentRefParameters`
+> in the shared precondition set — generic over the catalog's `component`-typed ports, so port
+> fourteen is covered on the day it is added. **All five acceptance criteria met**, including
+> AC5's corpus sweep (`npm run calibrate:door`, 178 projects: **614 component-typed parameters
+> checked — 543 `NavigationShowPopup.target`, 70 `RunTasks.taskTemplate` — 15 unresolved in 6
+> projects, every sampled one a true positive in a legacy hand-authored project; 0 cross-runtime**).
+> `component-parameter-unresolved` promoted into `AUTHORED_BLOCKING_WARNINGS` on that number;
+> the cross-runtime half reuses `wrong-runtime-node`, already blocking. Arms C and D of
+> `sb004RunTasksTemplate.test.ts` inverted exactly as AC1 asked — C refused naming the missing
+> component, D refused naming the runtime boundary — and the For Each cardinality is asserted
+> through the FULL composed set (one diagnostic, the owner's). 10 editor specs + 2 mutants
+> killed (`tests-unit/def-010/`).
+
+**Status: ✅ CLOSED — was: measured, not fixed.** Found while designing SB-004 (2026-08-26 s2), filed
+rather than absorbed because the fix is wider than SB-004's scope: it touches twelve ports across
+eight node types, two of them outside the backend story entirely.
+
+Evidence: `packages/noodl-mcp/tests/sb004RunTasksTemplate.test.ts` — four arms, two of them
+known-firing controls, run green s2.
+
+## The defect
+
+A component can be named two ways. As a **node type** (`/Card` as an instance) — gated. As the
+value of a **`component`-typed parameter** (`Run Tasks`' `taskTemplate`, `Show Popup`'s `target`,
+the seven `repeaterComponent` ports) — gated for exactly one of the thirteen such ports.
+
+⚠️ **Correction to this file's first draft, which claimed "nowhere any gate looks".** One check does
+exist for `taskTemplate` existence: `checkTemplateContract`
+(`runtasks-template-contract.ts:154-170`) warns "The task template … does not exist". It does not
+rescue the authored case, and for SB-004's case it never runs at all:
+
+| where | `taskTemplate` exists? | runtime matches? |
+|---|---|---|
+| editor, **browser** graph, live | ✅ `checkTemplateContract` | ❌ |
+| editor, **cloud** graph | ❌ — `runtasks.ts:918-921` returns unless `editorConnection.isRunningLocally()`, and the cloud runtime never connects to an editor | ❌ |
+| **authored write gate** (MCP + editor gate) | ❌ **measured below** | ❌ **measured below** |
+
+So the check that exists is a live-editor warning on a node a human is looking at, in the one
+runtime SB-004 does not use. The cloud case — a cloud function composed of cloud helpers — has
+nothing anywhere.
+
+- `checkRepeaterTemplate` opens `if (node.type !== REPEATER_TYPE) continue`
+  (`validation/repeaterTemplate.ts:186`; `REPEATER_TYPE = 'For Each'`, `:82`). Its two resolution
+  codes reach the browser Repeater and nothing else.
+- `checkRuntimeContext` (SB-001) walks node **types**. A parameter value is not one.
+- `checkNavigation` covers `RouterNavigate`, `PageStackNavigate`, `PageStackNavigateToPath`
+  (`navigation.ts:34-37`) — **not** `NavigationShowPopup` / `NavigationClosePopup`, whose targets
+  *are* `component`-typed.
+- `parameterValues.component` is `nameTypeFormat('component')` (`parameterValues.ts:369`): a check
+  on the value's *shape*. Not existence, not runtime.
+
+The editor's interactive door is safe — `componentpicker.ts:109-129` filters by runtime and excludes
+cloud functions, so a human picking a template cannot make either mistake. The **authored** door,
+which SB-001 brought to parity for node types, cannot make the check at all.
+
+## Measured (s2)
+
+Four arms through the real MCP `create_component`, against the `demo-app` fixture:
+
+| arm | graph | result |
+|---|---|---|
+| **A — control, must fire** | cloud component containing a `Text` node | ✅ **rejected**, `wrong-runtime-node` |
+| **B — twin, must fire** | browser `For Each`, `template: "/Components/NoSuchComponent"` | ✅ **rejected**, `repeater-template-unresolved` (with alternatives offered) |
+| **C — probe** | cloud `Run Tasks`, `taskTemplate: "/#__cloud__/NoSuchHelper"` | 🔴 **accepted**, `0 errors / 0 warnings / 0 infos`, written to disk |
+| **D — probe** | cloud `Run Tasks`, `taskTemplate: "/Card"` (a real **browser** component) | 🔴 **accepted**, `0/0/0`, written to disk |
+
+A and B are there so the two clean results mean something: A excludes "the gate never ran on this
+path", B excludes "nothing in this codebase checks templates". Both fired.
+
+**The runtime consequence is the silent kind.** `Run Tasks` is the only iteration primitive the
+cloud runtime has, so a function that does a thing per record does it here. Name a helper that does
+not exist, or one the cloud runtime cannot register, and the graph validates perfectly clean, runs,
+iterates over nothing, and reports success having done no work. For SB-004 that is `publishPage`
+returning 200 having published no sections.
+
+This is the tenth instance of the pattern in `a-gate-can-have-a-hole-shaped-like-the-defect`.
+
+## The arm that sharpens all four (s3)
+
+Arms A–D show that *some* gates fire and this one does not. The strongest form of the claim is
+narrower than that, and it was measured s3 while finishing SB-004's authoring
+(`noodl-mcp/tests/sb004Authoring.test.ts`):
+
+| arm | how the component is named | result |
+|---|---|---|
+| **E — control** | `site/ContactRecipient` as a node **`type`**, before it exists | ✅ **rejected**, `unresolved-component-ref`, message names the type, nothing written |
+| **E′ — the pair** | the *same nodes and wires*, after the helper exists | ✅ accepted |
+| **C/D above** | the same kind of helper as a `taskTemplate` **parameter** | 🔴 accepted `0/0/0` |
+
+So it is not "the authored door does not resolve component references" — **it resolves them, and one
+spelling of the same reference goes unresolved.** E and E′ differ in exactly one variable (does the
+helper exist), so E′ is not evidence that the check is absent; it is evidence that the check is
+present and passing. The refusal is asserted **by diagnostic code**, not by "it errored", so the arm
+cannot pass on an unrelated rejection.
+
+Two further readings from the same pass, both relevant to the fix:
+
+- The check that fires, `unresolved-component-ref`, is precisely the diagnostic the parameter ports
+  have no counterpart for — so the fix has a shape and a name already, and the corpus sweep is about
+  whether emitting it *blockingly* on 12 more ports breaks existing projects.
+- `stage_plan_operation` runs the same resolution and refuses identically, but reports only
+  `details.readable` prose where `create_component` returns structured `details.newErrors`.
+
+## The population (from the catalog, s2)
+
+Thirteen `component`-typed input ports exist. One has an owner.
+
+| node | port | runtimes | owned by |
+|---|---|---|---|
+| `For Each` | `template` | browser | ✅ `checkRepeaterTemplate` |
+| `RunTasks` | `taskTemplate` | browser, cloud | — |
+| `DbModel2` (Record), `SetDbModelProperties` (Update Record), `DeleteDbModelProperties`, `AddDbModelRelation`, `RemoveDbModelRelation`, `Model2` (Object), `SetModelProperties` | `repeaterComponent` | browser, cloud | — |
+| `NavigationShowPopup` | `target` | browser | — |
+| `NavigationClosePopup` | `targetComponent` | browser | — |
+| `net.noodl.ParentComponentObject`, `net.noodl.SetParentComponentObjectProperties` | `targetComponent` | browser | — |
+
+## The fix, designed
+
+One new precondition check, `checkComponentRefParameters`, in the shared set
+(`authoredPreconditionDiagnostics`, so the editor gate and the MCP keep parity — SB-001's rule).
+Generic over the catalog rather than a list of node types, so port fourteen is covered on the day
+it is added:
+
+For each parameter whose catalog port type is `component`, with a value set and no wire on it:
+- names a component the project does not have → **`component-parameter-unresolved`** (new code)
+- names one whose runtime differs from the owning component's → **`wrong-runtime-node`** (reuse:
+  identical concept, already blocking, already SB-001's for the instance case)
+
+Three guards, each for a reason already learned here:
+
+1. 🔴 **Skip the (`For Each`, `template`) pair.** It has a dedicated owner with better messages and
+   the children logic; a second producer over the same population is
+   `a-check-in-a-second-pipeline-is-a-duplicate-first` — counts double, suites stay green. The spec
+   must **assert cardinality**: exactly one diagnostic for the `For Each` case, not two.
+2. **Skip a node whose type the catalog does not know** — `checkParameterValues` already emits an
+   `unknownTypeSkip` naming that node, and two notices for one fact is the thing CN-002 forbids.
+3. **Skip a wired port** (`connectedInputs`), the convention every value check here follows.
+
+## Open decision before this lands
+
+⚠️ **Whether `component-parameter-unresolved` joins `AUTHORED_BLOCKING_WARNINGS` is not settled by
+this file, and must not be settled by argument alone.** Every entry in that set cites a corpus
+measurement (`InstanceUnknownParameter`: 58 hits in one merge fixture; `RepeaterTemplateUnresolved`:
+2, both legacy). SB-001's reasoning applies — for a graph an agent just wrote there is no benign
+reading of a name that resolves to nothing — but the twelve newly-covered ports have **never been
+measured against a real corpus**, and `repeaterComponent` in particular is set on ordinary data
+nodes across every real project. Run the corpus sweep first; promote on the number, not on the
+sentence. The cross-runtime half needs no such decision: it reuses `wrong-runtime-node`, which is
+already blocking, and a browser component in a cloud graph has no benign reading at any severity.
+
+## Acceptance
+
+1. Arms C and D of `sb004RunTasksTemplate.test.ts` invert: both rejected, C naming the missing
+   component and D naming the runtime boundary. A and B still fire unchanged.
+2. A `For Each` with a missing template yields **exactly one** diagnostic (cardinality asserted).
+3. A wired `taskTemplate`, and a node of a type the catalog does not know, each yield nothing new.
+4. `Show Popup` naming a missing component is reported — the check is generic, and this is the
+   proof it did not quietly become a `RunTasks` special case.
+5. Corpus sweep run and its numbers recorded here before any blocking promotion.
+
+## AC1 re-confirmed at HEAD — 2026-08-29 (phase 80 DEF-002 s2)
+
+**Still open, still both arms silent.** Read while promoting an unrelated rule, and recorded here
+rather than as a new row — 🔴 *it was very nearly filed as one*, which is the exact rediscovery this
+register exists to prevent. The behaviour is this task's AC1 verbatim.
+
+| arm | door's answer at HEAD |
+|---|---|
+| **C** — cloud `RunTasks` naming `/#__cloud__/NoSuchHelper` | `isError=false`, `codes=[]` |
+| **D** — cloud `RunTasks` naming the browser component `/Card` | `isError=false`, `codes=[]` |
+| **B** (control, browser twin) — `For Each` naming a missing template | **refused**, `repeater-template-unresolved` |
+
+So the `RunTasks` twin of `repeater-template-unresolved` still does not exist, and B beside them is
+what makes that a gap rather than a policy.
+
+⚠️ **The two probes had to be repaired before they could be read.** Arms C and D were authored with
+**no connections at all**, so once `failure-reaches-nothing` became blocking (DEF-002 §2) the door
+rejected them for *that* — an unrelated rejection standing in for the answer each probe exists to
+give. **Nothing went red**: both assert only `typeof isError === 'boolean'`, true either way. Wired
+at `6b721df6` (`run`/`done`/`failure`/`unchanged`, mirroring the site-builder's own `RunTasks`), and
+the readings above are from the wired arms. **A probe that asserts nothing cannot notice when it
+stops measuring its own subject.**

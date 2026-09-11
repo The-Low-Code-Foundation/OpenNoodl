@@ -1,0 +1,144 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2ae40644-dfb9-5257-8ffa-88d8f7085503",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page_controls",
+      "type": "Page",
+      "label": "Controls",
+      "parameters": {
+        "title": "FLD-012 — controls only",
+        "urlPath": "controls"
+      },
+      "children": [
+        "shell_controls"
+      ]
+    },
+    {
+      "id": "shell_controls",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "24px",
+        "paddingTop": "32px",
+        "paddingBottom": "32px",
+        "paddingLeft": "24px",
+        "paddingRight": "24px",
+        "backgroundColor": "#ffffff"
+      },
+      "children": [
+        "heading_controls",
+        "group_c",
+        "slider_c"
+      ],
+      "parent": "page_controls"
+    },
+    {
+      "id": "heading_controls",
+      "type": "Text",
+      "label": "heading",
+      "parent": "shell_controls",
+      "parameters": {
+        "text": "Pick one, then set the amount",
+        "textStyle": "h2",
+        "color": "#111111"
+      }
+    },
+    {
+      "id": "group_c",
+      "type": "Radio Button Group",
+      "label": "Radio Button Group",
+      "parent": "shell_controls",
+      "parameters": {
+        "flexDirection": "column",
+        "sizeMode": "contentSize",
+        "value": "a"
+      },
+      "children": [
+        "radio_a_c",
+        "radio_b_c"
+      ]
+    },
+    {
+      "id": "radio_a_c",
+      "type": "net.noodl.controls.radiobutton",
+      "label": "Radio A",
+      "parent": "group_c",
+      "parameters": {
+        "value": "a",
+        "width": {
+          "value": 24,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "#d8d8d8",
+        "borderRadius": 12
+      }
+    },
+    {
+      "id": "radio_b_c",
+      "type": "net.noodl.controls.radiobutton",
+      "label": "Radio B",
+      "parent": "group_c",
+      "parameters": {
+        "value": "b",
+        "width": {
+          "value": 24,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "#d8d8d8",
+        "borderRadius": 12
+      }
+    },
+    {
+      "id": "slider_c",
+      "type": "net.noodl.controls.range",
+      "label": "Slider",
+      "parent": "shell_controls",
+      "parameters": {
+        "width": {
+          "value": 320,
+          "unit": "px"
+        },
+        "height": {
+          "value": 32,
+          "unit": "px"
+        },
+        "min": 0,
+        "max": 100,
+        "value": 40,
+        "thumbWidth": {
+          "value": 16,
+          "unit": "px"
+        },
+        "thumbHeight": {
+          "value": 16,
+          "unit": "px"
+        },
+        "thumbColor": "#2f6fed",
+        "trackColor": "#c9c9c9",
+        "trackHeight": {
+          "value": 4,
+          "unit": "px"
+        }
+      }
+    }
+  ],
+  "visualRoots": [
+    "page_controls"
+  ]
+}

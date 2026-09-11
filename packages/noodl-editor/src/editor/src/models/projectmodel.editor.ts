@@ -113,6 +113,19 @@ export function projectFromDirectory(projectdir: string, callback: (project?: Pr
         .then(({ project: content, warnings }) => {
           if (warnings.length > 0) {
             console.warn(`[v2] project loaded with ${warnings.length} warning(s):`, warnings);
+            /**
+             * DEF-039 (phase 80) — **the person is told, not just the console.**
+             *
+             * Every warning here says the editor read something it could not understand, in a
+             * project it is about to let them edit and save over. Reaching only `console.warn`
+             * is how a project written by an agent lost eight wires with nothing said: the
+             * failure was visible to anyone with devtools open, which is nobody.
+             */
+            ToastLayer.showError(
+              warnings.length === 1
+                ? warnings[0]
+                : `This project loaded with ${warnings.length} problems. The first: ${warnings[0]}`
+            );
           }
           openFromContent(content, 'v2');
         })

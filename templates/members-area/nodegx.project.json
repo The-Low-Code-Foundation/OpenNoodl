@@ -1,0 +1,251 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Members' Area",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "settings": {
+    "htmlTitle": "Members' Area",
+    "navigationPathType": "path",
+    "bodyScroll": true
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "metadata": {
+    "designTokens": {
+      "version": 1,
+      "customTokens": [
+        {
+          "name": "--primary",
+          "value": "#1f5f45",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Main brand and action color"
+        },
+        {
+          "name": "--primary-hover",
+          "value": "#174a35",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Primary color on hover"
+        },
+        {
+          "name": "--primary-foreground",
+          "value": "#ffffff",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on primary background"
+        },
+        {
+          "name": "--secondary",
+          "value": "#475569",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Supporting action color"
+        },
+        {
+          "name": "--secondary-hover",
+          "value": "#334155",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Secondary color on hover"
+        },
+        {
+          "name": "--secondary-foreground",
+          "value": "#ffffff",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on secondary background"
+        },
+        {
+          "name": "--destructive",
+          "value": "#b91c1c",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Dangerous actions and errors"
+        },
+        {
+          "name": "--destructive-hover",
+          "value": "#991b1b",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Destructive color on hover"
+        },
+        {
+          "name": "--destructive-foreground",
+          "value": "#ffffff",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on destructive background"
+        },
+        {
+          "name": "--muted",
+          "value": "#eef1ee",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Subtle backgrounds, disabled states"
+        },
+        {
+          "name": "--muted-foreground",
+          "value": "#4f5a54",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on muted background"
+        },
+        {
+          "name": "--accent",
+          "value": "#e7efea",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Highlights and selections"
+        },
+        {
+          "name": "--accent-foreground",
+          "value": "#1f5f45",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Text color on accent background"
+        },
+        {
+          "name": "--background",
+          "value": "#fcfcfb",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Page/app background"
+        },
+        {
+          "name": "--foreground",
+          "value": "#14201a",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Default text color"
+        },
+        {
+          "name": "--surface",
+          "value": "#f4f6f4",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Card and panel surfaces"
+        },
+        {
+          "name": "--surface-raised",
+          "value": "#ffffff",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Elevated surface (dialogs, dropdowns)"
+        },
+        {
+          "name": "--border",
+          "value": "#d9ded9",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Default border color"
+        },
+        {
+          "name": "--border-subtle",
+          "value": "#e8ebe8",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Subtle/light border"
+        },
+        {
+          "name": "--border-strong",
+          "value": "#bcc5bd",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Strong/dark border"
+        },
+        {
+          "name": "--border-control",
+          "value": "#5b6b62",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Border for controls — meets 3:1 against surface, unlike --border"
+        },
+        {
+          "name": "--ring",
+          "value": "#1f5f45",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Focus ring color"
+        },
+        {
+          "name": "--ring-offset",
+          "value": "#ffffff",
+          "category": "color-semantic",
+          "isCustom": true,
+          "description": "Focus ring offset color"
+        },
+        {
+          "name": "--font-sans",
+          "value": "\"Source Sans Pro\", \"Segoe UI\", ui-sans-serif, sans-serif",
+          "category": "typography-family",
+          "isCustom": true,
+          "description": "Inter, falling back to the system sans-serif stack"
+        },
+        {
+          "name": "--radius-sm",
+          "value": "4px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-md",
+          "value": "8px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-lg",
+          "value": "10px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-xl",
+          "value": "14px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-2xl",
+          "value": "10px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--radius-3xl",
+          "value": "12px",
+          "category": "border-radius",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-sm",
+          "value": "0 1px 2px rgb(0 0 0 / 0.05)",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-md",
+          "value": "0 2px 4px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04)",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-lg",
+          "value": "0 4px 8px rgb(0 0 0 / 0.06), 0 2px 4px rgb(0 0 0 / 0.04)",
+          "category": "shadow",
+          "isCustom": true
+        },
+        {
+          "name": "--shadow-xl",
+          "value": "0 8px 16px rgb(0 0 0 / 0.08), 0 4px 6px rgb(0 0 0 / 0.05)",
+          "category": "shadow",
+          "isCustom": true
+        }
+      ]
+    }
+  },
+  "rootNodeId": "app_root"
+}

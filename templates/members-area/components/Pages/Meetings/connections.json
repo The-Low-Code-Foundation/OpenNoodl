@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "0a61ad36-56ff-50c6-8bf8-facb1107cbba",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "chrome-3",
+      "fromProperty": "isMember",
+      "toId": "memberArea-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-3",
+      "fromProperty": "isPending",
+      "toId": "pendingNotice-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-3",
+      "fromProperty": "Member",
+      "toId": "today",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "chrome-3",
+      "fromProperty": "Denied",
+      "toId": "toLanding-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "today",
+      "fromProperty": "out-day",
+      "toId": "meetings",
+      "toProperty": "qp-today"
+    },
+    {
+      "fromId": "meetings",
+      "fromProperty": "items",
+      "toId": "list-2",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "meetings",
+      "fromProperty": "count",
+      "toId": "emptyGate-2",
+      "toProperty": "in-count"
+    },
+    {
+      "fromId": "meetings",
+      "fromProperty": "fetched",
+      "toId": "emptyGate-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "emptyGate-2",
+      "fromProperty": "out-empty",
+      "toId": "emptyState-2",
+      "toProperty": "mounted"
+    }
+  ]
+}

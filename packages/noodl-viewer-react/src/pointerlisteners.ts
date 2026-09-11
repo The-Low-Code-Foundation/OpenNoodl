@@ -21,6 +21,24 @@ const pointerEvents = [
 
 export type PointerEventName = (typeof pointerEvents)[number];
 
+/**
+ * DEF-029 — the file-drag events, deliberately *not* folded into the sixteen above.
+ *
+ * `blockTouch` installs a `stopPropagation` blocker on every event it covers, including ones
+ * with no listener at all. Folding the drag events in would therefore mean a child with
+ * "Block Pointer Events" switched on silently kills the drop zone it sits inside: the parent's
+ * `dragover` never runs, so it never calls `preventDefault`, so the browser refuses the drop
+ * over that region — a dead area with no diagnosis anywhere. Blocking is also not what that
+ * port promises; its description is about pointer events reaching the nodes this one sits
+ * inside, and a file drag is not one of them.
+ *
+ * Nesting is settled where it can be reasoned about instead: a node that actually *handles* a
+ * drop stops it there, which is the rule `clickBubbling` already applies to clicks.
+ */
+const dragEvents = ['onDragEnter', 'onDragOver', 'onDragLeave', 'onDrop'] as const;
+
+export type DragEventName = (typeof dragEvents)[number];
+
 //These should not be blocked, it causes some annoying behaviour when using hover
 const pointerEventsNotToBlock: Set<string> = new Set(['onMouseLeave', 'onMouseOut']);
 
@@ -38,7 +56,7 @@ export type ClickBubblingMode = 'auto' | 'always' | 'never';
 
 export interface PointerListenerProps {
   /** Noodl stores its own pointer callbacks here rather than on the props root. */
-  pointer?: Partial<Record<PointerEventName, PointerHandler | undefined>>;
+  pointer?: Partial<Record<PointerEventName | DragEventName, PointerHandler | undefined>>;
   /** When set, every listener stops propagation (except the hover-sensitive pair). */
   blockTouch?: boolean;
   /** See {@link ClickBubblingMode}. Absent means `auto`. */
@@ -71,7 +89,7 @@ function stopsClickPropagation(props: PointerListenerProps): boolean {
   return node.getOutput('onClick').hasConnections();
 }
 
-export type PointerListeners = Partial<Record<PointerEventName, PointerHandler | undefined>>;
+export type PointerListeners = Partial<Record<PointerEventName | DragEventName, PointerHandler | undefined>>;
 
 /**
  * Derives the pointer-event props to spread onto a rendered element.
@@ -123,6 +141,17 @@ export default function pointerProps(props: PointerListenerProps): PointerListen
     }
   }
 
+  // DEF-029. Purely additive: a drag event is copied across only when something installed a
+  // handler for it, and only the file-drop ports do. A node without them renders exactly the
+  // props it did before, which is why no existing project changes behaviour here.
+  for (const eventName of dragEvents) {
+    if (props.pointer && props.pointer[eventName]) {
+      newProps[eventName] = props.pointer[eventName];
+    } else if (props[eventName]) {
+      newProps[eventName] = props[eventName];
+    }
+  }
+
   // FH-015 slice 2. Click-through used to be the only behaviour: every visual node gets a live
   // `onClick` at init whether or not its Click port is wired, and nothing called
   // `stopPropagation` unless `blockTouch` was on — so a child's click always ran the ancestor's
@@ -143,9 +172,9 @@ export default function pointerProps(props: PointerListenerProps): PointerListen
 
   if (props.noodlNode) {
     for (const p in newProps) {
-      const f = newProps[p as PointerEventName];
+      const f = newProps[p as PointerEventName | DragEventName];
       if (f) {
-        newProps[p as PointerEventName] = (e) => {
+        newProps[p as PointerEventName | DragEventName] = (e) => {
           // `this` is `undefined` here — the arrow captures it from module scope,
           // which is strict-mode. Kept verbatim rather than simplified to `f(e)`
           // so this conversion stays type-only.

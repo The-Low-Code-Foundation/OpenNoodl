@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "1d3a7c0e-6b2f-4a9d-8e5c-3f1b2a4c6d03",
+  "version": 1,
+  "connections": [
+    { "fromId": "inquiryIdInput", "fromProperty": "onTextChanged", "toId": "inquiryIdVar", "toProperty": "value" },
+    { "fromId": "inquiryIdVar", "fromProperty": "value", "toId": "link", "toProperty": "modelId" },
+    { "fromId": "inquiryIdVar", "fromProperty": "value", "toId": "unlink", "toProperty": "modelId" },
+    { "fromId": "puppy", "fromProperty": "id", "toId": "link", "toProperty": "targetId" },
+    { "fromId": "puppy", "fromProperty": "id", "toId": "unlink", "toProperty": "targetId" },
+    { "fromId": "puppy", "fromProperty": "prop-name", "toId": "puppyText", "toProperty": "text" },
+    { "fromId": "linkBtn", "fromProperty": "onClick", "toId": "link", "toProperty": "store" },
+    { "fromId": "unlinkBtn", "fromProperty": "onClick", "toId": "unlink", "toProperty": "store" },
+    { "fromId": "link", "fromProperty": "done", "toId": "setLinked", "toProperty": "do" },
+    { "fromId": "linkedLabel", "fromProperty": "savedValue", "toId": "setLinked", "toProperty": "value" },
+    { "fromId": "unlink", "fromProperty": "done", "toId": "setUnlinked", "toProperty": "do" },
+    { "fromId": "unlinkedLabel", "fromProperty": "savedValue", "toId": "setUnlinked", "toProperty": "value" },
+    { "fromId": "link", "fromProperty": "error", "toId": "linkErrorText", "toProperty": "text" },
+    { "fromId": "unlink", "fromProperty": "error", "toId": "unlinkErrorText", "toProperty": "text" },
+    { "fromId": "statusRead", "fromProperty": "value", "toId": "statusText", "toProperty": "text" }
+  ]
+}

@@ -6,7 +6,7 @@
   "ports": {
     "result": "Boolean value: the opposite of `value`. Undefined until `value` first receives data."
   },
-  "examples": ["logic-toggle-details-panel"],
+  "examples": ["logic-toggle-details-panel", "comp-controlled-quantity-stepper", "community-email-signup-validat"],
   "patterns": [
     "A 'is loading' boolean → Inverter → a button's `enabled`: disable actions while busy.",
     "Switch `state` → Inverter → the collapsed view's `visible`: show exactly one of two views from a single boolean."

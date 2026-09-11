@@ -1,0 +1,136 @@
+{
+  "id": "bubble-hash-a-value",
+  "title": "Turn an email address into a stable fingerprint",
+  "description": "The dictionary asks for `:formatted as MD5 hash` and `:formatted as SHA1 Hash`, and the honest answer is that this node offers neither — SHA-256, SHA-384 and SHA-512 only. That is a decision, not a gap: WebCrypto, which Hash runs on in both the browser and a cloud function, does not implement MD5 or SHA-1 for digesting, and hand-rolling one would mean shipping a hash that is broken for every purpose either was ever used for. If you are migrating a Bubble app that stored MD5 fingerprints, they will not reproduce here and no setting will make them; treat that as a re-hash of the source data, not a translation. Two details decide whether this works. Hash is ASYNCHRONOUS — the digest is computed off a later turn than the `Do` that started it — so Digest is wired to the Text and the button is wired to `Do`; reading Digest in the same pass as the click would read the previous answer. And hashing is exact, so the normalisation in front of it is doing real work: `Foo@Example.com ` and `foo@example.com` are different bytes and therefore entirely different digests, which is how a 'stable fingerprint' quietly stops matching. Trim and lower-case first, deliberately, and write down that you did. Failure fires only when WebCrypto is unavailable, which in a browser means the page is not on a secure origin — worth a Log, because the symptom is a blank fingerprint rather than an error. The digest is published as well as rendered: a fingerprint that only ever reaches a Text is a fingerprint nothing can be compared against.",
+  "demonstrates": [
+    "net.noodl.Hash",
+    "Expression",
+    "net.noodl.Log",
+    "net.noodl.controls.button"
+  ],
+  "components": [
+    {
+      "name": "/Fingerprint",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Fingerprint",
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "hash_button",
+            "digest_text"
+          ]
+        },
+        {
+          "id": "hash_button",
+          "type": "net.noodl.controls.button",
+          "label": "Fingerprint",
+          "parent": "root"
+        },
+        {
+          "id": "digest_text",
+          "type": "Text",
+          "label": "The hex digest",
+          "parent": "root"
+        },
+        {
+          "id": "email_inputs",
+          "type": "Component Inputs",
+          "label": "Email in",
+          "ports": [
+            {
+              "name": "email",
+              "plug": "output",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "id": "normalise",
+          "type": "Expression",
+          "label": "Trim and lower-case first",
+          "parameters": {
+            "expression": "(email || '').trim().toLowerCase()"
+          }
+        },
+        {
+          "id": "fingerprint",
+          "type": "net.noodl.Hash",
+          "label": "SHA-256, hex",
+          "parameters": {
+            "algorithm": "SHA-256",
+            "encoding": "hex"
+          }
+        },
+        {
+          "id": "no_crypto_log",
+          "type": "net.noodl.Log",
+          "label": "No WebCrypto here",
+          "parameters": {
+            "level": "error",
+            "message": "Fingerprint: WebCrypto was unavailable, so no digest was produced. In a browser this means the page is not on a secure origin."
+          }
+        },
+        {
+          "id": "comp_outputs",
+          "type": "Component Outputs",
+          "label": "Interface out — plugged \"input\"",
+          "ports": [
+            {
+              "name": "digest",
+              "plug": "input",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "email_inputs",
+          "fromProperty": "email",
+          "toId": "normalise",
+          "toProperty": "email"
+        },
+        {
+          "fromId": "normalise",
+          "fromProperty": "asString",
+          "toId": "fingerprint",
+          "toProperty": "value"
+        },
+        {
+          "fromId": "hash_button",
+          "fromProperty": "onClick",
+          "toId": "fingerprint",
+          "toProperty": "hash"
+        },
+        {
+          "fromId": "fingerprint",
+          "fromProperty": "digest",
+          "toId": "digest_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "fingerprint",
+          "fromProperty": "failure",
+          "toId": "no_crypto_log",
+          "toProperty": "log"
+        },
+        {
+          "fromId": "fingerprint",
+          "fromProperty": "error",
+          "toId": "no_crypto_log",
+          "toProperty": "message"
+        },
+        {
+          "fromId": "fingerprint",
+          "fromProperty": "digest",
+          "toId": "comp_outputs",
+          "toProperty": "digest"
+        }
+      ]
+    }
+  ]
+}

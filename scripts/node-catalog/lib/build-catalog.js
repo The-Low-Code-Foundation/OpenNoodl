@@ -22,7 +22,20 @@ const FUNCTION_SOURCE_DYNAMISM = /sendDynamicPorts/;
 // `setup(context, graphModel)` hooks overwhelmingly exist to compute
 // per-instance ports; helpers are usually module-level (`updatePorts(...)`),
 // so match call sites rather than only the marker APIs.
-const SETUP_SOURCE_DYNAMISM = /sendDynamicPorts|[a-zA-Z_]*[Pp]orts\s*\(/;
+//
+// 🔴 **The trailing `\d*` is load bearing, and a second node with the same helper name is what
+// found it.** The extractor reads the ESBUILD BUNDLE, not the source files, and esbuild renames
+// a module-level function whose name another module already used — `updatePorts` in a second
+// node became `updatePorts2`, which this pattern did not match. The consequence was silent and
+// remote: `Text Input`, untouched, lost its `runtime-discovered` mechanism because `Dropdown`
+// gained a helper with the same name. A detector that reads bundled text has to tolerate the
+// bundler's renaming.
+//
+// ⚠️ The `s` is optional for the same reason: a hook that republishes exactly one port names its
+// helper in the singular (`updateValuePort`), and a detector that only recognised the plural
+// would call that node static. Widening it was measured, not assumed — the regenerated catalog
+// moved no node other than the two this session touched.
+const SETUP_SOURCE_DYNAMISM = /sendDynamicPorts|[\w$]*[Pp]orts?\d*\s*\(/;
 
 /** Recursively collect (key, source) pairs of all functions reachable from a raw definition. */
 function collectFunctionSources(value, key, depth, out) {

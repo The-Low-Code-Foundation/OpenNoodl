@@ -1,0 +1,67 @@
+{
+  "name": "badge-card",
+  "components": [
+    {
+      "name": "/Badge Card",
+      "id": "bc-root-component",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "bc-group-1",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {},
+            "children": [
+              {
+                "id": "bc-text-1",
+                "type": "Text",
+                "x": 20,
+                "y": 40,
+                "parameters": { "text": "Badge" }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Badge Card/Chip",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "chip-text-1",
+            "type": "Text",
+            "x": 0,
+            "y": 0,
+            "parameters": { "text": "Chip" }
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "colors": {
+        "Badge Red": "#ff0000"
+      },
+      "text": {
+        "Badge Label": {
+          "fontSize": { "value": "12", "unit": "px" },
+          "letterSpacing": "Auto"
+        }
+      }
+    }
+  },
+  "variants": [
+    {
+      "name": "Pill",
+      "typename": "Group",
+      "parameters": { "sizeMode": "contentSize" }
+    }
+  ]
+}

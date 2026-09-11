@@ -30,6 +30,7 @@ import {
   PropertyPanelTextRadioInput,
   PropertyPanelTextRadioProperties
 } from '@noodl-core-ui/components/property-panel/PropertyPanelTextRadioInput';
+import { ScrubBinding } from '@noodl-core-ui/components/property-panel/scrub';
 import { Slot } from '@noodl-core-ui/types/global';
 
 import css from './PropertyPanelInput.module.scss';
@@ -99,6 +100,15 @@ export interface PropertyPanelInputProps extends Omit<PropertyPanelBaseInputProp
   connectionLabel?: string;
   /** Optional click-to-navigate handler on the binding chip. */
   onConnectionClick?: () => void;
+
+  /**
+   * FB-022 — drag-to-scrub for a `Number` row, built by the row from the port type.
+   *
+   * 🔴 Reaches the field only through the explicit hand-off in `renderInput` below, and only
+   * on the `Number` branch. It is deliberately not spread onto every input type: a `scrub`
+   * arriving on a select or a checkbox would be a prop nothing reads, which reads as coverage.
+   */
+  scrub?: ScrubBinding;
 }
 
 export function PropertyPanelInput({
@@ -120,7 +130,9 @@ export function PropertyPanelInput({
   onReset,
   connectionLabel,
   onConnectionClick,
-  dataIdentifier
+  dataIdentifier,
+  placeholder,
+  scrub
 }: PropertyPanelInputProps) {
   const Input = useMemo(() => {
     switch (inputType) {
@@ -160,12 +172,23 @@ export function PropertyPanelInput({
   };
 
   // A connection-driven property shows a binding chip naming the source instead
-  // of a dead disabled input (buttons/checkboxes keep their own affordance).
-  const showBindingChip =
-    isConnected &&
-    !isExpressionMode &&
-    inputType !== PropertyPanelInputType.Button &&
-    inputType !== PropertyPanelInputType.Checkbox;
+  // of a dead disabled input.
+  //
+  // ⚠️ FB-018 NARROWED THIS EXCLUSION FROM "buttons/checkboxes" TO BUTTONS. A
+  // connected checkbox was the same trap as the connected Width the task was filed
+  // about, and arguably a worse one: it stayed clickable, so the author could toggle
+  // it, watch it move, and have the connection put it back. `Button` stays excluded
+  // for a reason that is about the row rather than the styling — it fires a signal
+  // and stores no value, so there is no typed value for a connection to override and
+  // nothing for the chip's sentence to be true about.
+  const showBindingChip = isConnected && !isExpressionMode && inputType !== PropertyPanelInputType.Button;
+
+  // FB-018 AC3. `isChanged` means "differs from the port default", and the dot it
+  // draws offers to reset it — but on a connected row the stored parameter is the
+  // FALLBACK, not the value, so "changed" chrome advertises a difference the screen
+  // is not showing. The parameter itself is deliberately left alone: disconnecting
+  // must restore it, so this hides the dot rather than clearing the value.
+  const showsChanged = isChanged && !showBindingChip;
 
   // Render the appropriate input based on mode
   const renderInput = () => {
@@ -204,6 +227,18 @@ export function PropertyPanelInput({
         properties={properties}
         // @ts-expect-error
         dataIdentifier={dataIdentifier}
+        // FB-015 — the port's shape hint. 🔴 This hand-off is an explicit prop list, not a
+        // spread, so a prop that exists on `PropertyPanelInputProps` still arrives nowhere
+        // unless it is named here. It is the fourth such list on the path from a node
+        // definition to the field, and the third that silently dropped this one.
+        // @ts-expect-error
+        placeholder={placeholder}
+        // FB-022. Only the Number branch has a `scrub` prop to read; every other input type
+        // ignores it. 🔴 It is named here for the reason the note above records — this list
+        // is the fourth hand-off on the path from a node definition to the field, and a prop
+        // that is not named here arrives nowhere however correctly the row built it.
+        // @ts-expect-error
+        scrub={inputType === PropertyPanelInputType.Number ? scrub : undefined}
       />
     );
   };
@@ -222,9 +257,9 @@ export function PropertyPanelInput({
       className={classNames(css['Root'], isToggleRow && css['is-toggle-row'])}
       data-property={dataIdentifier}
     >
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
+      <div className={classNames(css['Label'], showsChanged && css['is-changed'])}>
         {label}
-        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
+        {showsChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
       </div>
       <div className={css['InputContainer']}>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center', minWidth: 0 }}>
@@ -238,22 +273,14 @@ export function PropertyPanelInput({
   );
 }
 
-export interface PropertyPanelRowProps {
-  isChanged?: boolean;
-  label: string;
-  children: Slot;
-  /** When set and the value is changed from its default, a dot is shown that resets the value on click */
-  onReset?: () => void;
-}
-
-export function PropertyPanelRow({ isChanged, label, children, onReset }: PropertyPanelRowProps) {
-  return (
-    <div className={css['Root']}>
-      <div className={classNames(css['Label'], isChanged && css['is-changed'])}>
-        {label}
-        {isChanged && onReset && <span className={css['ResetDot']} title="Reset to default" onClick={onReset} />}
-      </div>
-      <div className={css['InputContainer']}>{children}</div>
-    </div>
-  );
-}
+// FB-018. `PropertyPanelRow` moved to a module of its own and is re-exported here so that
+// the nine call sites that import it from this path keep working.
+//
+// 🔴 THE SPLIT IS NOT TIDINESS — IT IS WHAT MAKES THE ROW GRADEABLE. The row is where the
+// binding chip now arrives for every property row that is not built out of
+// `PropertyPanelInput`, but this file imports the whole input zoo, and one of those pulls
+// in `common/Icon`, whose `require.context` ts-jest rejects at type-check time. Importing
+// the row therefore failed the SUITE TO RUN — zero assertions, an error naming a file the
+// spec never mentioned. In its own module the row's imports are React, classnames, the
+// stylesheet and the chip, and `tests-unit/fb-018/bindingChipRows.test.tsx` can render it.
+export * from './PropertyPanelRow';

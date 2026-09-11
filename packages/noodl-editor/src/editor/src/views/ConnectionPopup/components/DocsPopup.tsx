@@ -5,6 +5,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary';
 
 import css from '../ConnectionPopup.module.scss';
 import { DOCS_POPUP_MARGIN, DocsPopupPlacement, placeDocsPopup } from '../docsPopupPlacement';
+import { type PortDirection, portTypeSentenceHtml, portWireShapeHtml } from '../portCopy';
 
 /**
  * SPR-003 §4 (F94) — the port explainer, placed next to the port it explains.
@@ -47,16 +48,82 @@ import { DOCS_POPUP_MARGIN, DocsPopupPlacement, placeDocsPopup } from '../docsPo
 export interface DocsPopupProps {
   name: string;
   type: TSFixme;
-  body: string;
+  /** `NodeLibrary.nameForPortType(type)`, resolved by the port list that owns it. */
+  typeName?: string;
+  /** Which end of the wire this port is, from the builder's point of view. */
+  direction?: PortDirection;
+  /** The catalog's prose for this port. Absent for the 35% of ports it has none for. */
+  body?: string;
+  /**
+   * FB-019 scope (3) — what shape a value fed to this port has to have. Only the
+   * structured types produce one; see `portWireShape.ts`, which the Ports tab
+   * shares so the two surfaces cannot say different things about one port.
+   */
+  wireShape?: { shape: string; body: string };
+  /**
+   * SIG-001 §4 — why this port refused, in the builder's terms, above the detail.
+   *
+   * Built by `ConnectionBar` from `refusalHeadline`, because the source type is a
+   * fact about the drag and nothing between here and there has any other reason
+   * to know it. Absent on a port that refused nothing — and absent on a refused
+   * port only if `reason` never reached it, which is the one case where saying
+   * nothing beats guessing a category.
+   */
+  refusalHeadline?: string;
+  /**
+   * `getConnectionStatus`'s own sentence, when this port refused the wire being
+   * dragged. Names both port types, which is what makes it useful to somebody
+   * debugging a custom module — and useless as the *only* thing a beginner is
+   * told, which is what it was until {@link DocsPopupProps.refusalHeadline}
+   * arrived above it.
+   */
+  refusal?: string;
   /** Bounding box of the port row being hovered. */
   anchor?: DOMRect;
 }
 
-export function DocsPopup({ name, type, body, anchor }: DocsPopupProps) {
+export function DocsPopup({
+  name,
+  type,
+  typeName,
+  direction,
+  body,
+  wireShape,
+  refusalHeadline,
+  refusal,
+  anchor
+}: DocsPopupProps) {
   const enums = typeof type === 'object' && type !== null && type.name === 'enum' ? type.enums : undefined;
 
+  const resolvedTypeName = typeName || NodeLibrary.nameForPortType(type);
+
   const typeDocs =
-    '(' + NodeLibrary.nameForPortType(type) + (enums !== undefined ? ':' + enums.map((e) => e.label).join(',') : '') + ')';
+    '(' + resolvedTypeName + (enums !== undefined ? ':' + enums.map((e) => e.label).join(',') : '') + ')';
+
+  /*
+   * SIG-004 — the sentence that is the same on every port of a type, said once,
+   * at the seam that already prints the type.
+   *
+   * Richard's ask was for this on "every signal port's description". That field
+   * is the wrong one: `PORT-DESCRIPTION-STYLE.md` makes `description` the channel
+   * read by the node catalog, the semantic validator and the AI authoring loop,
+   * so several hundred copies of one paragraph would ship into
+   * `node-catalog-enriched.json` and be re-billed on every `get_node_type` call
+   * — where `get_node_type` on `Group` already costs 11k tokens. It would also
+   * put a *type-level* fact in a *port-level* field, free to drift port by port.
+   *
+   * Here it is one line, for the whole library, with no per-node data behind it,
+   * and it cannot drift.
+   */
+  const typeSentence = portTypeSentenceHtml(resolvedTypeName, direction || 'input');
+
+  /*
+   * FB-019 scope (3). Below the type sentence and above the port's own prose:
+   * the type sentence says what a wire *is* (a moment, or a standing value), this
+   * says what shape the value has to have, and only then does the catalog say
+   * what the port means. Three answers to three different questions, narrowing.
+   */
+  const wireShapeSentence = portWireShapeHtml(wireShape);
 
   const ref = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<DocsPopupPlacement | undefined>(undefined);
@@ -90,7 +157,29 @@ export function DocsPopup({ name, type, body, anchor }: DocsPopupProps) {
         <span className={css.docsType}>{typeDocs}</span>
       </div>
 
-      <div className={css.docsBody} dangerouslySetInnerHTML={{ __html: body }} />
+      {/* Above the port's own words, and distinguished from them by a rule and a
+          surface — ⚠️ not by opacity. BLD-005 swept that on composited pixels and
+          found no value that both reads as secondary and clears AA in light
+          mode, which is the binding theme. */}
+      {typeSentence ? (
+        <div className={css.docsTypeSentence} dangerouslySetInnerHTML={{ __html: typeSentence }} />
+      ) : null}
+
+      {wireShapeSentence ? (
+        <div className={css.docsWireShape} dangerouslySetInnerHTML={{ __html: wireShapeSentence }} />
+      ) : null}
+
+      {body ? <div className={css.docsBody} dangerouslySetInnerHTML={{ __html: body }} /> : null}
+
+      {/* SIG-001 §4 — the headline, then the detail. ⚠️ One rule above the pair,
+          not one between them: they are two halves of a single answer, and a
+          second border would read as two unrelated notes. `.docsRefusal` drops
+          its own top border when it follows this. */}
+      {refusalHeadline ? (
+        <div className={css.docsRefusalHeadline} dangerouslySetInnerHTML={{ __html: refusalHeadline }} />
+      ) : null}
+
+      {refusal ? <div className={css.docsRefusal} dangerouslySetInnerHTML={{ __html: refusal }} /> : null}
     </div>,
     host
   );

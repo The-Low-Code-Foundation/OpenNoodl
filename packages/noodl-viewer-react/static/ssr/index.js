@@ -23,9 +23,16 @@ async function cacheFetch(args, callback) {
 // XMLHttpRequest, the Parse cloud data nodes use the latter — is pending, the
 // runtime is not idle and renderToString must wait). Shared with the SSG
 // template via runtime-globals.js; the per-path render itself lives in
-// server-core.js so server and SSG rendering cannot drift. All of static/ssr
-// is copied into the deploy runtime by webpack, so these travel together.
+// server-core.js so server and SSG rendering cannot drift.
+//
+// 🔴 These do NOT travel automatically, and the sentence that used to sit here
+// said they did. `deployToFolder` copies the explicit list in `index.json`; the
+// webpack `from: 'static/ssr'` rule only populates the BUILT runtime, one step
+// earlier. `kit-modules.js` was added without a manifest entry and every
+// deployed folder failed `npm run build` until s27 measured it. A new require
+// here needs an `index.json` entry — `tests/ssr-deploy-manifest.test.js` enforces it.
 const { installRuntimeGlobals } = require('./runtime-globals');
+const { loadKitModules } = require('./kit-modules');
 const { renderPage } = require('./server-core');
 
 const { trackersIdle } = installRuntimeGlobals({ React, ReactDOMServer, XMLHttpRequest, fetch });
@@ -56,6 +63,15 @@ const PAGE_READY_TIMEOUT = Number(process.env.NOODL_SSR_PAGE_READY_TIMEOUT || 10
 
 async function setup() {
   htmlData = await fs.promises.readFile(path.resolve('./public/index.html'), 'utf8');
+
+  // CN-013 — run the project's kits before the first render.
+  //
+  // 🔴 Without this the server renders every page with its kit nodes MISSING while the browser
+  // hydrates with them present: `runtime-globals.js` sets up `__noodl_modules` and nothing ever
+  // filled it. The list is read from `htmlData` — the injector's own tags — so the server and the
+  // browser cannot disagree about which kits load.
+  const kits = loadKitModules({ htmlData, log });
+  if (kits.loaded.length) console.log(`SSR: loaded ${kits.loaded.length} kit script(s) for the server render`);
 }
 
 async function buildPage(urlPath) {

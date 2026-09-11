@@ -2,8 +2,24 @@ import { Circle } from '../../components/visual/Circle';
 import NodeSharedPortDefinitions from '../../node-shared-port-definitions';
 import { createNodeFromReactComponent, type ReactNodeDefinition } from '../../react-component-node';
 
+/**
+ * §1 of `dev-docs/.../NOTES-UNOWNED-NODE-WORK.md` — Richard: *"if you turn the circle node into
+ * an SVG node, with some premade SVGs like circle, square etc… you'd be a hero."*
+ *
+ * 🔴 **EXTENDED IN PLACE. `name: 'Circle'` NEVER CHANGES.** Five artefacts key off the registered
+ * type string — a lesson's `hasType` check, two prefabs, three catalog examples, and the export
+ * path — so a renamed twin (the Button/Checkbox/Options pattern) would break all five. Every saved
+ * Circle has no `shape` parameter, and the port gate below reads `shape NOT SET` as `circle`, so
+ * nothing already on disk changes: there is no migration.
+ *
+ * Stage 1 (this commit): `shape` gets three values, and the two arc-only ports gate on it. Square
+ * and Triangle join the shape maths in `Circle.tsx`; the export path (`analyze/plan.ts`,
+ * `emit/component.ts`) defers a literal non-circle shape with a named marker rather than emitting
+ * an arc nobody asked for — see the note beside `visualDeferReason`'s circle branch.
+ */
 const CircleNode: ReactNodeDefinition = {
   name: 'Circle',
+  displayName: 'Shape',
   docs: 'https://docs.noodl.net/nodes/basic-elements/circle',
   connectionPanel: {
     groupPriority: [
@@ -31,6 +47,62 @@ const CircleNode: ReactNodeDefinition = {
     display: 'flex'
   },
   inputProps: {
+    shape: {
+      displayName: 'Shape',
+      description: 'Which outline this element draws inside its Size × Size box',
+      default: 'circle',
+      group: 'General',
+      type: {
+        name: 'enum',
+        enums: [
+          { label: 'Circle', value: 'circle' },
+          { label: 'Square', value: 'square' },
+          { label: 'Triangle', value: 'triangle' },
+          { label: 'Polygon', value: 'polygon' },
+          { label: 'Star', value: 'star' },
+          { label: 'Custom SVG', value: 'svg' }
+        ]
+      },
+      index: 5,
+      allowVisualStates: true
+    },
+    points: {
+      displayName: 'Points',
+      description: 'How many sides a Polygon has, or how many points a Star has; the minimum is 3',
+      default: 5,
+      group: 'General',
+      type: {
+        name: 'number'
+      },
+      index: 6,
+      allowVisualStates: true
+    },
+    svgSource: {
+      displayName: 'SVG Source',
+      description:
+        'Your own SVG markup, drawn inside the Size box. Script, event handlers, styles, animation and remote references are removed before it renders',
+      default: '',
+      group: 'General',
+      type: {
+        name: 'string',
+        allowEditOnly: true,
+        codelanguage: 'xml'
+      },
+      index: 8,
+      allowVisualStates: false
+    },
+    cornerRadius: {
+      displayName: 'Corner Radius',
+      description:
+        'Rounds the corners of the straight-edged shapes, in pixels; it stops at the roundest the shape can be',
+      default: 0,
+      group: 'General',
+      type: {
+        name: 'number'
+      },
+      index: 7,
+      allowVisualStates: true
+    },
     size: {
       displayName: 'Size',
       description: 'Diameter of the circle in pixels; it sets both width and height',
@@ -122,7 +194,52 @@ const CircleNode: ReactNodeDefinition = {
       index: 199,
       allowVisualStates: true
     }
-  }
+  },
+  /**
+   * 🔴 **`shape NOT SET` reads as `circle`, not as "hidden".** Every Circle saved before this
+   * change has no `shape` parameter, so without the `NOT SET` clause the two prefabs pinned to
+   * it (`progress-circle`, `states-kit`) would lose Start/End Angle from the panel the moment
+   * this ships — the exact trap `node-shared-port-definitions.ts`'s `sizeMode` gate already
+   * carries, one node over.
+   *
+   * ⚠️ **The clause form, not `#js`.** `portGateReason.ts` returns no *"why is this hidden"*
+   * sentence for a `#js` condition, and `validation/portConditions.ts` abstains from it — so an
+   * author who set `startAngle` on a Triangle would get no diagnostic at all.
+   */
+  dynamicports: [
+    {
+      condition: 'shape = circle OR shape NOT SET',
+      inputs: ['startAngle', 'endAngle', 'strokeLineCap']
+    },
+    {
+      condition: 'shape = polygon OR shape = star',
+      inputs: ['points']
+    },
+    /**
+     * 🔴 **Every straight-edged shape is NAMED, rather than `shape != circle`.** `!=` compares
+     * `'' + getParameter('shape')` against `'circle'`, and an unset parameter stringifies to
+     * `'undefined'` — so `shape != circle` is TRUE on every Circle saved before stage 1, and Corner
+     * Radius would appear on all of them offering to round a shape that has no corners. Naming the
+     * four shapes leaves an unset `shape` matching nothing, which is the same reading the group
+     * above gets from its explicit `NOT SET` clause.
+     */
+    {
+      condition: 'shape = square OR shape = triangle OR shape = polygon OR shape = star',
+      inputs: ['cornerRadius']
+    },
+    /**
+     * ⚠️ **Fill and Stroke are deliberately NOT gated off for a custom source**, even though they
+     * are inert for one — a custom SVG carries its own paint. Gating them would mean adding a
+     * group that covers every other shape including `shape NOT SET`, changing the property panel
+     * of every Circle ever saved in order to tidy one new case, and `nat-shape-002` asserts they
+     * are ungated on purpose. Registered as an observation in the §1 notes instead of decided
+     * here.
+     */
+    {
+      condition: 'shape = svg',
+      inputs: ['svgSource']
+    }
+  ]
 };
 
 NodeSharedPortDefinitions.addTransformInputs(CircleNode);
@@ -130,5 +247,7 @@ NodeSharedPortDefinitions.addMarginInputs(CircleNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(CircleNode);
 NodeSharedPortDefinitions.addAlignInputs(CircleNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(CircleNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(CircleNode);
 
 export default createNodeFromReactComponent(CircleNode);

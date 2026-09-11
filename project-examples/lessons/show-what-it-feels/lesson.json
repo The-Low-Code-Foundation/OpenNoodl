@@ -1,0 +1,110 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "Show what it feels",
+  "description": "The number is stored and the screen says nothing useful. Values travel from state through transforms to what you see, and update themselves.",
+  "authoredBy": "ai",
+  "completionBadge": "Makes Sense Now",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "A number is not a feeling",
+      "body": "## Show what it feels\n\nLook at the card you built last lesson. It says `0`.\n\nThat number is correct, and it is doing nothing for the person using your app. It does not say what it counts, it does not say whose it is, and it does not change the creature in any way — Nibbles looks exactly the same after fifty pokes as before the first one. The state is right and the screen is saying almost none of it.\n\nThe gap between those two things is what this lesson closes, and the idea that closes it is one move:\n\n> **A value can be transformed on its way to the screen, and the transformation re-runs by itself whenever the value moves.**\n\nYou will build two of those transformations from the same number. One turns the count into a sentence a person can read. The other turns it into a size, so the creature visibly swells as you poke it. Neither stores anything — the Counter is still the only thing in your app that remembers — and neither needs a single line of code to keep itself up to date."
+    },
+    {
+      "title": "Give it a sentence with a hole in it",
+      "body": "Add a **String Format** node on the empty canvas beside your other logic nodes, rename it `Caption`, and set its **Format** to `Nibbles has been poked {count} times`.\n\nThe curly braces are the whole trick. A **String Format** reads its own **Format** text and mints one input port for every `{tag}` it finds — so the moment you type `{count}`, a port called **count** appears on the node that was not there a second ago. You have not wired anything to it yet, and an empty tag is simply replaced by nothing, so the sentence currently has a hole where the number goes.",
+      "detail": "The node picker is the **+** in the top left, and **String Format** is under **String Manipulation**.\n\n**Format** is a multi-line text box in the properties panel on the right — type the sentence in exactly, braces included. If no **count** port appears on the node afterwards, the braces did not survive: it has to be `{count}` with no spaces inside them.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Caption",
+          "hasType": "String Format"
+        },
+        {
+          "node": "/Pages/Home:#Caption",
+          "paramsEqual": {
+            "format": "Nibbles has been poked {count} times"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Put the sentence on the card",
+      "body": "Add a **Text** node inside `Card`, underneath `Score`, and rename it `Story`. Then wire `Caption`'s **Formatted** output into that Text's **Text** input.\n\nLeave its **Text** property empty, exactly as you did with `Score` last lesson — the words are not written on this node, they arrive down the wire. Run the preview and you will see the hole you made: *Nibbles has been poked  times*, with a gap where the number belongs. That gap is the next step, and it is worth looking at before you close it, because it is the clearest picture you will get of a template waiting for a value.",
+      "detail": "To put a node inside `Card`, drop it onto `Card` in the node tree on the left rather than onto empty canvas. If it lands in the wrong place you can drag it onto `Card` in that tree.\n\n**Formatted** is the only output a **String Format** has.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Story",
+          "hasType": "Text"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Caption",
+            "fromPort": "formatted",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Story",
+            "toPort": "text"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Fill in the blank",
+      "body": "Wire `Pokes`' **Current Count** output into `Caption`'s **count** input.\n\nThe sentence completes itself immediately, and it keeps completing itself — poke the creature and the number in the middle of the words goes up with it. Nothing recalculated that sentence on purpose. `Caption` is subscribed to the value, so a new count is a new sentence, and the **Text** showing it redraws because its own input changed.\n\nThat is reactive data flow, and it is the reason you will almost never write code in this editor to keep a screen in step with a number.",
+      "detail": "**Current Count** is the same output you wired into `Score` last lesson. One output can feed as many inputs as you like, so you are drawing a second wire from it rather than moving the first.\n\nThe **count** port on `Caption` only exists because of the `{count}` you typed into **Format**. If it is not on the node, go back and check the braces.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Pokes",
+            "fromPort": "currentCount",
+            "to": "/Pages/Home:#Caption",
+            "toPort": "count"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Work out a size from the count",
+      "body": "Add an **Expression** node beside `Caption`, rename it `Excitement`, set its **Expression** to `min(96 + pokes * 8, 200)`, and wire `Pokes`' **Current Count** into the **pokes** input that appears on it.\n\nAn **Expression** mints its ports the same way **String Format** does, but from the names in the sum rather than from braces: `pokes` is a name it does not recognise, so it becomes an input port, while `min` is a function it already knows and does not. The line reads *start at 96, add 8 for every poke, and never go past 200* — the cap is what stops a well-poked creature from growing off the screen.\n\nNothing on the card has changed. The node is working out a number that goes nowhere.",
+      "detail": "**Expression** is under **CustomCode** in the picker.\n\nType the expression into the **Expression** box in the properties panel, and the **pokes** port appears on the node as soon as you finish typing. `min` is available without importing anything, along with `max`, `round`, `floor`, `abs` and a handful of others.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Excitement",
+          "hasType": "Expression"
+        },
+        {
+          "node": "/Pages/Home:#Excitement",
+          "paramsEqual": {
+            "expression": "min(96 + pokes * 8, 200)"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Pokes",
+            "fromPort": "currentCount",
+            "to": "/Pages/Home:#Excitement",
+            "toPort": "pokes"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Let the creature grow",
+      "body": "Wire `Excitement`'s **Result** output into `Creature`'s **Size** input.\n\nRun the preview and poke. The circle swells — 96 pixels across at rest, eight more with every poke, and it stops at 200 however hard you keep going. Press **Rest** and it snaps back, because `Rest` puts the count to zero and everything downstream of that count recalculates from the new number.\n\nNotice what you did not do. You never told the circle to grow, and you never wrote down its size anywhere. **Size** used to be a number you typed into a box; it is now the far end of a chain that starts at a button.",
+      "detail": "Use the **Result** output specifically. An **Expression** has several outputs and **Result** is the one that carries the value it worked out.\n\n`Creature` is the **Circle** you drew in lesson 1, and **Size** is in its **Dimension** group. The number you originally typed there is still in the box — a value arriving on a wire simply takes precedence over it.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Excitement",
+            "fromPort": "result",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Creature",
+            "toPort": "size"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "One number now drives three different things on screen, and you did not write a line of code to keep any of them in step.\n\n- **A transformation is a node, not a moment.** `Caption` and `Excitement` are not steps that ran once. They sit permanently between the count and the screen, and every time the count moves they run again on their own. This is what people mean by *reactive*.\n- **The same value can feed as many transformations as you like.** **Current Count** goes to `Score` raw, to `Caption` to become a sentence, and to `Excitement` to become a size. None of them knows the others exist, and adding a fourth would not disturb the three.\n- **Ports can be made by what you type.** `{count}` in a format string and `pokes` in an expression both created an input that was not on the node before. That is worth remembering the first time you go looking for a port that ought to be there and is not — check what you typed, because the text is the interface.\n\nNow poke Nibbles once and read the card.\n\nIt says *\"Nibbles has been poked 1 times\"*.\n\nYour app is telling the truth in bad English, and no amount of rewording that sentence will fix it, because the right words depend on the number — one thing for `1`, another for everything else. Choosing between two answers based on a value is the one move your app cannot yet make. That is the next lesson."
+    }
+  ]
+}

@@ -42,10 +42,16 @@ import { ConnectionPopups } from './nodegrapheditor/ConnectionPopups';
 import { EditorClipboard } from './nodegrapheditor/EditorClipboard';
 import { registerEditorEventBindings, registerRenderEventBindings } from './nodegrapheditor/EditorEventBindings';
 import { InspectorActions } from './nodegrapheditor/InspectorActions';
+import { reflowLogicOverlay } from './nodegrapheditor/LogicOverlay';
 import { ModelBindings } from './nodegrapheditor/ModelBindings';
 import { NavigationHistory } from './nodegrapheditor/NavigationHistory';
 import { NodeContextMenu } from './nodegrapheditor/NodeContextMenu';
-import { ALWAYS_SHOW_WIRE_LABELS, NodeGraphEditorConnection } from './nodegrapheditor/NodeGraphEditorConnection';
+import {
+  ALWAYS_SHOW_WIRE_DIRECTION,
+  SQUARE_WIRE_ROUTING,
+  ALWAYS_SHOW_WIRE_LABELS,
+  NodeGraphEditorConnection
+} from './nodegrapheditor/NodeGraphEditorConnection';
 import { NodeGraphEditorNode } from './nodegrapheditor/NodeGraphEditorNode';
 import { NodeOperations } from './nodegrapheditor/NodeOperations';
 import { OverlayViews } from './nodegrapheditor/OverlayViews';
@@ -222,7 +228,12 @@ export class NodeGraphEditor extends View {
     EditorSettings.instance.on(
       'updated',
       (args) => {
-        if (args?.key === ALWAYS_SHOW_WIRE_LABELS) this.repaint();
+        if (
+          args?.key === ALWAYS_SHOW_WIRE_LABELS ||
+          args?.key === ALWAYS_SHOW_WIRE_DIRECTION ||
+          args?.key === SQUARE_WIRE_ROUTING
+        )
+          this.repaint();
       },
       this
     );
@@ -285,13 +296,23 @@ export class NodeGraphEditor extends View {
     this.modelBindings.bindProjectModel();
   }
 
-  startNodeAnimations() {
-    this.painter.startNodeAnimations();
+  startNodeAnimations(reason?: string) {
+    this.painter.startNodeAnimations(reason);
   }
 
-  stopNodeAnimations() {
-    this.painter.stopNodeAnimations();
+  stopNodeAnimations(reason?: string) {
+    this.painter.stopNodeAnimations(reason);
   }
+
+  /**
+   * When the pointer entered the wire it is currently on (SIG-006 item 4).
+   *
+   * The hover direction mark is driven off this rather than off wall-clock time,
+   * so every hover starts the mark at the source instead of catching it
+   * mid-flight. Written by `InspectorActions.setHighlightedConnection`, which is
+   * the one place `highlightedConnection` changes.
+   */
+  hoverMarkStartedAt: number | undefined;
 
   render() {
     // Expose editor instance to window for console debugging (dev only)
@@ -366,16 +387,26 @@ export class NodeGraphEditor extends View {
   getNodeBounds = (nodeId: string) => this.overlayViews.getNodeBounds(nodeId);
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   * Open or close the Logic Builder's floating window (LGC-010).
+   *
+   * Was `setCanvasVisibility` (a takeover), then `setLogicPaneOpen` (a splitter). Opening a
+   * Visual Function now hides nothing and narrows nothing — the blocks float over the document
+   * and the canvas underneath is untouched.
    */
-  setCanvasVisibility(visible: boolean) {
-    this.overlayViews.setCanvasVisibility(visible);
+  setLogicOverlayOpen(open: boolean) {
+    this.overlayViews.setLogicOverlayOpen(open);
   }
 
   // This is called by the parent view (frames view) when the size and position
   // changes
   resize(layout) {
     this.viewportActions.resize(layout);
+
+    // LGC-010: the block editor window is placed in viewport coordinates, so a smaller editor
+    // window — or opening the laptop after a session on an external display — can leave it
+    // partly or wholly off screen with its title bar out of reach. A no-op when it is closed
+    // and when the clamp does not move it.
+    reflowLogicOverlay(this);
   }
 
   // ------------------------- Cut n paste (EditorClipboard) --------------------------------
@@ -661,8 +692,8 @@ export class NodeGraphEditor extends View {
     }
   }
 
-  openConnectionRightClickMenu(c: NodeGraphEditorConnection) {
-    this.contextMenu.openConnectionRightClickMenu(c);
+  openConnectionRightClickMenu(c: NodeGraphEditorConnection, pos?: { x: number; y: number }) {
+    this.contextMenu.openConnectionRightClickMenu(c, pos);
   }
 
   /** Port picker for a reroute drop, with the wire's other end pinned (CAN-003). */

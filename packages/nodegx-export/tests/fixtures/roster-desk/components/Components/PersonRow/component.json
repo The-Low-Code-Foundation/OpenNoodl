@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "9e3b7c15-4a62-4f8d-a1c9-5d2f8e7b6a43",
+  "name": "PersonRow",
+  "path": "/Components/PersonRow",
+  "type": "visual",
+  "created": "2026-09-05T09:00:00.000Z",
+  "modified": "2026-09-05T09:00:00.000Z"
+}

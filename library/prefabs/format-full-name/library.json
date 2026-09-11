@@ -1,0 +1,10 @@
+{
+  "label": "Format Full Name",
+  "description": "First name and last name into one display string, plus the initials an avatar needs. Handles the three cases a String Format node gets wrong: a missing surname leaves no trailing space, a single field holding \"Ada Lovelace\" still initials as AL, and an empty name falls back to whatever you pass. Logic only, no UI — wire Full Name into a Text node and Initials into an avatar.",
+  "type": "prefab",
+  "tags": [
+    "Utility"
+  ],
+  "version": "1.0.0",
+  "icon": "icon.png"
+}

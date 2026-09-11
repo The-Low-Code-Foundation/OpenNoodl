@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "4868de1b-9633-5cf0-80d8-bd8cc2fb96da",
+  "name": "Join",
+  "path": "/Pages/Join",
+  "type": "page",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

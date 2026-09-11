@@ -57,6 +57,9 @@
 
 import { CatalogIndex, nearest, type CatalogPort } from './CatalogIndex';
 import { DiagnosticCode, type Diagnostic, type Severity } from './diagnostics';
+import { conditionForInput, conditionIsUnsatisfied, resolveAgainstDefaults } from './portConditions';
+import { SkippedCheck, unknownTypeSkip } from './unknownTypeSkip';
+import { isExpressionParameter } from '../models/ExpressionParameter';
 
 /** The catalog's `type` field, normalised to its object form. */
 export interface PortTypeShape {
@@ -85,7 +88,9 @@ export interface CheckParameterValuesOptions {
   component: string;
   /**
    * Report a parameter naming no declared port. Default `true`. Always a
-   * warning, and never emitted for a node with dynamic ports.
+   * warning, and never emitted for a node whose ports are *runtime-determined* —
+   * a node that merely declares conditional port groups is checked, because the
+   * catalog enumerates those ports in full.
    */
   reportUnknownParameters?: boolean;
 }
@@ -346,14 +351,55 @@ const FORMATS: Record<string, (type: PortTypeShape) => WireFormat> = {
     }
   }),
 
+  /**
+   * VIB-003 (phase 81) — **this rule used to teach the two values that do not draw.**
+   *
+   * It accepted a bare string and its hint offered `{"class":"material-icons","code":"search"}`.
+   * Both are wrong for what ships, and the gate on one side of the product was recommending what
+   * the runtime on the other side had already been fixed to refuse:
+   *
+   * - **A bare string draws nothing.** FB-019 (P75) measured it — an empty, styled span that still
+   *   takes its `iconSize` in layout — and settled deliberately against coercing, because two of an
+   *   icon value's three fields come from the *installed set's manifest* and guessing them
+   *   *"renders a blank glyph again, having reported success"*. `defineRegularInputProp`'s icon
+   *   branch now reports and drops it. Accepting it here left the authoring loop free to write the
+   *   one value the renderer is on record as unable to use. ⚠️ Promoted to an error rather than a
+   *   warning because there is no reading on which it works, and it is **provably inert for what
+   *   ships**: of 102 `iconIconSource` parameters across every JSON artefact in this repository,
+   *   100 are `{class, code}` and 2 are `{class, code, codeAsClass}`. Not one is a string.
+   * - 🔴 **`{class, code}` is two thirds of a value and the missing third is visible.**
+   *   `IconGlyph.tsx` branches on `codeAsClass === true`: true puts the code among the element's
+   *   classes, anything else puts it in the element's **text**. The set every new project gets is
+   *   Lucide, whose manifest is `codeAsClass: true` — so the hint's own shape, applied to it,
+   *   renders the string `icon-check` set in the icon font. `material-icons` is the opposite
+   *   convention *and is not installed anywhere by default*; it is a library module a person adds.
+   *
+   * The check cannot verify the third field, and should not pretend to: whether `codeAsClass`
+   * belongs on a value depends on a manifest under `noodl_modules/`, which a pure value rule has no
+   * access to. So it enforces what is knowable here and the hint stops guessing — it names the
+   * field and sends the author to the surface that reads the project and answers exactly.
+   */
   icon: () => ({
-    hint: '{class, code}, e.g. {"class":"material-icons","code":"search"}',
+    hint:
+      '{class, code, codeAsClass} — copy the complete value from get_style_vocabulary\'s icons block ' +
+      'for a set this project actually has. The shape depends on the installed set: omitting ' +
+      'codeAsClass where the set needs it renders the glyph NAME as visible text.',
     check(value) {
-      if (typeof value === 'string') return null;
       if (isPlainObject(value) && typeof value.code === 'string') return null;
+      // A sprite set's value carries no `code` at all — see `Noodl.Icon`'s third arm.
+      if (isPlainObject(value) && value.kind === 'sprite' && typeof value.symbolId === 'string') return null;
+      if (typeof value === 'string') {
+        return {
+          severity: 'error',
+          message:
+            `an icon is an object, not the glyph's name. Got ${describeValue(value)}, which draws nothing — ` +
+            'the class and codeAsClass come from the installed set, not from the name. ' +
+            "Copy a complete value from get_style_vocabulary's icons block."
+        };
+      }
       return {
         severity: 'error',
-        message: `an icon is { "class", "code" } or an icon name. Got ${describeValue(value)}.`
+        message: `an icon is { "class", "code", "codeAsClass" }. Got ${describeValue(value)}.`
       };
     }
   }),
@@ -408,7 +454,12 @@ export const WIRE_FORMAT_LEGEND = [
   '  "%" and NOT px. Write {"value":260,"unit":"px"} for 260 pixels; a bare 260 renders at 260% wide.',
   '  There is no "widthUnit"/"heightUnit" parameter — the unit goes inside the object.',
   '- An enum takes one of its listed options, spelled exactly — not the label, not a synonym.',
-  '- color/font/textStyle/image/component take a NAME (a token, a project style, or a component path).'
+  '- color/font/textStyle/image/component take a NAME (a token, a project style, or a component path).',
+  '- Function node (JavaScriptFunction) ports are PREFIXED and its script names are not. `Inputs.x` is the',
+  '  port "in-x", `Outputs.y` (and `Outputs.y()`) is the port "out-y"; the panel shows the bare name as a',
+  '  display label only. Wire toProperty:"in-x" / fromProperty:"out-y". Its declared ports — run, done,',
+  '  success, failure, completed, unchanged, error — stay unprefixed, and the Script node (Javascript2)',
+  '  does not prefix at all.'
 ].join('\n');
 
 /**
@@ -420,6 +471,73 @@ export function wireFormatHint(port: CatalogPort | undefined): string {
   const format = wireFormatFor(port);
   if (!format?.hint) return '';
   return format.example ? `${format.hint}, e.g. ${format.example}` : format.hint;
+}
+
+// ─── Conditional ports ───────────────────────────────────────────────────────
+
+/**
+ * A port condition as a sentence.
+ *
+ * The stored form (`sizeMode = explicit OR sizeMode = contentHeight`) is already
+ * close to readable, so this only unpicks the two bits of punctuation a reader
+ * would stumble on: `NOT SET` reads as a phrase, and `=` reads as "is".
+ */
+function describeCondition(condition: string): string {
+  return condition
+    .replace(/\s+NOT SET/g, ' is not set')
+    .replace(/\s*!=\s*/g, ' is not ')
+    .replace(/\s*=\s*/g, ' is ')
+    .replace(/\bOR\b/g, 'or')
+    .replace(/\bAND\b/g, 'and');
+}
+
+/**
+ * The sibling edit that switches the port on, when the condition names exactly
+ * one — which covers the cases that actually bite (`sizeMode = explicit`,
+ * `boxShadowEnabled = true`). A multi-clause `OR` offers a choice this is not
+ * entitled to make for the author, so it stays silent and the message alone
+ * carries the repair.
+ */
+function repairForCondition(condition: string): string | undefined {
+  const single = /^\s*(\w+)\s*=\s*'?([\w-]+)'?\s*$/.exec(condition);
+  return single ? `${single[1]}: ${JSON.stringify(single[2])}` : undefined;
+}
+
+/**
+ * DSG-004 §2.2 — the three ports `sizeMode` switches off, and the reason they
+ * get a code of their own.
+ *
+ * `InactiveConditionalParameter` is one code over a wide population: 366 corpus
+ * hits, most of them a `borderWidth` with no `borderStyle` or a `showScrollbar`
+ * with scrolling off. Severity policy in `AUTHORED_BLOCKING_WARNINGS` is per
+ * *code*, so a promotion decision about the 58 hits doctrine `§8` names —
+ * *"`width`/`height`/`objectFit` are INERT unless `sizeMode: "explicit"`. A
+ * `width: 100%` input that renders 170px wide is this, every time."* — cannot be
+ * made without separating them.
+ *
+ * Keyed on the condition rather than on the node type, because the trap is
+ * declared by `addDimensions` in `node-shared-port-definitions.ts` and inherited
+ * by every visual type that calls it — including whichever type is added next.
+ */
+const SIZE_GATED_PORTS: ReadonlySet<string> = new Set(['width', 'height', 'objectFit']);
+
+function isSizeModeGated(portName: string, condition: string): boolean {
+  return SIZE_GATED_PORTS.has(portName) && /\bsizeMode\b/.test(condition);
+}
+
+/**
+ * The mode that makes the port live, phrased as the edit that gets it: the
+ * repair for `width` is `contentHeight` as much as `explicit`, and saying
+ * "explicit" when the author wanted the height from the content is advice that
+ * costs a second round.
+ */
+function sizeModeExit(portName: string): string {
+  if (portName === 'objectFit') return 'Set sizeMode: "explicit" on this node — objectFit is read in no other mode.';
+  const keeping = portName === 'width' ? 'contentHeight' : 'contentWidth';
+  return (
+    `Set sizeMode: "explicit" on this node to use both dimensions as given, or ${JSON.stringify(keeping)} to ` +
+    `keep sizing the other axis to the content while this ${portName} applies.`
+  );
 }
 
 // ─── The rule ────────────────────────────────────────────────────────────────
@@ -483,6 +601,264 @@ function unitSuffixTrap(
   };
 }
 
+// ─── The Columns layout string ───────────────────────────────────────────────
+
+/** The three ports that take a layout string. All on the one node that reflows. */
+const COLUMNS_TYPE = 'net.noodl.visual.columns';
+const LAYOUT_STRING_PORTS = new Set(['layoutString', 'mediumLayout', 'smallLayout']);
+
+/** A trailing CSS unit on an otherwise-numeric track: `1fr`, `260px`, `50%`. */
+const UNIT_SUFFIXED_TRACK = /^(\d+(?:\.\d+)?)(fr|px|%|em|rem|vw|vh)$/;
+
+/**
+ * A colour written as a literal rather than as a token. Anchored, so a
+ * `var(--primary)` string — which is what the system wants — never matches, and
+ * neither does a named colour like `transparent` (legitimate, and no token
+ * replaces it).
+ */
+const RAW_COLOR = /^\s*(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\()/;
+
+// ─── VIB-007 / register V28: the raw spacing literal ─────────────────────────
+
+/**
+ * The ports on which a `--space` token is the system's answer, and the row's own claim narrowed
+ * by two measurements rather than by taste.
+ *
+ * 🔴 **`marginX`/`marginY` on a `Columns` are deliberately NOT here, and tokenising them is a
+ * defect rather than a repair.** `Columns.tsx`'s own docblock: *"autofold genuinely needs a number,
+ * and a `var()` cannot be resolved without computed styles. A tokenised `marginX` still folds as
+ * though the gutter were 0, and a tokenised `minWidth` disables `autoFit` entirely."* The 15
+ * `marginX` values in the corpus are the largest group that *looks* like this family and every one
+ * of them is correct. A rule written to V28's sentence would have told an author to break the fold.
+ *
+ * ⚠️ `borderRadius`, `fontSize`, `iconSize`, `zIndex` and the `boxShadow*` offsets are excluded for
+ * the plainer reason: a radius is not a gap, and `--space-2` meaning 8px is a coincidence of the
+ * scale rather than a statement that 8px of corner is on-system.
+ */
+const SPACING_PORTS = new Set([
+  'paddingTop',
+  'paddingBottom',
+  'paddingLeft',
+  'paddingRight',
+  'marginTop',
+  'marginBottom',
+  'marginLeft',
+  'marginRight',
+  'rowGap',
+  'columnGap',
+  'gap'
+]);
+
+/**
+ * `--space` tokens by their pixel value, so the message can name the exact token to write.
+ *
+ * 🔴 **The rule fires only when a token matches EXACTLY**, which is the second narrowing and the
+ * one that keeps its advice actionable. `raw-color-literal` can warn on any hex because
+ * `get_style_vocabulary` will always have *a* colour to offer; a `paddingTop: 13` has no token that
+ * means 13px, and telling an author to tokenise it would be telling them to invent one. A value off
+ * the scale is a different finding — *"this spacing is off the scale"* — and this is not it.
+ *
+ * ⚠️ Kept in step with `DefaultTokens.ts` by `tests-unit/vib-007/spacingLiteral.test.ts`, which
+ * derives the table from the token file and reddens if the scale moves. A second copy of a palette
+ * drifts silently, so it is graded rather than trusted.
+ */
+const SPACE_TOKEN_BY_PX: Record<number, string> = {
+  0: '--space-0',
+  1: '--space-px',
+  2: '--space-0-5',
+  4: '--space-1',
+  6: '--space-1-5',
+  8: '--space-2',
+  10: '--space-2-5',
+  12: '--space-3',
+  14: '--space-3-5',
+  16: '--space-4',
+  20: '--space-5',
+  24: '--space-6',
+  28: '--space-7',
+  32: '--space-8',
+  36: '--space-9',
+  40: '--space-10',
+  44: '--space-11',
+  48: '--space-12',
+  56: '--space-14',
+  64: '--space-16',
+  80: '--space-20',
+  96: '--space-24',
+  112: '--space-28',
+  128: '--space-32'
+};
+
+/**
+ * The pixel value a spacing parameter carries, or `undefined` if it is not a plain pixel length.
+ *
+ * Two shapes only: a bare number (the legacy and `initialize()` form, read as px on these ports)
+ * and the `{ value, unit }` object the property panel writes. A `var()`, a `clamp()` or a `%`
+ * returns `undefined` — those are on-system or intentional, and neither is this rule's business.
+ *
+ * 🔴 **A `"16px"` STRING is deliberately not one of them, and leaving it in was a real regression
+ * caught by a neighbour's spec.** On a units-typed port that string is not merely untokenised, it is
+ * *dropped* — `setInputValue` finds no `unit` and deletes the property — and
+ * `InvalidParameterValue` already reports it as an **error** whose message is *"dropped silently"*.
+ * Reading it here made this rule fire first and `continue`, replacing that error with a warning
+ * about tokens: an author would have been told their spacing was off-system when in fact it was
+ * about to vanish. A new check that quietly downgrades an existing one is worse than no check.
+ */
+export function spacingPixels(value: unknown): number | undefined {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined;
+  if (isPlainObject(value)) {
+    const { value: v, unit } = value as { value?: unknown; unit?: unknown };
+    if (unit === 'px' && typeof v === 'number' && Number.isFinite(v)) return v;
+  }
+  return undefined;
+}
+
+/**
+ * Mirrors `readLayoutToken` in the runtime
+ * (`noodl-viewer-react/src/components/visual/Columns/Columns.tsx`), which is the
+ * authority on this grammar. Deliberately `Number`, not `parseInt` — the
+ * runtime's own docblock records that `parseInt` truncated `'1 2.5 1'` to
+ * `1 2 1`, and nothing downstream assumes integers because `_calcAutofold` only
+ * sums and divides. **Fractional proportions are legal**, whatever the recipes
+ * say. And `Number` rather than `parseFloat`, because `parseFloat` reads a
+ * *prefix* and would turn `'1abc'` into `1`.
+ */
+function usableTrack(token: string): boolean {
+  const fraction = Number(token);
+  return Number.isFinite(fraction) && fraction > 0;
+}
+
+/**
+ * The `"1fr 1fr 1fr 1fr"` trap (audit F3).
+ *
+ * CSS Grid's dialect is what a model has seen a million times and what nothing
+ * in this runtime speaks. `parseLayout` drops every token that is not a
+ * positive finite number and falls back to `[1]` when nothing survives — so the
+ * grid renders as ONE COLUMN at every width, on the one node in the runtime
+ * that exists to reflow, and the graph looks perfect. That is the whole failure
+ * mode: not a crash, not a warning, a silently correct-looking single column.
+ *
+ * An error rather than a warning, from day one: no legitimate population can
+ * exist for a string the thing that reads it cannot parse.
+ */
+function layoutStringProblem(value: unknown): { message: string; suggestion?: string } | undefined {
+  if (typeof value !== 'string') return undefined;
+
+  // An empty layout string is how a breakpoint is deliberately made inert —
+  // the port's own description says so — and a double space is dropped by the
+  // runtime on purpose. Neither is a mistake, and a gate that disagrees with
+  // `describeLayoutString` about the same string is the drift, not the fix.
+  const tokens = value.split(' ').filter((token) => token !== '');
+  if (tokens.length === 0) return undefined;
+
+  const unusable = tokens.filter((token) => !usableTrack(token));
+  if (unusable.length === 0) return undefined;
+
+  // Only offer a repair when EVERY token can be recovered — stripping a unit is
+  // the one transformation that provably preserves the author's ratios. A
+  // partial guess would be auto-applied by an agent told never to argue with a
+  // diagnostic, and would be wrong.
+  const repaired = tokens.map((token) => UNIT_SUFFIXED_TRACK.exec(token)?.[1]);
+  const suggestion = repaired.every((n) => n !== undefined && usableTrack(n)) ? repaired.join(' ') : undefined;
+
+  const listed = unusable.map((token) => JSON.stringify(token)).join(', ');
+  const survivors = tokens.length - unusable.length;
+  const rendered = survivors === 0 ? 1 : survivors;
+
+  return {
+    message:
+      `a layout string is space-separated proportions ("1 1", "2 1", "1 2.5 1"), so ${listed} ` +
+      `${unusable.length === 1 ? 'is not a positive number and is' : 'are not positive numbers and are'} ` +
+      `dropped — ${tokens.length} column(s) authored, ${rendered} rendered. Columns is the only node in the ` +
+      'runtime that reflows, and a layout string it cannot parse silently voids that.',
+    ...(suggestion ? { suggestion } : {})
+  };
+}
+
+// ─── The unsized absolute box ────────────────────────────────────────────────
+
+/**
+ * Parameters that mean "this box is drawn", not merely "this box positions
+ * something". An absolute Group with no paint is a layout device; one with a
+ * background or a border is a *thing on the page*, and a thing on the page that
+ * silently becomes parent-sized is the defect.
+ */
+const DECORATION = ['backgroundColor', 'borderColor', 'borderRadius', 'boxShadowColor', 'borderStyle'];
+
+/** Set to anything at all — a `var()` string, a `{value,unit}`, a number. */
+function parameterIsSet(parameters: Record<string, unknown>, name: string): boolean {
+  const value = parameters[name];
+  return value !== undefined && value !== null && value !== '';
+}
+
+/**
+ * The badge-pill trap (audit F7).
+ *
+ * `width` and `height` are `dimension` ports declaring `default: 100` with
+ * `defaultUnit: '%'`. A box taken out of flow with `position: absolute` and
+ * given no dimensions is therefore **100% × 100% of its parent**. In flow that
+ * is invisible, because the parent's layout sizes it; out of flow nothing does,
+ * and the box quietly becomes its parent. Sonnet's cold replay authored a badge
+ * this way: a `--primary` ellipse over four of six product photos, and a basket
+ * count stretched across the whole navbar, under a clean report.
+ *
+ * ⚠️ **The decoration half of the predicate is the whole calibration**, measured
+ * across the corpus before the severity was chosen:
+ *
+ * | Predicate | Hits |
+ * |---|---|
+ * | `absolute` + no `width` + no `height` | **151** |
+ * | …carrying no decoration | 122 |
+ * | …carrying decoration | **29** (21 of them editor test fixtures) |
+ *
+ * The 122 are not defects — a full-bleed absolute box IS the overlay/scrim
+ * pattern, authored on purpose — and reporting them would cost a repair round
+ * each time, the expensive failure here because diagnostics feed an automated
+ * repair and the agent is told never to argue with one.
+ *
+ * A **warning**, not authored-blocking: `popup-modal` in the shipped prefab
+ * library is a decorated full-bleed scrim, this exact shape on purpose.
+ * Promotion is the kind of decision LAS-004 exists to make, with its own
+ * evidence.
+ *
+ * A node-level check rather than a per-parameter one — the defect is the
+ * *combination*, and no single parameter is wrong on its own. It lives here
+ * rather than in `rules/` because values are this module's business.
+ *
+ * ⚠️ The reason recorded here used to be stronger — *"for a reason the type
+ * system enforces: `NormNode` carries no `parameters` at all, because the
+ * normalized model is structural"* — and **D13 ended that on 2026-08-18**: the
+ * normalized model carries parameters and `rules/parameterValue` runs this whole
+ * module from the CLI gate, this check included. The placement is now a
+ * preference, not a constraint.
+ */
+function unsizedAbsoluteBox(
+  component: string,
+  node: ParameterizedNode,
+  parameters: Record<string, unknown>
+): Diagnostic | undefined {
+  if (parameters.position !== 'absolute') return undefined;
+  if (parameterIsSet(parameters, 'width') || parameterIsSet(parameters, 'height')) return undefined;
+
+  const decoration = DECORATION.filter((name) => parameterIsSet(parameters, name));
+  if (decoration.length === 0) return undefined;
+
+  return {
+    code: DiagnosticCode.UnsizedAbsoluteBox,
+    severity: 'warning',
+    message:
+      `this ${node.type} is "position": "absolute" with no width or height, and both default to 100% — so it ` +
+      `fills its parent instead of sizing to itself, and its ${decoration.join('/')} is painted across the ` +
+      'whole of it. Give it a width and a height, or put it back in flow.',
+    location: {
+      component,
+      nodeId: node.id,
+      nodeType: node.type,
+      ...(node.label ? { nodeLabel: node.label } : {})
+    }
+  };
+}
+
 /**
  * Check every node's parameter values against the wire format its port type
  * demands.
@@ -511,8 +887,61 @@ export function checkParameterValues(
 
   for (const node of nodes) {
     const parameters = node.parameters;
-    if (!parameters || !catalog.hasType(node.type)) continue;
-    const dynamic = catalog.isDynamicNode(node.type);
+    if (!parameters) continue; // nothing set — nothing to check, and nothing skipped
+    if (!catalog.hasType(node.type)) {
+      // CN-002 — this is the biggest of the three silent skips: not one check
+      // on one endpoint but *every* parameter on the node. On
+      // `cashflow-command-centre` that was 26 parameters across five kit nodes,
+      // reported as a clean pass. Say that the check did not run.
+      diagnostics.push(
+        unknownTypeSkip({
+          component,
+          nodeId: node.id,
+          nodeType: node.type,
+          nodeLabel: node.label,
+          check: SkippedCheck.ParameterValues
+        })
+      );
+      continue;
+    }
+    // Only *runtime-unbounded* dynamism earns the skip below. The broader
+    // `isDynamicNode` was exempting all 88 types that declare any dynamic ports,
+    // and for 20 of them — `Text`, `Group`, `Image`, `Button`, `Text Input` and
+    // the rest of the visual vocabulary — the dynamism is `declared-port-groups`,
+    // whose every member is enumerable from the catalog. So the one rule that
+    // catches a parameter naming no port was switched off for exactly the nodes
+    // a page is built from: 18 `fontWeight` parameters across five components of
+    // an authored project validated clean, and every word on the page rendered
+    // at weight 400 because no node in the runtime has a `fontWeight` port.
+    const dynamic = catalog.hasRuntimeDynamicPorts(node.type);
+    const portGroups = catalog.declaredPortGroups(node.type);
+    /**
+     * DEF-006 — the bag every port *condition* below is answered against.
+     *
+     * Not `parameters`. A condition is a question about sibling values as the
+     * runtime sees them, and the runtime sees a port's default wherever nothing
+     * was authored — so asking the authored bag alone reports a port switched
+     * off by a gate that is in fact satisfied by its own default. See
+     * {@link resolveAgainstDefaults} for the measurement and for why `NOT SET`
+     * survives the merge.
+     *
+     * Only the conditions read this. Every other check below is about what the
+     * author actually wrote, and must keep seeing exactly that.
+     */
+    const resolvedForConditions = resolveAgainstDefaults(parameters, catalog.inputDefaults(node.type));
+    /**
+     * CN-010 / AC2 — the parameters this node's carve-out is about to skip.
+     *
+     * Collected rather than reported inline so that one node yields one notice
+     * naming all of them, which is CN-002's rule: four unverified parameters on
+     * one node are one fact about that node.
+     */
+    const dynamicSkips: string[] = [];
+
+    // LAS-003/F7 — node-level, because the defect is the combination of
+    // parameters and no single one of them is wrong on its own.
+    const unsized = unsizedAbsoluteBox(component, node, parameters);
+    if (unsized) diagnostics.push(unsized);
 
     for (const [name, value] of Object.entries(parameters)) {
       // "Not set". `undefined` is what the editor writes for a cleared field;
@@ -532,16 +961,80 @@ export function checkParameterValues(
           diagnostics.push(unitTrap);
           continue;
         }
-        if (!reportUnknownParameters || dynamic) continue;
+        if (!reportUnknownParameters) continue;
+        if (dynamic) {
+          // CN-010 / AC2 — say so. This was a bare `continue`, and it is the
+          // last silent skip of the three CN-002 found: the type resolves, the
+          // node is fine, and the parameter is simply unverified. Measured over
+          // the 29 projects in `NodeGX test projects`: **947 set parameters
+          // across 321 nodes** reach this line, 6% of every parameter in them,
+          // reported as a clean pass.
+          //
+          // ⚠️ The reason differs from `unknownTypeSkip`'s and the wording must
+          // not be borrowed: that one says *"type X is not in the node catalog"*,
+          // which is **false** here — the type is known, and for a kit node
+          // CN-003 worked to make it known. Saying it would teach a kit author
+          // that their node is unrecognised at the exact moment it is not.
+          dynamicSkips.push(name);
+          continue;
+        }
         const suggestion = catalog.suggestPort(node.type, 'input', name);
+        // DEF-003 (b) — a box property on a node that has no box gets the exit as well as the
+        // diagnosis. `noBoxExit` returns undefined for every other unknown parameter, so the
+        // generic sentence is unchanged for them.
+        const boxExit = noBoxExit(catalog, node.type, name);
         diagnostics.push({
           code: DiagnosticCode.UnknownParameter,
           severity: 'warning',
-          message: `${node.type} has no input port "${name}", so this parameter is never read.`,
+          message:
+            `${node.type} has no input port "${name}", so this parameter is never read.` +
+            (boxExit ? ` ${boxExit}` : ''),
           location: locate(component, node, name),
-          ...(suggestion ? { suggestion } : {})
+          // A near-miss suggestion and the wrapper sentence would contradict each other —
+          // `borderRadius` on `Text` has no near-miss anyway, but a future port could mint one,
+          // and "did you mean X" beside "this node has no box" is two different repairs.
+          ...(suggestion && !boxExit ? { suggestion } : {})
         });
         continue;
+      }
+
+      // A port switched off by a sibling parameter reads like a live one: it is
+      // declared, and the value is well formed. Reported first, because "this is
+      // never read" is the useful sentence — but it does **not** `continue` the
+      // way `allowConnectionsOnly` does below. A connection-only port discards
+      // the value whatever else the author writes, so its shape is genuinely
+      // moot; here a sibling edit makes the port live, and the value has to
+      // survive that edit. `Image { width: 228 }` is wrong twice over — ignored
+      // today because `sizeMode` defaults to `contentSize`, and 228 *percent*
+      // once `sizeMode` is fixed — and a repair round that is told only the
+      // first one produces a second broken image.
+      const condition = conditionForInput(portGroups, name);
+      if (condition && conditionIsUnsatisfied(condition, resolvedForConditions)) {
+        // DSG-004 §2.2 — the `sizeMode` family is reported under its own code so
+        // that it can block authored output while the wider population stays a
+        // warning, and so that the message can carry the exit rather than only
+        // the diagnosis. One diagnostic either way: the two codes are exclusive.
+        const sizeGated = isSizeModeGated(name, condition);
+        const repair = repairForCondition(condition);
+        diagnostics.push(
+          sizeGated
+            ? {
+                code: DiagnosticCode.InertDimension,
+                severity: 'warning',
+                message:
+                  `${node.type}'s "${name}" is inert here: it only applies when ${describeCondition(condition)}, ` +
+                  `and this node sizes itself to its content instead, so the value is never read. ${sizeModeExit(name)}`,
+                location: locate(component, node, name),
+                suggestion: 'sizeMode: "explicit"'
+              }
+            : {
+                code: DiagnosticCode.InactiveConditionalParameter,
+                severity: 'warning',
+                message: `${node.type}'s "${name}" only applies when ${describeCondition(condition)}, so this parameter is never read.`,
+                location: locate(component, node, name),
+                ...(repair ? { suggestion: repair } : {})
+              }
+        );
       }
 
       // Before the value is examined at all: a connection-only port discards
@@ -564,6 +1057,29 @@ export function checkParameterValues(
         });
         continue;
       }
+
+      // SUB-011 — an inline `fx` expression is a **shipped** parameter form:
+      // the toggle stores `{mode: 'expression', expression, fallback, version}`
+      // on a port still typed `string`/`number`, and the typed runtime
+      // evaluates it and coerces the result to the port's type
+      // (`noodl-runtime/src/node.ts`). So the stored object's shape is beside
+      // the point here in exactly the way a connection-only port's is above —
+      // checking it against the port's primitive shape reports every working
+      // expression in the project as a defect.
+      //
+      // 🔴 This is the carve-out SUB-011 predicted on 2026-07-24, before the
+      // check existed: *"if it ever grows parameter/type checking, the object
+      // form reads as invalid without an explicit carve-out (the same shape as
+      // the existing dynamic-port carve-outs)"*. D13 grew exactly that on
+      // 2026-08-18 by registering `rules/parameterValue`, and the corpus
+      // fixture went from silent to 5 errors + 9 warnings. The guard is
+      // `ExpressionParameter.ts`'s own, reused rather than reimplemented,
+      // because that task says to reuse it.
+      //
+      // ⚠️ The port-existence check above deliberately runs FIRST and keeps its
+      // diagnostic: an expression written on a port that does not exist is
+      // still never read, and that is the more useful sentence.
+      if (isExpressionParameter(value)) continue;
 
       // A bare number on a port that is read as a percentage. Skipped when a
       // `<name>Unit` sibling is present: `unitSuffixTrap` already owns that
@@ -595,6 +1111,69 @@ export function checkParameterValues(
         continue;
       }
 
+      // LAS-003/F3 — before the generic format check, because `layoutString` is
+      // typed `string` and every string passes that. The constraint is the
+      // node's, not the port type's, so it cannot live in the FORMATS table.
+      if (node.type === COLUMNS_TYPE && LAYOUT_STRING_PORTS.has(name)) {
+        const layout = layoutStringProblem(value);
+        if (layout) {
+          diagnostics.push({
+            code: DiagnosticCode.InvalidParameterValue,
+            severity: 'error',
+            message: `"${name}" — ${layout.message}`,
+            location: locate(component, node, name),
+            ...(layout.suggestion !== undefined ? { suggestion: layout.suggestion } : {})
+          });
+          continue;
+        }
+      }
+
+      // LAS-003/3 — a raw colour literal where a token is what the system
+      // expects. A warning, never an error: the corpus carries 553 of these and
+      // imported content is not wrong for being untokenised, it is just
+      // untokenised. Warnings do not block `validate:project`.
+      if (CatalogIndex.portTypeName(port) === 'color' && RAW_COLOR.test(String(value))) {
+        diagnostics.push({
+          code: DiagnosticCode.RawColorLiteral,
+          severity: 'warning',
+          message:
+            `"${name}" is the literal ${JSON.stringify(value)}. Colours come from the project's design tokens — ` +
+            'write "var(--token)" so the page can be re-themed and stays consistent with the identity the ' +
+            'project already decided. get_style_vocabulary lists the token names that resolve.',
+          location: locate(component, node, name)
+        });
+        continue;
+      }
+
+      // VIB-007 / V28 — the spacing half of the sentence the doctrine only enforces for colour:
+      // *"never emit a raw hex or px when a token fits"*. Narrowed twice from the register row —
+      // `Columns` gutters must stay numeric and the token has to match exactly — because the
+      // unnarrowed rule would have condemned 15 correct corpus values and offered a token that
+      // does not exist for a 16th.
+      //
+      // ⚠️ Both narrowings live in the two tables above and NOT in a condition here. A
+      // `node.type !== COLUMNS_TYPE` guard was written first and was dead on arrival: `Columns`
+      // declares `marginX`/`marginY` and no padding port at all, and neither margin is in
+      // SPACING_PORTS. A dead guard reads as the thing protecting you, which is worse than no
+      // guard — the spec asserts the real mechanism instead.
+      if (SPACING_PORTS.has(name)) {
+        const px = spacingPixels(value);
+        const token = px === undefined ? undefined : SPACE_TOKEN_BY_PX[px];
+        if (token) {
+          diagnostics.push({
+            code: DiagnosticCode.RawSpacingLiteral,
+            severity: 'warning',
+            message:
+              `"${name}" is ${JSON.stringify(value)}, which is ${px}px written out. Spacing comes ` +
+              `from the project's scale — "var(${token})" is exactly this value — so the rhythm of ` +
+              'the page stays one decision rather than a number repeated by hand.',
+            location: locate(component, node, name),
+            suggestion: JSON.stringify(`var(${token})`)
+          });
+          continue;
+        }
+      }
+
       const problem = wireFormatFor(port)?.check(value, portTypeShape(port)!);
       if (!problem) continue;
 
@@ -608,9 +1187,140 @@ export function checkParameterValues(
         ...(problem.alternatives ? { alternatives: problem.alternatives } : {})
       });
     }
+
+    // CN-010 / AC2 — one notice per node, after its parameters are known.
+    //
+    // `info`, and that is load-bearing: these parameters are overwhelmingly
+    // correct. A `NavigationShowPopup` really does take the target component's
+    // inputs as ports, and 315 of the 947 measured skips are exactly that. The
+    // statement being made is about the *checker*, not the graph.
+    if (dynamicSkips.length > 0) {
+      const named = dynamicSkips.map((n) => `"${n}"`).join(', ');
+      // All 88 shipped descriptions end in punctuation and so does the kit
+      // wording, but `dynamicPortNote`'s own fallback — `ports are
+      // runtime-determined (...)` — does not, and that is the branch a kit with
+      // an unrecognised entry shape lands on.
+      const rawNote = catalog.dynamicPortNote(node.type) ?? 'this node determines ports at runtime';
+      const note = /[.!?]$/.test(rawNote.trim()) ? rawNote.trim() : `${rawNote.trim()}.`;
+      diagnostics.push({
+        code: DiagnosticCode.DynamicPortSkipped,
+        severity: 'info',
+        message:
+          `${dynamicSkips.length === 1 ? 'Parameter' : 'Parameters'} ${named} on ${node.type} ` +
+          `${dynamicSkips.length === 1 ? 'names' : 'name'} no port the catalog can see, and ` +
+          `${dynamicSkips.length === 1 ? 'it was' : 'they were'} not checked: ` +
+          note +
+          ' So this node is unverified by that check rather than verified as correct.',
+        location: {
+          component,
+          nodeId: node.id,
+          nodeType: node.type,
+          ...(node.label ? { nodeLabel: node.label } : {})
+        }
+      });
+    }
   }
 
   return diagnostics;
+}
+
+/**
+ * ✅ **D16's carve-out is GONE, 2026-08-29 — DEF-003 (c) did what D16 said to do.**
+ *
+ * D16 suppressed the `dynamic-port-skipped` notice for exactly `title` and `urlPath` on `Page`,
+ * because `Page` declared neither as a static port — they existed only inside a `setup()` that
+ * returns immediately without a local editor connection — so the notice fired on **96 of the 947
+ * measured skips** and on every correct page anybody had ever written. Its own closing line named
+ * the real fix and the condition for removing itself: *"the honest fix is to declare the ports on
+ * `Page`, at which point this function has no population and should be deleted rather than left."*
+ *
+ * Both are now declared inputs on the node (`noodl-viewer-react/src/nodes/navigation/page.ts`), so
+ * `catalog.getPort` resolves them and the carve-out's population is empty. Deleted, per that
+ * instruction: a suppression that can never fire is indistinguishable from a rule nobody
+ * understands, and the next reader would have to re-derive why it is there.
+ *
+ * 🔴 The binding half of Richard's ruling — that a `Page` carrying an *invented* parameter
+ * (`pageTitle`, `path`) must still be reported — is now true by construction rather than by
+ * narrowness, and `stagingDiagnostics.test.ts` still grades it.
+ */
+
+/**
+ * DEF-003 (b) — the `Group` wrapper, said out loud at the moment it is needed.
+ *
+ * `Text` takes margins (`addMarginInputs`) and nothing else from the box model: no padding, no
+ * background, no border, no radius. Driven at HEAD — `paddingLeft: 24` on a `Text` renders with a
+ * computed `padding-left` of `0px`, while the same value on a wrapping `Group` renders `24px`. So
+ * a padded label needs a `Group` around it, every time, for every author.
+ *
+ * The door already refused the parameter (`unknown-parameter`, which blocks authored output), but
+ * it said only *"Text has no input port "paddingLeft""*. That is true and it is a dead end: an
+ * agent told a port does not exist looks for a differently-named one, and there isn't one. Phase 76
+ * F16 and phase 77 D7 are both authors who went round that loop.
+ *
+ * 🔴 **Deliberately keyed on the node having NO box property at all, not on the node being `Text`.**
+ * A type that has padding but not `clip` is a different sentence — the box exists and this one
+ * property is missing — and telling its author to wrap it in a `Group` would be wrong. The probe is
+ * three ports that any boxed visual in this library declares together.
+ */
+const BOX_PARAMETERS = new Set([
+  'paddingLeft',
+  'paddingRight',
+  'paddingTop',
+  'paddingBottom',
+  'backgroundColor',
+  'borderRadius',
+  'borderTopLeftRadius',
+  'borderTopRightRadius',
+  'borderBottomLeftRadius',
+  'borderBottomRightRadius',
+  'borderWidth',
+  'borderStyle',
+  'borderColor',
+  'borderTopWidth',
+  'borderTopStyle',
+  'borderTopColor',
+  'borderLeftWidth',
+  'borderLeftStyle',
+  'borderLeftColor',
+  'borderRightWidth',
+  'borderRightStyle',
+  'borderRightColor',
+  'borderBottomWidth',
+  'borderBottomStyle',
+  'borderBottomColor',
+  'boxShadowEnabled',
+  'boxShadowColor',
+  'boxShadowOffsetX',
+  'boxShadowOffsetY',
+  'boxShadowBlurRadius',
+  'boxShadowSpreadRadius',
+  'boxShadowInset',
+  'clip'
+]);
+
+/**
+ * "Does this node paint a surface of its own?", asked under every name this library gives it.
+ *
+ * 🔴 `fillColor`/`strokeColor` are here because the first version of this probe — padding, fill,
+ * border, box names only — fired on **`Circle`**, which paints perfectly well through
+ * `fillColor`, `fillEnabled`, `strokeColor` and `strokeWidth`. Telling that author *"Circle has no
+ * box of its own to paint, wrap it in a Group"* is false and sends them past the port they wanted.
+ * A rule keyed on the parameter's name alone cannot see the difference; the arms in
+ * `tests-unit/def-003` carry `Circle` as a control for exactly this.
+ *
+ * What is left after the exclusion is the population the sentence is true of: `Text`, `Columns`,
+ * `For Each`, `Drag` and `Component Children` — nodes that draw content or nothing, never a
+ * surface.
+ */
+const BOX_PROBE = ['paddingLeft', 'backgroundColor', 'borderRadius', 'fillColor', 'strokeColor'] as const;
+
+export function noBoxExit(catalog: CatalogIndex, nodeType: string, parameterName: string): string | undefined {
+  if (!BOX_PARAMETERS.has(parameterName)) return undefined;
+  if (BOX_PROBE.some((probe) => catalog.getPort(nodeType, 'input', probe))) return undefined;
+  return (
+    `${nodeType} has no box of its own to paint — it takes margins, but padding, background, ` +
+    `border and radius all belong to a container. Wrap it in a Group and set "${parameterName}" there.`
+  );
 }
 
 function locate(component: string, node: ParameterizedNode, port: string) {

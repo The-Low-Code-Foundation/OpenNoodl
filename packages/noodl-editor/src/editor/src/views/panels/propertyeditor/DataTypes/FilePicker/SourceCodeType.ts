@@ -1,6 +1,7 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { ContentPickerItem } from '../../components/ContentPicker';
+import { sourceCodePickerActions, sourceCodePickerEmptyState } from '../../components/pickerEmptyStates';
 import { getEditType } from '../../utils';
 import { folderForProjectPath } from '../../components/fontItems';
 import { PickerTypeView } from '../PickerTypeView';
@@ -26,10 +27,21 @@ export class SourceCodeType extends PickerTypeView {
   }
 
   protected openPicker() {
-    const picker = this.openContentPicker({ title: 'Choose file' });
+    // FB-015 AC5 — the same shared empty state as the image picker, with this type's own copy.
+    // A project with no `.js` file drew the identical blank panel, for the identical reason.
+    const picker = this.openContentPicker({
+      title: 'Choose file',
+      emptyState: sourceCodePickerEmptyState(),
+      actions: sourceCodePickerActions({ onShowProjectFolder: () => this.showProjectFolder() })
+    });
+
+    if (!ProjectModel.instance?._retainedProjectDirectory) {
+      picker.setItems([]);
+      return;
+    }
 
     ProjectModel.instance.listFilesInProjectDirectory((files) => {
-      const items: ContentPickerItem[] = files.map((fileEntry) => {
+      const items: ContentPickerItem[] = (files || []).map((fileEntry) => {
         const pathInProjectFolder = fileEntry.fullPath.substring(
           ProjectModel.instance._retainedProjectDirectory.length + 1
         );
@@ -39,7 +51,7 @@ export class SourceCodeType extends PickerTypeView {
           folder: folderForProjectPath(pathInProjectFolder)
         };
       });
-      picker.addItems(items);
+      picker.setItems(items);
     }, ['js']);
   }
 }

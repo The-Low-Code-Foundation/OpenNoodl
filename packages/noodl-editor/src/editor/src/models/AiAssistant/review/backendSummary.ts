@@ -49,13 +49,20 @@
  * ## What still cannot be read, and is now said plainly
  *
  * A cloud endpoint whose built-in cache is **empty** is still *unavailable, with
- * the reason*, never "no collections". Empty is not evidence of absence here:
+ * the reason*, never "no collections". Empty is not evidence of absence here: a
+ * project with no endpoint, a foreign Parse server we have no key for, and a
+ * backend that has never once been reachable all land on the same empty value.
+ * The difference between "there is nothing" and "we could not look" is the whole
+ * point of `schemaAvailable`, and it is why F8 **narrowed** outcome 3 rather than
+ * deleting it.
+ *
+ * 🔴 **DEF-035 corrected the reason, and the branch stays.** This used to say
  * `SchemaHandler._store()` writes `dbCollections = undefined` whenever the fetch
- * failed, so a stopped backend, a backend mid-restart and a foreign Parse server
- * we have no key for all land on the same empty value. The difference between
- * "there is nothing" and "we could not look" is the whole point of
- * `schemaAvailable`, and it is why F8 **narrowed** outcome 3 rather than deleting
- * it.
+ * failed, which put a stopped backend and a mid-restart one on the empty value
+ * too. It no longer does — `decideSchemaCache` leaves the cache alone for anything
+ * it could not reach, because the ports on the canvas are a function of that cache
+ * and an export drops every wire into a port it takes away. Fewer cases reach
+ * empty now; the ones that do still mean "we could not look".
  *
  * ## Credentials
  *

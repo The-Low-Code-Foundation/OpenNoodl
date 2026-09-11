@@ -53,7 +53,12 @@ const EXPECTED = [
   { id: 'Windows update feed', re: /^latest\.yml$/, why: 'electron-updater reads this on Windows' },
   { id: 'macOS update feed', re: /^latest-mac\.yml$/, why: 'electron-updater reads this on macOS' },
   { id: 'Linux AppImage', re: /\.AppImage$/, why: 'the only Linux artifact users are told to download' },
-  { id: 'Linux .deb', re: /\.deb$/, why: 'the leg that aborted in v0.1.0 after the AppImage had already uploaded (F73)' }
+  { id: 'Linux .deb', re: /\.deb$/, why: 'the leg that aborted in v0.1.0 after the AppImage had already uploaded (F73)' },
+  {
+    id: 'Linux .rpm',
+    re: /\.rpm$/,
+    why: 'Fedora/RHEL/openSUSE have no .deb path, and the AppImage was the only thing they could run (#29, FLD-016)'
+  }
 ];
 
 /** Entries the merged macOS feed must describe — one per architecture. */
@@ -103,6 +108,7 @@ function selfTest() {
     'NodeGX-0.1.1-win-x64.exe.blockmap',
     'NodeGX-0.1.1-linux-x86_64.AppImage',
     'NodeGX-0.1.1-linux-amd64.deb',
+    'NodeGX-0.1.1-linux-x86_64.rpm',
     'latest.yml',
     'latest-mac.yml'
   ];
@@ -116,11 +122,22 @@ function selfTest() {
       name: 'the real v0.1.0 draft is caught',
       names: ['latest.yml', 'NodeGX-0.1.0-linux-x86_64.AppImage', 'NodeGX-0.1.0-win-x64.exe', 'NodeGX-0.1.0-win-x64.exe.blockmap'],
       feed: null,
-      expect: 6 // 4 mac artifacts + latest-mac.yml + the .deb
+      expect: 7 // 4 mac artifacts + latest-mac.yml + the .deb + the .rpm
     },
     {
       name: 'F73 exactly: AppImage uploaded, .deb aborted',
       names: complete.filter((n) => !n.endsWith('.deb')),
+      feed: bothArchFeed,
+      expect: 1
+    },
+    {
+      // FLD-016 AC4: "the release-asset check fails when it is absent —
+      // asserted by removing it, because a check that has never failed has not
+      // been tested." Adding a third Linux target is exactly the situation
+      // that produced F73, so the new artifact gets the same removal case the
+      // .deb has.
+      name: 'the .rpm is missing (FLD-016 AC4)',
+      names: complete.filter((n) => !n.endsWith('.rpm')),
       feed: bothArchFeed,
       expect: 1
     },

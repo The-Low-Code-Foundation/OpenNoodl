@@ -44,6 +44,10 @@ Whenever a file handle needs to become a URL or filename. Note the cloudfile→i
 
 The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile→image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties — including the file — are set on the node's schema-generated inputs.
 
+**Load a rich-text editor from a CDN at runtime**
+
+The interesting node here is the one that loads nothing visual: a `JavaScriptFunction` that injects a `<script>` tag and resolves once it has loaded, so the editor library arrives at run time rather than being bundled. That is the pattern to take away — it is how any large third-party library gets into a NodeGX app without inflating the build. The `Javascript2` node then mounts TinyMCE onto a `Group`'s element, a `CSS Definition` reconciles the editor's chrome with the project's tokens, and `Cloud File` plus `NewDbModelProperties` give pasted images somewhere to live. ⚠️ `tinymce-api-key` is a `String` node holding an empty value — TinyMCE's CDN build wants your own key, and this graph deliberately does not carry one.
+
 ## Related nodes
 
 [Upload File](./upload-file.md), [Image](../visual/image.md), [External Link](../navigation/net-noodl-externallink.md)

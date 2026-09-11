@@ -1,0 +1,478 @@
+{
+ "id": "community-tiptap-text-editor",
+ "title": "A rich-text editor with a toolbar and local drafts",
+ "description": "The larger companion to the single-button component: a `Static Data` node holds the list of toolbar commands, a `For Each` draws one button per entry, and the editor itself is mounted by a `JavaScriptFunction` onto a `Group`'s element. Two details are worth more than the editor. The draft is saved to `localStorage` on a `Timer` and read back on mount, which is the whole of 'don't lose my work' and costs two function nodes. And `Model2` plus `SetModelProperties` keep the document in the project's own data model rather than only inside the third-party editor, so something other than the editor can read what was typed. \u26a0\ufe0f The toolbar is driven by data, so adding a command is a row in the `Static Data` node \u2014 not a new button.",
+ "demonstrates": [
+  "Boolean",
+  "CSS Definition",
+  "For Each",
+  "Group",
+  "JavaScriptFunction",
+  "Model2",
+  "SetModelProperties",
+  "States",
+  "Static Data",
+  "String",
+  "Text",
+  "Timer",
+  "net.noodl.controls.button"
+ ],
+ "components": [
+  {
+   "name": "Tiptap text editor",
+   "nodes": [
+    {
+     "id": "group",
+     "type": "Group",
+     "parameters": {
+      "backgroundColor": "Grey - 900",
+      "minHeight": {
+       "value": 100,
+       "unit": "vh"
+      },
+      "alignItems": "flex-start",
+      "paddingLeft": "var(--space-4)",
+      "paddingTop": "var(--space-4)",
+      "paddingBottom": "var(--space-4)",
+      "paddingRight": "var(--space-4)",
+      "rowGap": "var(--space-4)"
+     },
+     "children": [
+      "menu",
+      "group-2",
+      "outputs"
+     ]
+    },
+    {
+     "id": "menu",
+     "type": "Group",
+     "label": "Menu",
+     "parent": "group",
+     "parameters": {
+      "flexDirection": "row",
+      "columnGap": "var(--space-2-5)",
+      "sizeMode": "contentSize",
+      "backgroundColor": "7%"
+     },
+     "children": [
+      "for-each"
+     ]
+    },
+    {
+     "id": "for-each",
+     "type": "For Each",
+     "parent": "menu",
+     "parameters": {
+      "template": "/#Experiments/experiments/Tiptap editor/Editor button"
+     }
+    },
+    {
+     "id": "group-2",
+     "type": "Group",
+     "parent": "group",
+     "parameters": {
+      "paddingLeft": "var(--space-4)",
+      "paddingTop": "var(--space-4)",
+      "paddingBottom": "var(--space-4)",
+      "paddingRight": "var(--space-4)",
+      "backgroundColor": "7%",
+      "borderStyle": "solid",
+      "borderWidth": {
+       "value": 1,
+       "unit": "px"
+      },
+      "borderColor": "7%",
+      "borderRadius": {
+       "value": 8,
+       "unit": "px"
+      },
+      "sizeMode": "contentHeight"
+     },
+     "children": [
+      "tiptap-editor"
+     ]
+    },
+    {
+     "id": "tiptap-editor",
+     "type": "Group",
+     "label": "Tiptap Editor",
+     "parent": "group-2",
+     "parameters": {
+      "sizeMode": "contentHeight"
+     }
+    },
+    {
+     "id": "outputs",
+     "type": "Group",
+     "label": "Outputs",
+     "parent": "group",
+     "parameters": {
+      "flexDirection": "row",
+      "marginLeft": "var(--space-0)",
+      "columnGap": "var(--space-2)"
+     },
+     "children": [
+      "group-3",
+      "group-5"
+     ]
+    },
+    {
+     "id": "group-3",
+     "type": "Group",
+     "parent": "outputs",
+     "children": [
+      "group-4",
+      "text-2"
+     ]
+    },
+    {
+     "id": "group-4",
+     "type": "Group",
+     "parent": "group-3",
+     "parameters": {
+      "flexDirection": "row",
+      "columnGap": "var(--space-2)",
+      "alignY": "center",
+      "alignX": "center"
+     },
+     "children": [
+      "text",
+      "button"
+     ]
+    },
+    {
+     "id": "text",
+     "type": "Text",
+     "parent": "group-4",
+     "parameters": {
+      "text": "HTML Output",
+      "color": "Grey - 600",
+      "sizeMode": "contentSize"
+     }
+    },
+    {
+     "id": "button",
+     "type": "net.noodl.controls.button",
+     "parent": "group-4",
+     "parameters": {
+      "alignY": "center"
+     }
+    },
+    {
+     "id": "text-2",
+     "type": "Text",
+     "parent": "group-3",
+     "parameters": {
+      "fontFamily": "Courier New",
+      "color": "Grey - 300"
+     }
+    },
+    {
+     "id": "group-5",
+     "type": "Group",
+     "parent": "outputs",
+     "children": [
+      "plain-text",
+      "text-3"
+     ]
+    },
+    {
+     "id": "plain-text",
+     "type": "Text",
+     "label": "Plain Text",
+     "parent": "group-5",
+     "parameters": {
+      "text": "Plain Text\n",
+      "color": "Grey - 600"
+     }
+    },
+    {
+     "id": "text-3",
+     "type": "Text",
+     "parent": "group-5",
+     "parameters": {
+      "fontFamily": "Courier New",
+      "color": "Grey - 300"
+     }
+    },
+    {
+     "id": "create-text-editor",
+     "type": "JavaScriptFunction",
+     "label": "Create Text Editor",
+     "parameters": {
+      "functionScript": "\nconst editorContent = Inputs.EditorContent || '<p>nothing</p>';\nconst editorOptions = Noodl.Objects[Inputs.EditorOptions] || {};\nconst editorDiv = Inputs.EditorDiv.getDOMElement()\n\ntry {\n  const { Editor } = await import('https://esm.sh/@tiptap/core');\n  const { StarterKit } = await import('https://esm.sh/@tiptap/starter-kit');\n\n  const options = {\n    content: editorContent,\n    element: editorDiv,\n    autofocus: editorOptions.autofocus || true,\n    editable: editorOptions.editable || true,\n    injectCSS: editorOptions.injectCSS || false,\n    onUpdate({ editor }) {\n      Outputs.ContentUpdated()\n    },\n    onBeforeCreate({ editor }) {\n    // Before the view is created.\n    },\n    onCreate({ editor }) {\n      // The editor is ready.\n      Outputs.EditorIsReady()\n    },\n    onSelectionUpdate({ editor }) {\n      // The selection has changed.\n      editor = editor\n      Outputs.isBold = editor.isActive('bold').toString()\n      Outputs.isItalic = editor.isActive('italic').toString()\n    },\n    onTransaction({ editor, transaction }) {\n      // The editor state has changed.\n      editor = editor\n      Outputs.isBold = editor.isActive('bold').toString()\n      Outputs.isItalic = editor.isActive('italic').toString()\n    },\n    onFocus({ editor, event }) {\n      // The editor is focused.\n    },\n    onBlur({ editor, event }) {\n      // The editor isn\u2019t focused anymore.\n    },\n    onDestroy() {\n      // The editor is being destroyed.\n    },\n  }\n\n  let extensions = [StarterKit.configure({\n    heading: {\n      levels: editorOptions.headings || [],\n    }\n  })];\n\n  options.extensions = extensions;\n\n  const editor = new Editor( options );\n\n  Noodl.Objects.editor = editor\n  // Outputs.EditorObject = editor; // Added output for the editor object\n  Outputs.EditorObject =   Outputs.EditorObject = editor; // Added output for the editor object; // Added output for the editor object\n\n  window.editor = editor //for troubleshooting\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}",
+      "scriptOutputs": [
+       {
+        "id": "4rc5",
+        "label": "isBold"
+       },
+       {
+        "id": "7ztx",
+        "label": "isItalic"
+       }
+      ]
+     }
+    },
+    {
+     "id": "string",
+     "type": "String",
+     "parameters": {
+      "value": "<h1>Tiptap Editor</h1><p>hello</p>"
+     }
+    },
+    {
+     "id": "model2",
+     "type": "Model2",
+     "parameters": {
+      "modelId": "EditorOptions",
+      "properties": "autofocus,editable,injectCSS"
+     }
+    },
+    {
+     "id": "setmodelproperties",
+     "type": "SetModelProperties",
+     "parameters": {
+      "properties": "autofocus,editable,injectCSS,headings",
+      "type-autofocus": "boolean",
+      "type-editable": "boolean",
+      "type-injectCSS": "boolean",
+      "prop-editable": true,
+      "prop-injectCSS": true,
+      "modelId": "EditorOptions",
+      "type-headings": "array",
+      "prop-headings": "[1, 2, 3]"
+     }
+    },
+    {
+     "id": "boolean",
+     "type": "Boolean",
+     "parameters": {
+      "value": false
+     }
+    },
+    {
+     "id": "css-definition",
+     "type": "CSS Definition",
+     "parameters": {
+      "style": ".ProseMirror {\n    width: 100%;\n\n    > p {\n        color: rgba(255, 255, 255, 0.8);\n    }\n    > h1 {\n        color: rgba(255, 255, 255, 0.9);\n    }\n}\n\n.ProseMirror-focused {\n    border-color: rgba(255, 255, 255, 0.14) !important;\n}\n"
+     }
+    },
+    {
+     "id": "timer",
+     "type": "Timer",
+     "parameters": {
+      "duration": 1000
+     }
+    },
+    {
+     "id": "javascriptfunction",
+     "type": "JavaScriptFunction",
+     "parameters": {
+      "functionScript": "Outputs.html = Inputs.Editor.getHTML()\nOutputs.plainText = Inputs.Editor.getText()"
+     }
+    },
+    {
+     "id": "retrieve-local-storage-data",
+     "type": "JavaScriptFunction",
+     "label": "Retrieve Local Storage Data",
+     "parameters": {
+      "functionScript": "\nconst key = Inputs.Key || 'editorContent';\nif (!key) return;\n\ntry {\n  const content = localStorage.getItem(key);\n  Outputs.EditorContent = content;\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+     }
+    },
+    {
+     "id": "save-html-to-local-storage",
+     "type": "JavaScriptFunction",
+     "label": "Save HTML to Local Storage",
+     "parameters": {
+      "functionScript": "\nconst html = Inputs.html || '';\nif (!html) return;\n\ntry {\n  // const stringifiedHtml = JSON.stringify(html);\n  localStorage.setItem('editorContent', html);\n  console.log(\"editorContent\", localStorage.getItem('editorContent'))\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+     }
+    },
+    {
+     "id": "isbold",
+     "type": "States",
+     "label": "isBold",
+     "parameters": {
+      "states": "true,false",
+      "values": "background,font color",
+      "type-background": "color",
+      "value-true-background": "14%",
+      "useTransitions": false,
+      "currentState": "false",
+      "value-false-background": "7%",
+      "type-font color": "color",
+      "value-true-font color": "White",
+      "value-false-font color": "Grey - 500"
+     }
+    },
+    {
+     "id": "isitalic",
+     "type": "States",
+     "label": "isItalic",
+     "parameters": {
+      "states": "true,false",
+      "values": "background,font color",
+      "type-background": "color",
+      "value-true-background": "14%",
+      "useTransitions": false,
+      "currentState": "false",
+      "value-false-background": "7%",
+      "type-font color": "color",
+      "value-true-font color": "White",
+      "value-false-font color": "Grey - 500"
+     }
+    },
+    {
+     "id": "static-array-of-button-types",
+     "type": "Static Data",
+     "label": "Static array of button types",
+     "parameters": {
+      "type": "json",
+      "json": "[\n    {\n        \"buttonType\": \"bold\"\n    },\n    {\n        \"buttonType\": \"italics\"\n    }\n]"
+     }
+    },
+    {
+     "id": "append-editor-to-array",
+     "type": "JavaScriptFunction",
+     "label": "Append editor to array",
+     "parameters": {
+      "functionScript": "const jsonObjectList = Inputs.jsonObject || [];\nconst editor = Inputs.editor || '';\n\nconst updatedJsonObjects = jsonObjectList.map(obj => {\n  return {\n    ...obj,\n    editor: editor,\n  };\n});\n\nOutputs.jsonAppended = updatedJsonObjects;\nOutputs.Success();"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "string",
+     "fromProperty": "savedValue",
+     "toId": "create-text-editor",
+     "toProperty": "in-EditorContent"
+    },
+    {
+     "fromId": "model2",
+     "fromProperty": "id",
+     "toId": "create-text-editor",
+     "toProperty": "in-EditorOptions"
+    },
+    {
+     "fromId": "tiptap-editor",
+     "fromProperty": "this",
+     "toId": "create-text-editor",
+     "toProperty": "in-EditorDiv"
+    },
+    {
+     "fromId": "boolean",
+     "fromProperty": "savedValue",
+     "toId": "setmodelproperties",
+     "toProperty": "prop-autofocus"
+    },
+    {
+     "fromId": "group",
+     "fromProperty": "didMount",
+     "toId": "setmodelproperties",
+     "toProperty": "store"
+    },
+    {
+     "fromId": "model2",
+     "fromProperty": "fetched",
+     "toId": "create-text-editor",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "setmodelproperties",
+     "fromProperty": "stored",
+     "toId": "model2",
+     "toProperty": "fetch"
+    },
+    {
+     "fromId": "setmodelproperties",
+     "fromProperty": "id",
+     "toId": "model2",
+     "toProperty": "modelId"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-EditorObject",
+     "toId": "javascriptfunction",
+     "toProperty": "in-Editor"
+    },
+    {
+     "fromId": "timer",
+     "fromProperty": "timerFinished",
+     "toId": "javascriptfunction",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-ContentUpdated",
+     "toId": "timer",
+     "toProperty": "start"
+    },
+    {
+     "fromId": "javascriptfunction",
+     "fromProperty": "out-html",
+     "toId": "text-2",
+     "toProperty": "text"
+    },
+    {
+     "fromId": "javascriptfunction",
+     "fromProperty": "out-plainText",
+     "toId": "text-3",
+     "toProperty": "text"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-EditorIsReady",
+     "toId": "javascriptfunction",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "button",
+     "fromProperty": "onClick",
+     "toId": "save-html-to-local-storage",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "javascriptfunction",
+     "fromProperty": "out-html",
+     "toId": "save-html-to-local-storage",
+     "toProperty": "in-html"
+    },
+    {
+     "fromId": "retrieve-local-storage-data",
+     "fromProperty": "out-EditorContent",
+     "toId": "string",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-isBold",
+     "toId": "isbold",
+     "toProperty": "currentState"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-isItalic",
+     "toId": "isitalic",
+     "toProperty": "currentState"
+    },
+    {
+     "fromId": "static-array-of-button-types",
+     "fromProperty": "items",
+     "toId": "append-editor-to-array",
+     "toProperty": "in-jsonObject"
+    },
+    {
+     "fromId": "create-text-editor",
+     "fromProperty": "out-EditorObject",
+     "toId": "append-editor-to-array",
+     "toProperty": "in-editor"
+    },
+    {
+     "fromId": "append-editor-to-array",
+     "fromProperty": "out-jsonAppended",
+     "toId": "for-each",
+     "toProperty": "items"
+    }
+   ]
+  }
+ ]
+}

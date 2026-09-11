@@ -8,6 +8,7 @@
     "error": "Value outputs are updated before this fires, so reading Message or Code on the pulse always describes this error.",
     "errorObject": "Wireable straight into a string input, which renders it as JSON."
   },
+  "examples": ["app-catch-every-error-in-one-place"],
   "patterns": [
     "One unfiltered On App Error in the root component, with `Message` into a Text and `Error` showing a popup — the minimum that makes a deployed app's failures visible.",
     "`Error Object` into an HTTP Request body to forward failures to an error-reporting service.",

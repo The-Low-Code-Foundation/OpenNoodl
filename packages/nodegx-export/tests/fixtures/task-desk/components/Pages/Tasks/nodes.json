@@ -1,0 +1,130 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000061",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Tasks",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Task Desk",
+        "urlPath": "tasks"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "statusText",
+        "runBtn"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Task Desk",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "runBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Run the batch",
+      "parent": "shell",
+      "parameters": {
+        "label": "Run the batch"
+      }
+    },
+    {
+      "id": "tasks",
+      "type": "RunTasks",
+      "label": "Run the batch",
+      "parameters": {
+        "maxRunningTasks": 2
+      },
+      "x": 400,
+      "y": 300
+    },
+    {
+      "id": "sync",
+      "type": "CloudFunction2",
+      "label": "Sync tasks",
+      "parameters": {
+        "function": "syncTasks"
+      },
+      "x": 700,
+      "y": 300
+    },
+    {
+      "id": "goHome",
+      "type": "RouterNavigate",
+      "label": "Go home",
+      "parameters": {
+        "target": "/Pages/Tasks"
+      },
+      "x": 1000,
+      "y": 300
+    },
+    {
+      "id": "setStatus",
+      "type": "Set Variable",
+      "label": "Mark finished",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 700,
+      "y": 480
+    },
+    {
+      "id": "doneStr",
+      "type": "String",
+      "label": "finished",
+      "parameters": {
+        "value": "finished"
+      },
+      "x": 500,
+      "y": 520
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable",
+      "label": "status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 400,
+      "y": 620
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "020eb714-b11f-4e07-b709-63ad5151b6be",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "flc-inputs",
+      "type": "Component Inputs",
+      "label": "FooterLinkColumn Inputs",
+      "x": 0,
+      "y": 0,
+      "ports": [
+        {
+          "name": "heading",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "links",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    },
+    {
+      "id": "flc-root",
+      "type": "Group",
+      "label": "Column Root",
+      "x": 300,
+      "y": 0,
+      "children": [
+        "flc-heading",
+        "flc-repeater"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": {
+          "value": 12,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "flc-heading",
+      "type": "Text",
+      "label": "Column Heading",
+      "x": 300,
+      "y": 100,
+      "parent": "flc-root",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "letterSpacing": "var(--tracking-wide)"
+      }
+    },
+    {
+      "id": "flc-repeater",
+      "type": "For Each",
+      "label": "Link Repeater",
+      "x": 300,
+      "y": 200,
+      "parent": "flc-root",
+      "parameters": {
+        "template": "/Components/FooterLink",
+        "itemId": "link"
+      }
+    }
+  ]
+}

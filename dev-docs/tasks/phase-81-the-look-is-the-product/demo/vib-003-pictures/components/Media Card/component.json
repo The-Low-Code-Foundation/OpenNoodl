@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "23ed5da2-6c85-5739-8b73-4b5f83a8261c",
+  "name": "Media Card",
+  "path": "/Media Card",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-003"
+}

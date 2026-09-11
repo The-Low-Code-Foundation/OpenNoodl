@@ -40,6 +40,18 @@ export type DeployToFolderResult = {
    * Surfaced to the user so an ignored asset is distinguishable from a lost one.
    */
   copyReport: ProjectCopyReport;
+  /**
+   * HLS-014 — every out-dir-relative path this run wrote: the copied project files, the runtime
+   * files, the hashed export, `index.html`, and each component bundle.
+   *
+   * 🔴 **A directory listing is not this list, and on a second deploy the difference is the whole
+   * task.** Every generated name here is a content hash, so a redeploy writes `index-<new>.js`
+   * beside `index-<old>.js` and a second copy of every bundle whose component changed, and deletes
+   * neither. The caller holding this list can remove what its own previous deploy left; a caller
+   * reading the folder can only see that there are two of everything and no way to tell which is
+   * which.
+   */
+  written: string[];
 };
 
 export async function deployToFolder({
@@ -91,7 +103,7 @@ export async function deployToFolder({
   const index = await loadDeployIndex(`${runtimeType}/index.json`);
 
   // Copy all deploy files
-  await copyDeployFilesToFolder({
+  const runtimeFiles = await copyDeployFilesToFolder({
     project,
     direntry,
     files: index,
@@ -103,6 +115,7 @@ export async function deployToFolder({
 
   //then the export component bundles
   const dir = direntry + '/noodl_bundles/';
+  const bundleFiles: string[] = [];
   for (const bundleId in exportJson.componentIndex) {
     if (bundleId !== 'root') {
       const json = JSON.stringify(Exporter.exportComponentBundle(project, bundleId, exportJson.componentIndex));
@@ -111,10 +124,11 @@ export async function deployToFolder({
       }
 
       await filesystem.writeFile(dir + bundleId + '.json', json);
+      bundleFiles.push(`noodl_bundles/${bundleId}.json`);
     }
   }
 
-  return { copyReport };
+  return { copyReport, written: [...copyReport.copiedPaths, ...runtimeFiles, ...bundleFiles] };
 }
 
 /**
@@ -124,6 +138,17 @@ export async function deployToFolder({
  */
 function logCopyReport(report: ProjectCopyReport, direntry: string): void {
   console.log(`[deploy] ${direntry}: ${report.copiedCount} project file(s) copied. ${formatCopyReportSummary(report)}`);
+
+  // EXP-017 AC4 — a duplicate that had to ship anyway. Named, with the copy that made it one and
+  // the sentence saying why it could not be left out, because the fix is a one-line edit in the
+  // editor and nobody makes it while the bytes are invisible.
+  for (const kept of report.duplicatesKept) {
+    console.warn(
+      `[deploy] ! ${kept.path} (${kept.bytes} B) is byte-for-byte the same file as ${kept.keep}, ` +
+        `and both were published — ${kept.reason}. Point that reference at ${kept.keep} and the ` +
+        'second copy stops shipping.'
+    );
+  }
 
   if (report.excluded.length === 0) return;
 

@@ -23,8 +23,8 @@ dense as a 16/1.5 stroke one at the same rendered size, and `IconSize` is inert
 
 ## Lucide (ISC)
 
-`git_branch.svg`, `git_pull_request.svg`, `database.svg`, `history.svg` and
-`book_open.svg` are derived from [Lucide](https://lucide.dev) v1.27.0. They are
+`git_branch.svg`, `git_pull_request.svg`, `database.svg`, `history.svg`,
+`book_open.svg` and `users.svg` are derived from [Lucide](https://lucide.dev) v1.27.0. They are
 conventions rather than design opportunities — a bespoke git or database mark is
 *less* recognisable than the standard one, so these are taken rather than drawn.
 

@@ -60,8 +60,9 @@
     background-color: var(--theme-color-primary-bg) !important;
     box-shadow: inset 2px 0 0 0 var(--theme-color-primary);
 
-    .Prefix path {
-      fill: var(--theme-color-primary) !important;
+    // DSG-008: `color`, not `path { fill }` — see the note on `.Prefix` below.
+    .Prefix {
+      color: var(--theme-color-primary);
     }
 
     &:hover {
@@ -70,6 +71,19 @@
   }
 }
 
+/*
+  🔴 DSG-008. Every list row's leading glyph measured **1.24:1** in dark mode —
+  black on `bg-2`.
+
+  These two slots had no `color` at all. The only rule that ever coloured a
+  prefix was `is-variant-active`'s `path { fill }`, so an *unselected* row's icon
+  inherited whatever `color` was ambient, which is the document default: black.
+  And because the active rule used `fill`, it could only ever reach the solid
+  glyphs; a stroked one stayed black even when selected.
+
+  `color` on the slot fixes both, and fixes them for every icon a consumer puts
+  in either slot rather than for the ones that happen to be solid.
+*/
 .Prefix,
 .Affix {
   flex-basis: 40px;
@@ -77,6 +91,8 @@
   flex-shrink: 0;
   display: flex;
   justify-content: center;
+
+  color: var(--theme-color-fg-default);
 }
 
 .Body {

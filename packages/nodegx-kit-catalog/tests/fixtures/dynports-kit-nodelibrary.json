@@ -1,0 +1,339 @@
+{
+  "nodetypes": [
+    {
+      "name": "dynports.kit.Panel",
+      "displayNodeName": "Dyn Panel",
+      "module": "Dynports Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "allowChildrenWithCategory": [
+        "Visual"
+      ],
+      "docs": "A panel whose list options appear only when it is in list mode.",
+      "category": "Visual",
+      "dynamicports": [
+        {
+          "name": "conditionalports/basic",
+          "condition": "mode = list",
+          "ports": [
+            {
+              "name": "itemCount",
+              "type": "number",
+              "plug": "input",
+              "group": "List",
+              "displayName": "Item Count",
+              "default": 3
+            }
+          ]
+        }
+      ],
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Title",
+          "default": "Panel"
+        },
+        {
+          "name": "mode",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "List",
+                "value": "list"
+              },
+              {
+                "label": "Grid",
+                "value": "grid"
+              }
+            ]
+          },
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Mode",
+          "default": "grid"
+        },
+        {
+          "name": "itemCount",
+          "type": "number",
+          "plug": "input",
+          "group": "List",
+          "displayName": "Item Count",
+          "default": 3
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "childrenCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Children Count",
+          "description": "How many child elements are currently mounted inside this one"
+        }
+      ]
+    },
+    {
+      "name": "dynports.kit.Feed",
+      "displayNodeName": "Dyn Feed",
+      "module": "Dynports Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "allowChildrenWithCategory": [
+        "Visual"
+      ],
+      "docs": "A feed that receives its payload over a channel named at runtime.",
+      "category": "Visual",
+      "dynamicports": [
+        {
+          "channelPort": {
+            "plug": "input",
+            "name": "channelName"
+          },
+          "name": "channel"
+        }
+      ],
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "heading",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Heading",
+          "default": "Feed"
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "childrenCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Children Count",
+          "description": "How many child elements are currently mounted inside this one"
+        }
+      ]
+    }
+  ]
+}

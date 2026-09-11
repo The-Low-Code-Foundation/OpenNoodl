@@ -1,0 +1,882 @@
+{
+  "$comment": "Every catalog node type, classified for code export (EXP-008). Gate: scripts/export-ledger/check.js (export-ledger:check) refuses an unclassified type; scripts/export-ledger/picker-coverage.js (export-ledger:picker) is the PHASE'S HEADLINE NUMBER and ratchets `pickerCoverageFloor`. Read EXP-008 before changing either: the corpus instance-coverage number this phase used to quote is a regression detector, not a priority oracle, and treating it as one cost twelve sessions.",
+  "catalogFormatVersion": "1.1.0",
+  "pickerCoverageFloor": 117,
+  "pickerCoverageTotal": 127,
+  "$pickerCoverageTotalComment": "The picker population picker-coverage.js counts (inNodePicker, not deprecated, browser-capable). Held by --check exactly like the floor, so the two numbers the product prints beside the alpha warning (exportBadgeOf's sibling exportCoverage() in src/ledger.ts, read by the export modal, the settings section and the emitted README) are the gate's own and never a second copy.",
+  "$pickerCoverageFloorComment": "Placeable picker nodes (inNodePicker, not deprecated, browser-capable) that export. Ratchet: export-ledger:picker --check fails if it falls AND if it rises without this number moving, so every gain is held and every loss is a decision in the diff. 67 before Tier 2.5 added External Link (session 41), 60 of 127 at 2026-08-28 (51 before Tier 1.4 added the four value Variables, 55 before Tier 1.1 added the client-side data vocabulary, 59 before Tier 1.2 added HTTP Request); 66 before Tier 2.5 added Page Inputs. \u26a0\ufe0f Tier 2.5 moved the number by one and fixed two nodes it does not count: the route table emitted `<Route path=\"/product/{id}\">`, which react-router matches against the literal text, and RouterNavigate emitted `navigate('/product/{id}')` to go with it. Both were already `translated` here, which is the ledger's known blind spot \u2014 it records whether a node is emitted, never whether what is emitted works. 68 before \u00a715 added Navigate To Path (session 44). \u26a0\ufe0f \u00a715 also fixed a route the ledger cannot see, for the second time in this tier: a Page whose urlPath was authored with a leading slash emitted `<Route path=\"//note/:id\">`, which react-router matches against nothing, while the Router trims the page pattern before matching \u2014 so the project routed in the app it was exported from and nowhere else. Every fixture happens to author the path unslashed. 69 before \u00a730 translated Remove Object From Array (session 59) \u2014 and that node is the ledger\u2019s blind spot in its sharpest form, because it counts as translated on ONE wire shape and refuses the rest by name; \u00a730 lists the three gates. 73 before \u00a737 added the id pair \u2014 `Unique Id` and `UUID` (session 66); \u26a0\ufe0f they are two nodes and NOT two spellings of one, `Model.guid()` being ten characters of `Math.random()` where `UUID` is a v4 from the platform CSPRNG, so a slice that translated them to one generator would raise this number by two and be wrong about half of it. 80 after \u00a739 added Log, Delay and Value Changed (session 68). 81 after \u00a741 added Cloud Function (session 69) \u2014 the first of the nine Cloud Services, and EXP-009 AC4. 82 after \u00a743 added Record (session 70). 84 after \u00a744 added Set User Properties and Request Magic Link (session 72) \u2014 the two session verbs on the user family\u2019s api-call machinery. 88 after \u00a745 added Open File Picker, Upload File, Cloud File and Sign File URL (session 73) \u2014 one value through four nodes: a File into an upload, the stored file into a read or a sign. 89 after \u00a747 added Set Object Properties (session 75) \u2014 and lifted the explicit-Id half of Object, which this number cannot see because Object was already `translated` on its repeater half: the ledger's blind spot again, a node counted once whichever of its forms export. 90 after \u00a748 added CSS Definition (session 76) \u2014 and folded the authored CSS Class of every visual node into its className, which this number cannot see either: the class the stylesheet targets was dropped with a note on every node that carried one. 93 after \u00a751 added Component Children (session 79) \u2014 and fixed a vanish this number cannot see: an instance's placed children were dispositioned `static` and never emitted, with no note, whether or not the target had a marker. 94 after \u00a752 added Script (session 80) \u2014 hosted, not re-hosted: the runtime's own parser and lifecycle transcribed into src/lib/script.ts, the author's code preserved verbatim and unchecked in its own file under src/scripts/, and every read of its outputs typed. What this number cannot see: the three bodies in the one project that has ten call Noodl.Files.upload and stay refused by name, and a Script node the MCP authored has no ports on disk until the editor opens the project, which this number counts as translated all the same. 95 after Tier 2.8 row 3 Run Tasks (session 81). 96 after Tier 2.8 row 4 On App Error (session 82) \u2014 and what this number cannot see: every request verb's failure arm now raises on src/lib/errors.ts with the runtime's own code and provenance, so ten fixtures that were silent on failure gained a module and a console line without any row here moving. 97 after Tier 2.8 row 5 Create New Array (session 83). 98 after Tier 2.8 row 6 Filter Records (session 84) \u2014 a derived list over a Query Records' state row (or any list), the saved filter tree evaluated by src/lib/filterRecords.ts; and what this number cannot see: a Query Records read by a transform now lands a query that no repeater consumes, and a transform's Count reads for both Filter Records and Array Filter. 99 after Tier 2.8 row 7 Repeater Item (session 85) \u2014 the row's Item Id as a string prop the host binds from item.id, each feed gated on its own rows, and Added as a once-on-mount effect; and what this number cannot see: the exit handshake (Try Remove, Remove Completed, the outcome trio) refuses by name, and a feed whose rows carry no string id drops the prop with a sentence while the runtime mints a guid there. 102 after Tier 2.8 row 8 the streaming trio \u2014 JSON Stream Parser, Stream Buffer, Text Accumulator (session 85) \u2014 and what this number cannot see: whether the exported hooks behave as the runtime nodes do under a real token stream (the SSE / WebSocket transports that would feed them are Tier 3.11 and still refused, so every fixture feeds them from a Variable or a constant), and the runtime-vs-export ordering of a value delivered and a pulse sent from one click, which no fixture wires. 105 after Tier 2.8 row 9 Hash, Random Bytes and Screen Resolution (session 85) \u2014 two crypto verbs in UUID's two-arm shape with a row that boots empty and a raise in the Failure arm, and a viewport hook that prints only where something reads it; and what this number cannot see: a Digest or Value read from a sibling handler before the attach pass is refused with the id nodes' \"never fired\" sentence, and a crypto row allocated by the sweep's diagnostic read of an unbindable sink still prints. 107 after Tier 2.8 row 12 Add Record Relation and Remove Record Relation (session 86) \u2014 the record verbs' api-call with a Pointer on the wire: the runtime's own PUT carrying one AddRelation / RemoveRelation op, the pre-flight static where validateInputs' is static (the class, the relation, the target wire, the record, NDA-012's loaded-source rule) and thrown in the handler where it is dynamic (the two \"specified\" sentences, target before record), the done chain and the Error row nothing clears; and what this number cannot see: a Failure chain (refused as the record verbs' is \u2014 one funnel for the family), a Create's consumed Id feeding the verb (still gate 11, \u00a74c's chain-local read is not built), and a Target Record Id from a Query Records' First Item Id (only Items and Count resolve, so it is refused by the feeder's sentence). 110 after Tier 2.8 row 10 the component-object trio (session 86) \u2014 the own record as a per-instance hook with a Provider, the parent pair through context, mirrors as sync effects, the parent write's miss arm raising; and what this number cannot see: a named Parent Component is refused by name on both parent nodes, every signal output of the family is refused by name (a write re-renders the readers, it pulses nothing), and a key written only from a descendant is typed unknown on the host. 111 after Tier 2.8 row 13 Drag (session 86) \u2014 a visual node that renders nothing of its own, emitted as a wrapper div bound to a useDrag hook (mouse and touch, bounds with slack, the axis flush rule, a per-axis commit on release, the snap tween on animate.ts's scheduler), its four values live getters and its three pulses listeners; and what this number cannot see: the wrapper takes the child's place in the parent's flex flow where the runtime drags the child's own root, and a snap Value that arrives NaN twice raises once. 114 after Tier 2.8 row 11 the component-stack trio \u2014 Component Stack, Push Component To Stack, Pop Component Stack (session 86) \u2014 a push printed as the runtime's own call with the back channel as its callback, a pop as a two-arm return on a reserved prop, the stack a visual role whose row renders the top entry only; and what this number cannot see: no transition is emitted (the runtime animates every push by default and keeps both components mounted until it ends), a Back Result read from a SIBLING handler before the attach pass is refused with the id nodes' \"never fired\" sentence, and Use Routes refuses the whole stack by name. 115 after Tier 3.11 row 1 Server-Sent Events (session 88) \u2014 the streaming table's fourth member: sse-connection.ts, both transports, the backoff and the dedupe window transcribed into src/lib/sse.ts, the two Actions as verbs, the four Events and the outcome trio as listeners, every Status and Data output a live getter; and what this number cannot see: whether the emitted hook streams from a real endpoint (the fixture is driven against a fake SSE server, not an LLM), the browser's own EventSource retry (the fake never drops), and a Text Path that resolves to an object (blank, as the runtime's textForPath answers). 116 after Tier 3.11 row 2 WebSocket (session 89) \u2014 the table's fifth member: websocket-connection.ts (reconnection, backoff, heartbeat, the send queue) and the node's rebuild policy transcribed into src/lib/websocket.ts, the three Actions as verbs with Send carrying the Message, the six Events and the outcome trio as listeners, every Status and Data output a live getter; and what this number cannot see: whether the emitted hook talks to a real server (the fixture is driven against a fake ws server), a binary frame end to end (the spec sends one, the drive does not), and a heartbeat against a server that answers it. 117 after Tier 3.11 row 3 Subscribe To Changes (session 90) \u2014 the last scheduled node, and the ceiling this tier named: the runtime's realtime layer for the built-in backend (RealtimeSubscription, the NodeGX SSE dialect, the shared connection pool) transcribed into src/lib/realtime.ts riding EXP-009's client, the Class and Enabled as options, the five signals as listeners, every Realtime output a live getter; and what this number cannot see: an authored Filter is refused by name (the query row does not send its filter either, and this one is evaluated by the server), an Enabled wired from a Variable nothing has written reads false in the export where the runtime's delivery of an undefined Variable is unmeasured, and the drive is against a fake /realtime, not the backend package.",
+  "$customNodesComment": "EXP-010 AC6, settled 2026-08-28: custom nodes are DELIBERATELY not in this file and not in the picker number, and the statement about them is categorical rather than a percentage. A custom node type comes from a project's own noodl_modules/, so its population is per-project and unbounded \u2014 putting it in the numerator inflates a ratio, and putting it in both halves makes the denominator move with whichever project you point the tool at. That is precisely the instance-weighted corpus number this phase spent twelve sessions being misled by (see $comment). Adding these types as `entries` would also be a false claim about the catalog, which is what this file is a ledger OF. The claim instead: a kit's VISUAL nodes (`reactNodes`, i.e. a definition with getReactComponent) export and render; a kit's LOGIC nodes (`nodes`, e.g. tally-kit's whole vocabulary) do not, and every instance of one is named in the report. Both halves are graded by tests/custom-nodes.test.ts, which is the ratchet for this claim.",
+  "entries": [
+    {
+      "typeName": "AddDbModelRelation",
+      "status": "translated",
+      "note": "EXP-011 \u00a762 (session 86): an awaited addInquiryRelation(id, relation, targetId, targetClass) in the handler its Do is wired from \u2014 the client's addRelation, the runtime's own PUT /classes/<class>/<id> with one AddRelation op whose Pointer names the target's class (ParseWireAdapter.addRelation) \u2014 the done chain after the await and the Error output landing in component state that nothing clears; the runtime's pre-flight transcribed in its order: no class, no relation property, no Target Record Id wire, no record, and a Target Record Id from anything but a Record or Query Records (NDA-012: a class-less Pointer burns the schema) each defer with a named reason, and an empty record or target at the click throws the runtime's own \"specified\" sentence into the catch; a wired class or relation, a named Backend, a repeater-bound Id, two wires into Id or Target Record Id, a Query Records' Items list as the target, and a consumed Id, Failure or Completed each defer by name. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
+    },
+    {
+      "typeName": "And",
+      "status": "translated",
+      "note": "a && b"
+    },
+    {
+      "typeName": "Animation",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Boolean",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with Boolean(value) as the cast - the string \"false\" is truthy and stores true, which is the runtime being surprising and the export agreeing with it"
+    },
+    {
+      "typeName": "Boolean To String",
+      "status": "translated",
+      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts \u2014 `currentInput ? trueString : falseString` by truthiness, with initialize's empty strings as the fallbacks. Its Selector Changed signal is not read: it fires from a value change, which is effect() work"
+    },
+    {
+      "typeName": "Button",
+      "status": "translated",
+      "note": "button"
+    },
+    {
+      "typeName": "CSS Definition",
+      "status": "translated",
+      "note": "a module constant holding the authored CSS verbatim plus a mount effect appending it to document.head in a <style> and removing it on unmount (css-definition.ts); a wired Style defers by name (EXP-011 \u00a748)"
+    },
+    {
+      "typeName": "Checkbox",
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.checkbox \u2014 same appearance:none translation"
+    },
+    {
+      "typeName": "Circle",
+      "status": "translated",
+      "note": "inline SVG with the runtime arc paths computed at generation time (VISUALS-TARGET \u00a77)"
+    },
+    {
+      "typeName": "Cloud File",
+      "status": "translated",
+      "note": "a projection of the Upload File that feeds it (EXP-011 \u00a745), compiled away like a date node: URL/Content Type/Size read the upload's row (or its Done-chain local) and Name is cloudFileName(row), the storage prefix stripped as cloudfilenode.ts strips it; the one wire is consumed and the node collapses. Defers by name: no Cloud File wired, two wires, a source that is not an Upload File's Cloud File output or a Record's File-typed column, an upload that never attached. EXP-011 \u00a746 (session 74): fed from a Record's column the project's schema snapshot declares a File, it is a projection of the record's row instead (file-field: row?.column?.url, cloudFileName(row?.column), contentType/size \u2014 both empty on a file read back from a column, as cloudfilenode.ts says); a column the snapshot does not declare, or declares as something other than File, defers by name, because the interpreter makes a CloudFile only of a column the snapshot types so."
+    },
+    {
+      "typeName": "Cloud Function",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "CloudFunction2",
+      "status": "translated",
+      "note": "EXP-011 \u00a741 (session 69): one function per node in src/api/functions.ts \u2014 the declared in-* ports as parameters (wired ones passed, authored ones folded), the declared out-* ports as a typed results object \u2014 through the EXP-009 client's callFunction() (POST /functions/<name>, app id + session token, 200/201 carries result) where the project declares a backend, and a stub that throws the interpreter's own \"No cloud services defined in this project.\" where it does not. Done/Failure are a try/catch's two arms; Error is a row never cleared. Defers by name: a wired Function, no function name, a consumed Completed, any other output, two wires into one parameter, a result read from the Failure chain."
+    },
+    {
+      "typeName": "Collection",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Collection2",
+      "status": "translated",
+      "note": "collection module (literal id only)"
+    },
+    {
+      "typeName": "CollectionClear",
+      "status": "translated"
+    },
+    {
+      "typeName": "CollectionInsert",
+      "status": "translated",
+      "note": "one .add({...}) in the owning handler"
+    },
+    {
+      "typeName": "CollectionNew",
+      "status": "translated",
+      "note": "EXP-011 \u00a755 (session 83): the handle is the id. The Do mints a component-local collection into a state row \u2014 const <local> = collection<T>([...items]); set<Row>(<local>); then the Done chain, which reads the array through the local \u2014 null until the first Do (the node's Id is empty until then), and every Do mints another. The Id is never a string in the emitted app: the only ports that can take it are the Array Id ports of Array, Insert Object Into Array, Remove Object From Array and Clear Array in the same component, each resolved through one arrayTargetOf (named module | minted handle). An Array bound by wire reads through useCollection(<row> ?? noArray) in render and <row>?.peek() ?? [] in a handler; a mutator bound by wire outside the mint's own chain guards on the handle and raises the runtime's <prefix>/no-array on the error channel before its Failure chain; Remove's row exists only because the handle did. Refuses by name: an Id consumed as a value (the store-its-id-on-an-object pattern), two wires on Items or on an Array Id, an Array Id wired from anything but a mint's Id, Completed consumed (one outcome), Run On Value Change off on the bound Array, a mutator fired both from the mint's Done and from elsewhere."
+    },
+    {
+      "typeName": "CollectionRemove",
+      "status": "translated",
+      "note": "EXP-011 \u00a730 (session 59): `notes.remove(item)` inside the row's own callback. The Object Id is a For Each's Item Id, which `foreach.tsx` sets to the firing row before pulsing `itemOutputSignal-<name>` \u2014 so the id names the row the emitted callback already closes over, and no id is spelled. \u26a0\ufe0f Translated for ONE wire shape and refused by name for every other: the Do must be a relayed row signal of the same repeater whose Item Id feeds the Object Id, and that repeater must repeat the very array being written (Collection.remove is indexOf, so a mapped row is a different object). The 2026-08-28 exemption said a row's outputs could not reach the page; \u00a729 disproved that sentence."
+    },
+    {
+      "typeName": "Color",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with the identity cast (color.ts: a colour needs no coercion) - a var(--token) authored in the panel survives verbatim into the emitted binding"
+    },
+    {
+      "typeName": "Color Blend",
+      "status": "translated",
+      "note": "EXP-011 \u00a738 (session 67): one call into src/lib/util.ts, the numbered `color N` family passed as variadic arguments in index order with a hole printed as `undefined` \u2014 the interpreter's sparse array, positionally. A wired colour is an argument, not a deferral"
+    },
+    {
+      "typeName": "Component Children",
+      "status": "translated",
+      "note": "EXP-011 \u00a751: the wrapper takes `children?: ReactNode` and renders `{children}` where the marker sits; an instance passes its placed children as JSX children, in order. A target with no marker drops them with a note and a marker, matching the runtime, which never draws them"
+    },
+    {
+      "typeName": "Component Inputs",
+      "status": "translated",
+      "note": "component props interface"
+    },
+    {
+      "typeName": "Component Outputs",
+      "status": "translated",
+      "note": "signal outputs become optional callback props (onX?: () => void); value outputs defer named to the component-state slice"
+    },
+    {
+      "typeName": "Component State",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Condition",
+      "status": "translated",
+      "note": "inline branch / bare truthiness (runOnChange rules apply)"
+    },
+    {
+      "typeName": "Counter",
+      "status": "translated",
+      "note": "CONTROLLED-STATE-TARGET (session 16): the number latch - Increase/Decrease are functional updates, Reset writes the literal start; enabled limits, a wired Start Value and a consumed countChanged defer named"
+    },
+    {
+      "typeName": "Date To String",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 a date rendered through its format template, timezone included. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "DbCollection",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "DbCollection2",
+      "status": "stubbed",
+      "exemption": "typed api stub + useState/useEffect \u2014 the backend seam, by design (phase README: no backend code export)"
+    },
+    {
+      "typeName": "DbModel",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "DbModel2",
+      "status": "translated",
+      "note": "EXP-011 \u00a743 (session 70): a read by Id through the class's collection module \u2014 fetch<Type>ById(id) beside the query and the record verbs, the row typed by the class's interface (schema snapshot first, then the columns the graph reads as unknown) \u2014 through the EXP-009 client's fetchOne() (GET /classes/<class>/<id>, app id + session token) where the project declares a backend, and a stub that throws where it does not. Fetch wired: a handler action, the Cloud Function's try/catch with the runtime's own \"Missing Id.\" thrown for an empty Id. Fetch unwired: a useEffect keyed on the Id (runOnValueChange, controlSignal fetch). Done/Failure are the two arms; Error is a row never cleared; Id resolves to the feeder. Defers by name: no class, a wired class, a second backend, a repeater-bound Id, two wires into the Id, no Id, a consumed Fetched (fires on bind AND after a read), Changed / changed-<column> (the in-process record store's pub/sub), Completed, any other output, a column read from the Failure chain. EXP-011 \u00a746 (session 74): a File column types CloudFile (tsColumnType), the collection module importing it from src/api/files.ts; the column feeds a Cloud File or a Sign File URL; a sibling handler may read the Id-effect form's row before the effect pass has attached it (recordWillFire asks the effect's own order-independent preconditions, and the late sweep keeps a fired node's rows). Registered, measured: a record fetched by a wired Fetch is NOT readable by a sibling handler in either wire order \u2014 attachment is recorded after every handler has compiled, and \u00a743's contract (a Fetch wired from nothing translatable leaves no row) keeps the trigger form out of recordWillFire. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
+    },
+    {
+      "typeName": "DeleteDbModelProperties",
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited delete taking the record id alone, on the same shape as Create; a Delete with no class name defers, because the runtime answers Failure with \u201cNo class name specified\u201d and never reaches the backend"
+    },
+    {
+      "typeName": "Drag",
+      "status": "translated",
+      "note": "src/lib/drag.ts useDrag(): a wrapper div dragged with the mouse or one finger (react-draggable's core and Draggable transcribed \u2014 bounds 'parent' with slack, axis gates only what the DOM flushes, the commit on release is per enabled axis), Drag X/Y and Delta X/Y as live getters, Drag Started/Moved/Ended and Done as listeners, Snap To Position X/Y as calls on the handle with the easeOut tween and the Value setter's abstain/NaN rules; refused by name: no child, Completed consumed, a pulse read as a value, a port it has not got, two wires on one input; dropped by name with a marker: an option or listener chain that does not translate, Failure (it cannot fire in the emitted app), every child after the first"
+    },
+    {
+      "typeName": "Event Receiver",
+      "status": "translated",
+      "note": "channel subscription; a listed payload key nothing wires types unknown (\u00a773, session 95)"
+    },
+    {
+      "typeName": "Event Sender",
+      "status": "translated",
+      "note": "emit over typed channel"
+    },
+    {
+      "typeName": "Expression",
+      "status": "translated"
+    },
+    {
+      "typeName": "Field Set",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Filter Collection",
+      "status": "translated"
+    },
+    {
+      "typeName": "FilterDBModels",
+      "status": "translated"
+    },
+    {
+      "typeName": "For Each",
+      "status": "translated",
+      "note": "repeater \u2192 .map() (identity/template-inputs mapping only; script mappings defer)"
+    },
+    {
+      "typeName": "For Each Actions",
+      "status": "translated",
+      "note": "EXP-011 \u00a757: Item Id is a row prop typed string that every host For Each binds from `item.id` (static rows with a unique string id, a query's record id; a named array or a static list without one drops it by name \u2014 the runtime mints a guid there); Added is a once-on-mount effect. Refused by name: no For Each host, a Run Tasks host, a connected Try Remove, a wired Remove Completed, a consumed Done/Completed/Unchanged"
+    },
+    {
+      "typeName": "Form",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Globals",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Group",
+      "status": "translated",
+      "note": "flex group \u2192 the element its Tag port names, div by default (EXP-015); background gradient, picture and backdrop blur fold into the ground the runtime paints (EXP-014)"
+    },
+    {
+      "typeName": "Gyroscope",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Image",
+      "status": "translated",
+      "note": "img"
+    },
+    {
+      "typeName": "Inverter",
+      "status": "translated",
+      "note": "!x (maybe-undefined sources defer)"
+    },
+    {
+      "typeName": "JavaScriptFunction",
+      "status": "translated"
+    },
+    {
+      "typeName": "Javascript2",
+      "status": "translated"
+    },
+    {
+      "typeName": "Label",
+      "status": "translated",
+      "note": "text role (Text alias)"
+    },
+    {
+      "typeName": "Logic Builder",
+      "status": "translated",
+      "note": "the block editor's generated code is re-hosted verbatim in a typed wrapper, with the port set read from the workspace through the runtime's own detectIO and Noodl.Variables bound to the app variables store (EXP-002-LOGIC-BUILDER-TARGET-OUTPUT.md); a node with no blocks or no Run wire emits nothing, as the runtime runs nothing; a block outside the admitted vocabulary (Noodl.Objects/Arrays/Config, window, a library global), a second signal input, a consumed block signal or outcome signal, a reserved-port write, and a program that will not compile strict each defer with a named reason"
+    },
+    {
+      "typeName": "Map Collection",
+      "status": "translated"
+    },
+    {
+      "typeName": "Model",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Model2",
+      "status": "translated",
+      "note": "two forms: \"From repeater\" compiles away into the template's props (Tier 1.1); \"Specify explicitly\" with a literal Id is a store module (`src/stores/<id>.ts`, the Global Store shape \u2014 EXP-011 \u00a747), its `prop-*` reads the store's key reads; values typed into its own `prop-*` inputs are a mount write (`useEffect`, EXP-011 \u00a771 \u2014 the runtime stores them at node creation, on every mount). A wired Id, a WIRED write through its own property inputs, a wired Fetch and its signal outputs are refused by name"
+    },
+    {
+      "typeName": "NavigationClosePopup",
+      "status": "translated",
+      "note": "reserved onClose prop inside popup targets: close/closeAction-* + gated done-chain; results/nested targets defer (POPUPS-TARGET)"
+    },
+    {
+      "typeName": "NavigationShowPopup",
+      "status": "translated",
+      "note": "parent-owned popup slot: useState + conditional createPortal; literal target/params, replace policy, done-chain; consumed close outcomes defer (POPUPS-TARGET)"
+    },
+    {
+      "typeName": "NewDbModelProperties",
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited create in the handler its Do is wired from, the prop-* record built from the form fields the enabling control-state clause makes readable, the done chain following the await and the Error output landing in component state that nothing clears; a missing class name (the runtime answers Failure and never calls the backend), access-control rules, a named Backend, a Source Object Id seed, two wires into one property, a consumed Id or Failure and a done chain that drives nothing translatable each defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file \u2014 an Upload File's Cloud File or a Record's File column \u2014 is sent as the wire's File envelope, fileRef(file) from src/api/files.ts, and types CloudFile in the class's interface (snapshot-declared or graph-written alike)."
+    },
+    {
+      "typeName": "NewModel",
+      "status": "translated",
+      "note": "folded into CollectionInsert chain (id provenance = Model2 slice, pending)"
+    },
+    {
+      "typeName": "Number",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): as String, with Number(value) as the cast and NaN banned as a stored value - an unparseable arrival takes the Treat empty as coercion, never NaN, because NaN !== NaN breaks the runtime's own changed guard permanently"
+    },
+    {
+      "typeName": "Number Blend",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Number Remapper",
+      "status": "translated",
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts. The degenerate branch is reproduced rather than repaired \u2014 with the two input endpoints equal the answer is Output Minimum for every input, which is the interpreter's answer and the one NDA-012 already decided by moving the default off it. Unset ports export initialize's 0/1/0/1/true"
+    },
+    {
+      "typeName": "On App Error",
+      "status": "translated",
+      "note": "EXP-011 \u00a754 (session 82): the boundary is hosted \u2014 const <local> = useAppError({ filter }, () => { \u2026the Error chain\u2026 }) from src/lib/errors.ts, a transcription of runtimeerror.ts (the synchronous bus, the depth-2 guard, a throwing subscriber isolated, the console default installed at module load) and onapperror.ts (a code-prefix Filter, empty meaning everything; the value outputs updated before the Error signal; every instance fires); the value outputs read off the handle's last. The channel is fed where the runtime raises: every request verb's failure arm (the record verbs and Record's Fetch record/storage-op-failed, the user family's own codes, cloud-function/call-failed, open-file-picker/open-failed, upload-file/upload-failed, sign-file-url/sign-failed, the four http/* codes carried on the http module's HttpError), the Run Tasks host's four run-tasks/* diagnostics and a Script's script/source-failed, each with the node's graph id, its type id and its component. A boundary beside the Router \u2014 the app-wide placement \u2014 keeps the router shell as a file (src/components/<Name>Shell.tsx, rendered by App.tsx inside the router for the app's life). Refuses by name: a component with no file to host it, two wires on Filter, an input or output the node has not got, Error consumed as a value, a chain that did not translate. Arms in a layout effect rather than at node creation; a Function or Expression throw inside a render pass reaches the console only."
+    },
+    {
+      "typeName": "Open File Picker",
+      "status": "translated",
+      "note": "pickFile({ accept, capture }) from src/lib/util.ts (EXP-011 \u00a745) \u2014 the node's <input type=file> as one promise: the chosen File is Done and binds the row, undefined (cancel, nothing chosen) is Unchanged and binds nothing, a refused click() is Failure with the node's own 'Could not open the file picker: \u2026'. File/Name/Size/Type read the row, or the Done chain's local; Error a row never cleared. Defers by name: Path (the desktop app's), a consumed Completed, two wires into a setting, a chain that defers."
+    },
+    {
+      "typeName": "Options",
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.options \u2014 same translation"
+    },
+    {
+      "typeName": "Or",
+      "status": "translated",
+      "note": "a || b"
+    },
+    {
+      "typeName": "Page",
+      "status": "translated",
+      "note": "page root"
+    },
+    {
+      "typeName": "Page Stack",
+      "status": "translated",
+      "note": "EXP-011 \u00a761 (session 86): the Component Stack as a visual role \u2014 `usePageStack({ name, pages, startPage })` registers by name on mount (navigation-handler.ts transcribed into src/lib/pageStack.ts, a module-level registry with the navigation queue), the row renders the TOP entry only (one `&&` line per page, the entry's params spread as the page's own Props, `key` fresh per push so React mounts a new instance as the runtime creates a new node), Top Component Name and Stack Depth read off the handle, Reset is `<local>.reset()` then its Done chain, and the class carries the runtime's defaultCss (a relative flex column, overflow hidden unless Clip Content is unticked). Refused by name: Use Routes ticked or wired (the stack then writes the browser url), a wired Name / Components / Start Page, an empty Components list, a page naming no component, a page that is a routed page or exports no component, a Start Page not in the list, a consumed Completed. A Failure wire is dropped with a note (its two causes are both excluded statically); a Done wire with no Reset wired likewise (the mount-path reset reports nothing). \u26a0\ufe0f Recorded divergence: no transition \u2014 the runtime animates every push (`Push` by default) and keeps both components mounted until the animation ends; the export switches in one render, and the `stack-transitioning` / `transition-in-progress` failures cannot occur."
+    },
+    {
+      "typeName": "PageInputs",
+      "status": "translated",
+      "note": "EXP-011 Tier 2.5 (session 40): every `pm-` output reads the url as `pageQuery.get(\"name\") ?? pageParams.name` \u2014 the query first, because the Router merges `Object.assign({}, match.params, urlQuery)` and a query key of the same name wins. Gated on the component being a routed page: off a route the Router never calls the node, and `useParams()` would read the enclosing route and work better than the app it came from"
+    },
+    {
+      "typeName": "PageStackNavigate",
+      "status": "translated",
+      "note": "EXP-011 \u00a761 (session 86): printed as the runtime's own call \u2014 `pushComponent(name, { target, params, backCallback, hasNavigated, hasUnchanged })`, or `replaceComponent` in Replace mode, which installs no back callback (navigation-stack.tsx replaceAsync installs none). The stack is resolved BY NAME across the project (every stack under the name must list the target and show the same component for it \u2014 the runtime fans the push out to all of them), the target against its Components list, each `pm-<port>` value against the target's own declared input type (an untyped source into a string input takes the untyped Variable's `String(x ?? '')`; a mismatch refuses by name; a port the target does not declare is dropped with a note \u2014 the runtime's setInputValue on an undeclared input reaches nothing). The back channel: `backAction-<a>` chains run inside the callback under `if (action === 'a')`, AFTER the back-results row is written (navigate.ts flags every backResult output dirty before it sends the signal); a `backResult-<k>` read inside a back chain is the callback's own argument, anywhere else the row (`Record<string, unknown>`, typed unknown \u2014 the port is `*`), allocated by a read and refused when the push never attaches. Refused by name: a wired Stack / Mode / Target Page / Transition / `tr-*`; no stack of that name in the project (the runtime queues the push for ever); a stack that did not translate; a target not in the list; two same-named stacks showing different components for the target; a back action or result the target's Pop does not declare; any back action or result in Replace mode; Done/Unchanged consumed as a value; Completed; an Error read (none of the three failures can fire with a literal Target inside the list). A Failure wire is dropped with a note for the same reason. An authored non-default Transition is noted, not refused (the recorded divergence)."
+    },
+    {
+      "typeName": "PageStackNavigateBack",
+      "status": "translated",
+      "note": "EXP-011 \u00a761 (session 86): `const <local> = popComponent(pageStackEntry, { backAction, results })` per trigger port (Navigate and every wired `backAction-<a>`, as Close Popup compiles per port), the Done arm, and the Failure arm \u2014 which raises `pop-component-stack/no-stack-in-scope` on the channel before its chain (the one failure the export can reach; `transition-in-progress` needs a transition). The way back is the reserved prop `pageStackEntry?: PageStackEntryHandle`, passed by the stack row that shows the component and absent everywhere else \u2014 the runtime hands the callback to the Pop nodes in the pushed component's OWN scope only (getNodesWithType, non-recursive), and a component shown by Reset or Replace, or placed outside any stack, gets none and answers the runtime's own failure. `result-<k>` values are read where the setters stored them (the handler's render expression); Error is read only inside the Failure arm (`<local>.message`). Refused by name: a host component no stack lists (nothing ever pushes it \u2014 Failure every time); the reserved prop's name claimed by a declared port; Unchanged consumed (an end-stop a pushed component's Pop cannot reach); Completed; an Error read outside the Failure chain; Done/Failure consumed as a value."
+    },
+    {
+      "typeName": "PageStackNavigateToPath",
+      "status": "translated",
+      "note": "EXP-011 \u00a715 (session 44): the node's own url builder, which disagrees with the Router's in four places \u2014 an unset placeholder substitutes `''` here and is deferred one node over, neither half is percent-encoded, the query list is authored rather than left over, and an unset query value is omitted from the url. Emitted as `navigate(...)` with exactly one leading slash, because the runtime compares trimmed paths while react-router reads an unslashed path as relative. \u26a0\ufe0f navigationPathType is deliberately not consulted: `_getLocationPath` returns the same bare path in both modes and `_getSearchParams` reads `location.search` in both, so the setting chooses only where the same path string is written. \u00a717 (session 46) opened the Open In New Tab arm: `window.open(url, '_blank')` with NO features string, which is the runtime's own call \u2014 so its `if (!opened)` return-value test is faithful and works. \u26a0\ufe0f \u00a715.4 deferred this arm saying the success test was `navigator.userActivation`; that sentence was inherited from External Link and false here \u2014 the activation read exists on that node ONLY because it passes `noopener`, which makes `window.open` return null on success as much as on failure (DEF-016). Measured in Chrome 151: the `noopener` call returns null beside a tab that opened, the bare call returns a Window under a gesture and null without one. With the arm on, Failure becomes live, Error becomes writable (one static message \u2014 the Path gate makes the missing-path write unreachable), and Completed becomes a JOIN beneath both arms rather than a continuation of Done. \u00a718 (session 47) opened the WIRED port too, so Open In New Tab translates in all three of its states \u2014 off (`navigate`), on (`window.open`), wired (both). The wired form is the runtime's own `if (this._internal.openInNewTab) { open } else { pushState }` with the outcomes hoisted out from under it: ONE url build above the branch, ONE success flag (`let goOpened = true`, an initialiser that is a claim about the same-tab arm \u2014 pushState cannot fail and the Path gate excludes the node's other failure), ONE Done chain and ONE Completed beneath it, never a copy per arm. The port is a TRUTHINESS SINK \u2014 the runtime coerces it once with `!!` and the emitted read is the `if` test itself \u2014 so a logic truth value lands here where a `p-`/`q-` value still defers. \u26a0\ufe0f \u00a715.4's stale sentence about the transient user activation had ALSO survived \u00a717 in compileNavigateToPath's own header comment, twenty lines above the block refuting it; \u00a718 removed it. A wired Path and an in-tab read of Error still defer, each named."
+    },
+    {
+      "typeName": "Parent Component State",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "REST2",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Radio Button",
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.radiobutton \u2014 same translation"
+    },
+    {
+      "typeName": "Radio Button Group",
+      "status": "translated",
+      "note": "flex container providing the instance-scoped radio name via useId(); literal value marks defaultChecked (VISUALS-TARGET \u00a73)"
+    },
+    {
+      "typeName": "Range",
+      "status": "translated",
+      "note": "legacy alias of net.noodl.controls.range \u2014 same translation"
+    },
+    {
+      "typeName": "RemoveDbModelRelation",
+      "status": "translated",
+      "note": "EXP-011 \u00a762 (session 86): the Add sibling's shape with a RemoveRelation op \u2014 removeInquiryRelation(id, relation, targetId, targetClass) through the client's removeRelation (ParseWireAdapter.removeRelation), the same pre-flight in the same order with its own two \"specified\" sentences, the same done chain and Error row; removing a relation that was never there succeeds identically (the node has no Unchanged port, and neither does the export); the same eleven refusals by name. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
+    },
+    {
+      "typeName": "Router",
+      "status": "translated",
+      "note": "router shell \u2192 src/App.tsx routes"
+    },
+    {
+      "typeName": "RouterNavigate",
+      "status": "translated",
+      "note": "navigate() from rendered-element/receiver triggers only"
+    },
+    {
+      "typeName": "RunTasks",
+      "status": "translated",
+      "note": "EXP-011 \u00a753 (session 81): hosted both sides \u2014 the host calls useRunTasks(label, { maxRunningTasks, stopOnFailure }, listeners) from src/lib/runTasks.ts (a transcription of runtasks.ts: the serial state machine, the queue, bounded concurrency, stop-on-failure, abort, Aborted before the outcome and Completed after it) and renders one template element per task in flight as the last child of its root container; the template \u2014 a logic-only component a Run Tasks names statically \u2014 is emitted as a null-rendering component whose start-input chain runs once on mount, which is when startTask pulses it; Success/Failure are its callback props, matched by the contract's names. Refuses by name: a wired or missing Template, a template with a visual root or on a template cycle, a contract port not typed signal, no Success or Failure output, a start chain that did not translate, Items unwired or not a list, Max Running Tasks below 1, a host whose root is not a container, an output consumed as a value."
+    },
+    {
+      "typeName": "Screen Resolution",
+      "status": "translated",
+      "note": "src/lib/screen.ts useScreenResolution(): width, height and width/height from window.innerWidth/innerHeight at mount and on every resize, one listener per hook removed on unmount; the hook prints only where an emitted expression reads it; refused by name: a wire into it, a port it has not got"
+    },
+    {
+      "typeName": "Script Downloader",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Set Variable",
+      "status": "translated",
+      "note": "variable write in handler (element/receiver triggers only); a value typed into Value with nothing wired over it is written on every Do and types the variable (\u00a769, session 93); a variable no source types is unknown (\u00a772, session 94); the Set as table: Empty string writes '', Boolean !!value, Number/Date/Any untouched, Object/Array refused (\u00a773, session 95)"
+    },
+    {
+      "typeName": "SetDbModelProperties",
+      "status": "translated",
+      "note": "RECORD-VERBS-TARGET (session 20): an awaited update taking the record id then the property record, on the same shape as Create; additionally Store to = Local only, Properties to store = All, an Id Source from the enclosing repeater and an unnamed record defer with a named reason EXP-011 \u00a746 (session 74): a prop-* fed a stored file rides the wire as fileRef(file), as Create's does. An Id read from a source typed unknown (a Variable nothing statically writes) is coerced String(x ?? '') at the bind \u2014 an unknown narrows to {} not string, and the built app was TS2345 (\u00a772, session 94)."
+    },
+    {
+      "typeName": "SetModelProperties",
+      "status": "translated",
+      "note": "one patch on the named object's store module (`profile.set({ name, city, since: '2026' })`) plus its Done chain \u2014 the \"Specify explicitly\" form with a literal Id only; a value typed into a listed, unwired property is written and types the key (\u00a768, session 92); inside a repeater row it is still list-owned state and a wired Id is a runtime value, both refused by name. EXP-011 \u00a747, session 75"
+    },
+    {
+      "typeName": "Sign File URL",
+      "status": "translated",
+      "note": "await signFileUrl(file) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's GET /files/<name>/sign; the answer carries kind 'signed' and isShareable true (the NodeGX wire mints ?exp=&sig= unconditionally, measured), Signed URL/URL Kind/Safe To Share/Expires At/TTL read the row or the Done chain's local, Error a row never cleared; a stub that throws with no backend. EXP-011 \u00a746 (session 74): also a File fed from a Record's File-typed column \u2014 the column read is the argument, the row form guarded by 'No file specified'. Defers by name: a File fed by anything but an Upload File's Cloud File or a Record's File-typed column, no File, a named Backend, Error Status Code, a consumed Completed."
+    },
+    {
+      "typeName": "Signal To Index",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "States",
+      "status": "translated",
+      "note": "EXP-011 \u00a749 (session 77): a `defineStates({\u2026})` constant above the component (states, every value with its type, per-state authored values and transitions, the per-state defaults, Use Transitions) and a `useStates` handle inside it, from src/lib/states.ts \u2014 a transcription of states.ts over the run engine in src/lib/animate.ts: requests queued per handler and drained after it (all but the last settled at once), a falsy state is the first, the current state is Unchanged, an unknown name is Failure with the node's own Error text, numbers and colours tween along transition-<state>-<value> || transitiondef-<state> || the default, booleans and strings jump; State/At/State Changed move at the request, Has Reached at the tween's end, Done after State Changed. Toggle and To <state> are one call on the handle; the signal outputs are listeners passed once; a wired State is an effect. Reads: State, every value, At <state>, Error \u2014 and a value into opacity/color/backgroundColor lands as an inline style. Refused by name: a wired States/Values/type-/value-/transition/Use Transitions, a Text Style value, a value unauthored in a state, a to-/at-/reached- naming no state, a consumed Completed, an empty States list. \u26a0\ufe0f Recorded rather than reproduced: a var(--token) colour is resolved off the document here where the interpreter's resolveColor is a lookup in a table no v2 project has (every tween frame is #NaNNaNNaNNaN there)."
+    },
+    {
+      "typeName": "Static Data",
+      "status": "translated",
+      "note": "the authored JSON rows become a frozen module constant with a derived row type, feeding the For Each that consumes them (EXP-002-STATIC-DATA-TARGET-OUTPUT.md); CSV, a blob that does not parse to an array of records, a wired parse-failure channel, and rows no rendered repeater consumes each defer with a named reason"
+    },
+    {
+      "typeName": "String",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.4 (session 35): a value Variable is a constant when nothing writes it (the read folds to a literal, and Length folds with it) and a useState plus a sync effect carrying variablebase.setValueTo's table when Value is wired under Run On Value Change; a wired Set, a consumed Changed/done/unchanged, an unticked Run On Value Change and a Length over a stored string defer named"
+    },
+    {
+      "typeName": "String Format",
+      "status": "translated",
+      "note": "template literal at the sink"
+    },
+    {
+      "typeName": "String Mapper",
+      "status": "translated",
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts with the numbered pairs as an object literal. Two rules the literal does not get for free and the planner supplies: first-wins on a repeated Input (indexOf finds the first, an object keeps the last), and a present key with an undefined value for an Input whose Mapping is empty (that publishes empty rather than falling through to Default). A wired numbered port defers \u2014 the table is read at generation time"
+    },
+    {
+      "typeName": "String Selector",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "SubscribeToChanges",
+      "status": "translated",
+      "note": "EXP-011 \u00a766 (session 90): `useSubscribeToChanges(source, options, listeners)` in src/lib/realtime.ts \u2014 the runtime's realtime layer for the built-in backend transcribed: RealtimeSubscription (one reconnection funnel per socket, the confirmation deadline, fatal-as-data with the contract's classification and 1s\u219230s backoff), the NodeGX SSE dialect (GET /realtime with the session token, the `connected` hello, POST /realtime/subscriptions confirmed by its body's accepted[] and not its status, the `change` and `resync` frames) and the shared connection pool (one EventSource per backend for every unfiltered subscription, the union re-POSTed on every membership change and every hello). The Class and Enabled are the options (a change re-runs the node's reconfigure; Enabled absent means on, as the runtime's untouched default does); Record Created / Updated / Deleted / Records Changed / Realtime Failure are listeners (a Failure raises subscribe-to-changes/realtime-failed on the channel after the pulse, the runtime's order); Subscribed, Realtime Status, Realtime Error, Change Type, Changed Record, Changed Records and Changed Record Id read live off the handle. Rides EXP-009's client (the endpoint, the session). Refused by name: a project with no backend, a Backend other than the project's active one, an authored Filter or a `qp-` port, and the table's own gates (two wires on one input, a config wire whose source only exists inside a handler, a signal consumed as a value, a chain this slice cannot compile). \u00a766.5 #1 (session 94): Enabled wired from a Variable nothing has written boots ON, as the runtime does \u2014 measured headlessly (node.ts sendValue drops an undefined before it crosses a wire, so the setter never runs); every stream lib's has(options, key) now reads an undefined option as no delivery and the hooks compare the applied values, not the raw options."
+    },
+    {
+      "typeName": "Substring",
+      "status": "translated",
+      "note": "EXP-011 Tier 2.7 (session 65): one call into src/lib/util.ts, transcribed from the node's own substr call. An untouched End exports as -1, the value initialize writes \u2014 and, since DEF-033 was fixed (session 67), the default the port declares as well; before that the panel said 0. A wired String that can be empty is translated with a note: the node's setter raises there rather than answering, and an export whose failure mode is an exception in a page is the trade the date family already refused"
+    },
+    {
+      "typeName": "Switch",
+      "status": "translated",
+      "note": "CONTROLLED-STATE-TARGET (session 16): a useState latch - On/Off/Flip are state writes, Current State reads it; consumed switched*/done/unchanged pulses and a wired State input defer named"
+    },
+    {
+      "typeName": "Text",
+      "status": "translated",
+      "note": "text role \u2192 the element its Tag port names, p by default (EXP-015)"
+    },
+    {
+      "typeName": "Text Input",
+      "status": "translated",
+      "note": "controlled input"
+    },
+    {
+      "typeName": "Timer",
+      "status": "translated",
+      "note": "EXP-011 \u00a739 (session 68): `Delay` \u2014 three verbs from src/lib/timer.ts over a useRef the component declares per node: startDelay answers whether a countdown began (false while one runs, the node's own `_isRunning === false` test), restartDelay always begins again, stopDelay answers whether there was one to stop; each verb's Done/Unchanged chains are the two arms of an if over that answer, and Started/Finished are the two callbacks, fired by two setTimeouts where the interpreter fires them by frame. Restart's Unchanged chain is dropped with a note (Restart never reports it). \u26a0\ufe0f One recorded divergence: the scheduler marks a timer running at the end of the NEXT frame, so a Stop in the same tick as a Start reads Unchanged there and Done here. Defers a consumed Completed and any unknown output; a Started/Finished chain on a timer only Stop drives is left for the wire sweep to name."
+    },
+    {
+      "typeName": "Transition",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Unique Id",
+      "status": "translated"
+    },
+    {
+      "typeName": "Upload File",
+      "status": "translated",
+      "note": "await uploadFile(file, { private }) into src/api/files.ts (EXP-011 \u00a745) \u2014 the client's POST /files/<name> with the bytes as the body, app id + session token, X-NodeGX-File-Private where Private is on (authored true or wired); 'No file specified' thrown inside the try where the picker's row is empty; the 201 body is the CloudFile row. Done/Failure are the try/catch's arms; Error a row never cleared; a stub that throws where the project declares no backend. Defers by name: a File fed by anything but an Open File Picker's File, no File, a named Backend, any File Location input set (Supabase/PocketBase, inert on this wire), the progress family (XHR upload events), Error Status Code, Cloud File wired into anything but a Cloud File / Sign File URL / a record verb's prop-* / a Set User Properties' prop-* (EXP-011 \u00a746: into a column the stored file rides the wire as fileRef(file) = { __type: 'File', name, url }, the envelope cloudstore.js _serializeObject writes and the backend infers a File column from), a consumed Completed."
+    },
+    {
+      "typeName": "Value Changed",
+      "status": "translated",
+      "note": "EXP-011 \u00a739 (session 68): the effect() slice \u00a79.6 named \u2014 a useEffect keyed on the Input's render-mode expression, with the last value seen in a useRef: return on the same value, else remember it and run the chain. `lastValue` boots undefined in `initialize`, so a first arrival of undefined fires nothing and a first arrival of anything else fires, exactly as the effect reads them. \u26a0\ufe0f React compares dependencies with Object.is and the node with ===; they differ only on NaN. Defers an Input that only exists inside a handler (a text input's onTextChanged, a received payload), no Input, no consumer, and any other output, each by name."
+    },
+    {
+      "typeName": "Variable",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "Variable2",
+      "status": "translated",
+      "note": "useVariable hook; a variable with no statically-known source (nothing wired into any Value, no literal, or only refused writers) is value<unknown>, coerced at its sink \u2014 not string by [].every (\u00a772, session 94)"
+    },
+    {
+      "typeName": "Video",
+      "status": "translated",
+      "note": "native video element: src/poster/flags pass through, object-fit always stated (VISUALS-TARGET \u00a76)"
+    },
+    {
+      "typeName": "net.noodl.ActionDispatcher",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: an app-wide action bus driven by a backend agent against a registered vocabulary \u2014 niche today. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.ActionHandler",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the receiving half of the action bus, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.ArrayChanged",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
+    },
+    {
+      "typeName": "net.noodl.ComponentObject",
+      "status": "translated",
+      "note": "the record compiles away: mirror wires alias their source, unwritten properties read their boot value (COMPONENT-OBJECT-TARGET)"
+    },
+    {
+      "typeName": "net.noodl.DateAdd",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 a date shifted by an amount of a unit, months and years clamping. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "net.noodl.DateCompare",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 two instants compared at a granularity, one call per answer. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "net.noodl.DateDifference",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 the signed distance between two instants, counted in a unit. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "net.noodl.DateParts",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 one field of an instant, in the local zone. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "net.noodl.GlobalStore",
+      "status": "translated",
+      "note": "named store module declarer"
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Set",
+      "status": "translated",
+      "note": "store write; \u00a770 a typed-in Value with nothing wired over it is written on every Set and types the key"
+    },
+    {
+      "typeName": "net.noodl.GlobalStore.Subscribe",
+      "status": "translated",
+      "note": "store hook (single-key only; multi-key/whole-store defers)"
+    },
+    {
+      "typeName": "net.noodl.HTTP",
+      "status": "translated",
+      "note": "one function per node in src/api/http.ts, built from the configuration the editor settled; the two outcome arms and the Error value translate. A wired Cancel, a wired configuration input and a consumed Completed defer, each with its reason (EXP-011 \u00a78)"
+    },
+    {
+      "typeName": "net.noodl.Hash",
+      "status": "translated",
+      "note": "src/lib/crypto.ts tryHash: an awaited SHA-256/384/512 digest of Value's UTF-8 bytes in hex/base64/base64url (encoding.ts transcribed), Digest and Error as rows allocated by a read, the Done arm reading the fresh digest, hash/failed raised on the channel before the Failure chain; refused by name: Completed, an Error read from its own Done chain, a read while nothing fires Do"
+    },
+    {
+      "typeName": "net.noodl.JSONStreamParser",
+      "status": "translated",
+      "note": "EXP-011 \u00a758 (session 85): a hook \u2014 `useJsonStreamParser({ label, nodeId, componentName }, { format, maxLength }, listeners)` from src/lib/streaming.ts, a transcription of json-stream-parser.ts over stream-parsers.ts (`splitDelimited` for NDJSON, `scanJsonValues` with string/escape/depth tracking and a waiting scalar for stream and single framing, the Max Pending give-up, one Error per bad value, Success only when a value came out, Failure iff this Parse added errors, then Completed; Clear with Done/Unchanged by what there was). Parse/Clear are calls on the handle with the Chunk read at the pulse; the seven value outputs are live getters (Values takes the array port's JSON cast at a text sink, Parsed the untyped `String(x ?? '')`). The Failure raises `json-stream-parser/parse-failed` on the error channel with the node's provenance. Defers, each by name: two wires on a value input, a value input with no static source or one read from a text input's live text, a signal output consumed as a value, a chain this slice cannot compile, and a logic-only component."
+    },
+    {
+      "typeName": "net.noodl.Log",
+      "status": "translated",
+      "note": "EXP-011 \u00a739 (session 68): an action \u2014 `log(level, message, data)` into src/lib/util.ts, a transcription of log.ts's `_write` browser branch (the level is the console method, an absent message prints '', data is passed only when one arrived), then the Done chain as following statements. `Value` passes straight through, so a read of it is a read of whatever feeds the input. Defers a wired Level (an enum the setter validates on arrival), a consumed Completed (one outcome \u2014 wire Done instead) and any other output, each by name. The backend sink and its redaction are the cloud runtime's and never reach a browser bundle."
+    },
+    {
+      "typeName": "net.noodl.Now",
+      "status": "translated",
+      "note": "EXP-011 Tier 1.3 (\u00a79) \u2014 the clock, read once at mount and again on every Read \u2014 a lazy useState seed plus a bound instant per press. Emitted as a call into src/lib/date.ts, a transcription of the interpreter\u2019s own datemath.ts."
+    },
+    {
+      "typeName": "net.noodl.ObjectChanged",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 not offered in the node picker, so it cannot be placed. It exists for graphs that already have one, and those export as named deferrals"
+    },
+    {
+      "typeName": "net.noodl.OptimisticUpdate",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: a provisional store write with commit/rollback \u2014 a data-layer policy, and new enough that nobody is waiting on it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.ParentComponentObject",
+      "status": "translated",
+      "note": "EXP-011 \u00a760: the nearest ancestor's record through React context \u2014 `useParentComponentObject()` reads the Provider the owning component prints; `value-*` reads are `parentObject?.value.key` (unknown, coerced at the sink; undefined at the root, where the hook raises parent-component-object/no-ancestor once at mount). Refused by name: a named or wired Parent Component, a wired Fetch, Parent object unticked, a consumed changed/changed-*/fetched/done/completed/failure signal, a consumed Error, a wired value-* input (a write through the reader), a dotted key"
+    },
+    {
+      "typeName": "net.noodl.ParseCSV",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: CSV import \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.PatternExtractor",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: regex extraction \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.RandomBytes",
+      "status": "translated",
+      "note": "src/lib/crypto.ts tryRandomBytes: Length (Number()-coerced where wired, 32 only when never set) random bytes from crypto.getRandomValues in hex/base64/base64url, never Math.random(); Value and Error as rows allocated by a read, random-bytes/failed raised before the Failure chain; refused by name: Completed, an Error read from its own Done chain, a read while nothing fires New"
+    },
+    {
+      "typeName": "net.noodl.SSE",
+      "status": "translated",
+      "note": "EXP-011 \u00a764 (session 88): `useServerSentEvents(source, options, listeners)` in src/lib/sse.ts \u2014 the runtime's SseConnection (fetch or EventSource transport, backoff, dedupe window, Last-Event-ID) transcribed; Connect / Disconnect are verbs on the handle with the runtime's outcomes (Done on open, Unchanged when superseded or nothing to stop, Failure raising sse/connect-failed); On Open / On Message / On Error / On Close are listeners; every Status and Data output reads live off the handle (Text through textForPath). Refused by name: two wires on one input, a config wire whose source only exists inside a handler, a signal consumed as a value, a chain this slice cannot compile."
+    },
+    {
+      "typeName": "net.noodl.SetComponentObjectProperties",
+      "status": "translated",
+      "note": "EXP-011 \u00a760: a handler patch on the component's own record \u2014 `<local>.set({ key: value, \u2026 })` over the node's Properties list (a wire or an authored literal per key; an unfed key abstains by absence, base.ts), then Done and Completed as following statements; the Component Object it writes takes record mode (`useComponentObject`, a Provider). Refused by name: no Component Object in the component, an empty list, nothing fed, two wires on a key, a logic truth value, a Done that drives nothing, and the Component Object's own gates"
+    },
+    {
+      "typeName": "net.noodl.SetParentComponentObjectProperties",
+      "status": "translated",
+      "note": "EXP-011 \u00a760: the block form on the nearest ancestor's record \u2014 `if (parentObject === undefined) { raise set-parent-component-object-properties/no-ancestor; Failure chain } else { parentObject.set({ \u2026 }); Done chain }`, base.ts's fork verbatim. Refused by name: a named or wired Parent Component, a consumed Error or Completed, and the self variant's list/feed gates"
+    },
+    {
+      "typeName": "net.noodl.StateHistory",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: a bounded undo history of a store \u2014 a whole state architecture rather than a node. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.StateHistory.Undo",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the verb half of undo/redo, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.StateSnapshot",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: the snapshot half of undo/redo, out of scope with it. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.StreamBuffer",
+      "status": "translated",
+      "note": "EXP-011 \u00a758 (session 85): a hook \u2014 `useStreamBuffer({ label, nodeId, componentName }, { flushSize, flushInterval, maxSize }, listeners)` from src/lib/streaming.ts, a transcription of stream-buffer.ts: Add with nothing ever delivered on Data is a Failure (`stream-buffer/no-data`, raised with the node's provenance), Max Size drops the oldest (Dropped Items, Overflowed), a reached Flush Size hands the Add's token to the flush, the interval timer flushes on its own with Flushed only (no outcome \u2014 nobody invoked it), an empty Flush is Unchanged without Flushed, Clear reads what there was before the reset, a changed Flush Interval re-arms, unmount stops the timer and drops the buffer. Add/Flush/Clear are calls on the handle with Data read at the pulse (`add()` with no source is the runtime's no-data Failure); the six value outputs are live getters. Defers by name as the JSON Stream Parser does."
+    },
+    {
+      "typeName": "net.noodl.TextAccumulator",
+      "status": "translated",
+      "note": "EXP-011 \u00a758 (session 85): a hook \u2014 `useTextAccumulator({ label, nodeId, componentName }, { delimiter, maxLength, maxMessages }, listeners)` from src/lib/streaming.ts, a transcription of text-accumulator.ts: the Chunk setter accepts text and the primitives that read as text and REFUSES anything else by name (Error set, Failure pulsed, `text-accumulator/chunk-not-text` raised once per distinct message, the Add that follows Unchanged), an empty chunk is Unchanged, `truncateHead` to Max Length (Dropped Characters, Overflowed), `splitDelimited` on the delimiter (empty: no boundaries), Max Messages drops the oldest, Message Received once per Add that completed any, Changed, Done, then Completed. Add/Clear are calls on the handle with the Chunk read at the pulse; the nine value outputs are live getters (Messages takes the array port's JSON cast at a text sink). Defers by name as the JSON Stream Parser does."
+    },
+    {
+      "typeName": "net.noodl.ToCSV",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 EXP-011 \u00a73 not-a-target, re-ruled \u00a750, Richard's ruling 2026-09-03: CSV export \u2014 unlikely to be popular. \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.UUID",
+      "status": "translated"
+    },
+    {
+      "typeName": "net.noodl.WebSocket",
+      "status": "translated",
+      "note": "EXP-011 \u00a765 (session 89): `useWebSocket(source, options, listeners)` in src/lib/websocket.ts \u2014 the runtime's WebSocketConnection (reconnection with equal-jitter backoff, the heartbeat with dead-connection detection, the FIFO send queue with its three When Disconnected policies, teardown) transcribed; Connect / Disconnect / Send are verbs on the handle with the runtime's outcomes (Done on open or a Send owed to the wire, Unchanged when superseded, nothing to stop or dropped by policy, Failure raising websocket/connect-failed or the Send's own code); On Open / On Message / On Message Sent / On Error / On Close / On Reconnect are listeners; every Status and Data output reads live off the handle; URL / Protocols / Auto Connect changes rebuild the connection as the node's setters do, the tuning inputs are applied in place. Refused by name: two wires on one input, a config wire whose source only exists inside a handler, a signal consumed as a value, a chain this slice cannot compile."
+    },
+    {
+      "typeName": "net.noodl.animatetovalue",
+      "status": "translated",
+      "note": "EXP-011 \u00a749 (session 77): `const x = useAnimatedValue(target, { duration, delay, ease }, onArrive)` from src/lib/animate.ts \u2014 a transcription of timerscheduler.ts (one timer: joins on the next frame, t over the duration after the delay, finishes at t = 1), easecurves.ts (the four picker names, aliased onto the cubics) and animate-to-value.ts (the first target adopted outright, a target equal to the current end ignored, booleans 1/0, NaN ignored, At Target Value on finish only). Duration and Delay may be wired (read at each run); Easing Curve must be authored and known. Current Value reads as a number anywhere, into a Text as String() and into opacity as the inline style."
+    },
+    {
+      "typeName": "net.noodl.controls.button",
+      "status": "translated",
+      "note": "button"
+    },
+    {
+      "typeName": "net.noodl.controls.checkbox",
+      "status": "translated",
+      "note": "appearance:none input with the runtime box defaults and a masked default tick; label wrapper (VISUALS-TARGET \u00a73)"
+    },
+    {
+      "typeName": "net.noodl.controls.options",
+      "status": "translated",
+      "note": "native select: literal items become options, placeholder the hidden disabled option; wired items defer (VISUALS-TARGET \u00a75)"
+    },
+    {
+      "typeName": "net.noodl.controls.radiobutton",
+      "status": "translated",
+      "note": "appearance:none radio inside a Radio Button Group, ::before dot with the FB-020 colour fallback (VISUALS-TARGET \u00a73)"
+    },
+    {
+      "typeName": "net.noodl.controls.range",
+      "status": "translated",
+      "note": "native input[type=range] with authored bounds; thumbColor becomes accent-color (VISUALS-TARGET \u00a74)"
+    },
+    {
+      "typeName": "net.noodl.controls.textinput",
+      "status": "translated",
+      "note": "controlled input"
+    },
+    {
+      "typeName": "net.noodl.externallink",
+      "status": "translated",
+      "note": "EXP-011 Tier 2.5 (session 41): `window.open(link, target, params)` with the interpreter own two guards \u2014 the empty-link refusal, which is emitted because `window.open(\"\")` opens a blank tab, and the blocked-new-tab test, which the runtime reads only for `_blank`. `Open In New Tab` unset is `true` (the port declared default, materialised by `registerInput`), so the unwired port and an authored `true` are one case. Defers a wired `Open In New Tab` (the runtime reads that port two ways in two adjacent lines and they disagree for any truthy value that is not `true`), and a Link that is absent, empty or not a string. `Error` is a state row (\u00a714, session 43) \u2014 both messages are static, so the failure arm re-tests the link to pick between them; the row is allocated by the read, so a link nothing asks about still emits no state. A read of `Error` from inside the node own outcome chains still defers, on the closure rule. \u00a714 also moved the blocked-tab read to BEFORE the `window.open` call, where the runtime has it: the call CONSUMES the transient activation, so read after it the test is false on every tab the app successfully opens. `Unchanged` is dropped with a note: it fires only during a server-side render, and the scaffold mounts with createRoot."
+    },
+    {
+      "typeName": "net.noodl.user.LogIn",
+      "status": "translated",
+      "note": "await logIn(username, password) into src/api/session.ts; Error -> component state"
+    },
+    {
+      "typeName": "net.noodl.user.LogOut",
+      "status": "translated",
+      "note": "await logOut(); Error row written even when nothing reads it"
+    },
+    {
+      "typeName": "net.noodl.user.RequestMagicLink",
+      "status": "translated",
+      "note": "await requestMagicLink(email[, redirect]) into src/api/session.ts (EXP-011 \u00a744) \u2014 POST /auth/magic-link through the client; Error cleared on Done as the node does; failure/completed consumed, a named Backend, two wires into an input defer by name"
+    },
+    {
+      "typeName": "net.noodl.user.RequestPasswordReset",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "net.noodl.user.ResetPassword",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "net.noodl.user.SendEmailVerification",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "net.noodl.user.SetUserProperties",
+      "status": "translated",
+      "note": "await setUserProperties({ username, email, ...columns }) into src/api/session.ts (EXP-011 \u00a744) \u2014 PUT /users/<objectId> through the client with the stored session rewritten; prop-* columns typed by their wires (UserProperties); 'Nobody is signed in.' thrown before any request; failure/completed consumed, a named Backend, two wires into an input defer by name EXP-011 \u00a746 (session 74): a prop-* fed a stored file (an avatar) is sent as fileRef(file), the _User column typed CloudFile in UserProperties \u2014 the session module imports the type from src/api/files.ts."
+    },
+    {
+      "typeName": "net.noodl.user.SignInWith",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 until provider sign-in is a product decision (\u00a750, Richard's ruling 2026-09-03: not recognised in the editor); Do is a full-page redirect to the backend's /oauth/<provider>/start and the outcome arrives on a LATER page load, picked up by the runtime client's constructor (UserService._consumeAuthReturn) \u2014 the exported client has no return leg (\u00a745.6). \u26a0\ufe0f EXP-013: the editor must badge it \"not exportable yet\" where it is placed, and the pre-flight must name what its refusal silences downstream \u2014 a refusal cascades (\u00a750.2)."
+    },
+    {
+      "typeName": "net.noodl.user.SignUp",
+      "status": "translated",
+      "note": "await signUp({...}); defers on any prop-* (_User columns have no stub schema)"
+    },
+    {
+      "typeName": "net.noodl.user.User",
+      "status": "translated",
+      "note": "useSession() read; the Fetch path and prop-* outputs defer"
+    },
+    {
+      "typeName": "net.noodl.user.VerifyEmail",
+      "status": "deferred",
+      "exemption": "deliberately out of scope \u2014 the type is deprecated in the catalog, so nobody building today is offered one. A project that still holds one exports it as a named deferral, which is the right answer for a node its own editor has retired"
+    },
+    {
+      "typeName": "net.noodl.visual.columns",
+      "status": "translated",
+      "note": "CSS Grid: fr tracks from the layout string, gap gutters, repeat(auto-fit) for Auto Fit, @container breakpoints (VISUALS-TARGET \u00a71)"
+    },
+    {
+      "typeName": "net.noodl.visual.icon",
+      "status": "translated",
+      "note": "one element per source kind: font span, sprite svg use, img (VISUALS-TARGET \u00a72); inline sources defer"
+    },
+    {
+      "typeName": "noodl.cloud.addusertorole",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.aggregate",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.createuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.deleteuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.getuserroles",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.hmac",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.jwtsign",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.jwtverify",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.listusersinrole",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.removeuserfromrole",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.request",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.response",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.secret",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.sendemail",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.updateuser",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    },
+    {
+      "typeName": "noodl.cloud.verifysessiontoken",
+      "status": "backend-only",
+      "note": "runs only in the backend interpreter; frontend export never sees it"
+    }
+  ]
+}

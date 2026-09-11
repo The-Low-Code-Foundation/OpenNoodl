@@ -10,10 +10,45 @@
  * @module noodl-editor/validation/model
  */
 
+/**
+ * FIX-023 — why a node object could not be normalised into a well-formed
+ * `NormNode`, and the normaliser substituted a placeholder for the missing
+ * field rather than propagating `undefined` into every rule.
+ *
+ * A list, not a single value, because the next such field (a missing `id`) has
+ * the same shape of failure and should join this rather than grow a second
+ * mechanism.
+ */
+export type MalformedNodeReason = 'missing-type';
+
+/**
+ * FIX-023 — what `NormNode.type` carries when the source node had none.
+ *
+ * Empty string, deliberately: it is a `string`, so `isComponentRef`,
+ * `catalog.hasType` and every other consumer behave normally instead of
+ * throwing; it is falsy, so a `if (!node.type)` guard anywhere downstream reads
+ * correctly; and it can never collide with a real type name.
+ */
+export const MALFORMED_NODE_TYPE = '';
+
 export interface NormNode {
   id: string;
-  /** Node type string exactly as authored (built-in name or component ref). */
+  /**
+   * Node type string exactly as authored (built-in name or component ref).
+   *
+   * FIX-023: guaranteed to be a `string` — the normalisers substitute
+   * `MALFORMED_NODE_TYPE` and set `malformed` when the source node has none.
+   * This declaration was previously a lie for such nodes, and because it is
+   * `string` no `tsc` gate could see it.
+   */
   type: string;
+  /**
+   * FIX-023 — set only when a required field was absent on the source node and
+   * a placeholder stands in its place. Absent on every well-formed node, so a
+   * rule reads `if (node.malformed)` and existing rules that do not care are
+   * unaffected. The `malformed-node` rule owns reporting these.
+   */
+  malformed?: MalformedNodeReason[];
   label?: string;
   /** Parent node id, when this node sits inside another (visual hierarchy). */
   parent?: string;
@@ -25,6 +60,22 @@ export interface NormNode {
    * nodes serialise their live ports here.
    */
   instancePorts: string[];
+  /**
+   * Parameter values set on the node, carried verbatim from the source.
+   *
+   * ✅ **Added by D13, 2026-08-18, and its absence was the whole reason
+   * `validate:project` checked parameter values for no node of any
+   * provenance.** `checkParameterValues` existed and was good; it had exactly
+   * one caller, the authoring precondition path, so the CLI gate — the thing
+   * that says a project is clean — never ran it. On `cashflow-command-centre`
+   * that was 26 unverified parameters read as a pass.
+   *
+   * ⚠️ Two source comments used to state this field's absence as a fact
+   * (`componentInterface.ts`, `authoredCandidate.ts`); both were corrected in
+   * the same slice. Absent when the node sets none — never `{}` — so "set
+   * nothing" and "carried nothing" stay distinguishable.
+   */
+  parameters?: Record<string, unknown>;
   /**
    * Node metadata, carried verbatim from the source.
    *
@@ -66,8 +117,24 @@ export interface NormProject {
   componentRefs: Set<string>;
 }
 
-/** True when a node type denotes a project component instance, not a library node. */
-export function isComponentRef(type: string): boolean {
+/**
+ * True when a node type denotes a project component instance, not a library node.
+ *
+ * FIX-023 (fix C, defence in depth) — the parameter admits `undefined`/`null`
+ * and returns `false` for them. It was `type: string`, which is why the
+ * unguarded call sites type-checked while a typeless node on disk threw
+ * `Cannot read properties of undefined (reading 'startsWith')` at runtime.
+ *
+ * ⚠️ This is the backstop, not the fix. Callers reading a **normalised** graph
+ * are already safe (the normalisers substitute `MALFORMED_NODE_TYPE` and the
+ * `malformed-node` rule reports it). This guard exists for the callers that
+ * walk **raw v2 files** and never pass through normalisation —
+ * `noodl-mcp`'s `planTools`, `read` and `describe` — where returning `false`
+ * silently is the correct behaviour but says nothing. Do not treat a quiet
+ * `false` here as the project being well-formed; that is what the rule is for.
+ */
+export function isComponentRef(type: string | undefined | null): boolean {
+  if (typeof type !== 'string') return false;
   return type.startsWith('/') || type.startsWith('#');
 }
 

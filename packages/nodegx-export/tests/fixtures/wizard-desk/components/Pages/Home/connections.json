@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000098",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "overviewBtn",
+      "fromProperty": "onClick",
+      "toId": "goOverview",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "settingsBtn",
+      "fromProperty": "onClick",
+      "toId": "goSettings",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "wizard",
+      "fromProperty": "topPageName",
+      "toId": "topText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "wizard",
+      "fromProperty": "stackDepth",
+      "toId": "depthText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "confirmedVar",
+      "fromProperty": "value",
+      "toId": "confirmedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "resetBtn",
+      "fromProperty": "onClick",
+      "toId": "wizard",
+      "toProperty": "reset"
+    }
+  ]
+}

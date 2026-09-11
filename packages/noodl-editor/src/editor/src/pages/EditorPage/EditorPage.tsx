@@ -24,6 +24,8 @@ import ProjectValidator from '@noodl-utils/projectvalidator';
 import SchemaHandler from '@noodl-utils/schemahandler';
 import { guid } from '@noodl-utils/utils';
 
+import { ProjectFileWatcher } from '../../services/ProjectFileWatcher';
+
 import { ActivityIndicator } from '@noodl-core-ui/components/common/ActivityIndicator';
 import { ErrorBoundary } from '@noodl-core-ui/components/common/ErrorBoundary';
 import { FrameDivider } from '@noodl-core-ui/components/layout/FrameDivider';
@@ -32,8 +34,13 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { installSidePanel, installDocuments } from '../../router.setup';
 import { ViewerConnection } from '../../ViewerConnection';
 import { Frame } from '../../views/common/Frame';
-import { ImportFlowCancelled, openImportFlow } from '../../views/ImportFlow';
+import { ImportFlowCancelled, openImportFlow, requireDownloadConsent } from '../../views/ImportFlow';
 import { LessonLayer } from '../../views/lessonlayer2';
+import { ensureLessonBackend } from '@noodl-models/lessonbackend';
+import { lessonObservesDatabase } from '@noodl-models/lessondatabase';
+import { getCloudServices, setCloudServices } from '@noodl-models/projectmodel.editor';
+import { defaultLearningLessonFs, readLessonManifest } from '@noodl-models/learninglesson';
+import { getIpc } from '@noodl-utils/ipc';
 import PopupLayer from '../../views/popuplayer';
 import { AiAuthoringPanel_ID } from '../../views/panels/AiAuthoringPanel';
 import { SidePanel } from '../../views/SidePanel';
@@ -61,10 +68,61 @@ if (import.meta.webpackHot) {
   });
 }
 
+/**
+ * TUT-005 — give a database lesson its database.
+ *
+ * Kept out of the effect body so the effect stays readable, and so the two
+ * reasons this can do nothing (not a database lesson; already bound) are stated
+ * once, in `ensureLessonBackend`, rather than tested here as well.
+ */
+async function provisionLessonBackend(projectModel: ProjectModel): Promise<void> {
+  const ipc = getIpc();
+  if (!ipc) return;
+  const directory = projectModel._retainedProjectDirectory;
+  if (!directory) return;
+
+  const manifest = readLessonManifest(directory, defaultLearningLessonFs());
+  const outcome = await ensureLessonBackend({
+    manifest,
+    projectId: projectModel.id,
+    projectName: projectModel.name,
+    projectDir: directory,
+    boundEndpoint: getCloudServices(projectModel).endpoint,
+    invoke: (channel, ...args) => ipc.invoke(channel, ...args)
+  });
+
+  // The binding is applied HERE, not in the model: `setCloudServices` raises
+  // `cloudServicesChanged`, which the Backend Services panel and the endpoint
+  // card both listen for, and a bare metadata write would leave them showing the
+  // unbound state they were mounted with.
+  if (outcome.status === 'provisioned') {
+    setCloudServices(projectModel, {
+      id: outcome.backendId,
+      endpoint: outcome.endpoint,
+      appId: outcome.backendId,
+      type: 'nodegx'
+    });
+    console.log(`[lesson] database ${outcome.reused ? 'adopted' : 'created'} at ${outcome.endpoint}`);
+  } else if (outcome.status === 'failed') {
+    // Reported, never thrown. The learner sees the consequence in grading's own
+    // honest refusal; this line is for whoever reads the log after they report it.
+    console.warn('[lesson] the lesson database could not be provisioned:', outcome.reason);
+  }
+}
+
 function setupSidePanels() {
   const isLesson = ProjectModel.instance.isLesson();
 
-  installSidePanel({ isLesson });
+  // Read from the lesson's own grading conditions, so a lesson cannot declare
+  // one thing and grade another. `undefined` for a project that is not a lesson,
+  // which is the same answer as "no" to the one check that reads it.
+  const directory = ProjectModel.instance._retainedProjectDirectory;
+  const lessonNeedsDatabase =
+    isLesson && directory
+      ? lessonObservesDatabase(readLessonManifest(directory, defaultLearningLessonFs()))
+      : false;
+
+  installSidePanel({ isLesson, lessonNeedsDatabase });
 }
 
 export type EditorPageProps = IRouteProps;
@@ -140,9 +198,112 @@ export function EditorPage({ route }: EditorPageProps) {
       eventGroup
     );
 
+    // REL-009a arm C — a component was changed on disk by something else (an
+    // agent authoring over MCP, a git checkout) while we held it open, so the
+    // saver refused to write our copy over it. The edit is still in memory and
+    // the user has to know, or this is the silent data loss with a nicer name.
+    EventDispatcher.instance.on(
+      'ProjectModel.saveRefusedExternalChange',
+      (args: { components: string[] }) => {
+        const names = (args?.components ?? []).join(', ');
+        ToastLayer.showError(
+          `Not saved: ${names} changed on disk outside the editor. Your changes to it are still ` +
+            `open here — reopen the project to see the other version.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // REL-009b — the same collision seen from the other side. The reload was
+    // refused because this component has unsaved edits here, so the person is
+    // holding one version and the disk holds another. REL-009a's message covers
+    // the moment a save is refused; this covers the moment the write lands, which
+    // is earlier and is the first point at which anyone could act.
+    EventDispatcher.instance.on(
+      'ProjectModel.componentReloadRefused',
+      (args: { componentPath: string }) => {
+        ToastLayer.showError(
+          `${args?.componentPath} changed on disk outside the editor, but you have unsaved changes ` +
+            `to it here. Your version is untouched and was not overwritten — reopen the project to ` +
+            `take the other one.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // FLD-009 — the project-level half of the same refusal. `nodegx.project.json`
+    // carries the backend binding and the design tokens, and an agent writes all
+    // three through the MCP server; the person's own project-level change is
+    // still only in memory and the agent's is still on disk.
+    EventDispatcher.instance.on(
+      'ProjectModel.saveRefusedExternalProjectFileChange',
+      (args: { files: string[] }) => {
+        const names = (args?.files ?? []).join(', ');
+        ToastLayer.showError(
+          `Not saved: ${names} changed on disk outside the editor — nothing of yours was ` +
+            `overwritten. Your project settings are still open here.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // FLD-009 — and the moment the write lands, which is earlier than the save
+    // and is the first point at which anyone could act on it.
+    EventDispatcher.instance.on(
+      'ProjectModel.projectLevelReloadRefused',
+      (args: { files: string[] }) => {
+        const names = (args?.files ?? []).join(', ');
+        ToastLayer.showError(
+          `${names} changed on disk outside the editor, but you have unsaved project changes here. ` +
+            `Your version is untouched and was not overwritten — reopen the project to take the other one.`,
+          10000
+        );
+      },
+      eventGroup
+    );
+
+    // REL-009b — watch the open project's component files so an agent's write
+    // reaches the canvas without reopening the project. v2 projects only; the
+    // watcher is a no-op without a retained directory (i.e. off Electron).
+    const fileWatcher = new ProjectFileWatcher();
+    const projectDirectory = ProjectModel.instance?._retainedProjectDirectory;
+    if (projectDirectory) {
+      fileWatcher.start(projectDirectory, (componentPaths) => {
+        // Sequential, not `Promise.all`: each reload swaps a model in and out of
+        // the project, and letting several interleave means one reload's
+        // `componentRemoved` can land inside another's swap.
+        void componentPaths.reduce(
+          (chain, componentPath) =>
+            chain.then(async () => {
+              try {
+                await ProjectModel.instance?.reloadComponentFromDisk(componentPath);
+              } catch (error) {
+                // A component mid-write, or deleted between the event and the
+                // read. The next event for it will find it settled; taking the
+                // renderer down over it would be far worse than missing it.
+                console.warn(`[REL-009b] could not reload ${componentPath} from disk`, error);
+              }
+            }),
+          Promise.resolve()
+        );
+      },
+      (files) => {
+        // FLD-009. Adopting the agent's project-level write is what keeps the
+        // saver's refusal from becoming permanent — see
+        // `ProjectModel.reloadProjectLevelFromDisk`.
+        void ProjectModel.instance?.reloadProjectLevelFromDisk(files).catch((error) => {
+          console.warn('[FLD-009] could not reload project-level files from disk', error);
+        });
+      });
+    }
+
     setIsLoading(false);
 
     return function () {
+      fileWatcher.stop();
       EventDispatcher.instance.off(eventGroup);
 
       if (SchemaHandler.instance) {
@@ -209,6 +370,14 @@ export function EditorPage({ route }: EditorPageProps) {
     const projectModel = ProjectModel.instance;
     const element = lessonLayer.startLesson(projectModel.getLessonModel());
     setLesson({ el: element });
+
+    // A lesson that grades against the database gets one, here, because this is
+    // the moment the project is open and `Backend Services` is not reachable to
+    // the learner. Fire-and-forget and deliberately un-awaited: the lesson must
+    // open at the same speed whether or not a backend has to start, and every
+    // failure path inside already resolves to a value rather than throwing.
+    // See `models/lessonbackend` for why it does not create the collections.
+    void provisionLessonBackend(projectModel);
 
     return () => {
       lessonLayer.dispose();
@@ -281,7 +450,7 @@ function importFromUrl(url) {
           return;
         }
 
-        _importProject(tmp);
+        _importProject(tmp, url);
       },
       { skipLoad: true, noAuth: true }
     );
@@ -293,24 +462,37 @@ function importFromUrl(url) {
  * collision resolution and the result summary — including, at last, actually
  * honouring what the user unticked (the legacy URL path built a collision
  * dialog and then threw its answer away).
+ *
+ * 🔴 **CN-017 measured this route as the one the previous scoping missed.** An
+ * archive fetched from a URL and unpacked into user data is, by any honest
+ * reading, at least as third-party as the curated module library — so it asks for
+ * consent to whatever executable modules it carries, on the same dialog and with
+ * the same words as a module install.
  */
-function _importProject(dirEntry: string) {
-  openImportFlow({
-    title: 'Import project',
-    subtitle: 'From the downloaded archive',
-    sourceDir: dirEntry,
-    // Historic behaviour: components and files start ticked, everything else
-    // arrives through the dependency closure.
-    initialSelection: ['component', 'resource']
-  }).then(
-    (result) => {
-      if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
-    },
-    (err: unknown) => {
-      if (err instanceof ImportFlowCancelled) return;
-      ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
-    }
-  );
+function _importProject(dirEntry: string, url: string) {
+  requireDownloadConsent({ title: 'Import project', url, sourceDir: dirEntry })
+    .then((origin) =>
+      openImportFlow({
+        title: 'Import project',
+        subtitle: 'From the downloaded archive',
+        sourceDir: dirEntry,
+        origin,
+        // Historic behaviour: components and files start ticked, everything else
+        // arrives through the dependency closure.
+        initialSelection: ['component', 'resource']
+      })
+    )
+    .then(
+      (result) => {
+        if (result.result !== 'success') ToastLayer.showError(result.message ?? 'Import failed');
+      },
+      (err: unknown) => {
+        // Declining the consent step raises the same cancellation the flow does:
+        // backing out of an install is an ordinary answer, not an error.
+        if (err instanceof ImportFlowCancelled) return;
+        ToastLayer.showError(err instanceof Error ? err.message : 'Import failed');
+      }
+    );
 }
 
 function reloadProjectFromDisk() {

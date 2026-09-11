@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "687a5547-5a65-5d25-825e-6816e222ade6",
+  "name": "requestAccess",
+  "path": "/#__cloud__/requestAccess",
+  "type": "cloud",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

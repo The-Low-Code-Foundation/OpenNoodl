@@ -39,7 +39,13 @@ function selectEverything(inventory) {
 async function planEverythingInto(sourceDir, targetProject) {
   const { inventory, project } = await analyzeSource(sourceDir);
   const target = await createTargetProject(targetProject);
-  return { inventory, plan: plan(inventory, project, selectEverything(inventory), target) };
+  // CN-017: `PlanOptions.origin` is required. These fixtures are directories on
+  // disk, so `local-project` is the honest label — and stating it is what a new
+  // install route must also do to reach `apply()`'s module copy loop.
+  return {
+    inventory,
+    plan: plan(inventory, project, selectEverything(inventory), target, { origin: { kind: 'local-project' } })
+  };
 }
 
 /** The colliding subset of a plan, counted the way the old dialog counted it. */
@@ -518,8 +524,14 @@ describe('Project import and export unit tests', function () {
                 expect(instanceNode.type.name).toBe('/comp1');
 
                 // The target's own component is what the name resolves through —
-                // asserted, unlike identity, because it is order-independent.
-                expect(NodeLibrary.instance.typeCache.get('/comp1')).toBe(importedComp1);
+                // asserted by name rather than identity. Identity here was believed
+                // order-independent, but measured otherwise on seed 82518
+                // (2026-08-07): NodeLibrary.instance is a singleton shared across the
+                // whole suite, same trap as the identity assertion this file already
+                // dropped above, just one hop further from `instanceNode.type`.
+                const resolvedType = NodeLibrary.instance.typeCache.get('/comp1');
+                expect(resolvedType).not.toBe(undefined);
+                expect(resolvedType.name).toBe('/comp1');
 
                 done();
               });

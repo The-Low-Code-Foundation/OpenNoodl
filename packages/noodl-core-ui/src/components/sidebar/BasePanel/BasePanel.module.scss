@@ -45,6 +45,24 @@
   /* Background */
   background-color: var(--theme-color-bg-2);
 
+  /* 🔴 DSG-008 — the backstop, and it is a backstop rather than the rule.
+   *
+   * A panel declared a background and no foreground, so anything inside it that
+   * did not colour itself inherited the document's initial `color`: **black**.
+   * Icons are where that showed, because `Text` and `Label` carry their own
+   * tokens while a glyph paints with `currentColor` — a live audit found black
+   * glyphs at 1.24:1 in four different panels, each with a different owner and
+   * the same missing property (`scripts/devtools/icon-contrast.js`).
+   *
+   * A surface that sets `background-color` and not `color` is stating half a
+   * pair. Stating the other half here means the next panel to forget lands on a
+   * legible default instead of on black.
+   *
+   * ⚠️ It does **not** retire the house rule that a host sets `color` on its
+   * glyphs. Hover, active, disabled and accent states still have to be said
+   * where they belong; this only decides what "said nothing at all" means. */
+  color: var(--theme-color-fg-default);
+
   /* Subtle border for definition */
   border: 1px solid var(--theme-color-border-subtle);
   border-radius: var(--radius-md);

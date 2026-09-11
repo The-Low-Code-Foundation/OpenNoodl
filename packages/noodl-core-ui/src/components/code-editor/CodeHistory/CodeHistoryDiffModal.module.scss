@@ -106,10 +106,14 @@
   padding: 20px 24px;
 }
 
+/* Phase 75's border sweep. `border-default` was 1.07:1 on this button's own fill;
+   `border-control` is 3.57 / 3.37 on `bg-2` and 4.17 / 3.72 on the `bg-1` modal.
+   ⚠️ The sibling `.RestoreButton` needed nothing — it is a solid `primary` block,
+   identified by its fill (5.60 / 4.57 against the modal) rather than by an edge. */
 .CancelButton {
   padding: 10px 20px;
   background: var(--theme-color-bg-2);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: 6px;
   color: var(--theme-color-fg-default);
   font-size: 14px;
@@ -117,9 +121,15 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
+  /* 🔴 The same divider-on-hover trap as `CodeHistoryButton .Button`, and the same
+     remedy. ⚠️ Note this is a THIRD case the sweep's up/down rule does not cover:
+     the fill moves DOWN the ramp (bg-2 -> bg-3) yet `border-control` would still
+     clear at 3.08 / 3.05, so a plain deletion would have PASSED here. It is used
+     anyway because this rule exists to EMPHASISE on hover, and deletion would have
+     made the boundary quieter under the pointer (3.57 -> 3.08) rather than louder. */
   &:hover {
     background: var(--theme-color-bg-3);
-    border-color: var(--theme-color-border-highlight);
+    border-color: var(--theme-color-primary);
   }
 }
 

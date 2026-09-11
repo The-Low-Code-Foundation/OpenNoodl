@@ -1,0 +1,117 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000067",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Slot Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "panel",
+        "bare"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Slot Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "panel",
+      "type": "/Components/Panel",
+      "label": "Today panel",
+      "parent": "shell",
+      "children": [
+        "hello",
+        "cta"
+      ],
+      "parameters": {
+        "Title": "Today"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "hello",
+      "type": "Text",
+      "label": "Hello",
+      "parent": "panel",
+      "parameters": {
+        "text": "Hello there",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 160,
+      "y": 480
+    },
+    {
+      "id": "cta",
+      "type": "net.noodl.controls.button",
+      "label": "Continue",
+      "parent": "panel",
+      "parameters": {
+        "label": "Continue"
+      },
+      "x": 160,
+      "y": 580
+    },
+    {
+      "id": "bare",
+      "type": "/Components/Plain",
+      "label": "Bare plain",
+      "parent": "shell",
+      "children": [
+        "orphan"
+      ],
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "orphan",
+      "type": "Text",
+      "label": "Orphan",
+      "parent": "bare",
+      "parameters": {
+        "text": "Never drawn",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 160,
+      "y": 800
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

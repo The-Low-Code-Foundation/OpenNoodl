@@ -12,6 +12,8 @@ import type {
   OutcomeToken
 } from '@noodl/types';
 
+import { ARITHMETIC_SEARCH_TAGS } from './logic-search-tags';
+
 import Node = require('../../node');
 import { outcomeOutputs, reportOutcomes } from '../../outcome';
 import { runOnChangeDynamicPorts } from '../../run-on-value-change';
@@ -123,7 +125,13 @@ const ExpressionNode: NodeDefinitionOptions = {
   nodeDoubleClickAction: {
     focusPort: 'Expression'
   },
-  searchTags: ['javascript'],
+  /**
+   * LGC-001 §1 — Expression is the cheapest correct answer to `price * quantity`,
+   * so it is the node the arithmetic vocabulary is meant to land on first. It
+   * leads the triad because `nodelibraryexport.ts` lists it first in the Logic
+   * category, not because of anything here; see `logic-search-tags.ts`.
+   */
+  searchTags: ['javascript', ...ARITHMETIC_SEARCH_TAGS],
   initialize: function (this: ExpressionNodeInstance) {
     const internal = this._internal;
 
@@ -184,12 +192,18 @@ const ExpressionNode: NodeDefinitionOptions = {
       this.registerRunOnValueChangeInput(name);
     },
     _onInputValueArrived: function (this: ExpressionNodeInstance, name: string, value: unknown) {
+      // DEF-046: read before write. The scope entry IS the previous value, and overwriting it
+      // first is how a setter loses the only thing it needs to know.
+      const previous = this._internal.scope[name];
       this._internal.scope[name] = value;
       this._internal.anyInputArrived = true;
       // NDA-017 §2. This used to read `if (!this.isInputConnected('run'))`, so wiring `Run`
       // made every value port on the node passive without saying so anywhere. Now the only
       // thing that makes a port passive is the author unticking it, and `Run` is additive.
-      if (this.shouldRunOnValueChange(name)) this._scheduleEvaluateExpression();
+      // DEF-046: …and a value identical to the one already here is not an arrival worth
+      // re-evaluating for. An array mutated in place is deliberately still one — see
+      // `valueDidChange`.
+      if (this.shouldRunOnValueChanged(name, previous, value)) this._scheduleEvaluateExpression();
     },
     _scheduleAutomaticEvaluation: function (this: ExpressionNodeInstance) {
       const internal = this._internal;
@@ -224,6 +238,21 @@ const ExpressionNode: NodeDefinitionOptions = {
             this.flagOutputDirty('result');
             this.flagOutputDirty('isTrue');
             this.flagOutputDirty('isFalse');
+            // 🔴 P79 G1. These three were declared with getters and flagged nowhere in this
+            // file, so a wire leaving one delivered whatever the getter returned at the moment
+            // the connection was made and never delivered again. `As Number` is the port an
+            // author reaches for when the target is a number input — which is exactly when the
+            // failure is silent and total, because an unevaluated expression reads 0 and 0 into
+            // a dimension renders nothing while the parameter that would have saved it is
+            // overridden by the wire. Building spine lesson 5, `As Number → size` drew no
+            // circle at all with every gate green.
+            //
+            // They ride INSIDE the `!hadEvaluated || lastValue !== cachedValue` guard on
+            // purpose: all three are pure functions of `cachedValue`, so a result that has not
+            // moved must not wake their consumers either.
+            this.flagOutputDirty('asString');
+            this.flagOutputDirty('asNumber');
+            this.flagOutputDirty('asBoolean');
           }
           if (internal.cachedValue) this.sendSignalOnOutput('isTrueEv');
           else this.sendSignalOnOutput('isFalseEv');
@@ -387,7 +416,14 @@ const ExpressionNode: NodeDefinitionOptions = {
       type: {
         name: 'string',
         allowEditOnly: true,
-        codeeditor: 'javascript'
+        codeeditor: 'javascript',
+        // FUN-009. The scoping rule this port follows, which is the *inverse* of
+        // the Function node's: the identifiers below become the input ports, so
+        // `no-undef` is off here and nothing may offer `Inputs.` — inserting it
+        // would mint a port called `Inputs`. The editor cannot derive this
+        // (`type.name` is `'string'` for all three code nodes, and the port names
+        // invert), so it is declared. Read by `validationTypeForEditType`.
+        codenotation: 'expression'
       },
       displayName: 'Expression',
       description: 'JavaScript expression whose value becomes Result; every identifier in it becomes an input port',
@@ -583,7 +619,7 @@ const ExpressionNode: NodeDefinitionOptions = {
      */
     ...outcomeOutputs({ done: 'Fires once a Run you triggered has evaluated the expression, after On True or On False' }),
     error: {
-      group: 'Events',
+      group: 'Error',
       type: 'string',
       displayName: 'Error',
       description: 'The compile or evaluation error, in JavaScript\'s own words',

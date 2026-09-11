@@ -17,7 +17,7 @@ import { planFromScope, scopeDocuments, emptyScope, mergeScope } from '../../noo
 import type { ProjectScope } from '../../noodl-editor/src/editor/src/models/AiAssistant/scoping/scope';
 import { ProjectStore } from '../src/project/ProjectStore';
 import { SKELETON_COMPONENTS } from '../src/tools/createProject';
-import { call, connect, copyFixture, type TestSession } from './helpers';
+import { call, connect, copyFixture, reveal, type TestSession } from './helpers';
 import type { ToolErrorPayload } from '../src/tools/responses';
 
 interface CreateProjectPayload {
@@ -28,6 +28,7 @@ interface CreateProjectPayload {
   rootNodeId: string;
   plan: { request: string; operations: Array<{ id: string; kind: string; target: string; intent: string }> };
   note: string;
+  agentConfig: { written: string[]; files: Array<{ path: string; outcome: string; reason?: string }> };
 }
 
 const SCOPE_ARGS = {
@@ -61,6 +62,7 @@ describe('AIX-012 create_project', () => {
     // The server still needs a project of its own to be pointed at — creation
     // necessarily targets a *different* directory.
     session = await connect(copyFixture(), true);
+    await reveal(session, 'project'); // AWP-006 — create_project is deferred by default
     tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aix012-create-'));
   });
 
@@ -91,6 +93,36 @@ describe('AIX-012 create_project', () => {
     // The constructor is the gate: it throws for anything that is not v2.
     const store = new ProjectStore(directory);
     expect(store.listComponents().map((c) => c.path).sort()).toEqual(['App', 'Pages/Home']);
+  });
+
+  it('BST-005 — leaves the folder able to explain itself to the next agent', async () => {
+    // The gap this closes: a project directory held nothing that said what it
+    // was, so session two was as cold as session one and colder in one way,
+    // because the user believed they connected something yesterday.
+    const directory = path.join(tmpRoot, 'next-agent');
+    const res = await call<CreateProjectPayload>(session, 'create_project', { ...SCOPE_ARGS, directory });
+
+    expect(res.isError).toBe(false);
+    expect(fs.existsSync(path.join(directory, 'CLAUDE.md'))).toBe(true);
+    expect(fs.existsSync(path.join(directory, '.mcp.json'))).toBe(true);
+    expect(res.data.agentConfig.written).toEqual(expect.arrayContaining(['.mcp.json', 'CLAUDE.md']));
+
+    // ⚠️ Both or neither: a server with no context gives a model twenty-odd
+    // tools and no vocabulary; a CLAUDE.md with no server gives it vocabulary
+    // and no way to act. The founding complaint is those two in one sentence.
+    const registered = JSON.parse(fs.readFileSync(path.join(directory, '.mcp.json'), 'utf8'));
+    const names = Object.keys(registered.mcpServers);
+    expect(names).toHaveLength(1);
+    // 🔴 F94 — never the bare `nodegx`, which a user-scope entry shadows.
+    expect(names[0]).toBe('nodegx-next-agent');
+    expect(registered.mcpServers[names[0]].args).toContain(directory);
+    expect(registered.mcpServers[names[0]].args).toContain('--allow-writes');
+
+    // Machine-specific by construction, so it must not reach a colleague's checkout.
+    expect(fs.readFileSync(path.join(directory, '.gitignore'), 'utf8')).toContain('.mcp.json');
+
+    // The CLAUDE.md is about *this* app, which is the thing the server cannot know.
+    expect(fs.readFileSync(path.join(directory, 'CLAUDE.md'), 'utf8')).toContain('Reading List');
   });
 
   it('authors NO components for the agreed pages — it returns a plan instead', async () => {

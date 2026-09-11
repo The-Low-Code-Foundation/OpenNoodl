@@ -1,0 +1,62 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2aebceae-1423-5d21-8a27-8adb2e14e0a8",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row",
+      "type": "Group",
+      "label": "Row",
+      "x": 40,
+      "y": 40,
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "backgroundColor": "var(--surface-2)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "children": [
+        "label_text"
+      ]
+    },
+    {
+      "id": "label_text",
+      "type": "Text",
+      "label": "label",
+      "parent": "row",
+      "x": 40,
+      "y": 200,
+      "parameters": {
+        "text": "NOT-DELIVERED-A",
+        "textStyle": "body",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "row_inputs",
+      "type": "Component Inputs",
+      "label": "Item in",
+      "x": 420,
+      "y": 40,
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "row"
+  ]
+}

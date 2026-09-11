@@ -1,0 +1,225 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c0a1b2c3-5b3f-4e8d-9c1a-000000000061",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Panel Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "titleInput",
+        "renameBtn",
+        "titleText",
+        "countText",
+        "noteText",
+        "statusText",
+        "panel",
+        "rows"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Panel Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "titleInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Title",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "New title"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "renameBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Rename",
+      "parent": "shell",
+      "parameters": {
+        "label": "Rename"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "titleText",
+      "type": "Text",
+      "label": "Title text",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "countText",
+      "type": "Text",
+      "label": "Count text",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "noteText",
+      "type": "Text",
+      "label": "Note text",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 580
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "panel",
+      "type": "/Components/Panel",
+      "label": "Panel",
+      "parent": "shell",
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "rows",
+      "type": "For Each",
+      "label": "One row per person",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/PanelRow"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "people",
+      "type": "Static Data",
+      "label": "People",
+      "parameters": {
+        "type": "json",
+        "json": "[{\"id\":\"r1\",\"name\":\"Ada\"},{\"id\":\"r2\",\"name\":\"Grace\"}]"
+      },
+      "x": 410,
+      "y": 760
+    },
+    {
+      "id": "panelState",
+      "type": "net.noodl.ComponentObject",
+      "label": "Panel state",
+      "parameters": {
+        "properties": "title,count,note"
+      },
+      "x": 410,
+      "y": 160
+    },
+    {
+      "id": "setTitle",
+      "type": "net.noodl.SetComponentObjectProperties",
+      "label": "Rename the panel",
+      "parameters": {
+        "properties": "title,note",
+        "prop-note": "renamed"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "setStatus",
+      "type": "Set Variable",
+      "label": "Say it renamed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 700,
+      "y": 400
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "Status variable",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "noteVar",
+      "type": "Variable2",
+      "label": "Note variable",
+      "parameters": {
+        "name": "note",
+        "value": "First note"
+      },
+      "x": 410,
+      "y": 580
+    },
+    {
+      "id": "renamedLabel",
+      "type": "String",
+      "label": "Renamed wording",
+      "parameters": {
+        "value": "Renamed."
+      },
+      "x": 700,
+      "y": 460
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

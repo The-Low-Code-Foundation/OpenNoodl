@@ -1,0 +1,6 @@
+{
+  "name": "Shadow Kit",
+  "main": "index.js",
+  "runtimes": ["browser"],
+  "dependencies": []
+}

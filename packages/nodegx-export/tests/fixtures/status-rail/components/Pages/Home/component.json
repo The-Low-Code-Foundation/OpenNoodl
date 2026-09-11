@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c7e41a90-0000-4000-8000-000000000023",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-09T14:00:00.000Z",
+  "description": "HLS-005 fixture: the page that places the rail, so both inputs arrive from a real instance rather than from a default."
+}

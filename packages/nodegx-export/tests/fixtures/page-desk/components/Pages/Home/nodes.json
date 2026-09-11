@@ -1,0 +1,263 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Page Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "pageIdInput",
+        "loadBtn",
+        "titleText",
+        "publishedText",
+        "orderText",
+        "idText",
+        "errorText",
+        "lastText",
+        "failText",
+        "liveText",
+        "liveErrorText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Page Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "pageIdInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Page id",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "a page id"
+      },
+      "x": 100,
+      "y": 300
+    },
+    {
+      "id": "loadBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Load",
+      "parent": "shell",
+      "parameters": {
+        "label": "Load"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "titleText",
+      "type": "Text",
+      "label": "Title",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "publishedText",
+      "type": "Text",
+      "label": "Published",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "orderText",
+      "type": "Text",
+      "label": "Nav order",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 580
+    },
+    {
+      "id": "idText",
+      "type": "Text",
+      "label": "Id",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "lastText",
+      "type": "Text",
+      "label": "Last loaded",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "failText",
+      "type": "Text",
+      "label": "Last error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 820
+    },
+    {
+      "id": "liveText",
+      "type": "Text",
+      "label": "Live title",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 880
+    },
+    {
+      "id": "liveErrorText",
+      "type": "Text",
+      "label": "Live error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 940
+    },
+    {
+      "id": "pageIdVar",
+      "type": "Variable2",
+      "label": "Page id variable",
+      "parameters": {
+        "name": "pageId"
+      },
+      "x": 600,
+      "y": 300
+    },
+    {
+      "id": "pageRec",
+      "type": "DbModel2",
+      "label": "Page",
+      "parameters": {
+        "collectionName": "Page",
+        "idSource": "explicit"
+      },
+      "x": 600,
+      "y": 460
+    },
+    {
+      "id": "liveRec",
+      "type": "DbModel2",
+      "label": "Live page",
+      "parameters": {
+        "collectionName": "Page",
+        "idSource": "explicit"
+      },
+      "x": 600,
+      "y": 880
+    },
+    {
+      "id": "afterSet",
+      "type": "Set Variable",
+      "label": "Remember the title",
+      "parameters": {
+        "name": "lastLoaded"
+      },
+      "x": 900,
+      "y": 460
+    },
+    {
+      "id": "failSet",
+      "type": "Set Variable",
+      "label": "Remember the error",
+      "parameters": {
+        "name": "lastError"
+      },
+      "x": 900,
+      "y": 560
+    },
+    {
+      "id": "lastRead",
+      "type": "Variable2",
+      "label": "Last loaded",
+      "parameters": {
+        "name": "lastLoaded"
+      },
+      "x": 600,
+      "y": 760
+    },
+    {
+      "id": "failRead",
+      "type": "Variable2",
+      "label": "Last error",
+      "parameters": {
+        "name": "lastError"
+      },
+      "x": 600,
+      "y": 820
+    }
+  ],
+  "visualRoots": [
+    "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e05"
+  ]
+}

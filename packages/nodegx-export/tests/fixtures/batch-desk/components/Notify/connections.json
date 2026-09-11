@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c4d7e2a1-6b3f-4e8d-9c1a-000000000082",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs",
+      "fromProperty": "Do",
+      "toId": "notify",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "name",
+      "toId": "notify",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "done",
+      "toId": "outputs",
+      "toProperty": "Success"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "failure",
+      "toId": "outputs",
+      "toProperty": "Failure"
+    },
+    {
+      "fromId": "notify",
+      "fromProperty": "done",
+      "toId": "setLast",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "inputs",
+      "fromProperty": "name",
+      "toId": "setLast",
+      "toProperty": "value"
+    }
+  ]
+}

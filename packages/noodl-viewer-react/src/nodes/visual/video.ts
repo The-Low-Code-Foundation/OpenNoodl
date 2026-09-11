@@ -120,7 +120,25 @@ const VideoNode: ReactNodeDefinition = {
       displayName: 'Source',
       group: 'Video',
       type: 'string',
-      description: 'URL or project file to play; leave blank to load nothing rather than fail on a missing source',
+      /**
+       * 🔴 **IT NAMES THE FORMATS AND IT NAMES THE ONE THING PEOPLE WILL TRY FIRST, BECAUSE THIS
+       * NODE HAS NO YOUTUBE PATH AT ALL AND NEVER SAID SO.** Richard, 2026-09-04: *"most people
+       * probably won't publish an mp4 with their project… the builder will add a hosted mp4 URL,
+       * or a Youtube or Vimeo video. Can we make these choices clear?"*
+       *
+       * `Video.tsx` renders a raw `<video>`; there is no `<iframe>` in the viewer anywhere. A
+       * pasted YouTube page link renders a broken element and fires `video/media-error` — a
+       * failure whose cause is invisible from the panel, because the old sentence said *"URL"*
+       * and a YouTube link is a URL.
+       *
+       * ⚠️ **THIS IS THE CHEAP HALF AND IT IS NOT THE FEATURE.** Supporting YouTube or Vimeo needs
+       * an iframe path that does not exist, and a dependable `end` needs the IFrame Player API
+       * script that nothing loads — a CSP and network decision. Owner `NONE`; see
+       * `phase-82/NOTES-UNOWNED-NODE-WORK.md` §2. Until somebody takes it, saying so is the whole
+       * of what this port can honestly do.
+       */
+      description:
+        'What to play: an mp4, webm or ogg URL, a file in your project, or a YouTube or Vimeo link. A YouTube or Vimeo link is recognised automatically and plays in an embedded player, where Play, Pause, Reset and the failure outputs do not apply. Leave blank to load nothing rather than fail on a missing source',
       set(src) {
         this.props.dom.src = resolveMediaSource(src);
         this.forceUpdate();
@@ -140,10 +158,27 @@ const VideoNode: ReactNodeDefinition = {
   inputProps: {
     autoplay: {
       displayName: 'Autoplay',
-      description: 'Starts playing as soon as the video can; most browsers only allow this while Muted is on',
+      description:
+        'Starts playing as soon as the video can; most browsers only allow this while Muted is on. On a YouTube or Vimeo link it is muted automatically for that reason, because an embedded player cannot report that the browser refused',
       propPath: 'dom',
       group: 'Video',
       type: 'boolean'
+    },
+    startTime: {
+      displayName: 'Start Time',
+      description:
+        'Seconds into the video to begin at; leave blank to start at the beginning. Works for a video file, for YouTube and for Vimeo',
+      propPath: 'dom',
+      group: 'Video',
+      type: 'number'
+    },
+    endTime: {
+      displayName: 'End Time',
+      description:
+        'Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on. ⚠️ Approximate on YouTube, and ignored entirely on Vimeo, whose embedded player has no end setting',
+      propPath: 'dom',
+      group: 'Video',
+      type: 'number'
     },
     controls: {
       displayName: 'Controls',
@@ -276,11 +311,12 @@ const VideoNode: ReactNodeDefinition = {
     },
     playbackError: {
       type: 'string',
-      group: 'Events',
+      group: 'Error',
       displayName: 'Error',
       description: 'Why playback failed — either the browser refused to autoplay, or the source could not be decoded'
     },
     onVideoElementCreated: {
+      group: 'Advanced',
       type: 'domelement',
       displayName: 'DOM Element',
       description: 'The underlying video element, for a Group to scroll to or a script to reach'
@@ -318,6 +354,8 @@ NodeSharedPortDefinitions.addMarginInputs(VideoNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(VideoNode);
 NodeSharedPortDefinitions.addAlignInputs(VideoNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(VideoNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(VideoNode);
 NodeSharedPortDefinitions.addBorderInputs(VideoNode);
 
 export default createNodeFromReactComponent(VideoNode);

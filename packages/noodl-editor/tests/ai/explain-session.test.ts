@@ -8,6 +8,7 @@
  * Offline: the one spec that drives a response stubs `AiClient.chatStream`.
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { AiClient } from '../../src/editor/src/models/AiAssistant/client/AiClient';
 import {
   AiChatRequest,
@@ -192,7 +193,7 @@ describe('AIX-004 session', () => {
     // The follow-up carries the whole conversation, so the context is not resent.
     const followUpMessages = sent[1];
     expect(followUpMessages[0].role).toBe('system');
-    expect(followUpMessages.filter((m) => m.content.includes('--- CONTEXT ---')).length).toBe(1);
+    expect(followUpMessages.filter((m) => asText(m.content).includes('--- CONTEXT ---')).length).toBe(1);
     expect(followUpMessages[followUpMessages.length - 1].content).toContain('Why does this run twice?');
 
     // Sanity: the context that was sent is the one the session assembled.
@@ -288,7 +289,25 @@ describe('AIX-004 read-only guarantee', () => {
     );
     // If a later change adds a write path, this list changes and the spec fails,
     // which is the point — the guarantee is stated to the user in the panel.
-    expect(methods.sort()).toEqual(['ask', 'cancel', 'dispose', 'explain', 'onChange', 'publish', 'run', 'state']);
+    //
+    // FIX-001 §1a added `readRuntime`, and this spec caught it exactly as designed.
+    // It is admitted deliberately, not waved through: it *reads* current port values
+    // from a running preview through an injected function and returns plain data. The
+    // session still holds no model and no writer — `resolveRuntime` is supplied by the
+    // panel, so even the socket is not reachable from here. ⚠️ `private` in TypeScript
+    // erases at build time; a private method is still a prototype method at runtime,
+    // which is why it belongs in this list rather than being invisible to it.
+    expect(methods.sort()).toEqual([
+      'ask',
+      'cancel',
+      'dispose',
+      'explain',
+      'onChange',
+      'publish',
+      'readRuntime',
+      'run',
+      'state'
+    ]);
   });
 
   it('reports a not-configured provider rather than pretending AI is available', async () => {

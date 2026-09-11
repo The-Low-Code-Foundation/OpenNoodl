@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "db6659b4-274f-408c-b6d5-7d5b90b538a0",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "draftVar",
+      "fromProperty": "value",
+      "toId": "meterInput",
+      "toProperty": "startValue"
+    },
+    {
+      "fromId": "meterInput",
+      "fromProperty": "onTextChanged",
+      "toId": "copyDraft",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "meterInput",
+      "fromProperty": "textChanged",
+      "toId": "copyDraft",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "toggleButton",
+      "fromProperty": "onClick",
+      "toId": "showDetails",
+      "toProperty": "flip"
+    },
+    {
+      "fromId": "showDetails",
+      "fromProperty": "state",
+      "toId": "detailsText",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "showDetails",
+      "fromProperty": "state",
+      "toId": "badge-2",
+      "toProperty": "visible"
+    },
+    {
+      "fromId": "meterInput",
+      "fromProperty": "onTextChanged",
+      "toId": "meterOutputs",
+      "toProperty": "draft"
+    }
+  ]
+}

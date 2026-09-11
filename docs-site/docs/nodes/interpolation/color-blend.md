@@ -33,7 +33,7 @@ Any color that should respond continuously to a value: hover highlights, scroll-
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `result` | Color | — | The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense |
+| `result` | Color | — | The blended colour. Inputs may be #RGB, #RRGGBB, rgb()/rgba() or var(--token); a colour it cannot read is reported and the nearest input is shown unblended |
 
 ## Dynamic ports
 

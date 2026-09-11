@@ -1,0 +1,248 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "pr0f11e5-4e1a-4b3e-9f2a-1a2b3c4d6e02",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Profile Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "heading",
+        "nameInput",
+        "cityInput",
+        "saveButton",
+        "statusText",
+        "nameText",
+        "cityText",
+        "sinceText",
+        "mottoText",
+        "badge"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-3xl)",
+        "color": "var(--foreground)",
+        "text": "Profile Desk",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "nameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Name",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Your name",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "cityInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "City",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Your city",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "saveButton",
+      "type": "net.noodl.controls.button",
+      "label": "Save",
+      "parent": "shell",
+      "parameters": {
+        "label": "Save profile",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "nameText",
+      "type": "Text",
+      "label": "Stored name",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "cityText",
+      "type": "Text",
+      "label": "Stored city",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "sinceText",
+      "type": "Text",
+      "label": "Stored since",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1060
+    },
+    {
+      "id": "mottoText",
+      "type": "Text",
+      "label": "Stored motto",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "badge",
+      "type": "/Components/ProfileBadge",
+      "label": "Profile badge",
+      "parent": "shell",
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "profile",
+      "type": "Model2",
+      "label": "Profile object",
+      "x": 520,
+      "y": 880,
+      "parameters": {
+        "modelId": "profile",
+        "properties": "name,city,motto,since"
+      },
+      "metadata": {
+        "comment": "Id Source left at its default (Specify explicitly): the object named \"profile\" in the app-wide Model store."
+      }
+    },
+    {
+      "id": "saveProfile",
+      "type": "SetModelProperties",
+      "label": "Save profile",
+      "x": 520,
+      "y": 520,
+      "parameters": {
+        "idSource": "explicit",
+        "modelId": "profile",
+        "properties": "name,city,since",
+        "prop-since": "2026"
+      },
+      "metadata": {
+        "comment": "\"since\" is listed but nothing wires it: the value 2026 is typed into the port, and the runtime writes it on every Do (queued at creation, _pushInputValues writes every listed key that is not undefined)."
+      }
+    },
+    {
+      "id": "setStatus",
+      "type": "Set Variable",
+      "label": "Set status",
+      "x": 760,
+      "y": 760,
+      "parameters": {
+        "name": "status",
+        "value": "Saved."
+      },
+      "metadata": {
+        "comment": "\"Saved.\" is typed into the Value port and nothing is wired over it — the common authoring. The runtime queues the authored parameter into the node at creation and writes it on every Do (§69); before §69 the export refused the node and, with it, the whole Save chain."
+      }
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "status variable",
+      "x": 520,
+      "y": 760,
+      "parameters": {
+        "name": "status"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

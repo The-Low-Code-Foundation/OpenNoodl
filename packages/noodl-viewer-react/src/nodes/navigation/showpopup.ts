@@ -123,7 +123,7 @@ const ShowPopupNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the popup did not open, set just before Failure fires',
       getter: function (this: ShowPopupInstance) {
         return this._internal.lastError;

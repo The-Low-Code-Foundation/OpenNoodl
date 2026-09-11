@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "d0e5de5c-4e1a-4b3e-9f2a-1a2b3c4d6e02",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "idInput",
+      "fromProperty": "onTextChanged",
+      "toId": "taskIdVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "taskIdVar",
+      "fromProperty": "value",
+      "toId": "taskRec",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "taskRec",
+      "fromProperty": "prop-title",
+      "toId": "titleText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "taskRec",
+      "fromProperty": "prop-due",
+      "toId": "dueText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "taskRec",
+      "fromProperty": "prop-due",
+      "toId": "dueFmt",
+      "toProperty": "input"
+    },
+    {
+      "fromId": "dueFmt",
+      "fromProperty": "currentValue",
+      "toId": "dueFmtText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "taskRec",
+      "fromProperty": "error",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "titleInput",
+      "fromProperty": "onTextChanged",
+      "toId": "create",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "date",
+      "toId": "create",
+      "toProperty": "prop-due"
+    },
+    {
+      "fromId": "saveButton",
+      "fromProperty": "onClick",
+      "toId": "create",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "create",
+      "fromProperty": "done",
+      "toId": "savedSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "savedString",
+      "fromProperty": "savedValue",
+      "toId": "savedSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "savedVar",
+      "fromProperty": "value",
+      "toId": "savedText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -117,10 +117,15 @@
   margin-left: 28px;
 }
 
+/* Phase 75's border sweep. `border-default` was 1.08:1 on this button's own fill.
+   `border-control` is 3.08 / 3.05 on `bg-3` and 4.17 / 3.72 on the `bg-1` dropdown
+   panel behind it. ✅ Its `:hover` needed NO change: it already goes to a solid
+   `primary` fill, whose own step against the panel is 5.60 / 4.57 — the fill
+   identifies the control there, so the matching `primary` edge is not load-bearing. */
 .PreviewButton {
   padding: 4px 12px;
   background: var(--theme-color-bg-3);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: 4px;
   color: var(--theme-color-fg-default);
   font-size: 12px;

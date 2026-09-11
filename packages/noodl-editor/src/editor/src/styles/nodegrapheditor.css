@@ -9,6 +9,52 @@
   overflow: hidden;
 }
 
+/* -------------------------------------------------------------------
+   LGC-008 — the canvas layers' box model.
+
+   Moved out of `CanvasShell.ts` deliberately. An inline `width: 100%`
+   outranks every selector, so a layer that sized itself in JavaScript
+   could not be narrowed into a pane by the split rules below. What stays
+   inline there is only what differs per layer: `z-index`, `pointer-events`.
+   ------------------------------------------------------------------- */
+#nodegraphcanvas,
+.nodegraph-canvas-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* -------------------------------------------------------------------
+   LGC-010 — the layer the floating block editor lives in.
+
+   `fixed`, not `absolute`: the window is placed against the *viewport*,
+   not against the node graph frame, because the frame is half the screen
+   under the default `horizontal` layout and the block editor's own
+   minimum is 640px. Nothing between here and `<body>` establishes a
+   containing block for fixed positioning (`FrameDivider`'s containers are
+   `position: absolute; overflow: hidden` with no transform), so this
+   escapes the frame's clip.
+
+   `pointer-events: none` with the window inside re-enabling them is what
+   makes an outside click reach the canvas, the running app or a panel
+   instead of the layer — and, unlike a `PopupLayer` popout, not dismiss
+   the window either.
+   ------------------------------------------------------------------- */
+#canvas-tabs-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Without this, a comment positioned below the bottom of the parent scrolls all
+   of its siblings (a Chromium bug the original template worked around the same
+   way). In split mode it is also what stops a layer drawing across the splitter. */
+.nodegraph-canvas-layer {
+  overflow: hidden;
+}
+
 /* PAR-003: the component trail is the mock's full-width 38px bottom bar. */
 .nodegraph-component-trail-root {
   position: absolute;
@@ -29,6 +75,32 @@
   position: absolute;
   top: 0;
   left: 0;
+  /* LGC-008: its clipping wrapper is `pointer-events: none` so that a now-full-size
+     box above the canvas does not swallow every canvas mouse event. The layer is a
+     0x0 origin carrying the pan/zoom transform — it intercepts nothing itself, and
+     its absolutely-positioned children (node views, toolbars, the wire-label
+     editor) get their events back from here. */
+  pointer-events: auto;
+}
+
+/* -------------------------------------------------------------------
+   LGC-010 — overlay mode: the blocks float *over* the canvas.
+
+   The canvas is not narrowed and not hidden. Nothing about the node
+   graph's geometry changes when a Visual Function opens, which is why
+   there is no canvas re-measure on this path at all — every layer is the
+   size it already was.
+
+   The four numbers are written by `LogicOverlay.ts` and read by
+   `CanvasTabs.module.scss`; the only thing this rule does is decide
+   whether the window is on screen.
+
+   ⚠️ The archived splitter this replaced is at
+   `dev-docs/archive/lgc-008-split-pane/`, kept for a future
+   multiple-canvas layout rather than deleted.
+   ------------------------------------------------------------------- */
+.nodegrapheditor-canvas:not(.is-logic-overlay) #canvas-tabs-root {
+  display: none;
 }
 
 /* CAN-002: the wire-label editor. It lives in the DOM layer, which carries the

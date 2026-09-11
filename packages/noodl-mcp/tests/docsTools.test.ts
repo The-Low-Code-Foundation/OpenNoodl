@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { call, connect, copyFixture, exists, TestSession } from './helpers';
+import { call, connect, copyFixture, exists, reveal, TestSession } from './helpers';
 import type { ListProjectDocsResponse } from '../src/tools/docsTools';
 import type { ToolErrorPayload } from '../src/tools/responses';
 
@@ -42,6 +42,7 @@ describe('AIX-009 project docs MCP tools', () => {
   beforeEach(async () => {
     projectDir = copyFixture();
     session = await connect(projectDir, true);
+    await reveal(session, 'docs'); // AWP-006 — the docs group is deferred by default
   });
 
   afterEach(async () => {
@@ -82,10 +83,38 @@ describe('AIX-009 project docs MCP tools', () => {
 
     const conventions = data.docs.find((d) => d.path === 'docs/CONVENTIONS.md');
     expect(conventions?.kind).toBe('conventions');
-    expect(conventions?.injection).toBe('default');
+    // BLD-007: one vocabulary for both clients. `always` is what the editor
+    // panel says of the same file; this used to be a second word, `default`.
+    expect(conventions?.injection).toBe('always');
     // ARCHITECTURE is pull-only, which is a fact the agent needs to plan around.
     const architecture = data.missing.find((m) => m.path === 'docs/ARCHITECTURE.md');
     expect(architecture).toBeDefined();
+  });
+
+  it('BLD-007 — reports the injection a doc declared for itself, not a table lookup', async () => {
+    writeDoc(projectDir, 'docs/CONVENTIONS.md', '# Conventions\n');
+    writeDoc(
+      projectDir,
+      'docs/uk-vat.md',
+      ['---', 'title: UK VAT rules', 'inject: always', 'when: tax, invoices', '---', '', '# VAT', '20% standard.'].join('\n')
+    );
+    writeDoc(projectDir, 'docs/brand-voice.md', '# Brand voice\n\nPlain words.\n');
+
+    const { data } = await call<ListProjectDocsResponse>(session, 'list_project_docs');
+
+    const vat = data.docs.find((d) => d.path === 'docs/uk-vat.md');
+    expect(vat?.injection).toBe('always');
+    expect(vat?.title).toBe('UK VAT rules');
+    expect(vat?.when).toEqual(['tax', 'invoices']);
+
+    // No front matter: the default that cannot cost an unrelated project
+    // anything, and a title taken from the doc's own first heading.
+    const voice = data.docs.find((d) => d.path === 'docs/brand-voice.md');
+    expect(voice?.injection).toBe('pull');
+    expect(voice?.title).toBe('Brand voice');
+    // A user doc is no longer reported as a second-class file with no kind and
+    // no injection at all — which is how D9 read on the wire.
+    expect(voice?.kind).toBeUndefined();
   });
 
   it('reads a doc by full path and by bare name', async () => {
@@ -191,7 +220,20 @@ describe('AIX-009 project docs MCP tools', () => {
   it('does not register the write tools in read-only mode', async () => {
     await session.close();
     session = await connect(projectDir, false);
+    // AWP-006 made this three questions rather than one, and they have three
+    // different answers. `list_project_docs`/`get_project_doc` are resident (all
+    // four phase-55 replays read a project doc inside their first six turns);
+    // `review_project` is a read, so it is registered here, but it is in the
+    // deferred `docs` group and arrives only when asked for; the writes are not
+    // registered at all, and no amount of asking produces them.
+    const resident = (await session.client.listTools()).tools.map((t) => t.name);
+    expect(resident).toContain('list_project_docs');
+    expect(resident).toContain('get_project_doc');
+    expect(resident).not.toContain('review_project');
+
+    await reveal(session, 'docs');
     const names = (await session.client.listTools()).tools.map((t) => t.name);
+    expect(names).toContain('review_project');
     expect(names).toContain('list_project_docs');
     expect(names).toContain('get_project_doc');
     expect(names).not.toContain('write_project_doc');

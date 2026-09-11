@@ -31,16 +31,31 @@ const ImageNode: ReactNodeDefinition = {
   getReactComponent() {
     return Image;
   },
+  /**
+   * FB-015 AC4 — report what is actually driving the image.
+   *
+   * 🔴 This used to `return this.props.dom.srcSet` and stop, so an author who had set Source Set
+   * once and was now debugging Source saw only the srcset string — with no hint that Source was
+   * set at all, and no preview. That is the wrong way round: Source Set is the field with no
+   * picker, no validation and no affordance, so it is the one more likely to be a leftover.
+   *
+   * Both are reported when both are set, labelled, because both are true: the browser picks a
+   * candidate out of `srcset` and falls back to `src`. Only `src` can be previewed — `srcset` is a
+   * list of candidates plus the descriptors that choose between them, and which one the browser
+   * took depends on the viewport and the device pixel ratio at the moment it decided.
+   */
   getInspectInfo() {
-    if (this.props.dom.srcSet) {
-      return this.props.dom.srcSet;
-    } else if (this.props.dom.src) {
-      const src = this.props.dom.src.toString();
-      return [
-        { type: 'text', value: src },
-        { type: 'image', value: src }
-      ];
-    }
+    const srcSet = this.props.dom.srcSet;
+    const src = this.props.dom.src ? this.props.dom.src.toString() : undefined;
+
+    if (!srcSet && !src) return;
+
+    const info = [];
+    if (srcSet) info.push({ type: 'text', value: `Source Set: ${srcSet}` });
+    if (src) info.push({ type: 'text', value: srcSet ? `Source: ${src}` : src });
+    if (src) info.push({ type: 'image', value: src });
+
+    return info;
   },
   allowChildren: false,
   defaultCss: {
@@ -96,6 +111,9 @@ const ImageNode: ReactNodeDefinition = {
     srcSet: {
       displayName: 'Source Set',
       description: 'A srcset list letting the browser pick a resolution, e.g. "small.png 480w, large.png 1080w"',
+      // FB-015 AC4 — the shape, in the empty field. A `srcset` is the one image port with a
+      // syntax rather than a value, and the field gave no clue what went in it.
+      placeholder: 'small.png 480w, large.png 1080w',
       group: 'Image',
       propPath: 'dom',
       type: {
@@ -105,6 +123,10 @@ const ImageNode: ReactNodeDefinition = {
       allowVisualStates: true
     },
     alt: {
+      // SIG-003 — the node's own subject heading, which `groupPriority` already
+      // names, in preference to the `Values` kind heading. It sits with `Source`
+      // and `Source Set`, which is where an author looking for it will look.
+      group: 'Image',
       displayName: 'Alternate text',
       tooltip: "The alt text is used by screen readers, or if the image can't be downloaded or displayed",
       type: 'string',
@@ -144,7 +166,7 @@ const ImageNode: ReactNodeDefinition = {
     imageError: {
       displayName: 'Error',
       type: 'string',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the image could not be loaded, naming the source that failed'
     }
   }
@@ -159,6 +181,8 @@ NodeSharedPortDefinitions.addMarginInputs(ImageNode);
 NodeSharedPortDefinitions.addSharedVisualInputs(ImageNode);
 NodeSharedPortDefinitions.addAlignInputs(ImageNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(ImageNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(ImageNode);
 NodeSharedPortDefinitions.addBorderInputs(ImageNode);
 NodeSharedPortDefinitions.addShadowInputs(ImageNode);
 

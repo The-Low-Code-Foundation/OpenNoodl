@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "cf21dd7d-f5b8-5278-8d6a-e38645ab2c16",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "qcInputs",
+      "fromProperty": "items",
+      "toId": "qcFilter",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "qcFilter",
+      "fromProperty": "items",
+      "toId": "qcRepeat",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "qcInputs",
+      "fromProperty": "count",
+      "toId": "qcLast",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "qcLast",
+      "fromProperty": "asNumber",
+      "toId": "qcCounter",
+      "toProperty": "limitsMax"
+    },
+    {
+      "fromId": "qcCounter",
+      "fromProperty": "currentCount",
+      "toId": "qcFilter",
+      "toProperty": "filterSkip"
+    },
+    {
+      "fromId": "qcPrev",
+      "fromProperty": "onClick",
+      "toId": "qcCounter",
+      "toProperty": "decrease"
+    },
+    {
+      "fromId": "qcNext",
+      "fromProperty": "onClick",
+      "toId": "qcCounter",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "qcCounter",
+      "fromProperty": "currentCount",
+      "toId": "qcHuman",
+      "toProperty": "i"
+    },
+    {
+      "fromId": "qcHuman",
+      "fromProperty": "asNumber",
+      "toId": "qcFmt",
+      "toProperty": "pos"
+    },
+    {
+      "fromId": "qcInputs",
+      "fromProperty": "count",
+      "toId": "qcFmt",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "qcFmt",
+      "fromProperty": "formatted",
+      "toId": "qcPosition",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "qcCounter",
+      "fromProperty": "currentCount",
+      "toId": "qcCanPrev",
+      "toProperty": "i"
+    },
+    {
+      "fromId": "qcCanPrev",
+      "fromProperty": "asBoolean",
+      "toId": "qcPrev",
+      "toProperty": "enabled"
+    },
+    {
+      "fromId": "qcCounter",
+      "fromProperty": "currentCount",
+      "toId": "qcCanNext",
+      "toProperty": "i"
+    },
+    {
+      "fromId": "qcInputs",
+      "fromProperty": "count",
+      "toId": "qcCanNext",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "qcCanNext",
+      "fromProperty": "asBoolean",
+      "toId": "qcNext",
+      "toProperty": "enabled"
+    }
+  ]
+}

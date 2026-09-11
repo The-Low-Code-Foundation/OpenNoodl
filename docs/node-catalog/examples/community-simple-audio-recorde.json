@@ -1,0 +1,543 @@
+{
+ "id": "community-simple-audio-recorde",
+ "title": "Record audio in the browser and save it",
+ "description": "The full arc of a MediaRecorder capture, which is longer than it looks because three different things have to be true before a single byte is recorded. A `JavaScriptFunction` asks for microphone permission and a `Switch` gates everything on the answer; a `Javascript2` node owns the recorder itself and accumulates chunks; a second one runs the seconds counter; a third converts the finished `Blob` into the shape `NewDbModelProperties` can store. \u26a0\ufe0f Permission is asynchronous and revocable, which is why the gate is a node and not an assumption \u2014 a recorder started before the user has answered produces silence rather than an error. The preview player is a Custom HTML node because an `<audio>` element with a blob URL is the shortest honest way to play back something that has no file yet.",
+ "demonstrates": [
+  "Component Outputs",
+  "Condition",
+  "Expression",
+  "Group",
+  "Inverter",
+  "JavaScriptFunction",
+  "Javascript2",
+  "NewDbModelProperties",
+  "States",
+  "Switch",
+  "Text",
+  "module.inlineHtml",
+  "net.noodl.controls.button"
+ ],
+ "components": [
+  {
+   "name": "Simple audio recorde",
+   "nodes": [
+    {
+     "id": "audio-recorder-container",
+     "type": "Group",
+     "label": "Audio recorder container",
+     "parameters": {
+      "flexDirection": "row",
+      "columnGap": "var(--space-5)",
+      "paddingTop": "var(--space-2-5)",
+      "paddingBottom": "var(--space-2-5)",
+      "paddingRight": "var(--space-2-5)",
+      "paddingLeft": "var(--space-2-5)",
+      "sizeMode": "contentSize",
+      "clip": false,
+      "flexWrap": "wrap",
+      "rowGap": "var(--space-5)"
+     },
+     "children": [
+      "left-container-record-buttons",
+      "right-container-recording-preview"
+     ]
+    },
+    {
+     "id": "left-container-record-buttons",
+     "type": "Group",
+     "label": "Left container record buttons",
+     "parent": "audio-recorder-container",
+     "parameters": {
+      "flexDirection": "row",
+      "columnGap": "var(--space-5)",
+      "alignY": "center",
+      "sizeMode": "contentWidth"
+     },
+     "children": [
+      "record-button",
+      "recording-timer-text",
+      "stop-button"
+     ]
+    },
+    {
+     "id": "record-button",
+     "type": "net.noodl.controls.button",
+     "label": "Record button",
+     "parent": "left-container-record-buttons",
+     "parameters": {
+      "label": "Record",
+      "alignY": "center",
+      "backgroundColor": "Resourceful red"
+     }
+    },
+    {
+     "id": "recording-timer-text",
+     "type": "Text",
+     "label": "Recording timer text",
+     "parent": "left-container-record-buttons",
+     "parameters": {
+      "alignY": "center"
+     }
+    },
+    {
+     "id": "stop-button",
+     "type": "net.noodl.controls.button",
+     "label": "Stop button",
+     "parent": "left-container-record-buttons",
+     "parameters": {
+      "label": "Stop",
+      "mounted": true,
+      "enabled": false,
+      "alignY": "center",
+      "backgroundColor": "Resourceful red",
+      "sizeMode": "contentWidth"
+     }
+    },
+    {
+     "id": "right-container-recording-preview",
+     "type": "Group",
+     "label": "Right container recording preview",
+     "parent": "audio-recorder-container",
+     "parameters": {
+      "flexDirection": "row",
+      "columnGap": "var(--space-5)",
+      "sizeMode": "explicit",
+      "flexWrap": "wrap",
+      "rowGap": "var(--space-5)"
+     },
+     "children": [
+      "recording-preview-group",
+      "save-button"
+     ]
+    },
+    {
+     "id": "recording-preview-group",
+     "type": "Group",
+     "label": "Recording preview group",
+     "parent": "right-container-recording-preview",
+     "parameters": {
+      "backgroundColor": "Grey - 200",
+      "borderRadius": {
+       "value": 10,
+       "unit": "px"
+      },
+      "paddingTop": "var(--space-2-5)",
+      "sizeMode": "contentWidth"
+     },
+     "children": [
+      "text",
+      "audio-preview-player"
+     ]
+    },
+    {
+     "id": "text",
+     "type": "Text",
+     "parent": "recording-preview-group",
+     "parameters": {
+      "text": "Recording preview",
+      "marginLeft": "var(--space-5)",
+      "textStyle": "Body Small"
+     }
+    },
+    {
+     "id": "audio-preview-player",
+     "type": "module.inlineHtml",
+     "label": "Audio preview player",
+     "parent": "recording-preview-group",
+     "parameters": {
+      "html": "<audio controls>\n  <source src={{audioUrl}} type=\"audio/webm\">\n  Your browser does not support the audio element.\n</audio>\n"
+     }
+    },
+    {
+     "id": "save-button",
+     "type": "net.noodl.controls.button",
+     "label": "Save Button",
+     "parent": "right-container-recording-preview",
+     "parameters": {
+      "label": "Save",
+      "alignY": "center"
+     }
+    },
+    {
+     "id": "get-user-to-authorise-mic-in-browser",
+     "type": "JavaScriptFunction",
+     "label": "Get user to authorise mic in browser",
+     "parameters": {
+      "functionScript": "\n// Check if getUserMedia is supported by the browser\nconst getUserMediaSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);\n\n// If getUserMedia is not supported, send a failure signal\nif (!getUserMediaSupported) {\n  Outputs.Failure();\n  return;\n}\n\n// Request access to the microphone and camera\nnavigator.mediaDevices.getUserMedia({ audio: true, video: false })\n  .then(() => {\n    // If access is granted, send a success signal\n    Outputs.Success();\n  })\n  .catch((error) => {\n    // If access is denied or an error occurs, send a failure signal\n    Outputs.Error = error;\n    Outputs.Failure();\n  });\n"
+     }
+    },
+    {
+     "id": "audio-recorder-script",
+     "type": "Javascript2",
+     "label": "Audio recorder script",
+     "parameters": {
+      "code": "// Check if the browser supports the getUserMedia API\nconst getUserMedia = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)) \n  || (navigator.webkitGetUserMedia && navigator.webkitGetUserMedia.bind(navigator))\n  || (navigator.mozGetUserMedia && navigator.mozGetUserMedia.bind(navigator))\n  || (navigator.msGetUserMedia && navigator.msGetUserMedia.bind(navigator));\n\nif (!getUserMedia) {\n  console.log(\"getUserMedia API not supported.\");\n  Script.Outputs.Failure();\n  return;\n}\n\n// Create a new MediaRecorder instance\nlet mediaRecorder;\nlet chunks = [];\n\n// Add promise variables here\nlet resolveDataAvailable;\nlet dataAvailablePromise = new Promise(resolve => {\n  resolveDataAvailable = resolve;\n});\n\n// Start recording audio\nScript.Signals.Start = async function () {\n  try {\n    const stream = await getUserMedia({ audio: true });\n    mediaRecorder = new MediaRecorder(stream);\n    console.log(\"Started recording...\");\n\n    // Create a new Promise for each recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n\n    mediaRecorder.addEventListener('dataavailable', (event) => {\n      chunks.push(event.data);\n      console.log(\"Data available:\", event.data); // Log the data chunks\n      resolveDataAvailable(); // Resolve the promise\n    });\n\n    mediaRecorder.addEventListener('stop', () => {\n      console.log(\"Stopped recording...\");\n    });\n\n    mediaRecorder.start();\n    Script.Outputs.AudioFile = \"\";\n    Script.Outputs.Started();\n  } catch (error) {\n    console.log(\"Error:\", error); // Log the error\n    Script.Outputs.Error = error;\n    Script.Outputs.Failure();\n  }\n};\n\n\n// Stop recording audio\nScript.Signals.Stop = async function() {\n  if (mediaRecorder && mediaRecorder.state === 'recording') {\n    mediaRecorder.stop();\n    // Wait for the dataavailable event\n    await dataAvailablePromise;\n    const blob = new Blob(chunks, { type: 'audio/webm' });\n    console.log(\"Audio blob:\", blob); // Log the blob\n\n    // Convert Blob to base64 string\n    const reader = new FileReader();\n    reader.readAsDataURL(blob);\n    reader.onloadend = function() {\n      const base64data = reader.result;\n      Script.Outputs.AudioFile = base64data; // Output the base64 string\n      Script.Outputs.Success();\n    }\n\n    chunks = []; // Clear the chunks array for future recordings\n    // Reset for the next recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n  }\n};\n"
+     }
+    },
+    {
+     "id": "mic-is-authorised",
+     "type": "Switch",
+     "label": "Mic is authorised"
+    },
+    {
+     "id": "create-a-new-audio-upload",
+     "type": "NewDbModelProperties",
+     "label": "Create a new audio upload",
+     "parameters": {
+      "collectionName": "Upload"
+     }
+    },
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "uploadRecordCreated",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "absoluteFilePathCreated",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      }
+     ]
+    },
+    {
+     "id": "record-not-clicked",
+     "type": "Switch",
+     "label": "Record not clicked",
+     "parameters": {
+      "onFromStart": true
+     }
+    },
+    {
+     "id": "mic-authorised-and-record-not-clicked",
+     "type": "Condition",
+     "label": "Mic authorised AND record not clicked"
+    },
+    {
+     "id": "record-clicked-enable-stop",
+     "type": "Inverter",
+     "label": "Record clicked, enable stop"
+    },
+    {
+     "id": "convert-audio-blob-to-cloud-file",
+     "type": "Javascript2",
+     "label": "Convert audio blob to cloud file",
+     "parameters": {
+      "code": "Script.Outputs = {\n    FileUrl: 'string',\n    fileName: 'string',\n    Success: 'signal',\n    Error: 'string',\n    Failure: 'signal'\n};\n\n// Function to convert base64 data to Blob\nfunction base64ToBlob(base64, mimeType) {\n    const byteCharacters = atob(base64);\n    const byteNumbers = new Array(byteCharacters.length);\n    for (let i = 0; i < byteCharacters.length; i++) {\n        byteNumbers[i] = byteCharacters.charCodeAt(i);\n    }\n    const byteArray = new Uint8Array(byteNumbers);\n    \n    // Create blob object\n    const blob = new Blob([byteArray], {type: mimeType});\n    return blob;\n}\n\nScript.Signals.UploadAudio = async function () {\n    const audioDataUrl = Script.Inputs.AudioBlob;\n    if (!audioDataUrl) return;\n\n    const base64Data = audioDataUrl.split(',')[1];\n    const blob = base64ToBlob(base64Data, 'audio/webm'); // Convert base64 to Blob\n    const fileName = `audio_${Date.now()}.webm`;\n    const file = new File([blob], fileName, { type: 'audio/webm' }); // Create File object\n\n    try {\n        const cloudFile = await Noodl.Files.upload(file, {\n            onProgress: (p) => {\n                console.log(p.total, p.loaded);\n            },\n        });\n\n        Script.Outputs.file = cloudFile;\n        Script.Outputs.FileUrl = cloudFile.url; // Assuming the URL is the file path\n        Script.Outputs.fileName = cloudFile.name;\n        Script.Outputs.Success();\n    } catch (error) {\n        Script.Outputs.Error = error;\n        Script.Outputs.Failure();\n    }\n};\n"
+     }
+    },
+    {
+     "id": "record-button-labels",
+     "type": "States",
+     "label": "Record button labels",
+     "parameters": {
+      "states": "Record,Recording,Restart recording",
+      "useTransitions": false,
+      "type-label": "string",
+      "type-Record": "string",
+      "type-Recording": "string",
+      "value-Record-Record": "Record",
+      "value-Record-Recording": "Recording...",
+      "values": "label",
+      "value-Record-label": "Record",
+      "value-Recording-label": "Recording...",
+      "value-Restart recording-label": "Restart"
+     }
+    },
+    {
+     "id": "start-and-stop-seconds-counter",
+     "type": "Javascript2",
+     "label": "Start and stop seconds counter",
+     "parameters": {
+      "code": "let timerId;\nlet seconds = 0;\n\nScript.Signals.Start = async function () {\n  if (timerId) {\n    return;\n  }\n\n  seconds = 0; // Reset the seconds\n  Script.Outputs.Seconds = \"0:00\";\n\n  timerId = setInterval(() => {\n    seconds++;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }, 1000);\n}\n\nScript.Signals.Stop = async function () {\n  if (timerId) {\n    clearInterval(timerId);\n    timerId = null;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }\n}\n"
+     }
+    },
+    {
+     "id": "counter-has-started",
+     "type": "Expression",
+     "label": "Counter has started",
+     "parameters": {
+      "expression": "seconds != \"\" && seconds != null"
+     }
+    },
+    {
+     "id": "an-audioblob-exists",
+     "type": "Expression",
+     "label": "An audioblob exists",
+     "parameters": {
+      "expression": "audioBlob != \"\" && audioBlob != null"
+     }
+    },
+    {
+     "id": "save-button-labels",
+     "type": "States",
+     "label": "Save button labels",
+     "parameters": {
+      "states": "Save,Saving,Saved",
+      "useTransitions": false,
+      "type-label": "string",
+      "type-Record": "string",
+      "type-Recording": "string",
+      "value-Record-Record": "Record",
+      "value-Record-Recording": "Recording...",
+      "values": "label,colour",
+      "value-Save-label": "Save",
+      "value-Saving-label": "Saving...",
+      "value-Saved-label": "Saved!",
+      "type-colour": "color",
+      "value-Save-colour": "Resourceful red",
+      "value-Saving-colour": "Grey - 400",
+      "value-Saved-colour": "Success"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "get-user-to-authorise-mic-in-browser",
+     "fromProperty": "out-Failure",
+     "toId": "mic-is-authorised",
+     "toProperty": "off"
+    },
+    {
+     "fromId": "get-user-to-authorise-mic-in-browser",
+     "fromProperty": "out-Success",
+     "toId": "mic-is-authorised",
+     "toProperty": "on"
+    },
+    {
+     "fromId": "create-a-new-audio-upload",
+     "fromProperty": "id",
+     "toId": "component-outputs",
+     "toProperty": "uploadRecordCreated"
+    },
+    {
+     "fromId": "record-not-clicked",
+     "fromProperty": "state",
+     "toId": "mic-authorised-and-record-not-clicked",
+     "toProperty": "condition"
+    },
+    {
+     "fromId": "mic-is-authorised",
+     "fromProperty": "state",
+     "toId": "mic-authorised-and-record-not-clicked",
+     "toProperty": "condition"
+    },
+    {
+     "fromId": "mic-authorised-and-record-not-clicked",
+     "fromProperty": "result",
+     "toId": "record-button",
+     "toProperty": "enabled"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "record-not-clicked",
+     "toProperty": "off"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "record-not-clicked",
+     "toProperty": "on"
+    },
+    {
+     "fromId": "record-not-clicked",
+     "fromProperty": "state",
+     "toId": "record-clicked-enable-stop",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "record-clicked-enable-stop",
+     "fromProperty": "result",
+     "toId": "stop-button",
+     "toProperty": "enabled"
+    },
+    {
+     "fromId": "convert-audio-blob-to-cloud-file",
+     "fromProperty": "fileName",
+     "toId": "create-a-new-audio-upload",
+     "toProperty": "prop-name"
+    },
+    {
+     "fromId": "convert-audio-blob-to-cloud-file",
+     "fromProperty": "Success",
+     "toId": "create-a-new-audio-upload",
+     "toProperty": "store"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "audio-recorder-script",
+     "toProperty": "Start"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "audio-recorder-script",
+     "toProperty": "Stop"
+    },
+    {
+     "fromId": "audio-recorder-script",
+     "fromProperty": "AudioFile",
+     "toId": "convert-audio-blob-to-cloud-file",
+     "toProperty": "AudioBlob"
+    },
+    {
+     "fromId": "record-button-labels",
+     "fromProperty": "label",
+     "toId": "record-button",
+     "toProperty": "label"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "record-button-labels",
+     "toProperty": "toggle"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "start-and-stop-seconds-counter",
+     "toProperty": "Start"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "start-and-stop-seconds-counter",
+     "toProperty": "Stop"
+    },
+    {
+     "fromId": "start-and-stop-seconds-counter",
+     "fromProperty": "Seconds",
+     "toId": "recording-timer-text",
+     "toProperty": "text"
+    },
+    {
+     "fromId": "start-and-stop-seconds-counter",
+     "fromProperty": "Seconds",
+     "toId": "counter-has-started",
+     "toProperty": "seconds"
+    },
+    {
+     "fromId": "counter-has-started",
+     "fromProperty": "result",
+     "toId": "recording-timer-text",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "convert-audio-blob-to-cloud-file",
+     "fromProperty": "FileUrl",
+     "toId": "component-outputs",
+     "toProperty": "absoluteFilePathCreated"
+    },
+    {
+     "fromId": "audio-recorder-script",
+     "fromProperty": "AudioFile",
+     "toId": "audio-preview-player",
+     "toProperty": "prop-audioUrl"
+    },
+    {
+     "fromId": "audio-recorder-script",
+     "fromProperty": "AudioFile",
+     "toId": "an-audioblob-exists",
+     "toProperty": "audioBlob"
+    },
+    {
+     "fromId": "audio-recorder-script",
+     "fromProperty": "Success",
+     "toId": "an-audioblob-exists",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "an-audioblob-exists",
+     "fromProperty": "result",
+     "toId": "save-button",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "save-button",
+     "fromProperty": "onClick",
+     "toId": "convert-audio-blob-to-cloud-file",
+     "toProperty": "UploadAudio"
+    },
+    {
+     "fromId": "convert-audio-blob-to-cloud-file",
+     "fromProperty": "file",
+     "toId": "create-a-new-audio-upload",
+     "toProperty": "prop-filePath"
+    },
+    {
+     "fromId": "save-button-labels",
+     "fromProperty": "label",
+     "toId": "save-button",
+     "toProperty": "label"
+    },
+    {
+     "fromId": "save-button-labels",
+     "fromProperty": "colour",
+     "toId": "save-button",
+     "toProperty": "backgroundColor"
+    },
+    {
+     "fromId": "save-button",
+     "fromProperty": "onClick",
+     "toId": "save-button-labels",
+     "toProperty": "to-Saving"
+    },
+    {
+     "fromId": "create-a-new-audio-upload",
+     "fromProperty": "created",
+     "toId": "save-button-labels",
+     "toProperty": "to-Saved"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "save-button-labels",
+     "toProperty": "to-Save"
+    },
+    {
+     "fromId": "audio-recorder-script",
+     "fromProperty": "Started",
+     "toId": "an-audioblob-exists",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "record-button-labels",
+     "toProperty": "to-Restart recording"
+    },
+    {
+     "fromId": "an-audioblob-exists",
+     "fromProperty": "result",
+     "toId": "recording-preview-group",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "record-button-labels",
+     "toProperty": "to-Recording"
+    }
+   ]
+  }
+ ],
+ "requiresModules": [
+  {
+   "module": "custom-html",
+   "nodes": [
+    "module.inlineHtml"
+   ]
+  }
+ ]
+}

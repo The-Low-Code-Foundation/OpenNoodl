@@ -1,0 +1,239 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6c257a63-e3a4-5962-8708-4c19a7d4eb73",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "footer_band",
+      "type": "Group",
+      "label": "Footer",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "children": [
+        "footer_shell"
+      ]
+    },
+    {
+      "id": "footer_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "rowGap": "var(--space-10)"
+      },
+      "parent": "footer_band",
+      "children": [
+        "footer_cols",
+        "footer_rule"
+      ]
+    },
+    {
+      "id": "footer_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Four up",
+      "parameters": {
+        "layoutString": "2 1 1 1",
+        "marginX": {
+          "value": 32,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1 1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "footer_shell",
+      "children": [
+        "footer_about",
+        "footer_k1",
+        "footer_k2",
+        "footer_k3"
+      ]
+    },
+    {
+      "id": "footer_about",
+      "type": "Group",
+      "label": "About",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "parent": "footer_cols",
+      "children": [
+        "footer_mark",
+        "footer_blurb"
+      ]
+    },
+    {
+      "id": "footer_mark",
+      "type": "Group",
+      "label": "Wordmark",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)"
+      },
+      "parent": "footer_about",
+      "children": [
+        "footer_markicon",
+        "footer_marktext"
+      ]
+    },
+    {
+      "id": "footer_markicon",
+      "type": "net.noodl.visual.icon",
+      "label": "Wordmark glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sprout",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 20,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "parent": "footer_mark"
+    },
+    {
+      "id": "footer_marktext",
+      "type": "Text",
+      "label": "footer_marktext",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "text": "Ashcombe Market Garden"
+      },
+      "parent": "footer_mark"
+    },
+    {
+      "id": "footer_blurb",
+      "type": "Text",
+      "label": "footer_blurb",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 320,
+          "unit": "px"
+        },
+        "lineHeight": "var(--leading-relaxed)",
+        "text": "Ashcombe Cross, Somerset. Eleven acres, growing since 2019. Boxes packed Thursday and out on Friday."
+      },
+      "parent": "footer_about"
+    },
+    {
+      "id": "footer_k1",
+      "type": "/Components/FooterColumn",
+      "label": "Boxes",
+      "parameters": {
+        "heading": "Boxes",
+        "a": "The small box",
+        "b": "The full box",
+        "c": "Gift a box"
+      },
+      "parent": "footer_cols"
+    },
+    {
+      "id": "footer_k2",
+      "type": "/Components/FooterColumn",
+      "label": "The garden",
+      "parameters": {
+        "heading": "The garden",
+        "a": "What we grow",
+        "b": "Open days",
+        "c": "Volunteering"
+      },
+      "parent": "footer_cols"
+    },
+    {
+      "id": "footer_k3",
+      "type": "/Components/FooterColumn",
+      "label": "Practical",
+      "parameters": {
+        "heading": "Practical",
+        "a": "Delivery area",
+        "b": "Cancel a week",
+        "c": "Get in touch"
+      },
+      "parent": "footer_cols"
+    },
+    {
+      "id": "footer_rule",
+      "type": "Group",
+      "label": "Bottom rule",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)"
+      },
+      "parent": "footer_shell",
+      "children": [
+        "footer_copy"
+      ]
+    },
+    {
+      "id": "footer_copy",
+      "type": "Text",
+      "label": "footer_copy",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "text": "© 2026 Ashcombe Market Garden · Photographs are CC0 from the bundled starter imagery"
+      },
+      "parent": "footer_rule"
+    }
+  ],
+  "visualRoots": [
+    "footer_band"
+  ]
+}

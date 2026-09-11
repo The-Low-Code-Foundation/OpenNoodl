@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "47016a28-2ae9-441e-8a6c-370bc9776aa5",
+  "name": "NoteRow",
+  "path": "/Components/NoteRow",
+  "type": "visual",
+  "created": "2026-08-27T09:38:20.997Z",
+  "modified": "2026-08-27T09:38:20.997Z",
+  "modifiedBy": "noodl-mcp"
+}

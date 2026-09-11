@@ -107,6 +107,8 @@ const Layout = {
         style.height = getSizeWithMargins(style.height, style.marginTop, style.marginBottom);
       }
     }
+
+    reportMainAxisGrow(style, props);
   },
 
   align(style: StyleObject, props: LayoutProps): void {
@@ -207,3 +209,69 @@ const Layout = {
 };
 
 export default Layout;
+
+/**
+ * FLD-004 (#26) — say out loud that a wired dimension became a flex ratio.
+ *
+ * The reported defect is the *third* state: the wire validates, the connection is live, the value
+ * arrives, and the box does not move. A bare number on a dimension port is merged into the port's
+ * current unit (`noodl-runtime/src/node.ts` `setInputValue`), that unit defaults to `%`, and
+ * `Layout.size` turns a percentage on the parent's main axis into `flexGrow` — a ratio against the
+ * siblings that also grow, not a length. `width` on the same node in the same graph works, because
+ * a percentage on the cross axis stays a real CSS length. That is the reporter's whole three-way
+ * result, and the author is told none of it.
+ *
+ * 🔴 **Read off the consequence, not re-derived from the mechanism.** `size` above is the only
+ * writer of `style.flexGrow`, so its presence IS the conversion having happened — the alternative
+ * is a second copy of the axis/position/sizeMode reasoning that can drift away from the first.
+ *
+ * 🔴 **And it lives HERE, called from `size` itself, because that is the only place all of it
+ * converges.** It was first written beside the ONE `Layout.size` call in `react-component-node`'s
+ * render — and there are **twenty-two**. A `Group` — the node #26 is actually about — sizes itself
+ * in `Group.tsx`, so the report was correct and never reached. Every arm that graded the function
+ * passed, because every arm called the function. Driving the fixture in the real editor is what
+ * found it, and the specs now go through `size` so that "correct but unreached" reddens.
+ *
+ * A **diagnostic**, not a runtime error: it is a predicate that stays true until the author
+ * changes something, and the only person who can act on it is the author, in the editor. That also
+ * makes it self-clearing — rewire the port to a px object and the next render clears the key.
+ *
+ * Fires only on a CONNECTED port. Every visual node's `width` and `height` default to `100%`, and
+ * on the main axis that default is precisely how a child fills its parent: a message keyed on the
+ * conversion alone would fire on almost every node in every project.
+ *
+ * The `_lastMainAxisGrowDiagnostic` memo is not an optimisation of the message but of the
+ * CHANNEL — this runs on every render of every framed node, and `setDiagnostic` serialises and
+ * posts to the editor each time it is called.
+ */
+export interface MainAxisGrowHost {
+  readonly diagnosticsEnabled: boolean;
+  isInputConnected(name: string): boolean;
+  setDiagnostic(key: string, message?: string | null): void;
+  /** The memo below; declared so the read and the write are both checked. */
+  _lastMainAxisGrowDiagnostic?: string | null;
+}
+
+export function reportMainAxisGrow(style: StyleObject, props: LayoutProps): void {
+  const noodlNode = props.noodlNode as MainAxisGrowHost | undefined;
+  if (!noodlNode || typeof noodlNode.setDiagnostic !== 'function') return;
+  if (!noodlNode.diagnosticsEnabled) return;
+
+  const axis = props.parentLayout;
+  const port = axis === 'row' ? 'width' : axis === 'column' ? 'height' : undefined;
+  const converted = port !== undefined && style.flexGrow !== undefined && noodlNode.isInputConnected(port);
+
+  const message = converted
+    ? `"${port}" is wired, and the parent stacks its children along that same axis, so the value arrived as a ` +
+      `PERCENTAGE (dimension ports default to "%") and became flex-grow ${style.flexGrow} — a ratio against the ` +
+      `siblings that also grow, not a ${port === 'width' ? 'width' : 'height'}. Send a {value, unit} object instead ` +
+      'of a bare number, or give this port a px value in the property panel first: a bare number arriving over a ' +
+      'wire is merged into the unit the port is already holding.'
+    : null;
+
+  // `?? null` is load-bearing: without it the FIRST render of every framed node in the project
+  // posts a clear for a key it never raised, because the memo starts undefined.
+  if ((noodlNode._lastMainAxisGrowDiagnostic ?? null) === message) return;
+  noodlNode._lastMainAxisGrowDiagnostic = message;
+  noodlNode.setDiagnostic('dimensions/wired-dimension-becomes-grow', message);
+}

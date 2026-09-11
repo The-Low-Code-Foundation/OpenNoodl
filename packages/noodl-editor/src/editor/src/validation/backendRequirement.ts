@@ -155,6 +155,14 @@ export const DELIBERATELY_BACKEND_FREE: Readonly<Record<string, string>> = Objec
   'noodl.cloud.addusertorole': 'Runs inside a cloud function, against the backend it is already deployed to.',
   'noodl.cloud.removeuserfromrole': 'Runs inside a cloud function, against the backend it is already deployed to.',
   'noodl.cloud.getuserroles': 'Runs inside a cloud function, against the backend it is already deployed to.',
+  // 🔴 P80/DEF-005 (`ab677258`, 2026-08-31) added `List Users In Role` to the
+  // catalog and not to this table, and `aib-007/backendRequirement.test.ts` has
+  // been red ever since — read by P82 s23. Same family, same argument, same
+  // `availableIn: ['cloud']`: it reads the role store of the backend hosting the
+  // function, so a "you have no backend" diagnostic would be about the wrong
+  // thing. The completeness guard is what caught it, which is the whole reason
+  // this table is allowed to be hand-written.
+  'noodl.cloud.listusersinrole': 'Runs inside a cloud function, against the backend it is already deployed to.',
   // CWF-009's Secret. Not the same claim as the group above: it reads the
   // hosting *process*’s own secret store through the `functions` namespace, so
   // it is not a request to a configured backend at all. Its real failure —

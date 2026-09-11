@@ -1,7 +1,13 @@
 /**
- * CLI entry: `noodl-mcp <project-dir> [--allow-writes]`
+ * CLI entry: `noodl-mcp [project-dir] [--allow-writes]`
  * Speaks MCP over stdio. All human-facing output goes to stderr — stdout is
  * the protocol channel.
+ *
+ * BST-001 — the project directory is optional. With none, the server starts in
+ * bootstrap mode: the tools that need no project, and a briefing for an agent
+ * that has not got one. Zero positionals used to be the usage-and-exit-2 branch,
+ * so {@link USAGE} is where somebody first reads that the mode exists — which is
+ * why it says what zero means rather than only what one means.
  */
 
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
@@ -9,19 +15,37 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { reapOrphanedBackends } from './backend/reaper';
 import { ToolError } from './errors';
 import { createServer } from './server';
+import { BOOTSTRAP_ADVERTISED } from './toolGroups';
 
-const USAGE = `Usage: noodl-mcp <project-dir> [options]
+const USAGE = `Usage: noodl-mcp [project-dir] [options]
 
 Serves a NodeGX (OpenNoodl) v2 project directory over the Model Context Protocol (stdio).
 
+With NO project directory the server starts in bootstrap mode: it advertises
+list_projects, open_project, create_project, list_examples, get_example and
+find_tools, and nothing else.
+That is the mode for a machine with no projects yet, or for one where the agent
+does not know which project it wants — it finds what is already there and opens
+it, or scopes and creates one, and either way this same server binds itself and
+serves it. Bootstrap mode requires --allow-writes, because creating a project is
+a write and there is nothing to read.
+
 Options:
   --allow-writes   Register the authoring tools (create/update/delete component).
-                   Default is read-only.
+                   Default is read-only. Required when no project directory is given.
+  --all-tools      Advertise every tool from the first tools/list. By default the
+                   authoring set is advertised and the backend, docs, project and
+                   theme groups are revealed on demand via find_tools — 60 of the
+                   89 tools are backend admin, and they are re-sent every turn.
+                   Use this for a client that ignores tools/list_changed.
   --version        Print version and exit.
   --help           Show this help.
 
 Example MCP client configuration:
   { "command": "noodl-mcp", "args": ["/path/to/project", "--allow-writes"] }
+
+  and with no project yet:
+  { "command": "noodl-mcp", "args": ["--allow-writes"] }
 `;
 
 async function main(): Promise<void> {
@@ -37,8 +61,13 @@ async function main(): Promise<void> {
   }
 
   const allowWrites = argv.includes('--allow-writes');
+  const deferTools = !argv.includes('--all-tools');
   const positional = argv.filter((a) => !a.startsWith('--'));
-  if (positional.length !== 1) {
+  // BST-001 — zero is bootstrap mode, one is a served project, two is still a
+  // mistake. `createServer` refuses zero-without---allow-writes with a message
+  // naming the flag, rather than this branch printing the whole usage at
+  // somebody who got one thing wrong.
+  if (positional.length > 1) {
     process.stderr.write(USAGE);
     process.exitCode = 2;
     return;
@@ -67,10 +96,38 @@ async function main(): Promise<void> {
   }
 
   try {
-    const { server, store } = createServer({ projectDir: positional[0], allowWrites });
-    process.stderr.write(
-      `noodl-mcp serving ${store.projectDir} (${allowWrites ? 'read-write' : 'read-only'}) on stdio\n`
-    );
+    const { server, binding, disclosure } = createServer({ projectDir: positional[0], allowWrites, deferTools });
+    // AWP-006 — the surface is now a decision, so it is stated at startup rather
+    // than inferred from a tools/list. `--all-tools` is named here because the
+    // one failure mode of deferral is a client that never re-lists, and the
+    // person who can fix that is reading stderr.
+    //
+    // ⚠️ BST-001 — this line is the one diagnostic a person configuring a client
+    // actually reads, and unbound it must not print a directory the server does
+    // not have. It names the state and the exit instead: a banner that said
+    // "serving undefined" is how somebody spends an afternoon looking for a
+    // path bug in a server that started exactly as asked.
+    if (!binding.isBound) {
+      process.stderr.write(
+        // 🔴 F87 — counted from what is actually advertised, `find_tools`
+        // included. It said four and served five.
+        `noodl-mcp: no project bound — bootstrap mode (${BOOTSTRAP_ADVERTISED.length} tools: ` +
+          `${BOOTSTRAP_ADVERTISED.join(', ')}). Call list_projects then open_project to serve a project that ` +
+          'already exists, or create_project to make one — either binds this server without a restart.\n'
+      );
+    } else {
+      const advertised = disclosure.groupStates().filter((g) => g.advertised);
+      const held = disclosure.groupStates().filter((g) => !g.advertised);
+      process.stderr.write(
+        `noodl-mcp serving ${binding.projectDir} (${allowWrites ? 'read-write' : 'read-only'}) on stdio\n` +
+          `noodl-mcp advertising ${advertised.reduce((n, g) => n + g.tools, 0)} tools` +
+          (held.length > 0
+            ? `; ${held.reduce((n, g) => n + g.tools, 0)} held behind find_tools (${held
+                .map((g) => `${g.group}:${g.tools}`)
+                .join(', ')}) — pass --all-tools to advertise everything\n`
+            : ' (--all-tools)\n')
+      );
+    }
     await server.connect(new StdioServerTransport());
   } catch (err) {
     if (err instanceof ToolError) {

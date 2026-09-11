@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Snacks",
+  "id": "0b2f6d3e-5a1c-4e8b-9f47-2c6d1e8a9b53",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-06T08:00:00.000000Z",
+  "modified": "2026-09-06T08:00:00.000000Z",
+  "settings": {
+    "htmlTitle": "Snacks",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "ba9b869f-dc3a-425d-a06b-8da8846e7c3e"
+}

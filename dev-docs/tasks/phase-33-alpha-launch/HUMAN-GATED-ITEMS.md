@@ -14,7 +14,28 @@ of a human step, that is noted.
 
 ## Tier A — longest lead time, start today
 
-### A1. Apple Developer ID + notarisation credentials → ALPHA-002
+### ~~A1. Apple Developer ID + notarisation credentials → ALPHA-002~~ ✅ DONE 2026-08-07
+
+> **CLOSED.** All five secrets are set on the repository (`CSC_LINK`,
+> `CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`,
+> added 14:16–15:51 on 2026-08-07). Both **v0.1.3 and v0.1.4 built signed and
+> notarised**, first time, with no entitlement problems:
+>
+> ```
+> • signing  file=dist/mac-arm64/NodeGX.app type=distribution
+>            identityName=Developer ID Application: Osborne Solutions (…)
+> • notarization successful
+> ```
+>
+> The knock-on that was not obvious from this item: **macOS auto-update was
+> blocked on exactly this.** Squirrel.Mac will not install an update to an
+> unsigned app, so the whole in-app updater — built and wired since REV-007 — had
+> never been able to do anything. It is live as of v0.1.4.
+>
+> Still open, tracked at **A2**: Windows. `WIN_CSC_LINK` is unset and no artifact
+> has been past SmartScreen on a clean machine.
+>
+> The original write-up follows, for the record.
 
 > **Updated 2026-08-04 — this is far smaller than it was written up as.** The
 > certificate this item was waiting weeks for **already exists on Richard's
@@ -52,25 +73,28 @@ of a human step, that is noted.
 
 **The CI half is already built.** `.github/workflows/release.yml:80-89` already reads
 every secret it needs and is written so that an absent secret produces an *unsigned*
-artifact rather than a failed job — deliberately, so a human sees it. What is missing
-is only the credentials.
+artifact rather than a failed job — deliberately, so a human sees it. ~~What is
+missing is only the credentials.~~ The credentials are in place; this held for
+exactly as long as it took someone to export the certificate.
 
-Needed as GitHub repository secrets:
+Needed as GitHub repository secrets — **all present:**
 
 | Secret | What it is | Status |
 |---|---|---|
-| `CSC_LINK` | base64 of a **Developer ID Application** `.p12` | **cert exists — needs exporting** |
-| `CSC_KEY_PASSWORD` | that `.p12`'s password | chosen at export time |
-| `APPLE_ID` | the Apple ID used for notarisation | Richard knows it |
-| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID (or swap the workflow to an App Store Connect API key) | ~1 minute to generate |
-| `APPLE_TEAM_ID` | the 10-character team ID | **`Y35J975HXR`** |
+| `CSC_LINK` | base64 of a **Developer ID Application** `.p12` | ✅ set 2026-08-07 |
+| `CSC_KEY_PASSWORD` | that `.p12`'s password | ✅ set 2026-08-07 |
+| `APPLE_ID` | the Apple ID used for notarisation | ✅ set 2026-08-07 |
+| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that Apple ID (or swap the workflow to an App Store Connect API key) | ✅ set 2026-08-07 |
+| `APPLE_TEAM_ID` | the 10-character team ID | ✅ set 2026-08-07 (`Y35J975HXR`) |
 
 ⚠️ *"Ship unsigned for the alpha" is not the shortcut it sounds like.* Gatekeeper
 blocks unsigned macOS builds outright. ALPHA-002 §3 allows a deliberate unsigned
 release **only** if paired with `dev-docs/guidelines/INSTALLING-UNSIGNED-BUILDS.md`
-linked from the download page — never discovered by the user. Given that the
-certificate already exists, taking that route now would be a choice, not a
-constraint.
+linked from the download page — never discovered by the user. **Moot for macOS
+now** (builds are signed and notarised, and that guide should *not* go in macOS
+release notes any more), and the real cost of having taken that route is now
+visible: it also silently disabled auto-update, which nobody connected at the
+time. The warning stands for **Windows**, which is still in exactly this position.
 
 ### A2. Windows code-signing certificate → ALPHA-002
 
@@ -117,7 +141,7 @@ comment (stripped before display). Both files ship *inside the binary* via
 Three answers: the publishing entity's legal name, a contact address, and governing
 law/jurisdiction. Coupled to A1's Apple enrolment — same entity.
 
-### B2. F63 — the leaked GitHub OAuth client secret 🔴 **code fixed, two GitHub actions outstanding**
+### B2. F63 — the leaked GitHub OAuth client secret ✅ **Fully closed 2026-08-07**
 
 **Code fixed 2026-08-06.** Richard's decision was the **device flow**, and it is
 built: `src/main/src/github-device-flow.js` (the polling state machine, 19 tests),
@@ -126,28 +150,15 @@ and `GitHubDeviceCodeDialog` (the user code, which the flow cannot complete with
 The handler is also excluded from the `files` allow-list now, so it no longer ships
 as readable source alongside the bundle.
 
-**Two things only a human with admin on the OAuth app can do. Neither is optional.**
+**Both remaining GitHub admin actions done, 2026-08-07:** the client secret was
+regenerated and the old leaked one (`c45276fa80b0618de06e5e2b09c1019ca150baef`)
+deleted, and **Enable Device Flow** is ticked. Nothing in NodeGX consumes the new
+secret value — the device flow uses the client **id** only, which is public by
+design, so nothing needed updating on the code side.
 
-1. ⚠️ **Revoke the old client secret** — `c45276fa80b0618de06e5e2b09c1019ca150baef`,
-   OAuth app client id `Ov23li2n9u3dwAhwoifb`. It has been public in a public repo
-   and is **still valid until it is regenerated in the app's settings**. Deleting it
-   from source does not un-leak it: every clone, fork and build already made still
-   has it. Until this is done, F63 is not fixed — it is only no longer getting worse.
-   *GitHub → Settings → Developer settings → OAuth Apps → this app → Generate a new
-   client secret, then delete the old one.* Nothing in NodeGX consumes the new one;
-   the device flow uses the client **id** only, which is public by design.
-
-2. ⚠️ **Tick "Enable Device Flow"** on the same OAuth app. It is **off by default**,
-   and GitHub does not warn you — the app just gets `device_flow_disabled` on the
-   very first request. That case is handled distinctly and says so in plain words,
-   but no user can do anything about it. *Same settings page, checkbox near the
-   bottom, then Update application.*
-
-**This has not been driven against live GitHub**, because both actions above have to
-happen first — a device-code request against an app with the flow disabled cannot
-succeed. Once they are done, the flow is worth one live pass: Connect from the
-version-control panel, check the dialog shows a code, complete it on github.com, and
-separately press Cancel there to confirm the refusal message differs from a timeout.
+**Still owed:** one live pass — Connect from the version-control panel, check the
+dialog shows a code, complete it on github.com, and separately press Cancel there
+to confirm the refusal message differs from a timeout. Not attempted this session.
 
 Related and unowned: **F64** — `GitHubTokenStore.ts`'s docstring claims Electron
 `safeStorage` "OS-level encryption"; the code uses only `electron-store`'s
@@ -177,7 +188,7 @@ live: `needs-triage`, `node-library`, `severity:blocker/serious/annoying/cosmeti
 `gh issue list --label needs-triage` now returns a real (empty) queue instead of
 failing by construction.
 
-### B5. The content origin's disposition → ALPHA-006 §5 ✅ **Decided 2026-08-07, two actions owed**
+### B5. The content origin's disposition → ALPHA-006 §5 ✅ **Repoint done 2026-08-13 (it was a live 404, not a tidy-up) — repo strip + `getDocsEndpoint()` still owed**
 
 `the-low-code-foundation.github.io/opennoodl-docs` is not a docs site — it is the
 editor's **content CDN for seven payload types**, six of which are not documentation
@@ -197,31 +208,80 @@ this repo is expected to take community-contributed templates and lesson
 content over time, and a lighter, purpose-specific repo is an easier target for
 that than the full engineering monorepo.
 
-**Two GitHub admin actions this now needs, in order — do not do the second before
-the first:**
+**Both GitHub admin actions done, 2026-08-07:**
 
-1. **Rename `opennoodl-docs` → a name reflecting what it now is** (e.g.
-   `nodegx-content`), same pattern as B3's `OpenNoodl` → `NodeGX` rename. GitHub
-   redirects the old name, so this has a grace period, but `getContentEndpoint()`
-   should be repointed at the new name once it's done — **not before**, or the
-   editor fetches a URL that doesn't exist yet.
-2. **Enable GitHub Pages on the `NodeGX` repo itself** for `docs-site/` — no new
-   repo needed for docs, since `docs-site/` already lives in this monorepo. A
-   GitHub Actions workflow using the repo's own built-in token can build and
-   deploy it to `the-low-code-foundation.github.io/NodeGX/` with no cross-repo
-   deploy credential required. Not built yet — `docusaurus.config.js`'s `url`/
-   `baseUrl` are set to this target but nothing publishes there until the
-   workflow exists and Pages is turned on.
+1. ✅ `opennoodl-docs` renamed to `nodegx-content` (`gh repo rename`, old name
+   redirects). `getContentEndpoint()` **not yet repointed** — see below.
+2. ✅ GitHub Pages enabled on `NodeGX` for `docs-site/`, `build_type: workflow`.
+   `.github/workflows/deploy-docs.yml` built (triggers on push to `main` +
+   `workflow_dispatch`) and **already deployed live** on the same push that first
+   synced `main` — see `main-was-never-synced-2026-08-07` in memory for why `main`
+   needed syncing at all. Confirmed serving: `https://the-low-code-foundation.
+   github.io/NodeGX/` → 200.
 
-**Sequencing that matters:** don't strip `opennoodl-docs`'s old doc content (§4's
-disposal, §5's actual repo strip) until `docs-site/` is actually live at its new
-URL — stripping first would make `getDocsEndpoint()` resolve to nothing for
-everyone still on the old origin, in the window between the two.
+**What's left, in order:** repoint `getContentEndpoint()` at `nodegx-content` (now
+safe — the old name still redirects, but the rename is done), then strip
+`opennoodl-docs`'s old doc content per §4's migration table, then the Help Center
+repoint. None of it is an engineering unknown; nobody has done the actual repoint
++ strip yet.
+
+> **2026-08-13 — the repoint is done, and the sentence above was wrong about why
+> it was safe.** "The old name still redirects" is true of `git` and the REST API
+> and **false of GitHub Pages**, which follows no rename redirect at all. So the
+> six payloads were not waiting on a repoint — they had been **hard 404 since the
+> 2026-08-07 rename**: an erroring Library panel, an empty lesson list and an
+> empty template picker, for six days, in the build going out as 0.1.7.
+>
+> The rename broke it a **second** way, independently. It re-ran Pages as a
+> `legacy` build (`build_type: legacy`, source `main:/`), which publishes the repo
+> tree verbatim — where the previous *Docusaurus* build flattened `static/**` up to
+> the site root. The payloads are therefore one level down now, so the endpoint is
+> `.../nodegx-content/static`, **not** `.../nodegx-content`. Note the API reads
+> green throughout: `has_pages: true`, `status: "built"`. Only fetching a real
+> payload path shows the 404.
+>
+> Proved by mirroring every call site's URL join against the live origin: **115 of
+> 116 URLs 200** — all 29 prefabs and 26 modules, each one's index entry, zip and
+> icon, plus `lessons/`, `tutorials/` and `projecttemplates/`. The single failure
+> is `whats-new/feed.json`, which is **not** a regression: no `feed.json` has ever
+> existed in that repo (`gh search code` → 0 hits) and `whats-new.ts` is written to
+> treat an unreachable feed as a normal state.
+>
+> **The `/static` suffix is conditional and someone will trip on it.**
+> `nodegx-content`'s `pages.yaml` still triggers a Docusaurus deploy on any push to
+> its `main`. The next such push flips the published tree back and the suffix must
+> come off in the same breath, or the Library panel breaks again identically.
+> Deciding that — delete `pages.yaml` and keep the repo a dumb file tree, or
+> restore the workflow build and drop the suffix — is the owed follow-up, and it
+> should happen before anyone pushes to that repo.
+>
+> **`getDocsEndpoint()` still carries the dead `opennoodl-docs` origin**, so all
+> four genuine docs links are 404: NodeLabel's "read more", the node picker's docs
+> link, the MCP settings docs probe, and the library card's "Read docs". This is
+> the "Help Center repoint" above and it is *not* a one-line change — the live
+> `NodeGX` site serves `/NodeGX/docs/...`, which does not match the paths those
+> call sites join (`nodeDocs.path`, `MCP_DOCS_PATH`, the index's
+> `/library/prefabs/<slug>/`). It needs a path mapping, or those pages published at
+> the paths that already exist. `EXTERNAL_LINKS.docs` *was* a clean one-liner and
+> is now `.../NodeGX/`.
 
 Not blocking ALPHA-006 §1, which is running now and works entirely off the bundled
 catalog.
 
-### B6. Verify the GitHub issue prefill by hand → ALPHA-007 §2 🔴
+### B6. Verify the GitHub issue prefill by hand → ALPHA-007 §2 🔴 **Re-check needed — the first attempt found a different bug entirely**
+
+> **2026-08-07: Richard ran the probe URL, already signed in, and got a completely
+> blank issue form — not just empty dropdowns, the "What happened" textarea was
+> blank too.** That is NOT the failure mode this item was written to catch (partial
+> prefill on dropdowns specifically). Root cause: `origin/main` — the branch GitHub
+> reads issue templates from — had **no `bug_report.yml` at all**, because `main`
+> had never received any fork work since 2025-09-09 (see `main-was-never-synced-
+> 2026-08-07` in memory; fixed the same session, PR #19 merged). GitHub silently
+> fell back to the generic blank-issue form, which only recognises `title=`/`body=`
+> and ignores every custom field id. **This item is unblocked again and needs a
+> fresh run** — `bug_report.yml` is on `main` now, so the template itself should
+> resolve; whether the four dropdowns actually honour their prefill values is still
+> the open, original question.
 
 **This one can change ALPHA-007's design, so do it early.** The composer builds a
 prefilled `issues/new` URL against `bug_report.yml`'s field `id`s. Whether GitHub

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b81de083-d194-499d-9677-ffe93d6dbd51",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "card",
+      "type": "Group",
+      "label": "Card",
+      "x": 40,
+      "y": 40,
+      "children": [
+        "farewellText",
+        "waveButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "backgroundColor": "var(--surface)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "borderRadius": "var(--radius-lg)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)"
+      }
+    },
+    {
+      "id": "farewellText",
+      "type": "Text",
+      "label": "Farewell text",
+      "x": 100,
+      "y": 160,
+      "parent": "card",
+      "parameters": {
+        "text": "Waving goodbye",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "waveButton",
+      "type": "net.noodl.controls.button",
+      "label": "Wave",
+      "x": 100,
+      "y": 280,
+      "parent": "card",
+      "parameters": {
+        "label": "Wave",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "farewellOutputs",
+      "type": "Component Outputs",
+      "label": "Card outputs",
+      "x": 350,
+      "y": 280,
+      "ports": [
+        {
+          "name": "waved",
+          "plug": "input",
+          "type": "signal"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "card"
+  ]
+}

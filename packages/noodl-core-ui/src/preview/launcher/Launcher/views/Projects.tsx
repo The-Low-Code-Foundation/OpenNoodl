@@ -2,6 +2,14 @@ import React, { useMemo, useState } from 'react';
 
 import { IconName } from '@noodl-core-ui/components/common/Icon';
 import { SelectOption } from '@noodl-core-ui/components/inputs/Select';
+import {
+  CommunityAccountCard,
+  CommunityAccountVariant
+} from '@noodl-core-ui/preview/launcher/Launcher/components/CommunityAccountCard';
+import {
+  ConnectAgentCard,
+  ConnectAgentVariant
+} from '@noodl-core-ui/preview/launcher/Launcher/components/ConnectAgentCard';
 import { FolderTree } from '@noodl-core-ui/preview/launcher/Launcher/components/FolderTree';
 import {
   LauncherButton,
@@ -16,6 +24,7 @@ import {
   LauncherSearchBar,
   useLauncherSearchBar
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherSearchBar';
+import { ShareTemplateModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ShareTemplateModal';
 import { ProjectSettingsModal } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectSettingsModal';
 import { useProjectOrganization } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useProjectOrganization';
 import { useLauncherContext } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
@@ -52,7 +61,11 @@ export function Projects({}: ProjectsViewProps) {
     onOpenProjectFolder,
     onDeleteProject,
     onMigrateProject,
-    onOpenReadOnly
+    onOpenReadOnly,
+    onShareAsTemplate,
+    shareTemplateModal,
+    connectAgent,
+    community
   } = useLauncherContext();
 
   const { getProjectMeta, getProjectsInFolder, folders, moveProjectToFolder } = useProjectOrganization();
@@ -143,6 +156,17 @@ export function Projects({}: ProjectsViewProps) {
       { label: 'Open project settings', onClick: () => onOpenProjectSettings(project.id) }
     ];
 
+    /**
+     * FB-005 T5 — the entry point a template submission did not have.
+     *
+     * 🔴 **Guarded on the handler, not on a sign-in state.** Storybook has no host, so no entry;
+     * the editor always supplies one, and *signed out* is answered inside the dialog rather than
+     * by hiding the offer — a feature that appears and disappears with a session reads as broken.
+     */
+    if (onShareAsTemplate) {
+      items.push({ label: 'Share as template…', onClick: () => onShareAsTemplate(project.id) });
+    }
+
     // React 17 projects keep the migrate / read-only capability the old expandable
     // runtime banner used to offer — moved into the kebab so the card stays compact.
     if (project.runtimeInfo?.version === 'react17') {
@@ -195,6 +219,13 @@ export function Projects({}: ProjectsViewProps) {
             </>
           }
         >
+          {/* D5's Learning section used to render here, above the grid. Moved
+              to its own tab (`views/Learning.tsx`) — it filled the top of the
+              launcher, and the first thing you should see on opening it is your
+              projects. D5's "visible, because visible progress motivates" is
+              still met by a permanent tab in the header; what it does not
+              survive is being the launcher's opening screen. */}
+
           {allProjects.length === 0 ? (
             /* First-launch welcome — the actual first impression. */
             <div className={css['Welcome']}>
@@ -213,9 +244,32 @@ export function Projects({}: ProjectsViewProps) {
                   onClick={() => setActivePageId('templates')}
                 />
               </div>
+
+              {/* BST-003 — visible with **zero projects**, which is the whole point: the bootstrap
+                  server's command has no project path in it, so the objection that kept this offer
+                  buried in Settings no longer applies. */}
+              {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Prominent} {...connectAgent} />}
+
+              {/* UNI-001 AC2 — the account, offered where a brand-new user actually looks. The
+                  card says in its own body that the editor works without one; see
+                  `COMMUNITY_GATES_NOTHING`. */}
+              {community && <CommunityAccountCard variant={CommunityAccountVariant.Prominent} {...community} />}
             </div>
           ) : (
             <>
+              {/* ⚠️ The card does not disappear once projects exist. Someone with one project who
+                  has never connected an agent is the same user, just further along — so the offer
+                  stays and only its prominence changes. */}
+              {connectAgent && <ConnectAgentCard variant={ConnectAgentVariant.Row} {...connectAgent} />}
+
+              {/* ⚠️ Stays once there are projects, for the same reason the card above it does —
+                  and because this is where the signed-in chip and the sign-out live. */}
+              {community && <CommunityAccountCard variant={CommunityAccountVariant.Row} {...community} />}
+
+              {/* FB-005 T5. Rendered beside the settings modal and for the same reason: it is
+                  a dialog about one project, opened from that project's kebab. */}
+              {shareTemplateModal && <ShareTemplateModal {...shareTemplateModal} />}
+
               <ProjectSettingsModal
                 isVisible={selectedProjectId !== null}
                 onClose={onCloseProjectSettings}

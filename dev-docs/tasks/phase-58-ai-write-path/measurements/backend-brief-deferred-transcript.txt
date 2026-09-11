@@ -1,0 +1,55 @@
+# max-turns turns=30 costUsd=2.07 durS=896
+get_project_info
+list_project_docs
+get_project_doc
+get_project_doc
+get_project_doc
+get_project_doc
+list_components
+get_style_vocabulary
+find_tools
+get_component
+get_component
+list_backends
+provision_backend
+set_collection_permissions
+get_backend_auth_config
+create_plan
+get_node_type
+get_node_type
+list_node_types
+get_node_type
+list_node_types
+list_node_types
+get_node_type
+list_node_types
+list_node_types
+get_node_type
+get_example
+get_example
+get_node_type
+get_example
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+apply_plan
+render_report
+get_component
+update_component
+update_component
+render_report
+
+# --- rejections: 1 of 41 calls (0 carried a LAS-007 recipe) ---
+1	stage_plan_operation
+
+# --- diagnostic codes seen by the model ---
+42	inactive-conditional-parameter
+12	interfaceless-instance
+4	oversized-page
+1	repeated-sibling-subtree
+1	unknown-parameter
+
+# --- what each rejection actually said ---
+[stage_plan_operation] validation-failed · stage_plan_operation "Pages/StockCupboard" rejected — nothing was staged. · 3 diag: ERROR [nonexistent-port] /Pages/StockCupboard › node show_login_tab "Show login tab" (Switch) › output "value": Switch has no output named "value". → 

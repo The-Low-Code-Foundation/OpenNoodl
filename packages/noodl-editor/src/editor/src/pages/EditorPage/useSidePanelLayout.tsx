@@ -136,6 +136,17 @@ export interface SidePanelLayout {
   setFloatRect: (rect: FloatRect, bounds: { width: number; height: number }) => void;
   /** Clicking a rail icon must bring a hidden panel back. */
   revealIfHidden: () => void;
+  /**
+   * Hide, idempotently — the caller's verb, the way `openFull` is.
+   *
+   * BLD-009 needs it: expanding the Build thread into the document surface has
+   * to give the rail's width to the workspace it just opened, and `toggleHidden`
+   * would *reveal* a panel the user had already hidden. `hideTransition` is
+   * already idempotent and already remembers the mode it hid from, so this is
+   * that pure transition with the toggle's ambiguity removed — and it is the
+   * very callback the divider's own collapse floor has always used.
+   */
+  hideIfShown: () => void;
 }
 
 const SidePanelLayoutContext = createContext<SidePanelLayout | null>(null);
@@ -163,6 +174,69 @@ function writeStoredWidths(widths: Record<string, number>) {
 function defaultWidthFor(panelId: string): number {
   const panel = panelId ? SidebarModel.instance.getPanel(panelId) : null;
   return panel?.defaultWidth ?? DEFAULT_PANEL_WIDTH;
+}
+
+/**
+ * FIX-009 — the panels that take turns in the *selection slot* share one width.
+ *
+ * `components`, `PropertyEditor` and `PortEditor` are not three panels the user
+ * sizes independently; they are one slot whose contents swap as the canvas
+ * selection changes (`SidebarModel.switchToNode` on select, `hidePanels` on
+ * deselect). Storing a width per panel id means the first drag writes *one* of
+ * them, and every select/deselect from then on moves the divider — and the
+ * canvas with it — to whichever width that panel happens to remember.
+ *
+ * `d12b1329` equalised the three *defaults*, which held only until the first
+ * drag. Grouping the storage key is what actually makes them one slot.
+ *
+ * `PortEditor` is in the group for the same reason the other two are, and
+ * `panelHoldsCanvasSelection` (EditorEventBindings) is the precedent for
+ * treating exactly this set as one family.
+ *
+ * Deliberately *not* the whole docked sidebar: deselect restores whichever panel
+ * was active before, which may be Search (340) or Docs (420) — panels users size
+ * differently on purpose. Those keep their own widths.
+ */
+const SELECTION_SLOT_KEY = 'selection-slot';
+
+/** Group members, in the order a pre-group width is inherited from below. */
+const SELECTION_SLOT_PANELS = ['components', 'PropertyEditor', 'PortEditor'];
+
+const WIDTH_GROUPS: Record<string, string> = {
+  components: SELECTION_SLOT_KEY,
+  PropertyEditor: SELECTION_SLOT_KEY,
+  PortEditor: SELECTION_SLOT_KEY
+};
+
+/** The key a panel's width is stored under — its group's, or its own. */
+export function widthKeyFor(panelId: string): string {
+  return WIDTH_GROUPS[panelId] ?? panelId;
+}
+
+/**
+ * The stored width for a panel, or `undefined` to fall back to its default.
+ *
+ * The legacy leg is the upgrade path: a width dragged before the group existed
+ * was written under the panel's own id, and dropping it would silently reset
+ * every user's sidebar on upgrade. The first group member that has one wins,
+ * and the next drag writes the group key, which takes precedence from then on.
+ */
+export function storedWidthFor(widths: Record<string, number>, panelId: string): number | undefined {
+  const key = widthKeyFor(panelId);
+
+  const grouped = widths[key];
+  if (typeof grouped === 'number') return grouped;
+
+  // Not in a group: there is no legacy key to look under, its own id *is* it.
+  if (key === panelId) return undefined;
+
+  for (const memberId of SELECTION_SLOT_PANELS) {
+    if (widthKeyFor(memberId) !== key) continue;
+    const legacy = widths[memberId];
+    if (typeof legacy === 'number') return legacy;
+  }
+
+  return undefined;
 }
 
 function readStoredFloatRects(): Record<string, FloatRect> {
@@ -251,7 +325,7 @@ export function useSidePanelLayout(): SidePanelLayout {
     [viewportWidth]
   );
 
-  const storedWidth = widths[activeId] ?? defaultWidthFor(activeId);
+  const storedWidth = storedWidthFor(widths, activeId) ?? defaultWidthFor(activeId);
 
   const panelWidth = useMemo(() => {
     // Floating and full take the panel out of the flow entirely — it is
@@ -273,8 +347,11 @@ export function useSidePanelLayout(): SidePanelLayout {
 
   const persistWidth = useCallback((panelId: string, width: number) => {
     if (!panelId) return;
-    if (widthsRef.current[panelId] === width) return;
-    const next = { ...widthsRef.current, [panelId]: width };
+    // FIX-009: written under the *group's* key, so dragging any panel in the
+    // selection slot sizes all of them — in both directions.
+    const key = widthKeyFor(panelId);
+    if (widthsRef.current[key] === width) return;
+    const next = { ...widthsRef.current, [key]: width };
     widthsRef.current = next;
     setWidths(next);
     writeStoredWidths(next);
@@ -405,7 +482,11 @@ export function useSidePanelLayout(): SidePanelLayout {
     openFull,
     dock,
     setFloatRect,
-    revealIfHidden
+    revealIfHidden,
+    // BLD-009 — the same `hide` the divider's collapse floor already calls. One
+    // implementation; the interface name says what a *caller* gets, which is the
+    // distinction `openFull` draws against `toggleFull` above.
+    hideIfShown: hide
   };
 }
 

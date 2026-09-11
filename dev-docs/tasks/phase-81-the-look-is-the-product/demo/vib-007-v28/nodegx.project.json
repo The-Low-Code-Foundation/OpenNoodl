@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "VIB-007 — V28, a token in a units-typed port",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "settings": {
+    "htmlTitle": "V28",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "app_root"
+}

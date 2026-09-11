@@ -24,7 +24,7 @@ import {
   stopOwnedBackends
 } from '../src/backend/provision';
 import { listRuntimeRecords, readRuntimeRecord } from '../src/backend/runtimeRecord';
-import { call, connect, copyFixture, TestSession } from './helpers';
+import { call, connect, copyFixture, reveal, TestSession } from './helpers';
 
 const BACKEND_CLI = path.join(__dirname, '..', '..', 'nodegx-backend', 'dist', 'cli.js');
 const haveBundle = fs.existsSync(BACKEND_CLI);
@@ -96,6 +96,7 @@ describeOrSkip('AAQ-011/F13 provisioning — a real backend, end to end', () => 
     process.env.NODEGX_BACKENDS_DIR = root;
     projectDir = copyFixture();
     session = await connect(projectDir, true);
+    await reveal(session, 'backend'); // AWP-006 — provisioning ships with the backend group
   });
 
   afterEach(async () => {
@@ -264,6 +265,10 @@ describe('AAQ-011/F13 — provisioning is write-gated', () => {
     const dir = copyFixture();
     const session = await connect(dir, true);
     try {
+      // AWP-006 — registered, and advertised once the backend group is revealed.
+      // The reveal is the assertion: on a read-only server the same call reveals
+      // nothing, which is the spec above.
+      await reveal(session, 'backend');
       const names = (await session.client.listTools()).tools.map((t) => t.name);
       expect(names).toEqual(expect.arrayContaining(['provision_backend', 'stop_backend', 'list_backend_processes']));
     } finally {

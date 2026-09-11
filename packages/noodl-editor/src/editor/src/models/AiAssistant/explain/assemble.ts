@@ -23,11 +23,12 @@
 
 import { enrichedNode } from '../../../validation/enrichedCatalog';
 import type { EnrichedCatalogNode } from '../../../validation/enrichedCatalog';
-import { componentPorts, findComponent, isComponentRef } from './graph';
+import { componentPorts, findComponent, isComponentRef, isInterfaceNodeType } from './graph';
 import type {
   ContextBounds,
   ContextComponentShape,
   ContextConnection,
+  ContextNestedComponent,
   ContextNode,
   ContextNodeType,
   ContextPort,
@@ -66,10 +67,45 @@ export class ExplainContextError extends Error {
  * node, fewer parameters each.
  */
 const DEFAULTS: Record<ExplainScope, Required<ExplainContextOptions>> = {
-  node: { neighbourDepth: 2, maxNodes: 60, maxParametersPerNode: 12, maxParameterChars: 400, maxNodeTypes: 40 },
-  subgraph: { neighbourDepth: 1, maxNodes: 80, maxParametersPerNode: 10, maxParameterChars: 300, maxNodeTypes: 40 },
-  component: { neighbourDepth: 0, maxNodes: 150, maxParametersPerNode: 6, maxParameterChars: 200, maxNodeTypes: 60 }
+  node: {
+    neighbourDepth: 2,
+    maxNodes: 60,
+    maxParametersPerNode: 12,
+    maxParameterChars: 400,
+    maxNodeTypes: 40,
+    maxNestedComponents: 3,
+    maxNestedNodes: 40
+  },
+  subgraph: {
+    neighbourDepth: 1,
+    maxNodes: 80,
+    maxParametersPerNode: 10,
+    maxParameterChars: 300,
+    maxNodeTypes: 40,
+    // A selection of many nodes can hold many instances; read fewer of them,
+    // less deeply, so one question about a group cannot pull in half a project.
+    maxNestedComponents: 2,
+    maxNestedNodes: 25
+  },
+  // Component scope has no selection, so nothing is ever a candidate. Zero says
+  // so outright rather than leaving it to that coincidence.
+  component: {
+    neighbourDepth: 0,
+    maxNodes: 150,
+    maxParametersPerNode: 6,
+    maxParameterChars: 200,
+    maxNodeTypes: 60,
+    maxNestedComponents: 0,
+    maxNestedNodes: 0
+  }
 };
+
+/**
+ * An interior is *evidence about* the selected instance, not the thing being
+ * explained, so its parameters are read at the component scope's breadth-first
+ * settings however generous the outer scope is.
+ */
+const NESTED_PARAMETER_LIMITS = { maxParametersPerNode: 6, maxParameterChars: 200 };
 
 function resolveOptions(scope: ExplainScope, overrides?: ExplainContextOptions): Required<ExplainContextOptions> {
   return { ...DEFAULTS[scope], ...(overrides ?? {}) };
@@ -113,6 +149,30 @@ function contextParameters(
 
   const omitted = entries.length - kept.length;
   return omitted > 0 ? { parameters, parametersOmitted: omitted } : { parameters };
+}
+
+/**
+ * One node as the model sees it. Shared by the component's own slice and by the
+ * interiors read for FIX-001 §1c so an interior node is described in exactly the
+ * same terms as a top-level one — the section it sits in is what says where it
+ * lives, not a different rendering of the node itself.
+ */
+function contextNode(node: GraphNode, role: NodeRole, limits: Required<ExplainContextOptions>): ContextNode {
+  const catalogNode = enrichedNode(node.type);
+  const displayName = catalogNode?.displayName ?? node.type;
+  const record: ContextNode = {
+    id: node.id,
+    type: node.type,
+    displayName,
+    // A label identical to the display name is the type name again, not
+    // information — `NodeGraphNode.label` falls back to a type-derived label.
+    label: node.label && node.label !== displayName ? node.label : undefined,
+    role,
+    comment: node.comment,
+    ...contextParameters(node, limits)
+  };
+  if (isComponentRef(node.type)) record.isComponentInstance = true;
+  return record;
 }
 
 // ── Catalog projection ────────────────────────────────────────────────────────
@@ -201,6 +261,10 @@ function componentShape(component: GraphComponent): ContextComponentShape {
 
   return {
     name: component.name,
+    // Verbatim, or absent. Assembly truncates parameter values because they can
+    // be a whole script body; an author's one or two sentences about their own
+    // component are the last thing worth spending the budget cutting.
+    ...(component.description ? { description: component.description } : {}),
     nodeCount: component.nodes.length,
     connectionCount: component.connections.length,
     inputPorts,
@@ -210,13 +274,151 @@ function componentShape(component: GraphComponent): ContextComponentShape {
   };
 }
 
+// ── FIX-001 §1c — reading inside a selected component instance ────────────────
+
+/** One interior, plus what it contributes to the shared type documentation. */
+interface NestedRead {
+  section: ContextNestedComponent;
+  /** Distinct types used inside, in first-use order. */
+  types: string[];
+  /** Ports the interior references, as [type, port] — merged into the one type block. */
+  portRefs: Array<[string, string]>;
+  note?: string;
+}
+
+/**
+ * Read one component's interior, bounded.
+ *
+ * Interface nodes (`Component Inputs`, `Component Outputs`) survive the bound
+ * first and everything else follows in document order — see
+ * {@link isInterfaceNodeType}. What is *kept* is still emitted in document
+ * order, so the reading order of the graph is preserved either way.
+ */
+function readInterior(
+  target: GraphComponent,
+  instanceIds: string[],
+  limits: Required<ExplainContextOptions>
+): NestedRead {
+  const nestedLimits: Required<ExplainContextOptions> = { ...limits, ...NESTED_PARAMETER_LIMITS };
+
+  const byPriority = [
+    ...target.nodes.filter((n) => isInterfaceNodeType(n.type)),
+    ...target.nodes.filter((n) => !isInterfaceNodeType(n.type))
+  ];
+  const keptIds = new Set(byPriority.slice(0, limits.maxNestedNodes).map((n) => n.id));
+  const kept = target.nodes.filter((n) => keptIds.has(n.id));
+
+  const nodesById = new Map(target.nodes.map((n) => [n.id, n]));
+  const connections: ContextConnection[] = [];
+  for (const c of target.connections) {
+    if (!keptIds.has(c.fromId) || !keptIds.has(c.toId)) continue;
+    const fromNode = nodesById.get(c.fromId);
+    if (!fromNode) continue;
+    connections.push({ ...c, isSignal: isSignalPort(fromNode.type, 'output', c.fromProperty) });
+  }
+
+  const portRefs: Array<[string, string]> = [];
+  const types: string[] = [];
+  for (const node of kept) {
+    if (!types.includes(node.type)) types.push(node.type);
+    for (const name of Object.keys(node.parameters)) {
+      if (!isEmptyValue(node.parameters[name])) portRefs.push([node.type, name]);
+    }
+  }
+  for (const c of connections) {
+    portRefs.push([nodesById.get(c.fromId)!.type, c.fromProperty]);
+    portRefs.push([nodesById.get(c.toId)!.type, c.toProperty]);
+  }
+
+  const { inputPorts, outputPorts } = componentPorts(target);
+  const nodesOmitted = target.nodes.length - kept.length;
+
+  return {
+    section: {
+      name: target.name,
+      ...(target.description ? { description: target.description } : {}),
+      instanceIds,
+      inputPorts,
+      outputPorts,
+      nodeCount: target.nodes.length,
+      nodes: kept.map((n) => contextNode(n, 'peer', nestedLimits)),
+      connections,
+      nodesOmitted
+    },
+    types,
+    portRefs,
+    ...(nodesOmitted > 0
+      ? {
+          note:
+            `Inside ${target.name}: ${nodesOmitted} of its ${target.nodes.length} node(s) were not read.`
+        }
+      : {})
+  };
+}
+
+/**
+ * Every interior worth reading for this request.
+ *
+ * **Selected instances only.** A neighbour that happens to be an instance is in
+ * the context because of the wire it sits on, and reading its interior too
+ * would make the size of an explanation depend on what the selection happens to
+ * be next to.
+ *
+ * A component the graph does not contain is skipped **silently**. Assembly
+ * cannot tell "this project has no such component" from "the caller handed me
+ * one component" — the ExplainPanel passes the whole project, the MCP and review
+ * assemblers pass what they have — and a bounds note claiming something was
+ * withheld would be a guess about the caller. The instance itself is still in
+ * the context, and the prompt already requires the model to say when an answer
+ * needs something outside the slice.
+ */
+function assembleNested(
+  graph: ExplainGraph,
+  parent: GraphComponent,
+  selected: GraphNode[],
+  limits: Required<ExplainContextOptions>
+): { nested: ContextNestedComponent[]; reads: NestedRead[]; notes: string[] } {
+  if (limits.maxNestedComponents <= 0 || limits.maxNestedNodes <= 0) {
+    return { nested: [], reads: [], notes: [] };
+  }
+
+  const candidates = new Map<string, { component: GraphComponent; instanceIds: string[] }>();
+  for (const node of selected) {
+    if (!isComponentRef(node.type)) continue;
+    const target = findComponent(graph, node.type);
+    if (!target) continue;
+    // A component placed inside itself would read its own interior back. One
+    // level deep makes that harmless rather than infinite, but it is still a
+    // duplicate of what the reader already has.
+    if (target.name === parent.name) continue;
+    const entry = candidates.get(target.name);
+    if (entry) entry.instanceIds.push(node.id);
+    else candidates.set(target.name, { component: target, instanceIds: [node.id] });
+  }
+
+  const notes: string[] = [];
+  const all = [...candidates.values()];
+  const within = all.slice(0, limits.maxNestedComponents);
+  if (all.length > within.length) {
+    notes.push(
+      `${all.length - within.length} further selected component instance(s) were not read from the inside.`
+    );
+  }
+
+  const reads = within.map((entry) => readInterior(entry.component, entry.instanceIds, limits));
+  for (const read of reads) if (read.note) notes.push(read.note);
+
+  return { nested: reads.map((r) => r.section), reads, notes };
+}
+
 /**
  * Build the bounded context for one explanation request.
  *
- * Never reads outside `request.componentName`: even when a selected node is an
- * instance of another component, only its interface (via its instance ports) is
- * included, not that component's interior. Whole-project context is not a bound
- * that assembly happens to respect — it is a shape assembly cannot express.
+ * `context.nodes` never holds a node from another component. What FIX-001 §1c
+ * added is a *separate* section: when a selected node is an instance of another
+ * component, that component's interior is read once, bounded, and reported in
+ * `context.nested` — where it keeps its own owner, its own bound, and its own
+ * meaning for every rule the outer slice already had.
  */
 export function assembleContext(
   graph: ExplainGraph,
@@ -336,26 +538,30 @@ export function assembleContext(
   }
 
   // 5. Node records.
-  const nodes: ContextNode[] = inDocumentOrder.map((node) => {
-    const catalogNode = enrichedNode(node.type);
-    const displayName = catalogNode?.displayName ?? node.type;
-    const record: ContextNode = {
-      id: node.id,
-      type: node.type,
-      displayName,
-      // A label identical to the display name is the type name again, not
-      // information — `NodeGraphNode.label` falls back to a type-derived label.
-      label: node.label && node.label !== displayName ? node.label : undefined,
-      role: roles.get(node.id)!,
-      comment: node.comment,
-      ...contextParameters(node, limits)
-    };
-    if (isComponentRef(node.type)) record.isComponentInstance = true;
-    return record;
-  });
+  const nodes: ContextNode[] = inDocumentOrder.map((node) => contextNode(node, roles.get(node.id)!, limits));
+
+  // 5b. FIX-001 §1c — the interior of each selected component instance, read
+  //     once per component and kept apart from the slice above.
+  //
+  //     Never at component scope, whatever the bound says: `seeds` there is
+  //     *every* node, so an override would open every instance in the component
+  //     and the rendered section would announce them as "what the reader
+  //     selected" — which at component scope is nothing.
+  const nested =
+    request.scope === 'component'
+      ? { nested: [], reads: [], notes: [] }
+      : assembleNested(
+          graph,
+          component,
+          seeds.map((id) => nodesById.get(id)!),
+          limits
+        );
+  notes.push(...nested.notes);
 
   // 6. Type documentation, once per distinct type, with only the ports this
-  //    context references.
+  //    context references — across the slice *and* every interior read, because
+  //    a `Group` documented once for the parent and again for each interior is
+  //    how AIX-010 measured 63% of a context going to duplicated port docs.
   const referencedPorts = new Map<string, Set<string>>();
   const reference = (type: string, port: string) => {
     let set = referencedPorts.get(type);
@@ -371,9 +577,15 @@ export function assembleContext(
     reference(nodesById.get(c.fromId)!.type, c.fromProperty);
     reference(nodesById.get(c.toId)!.type, c.toProperty);
   }
+  for (const read of nested.reads) for (const [type, port] of read.portRefs) reference(type, port);
 
+  // The slice's own types first, so a type budget that bites drops interior
+  // documentation before it drops documentation for what the user selected.
   const distinctTypes: string[] = [];
   for (const node of inDocumentOrder) if (!distinctTypes.includes(node.type)) distinctTypes.push(node.type);
+  for (const read of nested.reads) {
+    for (const type of read.types) if (!distinctTypes.includes(type)) distinctTypes.push(type);
+  }
 
   const typeBudget = distinctTypes.slice(0, limits.maxNodeTypes);
   if (distinctTypes.length > typeBudget.length) {
@@ -413,6 +625,8 @@ export function assembleContext(
     notes
   };
 
+  const nestedNodeCount = nested.nested.reduce((sum, n) => sum + n.nodes.length, 0);
+
   return {
     scope: request.scope,
     component: componentShape(component),
@@ -420,11 +634,16 @@ export function assembleContext(
     nodes,
     connections,
     nodeTypes,
+    // Absent, not empty: a caller that reads `context.nested` should be able to
+    // tell "nothing was selected that has an interior" from "here are none",
+    // and every existing spec that compares whole contexts stays byte-identical.
+    ...(nested.nested.length ? { nested: nested.nested } : {}),
     bounds,
     stats: {
       nodeCount: nodes.length,
       connectionCount: connections.length,
       nodeTypeCount: nodeTypes.length,
+      ...(nestedNodeCount > 0 ? { nestedNodeCount } : {}),
       renderedChars: 0 // filled in by render()
     }
   };

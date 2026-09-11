@@ -46,8 +46,9 @@ import { Linter } from 'eslint-linter-browserify';
 import globals from 'globals';
 
 import { getCodeAuthoringContext } from '../authoringContext';
+import { portDiagnostics } from './portDiagnostics';
 import { widen } from './syntaxDiagnostics';
-import type { ValidationType } from './types';
+import type { CodeSubject, ValidationType } from './types';
 
 /** A diagnostic in *document* coordinates: 1-based line, 1-based column. */
 export interface LintMessage {
@@ -61,17 +62,56 @@ export interface LintMessage {
 }
 
 /**
- * Identifiers the Noodl runtime supplies to a Function/Script node body.
- * `Node` is referenced by the code prefix under `typeof`, and is a real global
- * for the older Script path (`javascriptnodeparser.js:22`).
+ * Identifiers the runtime supplies to a node body — **one list per node**,
+ * because the two nodes are compiled with different parameters and a single
+ * conflated list is wrong in both directions.
+ *
+ * | node | compiled as |
+ * |---|---|
+ * | Function (`JavaScriptFunction`) | `AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)` — `simplejavascript.ts:609-619` |
+ * | Script (`Javascript2`) | `Function('define', 'script', 'Node', 'Component', prefix + code)` — `javascriptnodeparser.js:22` |
+ *
+ * 🔴 **The single list this replaces was the union of the two, and it made the
+ * editor accuse the Script node's own API.** `define` and `script` were in
+ * neither half of it, so `define({ inputs: … })` — the notation
+ * `NOTATION_RULES.script` tells the author to write — produced *"No port named
+ * define. Create an input port by reading it: `Inputs.define`"*, with a fix-it
+ * that inserts notation the Script node does not have. Measured before the split.
+ *
+ * The mirror is now reportable too: `Inputs`/`Outputs` in a Script node throw,
+ * and are handled by message 6 rather than by `no-undef`'s own sentence.
+ *
+ * ⚠️ **`Noodl` is declared in both, deliberately.** It is a parameter only of the
+ * Function, but the Script path reads `window.Noodl` when it is there
+ * (`javascriptnodeparser.js#createNoodlAPI`) — so calling it undefined would risk
+ * being wrong about working code, which is the one thing `no-undef` may not be
+ * here.
+ *
+ * ⚠️ **`Script` is declared in both** because the shared code prefix declares it
+ * (`javascriptnodeparser.js:492-494`, `const Script = …`), and both nodes prepend
+ * that prefix.
+ *
+ * ⚠️ **Removing `Node` from the Function list changes nothing on its own**:
+ * `globals.browser` carries the DOM `Node` constructor, so `Node.Signals.X = …`
+ * in a Function body still lints clean. That silence is a real gap (FIX-016 §3 —
+ * the assignment lands on the DOM constructor and mints no port) and it needs its
+ * own rule, not a globals entry.
  */
-const NOODL_FUNCTION_GLOBALS: Record<string, 'readonly' | 'writable'> = {
+const FUNCTION_NODE_GLOBALS: Record<string, 'readonly' | 'writable'> = {
   Inputs: 'readonly',
   Outputs: 'writable',
   Noodl: 'readonly',
   Component: 'readonly',
-  Script: 'readonly',
-  Node: 'readonly'
+  Script: 'readonly'
+};
+
+const SCRIPT_NODE_GLOBALS: Record<string, 'readonly' | 'writable'> = {
+  define: 'readonly',
+  script: 'readonly',
+  Node: 'readonly',
+  Noodl: 'readonly',
+  Component: 'readonly',
+  Script: 'readonly'
 };
 
 /**
@@ -117,7 +157,7 @@ function projectGlobals(): Record<string, 'readonly'> {
 
 /** The flat config for a mode, or `null` if this mode is not JavaScript. */
 function configFor(validationType: ValidationType) {
-  const shared = {
+  const shared = (nodeGlobals: Record<string, 'readonly' | 'writable'>) => ({
     languageOptions: {
       ecmaVersion: 2022 as const,
       sourceType: 'script' as const,
@@ -127,24 +167,31 @@ function configFor(validationType: ValidationType) {
       },
       globals: {
         ...globals.browser,
-        ...NOODL_FUNCTION_GLOBALS,
+        ...nodeGlobals,
         ...projectGlobals()
       }
     }
-  };
+  });
 
   switch (validationType) {
     case 'function':
+      return {
+        ...shared(FUNCTION_NODE_GLOBALS),
+        rules: { ...STRUCTURAL_RULES, 'no-undef': 'warn' }
+      };
+
     case 'script':
       return {
-        ...shared,
+        ...shared(SCRIPT_NODE_GLOBALS),
         rules: { ...STRUCTURAL_RULES, 'no-undef': 'warn' }
       };
 
     case 'expression':
-      // See the module header: an unknown identifier here is a feature.
+      // See the module header: an unknown identifier here is a feature. The
+      // globals hardly matter without `no-undef`; the Function set is the one an
+      // expression's own API is closest to.
       return {
-        ...shared,
+        ...shared(FUNCTION_NODE_GLOBALS),
         rules: { ...STRUCTURAL_RULES }
       };
 
@@ -251,10 +298,14 @@ function offsetOf(state: EditorState, line: number, column: number): number {
  * beside the message — so "'totl' is not defined" carries `eslint:no-undef` and
  * the reader can tell a typo report from a parse failure.
  */
-export function javascriptDiagnostics(state: EditorState, validationType: ValidationType): Diagnostic[] {
+export function javascriptDiagnostics(
+  state: EditorState,
+  validationType: ValidationType,
+  subject: CodeSubject = 'node'
+): Diagnostic[] {
   const messages = lintMessages(state.doc.toString(), validationType);
 
-  return messages.map((message) => {
+  const base = messages.map((message) => {
     const from = offsetOf(state, message.line, message.column);
     const to =
       message.endLine !== undefined && message.endColumn !== undefined
@@ -268,4 +319,11 @@ export function javascriptDiagnostics(state: EditorState, validationType: Valida
       source: message.ruleId ? `eslint:${message.ruleId}` : 'eslint'
     };
   });
+
+  // FUN-004. Everything above is a claim about JavaScript. This is the pass that
+  // knows a name is a *port* — it rewrites `no-undef` where the name turns out to
+  // be one, and adds the two rules ESLint cannot express. It is a no-op in every
+  // mode without declared ports, `'expression'` most importantly: see the ⚠️ in
+  // `portDiagnostics.ts`.
+  return portDiagnostics(state, validationType, base, subject);
 }

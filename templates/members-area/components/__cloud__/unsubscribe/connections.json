@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "195bfede-95e9-5f25-800d-d7a9d5b3ba79",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-7",
+      "fromProperty": "pm-token",
+      "toId": "hold",
+      "toProperty": "in-token"
+    },
+    {
+      "fromId": "req-7",
+      "fromProperty": "receive",
+      "toId": "hold",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-token",
+      "toId": "holder",
+      "toProperty": "qp-token"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-ok",
+      "toId": "holder",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "holder",
+      "fromProperty": "items",
+      "toId": "pick-2",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "holder",
+      "fromProperty": "fetched",
+      "toId": "pick-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "pick-2",
+      "fromProperty": "out-rowId",
+      "toId": "row-2",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "pick-2",
+      "fromProperty": "out-off",
+      "toId": "row-2",
+      "toProperty": "prop-notifyByEmail"
+    },
+    {
+      "fromId": "pick-2",
+      "fromProperty": "out-write",
+      "toId": "row-2",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "row-2",
+      "fromProperty": "done",
+      "toId": "res-7",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "out-blank",
+      "toId": "nope",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "pick-2",
+      "fromProperty": "out-nomatch",
+      "toId": "nope",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "hold",
+      "fromProperty": "failure",
+      "toId": "nope",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "holder",
+      "fromProperty": "failure",
+      "toId": "nope",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "pick-2",
+      "fromProperty": "failure",
+      "toId": "nope",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "row-2",
+      "fromProperty": "failure",
+      "toId": "nope",
+      "toProperty": "send"
+    }
+  ]
+}

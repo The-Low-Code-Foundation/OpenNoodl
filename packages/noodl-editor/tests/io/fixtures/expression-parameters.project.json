@@ -118,7 +118,7 @@
                 "label": "Expression and plain parameters side by side",
                 "parameters": {
                   "text": { "mode": "expression", "expression": "Variables.greeting", "fallback": "Hi", "version": 1 },
-                  "textAlign": "center",
+                  "textAlignX": "center",
                   "fontSize": 18,
                   "visible": true
                 },

@@ -202,13 +202,60 @@ input {
   font-family: var(--font-family);
 }
 
+/* FIX-003 (2026-08-15) — the selection default is INVERTED, by ruling.
+ *
+ * This block said `div { user-select: none }` for a decade, which made every
+ * piece of text in the editor and the launcher — AI answers, error messages,
+ * release notes, modal bodies — impossible to select or copy. Text is now
+ * selectable by default, and the surfaces where a drag or click gesture would
+ * fight a stray selection opt OUT: the legacy ones in the list below, the
+ * CSS-module ones with a `user-select: none` in their own stylesheet (many
+ * always carried one — redundant under the old default, load-bearing now).
+ *
+ * ⚠️ Opt-outs work at CONTAINER level: `user-select`'s used value resolves
+ * through the parent, so `none` on a container covers every descendant that
+ * does not explicitly opt back in. Do NOT reintroduce a `div { user-select:
+ * text }` rule — an explicit `text` on every div would punch through every
+ * container-level `none` and break exactly that.
+ */
+:root {
+  user-select: text;
+}
+
 div {
   -webkit-touch-callout: none;
+}
+
+/* FIX-003 — the opt-out list for legacy (non-CSS-module) surfaces. The
+ * `.unselectable` helper further down is part of the same list, and is the
+ * class to reach for from markup.
+ *
+ *   #top-bar                  Electron window drag region (-webkit-app-region)
+ *   .nodegrapheditor-canvas   the whole node-graph shell: canvas pan, rubber-band
+ *                             select, node/wire drags — plus the HUD, comment
+ *                             layers and canvas-tab overlays nested inside it
+ *   .popup-layer-dragger      the drag ghost that follows the cursor
+ *   .drag-handle              the label-is-the-handle family: component-ports
+ *                             rows, the prop list, the margin/padding scrub
+ *   .frames-divider           the legacy frame splitters
+ */
+#top-bar,
+.nodegrapheditor-canvas,
+.popup-layer-dragger,
+.drag-handle,
+.frames-divider {
   user-select: none;
 }
 
-.react-json-view * {
-  user-select: text;
+/* FIX-003 — while a pointer drag is live (PopupLayer's shared drag engine, the
+ * FrameDivider splitters), nothing anywhere may start highlighting: the gesture
+ * crosses panels whose text is selectable now. The class is added on drag start
+ * and removed on mouseup by the two drag engines. `!important` on purpose — it
+ * must also beat the explicit opt-INs (inputs, AiMarkdown) for the gesture's
+ * duration. */
+body.noodl-dragging,
+body.noodl-dragging * {
+  user-select: none !important;
 }
 
 ::-webkit-scrollbar {
@@ -761,61 +808,27 @@ button {
 
 /* -------------------------------------------------------------------
    String input popup
+
+   FIX-007's neighbour, FIX-020: this block used to live here and style
+   `.string-input-popup*` alongside `styles/popuplayer.css:604-755`, which is the
+   only class family the two stylesheets shared. That is not a duplicate, it is a
+   trap — the cascade is per-property, so the modern block won every property it
+   declared and this one silently kept the rest. `height: 30px; padding: 5px` on
+   the button row plus `height: 100%` on the buttons survived under the modern
+   `padding: 8px 20px`, and with the F20 `box-sizing: border-box` reset that
+   computes to a **4px content box for a 13px/600 label** — Chromium clips it,
+   which is the report's screenshot. The single-line input kept a stray
+   `margin: 5px` under a `width: 100%` box for the same reason.
+
+   Deleted rather than patched with `height: auto`, because the whole block was
+   superseded and a second copy is what caused this. `display: flex;
+   flex-direction: column` went with it: every child is a block or a flex
+   container in its own right, so block flow stacks them identically and the
+   12px/16px margins do not collapse across the input between them.
+
+   Five popups shared the defect: New port name, New group name, New folder name,
+   the new-component/cloud-function prompt, and the canvas comment editor.
    ------------------------------------------------------------------- */
-.string-input-popup {
-  width: 300px;
-  padding: 5px;
-  display: flex;
-  flex-direction: column;
-}
-
-.string-input-popup-label {
-  display: block;
-  color: var(--theme-color-fg-default-contrast);
-  margin: 5px;
-  margin-bottom: 0px;
-}
-
-.string-input-popup-input {
-  margin: 5px 5px 0px 5px;
-  height: 33px;
-  padding-left: 10px;
-}
-
-.string-input-popup-buttons {
-  height: 30px;
-  padding: 5px;
-  margin-top: 10px;
-}
-
-.string-input-popup-button-ok {
-  background-color: var(--theme-color-primary);
-  border: none;
-  color: var(--theme-color-on-primary);
-  height: 100%;
-  margin: 0px;
-  padding-left: 7px;
-  padding-right: 7px;
-  margin-right: 5px;
-}
-
-.string-input-popup-button-ok:hover {
-  background-color: var(--theme-color-primary-highlight);
-}
-
-.string-input-popup-button-cancel {
-  background-color: var(--theme-color-bg-2);
-  border: none;
-  color: var(--theme-color-fg-default-contrast);
-  height: 100%;
-  margin: 0px;
-  padding-left: 7px;
-  padding-right: 7px;
-}
-
-.string-input-popup-button-cancel:hover {
-  background-color: var(--theme-color-bg-3);
-}
 
 .search-bg {
   background-color: var(--theme-color-bg-3);
@@ -1087,7 +1100,10 @@ div.lesson-content::-webkit-scrollbar-thumb {
   width: 250px;
   height: 420px;
   background-color: var(--theme-color-bg-3);
-  overflow-y: auto;
+  /* FB-015: a column, so the action footer sits below a list that scrolls on its own rather
+     than being pushed off the bottom of a fixed-height box. */
+  display: flex;
+  flex-direction: column;
 }
 
 .content-picker-list-item {
@@ -1114,7 +1130,10 @@ div.lesson-content::-webkit-scrollbar-thumb {
 }
 
 .content-picker-items {
-  height: 390px;
+  /* Was a hardcoded 390px (420 minus the 30px header). Now it takes whatever the header and the
+     optional footer leave. `min-height: 0` is what lets a flex child actually scroll. */
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .content-picker-header-label {
@@ -1124,6 +1143,55 @@ div.lesson-content::-webkit-scrollbar-thumb {
   height: 30px;
   line-height: 30px;
   padding-left: 10px;
+}
+
+/* FB-015 — the picker's three no-rows states: still looking, nothing matches, nothing here.
+   Muted body text on the picker's own ground, so it reads as an explanation and not as an item
+   somebody could click by mistake. */
+.content-picker-message,
+.content-picker-empty {
+  padding: 12px 10px;
+  color: var(--theme-color-fg-muted);
+  line-height: 1.5;
+}
+
+.content-picker-empty-message {
+  color: var(--theme-color-fg-default);
+  margin-bottom: 6px;
+}
+
+.content-picker-empty-hint {
+  margin-bottom: 12px;
+}
+
+/* The always-visible footer: routes out of the picker, whether or not it has anything in it. */
+.content-picker-actions {
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border-top: 1px solid var(--theme-color-border-default);
+  background-color: var(--theme-color-bg-3);
+}
+
+.content-picker-empty-action {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  text-align: left;
+  cursor: pointer;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  font: inherit;
+}
+
+.content-picker-actions .content-picker-empty-action:last-child {
+  margin-bottom: 0;
+}
+
+.content-picker-empty-action:hover {
+  background-color: var(--theme-color-bg-2);
 }
 
 .content-picker-group-label {

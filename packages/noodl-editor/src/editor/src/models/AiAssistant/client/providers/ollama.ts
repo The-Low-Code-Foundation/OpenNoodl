@@ -27,6 +27,15 @@ import {
   AiToolCall
 } from '@noodl-models/AiAssistant/client/types';
 import { readNdjson } from '@noodl-models/AiAssistant/client/providers/stream-utils';
+import {
+  AiContentBlock,
+  asText,
+  assertCacheBoundary,
+  degradeDocuments,
+  degradedDocumentText,
+  degradeImages,
+  isBlockContent
+} from '@noodl-models/AiAssistant/client/content';
 
 import { errorMessage, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
@@ -70,30 +79,65 @@ export interface OllamaTagsResponse {
 export interface OllamaRequestMessage {
   role: string;
   content: string;
+  /**
+   * BLD-012 — Ollama's native shape for images: a sibling array of bare base64
+   * strings, not content parts and not data URLs. Present only when the model
+   * is flagged for vision, which no seeded model is.
+   */
+  images?: string[];
   /** Ollama matches tool results to calls by name, not by id. */
   tool_name?: string;
   tool_calls?: { function: { name: string; arguments: Record<string, unknown> } }[];
 }
 
+/**
+ * Text and images split apart, which is the shape Ollama's `/api/chat` wants.
+ *
+ * The text half keeps the surrounding prose in order; only the image bytes move
+ * to the sibling array.
+ */
+function toOllamaContent(content: AiContentBlock[]): { content: string; images: string[] } {
+  const text: string[] = [];
+  const images: string[] = [];
+  for (const block of content) {
+    if (block.type === 'image') images.push(block.data);
+    // BLD-013 — Ollama's `/api/chat` has no document sibling to `images`, and no
+    // registered model here is flagged for `documents`, so `buildParams` has
+    // already degraded this to a text block. The branch exists so that a
+    // document arriving by any other route lands in the prose *declared* rather
+    // than silently dropped by the `else if (block.text)` below.
+    else if (block.type === 'document') text.push(degradedDocumentText(block));
+    else if (block.text) text.push(block.text);
+  }
+  return { content: text.join('\n\n'), images };
+}
+
 export function toOllamaMessages(messages: AiMessage[]): OllamaRequestMessage[] {
   return messages.map((message) => {
+    assertCacheBoundary(message);
+
     if (message.role === 'tool') {
       return {
         role: 'tool',
         // Ollama matches results to calls by name, not by id.
         ...(message.name ? { tool_name: message.name } : {}),
-        content: message.content
+        content: asText(message.content)
       };
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
       return {
         role: 'assistant',
-        content: message.content || '',
+        content: asText(message.content),
         tool_calls: message.toolCalls.map((call) => ({
           function: { name: call.name, arguments: call.arguments }
         }))
       };
+    }
+
+    if (isBlockContent(message.content)) {
+      const { content, images } = toOllamaContent(message.content);
+      return { role: message.role, content, ...(images.length ? { images } : {}) };
     }
 
     return { role: message.role, content: message.content };
@@ -149,9 +193,25 @@ export class OllamaProvider implements AiProvider {
     if (typeof request.temperature === 'number') options.temperature = request.temperature;
     if (request.maxTokens) options.num_predict = Math.min(request.maxTokens, model.maxOutputTokens);
 
+    // BLD-012 — vision is model-dependent on Ollama and the answer is no
+    // unless the registry says otherwise. Neither seeded model is flagged, and
+    // a model pulled at runtime resolves through `unknownModel`, so in practice
+    // this degrades every time until someone registers a vision model
+    // deliberately. That is the intended default: sending image bytes to a
+    // text-only local model is the failure this branch exists to prevent.
+    //
+    // BLD-013 — and a local model takes a PDF even less often than it takes an
+    // image, so the same reasoning applies harder. Nothing seeded here is
+    // flagged `documents`, so a dropped PDF always degrades on this provider.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
+
     const body: Record<string, unknown> = {
       model: modelId,
-      messages: toOllamaMessages(request.messages),
+      messages: toOllamaMessages(messagesIn),
       stream
     };
 

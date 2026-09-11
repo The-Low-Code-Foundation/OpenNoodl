@@ -1,0 +1,572 @@
+{
+  "name": "Avatar",
+  "components": [
+    {
+      "name": "/Avatar",
+      "id": "ava70000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Image",
+            "toId": "ava70000-1000-4000-9000-000000000011",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Image",
+            "toId": "ava70000-1000-4000-9000-000000000002",
+            "toProperty": "in-Image"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Name",
+            "toId": "ava70000-1000-4000-9000-000000000002",
+            "toProperty": "in-Name"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Size",
+            "toId": "ava70000-1000-4000-9000-000000000002",
+            "toProperty": "in-Size"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Ring Color",
+            "toId": "ava70000-1000-4000-9000-000000000010",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000001",
+            "fromProperty": "Overlap",
+            "toId": "ava70000-1000-4000-9000-000000000010",
+            "toProperty": "marginLeft"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Box",
+            "toId": "ava70000-1000-4000-9000-000000000010",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Box",
+            "toId": "ava70000-1000-4000-9000-000000000010",
+            "toProperty": "height"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-HasImage",
+            "toId": "ava70000-1000-4000-9000-000000000011",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-NoImage",
+            "toId": "ava70000-1000-4000-9000-000000000012",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-Initials",
+            "toId": "ava70000-1000-4000-9000-000000000012",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000002",
+            "fromProperty": "out-FontSize",
+            "toId": "ava70000-1000-4000-9000-000000000012",
+            "toProperty": "fontSize"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ava70000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Image",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Name",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Size",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Appearance",
+                "index": 2
+              },
+              {
+                "name": "Ring Color",
+                "plug": "output",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Appearance",
+                "index": 3
+              },
+              {
+                "name": "Overlap",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Appearance",
+                "index": 4
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ava70000-1000-4000-9000-000000000002",
+            "type": "JavaScriptFunction",
+            "label": "Avatar model",
+            "x": -380,
+            "y": 40,
+            "parameters": {
+              "functionScript": "// Everything the view needs, decided once. Every input is guarded: an\n// unconnected Component Input arrives as undefined, not as its default.\nconst size = Number(Inputs.Size) > 0 ? Number(Inputs.Size) : 40;\nconst src = String(Inputs.Image || '').trim();\nconst name = String(Inputs.Name || '').trim();\n\n// \"Ada Lovelace\" -> AL, \"ada.lovelace\" -> AL, \"Ada\" -> AD, \"\" -> ?\nfunction initials(value) {\n  if (!value) return '?';\n  const bySpace = value.split(' ').filter(Boolean);\n  const byDot = value.split('.').filter(Boolean);\n  const parts = bySpace.length > byDot.length ? bySpace : byDot;\n  const first = parts[0] || '';\n  const second = parts[1] || '';\n  if (!first) return '?';\n  if (!second) return first.substring(0, 2).toUpperCase();\n  return (first[0] + second[0]).toUpperCase();\n}\n\nOutputs.HasImage = src !== '';\nOutputs.NoImage = src === '';\nOutputs.Initials = initials(name);\nOutputs.Box = size;\n// The letters track the circle rather than being a second thing to set.\nOutputs.FontSize = Math.max(10, Math.round(size * 0.38));\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Image",
+                "displayName": "Image",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Name",
+                "displayName": "Name",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Size",
+                "displayName": "Size",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-HasImage",
+                "displayName": "HasImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-NoImage",
+                "displayName": "NoImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Initials",
+                "displayName": "Initials",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-Box",
+                "displayName": "Box",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-FontSize",
+                "displayName": "FontSize",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 7
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "ava70000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Avatar",
+            "x": 20,
+            "y": -200,
+            "parameters": {
+              "sizeMode": "explicit",
+              "width": {
+                "value": 40,
+                "unit": "px"
+              },
+              "height": {
+                "value": 40,
+                "unit": "px"
+              },
+              "flexDirection": "row",
+              "alignItems": "center",
+              "justifyContent": "center",
+              "backgroundColor": "var(--muted)",
+              "borderRadius": {
+                "value": 9999,
+                "unit": "px"
+              },
+              "borderStyle": "solid",
+              "borderWidth": {
+                "value": 2,
+                "unit": "px"
+              },
+              "borderColor": "var(--background)",
+              "clip": true,
+              "styleCss": "flex: 0 0 auto; box-sizing: border-box;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ava70000-1000-4000-9000-000000000011",
+                "type": "Image",
+                "label": "Photo",
+                "parameters": {
+                  "mounted": false,
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "objectFit": "cover"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "ava70000-1000-4000-9000-000000000012",
+                "type": "Text",
+                "label": "Initials",
+                "parameters": {
+                  "mounted": true,
+                  "text": "AL",
+                  "sizeMode": "contentSize",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 15,
+                    "unit": "px"
+                  },
+                  "styleCss": "font-weight: 600; letter-spacing: 0.02em; user-select: none;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Avatar Group",
+      "id": "ava70000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000021",
+            "fromProperty": "Items",
+            "toId": "ava70000-1000-4000-9000-000000000023",
+            "toProperty": "in-Items"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000021",
+            "fromProperty": "Max",
+            "toId": "ava70000-1000-4000-9000-000000000023",
+            "toProperty": "in-Max"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000021",
+            "fromProperty": "Overlap",
+            "toId": "ava70000-1000-4000-9000-000000000023",
+            "toProperty": "in-Overlap"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000023",
+            "fromProperty": "out-BadgeOverlap",
+            "toId": "ava70000-1000-4000-9000-000000000032",
+            "toProperty": "marginLeft"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000022",
+            "fromProperty": "items",
+            "toId": "ava70000-1000-4000-9000-000000000023",
+            "toProperty": "in-Samples"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000023",
+            "fromProperty": "out-Items",
+            "toId": "ava70000-1000-4000-9000-000000000031",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000023",
+            "fromProperty": "out-Overflow",
+            "toId": "ava70000-1000-4000-9000-000000000033",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ava70000-1000-4000-9000-000000000023",
+            "fromProperty": "out-HasOverflow",
+            "toId": "ava70000-1000-4000-9000-000000000032",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ava70000-1000-4000-9000-000000000021",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Data",
+                "index": 0
+              },
+              {
+                "name": "Max",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Data",
+                "index": 1
+              },
+              {
+                "name": "Overlap",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Appearance",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ava70000-1000-4000-9000-000000000022",
+            "type": "Static Data",
+            "label": "Sample people",
+            "x": -700,
+            "y": 240,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Name\": \"Ada Lovelace\",\n        \"Image\": \"noodl_modules/starter-imagery/avatar-1.webp\"\n    },\n    {\n        \"Name\": \"Grace Hopper\",\n        \"Image\": \"noodl_modules/starter-imagery/avatar-2.webp\"\n    },\n    {\n        \"Name\": \"Alan Turing\",\n        \"Image\": \"\"\n    },\n    {\n        \"Name\": \"Katherine Johnson\",\n        \"Image\": \"noodl_modules/starter-imagery/avatar-3.webp\"\n    },\n    {\n        \"Name\": \"Radia Perlman\",\n        \"Image\": \"\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ava70000-1000-4000-9000-000000000023",
+            "type": "JavaScriptFunction",
+            "label": "Choose items",
+            "x": -380,
+            "y": 140,
+            "parameters": {
+              "functionScript": "// A connected, non-empty Items array wins over the sample people, so the\n// prefab shows something the moment it is placed and shows *your* data the\n// moment you wire it. Same contract as Card Grid's \"Choose items\".\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nconst items = connected.length > 0 ? connected : asArray(Inputs.Samples);\n\nconst max = Number(Inputs.Max) > 0 ? Number(Inputs.Max) : items.length;\nconst overlap = Number(Inputs.Overlap) >= 0 ? Number(Inputs.Overlap) : 10;\nconst shown = items.slice(0, max);\nconst hidden = items.length - shown.length;\n\n// Overlap rides on the row, because `styleCss` cannot express \"every child\n// after the first\": it applies declarations to one element, not rules. The\n// first avatar sits flush; the rest slide back over the one before.\nOutputs.Items = shown.map((item, i) => ({\n  ...item,\n  Overlap: i === 0 ? { value: 0, unit: 'px' } : { value: -overlap, unit: 'px' }\n}));\nOutputs.BadgeOverlap = shown.length === 0 ? { value: 0, unit: 'px' } : { value: -overlap, unit: 'px' };\nOutputs.Overflow = hidden > 0 ? '+' + hidden : '';\nOutputs.HasOverflow = hidden > 0;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Samples",
+                "displayName": "Samples",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Max",
+                "displayName": "Max",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "in-Overlap",
+                "displayName": "Overlap",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 3
+              },
+              {
+                "name": "out-BadgeOverlap",
+                "displayName": "BadgeOverlap",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-Items",
+                "displayName": "Items",
+                "plug": "output",
+                "type": "array",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-Overflow",
+                "displayName": "Overflow",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-HasOverflow",
+                "displayName": "HasOverflow",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 5
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "ava70000-1000-4000-9000-000000000030",
+            "type": "Group",
+            "label": "Avatar group",
+            "x": 20,
+            "y": -200,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "sizeMode": "contentSize",
+              "styleCss": "flex: 0 0 auto;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ava70000-1000-4000-9000-000000000031",
+                "type": "For Each",
+                "parameters": {
+                  "template": "/Avatar"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "ava70000-1000-4000-9000-000000000032",
+                "type": "Group",
+                "label": "Overflow badge",
+                "parameters": {
+                  "mounted": false,
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "backgroundColor": "var(--secondary)",
+                  "borderRadius": {
+                    "value": 9999,
+                    "unit": "px"
+                  },
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 2,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--background)",
+                  "styleCss": "flex: 0 0 auto; box-sizing: border-box;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "ava70000-1000-4000-9000-000000000033",
+                    "type": "Text",
+                    "label": "Overflow count",
+                    "parameters": {
+                      "text": "+2",
+                      "sizeMode": "contentSize",
+                      "color": "var(--secondary-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600; user-select: none;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {},
+  "variants": []
+}

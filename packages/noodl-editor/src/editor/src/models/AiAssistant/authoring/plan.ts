@@ -25,6 +25,9 @@
  */
 
 import { isComponentRef } from '../../../validation/model';
+// LAS-006 — "is this a page" has exactly one derivation in this codebase and
+// this is a fourth caller of it, not a fourth copy. See `planAdvisories`.
+import { looksLikePageComponent } from '../../../validation/navigation';
 import type { GraphComponent, GraphNode } from '../explain/types';
 import { pathToLegacyName } from './candidate';
 import type { ComponentFiles } from './types';
@@ -80,6 +83,38 @@ export interface PlanProvisionColumn {
   type: string;
 }
 
+/**
+ * LAS-006 — one port of a planned component's interface.
+ *
+ * `type` is free text rather than a catalog port type on purpose: the plan is a
+ * contract about *names*, and the name is the half that has to line up. A model
+ * that writes `type: "the product's price"` has still told the authoring turn
+ * something true; one forced to pick from an enum it has not been shown would
+ * have guessed, and a guessed type that then fails a check is a repair round
+ * spent on the part that did not matter.
+ */
+export interface PlanPortDeclaration {
+  name: string;
+  type?: string;
+  description?: string;
+}
+
+/** LAS-006 — what a planned component repeats over, when it repeats. */
+export interface PlanRepeatSpec {
+  /**
+   * Where the rows come from: `static` is a `Static Data` node's inline JSON,
+   * `query` a backend query, `variable` a Variable/Object, `array` an array
+   * arriving on an input.
+   */
+  source: 'static' | 'query' | 'variable' | 'array';
+  /**
+   * The fields one row carries. These become the expected inputs of whatever
+   * component draws the row — stated here so the authoring turn inherits the
+   * contract instead of inventing a second set of names for it.
+   */
+  rowFields: string[];
+}
+
 export interface PlanOperation {
   /** Stable within the plan; assigned when the plan is built ("op-1"…). */
   id: string;
@@ -97,7 +132,57 @@ export interface PlanOperation {
   intent: string;
   /** Present exactly on `provision` operations. */
   provision?: PlanProvisionSpec;
+
+  // ── LAS-006: the parts of an intent that prose could not carry ─────────────
+  //
+  // The plan step worked cold on both measured models — haiku's first
+  // `create_plan` was a correct nine-operation decomposition. What failed is
+  // what an intent *cannot say*: it named no interfaces, so no downstream turn
+  // built `Component Inputs`, so every card rendered the literal word "Text".
+  // The planning doctrine already asks for interfaces in the intent sentence;
+  // nothing read them, because a sentence is not a field. These are.
+  //
+  // All optional, at the schema and here: an old caller's plan is unchanged,
+  // and a two-node fix does not owe anyone a form.
+
+  /** Component Inputs this component will expose. */
+  inputs?: PlanPortDeclaration[];
+  /** Signals and values it reports upward, through Component Outputs. */
+  outputs?: PlanPortDeclaration[];
+  /** Present when this component draws a row per item. */
+  repeats?: PlanRepeatSpec;
+  /** Component targets this one will place — paths or legacy names. */
+  instantiates?: string[];
 }
+
+/** The row sources {@link PlanRepeatSpec} accepts, as an enum both clients render. */
+export const PLAN_REPEAT_SOURCES = ['static', 'query', 'variable', 'array'] as const;
+
+/**
+ * LAS-006 — how the structured fields are described to a model, written once.
+ *
+ * The editor renders these into `submit_plan`'s JSON Schema and `noodl-mcp` into
+ * `create_plan`'s zod shape. Two schema *dialects* are unavoidable (the clients
+ * speak different tool protocols); two sets of *words* are not, and the words
+ * are the part that decides whether a model fills the field. Same rule as
+ * `decomposition.ts` and the AAQ-005 vocabulary table.
+ */
+export const PLAN_STRUCTURE_DESCRIPTIONS = {
+  inputs:
+    'The Component Inputs this component will expose — the names instances of it will set. Declare these ' +
+    'for anything another component places: a card, a row, a section that varies. Omitting them is the ' +
+    'single most common way an AI-built page renders identical placeholder chrome.',
+  outputs: 'Signals and values this component reports upward, through Component Outputs (e.g. "addToCart").',
+  repeats:
+    'Present when this component draws one row per item. `rowFields` are the fields one row carries; they ' +
+    'become the required inputs of whichever component draws the row.',
+  instantiates: 'Components this one will place, by path ("Components/ProductCard"). Each must exist or be created by this plan.',
+  portName: 'The port name, exactly as the instance will set it',
+  portType: 'What kind of value it carries ("string", "number", "an image URL") — free text, names are what bind',
+  portDescription: 'What the value means, one clause',
+  repeatSource: 'Where the rows come from: static (a Static Data node\'s inline JSON), query (a backend query), variable, or array (arriving on an input)',
+  repeatRowFields: 'The fields one row carries, e.g. ["name", "price", "image"]'
+} as const;
 
 export interface AuthoringPlan {
   /** The user's project-scope request, verbatim. */
@@ -189,7 +274,213 @@ export function validatePlan(plan: AuthoringPlan, input: PlanValidationInput): s
       );
     }
   }
+
+  errors.push(...structuredFieldErrors(plan, input, componentTargets));
   return errors;
+}
+
+/**
+ * LAS-006 — the structured fields, checked only where they are present.
+ *
+ * Two classes of problem, and both are cheap here for the reason the rest of
+ * `validatePlan` is: a plan that cannot work should cost nothing to discover.
+ *
+ *  - A structured field on an operation that cannot carry one (a `doc` has no
+ *    interface; a `provision` is not a component). The same refusal shape the
+ *    misplaced `provision` spec already gets.
+ *  - An `instantiates` naming a component that neither exists nor is created by
+ *    this plan. That is exactly the `update`-of-a-nonexistent-component error
+ *    one level up: the plan states a dependency nothing satisfies, so it is not
+ *    executable as written. Note the asymmetry with the *staged* check — a
+ *    candidate may instantiate more than the plan declared (the plan is a floor,
+ *    §3), but everything it declares must resolve.
+ */
+function structuredFieldErrors(
+  plan: AuthoringPlan,
+  input: PlanValidationInput,
+  componentTargets: ReadonlySet<string>
+): string[] {
+  const errors: string[] = [];
+  for (const op of plan.operations) {
+    const declared = op.inputs || op.outputs || op.repeats || op.instantiates;
+    if (op.kind === 'doc' || op.kind === 'provision') {
+      if (declared) {
+        errors.push(
+          `Operation ${op.id} is a ${op.kind}, so it cannot declare inputs, outputs, repeats or instantiates.`
+        );
+      }
+      continue;
+    }
+
+    for (const [field, ports] of [
+      ['inputs', op.inputs],
+      ['outputs', op.outputs]
+    ] as const) {
+      if (!ports) continue;
+      const seen = new Set<string>();
+      for (const port of ports) {
+        const name = typeof port?.name === 'string' ? port.name.trim() : '';
+        if (!name) {
+          errors.push(`Operation ${op.id} declares an unnamed ${field.replace(/s$/, '')} — every port needs a name.`);
+          continue;
+        }
+        if (seen.has(name)) {
+          errors.push(`Operation ${op.id} declares "${name}" twice in ${field}.`);
+        }
+        seen.add(name);
+      }
+    }
+
+    if (op.repeats && op.repeats.rowFields.length === 0) {
+      errors.push(
+        `Operation ${op.id} says it repeats but names no rowFields — say what one row carries, or drop "repeats".`
+      );
+    }
+
+    for (const target of op.instantiates ?? []) {
+      const name = pathToLegacyName(String(target).trim());
+      if (componentTargets.has(name) || input.existingComponents.has(name)) continue;
+      errors.push(
+        `Operation ${op.id} says it instantiates "${target}", but no such component exists and no operation ` +
+          'creates it — add the create, or fix the name.'
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * LAS-006 — what is *worth saying* about a plan that is nonetheless executable.
+ *
+ * Advisories, not errors: the audit's finding was that hard rejections carrying
+ * a suggestion get obeyed and prose gets dropped, but the thing being asked for
+ * here — "declare the interface before you draw" — is a judgement about a plan
+ * that is perfectly legal without it. A refusal would make `create_plan`
+ * unusable for the two-node fix the primitive-only decision explicitly protects.
+ * So these are returned alongside the accepted plan, and LAS-011 measures
+ * whether that was enough before anything harder is considered.
+ */
+export interface PlanAdvisory {
+  /** The operation it is about; absent for advice about the plan as a whole. */
+  operation?: string;
+  message: string;
+}
+
+/**
+ * The advisory predicate, and the one thing in LAS-006 the corpus overturned.
+ *
+ * The task file proposed keying this on a path prefix — a `create` under
+ * `Components/`, `Cards/` or `Sections/`. Measured over both corpora
+ * (`measurements/scan-component-paths.js`, 2026-08-08: 107 legacy + 12 v2
+ * projects, 613 components), those three folders hold **16 of the 256**
+ * components that declare an interface. The other 240 live in "UI Components",
+ * "Product Details Page", "Search", "Checkout", "Time Slot Picker" and 30-odd
+ * other ad-hoc folders, and 27 of them sit at the project root with no folder at
+ * all. A prefix allowlist would have been silent on 94% of the population it was
+ * written for.
+ *
+ * What the same scan does separate cleanly is *shape*:
+ *
+ *  - **0 of 51** page components declare an input. A page is navigated to, never
+ *    instantiated, so it has nothing to receive.
+ *  - **178 of 236 (75%)** non-page components that something instantiates
+ *    declare at least one.
+ *
+ * So the predicate is "is this a page", which the project already answers in one
+ * place — {@link looksLikePageComponent}, the same function the write gate and
+ * both plan gates use to decide `isRoutedPage`. A fourth derivation of "is this a
+ * page" is the class of duplication this codebase has already paid for twice.
+ */
+export function planAdvisories(plan: AuthoringPlan): PlanAdvisory[] {
+  const advisories: PlanAdvisory[] = [];
+  const isPageTarget = (target: string) => looksLikePageComponent(pathToLegacyName(target));
+  const componentOps = plan.operations.filter((op) => op.kind === 'create' || op.kind === 'update');
+
+  // The whole-plan one, first: a plan that is a single page is the flat-graph
+  // failure restated as a plan. README candidate 3's cheap form — the static
+  // critic's one-liner; the LLM critic stays dead per the audit verdict.
+  if (componentOps.length === 1 && componentOps[0].kind === 'create' && isPageTarget(componentOps[0].target)) {
+    advisories.push({
+      operation: componentOps[0].id,
+      message:
+        `This plan is one page and nothing else. A page built in one operation is a page built top-to-bottom, ` +
+        'which is how the 66-node graph happens: plan its sections as their own create operations and let the ' +
+        'page instantiate them.'
+    });
+  }
+
+  for (const op of plan.operations) {
+    if (op.kind !== 'create') continue;
+    if (isPageTarget(op.target)) continue;
+    if (op.inputs?.length || op.outputs?.length || op.repeats) continue;
+    advisories.push({
+      operation: op.id,
+      message:
+        `${op.target} is not a page, so something will instantiate it — but the operation declares no inputs, ` +
+        'no outputs and no repeats. An interface stated vaguely is an interface that will not line up: the turn ' +
+        'that authors this component will not build Component Inputs nobody asked for, and the turn that places ' +
+        'it will then set parameters that reach nothing. Declare "inputs" with the names the instances will set.'
+    });
+  }
+
+  // `repeats` is the one field that constrains a *different* operation, so say
+  // so where it is declared rather than hoping the authoring turn joins the two.
+  for (const op of plan.operations) {
+    if (!op.repeats) continue;
+    advisories.push({
+      operation: op.id,
+      message:
+        `${op.target} repeats over ${op.repeats.source} rows carrying ${op.repeats.rowFields
+          .map((f) => `"${f}"`)
+          .join(', ')}. Those field names are the contract: whichever component draws one row must expose ` +
+        'Component Inputs with exactly those names, or the repeater will render identical rows.'
+    });
+  }
+
+  return advisories;
+}
+
+/**
+ * LAS-006 §3 — the plan as a contract: did the staged component expose the
+ * interface its operation promised?
+ *
+ * Takes the exposed input names rather than the candidate's nodes, so the fact
+ * "what are a component's inputs" stays in the one module that owns it
+ * (`validation/componentInterface`, whose derivation reads `plug` the way
+ * `componentmodel.getPorts()` does). This function only compares two lists of
+ * names — which is the whole of what a contract check is.
+ *
+ * **Extra undeclared inputs are allowed, deliberately.** The plan is a floor,
+ * not a ceiling: an authoring turn that finds it needs a `variant` input the
+ * plan never imagined should add it, not be sent back to amend the plan. What is
+ * refused is the reverse — a promised input that is not there, because that is
+ * the one the *other* operation is about to set and the one whose absence
+ * silently renders placeholder chrome (F2, the whole reason this phase exists).
+ *
+ * Returns the refusal lines, empty when the contract holds or declared nothing.
+ */
+export function planInterfaceContract(
+  operation: Pick<PlanOperation, 'id' | 'target' | 'inputs'>,
+  exposedInputs: readonly string[]
+): string[] {
+  const declared = (operation.inputs ?? []).map((p) => p.name.trim()).filter(Boolean);
+  if (declared.length === 0) return [];
+  const exposed = new Set(exposedInputs);
+  const missing = declared.filter((name) => !exposed.has(name));
+  if (missing.length === 0) return [];
+
+  const has =
+    exposedInputs.length > 0
+      ? `it exposes ${exposedInputs.map((n) => `"${n}"`).join(', ')}`
+      : 'it exposes none at all';
+  return [
+    `Operation ${operation.id} planned ${operation.target} with inputs ${declared
+      .map((n) => `"${n}"`)
+      .join(', ')}, but ${has}. Missing: ${missing.map((n) => `"${n}"`).join(', ')}. ` +
+      'Add a Component Inputs node declaring them, each port with plug "output", and wire it to the nodes that ' +
+      'display the values — or amend the plan if the interface changed. Extra inputs beyond the plan are fine; ' +
+      'a missing one is a parameter the instance will set and nothing will receive.'
+  ];
 }
 
 /**
@@ -335,6 +626,11 @@ export function renderPlanContext(plan: AuthoringPlan, currentOpId: string): str
   plan.operations.forEach((op, index) => {
     const marker = op.id === currentOpId ? '➤' : ' ';
     lines.push(`${marker} ${index + 1}. ${op.kind}  ${op.target} — ${op.intent}${provisionSuffix(op)}`);
+    // LAS-006 — the declared interface, on its own line under the intent. This
+    // is the point of the structured fields: the operation that *places* the
+    // card reads the card's input names here, verbatim, instead of inferring
+    // them from a sentence that never mentioned them.
+    for (const line of interfaceLines(op)) lines.push(`      ${line}`);
   });
   lines.push(
     '',
@@ -342,6 +638,14 @@ export function renderPlanContext(plan: AuthoringPlan, currentOpId: string): str
     'overview and can be instantiated by name. Keep names, routes and events consistent with the sibling',
     'intents above — they are the contract between operations.'
   );
+  if (plan.operations.some((op) => op.inputs?.length || op.outputs?.length || op.repeats)) {
+    lines.push(
+      '',
+      'Where an operation lists inputs, those names are binding in both directions: the component must expose',
+      'Component Inputs with exactly those names (ports plugged "output"), and an instance of it may set only',
+      'those. A parameter that names no input is discarded silently and the instance renders its placeholder.'
+    );
+  }
   // AIB-007: the one line that changes what an authoring turn is allowed to
   // assume. Cloud Data and User nodes need a backend, and until this plan is
   // applied the project does not have one — so the sentence is about what *will*
@@ -372,6 +676,19 @@ export function provisionSummary(spec: PlanProvisionSpec): string {
 
 function provisionSuffix(op: PlanOperation): string {
   return op.provision ? ` (${provisionSummary(op.provision)})` : '';
+}
+
+/** LAS-006 — an operation's declared structure, as the lines a sibling reads. */
+function interfaceLines(op: PlanOperation): string[] {
+  const lines: string[] = [];
+  const port = (p: PlanPortDeclaration) => `${p.name}${p.type ? `: ${p.type}` : ''}`;
+  if (op.inputs?.length) lines.push(`inputs:  ${op.inputs.map(port).join(', ')}`);
+  if (op.outputs?.length) lines.push(`outputs: ${op.outputs.map(port).join(', ')}`);
+  if (op.repeats) {
+    lines.push(`repeats: one row per ${op.repeats.source} item — fields ${op.repeats.rowFields.join(', ')}`);
+  }
+  if (op.instantiates?.length) lines.push(`places:  ${op.instantiates.join(', ')}`);
+  return lines;
 }
 
 /**
@@ -459,6 +776,11 @@ export function graphComponentFromFiles(legacyName: string, files: ComponentFile
     parent: node.parent,
     children: node.children ? [...node.children] : childrenOf.get(node.id) ?? [],
     instancePorts: (node.ports ?? []).map((p) => p.name).filter((n): n is string => typeof n === 'string'),
+    // LAS-001 — with the plug, which is what decides whether a Component Inputs
+    // port is an input of the component or an output pointed the wrong way.
+    ports: (node.ports ?? [])
+      .filter((p): p is typeof p & { name: string } => typeof p.name === 'string')
+      .map((p) => ({ name: p.name, ...(typeof p.plug === 'string' ? { plug: p.plug } : {}) })),
     comment: undefined
   }));
   return {

@@ -15,7 +15,11 @@
   align-items: center;
   gap: 9px;
   background: var(--theme-color-bg-1);
-  border: 1px solid var(--theme-color-border-default);
+  /* The box that draws the <input>'s boundary. NOT on the sweep's inventory — that
+     query needs `cursor: pointer`, and a text field never sets one; same shape as
+     `.TemplateFilter-search`, `NodePickerSearchBar .Field` and `.NameField`.
+     4.17 dark / 3.72 light on its own fill, 4.86 / 3.28 on the bg-0 content area. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-lg);
   padding: 8px 12px;
   color: var(--theme-color-fg-muted);
@@ -62,7 +66,8 @@
   align-items: center;
   gap: 8px;
   background: var(--theme-color-bg-1);
-  border: 1px solid var(--theme-color-border-default);
+  /* Wraps a native <select>; same treatment and same measurements as `.Search`. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-lg);
   padding: 8px 12px;
   color: var(--theme-color-fg-default);

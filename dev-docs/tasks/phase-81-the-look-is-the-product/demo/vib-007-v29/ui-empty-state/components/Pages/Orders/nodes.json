@@ -1,0 +1,102 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7cfcc2f4-ef6e-5386-85d0-b124e331b093",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Orders",
+      "parameters": {
+        "title": "Orders",
+        "urlPath": "orders"
+      },
+      "children": [
+        "band"
+      ]
+    },
+    {
+      "id": "band",
+      "type": "Group",
+      "label": "Page band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "parent": "page",
+      "children": [
+        "shell"
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Centred shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "band",
+      "children": [
+        "heading",
+        "list",
+        "empty"
+      ]
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Section head",
+      "parameters": {
+        "text": "Orders",
+        "fontSize": "var(--text-2xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "parent": "shell"
+    },
+    {
+      "id": "list",
+      "type": "For Each",
+      "label": "One row per record",
+      "parameters": {
+        "template": "/Components/OrderRow"
+      },
+      "parent": "shell"
+    },
+    {
+      "id": "empty",
+      "type": "/Components/EmptyState",
+      "label": "Shown only when the query is empty",
+      "parent": "shell"
+    },
+    {
+      "id": "query",
+      "type": "DbCollection2",
+      "label": "Fetch orders",
+      "parameters": {
+        "collectionName": "Order"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

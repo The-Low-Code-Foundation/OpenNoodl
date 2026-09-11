@@ -14,7 +14,7 @@
     "error": "Value; why the last attempt failed.",
     "treatUnchangedAs": "Edit-only enum; set it to Failure if 'that account was already gone' should stop the chain."
   },
-  "examples": [],
+  "examples": ["cloud-delete-an-account-and-its-sessions"],
   "patterns": [
     "Wire `done` and `unchanged` to the same Response when the function's job is 'make sure this account is gone'. Both mean it is."
   ],

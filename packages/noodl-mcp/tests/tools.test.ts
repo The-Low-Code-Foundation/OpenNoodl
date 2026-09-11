@@ -3,8 +3,10 @@
  * the exact code path an external agent exercises, minus the stdio framing.
  */
 import * as fs from 'fs';
+import * as path from 'path';
 
 import type { NodeTypeDetail, NodeTypeLookupMiss, NodeTypeSummary } from '../src/catalog';
+import { FULL_DETAIL_BYTE_BUDGET } from '../src/tools/catalogTools';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, RegistryV2File } from '../src/editor-deps';
 import type {
   CreateComponentResponse,
@@ -24,20 +26,23 @@ import type {
   ValidateProjectResponse,
   ValidationFailureDetails
 } from '../src/tools/responses';
-import { call, connect, copyFixture, exists, readJson, TestSession } from './helpers';
+import { call, connect, copyFixture, exists, readJson, reveal, TestSession } from './helpers';
 
 /**
  * `get_node_type` returns a union per requested name — a full entry or a lookup
  * miss. The specs know which they asked for; these say so, and report the other
  * case as a readable failure instead of a property read on the wrong branch.
  */
-type NodeTypeResult = NodeTypeDetail | NodeTypeSummary | NodeTypeLookupMiss;
+type NodeTypeResult = GetNodeTypeResponse['types'][number];
 const isMiss = (t: NodeTypeResult): t is NodeTypeLookupMiss => 'error' in t;
 const isSummary = (t: NodeTypeResult): t is NodeTypeSummary => !isMiss(t) && 'ports' in t;
 
 function asDetail(t: NodeTypeResult): NodeTypeDetail {
   if (isMiss(t)) throw new Error(`Expected a node type entry, got a miss: ${t.error}`);
   if (isSummary(t)) throw new Error(`Expected full detail, got a summary for ${t.typeName}`);
+  // AWP-005 §2 widened the union with the per-port view; a caller asking for
+  // full detail and getting one is the same mistake as getting a summary.
+  if (!('availableIn' in t)) throw new Error(`Expected full detail, got a per-port view for ${t.typeName}`);
   return t;
 }
 
@@ -97,6 +102,17 @@ describe('noodl-mcp tools (end to end)', () => {
     expect(data.stats?.totalComponents).toBe(3);
   });
 
+  it('FIX-008 E — says which directory it is bound to, so a mis-bound server is detectable', async () => {
+    // 🔴 The bound path was announced once, in the `initialize` instructions, and repeated nowhere.
+    // A server left registered against somebody else's project therefore answers every question
+    // confidently and accepts every write, and nothing in the session says which project it means.
+    const { data } = await call<ProjectInfoResponse>(session, 'get_project_info');
+    // `path.resolve`, matching the store: the answer must be the path this server holds, not one
+    // normalised a second way, or a user comparing it against their registration sees a difference
+    // that is not there.
+    expect(data.projectDirectory).toBe(path.resolve(dir));
+  });
+
   it('get_component returns graph + revision, accepts legacy names', async () => {
     const { data } = await call<GetComponentResponse>(session, 'get_component', { path: '/Pages/Home', include_usages: true });
     expect(data.path).toBe('Pages/Home');
@@ -108,6 +124,7 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('search_project finds by type, component ref and text', async () => {
+    await reveal(session, 'explore'); // AWP-006 — zero calls across four replays, so deferred
     const byType = await call<SearchProjectResponse>(session, 'search_project', { node_type: 'net.noodl.controls.button' });
     expect(byType.data.matches).toEqual([
       expect.objectContaining({ component: 'Pages/Home', nodeId: 'btn', matchedOn: 'type' })
@@ -119,6 +136,7 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('explain_component produces a structured description', async () => {
+    await reveal(session, 'explore');
     const { data } = await call<ExplainComponentResponse>(session, 'explain_component', { path: 'Pages/Home' });
     expect(data.visualTree).toHaveLength(1);
     expect(data.visualTree[0].id).toBe('page');
@@ -137,7 +155,11 @@ describe('noodl-mcp tools (end to end)', () => {
     expect(names).toContain('net.noodl.controls.button');
     expect(list.data.categories.length).toBeGreaterThan(0);
 
-    const detail = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: ['net.noodl.controls.button', 'Grup'] });
+    // AWP-005 §2 — `detail` now defaults to "summary", so full is asked for.
+    const detail = await call<GetNodeTypeResponse>(session, 'get_node_type', {
+      type_names: ['net.noodl.controls.button', 'Grup'],
+      detail: 'full'
+    });
     const button = asDetail(detail.data.types[0]);
     const miss = asMiss(detail.data.types[1]);
     expect(button.outputs.map((p) => p.name)).toContain('onClick');
@@ -170,11 +192,28 @@ describe('noodl-mcp tools (end to end)', () => {
       if (isMiss(t)) throw new Error(`Unexpected miss: ${t.error}`);
       expect(isSummary(t)).toBe(true);
     }
-    expect(JSON.stringify(summary.data).length).toBeLessThan(30_000);
+    // 🔴 CMP-006 AC3 — this was a round `30_000` and it had 290 bytes of
+    // headroom: the worst-case summary call had reached 29,710 B, so the next
+    // person to enrich anything in the catalog would have owned this red.
+    // The literal is now the real constraint — `FULL_DETAIL_BYTE_BUDGET` is the
+    // size at which FULL mode starts degrading its tail, and summary mode has no
+    // degradation step, so what this asserts is "summary mode stays safe WITHOUT
+    // the mechanism full mode needs". That is the property worth guarding.
+    //
+    // The margin is printed on a PASSING run, the CN-006 trick that turned
+    // "my description got longer" into "the resident surface has 5 tokens left"
+    // in CMP-006 AC2. Without it, growth is invisible until it is a failure.
+    const summaryBytes = JSON.stringify(summary.data).length;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[summary] ${summaryBytes} bytes for ${heavy.length} heavy types — ` +
+        `${FULL_DETAIL_BYTE_BUDGET - summaryBytes} under the ${FULL_DETAIL_BYTE_BUDGET} full-detail budget`
+    );
+    expect(summaryBytes).toBeLessThan(FULL_DETAIL_BYTE_BUDGET);
 
     // Full mode: the byte budget degrades the tail to summaries in-band
     // rather than letting the response blow the cap.
-    const full = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: heavy });
+    const full = await call<GetNodeTypeResponse>(session, 'get_node_type', { type_names: heavy, detail: 'full' });
     expect(full.data.types).toHaveLength(heavy.length);
     expect(JSON.stringify(full.data).length).toBeLessThan(90_000);
     if (full.data.summarized && full.data.summarized.length > 0) {
@@ -187,6 +226,10 @@ describe('noodl-mcp tools (end to end)', () => {
   });
 
   it('examples are browsable and fetchable', async () => {
+    // AWP-006 — `get_example` is resident (14 calls across four replays);
+    // `list_examples` is in `explore` (zero calls, and get_node_type already
+    // returns each type's example ids and titles inline).
+    await reveal(session, 'explore');
     const list = await call<ListExamplesResponse>(session, 'list_examples', { node_type: 'RouterNavigate' });
     expect(list.data.examples.length).toBeGreaterThanOrEqual(0);
     const all = await call<ListExamplesResponse>(session, 'list_examples');

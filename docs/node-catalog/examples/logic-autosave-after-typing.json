@@ -42,7 +42,7 @@
           "id": "saved_time",
           "type": "Date To String",
           "label": "Format time",
-          "parameters": { "formatString": "HH:mm:ss" }
+          "parameters": { "formatString": "{hours}:{minutes}:{seconds}" }
         },
         {
           "id": "status_line",
@@ -55,8 +55,8 @@
         { "fromId": "note_input", "fromProperty": "onTextChanged", "toId": "typing_changed", "toProperty": "value" },
         { "fromId": "typing_changed", "fromProperty": "valueChanged", "toId": "debounce", "toProperty": "restart" },
         { "fromId": "debounce", "fromProperty": "timerFinished", "toId": "do_save", "toProperty": "run" },
-        { "fromId": "do_save", "fromProperty": "done", "toId": "save_id", "toProperty": "new" },
-        { "fromId": "do_save", "fromProperty": "savedAt", "toId": "saved_time", "toProperty": "input" },
+        { "fromId": "do_save", "fromProperty": "out-done", "toId": "save_id", "toProperty": "new" },
+        { "fromId": "do_save", "fromProperty": "out-savedAt", "toId": "saved_time", "toProperty": "input" },
         { "fromId": "save_id", "fromProperty": "guid", "toId": "short_id", "toProperty": "string" },
         { "fromId": "short_id", "fromProperty": "result", "toId": "status_line", "toProperty": "id" },
         { "fromId": "saved_time", "fromProperty": "currentValue", "toId": "status_line", "toProperty": "time" },

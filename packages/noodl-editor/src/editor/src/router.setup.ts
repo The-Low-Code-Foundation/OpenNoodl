@@ -1,7 +1,9 @@
 import { installPlanSessionPersistence } from '@noodl-models/AiAssistant/authoring/installPlanSessionPersistence';
+import { installThreadPersistence } from '@noodl-models/AiAssistant/thread/installThreadPersistence';
 import { AppRegistry } from '@noodl-models/app_registry';
 import { installCodeAuthoringContext } from '@noodl-models/CodeAuthoringContext';
 import { installProjectDocs } from '@noodl-models/ProjectDocs';
+import { installUserProfile } from '@noodl-models/UserProfile';
 import { installImportReport } from '@noodl-utils/import-engine/legacy/loadReport';
 import { SidebarModel } from '@noodl-models/sidebar';
 import { Keybinding } from '@noodl-utils/keyboard/Keybinding';
@@ -15,6 +17,13 @@ import { ProjectBackendLifecycle } from './services/ProjectBackendLifecycle';
 import { installProjectBackendStatusToasts } from './services/projectBackendStatusToasts';
 import { AuthoringPreviewDocumentProvider } from './views/documents/AuthoringPreviewDocument';
 import { ChangeReviewDocumentProvider } from './views/documents/ChangeReviewDocument';
+// CN-006 — ✅ D1's "opens index.js in the code editor". The editor's first
+// file-backed code surface; every other CodeMirror here is bound to a node
+// parameter.
+import { CodeFileDocumentProvider } from './views/documents/CodeFileDocument';
+// BLD-009 — the Build panel's second host. A shell: it publishes a box and the
+// panel portals into it, so there is exactly one thread instance in the editor.
+import { ExpandedBuildDocumentProvider } from './views/documents/ExpandedBuildDocument';
 import { ComponentDiffDocumentProvider } from './views/documents/ComponentDiffDocument';
 import { EditorDocumentProvider } from './views/documents/EditorDocument';
 import { AiAuthoringPanel, AiAuthoringPanel_ID } from './views/panels/AiAuthoringPanel';
@@ -27,6 +36,8 @@ import { ComponentXRayPanel } from './views/panels/ComponentXRayPanel';
 // import kept commented so the panel code (one release cycle) still compiles.
 // import { DataLineagePanel } from './views/panels/DataLineagePanel';
 import { DesignTokenPanel } from './views/panels/DesignTokenPanel/DesignTokenPanel';
+import { CommunityPanel, CommunityPanel_ID } from './views/panels/CommunityPanel';
+import { installCommunityRailGate } from './utils/community/communityRailGate';
 import { DocsPanel, DocsPanel_ID } from './views/panels/DocsPanel';
 import { ExecutionHistoryPanel } from './views/panels/ExecutionHistoryPanel';
 import { WorkflowsPanel, WorkflowsPanel_ID } from './views/panels/WorkflowsPanel';
@@ -47,9 +58,23 @@ import { VersionControlPanel } from './views/panels/VersionControlPanel/VersionC
 
 export interface SetupEditorOptions {
   isLesson: boolean;
+  /**
+   * TUT-005 — this lesson grades against the built-in database.
+   *
+   * Derived from the lesson's own conditions (`lessonObservesDatabase`), never a
+   * hand-written field. It exists to make exactly one exception below.
+   */
+  lessonNeedsDatabase?: boolean;
 }
 
-export function installSidePanel({ isLesson }: SetupEditorOptions) {
+/**
+ * NAT-012 AC7 — the live rail gate's unsubscribe, so a hot reload replaces it rather than
+ * stacking a second one behind the first. Module scope because `installSidePanel` is the thing
+ * that runs twice, and a handle inside it would be re-created along with everything else.
+ */
+let stopCommunityRailGate: (() => void) | undefined;
+
+export function installSidePanel({ isLesson, lessonNeedsDatabase }: SetupEditorOptions) {
   const appRegistry = AppRegistry.instance;
 
   SidebarModel.instance.register({
@@ -69,7 +94,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
 
   SidebarModel.instance.register({
     id: 'components',
-    defaultWidth: 280,
+    // Deliberately no `defaultWidth`: this panel and 'PropertyEditor' alternate
+    // in the same slot as the selection changes, so any width of its own moves
+    // the divider — and the canvas with it — on every select and deselect. It
+    // used to declare 280 against the Properties panel's implicit 328, which
+    // jittered the canvas 48px. Both now take DEFAULT_PANEL_WIDTH.
     name: 'Components',
     order: 1,
     icon: IconName.Components,
@@ -205,6 +234,11 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // at panel mount.
   installProjectDocs();
 
+  // FIX-021 slice B: and the user's own standing preferences, which are read at
+  // the same moment and are not tied to a project at all — the profile outlives
+  // every open and close, so nothing about a project can be its trigger.
+  installUserProfile();
+
   // LIB-006: same reasoning, same seam. A session authoring against a legacy
   // import needs to know what the importer could not convert, and it is
   // constructed long before anyone opens a panel.
@@ -215,12 +249,61 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
   // disk cannot be installed by a mount.
   installPlanSessionPersistence();
 
+  // BLD-006: the conversation, beside the build. Same argument one level up —
+  // a thread accumulates turns whenever the panel is open, and the writer must
+  // outlive the mount that produced them.
+  installThreadPersistence();
+
   // FH-019: and once more. The code popout is constructed the first time
   // someone clicks a code port, so a mount-time subscription would mean the
   // first editor of a session completes against the previous project. All four
   // code-editor call sites read this one surface, which is what keeps them
   // identical without any of them being edited.
   installCodeAuthoringContext();
+
+  // UNI-011 / 🔴 D21 (2026-08-19) — the community, in the rail.
+  //
+  // D16 said this entry point opens the BROWSER until the community clears 30 threads, three
+  // consecutive weeks with a call and a median first reply under 24h. **D21 reverses it**: the
+  // panel ships now, empty if empty, and Richard fills it.
+  //
+  // ⚠️ NOT `experimental`, unlike its neighbours, and that is the ruling rather than an oversight
+  // — a tab behind a settings toggle is not "immediately", and D14's objective is ONE surface a
+  // user does not have to go looking for.
+  //
+  // 🔴 The gate D16 prescribed was never wired to anything: `entryPointFor()` had no production
+  // caller, only its own specs. *Build the caller*, eighth instance in this phase, and the first
+  // where the uncalled function was a ruling's enforcement.
+  SidebarModel.instance.register({
+    id: CommunityPanel_ID,
+    defaultWidth: 380,
+    name: 'Community',
+    description:
+      'Questions asked from the editor, written guides, and replays of the weekly call — from ' +
+      'community.nodegx.io, in the editor. Reading works signed out; sign in from the launcher to post.',
+    order: 5.9,
+    // 🔴 Richard's call, 2026-08-19: the PEOPLE, not the question mark. A speech bubble names the
+    // mechanism (threads); this names who is on the other end, which is what the tab is for.
+    //
+    // ⚠️ `Users` had to be ADDED — the set had `User` (one person, a legacy 25-grid FILLED export)
+    // and `Group` (a grid of dots from the layout toolset, not people at all). Neither is a
+    // plural-people glyph, and `Group` would have been wrong in a way only a screenshot shows.
+    icon: IconName.Users,
+    panel: CommunityPanel
+  });
+
+  // 🔴 NAT-012 AC7 — and then take it back off, if D15 refuses this viewer.
+  //
+  // The registration above is unconditional and stays that way (D21 ships the panel; making one
+  // entry in this list wait on a network read is a change to everybody's boot). The gate resolves
+  // `/api/v1/me` and unregisters, which is the ONLY direction reachable from inside the editor —
+  // the argument is in `communityRailGate.ts`.
+  //
+  // ⚠️ Stopping the previous gate is load-bearing: this whole function runs again on every hot
+  // reload of this module (`EditorPage.tsx` resets `SidebarModel` and calls it), so without this
+  // every reload would leave another live `onCommunityChanged` subscription behind.
+  stopCommunityRailGate?.();
+  stopCommunityRailGate = installCommunityRailGate();
 
   SidebarModel.instance.register({
     experimental: true,
@@ -281,7 +364,15 @@ export function installSidePanel({ isLesson }: SetupEditorOptions) {
     id: 'backend-services',
     defaultWidth: 560,
     name: 'Backend Services',
-    isDisabled: isLesson === true,
+    // 🔴 TUT-005 — a lesson that grades against the database KEEPS this panel,
+    // and it is the only lesson exception in the rail. `log-a-thing` step 1 is
+    // "create a collection called LogEntries", and the Schema and Data surfaces
+    // open from a local backend's card in here (`backendSurfaces.tsx`) and from
+    // nowhere else — so disabling it for every lesson made that step, and the
+    // tutorial behind it, impossible to finish. `ensureLessonBackend` has
+    // already created and bound the backend by the time a learner opens this,
+    // so what they meet is their own lesson database, not an empty panel.
+    isDisabled: isLesson === true && lessonNeedsDatabase !== true,
     order: 8,
     // Was RestApi — a `{ }` braces glyph, i.e. "code". This panel is now the
     // database, auth, email, storage, search and triggers; REST is one facet of it.
@@ -421,6 +512,8 @@ export function installDocuments() {
   appRegistry.registerDocumentProvider(ComponentDiffDocumentProvider.ID, new ComponentDiffDocumentProvider());
   appRegistry.registerDocumentProvider(ChangeReviewDocumentProvider.ID, new ChangeReviewDocumentProvider());
   appRegistry.registerDocumentProvider(AuthoringPreviewDocumentProvider.ID, new AuthoringPreviewDocumentProvider());
+  appRegistry.registerDocumentProvider(ExpandedBuildDocumentProvider.ID, new ExpandedBuildDocumentProvider());
+  appRegistry.registerDocumentProvider(CodeFileDocumentProvider.ID, new CodeFileDocumentProvider());
 
   if (import.meta.webpackHot) {
     import.meta.webpackHot.accept('./views/documents/EditorDocument', () => {

@@ -1,0 +1,53 @@
+// @nodegx:generated (api module — provenance markers complete in EXP-007)
+import { useMemo, useSyncExternalStore } from 'react';
+
+import { logInRequest, logOutRequest, readSession, readSessionRaw, subscribeSession, type WireSession } from './client';
+
+export interface SessionUser {
+  id: string;
+  username?: string;
+  email?: string;
+}
+
+function toSessionUser(session: WireSession): SessionUser {
+  return { id: session.objectId, username: session.username, email: session.email };
+}
+
+/**
+ * Source: "Log Out Action" (net.noodl.user.LogOut `logout` on /Pages/Admin)
+ * Ends the session on the project's NodeGX backend.
+ * A failed request throws, which is what the graph's Failure path already handles.
+ */
+export async function logOut(): Promise<void> {
+  await logOutRequest();
+}
+
+/**
+ * Source: "Current User" (net.noodl.user.User `userCheck` on /Pages/Admin)
+ * Reads the signed-in user from the stored session — the same store a login
+ * writes — and re-renders when it changes. A server render sees "nobody is
+ * signed in", which is what the runtime's own session store answers there.
+ */
+export function useSession(): { authenticated: boolean; user: SessionUser | null } {
+  const raw = useSyncExternalStore(subscribeSession, readSessionRaw, readNoSession);
+  return useMemo(() => {
+    if (raw === undefined) return { authenticated: false, user: null };
+    const session = readSession();
+    return session === undefined
+      ? { authenticated: false, user: null }
+      : { authenticated: true, user: toSessionUser(session) };
+  }, [raw]);
+}
+
+function readNoSession(): string | undefined {
+  return undefined;
+}
+
+/**
+ * Source: "Log In Action" (net.noodl.user.LogIn `login` on /Pages/Admin Login)
+ * Signs in against the project's NodeGX backend and stores the session.
+ * A failed request throws, which is what the graph's Failure path already handles.
+ */
+export async function logIn(username: string, password: string): Promise<SessionUser> {
+  return toSessionUser(await logInRequest(username, password));
+}

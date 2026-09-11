@@ -123,16 +123,28 @@ describe('NDA-004: External Link', () => {
     else (global as { window?: unknown }).window = realWindow;
   });
 
-  function stubWindow(open: (...args: unknown[]) => unknown) {
-    (global as { window?: unknown }).window = { open };
+  /**
+   * 🔴 DEF-016 moved what "blocked" is read from. `open` returns null in every arm below,
+   * because that is what a real `window.open` returns once `noopener` is in the features
+   * string — which this node always sets for a new tab. The blocked case is now the one where
+   * `navigator.userActivation.isActive` is false.
+   */
+  function stubWindow(open: (...args: unknown[]) => unknown, activation?: { isActive: boolean }) {
+    (global as { window?: unknown }).window = {
+      open,
+      navigator: activation === undefined ? {} : { userActivation: activation }
+    };
   }
 
   /**
-   * The headline case. A popup blocker returns null from `window.open`, the tab never opens,
-   * and before this the author saw a button that simply did nothing.
+   * The headline case. A browser refuses a new tab opened outside a user gesture, the tab never
+   * opens, and before NDA-004 the author saw a button that simply did nothing.
+   *
+   * ⚠️ DEF-016: the *reading* of blocked moved, the case did not. It used to be inferred from a
+   * null return, which turned out to be null on success too.
    */
   test('a blocked new tab reports instead of failing silently', async () => {
-    stubWindow(() => null);
+    stubWindow(() => null, { isActive: false });
     const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
       link: 'https://example.com',
       openInNewTab: true
@@ -147,7 +159,7 @@ describe('NDA-004: External Link', () => {
   });
 
   test('an empty link reports rather than opening nothing', async () => {
-    stubWindow(() => ({}));
+    stubWindow(() => null, { isActive: true });
     const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', { link: '' });
 
     graph.node('node').setInputValue('do', true);
@@ -161,8 +173,8 @@ describe('NDA-004: External Link', () => {
     const opened: unknown[] = [];
     stubWindow((url: unknown) => {
       opened.push(url);
-      return {};
-    });
+      return null; // DEF-016 — what a `noopener` open returns on success.
+    }, { isActive: true });
     const graph = await graphWith(ExternalLinkModule, 'net.noodl.externallink', {
       link: 'https://example.com',
       openInNewTab: true

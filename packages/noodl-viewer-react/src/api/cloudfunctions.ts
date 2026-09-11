@@ -7,7 +7,8 @@ interface RequestOptions {
   content?: unknown;
   method?: string;
   success: (response: any) => void;
-  error: (response: any) => void;
+  /** DEF-026: `status` separates "answered with an error" from "never answered" (0). */
+  error: (response: any, status?: number) => void;
 }
 
 /**
@@ -32,7 +33,7 @@ function _makeRequest(path: string, options: RequestOptions): void {
 
       if (xhr.status === 200 || xhr.status === 201) {
         options.success(json);
-      } else options.error(json);
+      } else options.error(json, xhr.status);
     }
   };
 
@@ -88,8 +89,21 @@ const cloudfunctions = {
         success: (res) => {
           resolve(res ? res.result : undefined);
         },
-        error: (err) => {
-          reject(err);
+        // DEF-026: a connection refusal has no body, so `err` is `undefined` and
+        // this rejected with no reason at all — a caller's catch saw nothing.
+        // A JSON error body still passes through untouched (user code reads
+        // `err.error` off it), so only the empty case is filled, in the same shape.
+        error: (err, status) => {
+          reject(
+            err !== undefined
+              ? err
+              : {
+                  error:
+                    status === 0
+                      ? 'Could not reach the backend at ' + endpoint
+                      : 'Cloud function call failed with no response body'
+                }
+          );
         }
       });
     });

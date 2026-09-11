@@ -1,0 +1,224 @@
+{
+  "id": "comp-placement-contract-avatar",
+  "title": "The placement contract: a component that says how it sits in its parent",
+  "description": "Almost every component in the shipped prefab library exposes the same block — `alignX`, `alignY`, the four margins, `position`, a size and `mounted` — and an authored component almost never does. The consequence is visible in any page built without it: every instance sits inside a single-child `Group` that exists for nothing but pushing it around, and the page keeps that wrapper forever. Here the avatar's own `Component Inputs` carry the box, wired into the root Group's matching inputs, so the page below places the same component at two sizes, in two alignments, with two margins, and holds **no wrapper Groups at all**. ⚠️ The honest limit: ports nobody sets are cost, and this is a component used everywhere earning them — a leaf used once does not earn a long interface by imitation. Expose what a parent would otherwise have to work around, and stop. `clicked` is on the interface for the same reason: a photograph the page cannot respond to is a decoration.",
+  "demonstrates": ["Component Inputs", "Component Outputs", "Group", "Image", "Text"],
+  "components": [
+    {
+      "name": "/Components/Avatar",
+      "nodes": [
+        {
+          "id": "avatar_root",
+          "type": "Group",
+          "label": "Avatar — its own box, set by whoever places it",
+          "parameters": {
+            "sizeMode": "explicit",
+            "width": { "value": 48, "unit": "px" },
+            "height": { "value": 48, "unit": "px" },
+            "borderRadius": "var(--radius-full)",
+            "clip": true,
+            "backgroundColor": "var(--muted)"
+          },
+          "children": ["avatar_image"],
+          "x": 40,
+          "y": 260
+        },
+        {
+          "id": "avatar_image",
+          "type": "Image",
+          "label": "The photograph",
+          "parameters": {
+            "src": "noodl_modules/starter-imagery/avatar-2.webp",
+            "alt": "Portrait",
+            "sizeMode": "explicit",
+            "width": { "value": 100, "unit": "%" },
+            "height": { "value": 100, "unit": "%" },
+            "objectFit": "cover"
+          },
+          "parent": "avatar_root"
+        },
+        {
+          "id": "avatar_inputs",
+          "type": "Component Inputs",
+          "label": "Avatar interface in — the content, then the box",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            { "name": "src", "plug": "output", "type": "string" },
+            { "name": "alt", "plug": "output", "type": "string" },
+            { "name": "size", "plug": "output", "type": "number" },
+            { "name": "alignX", "plug": "output", "type": "string" },
+            { "name": "alignY", "plug": "output", "type": "string" },
+            { "name": "marginTop", "plug": "output", "type": "number" },
+            { "name": "marginRight", "plug": "output", "type": "number" },
+            { "name": "marginBottom", "plug": "output", "type": "number" },
+            { "name": "marginLeft", "plug": "output", "type": "number" },
+            { "name": "position", "plug": "output", "type": "string" },
+            { "name": "mounted", "plug": "output", "type": "boolean" }
+          ]
+        },
+        {
+          "id": "avatar_outputs",
+          "type": "Component Outputs",
+          "label": "Avatar interface out",
+          "x": 860,
+          "y": 260,
+          "ports": [{ "name": "clicked", "plug": "input", "type": "signal" }]
+        }
+      ],
+      "connections": [
+        { "fromId": "avatar_inputs", "fromProperty": "src", "toId": "avatar_image", "toProperty": "src" },
+        { "fromId": "avatar_inputs", "fromProperty": "alt", "toId": "avatar_image", "toProperty": "alt" },
+        { "fromId": "avatar_inputs", "fromProperty": "size", "toId": "avatar_root", "toProperty": "width" },
+        { "fromId": "avatar_inputs", "fromProperty": "size", "toId": "avatar_root", "toProperty": "height" },
+        { "fromId": "avatar_inputs", "fromProperty": "alignX", "toId": "avatar_root", "toProperty": "alignX" },
+        { "fromId": "avatar_inputs", "fromProperty": "alignY", "toId": "avatar_root", "toProperty": "alignY" },
+        { "fromId": "avatar_inputs", "fromProperty": "marginTop", "toId": "avatar_root", "toProperty": "marginTop" },
+        {
+          "fromId": "avatar_inputs",
+          "fromProperty": "marginRight",
+          "toId": "avatar_root",
+          "toProperty": "marginRight"
+        },
+        {
+          "fromId": "avatar_inputs",
+          "fromProperty": "marginBottom",
+          "toId": "avatar_root",
+          "toProperty": "marginBottom"
+        },
+        { "fromId": "avatar_inputs", "fromProperty": "marginLeft", "toId": "avatar_root", "toProperty": "marginLeft" },
+        { "fromId": "avatar_inputs", "fromProperty": "position", "toId": "avatar_root", "toProperty": "position" },
+        { "fromId": "avatar_inputs", "fromProperty": "mounted", "toId": "avatar_root", "toProperty": "mounted" },
+        { "fromId": "avatar_root", "fromProperty": "onClick", "toId": "avatar_outputs", "toProperty": "clicked" }
+      ]
+    },
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": { "title": "Team", "urlPath": "team" },
+          "children": ["shell"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell — no wrapper Groups around the avatars",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)",
+            "backgroundColor": "var(--background)"
+          },
+          "parent": "page",
+          "children": ["byline_row", "big_avatar", "who_text"]
+        },
+        {
+          "id": "byline_row",
+          "type": "Group",
+          "label": "Byline",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)"
+          },
+          "parent": "shell",
+          "children": ["small_avatar", "byline_text"]
+        },
+        {
+          "id": "small_avatar",
+          "type": "/Components/Avatar",
+          "label": "Small, in the row — placed by its own ports",
+          "parameters": {
+            "src": "noodl_modules/starter-imagery/avatar-4.webp",
+            "alt": "Tom Beckett",
+            "size": 32,
+            "alignX": "left",
+            "alignY": "center",
+            "marginTop": 0,
+            "marginRight": 0,
+            "marginBottom": 0,
+            "marginLeft": 0,
+            "position": "relative",
+            "mounted": true
+          },
+          "parent": "byline_row"
+        },
+        {
+          "id": "byline_text",
+          "type": "Text",
+          "label": "Byline text",
+          "parameters": {
+            "text": "Tom Beckett · baker, Tuesday to Saturday",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "byline_row"
+        },
+        {
+          "id": "big_avatar",
+          "type": "/Components/Avatar",
+          "label": "Same component, larger, centred, with a margin above it",
+          "parameters": {
+            "src": "noodl_modules/starter-imagery/avatar-6.webp",
+            "alt": "Amal Haddad",
+            "size": 96,
+            "alignX": "center",
+            "alignY": "top",
+            "marginTop": 8,
+            "marginRight": 0,
+            "marginBottom": 0,
+            "marginLeft": 0,
+            "position": "relative",
+            "mounted": true
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "who_text",
+          "type": "Text",
+          "label": "Who was pressed",
+          "parameters": {
+            "text": "Press a face to see who it is",
+            "fontSize": "var(--text-sm)",
+            "textAlignX": "center",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "name_pressed",
+          "type": "JavaScriptFunction",
+          "label": "Name the person that was pressed",
+          "parameters": {
+            "functionScript": "Outputs.name = Inputs.who ? Inputs.who + ' — on the counter this week' : 'Press a face to see who it is';"
+          },
+          "x": 760,
+          "y": 420
+        },
+        {
+          "id": "who_source",
+          "type": "String",
+          "label": "The name that goes with the big avatar",
+          "parameters": { "value": "Amal Haddad" },
+          "x": 480,
+          "y": 420
+        }
+      ],
+      "connections": [
+        { "fromId": "who_source", "fromProperty": "savedValue", "toId": "name_pressed", "toProperty": "in-who" },
+        { "fromId": "big_avatar", "fromProperty": "clicked", "toId": "name_pressed", "toProperty": "run" },
+        { "fromId": "name_pressed", "fromProperty": "out-name", "toId": "who_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

@@ -7,11 +7,27 @@ import { ExecutionOverlay } from '../CanvasOverlays/ExecutionOverlay';
 import { HighlightOverlay } from '../CanvasOverlays/HighlightOverlay';
 import { RecordingOverlay } from '../CanvasOverlays/RecordingOverlay';
 import { CanvasTabs } from '../CanvasTabs';
+import { navigateToTabComponent } from '../CanvasTabs/tabNavigation';
+import { saveDefinitionBlocks } from '../BlocklyEditor/MyBlocksLibrary';
+import {
+  describeParameterChange,
+  describeShapeChange,
+  usageLines
+} from '../BlocklyEditor/myblocks/libraryIntent';
+import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { ToastLayer } from '../ToastLayer/ToastLayer';
 import { EditorBanner } from '../EditorBanner';
 import { refFromComponentName } from '../../models/workflow/functionRefResolution';
 import { descentFor } from '../../models/workflow/workflowDescent';
 import { NodeGraphComponentTrail } from '../NodeGraphComponentTrail';
 import { CloudFunctionTrailStatus } from '../NodeGraphComponentTrail/CloudFunctionTrailStatus';
+import {
+  beginLogicOverlayDrag,
+  endLogicOverlayDrag,
+  sendLogicOverlayHome,
+  setLogicOverlayOpen,
+  updateLogicOverlayDrag
+} from './LogicOverlay';
 import { CenterToFitMode } from './canvas/types';
 
 import type { NodeGraphEditor } from '../nodegrapheditor';
@@ -41,16 +57,65 @@ export class OverlayViews {
         CanvasTabsProvider,
         null,
         React.createElement(CanvasTabs, {
-          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this)
+          onWorkspaceChange: this.handleBlocklyWorkspaceChange.bind(this),
+          /**
+           * VFN-009 — a settled edit in a **saved block's** tab.
+           *
+           * Supplied here for the same reason `onWorkspaceChange` is: the window renders a box of
+           * blocks and cannot see a shelf. It writes through `store.save({ id, … })` under the
+           * definition's own id, which is what makes editing a saved block an edit rather than a
+           * fork — every call block stores the id, so a body written under a fresh one would leave
+           * every call site pointing at the old copy.
+           */
+          onDefinitionChange: this.handleDefinitionWorkspaceChange.bind(this),
+          /**
+           * VFN-004 — clicking a tab takes the canvas to where its blocks live.
+           *
+           * Supplied here rather than reached for inside the window, for the same reason
+           * `onWorkspaceChange` is: the window renders a box of blocks and cannot see a node
+           * graph. `navigateToTabComponent` goes through `switchToComponent` — the door the
+           * components panel uses — and not through `Router.route()`, which is a silent no-op
+           * editor→editor and would look exactly like the dead click this replaces.
+           */
+          onTabActivate: (tab) => navigateToTabComponent(tab),
+          /**
+           * VFN-005 — *"put the window back where the app is not."*
+           *
+           * Supplied here for `overlayDrag`'s reason: the node graph frame's box and the viewport
+           * the window is clamped into are things the editor can read and the window cannot.
+           * 🔴 The frame is read as four numbers and never becomes the window's containing block
+           * — `position: fixed` escaping the frame's clip is what makes a 640px window possible
+           * on a 13" screen.
+           */
+          onSendHome: () => sendLogicOverlayHome(this.editor),
+          // LGC-010: the window reports pointer positions and the box it measured at
+          // `mousedown`; the editor owns the arithmetic, because the viewport it is clamped
+          // into is the whole document rather than anything the component can see.
+          overlayDrag: {
+            onDragStart: ({ handle, origin, pointerX, pointerY }) =>
+              beginLogicOverlayDrag(handle, origin, pointerX, pointerY),
+            onDrag: (pointerX: number, pointerY: number) => updateLogicOverlayDrag(this.editor, pointerX, pointerY),
+            onDragEnd: () => endLogicOverlayDrag(this.editor)
+          }
         })
       )
     );
   }
 
   /**
-   * Handle workspace changes from Blockly editor
+   * Handle workspace changes from Blockly editor.
+   *
+   * 🔴 `code` is `undefined` when generation **declined** (LGC-007 §3) — a cycle in the
+   * saved-block definition graph, a missing definition, a shape mismatch, a budget overrun.
+   * The blocks are still the user's edit and are still saved; the `generatedCode` parameter
+   * is **left exactly as it is**, so the node keeps running its last-known-good program.
+   *
+   * This is the point at which a refusal used to publish its silence: the empty string was
+   * written here and reached `project.json`, and reopening could not recover it because the
+   * cycle was still there and re-emptied it. The rule the class needs, stated once, here:
+   * **ask what a refusal path writes, not whether it warns.**
    */
-  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string) {
+  handleBlocklyWorkspaceChange(nodeId: string, workspace: string, code: string | undefined) {
     console.log(`[NodeGraphEditor] Workspace changed for node ${nodeId}`);
 
     const node = this.editor.findNodeWithId(nodeId);
@@ -59,14 +124,73 @@ export class OverlayViews {
       return;
     }
 
-    // Save workspace JSON to node model
+    // Save workspace JSON to node model. Unconditional: refusing to generate is not a reason
+    // to lose the blocks the user just edited.
     node.model.setParameter('workspace', workspace);
+
+    if (code === undefined) {
+      console.warn(
+        `[NodeGraphEditor] Blocks saved for node ${nodeId}, but generation declined — ` +
+          `keeping the previous generated code rather than emptying it.`
+      );
+      return;
+    }
 
     // Save generated JavaScript code to node model
     // This triggers the runtime's parameterUpdated listener which calls updatePorts()
     node.model.setParameter('generatedCode', code);
 
     console.log(`[NodeGraphEditor] Saved workspace and generated code for node ${nodeId}`);
+  }
+
+  /**
+   * VFN-009 — a settled edit in a saved block's tab, written back to the shelf.
+   *
+   * 🔴 **No node is touched and no `generatedCode` is written**, and that is acceptance criterion
+   * 3 rather than an omission: an edit to a definition does not rewrite the generated code of the
+   * nodes that use it. They regenerate on their own next edit — measured behaviour from LGC-007
+   * §6, which is also why the section says so in words instead of leaving a builder to find out.
+   *
+   * A cycle is refused here, by `store.save`, before anything is written, and the loop is named.
+   * The refusal is shown rather than swallowed: this feature has already shipped two refusals that
+   * published their silence, and the rule that came out of them is to ask what a refusal *writes*.
+   */
+  handleDefinitionWorkspaceChange(definitionId: string, workspace: string) {
+    let saved: ReturnType<typeof saveDefinitionBlocks>;
+
+    try {
+      saved = saveDefinitionBlocks(definitionId, workspace);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[NodeGraphEditor] The saved block ${definitionId} was not written:`, message);
+      ToastLayer.showError(message);
+      return;
+    }
+
+    if (!saved) return;
+    EventDispatcher.instance.emit('MyBlocks.LibraryChanged', { definitionId });
+
+    /**
+     * 🔴 Criterion 6 — a shape change names the call sites that are about to be refused.
+     *
+     * ⚠️ **The blocks are saved first, and that order is deliberate.** The author's edit is theirs
+     * and refusing to keep it is the one thing this feature must never do; what the warning
+     * changes is whether they find out now or on somebody else's next generate. `expandWorkspace`
+     * will throw `MyBlocksShapeError` at each of these call sites, by name — so this is reporting
+     * a refusal that is already written, which is exactly the boundary the task drew.
+     *
+     * Nothing here claims a flow is broken. See `libraryIntent.ts`.
+     */
+    const { change, usage } = saved;
+    if (!change.changed || !usage) return;
+
+    const shape = describeShapeChange(saved.definition.name, change, usage);
+    const params = describeParameterChange(saved.definition.name, change);
+    const message = [shape, params].filter(Boolean).join(' ');
+    if (!message) return;
+
+    const places = usage.total > 0 ? ' Used in: ' + usageLines(usage).join('; ') + '.' : '';
+    ToastLayer.showError(message + places);
   }
 
   /**
@@ -269,36 +393,15 @@ export class OverlayViews {
   }
 
   /**
-   * Set canvas visibility (hide when Logic Builder is open, show when closed)
+   * Open or close the Logic Builder's floating window (LGC-010).
+   *
+   * It was `setCanvasVisibility` (hid eight layers), then `setLogicPaneOpen` (split the shell).
+   * It now moves nothing but the window itself: the canvas keeps its full size and every layer
+   * stays exactly where it was. The body is in `LogicOverlay.ts` — no React in it, so it can be
+   * gated in a plain-Node runner.
    */
-  setCanvasVisibility(visible: boolean) {
-    const editor = this.editor;
-    const {
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      componentTrailRoot,
-      canvasHudRoot
-    } = editor.shell;
-
-    // Show/hide the canvas and related elements. The recording HUD goes with them: the Logic
-    // Builder takes the whole canvas over, and a Record pill floating on top of a Blockly
-    // workspace is a control over a surface it has nothing to say about.
-    const layers = [
-      canvas,
-      commentLayerBg,
-      commentLayerFg,
-      highlightOverlayLayer,
-      recordingOverlayLayer,
-      canvasHudRoot
-    ];
-    for (const el of layers) {
-      el.style.display = visible ? 'block' : 'none';
-    }
-    componentTrailRoot.style.display = visible ? 'flex' : 'none';
-    editor.domElementContainer.style.display = visible ? '' : 'none';
+  setLogicOverlayOpen(open: boolean) {
+    setLogicOverlayOpen(this.editor, open);
   }
 
   updateTitle() {

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "34c7ec70-9181-4806-8b9b-35c1b1371989",
+  "name": "ProductCard",
+  "path": "/Components/ProductCard",
+  "type": "visual",
+  "created": "2026-08-08T20:26:33.861Z",
+  "modified": "2026-08-08T20:26:33.861Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A product card with photo, name, description, price, optional discount badge, optional best-seller badge, and review count."
+}

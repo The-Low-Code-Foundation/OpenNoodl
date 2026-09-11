@@ -1,0 +1,409 @@
+/**
+ * Phase 54 — the design doctrine, as one text both clients speak.
+ *
+ * ## Why this file exists
+ *
+ * Richard's verdict on every AI-authored page up to 2026-08-08 was that it
+ * looked like *"basic bitch shit from a W3 Schools beginner tutorial"*, and the
+ * diagnosis has two halves that must not be confused.
+ *
+ * The first half was mechanical and is now fixed: five separate seams discarded
+ * the styling the model DID emit (`fontWeight` had no port at all, a `var()`
+ * token on a dimension port became `NaNpx` and deleted the property, `sizeMode`
+ * voided width/height/objectFit, there was no `box-sizing`, `alignItems` had no
+ * `stretch`). A prompt cannot fix a discarded parameter, and until 0.1.4 no
+ * amount of design guidance would have changed a pixel.
+ *
+ * The second half is this file. With the seams closed, the remaining gap was
+ * that **there was no design knowledge anywhere in the stack**. Measured at
+ * phase open: `authoring.ts` contained zero occurrences of composition,
+ * hierarchy, rhythm, whitespace, grid or imagery; of 51 validated catalog
+ * examples exactly one was about visual composition; and `get_style_vocabulary`
+ * described tokens and per-element variants — atoms, never an arrangement of
+ * them. The model was handed a paint set, nineteen visual node types, and no
+ * worked example of what a page looks like. It then did the only thing anyone
+ * could: stacked Groups and Texts in a column.
+ *
+ * ## Where the content came from
+ *
+ * Not from taste asserted in the abstract. Every rule below was either applied
+ * or discovered while building `ecommerce-example` (Kiln & Co.) end to end and
+ * MEASURING the result in `scripts/devtools/render-from-disk.js`. The mechanical
+ * rules in §8 are each a defect that was found in a rendered DOM and could not
+ * have been found by reading the graph — the cards that were all 1152px wide,
+ * the thirteen empty text boxes, the page that computed to Times.
+ *
+ * §"The order" was added by SBR-013 (phase 77) and it is the only section here
+ * that is about a SEQUENCE rather than about a page. It exists because phase 77
+ * measured what the rest of this file cannot prevent: eighteen honest tasks,
+ * every acceptance criterion met, and a template nobody would ship — because the
+ * look and the screen list were decided after the components that had to carry
+ * them, one leaf at a time. Every rule below was already true and none of them
+ * fired, because by the time a model reads §4 it has already chosen a colour.
+ *
+ * ⚠️ It names \`set_style_preset\` / \`set_project_tokens\` **and the `find_tools`
+ * door they sit behind**, which the budgeted `instructions` string cannot afford
+ * to do — that is the division of labour SBR-013 settled: `instructions` carries
+ * the ORDER (three clauses, net six characters cheaper than what it replaced),
+ * this file carries the REASONS and the tool names, and it rides free because a
+ * result field is outside the resident-surface budget.
+ *
+ * Step 3 of §"The order" is CMP-004 AC1 (phase 85). The server ships a 42-entry
+ * library and a working `install_prefab`, and a grep of the budgeted
+ * `instructions` string for "library", "shelf" or "reuse" returned NOTHING —
+ * so a model following the order faithfully built every part from scratch with
+ * the shelf sitting beside it. It lands here for the same reason the tool names
+ * do: this text rides in a result field and the resident surface, at the time,
+ * had six tokens of headroom.
+ *
+ * §0 and §7 were added after Richard reviewed the reference build and found the
+ * two things this file had missed. §0 because the page he was shown was 66
+ * nodes of inlined sections — the decomposition doctrine broken three commits
+ * after this one shipped beside it, which is now also a validator warning
+ * (`repeated-sibling-subtree`). §7 because the page did not survive a narrow
+ * viewport, and the reason is structural: `Columns` is the ONLY node in the
+ * runtime with any breakpoint concept, so every multi-column arrangement built
+ * from Groups is frozen at the width it was authored at.
+ *
+ * ## Why a shared module rather than two prompt strings
+ *
+ * AAQ-005's rule: one authoring substrate, two clients. This module imports
+ * NOTHING, which is what lets `noodl-mcp/src/editor-deps.ts` re-export it under
+ * the same containment rule as `decomposition.ts` — whose shape this file
+ * deliberately copies rather than inventing a second one.
+ *
+ * ## Why the rules are countable
+ *
+ * Same reason as `decomposition.ts`: "make it look designed" produces either no
+ * change or pastiche. Every rule that can carry a number carries one, so a model
+ * applying these cold reaches the same answer twice, and so the design gate can
+ * check the same thing the prompt asked for.
+ *
+ * @module AiAssistant/authoring/prompts/design
+ */
+
+/**
+ * The design doctrine, as project-facing markdown. Handed to external agents
+ * through `get_project_info.designDoctrine` and to the in-editor loop through
+ * the authoring system prompt.
+ */
+export const DESIGN_DOCTRINE_MD = `## What a designed page is made of
+
+A page that looks designed is not a styled version of a page that does not. It has a different
+STRUCTURE. Build the structure first and the styling has somewhere to land.
+
+### The order: the look, then the screens, then the shelf, then the components
+
+Two things are settled BEFORE the first component exists, and in this order:
+
+1. **The look.** Read \`get_style_vocabulary\`, pick ONE accent and a surface ramp, and write the
+   choice into the project rather than carrying it in your head — \`set_style_preset\` adopts a whole
+   coherent identity, \`set_project_tokens\` overrides individual values. Both sit in the deferred
+   \`theme\` group: call \`find_tools({group:"theme"})\` and they arrive in your next tool list.
+2. **The screens.** Name every page the app has and say, in one sentence each, what a person does on
+   it. That list is what the component tree is a decomposition OF.
+
+Then plan the components. Then, before authoring the first leaf:
+
+3. **The shelf.** Call \`list_library\` and read the index against your component tree, then
+   **ASK IT FOR EACH PART YOU WERE ABOUT TO BUILD**: \`list_library({query: "date formatter"})\`,
+   \`{query: "file upload"}\`, \`{query: "sanitise email"}\`. The query searches labels,
+   descriptions, tags and the component names entries ship, and answers best-first with the terms
+   that hit — so a part whose label says "Format" is found by somebody thinking "formatter". 🔴
+   **Do not decide from the tags.** They were typed by hand over years: one tag covers most of the
+   shelf, seven cover one entry each, and the only formatting entry is tagged \`Utilities\` while
+   every other utility is tagged \`Utility\` — a tag filter answers "no such thing" about parts
+   that are sitting there. This server ships installable entries — prefabs (accordions, app shells,
+   auth pages, cards and card grids, tables, forms, pickers, toasts, multi-selects, pagination,
+   ratings) and modules (charts, icons, maps, QR). Every row carries \`size\` — how many components
+   install and how many nodes they contain — because that is the whole trade: a 1-component,
+   4-node row is a part you wire into a graph, a 25-component, 155-node row is most of a screen.
+   Nothing is labelled "part" or "prefab"; the numbers are read off the entry itself, so they
+   cannot be typed wrong the way the tags were. \`get_library_entry({slug})\` says exactly which
+   components an entry brings;
+   \`install_prefab({slug})\` puts them in the project and NEVER overwrites what you already have,
+   reporting anything it skipped. An entry that matches a part of your tree is a part you do not
+   write, and it arrives with an interface the original Noodl team designed — ports, outputs and a
+   state machine — which is a better starting point than a leaf authored from nothing.
+
+Only then author them.
+
+4. **And when you have built something good, put it back.** \`export_to_library({component, slug,
+   label, description})\` takes a component out of this project and writes it to the shelf as an
+   installable entry — carrying the components it places, the styles and variants it uses, its
+   assets and any code module its nodes come from, so it renders in a project that has never seen
+   it. Design tokens travel by NAME, which is what makes an installed part wear the new project's
+   look instead of dragging this one's palette along. A part worth exporting is one you would reach
+   for again: a named utility, a section you got right, a control with a real interface.
+
+**Why this is an order and not just two more rules.** A look decided after the components is a
+repaint of every one of them, so it never actually happens: each component is already correct on its
+own terms, nobody wants to reopen it, and the app ships wearing whatever the first leaf authored
+happened to choose. The same is true of a screen list — a component tree invented before anyone said
+what the screens are is a guess that later screens have to be bent around.
+
+**Why the shelf is a step and not a footnote.** The library and the authoring path ship in the same
+server, and until CMP-004 nothing in the briefing mentioned it — so every part of every app was
+built from scratch beside a shelf of parts. Checking is one cheap call before the work; not checking
+costs the whole part, and costs it again on the next app. This is the same bargain as reaching for a
+CSS framework instead of writing the styles: you are not saving typing, you are inheriting decisions
+somebody already got right.
+
+**And why step 4 is what makes step 3 worth anything.** A shelf that is only ever read is a fixed
+set of parts that ages. A shelf that is also written to is a library that gets better every time
+anybody builds anything — which is the difference between every app inheriting the best component
+anyone has built and every app starting from nothing.
+
+**What "settled" means, stated so a person can check it:** somebody can open the project and read
+back the accent, the surface ramp and the page list before a single component has been authored. If
+they cannot, it is not settled — it is being decided one leaf at a time, which is the failure this
+section exists to stop.
+
+### 0. A page is an assembly of components, not a graph of nodes
+
+Everything below describes named, repeatable objects — a band, a section head, a card, a stat tile.
+**Each of those is a COMPONENT**, authored once and instantiated, not a subtree typed out again.
+This is the decomposition doctrine applied to layout, and it is the rule most often lost the moment
+a page starts looking good: the page ends up correct, handsome, and 66 nodes long.
+
+- A finished page component should read as a short list of instances — header, hero, feature strip,
+  listing, footer — and is usually **under ~15 nodes**. If a page graph is past ~25, it wanted to
+  be several components.
+- **Three structurally identical siblings is a validation warning**
+  (\`repeated-sibling-subtree\`), not a style preference. Three feature items, three pricing tiers,
+  three category cards: make one component and instantiate it three times, or drive a Repeater from
+  a data source when the copies differ only in their values.
+- A section that varies only by its words — an eyebrow, a heading, a sub-line — is one component
+  with Component Inputs, not three hand-written copies.
+
+Build the leaf components first, then the sections, then assemble the page from them. Doing it the
+other way round produces one long column that nobody can reuse a piece of.
+
+### 1. Every page is bands and a shell
+
+The spine of every page is the same three levels:
+
+- **Band** — full width, owns a background. Sections alternate between \`var(--background)\` and
+  \`var(--surface)\` (or one accent band) so the page reads as parts rather than a scroll.
+- **Shell** — inside each band, ONE centred container: \`width: 100%\`, \`maxWidth\` 1100–1280px,
+  \`paddingLeft\`/\`paddingRight\` of \`var(--space-6)\`. Centre it with \`alignItems: "center"\` on the band.
+- **Content** — inside the shell.
+
+Content that touches the viewport edge is the single loudest signal that nobody designed this.
+
+### 2. Sections are announced
+
+A section opens with an **eyebrow** (\`--text-xs\`, semibold, \`--tracking-widest\`, uppercase, in the
+accent colour), a **heading** (\`--text-3xl\`, semibold, \`--tracking-tight\`), and optionally one
+**sub-line** (\`--text-lg\`, \`--muted-foreground\`, \`maxWidth\` ~560px so it wraps at a readable measure).
+Then \`var(--space-10)\` of air before the content. Vertical padding on a section band is
+\`var(--space-20)\`. Three sizes of gap in one page is rhythm; nine is noise.
+
+### 3. Typography: the whole scale, at least three weights
+
+- Exactly ONE display headline per page: \`--display-lg\`, \`--font-bold\`, \`--leading-none\`,
+  \`--tracking-tighter\`. Tight tracking and tight leading are what make a large heading look set
+  rather than typed. \`--display-*\` sizes are fluid (see §7) — a headline that is 96px on Richard's
+  monitor is 44px on a phone from the same parameter, so there is no reason left to pick a small one.
+- A headline at \`--text-4xl\` or \`--text-5xl\` on a landing page is a section heading that got
+  promoted. If the biggest thing on the page is 48px, nothing on the page is a hero.
+- Section headings \`--text-3xl\`/\`--font-semibold\`; card titles \`--text-xl\`/\`--font-semibold\`;
+  body \`--text-base\`/\`--font-normal\`; secondary \`--text-sm\` in \`--muted-foreground\`.
+- **A page rendering at one font weight is not designed.** Aim for three or more distinct weights.
+  Set \`fontWeight\` explicitly — it is a real port and nothing infers it.
+- Never set \`fontFamily\` on ordinary text. The project's \`body\` already carries
+  \`var(--font-sans)\`; setting it per node only creates drift.
+
+### 4. Colour: one accent, spent carefully
+
+Six roles carry a whole page: \`--background\`, \`--surface\`, \`--foreground\`, \`--muted-foreground\`,
+\`--border\`, and ONE \`--primary\`. The accent appears on at most three kinds of thing (say: primary
+button, eyebrow, price) — an accent on everything is an accent on nothing. Emit
+\`var(--token)\` always; a raw hex in a parameter is a bug, not a shortcut.
+
+**Contrast is two rules, not one.** Text needs 4.5:1 against what is behind it. A **control's**
+border — an input, an outline button — is the only thing telling the user where that control is, so
+it needs 3:1; a decorative card hairline is exempt and should stay subtle. One border token cannot
+be both: keep \`--border\` for hairlines and a distinct \`--border-control\` at 3:1 for controls.
+Trying to make one token do both is how a real project ended up with 143 controls at 1.00:1.
+
+**Every band on a landing page does not get the same ground.** A page where no section ever changes
+what is behind it is the WordPress-starter tell, whatever the type does. \`Group\` has four ways to
+carry a ground and you should use at least three of them on a marketing page:
+
+- \`backgroundColor\` — a flat fill. \`var(--background)\` and \`var(--surface)\` alternating.
+- \`backgroundGradient\` — a gradient token: \`var(--gradient-brand)\` (the brand wash),
+  \`var(--gradient-deep)\` (ink into brand), \`var(--gradient-spotlight)\` (an off-centre glow),
+  \`var(--gradient-surface)\` (a quiet mid-page wash). Put \`var(--primary-foreground)\` text on the
+  first three; they are dark.
+- \`backgroundImage\` — a picture as the ground, with \`backgroundSize: "cover"\`.
+- **Both together.** \`backgroundGradient\` paints ON TOP of \`backgroundImage\`, so
+  \`var(--gradient-scrim)\` over a photograph is what keeps a headline readable on a picture you
+  have not seen. This is one node — never an \`Image\` with an absolutely-positioned \`Group\` over it.
+
+**Depth is an alpha fill, not \`opacity\`.** \`opacity\` on a \`Group\` fades its own children, so a
+see-through panel comes from \`backgroundColor: "var(--surface-glass)"\` with
+\`borderColor: "var(--border-glass)"\` and \`backdropBlur\` — the \`glassPanel\` composition. It reads
+only on a dark ground. \`boxShadowEnabled\` with a \`--shadow-*\` token lifts a card off its surface;
+\`position: "absolute"\` with \`zIndex\` overlaps two things deliberately. All of these are ordinary
+ports on \`Group\` — the absence a flat page is showing is never the engine's.
+
+### 5. Images and icons are not decoration
+
+A visual page with no \`Image\` and no \`Icon\` cannot look designed, and no amount of spacing will
+rescue it. Every listing gets a picture, every feature row gets an icon.
+
+**Every project created here already has both, offline.** You do not need a URL and you must not
+invent one:
+
+- \`noodl_modules/starter-imagery/\` — **44 real photographs**, CC0, already cropped for the job they
+  are for. Reference one as \`"noodl_modules/starter-imagery/work-welder.webp"\`. 🔴 **Get the list
+  from \`get_style_vocabulary\`'s \`imagery\` block and pick by SUBJECT**, not by guessing a filename:
+  \`hero\` (16:9 band grounds, chosen dark enough to carry display type), \`work\` (somebody making
+  something), \`people\`, \`food\`, \`animals\`, \`texture\` (surfaces) and \`avatar\` (256px squares
+  framed on a face — there are six DIFFERENT faces, and a testimonial row wearing one face three
+  times is the thing a reader notices before they read a word).
+  **A picture has to say something about the subject.** A page whose every image is the same
+  abstract is decorated, not designed — that page exists, it is the VIB-004 marketing demo, and
+  "the pictures communicate nothing" is precisely why it is not finished.
+- The same directory also holds six abstract SVGs (\`ground-aurora.svg\`, \`ground-ridge.svg\`,
+  \`tile-1/2/3.svg\`, \`portrait.svg\`). They are the fallback for when **no photograph would be
+  honest** about the subject — an app about accountancy is not improved by a stock welder. 🔴 Never
+  use a \`ground-*\` as a SUBJECT picture: they are designed to be dark and empty so text reads on
+  them, and \`ui-split-hero\` pointed its media column at \`ground-ridge.svg\` and rendered a black
+  rectangle at the top of the most-copied recipe in the corpus.
+- \`noodl_modules/lucide-icons/\` — the glyph set. 🔴 **Get the value from
+  \`get_style_vocabulary\`'s \`icons\` block and copy it whole.** An icon parameter is
+  \`{"class": "lucide", "code": "icon-check", "codeAsClass": true}\`, and all three fields matter:
+  \`class\` and \`codeAsClass\` come from the installed set's manifest, not from the glyph name, and
+  a value **missing \`codeAsClass\` renders the glyph's NAME as visible text**. The curated list is
+  a starting point rather than a ceiling — the bundled font carries all 1998 Lucide glyphs and the
+  stylesheet has a rule for every one, so any name from lucide.dev works with \`icon-\` in front of
+  it.
+
+- Give the image a real box: \`sizeMode: "explicit"\`, a \`width\`, a \`height\`, \`objectFit: "cover"\`.
+- Put it in a \`clip: true\` parent so the card's radius actually cuts the picture.
+- **An external URL is an unchecked claim.** A URL that 404s, or a photo of the wrong thing, undoes
+  every other decision on the page. If you have not seen it, use the starter imagery instead.
+
+### 6. Reuse recipes, do not re-decide
+
+🔴 **A band and a shell are one thing, not two.** Every full-width section is a \`band\` (or
+\`bandSurface\`) holding exactly ONE \`shell\` — \`maxWidth: 1200px\` with \`var(--space-6)\` either
+side — and everything else goes inside the shell. A band whose content is not in a shell runs edge
+to edge, and it is worse when the bands below it are inset: the reader sees three sections agree
+about the margin and one disagree, which reads as a bug rather than as a choice. **The gutter is
+the same on every band of a page or it is a mistake.**
+
+Before authoring, fix a handful of named parameter sets and reuse them verbatim: a \`card\`, a
+\`shell\`, a \`sectionHead\`, one \`primaryButton\`, one \`outlineButton\`, and a type ramp. A page whose
+cards disagree about their own radius reads as careless even when each card is defensible. Where a
+variant exists in the style vocabulary, copy its concrete parameters — \`variant\` and \`size\` are
+connection-only ports and setting them as parameters is discarded AND rejected.
+
+### 7. Responsive: \`Columns\` is the only thing that reflows
+
+**A \`Group\` never responds to width. There are no media queries and no breakpoints anywhere in the
+runtime except on one node.** A row of Groups is frozen at whatever proportions you authored, so a
+two-column hero stays two columns at 390px and a 32%-wide card becomes 120px wide. Everything on a
+page that is arranged in more than one column must therefore be a \`net.noodl.visual.columns\` node.
+
+- **Grid of unknown length** (products, posts, tiles): \`sizing: "autoFit"\` with a \`minWidth\` of
+  260–320px. No breakpoints to maintain — it fits as many columns as will hold that width and
+  reflows on its own. This is the right default for anything fed by a Repeater.
+- **A fixed arrangement** (a 2-up hero, a 3-up feature strip, a 4-up footer): \`layoutString\`
+  (\`"1 1"\`, \`"1 1 1"\`, \`"2 1"\` for an uneven split), plus \`mediumBreakpoint\`/\`mediumLayout\` and
+  \`smallBreakpoint\`/\`smallLayout\` to collapse it — typically \`"1"\` under about 700px.
+- Breakpoints are measured against the **container**, not the viewport, so the same component
+  behaves correctly inside a sidebar, a modal or a repeater cell.
+- A \`Columns\` node handles a Repeater child correctly: the Repeater itself is not a layout
+  participant, and its items each get a column box.
+- Use \`marginX\` for the gutter between \`Columns\` tracks; a percentage gap on a wrapped Group is a
+  desktop-only trick and stops being one the moment the layout must collapse.
+
+**Type scales through the token, not the port.** \`fontSize\` still has no responsive form — but
+\`--display-sm\`/\`--display-md\`/\`--display-lg\` are \`clamp()\` values, so one parameter gives you
+44px at 390px and 96px at 1900px with no breakpoint anywhere. Use them for the display headline and
+for any heading over a picture. The fixed \`--text-*\` sizes stay fixed and stay right for body,
+labels and section headings, where scaling with the window is wrong.
+
+Check the narrow width before saying it is done: nothing should exceed the viewport
+(\`el.getBoundingClientRect().width > window.innerWidth\`), and a multi-column band should have
+become one column.
+
+### 8. The mechanics that silently undo layout
+
+Each of these was found by measuring a rendered DOM, and none is visible in a graph:
+
+- **A wrapped flex row does not shrink its children; an unwrapped one does.** This is why a row of
+  Groups appears to work and a wrapped grid of them does not: without wrapping, children shrink to
+  share the width; with it, each item keeps whatever width it was given. If you must use a wrapped
+  Group at all, every item needs an explicit percentage track width AND a percentage gap
+  (\`width: 32%\` with \`columnGap: 2%\`). **Prefer \`Columns\` — see §7 — because a wrapped Group
+  cannot collapse at any width.**
+- **\`sizeMode\` gates other ports.** On \`Image\`, \`net.noodl.controls.button\` and \`textinput\`,
+  \`width\`/\`height\`/\`objectFit\` are INERT unless \`sizeMode: "explicit"\`. A \`width: 100%\` input that
+  renders 170px wide is this, every time.
+- **A dimension is \`{ value, unit }\`.** \`width\`, \`height\`, \`maxWidth\`, \`minWidth\` default to \`%\`,
+  so a bare \`width: 228\` renders at 228%. Units-typed numbers (padding, gap, radius, fontSize)
+  accept \`{value, unit}\` or a \`var(--token)\` string.
+- **Falsiness is free conditional rendering.** Wire a record field straight into a Group's
+  \`visible\` port: an empty \`badge\` string and a \`compareAtPrice\` of \`0\` then hide their own chrome
+  with no logic node. Without it, every row carries an empty pill.
+- **\`Text\` is not a box.** It has no background, padding, border or \`textDecoration\`. Wrap it in a
+  \`Group\` for the box; use \`styleCss\` for the rare CSS property no port covers (strikethrough).
+- Use the gap ports (\`rowGap\`, \`columnGap\`) for spacing between siblings, never margins on the
+  children — margins do not collapse the way a designer expects and leave the last item uneven.
+
+### 9. Design the empty and the loading state
+
+A list with no rows should say what it is and what to do, not render nothing. An empty state is a
+small designed object: icon, one line of explanation, one action.
+
+### 10. Words are part of the visual design
+
+Placeholder copy makes a competent layout look like a template. Write the real thing: specific,
+concrete, and in the product's own voice — "Between 20 and 60 of a thing, then we move on" rather
+than "High quality products". Numbers, materials and constraints read as designed; adjectives do
+not. Never ship "Lorem ipsum", "Welcome to our store", or "Card title".
+
+### 11. You have not finished until you have looked at it
+
+A graph is a claim; a render is evidence. Render the project, screenshot it, and measure the DOM
+before saying it is done. Three checks catch most of what goes wrong:
+
+1. \`document.documentElement.scrollWidth > clientWidth\` — something is overflowing.
+2. The set of \`getComputedStyle(el).fontWeight\` across text nodes — if it is \`{"400"}\`, there is no
+   hierarchy on the page.
+3. The \`offsetWidth\` of the items in a grid — if they all equal the container, the grid is a column.`;
+
+/**
+ * The planning-side text. Short on purpose: the planner is deciding what
+ * components exist, not how they look, and the one thing it must not do is plan
+ * a page as a single operation with no shared parts.
+ */
+export const DESIGN_PLANNING = `DESIGN
+THE ORDER: the LOOK, then the SCREEN LIST, then the components. Decide the project's identity ONCE,
+before any of the pages: read get_style_vocabulary and set the design tokens (one accent, a neutral
+surface ramp) with set_style_preset or set_project_tokens, so every later operation can reference
+var(--token) only. Then name every screen and what a person does on it — the component tree is a
+decomposition of THAT list. A look chosen after the components is a repaint of all of them, which is
+why it never happens: the app ships wearing whatever the first component authored picked.
+A page is bands (full-width, alternating background) each holding one centred max-width shell. Plan
+the shared visual parts as their own components — a site header, a footer, and one card component
+per repeated row — because a page that inlines them cannot keep them consistent with the next page.
+Anything repeated from a data source is one component plus a Repeater, never duplicated subtrees.`;
+
+/**
+ * The authoring-side preamble. Points at the doctrine and names the two things
+ * a single-component author most often gets wrong when it cannot see the page.
+ */
+export const DESIGN_AUTHORING = `DESIGN
+Follow the design doctrine: bands and a centred shell, an announced section head, three or more font
+weights, one accent colour, images with sizeMode "explicit", and gap ports rather than margins.
+Two failures are specific to authoring one component at a time. Anything arranged in more than one
+column must be a Columns node — a Group never responds to width: sizing "autoFit" with a minWidth of
+260-320px for repeats, or layoutString ("1 1", "2 1") plus mediumLayout/smallLayout for a fixed
+arrangement. And any parameter that varies per record should be a connection, including into the
+"visible" port — an empty string or a 0 there is how optional chrome hides itself without a logic
+node.`;

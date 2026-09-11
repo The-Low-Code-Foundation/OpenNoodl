@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "6c257a63-e3a4-5962-8708-4c19a7d4eb73",
+  "name": "SiteFooter",
+  "path": "/Sections/SiteFooter",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "194d44fb-f5a9-5dfd-82db-554a86de636f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "label",
+      "toId": "fdLabel",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "type",
+      "toId": "fdInput",
+      "toProperty": "type"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "edge",
+      "toId": "fdInput",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "message",
+      "toId": "fdMessage",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "messageColor",
+      "toId": "fdMessage",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "message",
+      "toId": "fdHasMessage",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "fdHasMessage",
+      "fromProperty": "asBoolean",
+      "toId": "fdMessage",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "fdInput",
+      "fromProperty": "onTextChanged",
+      "toId": "fdOutputs",
+      "toProperty": "text"
+    }
+  ]
+}

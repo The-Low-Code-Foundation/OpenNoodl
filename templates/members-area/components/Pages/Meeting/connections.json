@@ -1,0 +1,145 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "2db49227-5ca3-54b1-8b7d-3b236081db7e",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageInputs-2",
+      "fromProperty": "pm-meetingId",
+      "toId": "hold-4",
+      "toProperty": "in-meetingId"
+    },
+    {
+      "fromId": "page-6",
+      "fromProperty": "didMount",
+      "toId": "hold-4",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold-4",
+      "fromProperty": "out-meetingId",
+      "toId": "record-3",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "hold-4",
+      "fromProperty": "out-ready",
+      "toId": "record-3",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "record-3",
+      "fromProperty": "prop-title",
+      "toId": "title-2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-3",
+      "fromProperty": "prop-place",
+      "toId": "whenLabel-2",
+      "toProperty": "in-place"
+    },
+    {
+      "fromId": "record-3",
+      "fromProperty": "prop-details",
+      "toId": "details",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-3",
+      "fromProperty": "prop-when",
+      "toId": "whenLabel-2",
+      "toProperty": "in-when"
+    },
+    {
+      "fromId": "whenLabel-2",
+      "fromProperty": "out-label",
+      "toId": "when-3",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-3",
+      "fromProperty": "failure",
+      "toId": "refusalGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate-2",
+      "fromProperty": "result",
+      "toId": "refusal-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-4",
+      "fromProperty": "isModerator",
+      "toId": "removal-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "removeButton-2",
+      "fromProperty": "onClick",
+      "toId": "confirmGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmGate-2",
+      "fromProperty": "result",
+      "toId": "confirm-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "confirmNo-2",
+      "fromProperty": "onClick",
+      "toId": "confirmClear-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmClear-2",
+      "fromProperty": "result",
+      "toId": "confirm-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "hold-4",
+      "fromProperty": "out-meetingId",
+      "toId": "confirmed-2",
+      "toProperty": "in-meetingId"
+    },
+    {
+      "fromId": "confirmYes-2",
+      "fromProperty": "onClick",
+      "toId": "confirmed-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "confirmed-2",
+      "fromProperty": "out-meetingId",
+      "toId": "del-2",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "confirmed-2",
+      "fromProperty": "out-go",
+      "toId": "del-2",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "del-2",
+      "fromProperty": "done",
+      "toId": "toList-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "del-2",
+      "fromProperty": "failure",
+      "toId": "removeFailedGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "removeFailedGate-2",
+      "fromProperty": "result",
+      "toId": "removeFailed-2",
+      "toProperty": "mounted"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+
+# Machine-specific MCP registration: absolute paths to this install of NodeGX.
+# Each developer gets their own, written when the project is created or opened.
+.mcp.json

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "7d7b199f-df04-4dad-8719-74ce156fde6b",
+  "name": "AboutDialog",
+  "path": "/Components/AboutDialog",
+  "type": "visual",
+  "created": "2026-08-27T13:57:38.402Z",
+  "modified": "2026-08-27T13:57:38.402Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "The popup dialog: a card with a title, a body line and an OK button whose click closes the enclosing popup through Close Popup's \"ok\" close action; done raises the component's `closed` output."
+}

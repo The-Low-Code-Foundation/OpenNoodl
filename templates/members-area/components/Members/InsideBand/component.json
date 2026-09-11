@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "d1821b38-5985-556d-84ef-21ac14f36800",
+  "name": "InsideBand",
+  "path": "/Members/InsideBand",
+  "type": "visual",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "18b718e2-6764-56aa-8e4e-1d59fa74fff5",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "scInputs",
+      "type": "Component Inputs",
+      "label": "Where to go",
+      "ports": [
+        {
+          "name": "target",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "go",
+          "plug": "output",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "scFn",
+      "type": "JavaScriptFunction",
+      "label": "Find the section and scroll to it",
+      "parameters": {
+        "functionScript": "var target = Inputs.target;\nif (!target) { Outputs.missing(); return; }\n\nvar section = document.querySelector('.' + target);\nif (!section) { Outputs.missing(); return; }\n\n// The header sticks, so it covers the top of whatever we scroll to.\nvar header = document.querySelector('.site-header');\nvar headerHeight = header ? header.getBoundingClientRect().height : 0;\nvar top = section.getBoundingClientRect().top + window.scrollY - headerHeight;\n\nvar reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\nwindow.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });\nOutputs.done();",
+        "runOnChange-in-target": false
+      },
+      "x": 40,
+      "y": 160,
+      "ports": [
+        {
+          "name": "in-target",
+          "displayName": "target",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-missing",
+          "displayName": "missing",
+          "plug": "output",
+          "type": "signal",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-done",
+          "displayName": "done",
+          "plug": "output",
+          "type": "signal",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "scOutputs",
+      "type": "Component Outputs",
+      "label": "What happened",
+      "ports": [
+        {
+          "name": "done",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "missing",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 280
+    }
+  ]
+}

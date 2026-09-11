@@ -35,6 +35,21 @@ tasks/phase-N/TASK-XXX-short-name/
 
 [One clear sentence describing what this task accomplishes]
 
+## The person sentence — REQUIRED
+
+[One sentence, in the present tense, naming a PERSON and what is now true for them. It must be
+something someone could sit down and check without reading the diff.]
+
+> ✅ "The next person who builds an app through the door is told to settle the tokens and the screens
+> before authoring components."
+> ❌ "The MCP instructions gain design-first guidance." — that is the change, not the consequence.
+
+🔴 **This section is not decoration and it is not the Objective again.** Phase 77 wrote eighteen
+honest tasks, met every acceptance criterion on all of them, and produced a template nobody would
+ship — because no criterion was ever written from the user's side of the screen. Every criterion
+under **Success Criteria** below is checked against this sentence: a criterion that can be met while
+the sentence stays false is measuring the implementation instead of the outcome.
+
 ## Background
 
 [2-3 paragraphs explaining:
@@ -121,7 +136,12 @@ updating the fixture is part of the change.
 
 ## Success Criteria
 
-- [ ] Criterion 1
+🔴 **At least one criterion must be verifiable by a person, not by a test** — the person sentence
+above, restated as something to do and look at. Name what they open, what they do, and what they
+should see. A task whose every criterion is a green suite has been graded by the thing that was
+written to agree with it.
+
+- [ ] **Person-verifiable:** [what someone opens, does, and sees — no code reading]
 - [ ] Criterion 2
 - [ ] All tests pass
 - [ ] No TypeScript errors
@@ -278,3 +298,22 @@ grep -r "pattern" packages/
 - Result: [what happened]
 - Next: [what to try next]
 ```
+
+---
+
+## 🔴 Before you write the phase's handoff
+
+Read [`guidelines/PHASE-EXECUTION.md`](guidelines/PHASE-EXECUTION.md).
+
+A phase is graded on **acceptance criteria built**, not on defects found. The standing rule:
+
+> **A defect becomes the next session's first job ONLY if it blocks an acceptance criterion.**
+> Otherwise it is filed in the register with an owner, and the next session builds the next task.
+
+A `NEXT-SESSION-PROMPT.md` must open with **the task board**, re-derived from the task files, with
+every unbuilt task said in the words `⬜ never built` — then the next task to build, then the
+phase's end condition, and only then the defect register as an appendix.
+
+⚠️ **Do not copy the previous handoff's status table forward.** Phase 77 hid seven unbuilt tasks for
+two sessions that way, and carried one task as open for seventeen sessions after its own file said
+it was done.

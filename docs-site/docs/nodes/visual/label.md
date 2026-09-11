@@ -55,6 +55,9 @@ Do not use in new graphs — use Text instead.
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `for` | String | — | — |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `letterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |

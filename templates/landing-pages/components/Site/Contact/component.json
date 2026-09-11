@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e062b280-366c-5842-8655-d238ca2bf358",
+  "name": "Contact",
+  "path": "/Site/Contact",
+  "type": "visual",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

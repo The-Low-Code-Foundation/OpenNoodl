@@ -39,6 +39,12 @@ export class NodeGraphEditorNode {
   // 150px and the title allowance is already only 81px.
   public static readonly commentStripeWidth = 3;
 
+  // FIX-018 stacked-card edge. The offset is paint-only: it falls outside
+  // `pointInside` and the cull rect, so it must stay well under borderSize (7)
+  // — at 3px the gap between what you see and what you can grab is invisible,
+  // and growing it would open one you can feel.
+  public static readonly stackedCardEdgeOffset = 3;
+
   model: NodeGraphNode;
   x: number;
   y: number;
@@ -100,8 +106,11 @@ export class NodeGraphEditorNode {
 
     if (!health.healthy) {
       this.icon = this.owner?.icons.warning;
-    } else if (this.model.type instanceof ComponentModel && this.owner?.icons.component) {
-      this.icon = this.owner?.icons.component;
+      // FIX-018: component-ness used to be claimed here, one branch below the
+      // warning — a mutually exclusive chain, so an unhealthy component stopped
+      // looking like a component exactly when you most needed to know you could
+      // open it and look. The header chip and the stacked edge carry it now,
+      // and this slot is health's alone.
     } else if (this.id === ProjectModel.instance.getRootNode()?.id) {
       this.icon = this.owner?.icons.home;
     } else if (this.model.metadata?.AiAssistant) {
@@ -630,7 +639,11 @@ export class NodeGraphEditorNode {
         PopupLayer.instance.showPopup({
           content: popup,
           position: 'screen-center',
-          isBackgroundDimmed: true
+          isBackgroundDimmed: true,
+          // FIX-020 — the canvas comment editor, and the tallest of the five:
+          // it is the one `multiline` caller, so a shell pinned to a stale
+          // measurement clips the most here.
+          hasDynamicHeight: true
         });
       }, 100); // 100ms delay to be extra safe
     });

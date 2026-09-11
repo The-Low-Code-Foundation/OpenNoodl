@@ -11,7 +11,7 @@
     "done": "Fires once the outputs hold the freshly-read instant.",
     "completed": "Fires after every Read. This node has no other outcome."
   },
-  "examples": [],
+  "examples": ["bubble-is-this-date-overdue", "bubble-how-many-days-until", "bubble-round-a-date-down-to-the-month", "logic-date-formatting"],
   "patterns": [
     "Request receive → Now Read, then Date → Date Compare: 'is this due date in the past', answered on the server's clock.",
     "Now Date → Date Add (+30 days) → Date To String: a deadline, rendered."

@@ -1,0 +1,295 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [
+      {
+        "component": "/Sections/FeaturedProducts",
+        "nodeId": "fp_repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Speckled Stoneware Mug",
+          "Wheel-thrown with a matte reactive glaze — no two are quite alike.",
+          "128 reviews",
+          "Bud Vase Trio",
+          "Three narrow-neck vases in warm stoneware, sold as a set of three.",
+          "41 reviews"
+        ],
+        "found": 6,
+        "missing": []
+      }
+    ],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 3777,
+    "contentBottom": 3777,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 82,
+      "onScreen": 19,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 40,
+        "500": 4,
+        "600": 35,
+        "700": 3
+      },
+      "fontSizes": {
+        "20px": 2,
+        "14px": 35,
+        "12px": 21,
+        "48px": 1,
+        "18px": 15,
+        "16px": 3,
+        "30px": 2,
+        "24px": 3
+      },
+      "distinctFontSizes": 8,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 16,
+      "onScreen": 7,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1152,
+        "itemHeight": 300,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 6,
+        "columns": 3,
+        "rows": 2,
+        "itemWidth": 369,
+        "itemHeight": 391,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 6,
+        "columns": 1,
+        "rows": 6,
+        "itemWidth": 240,
+        "itemHeight": 17,
+        "parentWidth": 240,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 5,
+        "columns": 1,
+        "rows": 5,
+        "itemWidth": 240,
+        "itemHeight": 17,
+        "parentWidth": 240,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 4,
+        "rows": 1,
+        "itemWidth": 270,
+        "itemHeight": 17,
+        "parentWidth": 1152,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 4,
+        "rows": 1,
+        "itemWidth": 270,
+        "itemHeight": 34,
+        "parentWidth": 1200,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 240,
+        "itemHeight": 17,
+        "parentWidth": 240,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [
+      {
+        "component": "/Sections/FeaturedProducts",
+        "nodeId": "fp_repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Speckled Stoneware Mug",
+          "Wheel-thrown with a matte reactive glaze — no two are quite alike.",
+          "128 reviews",
+          "Bud Vase Trio",
+          "Three narrow-neck vases in warm stoneware, sold as a set of three.",
+          "41 reviews"
+        ],
+        "found": 6,
+        "missing": []
+      }
+    ],
+    "layoutWidth": 390,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 390,
+    "pageHeight": 6482,
+    "contentBottom": 6482,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 82,
+      "onScreen": 11,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 40,
+        "500": 4,
+        "600": 35,
+        "700": 3
+      },
+      "fontSizes": {
+        "20px": 2,
+        "14px": 35,
+        "12px": 21,
+        "48px": 1,
+        "18px": 15,
+        "16px": 3,
+        "30px": 2,
+        "24px": 3
+      },
+      "distinctFontSizes": 8,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 0,
+      "byText": {},
+      "samples": []
+    },
+    "images": {
+      "total": 16,
+      "onScreen": 3,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "siblings",
+        "count": 6,
+        "columns": 1,
+        "rows": 6,
+        "itemWidth": 342,
+        "itemHeight": 391,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 5,
+        "columns": 1,
+        "rows": 5,
+        "itemWidth": 342,
+        "itemHeight": 17,
+        "parentWidth": 342,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 342,
+        "itemHeight": 34,
+        "parentWidth": 390,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 300,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 6,
+        "columns": 1,
+        "rows": 6,
+        "itemWidth": 151,
+        "itemHeight": 17,
+        "parentWidth": 151,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 151,
+        "itemHeight": 17,
+        "parentWidth": 151,
+        "tag": "SPAN",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  }
+}

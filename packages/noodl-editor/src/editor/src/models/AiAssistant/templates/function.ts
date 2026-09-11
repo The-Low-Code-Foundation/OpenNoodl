@@ -1,3 +1,5 @@
+import { NOTATION_RULES } from '@noodl-core-ui/components/code-editor';
+
 import { AiClient } from '@noodl-models/AiAssistant/client/AiClient';
 import { AiNodeTemplate } from '@noodl-models/AiAssistant/interfaces';
 // The historical gpt-3/gpt-4 filenames are kept so the prompt history stays
@@ -39,17 +41,40 @@ export const template: AiNodeTemplate = {
   }
 };
 
+/**
+ * The notation rules every function prompt states, in the notation the runtime
+ * actually mines.
+ *
+ * ⚠️ FUN-001 F4, measured 2026-08-12. Every one of these prompts used to open
+ * with *"Inputs follow `Inputs[InputName]` format"* — unquoted brackets, which
+ * match **none** of `JavascriptNodeParser`'s six patterns
+ * (`javascriptnodeparser.js:294-387`). A model that obeyed the rule literally
+ * wrote a function whose ports never came into existence, and the prompt's own
+ * worked example contradicted it by using `Inputs.City`. The bracket form the
+ * runtime does mine is quoted: `Inputs["Input Name"]`.
+ *
+ * The one-line rule comes from `notation.ts`, so the sentence the AI reads and
+ * the sentence the editor shows a beginner cannot drift apart.
+ */
+const FUNCTION_NOTATION_RULES = `${NOTATION_RULES.function}
+
+Inputs are read-only. Use Inputs.Name where the name is a plain identifier, and Inputs["My Name"] — with quotes — where it is not.
+
+Outputs are written as "Outputs.Name = value", and variables don't store outputs.
+
+Signals are sent by calling "Outputs.SignalName()" without passing values. A signal name containing an underscore must be called as Outputs["Signal_Name"](), or it becomes a value port instead of a signal.
+
+Never write "Noodl.Inputs" or "Noodl.Outputs". They are a legacy alias that still works, and we do not write new code with them.
+
+Mentioning a name is what creates the port, so only name ports you mean to exist — including in comments, which are read the same way.
+
+For a default, read the input with an OR: const city = Inputs.City || 'Malmö'.`;
+
 export const FUNCTION_CODE_CONTEXT = `###Instructions###
 You are writing Noodl Javascript functions with the following rules:
-Inputs follow "Inputs[InputName]" format and are read-only. 
+${FUNCTION_NOTATION_RULES}
 
-Outputs follow "Outputs[OutputName] = value" format, and variables don't store outputs. 
-
-Signals are sent using "Outputs.SignalName()" without passing values. 
-
-Inputs and Outputs are global, and const should use Noodl inputs with OR operator and default value. 
-
-Call "Success" or "Failure" output signals accordingly. 
+Call "Success" or "Failure" output signals accordingly.
 
 Inputs and outputs can have human-readable string names. 
 
@@ -85,15 +110,9 @@ ONLY respond with javascript code following the instructions and starting and en
 
 export const FUNCTION_CODE_CONTEXT_EDIT = `###Instructions###
 You are writing Noodl Javascript functions with the following rules:
-Inputs follow "Inputs[InputName]" format and are read-only. 
+${FUNCTION_NOTATION_RULES}
 
-Outputs follow "Outputs[OutputName] = value" format, and variables don't store outputs. 
-
-Signals are sent using "Outputs.SignalName()" without passing values. 
-
-Inputs and Outputs are global, and const should use Noodl inputs with OR operator and default value. 
-
-Call "Success" or "Failure" output signals accordingly. 
+Call "Success" or "Failure" output signals accordingly.
 
 Inputs and outputs can have human-readable string names. 
 

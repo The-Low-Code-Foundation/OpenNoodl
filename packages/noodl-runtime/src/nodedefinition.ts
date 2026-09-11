@@ -87,6 +87,18 @@ function registerInput(object: SharedInputs, metadata: NodeMetadata, name: strin
     // descriptions NDA-003 wrote on the Variables nodes — about the very contract that task
     // established — reached no reader at all. Same shape as this phase's other inert fields.
     description: input.description,
+    // FB-015 — the shape hint the property panel shows in an empty field.
+    //
+    // 🔴 THIS LIST IS A SECOND FILTER, EARLIER THAN `formatPort`, and it is the one that catches
+    // people out. ERG-004 fixed a hand-copied duplicate *inside* `nodelibraryexport` and wrote up
+    // the lesson there; nothing recorded that a field also has to be named HERE, before the export
+    // ever sees the port. A field declared on the node definition and added to `formatPort` alone
+    // reaches the editor as `undefined`, with both halves of the code looking correct.
+    //
+    // Input-only, deliberately: an output port renders no editable field, so a placeholder on one
+    // has no reader. That matches `default`, `tab`, `popout` and `allowVisualStates`, which are
+    // already input-only here — it is the established shape, not a new asymmetry.
+    placeholder: input.placeholder,
     tab: input.tab,
     popout: input.popout,
     allowVisualStates: input.allowVisualStates,
@@ -244,13 +256,66 @@ function makeNodeInert(
   }
 }
 
+/**
+ * CN-015 — say *which* definition, in *which* kit, was rejected.
+ *
+ * 🔴 **Both throws below were anonymous, and the `category` one takes down the
+ * whole preview.** `registerModule` does not catch, so one kit node missing one
+ * field means `reactMounted: false` and `rootChildren: 0` — a blank app whose
+ * only signal was `Error: Node must have a category`, naming no kit, no node
+ * and no file. s27 hit it and read it as a dead renderer; the editor's node
+ * library then reads empty *because the viewer died*, which looks like a second
+ * fault and is not one.
+ *
+ * The names were already here. `registerModule` stamps `node.module` with the
+ * manifest name **before** calling `registerNode`, so by the time a kit's
+ * definition reaches this function both the kit and (in the `category` case)
+ * the node are in `opts` — `opts.name` is literally the next check.
+ *
+ * ⚠️ **Degrades rather than guesses.** A built-in is defined with no `module`,
+ * so it gets the node name alone; a definition missing `name` is called "a
+ * definition" and `registerModule` adds its position in the kit's `nodes` list.
+ * The prefix is kept verbatim (`Node must have a category`) because it is the
+ * string the extractor surfaces and existing callers match on.
+ */
+function describeDefinition(opts: NodeDefinitionOptions): string {
+  const parts: string[] = [];
+  // A definition missing its `name` has nothing to be called; `registerModule`
+  // supplies its position in the kit's `nodes` list, which is the only locator
+  // left in exactly that case.
+  parts.push(opts.name ? `node "${opts.name}"` : 'a definition');
+  // 'Unknown Module' is `registerModule`'s own fallback for a kit whose
+  // manifest name never arrived — passing it through says more than dropping it.
+  if (opts.module) parts.push(`in kit "${opts.module}"`);
+  return ` — ${parts.join(' ')}`;
+}
+
+/**
+ * The consequence, stated only where it is true. A built-in throwing is a bug in
+ * this repository, not something an author can act on, so it gets no advice.
+ *
+ * 🔴 **This sentence changed with ✅ D20 and had to.** It used to end *"and the
+ * preview renders nothing at all"*, which was accurate: the throw aborted
+ * `registerModule` mid-loop and the viewer never mounted. D20 made a kit's
+ * failure cost the kit, so that clause became a confident wrong answer — the
+ * exact shape of "shipping a capability turns a diagnostic into a lie". The
+ * blast radius is now the kit, and the message says the kit.
+ */
+function definitionFixHint(opts: NodeDefinitionOptions, field: string): string {
+  if (!opts.module) return '';
+  return (
+    ` Add a \`${field}\` to its definition: without one NONE of this kit's nodes register,` +
+    ' so every node from it is missing from the app. The rest of the app still runs.'
+  );
+}
+
 function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
   if (!opts.category) {
-    throw new Error('Node must have a category');
+    throw new Error(`Node must have a category${describeDefinition(opts)}.${definitionFixHint(opts, 'category')}`);
   }
 
   if (!opts.name) {
-    throw new Error('Node must have a name');
+    throw new Error(`Node must have a name${describeDefinition(opts)}.${definitionFixHint(opts, 'name')}`);
   }
 
   const metadata: NodeMetadata = {
@@ -274,9 +339,16 @@ function defineNode(opts: NodeDefinitionOptions): NodeDefinition {
     displayNodeName: opts.displayNodeName || opts.displayName,
     deprecated: opts.deprecated,
     haveComponentPorts: opts.haveComponentPorts,
+    // P77 SBR-008 §9 — ports under this prefix are declared by the author's wires. Carried
+    // through to the editor so it stops calling such a wire broken before the runtime has
+    // minted the port; see `data/dbmodelcrudbase.ts` for the deadlock that needs.
+    wireDeclaredPortPrefix: opts.wireDeclaredPortPrefix,
     version: opts.version,
     module: opts.module,
     docs: opts.docs,
+    // D10: a kit's documentation URL, kept apart from `docs` because that field
+    // is prose on a kit node and a URL on a shipped one.
+    docsUrl: opts.docsUrl,
     allowAsExportRoot: opts.allowAsExportRoot,
     nodeDoubleClickAction: opts.nodeDoubleClickAction,
     searchTags: opts.searchTags,

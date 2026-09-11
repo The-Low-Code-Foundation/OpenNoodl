@@ -3,6 +3,11 @@ const { useEffect, useRef, useState } = require('react');
 const React = require('react');
 const { default: useOnUnmount } = require('../../hooks/useOnUnmount');
 const PopupLayer = require('../popuplayer').default;
+const {
+  INITIAL_INSTRUCTION_STATE,
+  instructionDismissed,
+  instructionOpenDecision
+} = require('./lessoninstructionopen');
 
 function LessonItem({
   itemContent,
@@ -10,27 +15,43 @@ function LessonItem({
   hasNextButton,
   isComplete,
   isSelected,
-  showPopupWhenSelected,
   stepWidth,
-  performActions
+  performActions,
+  lessonFinished
 }) {
   const ref = useRef();
   const popoutRef = useRef();
 
   const [showPopup, setShowPopup] = useState(false);
 
+  /**
+   * FIX-027 §17 — whether this step has already shown its own instructions, and whether the
+   * learner has put them away. A ref, not state: the decision is read during an effect and must
+   * not itself cause a render, and it has to survive the re-renders `refresh()` fires on every
+   * `Model.*` event. See `lessoninstructionopen.ts` for why the trigger is the *transition* into
+   * a step rather than the render.
+   */
+  const instructionState = useRef(INITIAL_INSTRUCTION_STATE);
+
   useEffect(() => {
+    const decision = instructionOpenDecision(instructionState.current, {
+      isSelected,
+      hasPopupContent: Boolean(popupContent),
+      lessonFinished
+    });
+    instructionState.current = decision.next;
+
     //scroll into view when selected, and check if popup should be shown
     const scrollIntoView = async () => {
       await scrollToElement(ref.current);
-      showPopupWhenSelected && setShowPopup(true);
+      decision.open && setShowPopup(true);
     };
 
     if (isSelected) {
       scrollIntoView();
       performActions();
     }
-  }, [isSelected, popupContent]);
+  }, [isSelected, popupContent, lessonFinished]);
 
   //check if popup should be shown
   useEffect(() => {
@@ -52,7 +73,34 @@ function LessonItem({
       animate: true,
       offsetY: -8,
       manualClose: hasNextButton,
+      /*
+       * 🔴 P79 J2 — the instructions and the controls they describe are ONE surface.
+       *
+       * `showPopout` used to raise a full-screen blocker (`.popup-layer` is fixed,
+       * 100vw x 100vh, z-index 10; the lesson bar carries no z-index at all), so
+       * while the instructions were open every control in the bar sat UNDER it.
+       * Pressing CHECK MY WORK therefore landed on the blocker: the press dismissed
+       * the popout and the button never received it, so no grading pass ran. The
+       * learner lost their instructions and got no answer — and the recorded symptom,
+       * "the check removes the instructions and says nothing new", is exactly what a
+       * check that never ran looks like from the outside.
+       *
+       * Two facts have to hold together, which is why this is two options:
+       *   - `blockOutsideClicks: false` — the press reaches the button.
+       *   - `keepOpenWithin` — and pressing it does not throw the instructions away,
+       *     because the bar belongs to the same surface. Dismissing on it is also
+       *     REMEMBERED (`instructionDismissed` in `onClose`), so without this the
+       *     instructions would not come back on the next render either.
+       *
+       * Everything outside the bar still dismisses, exactly as before.
+       */
+      blockOutsideClicks: false,
+      keepOpenWithin: '.lesson-bottombar',
       onClose: () => {
+        // FIX-027 §17: closing has to be REMEMBERED. Without this the next re-render — and
+        // `refresh()` fires one on every `Model.*` event — reads as a fresh entry and re-opens
+        // what the learner just dismissed.
+        instructionState.current = instructionDismissed(instructionState.current);
         setShowPopup(false);
         ipcRenderer.send('viewer-show');
       }

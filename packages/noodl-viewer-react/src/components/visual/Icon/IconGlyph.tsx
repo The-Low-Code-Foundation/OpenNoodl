@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { sanitizeInlineSvg, stripRootSvgDimensions } from '../../../sanitize-inline-svg';
 import { Noodl } from '../../../types';
 
 /**
@@ -85,39 +86,20 @@ const SVG_STYLE: React.CSSProperties = {
 };
 
 /**
- * Strip everything executable out of an inline SVG source.
+ * Strip everything executable out of an inline icon SVG, then make it size with `iconSize`.
  *
- * Deliberately regex-based rather than DOM-based: this runs under SSR and inside
- * `testEnvironment: node`, where there is no parser to borrow. That makes it conservative by
- * construction — it removes more than a parser would in ambiguous cases, which is the right
- * direction for a trust boundary.
+ * 🔴 **The security rules moved to {@link sanitizeInlineSvg} and are no longer stated here.** §1
+ * of `NOTES-UNOWNED-NODE-WORK.md` gives the Shape node an `svgSource`, a second surface putting
+ * author-supplied markup through `dangerouslySetInnerHTML`; leaving the rules in this file would
+ * have made every future SVG surface depend on the icon component to be safe. That module also
+ * closes three constructs this function never covered — `<style>`, CSS `url()`, and SMIL, the
+ * last of which could rewrite an `href` *after* the rule above had passed over it.
  *
- * **The set is the trust boundary, not the author.** A project author can already write a
- * Function node, so they are not who this defends against — icon sets *travel*, through the
- * library import pipeline and project templates, and arrive from somewhere else.
+ * What stays here is the one rule that is genuinely about icons rather than about trust.
  */
 export function sanitizeInlineIconSvg(svg: string): string {
-  if (typeof svg !== 'string') return '';
-
-  return (
-    svg
-      // Script and foreignObject, with or without a closing tag.
-      .replace(/<script\b[\s\S]*?(?:<\/script\s*>|$)/gi, '')
-      .replace(/<foreignObject\b[\s\S]*?(?:<\/foreignObject\s*>|$)/gi, '')
-      // Every event handler attribute, quoted or bare.
-      .replace(/\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-      // Links: only same-document fragment references survive. That covers `<use href="#id">`,
-      // which is the only reference an inline set legitimately needs, and drops
-      // `javascript:` and remote URLs together rather than blocklisting schemes one at a time.
-      // The bare-value alternative must exclude quotes, or it matches a *quoted* fragment
-      // reference as an unquoted token starting at the `"` — which is not `#`, so the
-      // lookahead on the quoted branches never gets a say and `href="#glyph"` is stripped
-      // along with the rest.
-      .replace(/\s(?:xlink:)?href\s*=\s*(?:"(?!#)[^"]*"|'(?!#)[^']*'|(?!["'#])[^\s>]+)/gi, '')
-      // Fixed dimensions on the root element would beat the `1em` sizing above, so the glyph
-      // would ignore `iconSize`. Removed rather than overridden — an inline set that ships
-      // `width="24"` is the common case, not the exception.
-      .replace(/(<svg\b[^>]*?)\s(?:width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '$1')
-      .replace(/(<svg\b[^>]*?)\s(?:width|height)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '$1')
-  );
+  // Fixed dimensions on the root would beat the `1em` sizing above, so the glyph would ignore
+  // `iconSize`. The Shape node's custom source needs the same removal for its own `size` box,
+  // which is why the rule sits beside the sanitiser rather than in either component.
+  return stripRootSvgDimensions(sanitizeInlineSvg(svg));
 }

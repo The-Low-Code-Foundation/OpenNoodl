@@ -1,0 +1,169 @@
+{
+  "id": "bubble-round-a-date-down-to-the-month",
+  "title": "Group these records by month",
+  "description": "Bubble spells this `Date1 rounded down to month`, and it is really two different questions wearing one phrase. If you want a KEY to group by, that is Date To String — and it must be Date To String rather than Date Parts, because of a difference this example exists to show: Date Parts gives Month as a NUMBER 1-12, so `{year}-{month}` through String Format renders September as `2026-9`, which sorts after `2026-10` as text and quietly scrambles a grouped list. Date To String's `{month}` token is the zero-padded one, so the same key comes out `2026-09` and sorts correctly. The unpadded tokens there are `{m}` and `{d}`; the padded ones are `{month}` and `{date}`. If instead you want to COMPARE two dates rounded down — Bubble's `equals rounded down to month` — do not round at all: Date Compare's Granularity does the truncation internally, so setting it to Month answers 'same month' directly and there is no intermediate value to get wrong. Date Parts is still the right node when you want the fields themselves, and this shows that too: Day Name and ISO Week come off it, and ISO Week is genuinely ISO-8601, so 1 January 2027 is week 53 of 2026 rather than week 1 of 2027. Every field here is read in the host's local zone — on a server, whatever the container's TZ says — so when the zone is part of the answer, format through Date To String's Timezone input instead. The month key is published because grouping happens in the parent: the row can compute its own bucket, but only the list above it can put rows into buckets.",
+  "demonstrates": [
+    "net.noodl.DateParts",
+    "net.noodl.DateCompare",
+    "Date To String",
+    "String Format"
+  ],
+  "components": [
+    {
+      "name": "/Activity Row",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Activity row",
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "key_text",
+            "weekday_text",
+            "this_month_text"
+          ]
+        },
+        {
+          "id": "key_text",
+          "type": "Text",
+          "label": "2026-09",
+          "parent": "root"
+        },
+        {
+          "id": "weekday_text",
+          "type": "Text",
+          "label": "Thursday, ISO week 37",
+          "parent": "root"
+        },
+        {
+          "id": "this_month_text",
+          "type": "Text",
+          "label": "This month",
+          "parent": "root"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "Record in",
+          "ports": [
+            {
+              "name": "happenedAt",
+              "plug": "output",
+              "type": "date"
+            }
+          ]
+        },
+        {
+          "id": "clock",
+          "type": "net.noodl.Now",
+          "label": "Now"
+        },
+        {
+          "id": "month_key",
+          "type": "Date To String",
+          "label": "Sortable month key — {month} is padded",
+          "parameters": {
+            "formatString": "{year}-{month}"
+          }
+        },
+        {
+          "id": "parts",
+          "type": "net.noodl.DateParts",
+          "label": "The fields of the date"
+        },
+        {
+          "id": "weekday_label",
+          "type": "String Format",
+          "label": "Weekday and ISO week",
+          "parameters": {
+            "format": "{dayName}, ISO week {week}"
+          }
+        },
+        {
+          "id": "same_month",
+          "type": "net.noodl.DateCompare",
+          "label": "Same month as now — no rounding needed",
+          "parameters": {
+            "granularity": "month"
+          }
+        },
+        {
+          "id": "comp_outputs",
+          "type": "Component Outputs",
+          "label": "Interface out — plugged \"input\"",
+          "ports": [
+            {
+              "name": "monthKey",
+              "plug": "input",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "happenedAt",
+          "toId": "month_key",
+          "toProperty": "input"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "happenedAt",
+          "toId": "parts",
+          "toProperty": "input"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "happenedAt",
+          "toId": "same_month",
+          "toProperty": "a"
+        },
+        {
+          "fromId": "clock",
+          "fromProperty": "date",
+          "toId": "same_month",
+          "toProperty": "b"
+        },
+        {
+          "fromId": "month_key",
+          "fromProperty": "currentValue",
+          "toId": "key_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "parts",
+          "fromProperty": "dayName",
+          "toId": "weekday_label",
+          "toProperty": "dayName"
+        },
+        {
+          "fromId": "parts",
+          "fromProperty": "isoWeek",
+          "toId": "weekday_label",
+          "toProperty": "week"
+        },
+        {
+          "fromId": "weekday_label",
+          "fromProperty": "formatted",
+          "toId": "weekday_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "same_month",
+          "fromProperty": "same",
+          "toId": "this_month_text",
+          "toProperty": "visible"
+        },
+        {
+          "fromId": "month_key",
+          "fromProperty": "currentValue",
+          "toId": "comp_outputs",
+          "toProperty": "monthKey"
+        }
+      ]
+    }
+  ]
+}

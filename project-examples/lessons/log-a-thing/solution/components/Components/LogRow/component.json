@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "23e1f470-a43a-40e0-812a-b81ff63166e1",
+  "name": "LogRow",
+  "path": "/Components/LogRow",
+  "type": "visual",
+  "created": "2026-08-20T07:41:40.180Z",
+  "modified": "2026-08-20T07:41:40.180Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "One saved log entry, drawn as a single row. The Repeater on Pages/Home stamps this once per record, and each record's `title` property arrives on the Component Inputs node."
+}

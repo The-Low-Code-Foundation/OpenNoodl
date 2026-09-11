@@ -1,0 +1,360 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7651831b-6ed7-551e-861c-01904e380b3f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-8",
+      "type": "noodl.cloud.request",
+      "label": "notifyMembers(announcementId, siteUrl)",
+      "parameters": {
+        "params": "announcementId,siteUrl",
+        "ptype-announcementId": "string",
+        "preq-announcementId": true,
+        "ptype-siteUrl": "string",
+        "preq-siteUrl": false,
+        "allowNoAuth": false
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hold-2",
+      "type": "JavaScriptFunction",
+      "label": "Hold the id and the address of this site",
+      "parameters": {
+        "runOnChange-in-announcementId": true,
+        "runOnChange-in-siteUrl": true,
+        "functionScript": "if (Inputs.announcementId === undefined || String(Inputs.announcementId).length === 0) return;\nOutputs.announcementId = String(Inputs.announcementId);\n// 🔴 Scheme and host only. This string reaches every opted-in inbox, so\n// a caller must not be able to put a path, a query or a fragment in it —\n// and `new URL` throwing on rubbish is a `failure`, which is wired.\nlet origin = '';\ntry {\n  const u = new URL(String(Inputs.siteUrl || ''));\n  if (u.protocol === 'http:' || u.protocol === 'https:') origin = u.protocol + '//' + u.host;\n} catch (e) {\n  origin = '';\n}\nOutputs.origin = origin;\nOutputs.ok();"
+      },
+      "ports": [
+        {
+          "name": "out-ok",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-announcementId",
+          "displayName": "announcementId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-siteUrl",
+          "displayName": "siteUrl",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-announcementId",
+          "displayName": "announcementId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-origin",
+          "displayName": "origin",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "record",
+      "type": "DbModel2",
+      "label": "The announcement being mailed",
+      "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
+        "collectionName": "Announcement",
+        "idSource": "explicit"
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "wanting",
+      "type": "DbCollection2",
+      "label": "Members who asked to be told",
+      "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "collectionName": "Member",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualFilter": {
+          "combinator": "and",
+          "rules": [
+            {
+              "property": "notifyByEmail",
+              "operator": "equal to",
+              "value": true
+            }
+          ]
+        }
+      },
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "plan",
+      "type": "JavaScriptFunction",
+      "label": "Build the queue",
+      "parameters": {
+        "runOnChange-in-rows": false,
+        "runOnChange-in-title": false,
+        "runOnChange-in-body": false,
+        "runOnChange-in-origin": false,
+        "functionScript": "function tpl002Rows(raw) {\n  const list = raw && raw.items ? raw.items : (Array.isArray(raw) ? raw : []);\n  const out = [];\n  for (let i = 0; i < list.length; i++) {\n    const m = list[i];\n    const data = m && m.data ? m.data : m;\n    const id = m && typeof m.getId === \"function\" ? m.getId() : (data && (data.id || data.objectId));\n    out.push({ id: id, data: data || {} });\n  }\n  return out;\n}\n// Three producers — the query, the record and the request — so the\n// readiness guard is on all of them. `title` may legitimately be blank;\n// `undefined` is what \"has not arrived\" looks like.\nif (Inputs.rows === undefined || Inputs.title === undefined) return;\nconst rows = tpl002Rows(Inputs.rows);\nconst queue = [];\nlet unmailable = 0;\nlet firstError = '';\nfor (let i = 0; i < rows.length; i++) {\n  const d = rows[i].data;\n  const to = d.email === undefined || d.email === null ? '' : String(d.email).trim();\n  const token = d['unsubscribeToken'] === undefined || d['unsubscribeToken'] === null\n    ? '' : String(d['unsubscribeToken']);\n  if (to.length === 0) {\n    unmailable++;\n    if (!firstError) firstError = 'One member has no email address on their record.';\n    continue;\n  }\n  // 🔴 An address with no unsubscribe key is NOT mailed. Sending somebody\n  // mail they have no one-click way out of is the thing AC4 exists to\n  // prevent, and skipping loudly is the only alternative to doing it.\n  if (token.length === 0) {\n    unmailable++;\n    if (!firstError) firstError = 'One member’s record has no unsubscribe key, so they were not emailed.';\n    continue;\n  }\n  queue.push({ to: to, token: token });\n}\nconst title = Inputs.title === null ? '' : String(Inputs.title);\nconst body = Inputs.body === undefined || Inputs.body === null ? '' : String(Inputs.body);\nconst origin = Inputs.origin === undefined || Inputs.origin === null ? '' : String(Inputs.origin);\n// 🔴 **Written WHOLE, every time, and `Component` is not per-request.**\n// Measured, s14: a `planned` flag added here to stop a second plan\n// re-entering made every LATER request return before it answered — four\n// 30-second cloud-function timeouts — because `_componentScopes` is\n// keyed by the component instance id and those are reused between\n// invocations. So the scope survives the request that filled it, and\n// the only safe use of it is state that is overwritten on the way in.\n// See D35.\nComponent.tpl002 = {\n  queue: queue, at: 0, sent: 0, failed: unmailable, firstError: firstError,\n  title: title, body: body, origin: origin\n};\nif (queue.length === 0) {\n  Outputs.sent = 0;\n  Outputs.failed = unmailable;\n  Outputs.error = firstError;\n  Outputs.nobody();\n  return;\n}\nOutputs.next();"
+      },
+      "ports": [
+        {
+          "name": "out-next",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-nobody",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-title",
+          "displayName": "title",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-body",
+          "displayName": "body",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-origin",
+          "displayName": "origin",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-sent",
+          "displayName": "sent",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-failed",
+          "displayName": "failed",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "pump",
+      "type": "JavaScriptFunction",
+      "label": "One member, then the next",
+      "parameters": {
+        "runOnChange-in-outcome": false,
+        "runOnChange-in-error": false,
+        "functionScript": "const s = Component.tpl002;\n// Nothing to pump. Reachable only if `plan` threw, which is wired.\nif (!s) return;\n// Record the send this run is the answer to. The FIRST run comes from\n// `plan` and has no outcome to record, which is what `at === 0` means.\nif (s.at > 0) {\n  if (Inputs.outcome === 'sent') {\n    s.sent++;\n  } else {\n    s.failed++;\n    if (!s.firstError && Inputs.error) s.firstError = String(Inputs.error);\n  }\n}\nif (s.at >= s.queue.length) {\n  Outputs.sent = s.sent;\n  Outputs.failed = s.failed;\n  Outputs.error = s.firstError || '';\n  Outputs.finished();\n  return;\n}\nconst row = s.queue[s.at];\ns.at++;\n// The link is per-member, because the token is. `encodeURIComponent` is\n// not decoration: a token is opaque and may hold anything.\nconst link = s.origin.length > 0\n  ? s.origin + '/unsubscribe?token=' + encodeURIComponent(row.token)\n  : '';\nconst tail = link.length > 0\n  ? '\\n\\nTo stop receiving these emails, open this link — you do not need to sign in:\\n' + link\n  : '\\n\\nTo stop receiving these emails, sign in and turn them off on your account page.';\nOutputs.to = row.to;\nOutputs.subject = s.title.length > 0 ? s.title : 'A new announcement';\nOutputs.text = (s.title.length > 0 ? s.title + '\\n\\n' : '') + s.body + tail;\n// Rule 2 in its sharpest form: the address and the `Do` leave from this\n// node, in this order, so the mailer cannot be fired with the previous\n// member’s address still in flight.\nOutputs.send();"
+      },
+      "ports": [
+        {
+          "name": "out-send",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-finished",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-outcome",
+          "displayName": "outcome",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-error",
+          "displayName": "error",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-sent",
+          "displayName": "sent",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-failed",
+          "displayName": "failed",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-to",
+          "displayName": "to",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-subject",
+          "displayName": "subject",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-text",
+          "displayName": "text",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "mail",
+      "type": "noodl.cloud.sendemail",
+      "label": "One member",
+      "parameters": {},
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "sent",
+      "type": "JavaScriptFunction",
+      "label": "That one went",
+      "parameters": {
+        "functionScript": "Outputs.outcome = 'sent';\nOutputs.error = '';\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-outcome",
+          "displayName": "outcome",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 880
+    },
+    {
+      "id": "bad",
+      "type": "JavaScriptFunction",
+      "label": "That one did not",
+      "parameters": {
+        "runOnChange-in-error": false,
+        "functionScript": "Outputs.outcome = 'failed';\n// 🔴 Verbatim. When SMTP is unconfigured this string is\n// `EmailConfigState.notConfiguredReason()`, which names the Backend\n// Services panel — the one thing the moderator reading it has to open.\n// A sentence of our own here would drift out of date with the product.\nOutputs.error = Inputs.error === undefined || Inputs.error === null ? '' : String(Inputs.error);\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-error",
+          "displayName": "error",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-outcome",
+          "displayName": "outcome",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-error",
+          "displayName": "error",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 1000
+    },
+    {
+      "id": "res-8",
+      "type": "noodl.cloud.response",
+      "label": "What happened",
+      "parameters": {
+        "params": "sent,failed,error"
+      },
+      "x": 40,
+      "y": 1120
+    },
+    {
+      "id": "oops-3",
+      "type": "noodl.cloud.response",
+      "label": "The fan-out itself failed",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "The announcement was posted, but the emails could not be sent."
+      },
+      "x": 40,
+      "y": 1240
+    }
+  ]
+}

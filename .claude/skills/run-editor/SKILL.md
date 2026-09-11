@@ -20,10 +20,17 @@ npm run dev:debug -- --inspect-main  # also open a main-process inspector on :92
 Always launch in the background and wait for the compile — it takes 60-90s:
 
 ```bash
-nohup npm run dev:debug -- --quiet > /dev/null 2>&1 &
+# Bash tool: run_in_background: true — NOT nohup
+npm run dev:debug -- --quiet
 until grep -q "launching Electron" .logs/dev.log; do sleep 15; done
 sleep 30   # renderer bundle still has to load
 ```
+
+🔴 **Use the harness's `run_in_background`, not `nohup … &`.** `nohup` detaches the
+stack and it reparents to PID 1, which destroys the only thing that says whose it
+is. Attribution here is by **PPID** — see the trap below — and a stack whose
+parent is `init` cannot be attributed to your session by anyone, including you.
+`run_in_background` keeps it a child of the session that started it.
 
 `npm run dev` also works and now behaves correctly, but has no CDP endpoint.
 
@@ -43,6 +50,22 @@ manual escape hatch for when you just want to be certain.
 recompiling on every file change; a stack left running for hours is the reason
 this tooling exists. `dev:stop` only ever touches processes belonging to *this*
 checkout, so it is safe to run with a sibling worktree's stack up.
+
+🔴 **Killing your launcher pid is not the gentler alternative to `dev:stop`.** The
+watchdog `start.ts:74` spawns is watching that pid, and when it dies the watchdog
+runs the *same* sweep with `protectAncestors: false`
+(`scripts/devtools/dev-watchdog.js:45`) — `dev:stop` leaves it at its default
+`true` (`dev-processes.js:520`). The by-pid route is the *broader* of the two.
+
+✅ **What actually makes either one safe is the shields, not the command.**
+`NEVER_SWEEP` (`dev-processes.js:269`) matches MCP servers and running
+`test:ci` / `test:main` suites, and `sweep()` subtracts them along with their
+descendants on every call (`:534`). Both routes go through `sweep()`, so both
+inherit that. Witnessed 2026-08-15: 25 MCP servers survived a real `dev:stop`.
+
+⚠️ **The corollary is the one that bites** — anything that does *not* go through
+`sweep()` gets no shield at all, however careful its pattern looks. See the
+single-instance trap below.
 
 ## Inspect
 
@@ -149,15 +172,29 @@ source. If a change appears to have no effect, suspect a stale bundle before
 suspecting the change.
 
 **Single instance.** The app takes a single-instance lock; a second launch exits
-with "Noodl is already running". Kill the old one first:
+with "Noodl is already running". Kill the old one with `dev:stop`:
 
 ```bash
-pkill -f "OpenNoodl/node_modules/electron/dist"
-pkill -f "lerna exec"
+npm run dev:stop -- --list   # see what is actually running first
+npm run dev:stop
 ```
 
-Use those precise patterns. `pkill -f Electron` also matches VS Code, Discord and
-any other Electron app the user is running.
+🔴 **Do NOT `pkill -f "OpenNoodl/node_modules/electron/dist"`.** This doc taught
+that pattern and called it precise; it is not. **Every MCP server on this checkout
+runs from that same `electron/dist` binary**, one pair per live Claude session, so
+the pattern matches peers' servers rather than your editor. Measured 2026-08-16
+on an idle checkout: **13 processes matched it — 13 MCP servers, 0 editors.**
+`pkill -f "lerna exec"` matched 0 and reaches a sibling's stack when it does match.
+
+🔴 **And `pkill` is a raw signal, so it never reaches `sweep()`** — the
+`NEVER_SWEEP` shield that names `noodl-mcp.cjs` explicitly does not run. This is
+the one teardown route with no protection at all, which is why it is worse than
+either route described under *Stopping*.
+
+✅ **Attribute by PPID, never by the `electron/dist` path.** An MCP server's parent
+is its session; walk `ps -Ao pid,ppid,lstart,args` and print pids rather than
+counting them. `pkill -f Electron` is wider still — it also matches VS Code,
+Discord and every other Electron app the user is running.
 
 ## Tests
 

@@ -9,7 +9,10 @@
 
 import {
   authoringServerName,
+  buildBootstrapCommand,
+  BOOTSTRAP_SERVER_NAME,
   buildMcpCommands,
+  buildProjectRegistration,
   McpFrontDoor,
   projectSlug,
   quoteArg
@@ -34,6 +37,15 @@ function frontDoor(overrides: Partial<McpFrontDoor> = {}): McpFrontDoor {
       }
     },
     project: { dir: '/Users/me/Documents/My App', format: 'v2' },
+    // BST-004: the machine these MCP-001 assertions describe is one that has Node — which is the
+    // case decision 8 was written for, and the case that must not change.
+    runtime: {
+      hasNode: true,
+      nodePath: null,
+      electron: '/Applications/NodeGX.app/Contents/MacOS/NodeGX',
+      detection: 'path',
+      probed: []
+    },
     isPackaged: true,
     ...overrides
   };
@@ -99,18 +111,44 @@ describe('shell quoting', () => {
 });
 
 describe('the authoring command', () => {
-  it('is a fully substituted, quoted, user-scoped registration', () => {
+  it('is a fully substituted, quoted, project-scoped registration', () => {
     expect(authoringOf(frontDoor()).command).toBe(
-      'claude mcp add --scope user nodegx-my-app -- node ' +
+      'claude mcp add --scope project nodegx-my-app -- node ' +
         '/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs ' +
         '"/Users/me/Documents/My App" --allow-writes'
     );
   });
 
-  it('is scoped to the user, not to whatever directory it is pasted in', () => {
-    // `claude mcp add` defaults to `local`, which ties the registration to the terminal's cwd —
-    // a directory the editor cannot know. From anywhere else it would look like it had vanished.
-    expect(authoringOf(frontDoor()).command).toContain('--scope user');
+  it('is scoped to the project, because this server is bound to one directory', () => {
+    // FIX-008 C. `user` put a server bound to ONE project in front of an agent working in every
+    // other one. Measured 2026-08-16 against the real client: with only such a server visible the
+    // model reached for it 3 times out of 3 and tried to write into the wrong project; with the
+    // project's own server present it chose correctly 4 times out of 4.
+    expect(authoringOf(frontDoor()).command).toContain('--scope project');
+    expect(authoringOf(frontDoor()).scope).toBe('project');
+  });
+
+  it('names the directory it has to be run in, because the scope is resolved against the cwd', () => {
+    // `--scope project` is resolved against the shell's current directory and the CLI has no flag
+    // to override that, so the one thing that makes this command land correctly is invisible in
+    // the string. Pasted anywhere else it writes a .mcp.json into an unrelated folder and looks
+    // like it worked.
+    expect(authoringOf(frontDoor()).scopeNote).toContain('/Users/me/Documents/My App');
+  });
+
+  it('warns that the server lists as pending approval until the project is trusted', () => {
+    // Found by AC3's drive, 2026-08-16: a project-scope server lists as "⏸ Pending approval" where
+    // every user-scope one lists as "✔ Connected". That is Claude Code's trust prompt for a
+    // .mcp.json — correct, but a behaviour this scope change introduced, and without this sentence
+    // the reader pastes a working command and reads a status that does not say "connected".
+    expect(authoringOf(frontDoor()).scopeNote).toContain('pending approval');
+  });
+
+  it('tells the reader to remove a user-scope entry of the same name', () => {
+    // A user-scope registration silently shadows the project one — measured 2026-08-11, the
+    // project entry is simply absent from `claude mcp list`. This section is what created those
+    // entries, so it is the surface that has to mention removing them.
+    expect(authoringOf(frontDoor()).scopeNote).toContain('claude mcp remove --scope user nodegx-my-app');
   });
 
   it('asks for write access — an agent that cannot author is not the point', () => {
@@ -128,6 +166,15 @@ describe('the observe command', () => {
 
   it('is offered even when no project is open', () => {
     expect(observeOf(frontDoor({ project: null })).command).toBeTruthy();
+  });
+
+  it('stays user-scoped, because it is bound to no project at all', () => {
+    // FIX-008 C split the scope by surface rather than changing it everywhere. Observe attaches to
+    // whatever app is running, so "available in every directory" is the correct promise for it and
+    // project-scoping it would be a regression.
+    expect(observeOf(frontDoor()).command).toContain('--scope user');
+    expect(observeOf(frontDoor()).scope).toBe('user');
+    expect(observeOf(frontDoor()).scopeNote).toContain('any directory');
   });
 });
 
@@ -174,5 +221,168 @@ describe('the unavailable states', () => {
     const door = frontDoor({ project: null, isPackaged: false });
     door.servers['noodl-mcp'] = { ...door.servers['noodl-mcp'], entry: null, probed: ['/x'] };
     expect(authoringOf(door).unavailable).toContain('has not been built');
+  });
+});
+
+/**
+ * BST-003 — the bootstrap registration, which is a *different* command from the two above rather
+ * than a special case of one. It carries no project path, because the whole premise of the launcher
+ * card is that there is no project yet.
+ */
+describe('the bootstrap registration', () => {
+  it('names the server bare `nodegx`, with no project path anywhere in it', () => {
+    const { command } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain(' nodegx ');
+    expect(command).not.toContain('/Users/me/Documents/My App');
+  });
+
+  it('stays user-scoped after FIX-008 C, because it is bound to no project', () => {
+    // The split is per surface. This registration exists precisely for the case where there is no
+    // project directory yet, so there is no `.mcp.json` for a project scope to write into — and an
+    // agent asked to *create* a project must be able to reach it from wherever it is started.
+    expect(buildBootstrapCommand(frontDoor()).command).toContain('--scope user');
+  });
+
+  it('🔴 can never collide with a per-project registration', () => {
+    // Per-project names are always `nodegx-<slug>`, so the namespaces do not overlap — including
+    // for a project whose directory is literally called "nodegx".
+    expect(authoringServerName('/Users/me/nodegx')).toBe('nodegx-nodegx');
+    expect(authoringServerName('/Users/me/nodegx')).not.toBe(BOOTSTRAP_SERVER_NAME);
+  });
+
+  it('🔴 always carries --allow-writes, or create_project is not registered at all', () => {
+    const { command, registration } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain('--allow-writes');
+    expect(registration?.args).toContain('--allow-writes');
+  });
+
+  it('always uses the Electron runtime, even on a machine that has node', () => {
+    // The settings section prefers `node` for legibility; this card never shows its command by
+    // default and its audience is *defined* by not having node, so correctness wins.
+    const { registration } = buildBootstrapCommand(frontDoor({ runtime: { ...frontDoor().runtime } }));
+
+    expect(registration?.command).toBe('/Applications/NodeGX.app/Contents/MacOS/NodeGX');
+    expect(registration?.env).toEqual({ ELECTRON_RUN_AS_NODE: '1' });
+  });
+
+  it('🔴 the command and the registration describe the SAME thing', () => {
+    // Two renderings of one fact. If they drift, we connect one server and tell the user about
+    // another — and only one of the two is ever visible to check.
+    const { command, registration } = buildBootstrapCommand(frontDoor());
+
+    expect(command).toContain(registration!.command);
+    for (const arg of registration!.args) expect(command).toContain(arg);
+    for (const [key, value] of Object.entries(registration!.env)) {
+      expect(command).toContain(`-e ${key}=${value}`);
+    }
+  });
+
+  it('refuses with a reason when the bundle is missing, rather than half a command', () => {
+    const door = frontDoor();
+    door.servers['noodl-mcp'].entry = null;
+
+    const { command, registration, unavailable } = buildBootstrapCommand(door);
+
+    expect(command).toBeNull();
+    expect(registration).toBeNull();
+    expect(unavailable).toBeTruthy();
+  });
+});
+
+describe('BST-005 the registration written into a project’s .mcp.json', () => {
+  const DIR = '/Users/someone/Documents/Reading List';
+
+  it('🔴 F94 — carries the per-project name, never the bare `nodegx`', () => {
+    // Measured 2026-08-11: a user-scope registration silently shadows a project-scope one of the
+    // same name — the project entry is not listed at all. BST-003's launcher card registers
+    // `nodegx` at user scope, so the bare name here would hand a card user the UNBOUND bootstrap
+    // server inside a folder that is already a project. That is this phase's founding complaint,
+    // delivered by the file written to prevent it.
+    const { serverName } = buildProjectRegistration(frontDoor(), DIR);
+
+    expect(serverName).toBe('nodegx-reading-list');
+    expect(serverName).not.toBe(BOOTSTRAP_SERVER_NAME);
+  });
+
+  it('points at this project, with writes allowed', () => {
+    const { registration } = buildProjectRegistration(frontDoor(), DIR);
+
+    expect(registration).toEqual({
+      type: 'stdio',
+      command: 'node',
+      args: ['/Applications/NodeGX.app/Contents/Resources/noodl-mcp/noodl-mcp.cjs', DIR, '--allow-writes'],
+      env: {}
+    });
+  });
+
+  it('falls back to the bundled runtime on a machine with no Node', () => {
+    const door = frontDoor();
+    door.runtime = { hasNode: false, nodePath: null, electron: '/Applications/NodeGX.app/Contents/MacOS/NodeGX', detection: 'none', probed: [] };
+
+    const { registration } = buildProjectRegistration(door, DIR);
+
+    expect(registration!.command).toBe('/Applications/NodeGX.app/Contents/MacOS/NodeGX');
+    // 🔴 BST-004/F80 — load-bearing, and the naive test says otherwise.
+    expect(registration!.env).toEqual({ ELECTRON_RUN_AS_NODE: '1' });
+  });
+
+  it('returns no registration at all when the bundle is missing', () => {
+    const door = frontDoor();
+    door.servers['noodl-mcp'].entry = null;
+
+    // A folder carrying a registration that points at nothing is worse than one carrying none:
+    // the client reports a server that cannot start, and CLAUDE.md is where the reason belongs.
+    expect(buildProjectRegistration(door, DIR).registration).toBeNull();
+  });
+});
+
+/**
+ * FIX-021 slice B — the profile path reaching the registration, in both renderings.
+ *
+ * The value is resolved by main (only it can ask Electron for `userData`) and handed
+ * to this module, which has to put it in two places at once: the `claude mcp add`
+ * line a user pastes, and the registration NodeGX writes for them. Those two are
+ * built from one `ChosenRuntime`, which is what makes "carries it or omits it
+ * together" a property rather than a hope — and these rows are what would notice if
+ * somebody added it to only one of them.
+ */
+describe('FIX-021 slice B — the user profile variable', () => {
+  const PROFILE = '/Users/me/Library/Application Support/NodeGX/PREFERENCES.md';
+
+  it('puts the path in the pasted command and in the written registration alike', () => {
+    const door = frontDoor({ userProfilePath: PROFILE });
+
+    const bootstrap = buildBootstrapCommand(door);
+    expect(bootstrap.command).toContain(`-e NODEGX_USER_PREFERENCES=${PROFILE}`);
+    expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+
+    const project = buildProjectRegistration(door, '/Users/me/Documents/My App');
+    expect(project.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+  });
+
+  it('keeps the Electron flag beside it rather than replacing it', () => {
+    // 🔴 The launcher card is always-Electron, and `ELECTRON_RUN_AS_NODE` is
+    // load-bearing there (BST-004/F80). A profile variable that overwrote the env
+    // record instead of extending it would leave a registration that boots a GUI
+    // app with a dock icon — and would still look like a pass to a row that only
+    // asserted the profile arrived.
+    const bootstrap = buildBootstrapCommand(frontDoor({ userProfilePath: PROFILE }));
+    expect(bootstrap.registration?.env.ELECTRON_RUN_AS_NODE).toBe('1');
+    expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBe(PROFILE);
+  });
+
+  it('emits no variable at all when main did not resolve one', () => {
+    // ⚠️ Asserted as an absence, which is only meaningful because the rows above
+    // show the same builders emitting the key when there IS a path. An older main
+    // process sends nothing, and the server reads absent-variable as absent-feature.
+    for (const absent of [undefined, null]) {
+      const door = frontDoor({ userProfilePath: absent });
+      const bootstrap = buildBootstrapCommand(door);
+      expect(bootstrap.command).not.toContain('NODEGX_USER_PREFERENCES');
+      expect(bootstrap.registration?.env.NODEGX_USER_PREFERENCES).toBeUndefined();
+      expect(buildProjectRegistration(door, '/p').registration?.env.NODEGX_USER_PREFERENCES).toBeUndefined();
+    }
   });
 });

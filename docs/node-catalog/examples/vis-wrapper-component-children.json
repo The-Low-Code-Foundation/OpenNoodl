@@ -23,7 +23,7 @@
           "children": ["children_here"]
         },
         { "id": "children_here", "type": "Component Children", "label": "Insert content here", "parent": "content_slot" },
-        { "id": "frame_inputs", "type": "Component Inputs", "label": "Frame props" }
+        { "id": "frame_inputs", "type": "Component Inputs", "label": "Frame props", "ports": [{ "name": "title", "plug": "output", "type": "*" }] }
       ],
       "connections": [
         { "fromId": "frame_inputs", "fromProperty": "title", "toId": "frame_title", "toProperty": "text" }

@@ -106,6 +106,26 @@ describe('NDA-012 Cloud Services — Aggregate Records failure reporting', () =>
     expect(raised).toHaveLength(0);
   });
 
+  it('C6 (DEF-012): a filter that cannot be translated fails the node instead of aggregating unfiltered', () => {
+    const { instance, signals, raised, readErrorPort } = makeAggregate();
+    const internal = instance._internal as Record<string, unknown>;
+    instance.context = {}; // no editorConnection — the deployed backend's shape
+    internal.name = 'Chunk';
+    internal.storageSettings = {};
+    internal.queryParameters = { x: 'some-id' };
+    // `points to` with no cached schema is the known-firing translation failure
+    // (the same one SB-011 measured widening a Query Records node). Before this
+    // guard the throw escaped `fetch` and the node neither aggregated nor
+    // failed; the sibling defect in Query Records aggregated EVERY row.
+    internal.visualFilter = { combinator: 'and', rules: [{ property: 'owner', operator: 'points to', input: 'x' }] };
+
+    (instance.fetch as () => void)();
+
+    expect(signals).toContain('failure');
+    expect(raised).toHaveLength(1);
+    expect(String(readErrorPort())).toMatch(/schema/);
+  });
+
   it('C5: NDA-005 — the static ports carry descriptions', () => {
     expect(AggregateNode.inputs.aggregates.description).toBeTruthy();
     for (const name of Object.keys(AggregateNode.outputs)) {

@@ -10,7 +10,7 @@
     "failure": "Fires when there is no cryptographic random source here, leaving Id as it was.",
     "error": "Why no UUID could be generated."
   },
-  "examples": [],
+  "examples": ["bubble-mint-an-id-and-an-invite-token"],
   "patterns": [
     "Create Record with Id wired from this node: an id minted client-side lets the same request be retried safely."
   ],

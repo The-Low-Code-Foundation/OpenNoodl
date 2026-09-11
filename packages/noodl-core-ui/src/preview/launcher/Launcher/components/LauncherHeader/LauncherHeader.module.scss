@@ -142,6 +142,57 @@
   }
 }
 
+/* Frameless-window controls for Windows and Linux, where `frame: false` leaves
+   the window with no native buttons at all. Full-bleed to the trailing and top
+   edges (the -20px cancels the header padding) so the corner button is hit at
+   the very corner of the screen when maximised, as the platform expects. */
+.WindowControls {
+  display: flex;
+  align-self: stretch;
+  margin-right: -20px;
+  -webkit-app-region: no-drag;
+}
+
+.WindowControl {
+  width: 46px;
+  align-self: stretch;
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  transition: background-color 0.12s ease;
+
+  svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1;
+  }
+
+  &:hover {
+    background: var(--theme-color-bg-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+
+  /* The platform's destructive fill. `danger-dim` rather than `danger` because
+     only the dim step carries a white glyph legibly in BOTH themes — #d92d20
+     dark (4.8:1) and #b42318 light (6.7:1); `danger` in dark is #f97066, where
+     white lands at 2.8:1. The white is fixed because the fill is, which is why
+     it is `--base-color-white` and not a `--theme-color-fg-*`: a foreground that
+     flips with the theme would be measured against a background that does not. */
+  &.is-close:hover {
+    background: var(--theme-color-danger-dim);
+    color: var(--base-color-white);
+  }
+}
+
 .Avatar {
   width: 28px;
   height: 28px;

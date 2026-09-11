@@ -23,6 +23,12 @@
  * versioned docs paths precisely because nothing verified they resolved, and
  * `EXTERNAL_LINKS.docs` is the one URL that is known to.
  *
+ * FB-008 adds a fourth destination to POL-002's three — the community platform
+ * — and moves the whole list into `./helpCenterLinks`, which is where the
+ * reasoning for both now lives. In short: the origin is imported from
+ * `@noodl-models/community` rather than added to `EXTERNAL_LINKS`, because that
+ * constant is core-ui's and core-ui must not know about the platform.
+ *
  * Note that this is not the richer report path: ALPHA-007 §1 puts
  * `Help → Report a problem…` in the *native* menu, where the main process can
  * screenshot the editor in the click handler before any dialog paints over the
@@ -37,21 +43,9 @@ import { IconName, IconSize } from '@noodl-core-ui/components/common/Icon';
 import { IconButton, IconButtonVariant } from '@noodl-core-ui/components/inputs/IconButton';
 import { Portal } from '@noodl-core-ui/components/layout/Portal';
 import { MenuDialog } from '@noodl-core-ui/components/popups/MenuDialog';
-import { EXTERNAL_LINKS } from '@noodl-core-ui/constants/externalLinks';
 
 import css from './HelpCenter.module.scss';
-
-/**
- * This repository. The issue forms below live in `.github/ISSUE_TEMPLATE/`;
- * `blank_issues_enabled` is on, so `issues/new/choose` is a valid fallback if a
- * form is ever renamed.
- */
-const REPO_URL = 'https://github.com/The-Low-Code-Foundation/NodeGX';
-
-/** File an issue against one of `.github/ISSUE_TEMPLATE/`'s forms. */
-function issueForm(template: string): string {
-  return `${REPO_URL}/issues/new?template=${template}`;
-}
+import { HELP_CENTER_LINKS } from './helpCenterLinks';
 
 export function HelpCenter() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -71,18 +65,9 @@ export function HelpCenter() {
         triggerRef={rootRef}
         isVisible={isDialogVisible}
         onClose={() => setIsDialogVisible(false)}
-        items={[
-          { label: 'Documentation', onClick: () => platform.openExternal(EXTERNAL_LINKS.docs) },
-          { label: 'YouTube', onClick: () => platform.openExternal(EXTERNAL_LINKS.youtube) },
-          { label: 'Discord', onClick: () => platform.openExternal(EXTERNAL_LINKS.discord) },
-          'divider',
-          { label: 'Report a bug', onClick: () => platform.openExternal(issueForm('bug_report.yml')) },
-          {
-            label: 'Report a node behaving wrongly',
-            onClick: () => platform.openExternal(issueForm('node_report.yml'))
-          },
-          { label: 'Suggest a feature', onClick: () => platform.openExternal(issueForm('feature_request.yml')) }
-        ]}
+        items={HELP_CENTER_LINKS.map((entry) =>
+          entry === 'divider' ? entry : { label: entry.label, onClick: () => platform.openExternal(entry.url) }
+        )}
       />
     </Portal>
   );

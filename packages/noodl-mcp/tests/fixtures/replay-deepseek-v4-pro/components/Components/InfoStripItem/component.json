@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "61be71fb-e306-4be7-94f3-a03b4275eb94",
+  "name": "InfoStripItem",
+  "path": "/Components/InfoStripItem",
+  "type": "visual",
+  "created": "2026-08-08T20:26:55.871Z",
+  "modified": "2026-08-08T20:26:55.871Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A single trust-strip item: icon, bold title, and short description line."
+}

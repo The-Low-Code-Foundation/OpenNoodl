@@ -1,0 +1,539 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "ga11ery5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ga11ery5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Gallery Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "ga11ery5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "usernameInput",
+        "passwordInput",
+        "loginBtn",
+        "loginErrorText",
+        "whoText",
+        "pickBtn",
+        "uploadBtn",
+        "uploadErrorText",
+        "urlText",
+        "preview",
+        "captionInput",
+        "saveBtn",
+        "saveErrorText",
+        "savedText",
+        "avatarBtn",
+        "avatarErrorText",
+        "avatarNoteText",
+        "idInput",
+        "loadErrorText",
+        "captionText",
+        "storedUrlText",
+        "storedNameText",
+        "storedTypeText",
+        "storedSizeText",
+        "storedImg",
+        "signBtn",
+        "signedUrlText",
+        "signErrorText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Gallery Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 260
+    },
+    {
+      "id": "usernameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Username",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Username"
+      },
+      "x": 100,
+      "y": 320
+    },
+    {
+      "id": "passwordInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Password",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Password",
+        "type": "password"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "loginBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Log In",
+      "parent": "shell",
+      "parameters": {
+        "label": "Log In"
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "loginErrorText",
+      "type": "Text",
+      "label": "Login error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 500
+    },
+    {
+      "id": "whoText",
+      "type": "Text",
+      "label": "Who",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 560
+    },
+    {
+      "id": "pickBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Choose a photo",
+      "parent": "shell",
+      "parameters": {
+        "label": "Choose a photo"
+      },
+      "x": 100,
+      "y": 620
+    },
+    {
+      "id": "uploadBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Upload",
+      "parent": "shell",
+      "parameters": {
+        "label": "Upload"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "uploadErrorText",
+      "type": "Text",
+      "label": "Upload error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 740
+    },
+    {
+      "id": "urlText",
+      "type": "Text",
+      "label": "Stored url",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 800
+    },
+    {
+      "id": "preview",
+      "type": "Image",
+      "label": "Preview",
+      "parent": "shell",
+      "parameters": {
+        "width": "160px",
+        "height": "120px",
+        "objectFit": "cover"
+      },
+      "x": 100,
+      "y": 860
+    },
+    {
+      "id": "captionInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Caption",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Caption"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "saveBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Save photo",
+      "parent": "shell",
+      "parameters": {
+        "label": "Save photo"
+      },
+      "x": 100,
+      "y": 980
+    },
+    {
+      "id": "saveErrorText",
+      "type": "Text",
+      "label": "Save error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1040
+    },
+    {
+      "id": "savedText",
+      "type": "Text",
+      "label": "Saved",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1100
+    },
+    {
+      "id": "avatarBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Use as avatar",
+      "parent": "shell",
+      "parameters": {
+        "label": "Use as avatar"
+      },
+      "x": 100,
+      "y": 1160
+    },
+    {
+      "id": "avatarErrorText",
+      "type": "Text",
+      "label": "Avatar error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1220
+    },
+    {
+      "id": "avatarNoteText",
+      "type": "Text",
+      "label": "Avatar note",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1280
+    },
+    {
+      "id": "idInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Photo id",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "a photo id"
+      },
+      "x": 100,
+      "y": 1340
+    },
+    {
+      "id": "loadErrorText",
+      "type": "Text",
+      "label": "Load error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1400
+    },
+    {
+      "id": "captionText",
+      "type": "Text",
+      "label": "Caption read",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1460
+    },
+    {
+      "id": "storedUrlText",
+      "type": "Text",
+      "label": "Stored url read",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1520
+    },
+    {
+      "id": "storedNameText",
+      "type": "Text",
+      "label": "Stored name read",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1580
+    },
+    {
+      "id": "storedTypeText",
+      "type": "Text",
+      "label": "Stored type read",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1640
+    },
+    {
+      "id": "storedSizeText",
+      "type": "Text",
+      "label": "Stored size read",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1700
+    },
+    {
+      "id": "storedImg",
+      "type": "Image",
+      "label": "Stored image",
+      "parent": "shell",
+      "parameters": {
+        "width": "160px",
+        "height": "120px",
+        "objectFit": "cover"
+      },
+      "x": 100,
+      "y": 1760
+    },
+    {
+      "id": "signBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Sign the stored link",
+      "parent": "shell",
+      "parameters": {
+        "label": "Sign the stored link"
+      },
+      "x": 100,
+      "y": 1820
+    },
+    {
+      "id": "signedUrlText",
+      "type": "Text",
+      "label": "Signed url",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1880
+    },
+    {
+      "id": "signErrorText",
+      "type": "Text",
+      "label": "Sign error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1940
+    },
+    {
+      "id": "login",
+      "type": "net.noodl.user.LogIn",
+      "label": "Log In Action",
+      "x": 600,
+      "y": 440
+    },
+    {
+      "id": "me",
+      "type": "net.noodl.user.User",
+      "label": "Current User",
+      "x": 600,
+      "y": 500
+    },
+    {
+      "id": "picker",
+      "type": "Open File Picker",
+      "label": "Photo picker",
+      "x": 600,
+      "y": 560,
+      "parameters": {
+        "acceptedFileTypes": "image/*"
+      }
+    },
+    {
+      "id": "upload",
+      "type": "Upload File",
+      "label": "Photo upload",
+      "x": 600,
+      "y": 620
+    },
+    {
+      "id": "cloud",
+      "type": "Cloud File",
+      "label": "Stored photo",
+      "x": 600,
+      "y": 680
+    },
+    {
+      "id": "create",
+      "type": "NewDbModelProperties",
+      "label": "Save the photo",
+      "x": 600,
+      "y": 740,
+      "parameters": {
+        "collectionName": "Photo"
+      }
+    },
+    {
+      "id": "lastSavedSet",
+      "type": "Set Variable",
+      "label": "Remember the save",
+      "x": 600,
+      "y": 800,
+      "parameters": {
+        "name": "lastSaved"
+      }
+    },
+    {
+      "id": "lastSavedRead",
+      "type": "Variable2",
+      "label": "Last saved",
+      "x": 600,
+      "y": 860,
+      "parameters": {
+        "name": "lastSaved"
+      }
+    },
+    {
+      "id": "setProps",
+      "type": "net.noodl.user.SetUserProperties",
+      "label": "Set the avatar",
+      "x": 600,
+      "y": 920
+    },
+    {
+      "id": "avatarNoteSet",
+      "type": "Set Variable",
+      "label": "Remember the avatar",
+      "x": 600,
+      "y": 980,
+      "parameters": {
+        "name": "avatarNote"
+      }
+    },
+    {
+      "id": "avatarNoteRead",
+      "type": "Variable2",
+      "label": "Avatar note",
+      "x": 600,
+      "y": 1040,
+      "parameters": {
+        "name": "avatarNote"
+      }
+    },
+    {
+      "id": "avatarWord",
+      "type": "String",
+      "label": "The avatar note",
+      "x": 600,
+      "y": 1100,
+      "parameters": {
+        "value": "avatar saved"
+      }
+    },
+    {
+      "id": "photoIdVar",
+      "type": "Variable2",
+      "label": "Photo id",
+      "x": 600,
+      "y": 1160,
+      "parameters": {
+        "name": "photoId"
+      }
+    },
+    {
+      "id": "record",
+      "type": "DbModel2",
+      "label": "The photo",
+      "x": 600,
+      "y": 1220,
+      "parameters": {
+        "collectionName": "Photo",
+        "idSource": "explicit"
+      }
+    },
+    {
+      "id": "cloud2",
+      "type": "Cloud File",
+      "label": "Stored photo read",
+      "x": 600,
+      "y": 1280
+    },
+    {
+      "id": "sign",
+      "type": "Sign File URL",
+      "label": "Stored link",
+      "x": 600,
+      "y": 1340
+    }
+  ]
+}

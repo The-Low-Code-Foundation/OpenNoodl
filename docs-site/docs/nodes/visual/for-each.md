@@ -93,6 +93,18 @@ Two dynamic mechanisms: `template`/`templateScript` swap in and out based on `te
 
 The canonical data-list shape. Query Records (DbCollection2) fetches a database class and exposes the result on its `items` array output; the Repeater (For Each) consumes that array and instantiates its `template` component once per record. Each record's properties are delivered to the item component through Component Inputs whose names match the record's property names — the item component reads them like any other input. The Repeater and its item template component are separate components by design.
 
+**Card grid: Query Records into a Repeater, in a Columns node that reflows on its own**
+
+The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing "autoFit" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.
+
+**A rich-text editor with a toolbar and local drafts**
+
+The larger companion to the single-button component: a `Static Data` node holds the list of toolbar commands, a `For Each` draws one button per entry, and the editor itself is mounted by a `JavaScriptFunction` onto a `Group`'s element. Two details are worth more than the editor. The draft is saved to `localStorage` on a `Timer` and read back on mount, which is the whole of 'don't lose my work' and costs two function nodes. And `Model2` plus `SetModelProperties` keep the document in the project's own data model rather than only inside the third-party editor, so something other than the editor can read what was typed. ⚠️ The toolbar is driven by data, so adding a command is a row in the `Static Data` node — not a new button.
+
+**A wrapping row of content-width items, with no CSS**
+
+Items that keep their own width and flow onto the next line when they run out of room — the layout a chip row, a filter bar or a tag list wants, and one people reach for a `CSS Definition` node to get. It needs no CSS: the container is a **Group** with `Multi Line Wrap` on, `Layout` set to row, a `Column Gap` and a `Row Gap` (the two gap ports only appear once wrapping is on) and `Align Y` at top, and each item is a **Group** at `Content Size`. ⚠️ That last part is the half that is usually missed. An item at `Content Size` gets no width of its own, and the runtime gives every node `flex-shrink: 0` and only grants `flex-grow` to a percentage width — so `Content Size` already *is* `flex: 0 0 auto`, and an item left at `100%` instead becomes `flex-grow: 100` and swallows the whole line. 🔴 This is not masonry: rows are laid out independently and nothing balances columns or packs items upward by height.
+
 ## Related nodes
 
 [Query Records](../cloud-services/db-collection2.md), [Component Inputs](../component-utilities/component-inputs.md), [Component Outputs](../component-utilities/component-outputs.md), [Repeater Item](../data/for-each-actions.md), [Static Array](../data/static-data.md)

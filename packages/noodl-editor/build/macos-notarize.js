@@ -56,19 +56,40 @@ module.exports = async function notarizeHook(context) {
 
   // Apple will not notarise an app that is not signed with a Developer ID, and
   // the error it returns for one is unhelpful and arrives after a long upload.
-  // On CI the *only* source of a Developer ID is CSC_LINK, so "Apple
-  // credentials but no certificate" is knowable here, cheaply, and is the exact
-  // half-provisioned state a human lands in when the five secrets are added one
-  // at a time. Fail with the reason instead of with Apple's.
+  // "Apple credentials but no certificate" is knowable here, cheaply, and is the
+  // exact half-provisioned state a human lands in when the five secrets are
+  // added one at a time. Fail with the reason instead of with Apple's.
   //
-  // Deliberately CI-only: a local build can legitimately sign from the
-  // developer's own keychain, where there is no CSC_LINK to look at.
-  if (process.env.CI && !process.env.CSC_LINK) {
+  // 🔴 **THERE ARE NOW TWO WAYS A CI BUILD GETS A CERTIFICATE, AND THIS CHECK
+  // KNEW ONLY THE OLDER ONE.** Its previous comment said "on CI the *only*
+  // source of a Developer ID is CSC_LINK", which was true when written and was
+  // made false by release.yml's "Prepare the signing keychain" step: that step
+  // imports the .p12 itself and hands electron-builder `CSC_KEYCHAIN` +
+  // `CSC_NAME` instead, deliberately WITHOUT CSC_LINK — passing it would send
+  // electron-builder back through the temp-keychain flow the step exists to
+  // replace.
+  //
+  // So this threw on a build that had just signed successfully. The log said so
+  // in the two lines above the throw: `• signing … identityName=Developer ID
+  // Application …` then `• notarization successful`. A guard against an unsigned
+  // build failed a signed one, because it was testing for a mechanism rather
+  // than for the condition it cared about.
+  //
+  // ⚠️ Both sources are checked by their OWN evidence rather than by one
+  // standing in for the other. Deliberately CI-only either way: a local build
+  // legitimately signs from the developer's own keychain with neither set.
+  const hasCertificate = Boolean(
+    process.env.CSC_LINK || (process.env.CSC_KEYCHAIN && process.env.CSC_NAME)
+  );
+
+  if (process.env.CI && !hasCertificate) {
     throw new Error(
-      '[notarize] Apple notarisation credentials are set, but CSC_LINK is not — there is no Developer ID ' +
-        'certificate to sign with, and Apple cannot notarise an unsigned app. Add the CSC_LINK and ' +
-        'CSC_KEY_PASSWORD repository secrets (see dev-docs/guidelines/RELEASE-PROCESS.md §1a), or remove ' +
-        'APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID to go back to publishing an unsigned draft.'
+      '[notarize] Apple notarisation credentials are set, but no Developer ID certificate is available — ' +
+        'and Apple cannot notarise an unsigned app. Provide one of: CSC_LINK + CSC_KEY_PASSWORD (the .p12 ' +
+        'directly), or CSC_KEYCHAIN + CSC_NAME (a keychain prepared earlier in the job, which is what ' +
+        "release.yml's \"Prepare the signing keychain\" step does). See " +
+        'dev-docs/guidelines/RELEASE-PROCESS.md §1a. Or remove APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/' +
+        'APPLE_TEAM_ID to go back to publishing an unsigned draft.'
     );
   }
 

@@ -1,0 +1,223 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "cd133680-a154-5770-8e2f-5eb39e610782",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "association",
+      "fromProperty": "items",
+      "toId": "read-2",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "association",
+      "fromProperty": "fetched",
+      "toId": "read-2",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "read-2",
+      "fromProperty": "out-name",
+      "toId": "name",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "signOutButton",
+      "fromProperty": "onClick",
+      "toId": "logout",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "logout",
+      "fromProperty": "done",
+      "toId": "toLanding-7",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "bar",
+      "fromProperty": "didMount",
+      "toId": "standing",
+      "toProperty": "Check"
+    },
+    {
+      "fromId": "navAnnouncements",
+      "fromProperty": "onClick",
+      "toId": "toAnnouncements",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navMeetings",
+      "fromProperty": "onClick",
+      "toId": "toMeetingsNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navPost",
+      "fromProperty": "onClick",
+      "toId": "toPostNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navRequests",
+      "fromProperty": "onClick",
+      "toId": "toRequestsNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navDirectory",
+      "fromProperty": "onClick",
+      "toId": "toDirectoryNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "navAccount",
+      "fromProperty": "onClick",
+      "toId": "toAccountNav",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navPost",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navRequests",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "navDirectory",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isSignedIn",
+      "toId": "topRow",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isSignedIn",
+      "toId": "bandShape",
+      "toProperty": "in-signedIn"
+    },
+    {
+      "fromId": "viewport",
+      "fromProperty": "width",
+      "toId": "bandShape",
+      "toProperty": "in-width"
+    },
+    {
+      "fromId": "menuState",
+      "fromProperty": "navOpen",
+      "toId": "bandShape",
+      "toProperty": "in-open"
+    },
+    {
+      "fromId": "bandShape",
+      "fromProperty": "out-navMounted",
+      "toId": "navWrap",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "bandShape",
+      "fromProperty": "out-menuMounted",
+      "toId": "menuButton",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "menuButton",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "navAnnouncements",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navMeetings",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navPost",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navRequests",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navDirectory",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "navAccount",
+      "fromProperty": "onClick",
+      "toId": "menuState",
+      "toProperty": "to-Closed"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isMember",
+      "toId": "outputs-4",
+      "toProperty": "isMember"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isModerator",
+      "toId": "outputs-4",
+      "toProperty": "isModerator"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isPending",
+      "toId": "outputs-4",
+      "toProperty": "isPending"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "isUnknown",
+      "toId": "outputs-4",
+      "toProperty": "isUnknown"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Member",
+      "toId": "outputs-4",
+      "toProperty": "Member"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Moderator",
+      "toId": "outputs-4",
+      "toProperty": "Moderator"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Visitor",
+      "toId": "outputs-4",
+      "toProperty": "Visitor"
+    },
+    {
+      "fromId": "standing",
+      "fromProperty": "Denied",
+      "toId": "outputs-4",
+      "toProperty": "Denied"
+    }
+  ]
+}

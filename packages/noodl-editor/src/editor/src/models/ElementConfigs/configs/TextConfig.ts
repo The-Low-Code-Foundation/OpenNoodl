@@ -98,12 +98,14 @@ export const TextConfig: ElementConfig = {
       color: 'var(--muted-foreground)'
     },
 
+    // Typography only. `Text` is not a box in this runtime — it has no
+    // background, padding or radius port — so the tinted, padded chip this
+    // variant used to describe was three properties that could never apply.
+    // A chip is a `Group { backgroundColor, padding*, borderRadius }` wrapping
+    // a `Text` with this variant.
     code: {
       fontFamily: 'var(--font-mono)',
-      fontSize: 'var(--text-sm)',
-      backgroundColor: 'var(--muted)',
-      padding: '2px 4px',
-      borderRadius: 'var(--radius-sm)'
+      fontSize: 'var(--text-sm)'
     },
 
     lead: {
@@ -112,12 +114,12 @@ export const TextConfig: ElementConfig = {
       lineHeight: 'var(--leading-relaxed)'
     },
 
+    // The rule and its indent belong to a wrapping
+    // `Group { borderLeftWidth, borderLeftStyle, borderLeftColor, paddingLeft }`
+    // for the same reason as `code` above. `fontStyle` stays, and now applies:
+    // it was specified here from the start against a runtime with no such port.
     blockquote: {
       fontStyle: 'italic',
-      borderLeftWidth: '4px',
-      borderLeftColor: 'var(--border)',
-      borderLeftStyle: 'solid',
-      paddingLeft: 'var(--space-4)',
       color: 'var(--muted-foreground)'
     }
   }

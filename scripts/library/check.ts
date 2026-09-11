@@ -38,7 +38,12 @@ import * as path from 'path';
 
 import Ajv from 'ajv';
 
-import { SemanticValidator, formatReport } from '../../packages/noodl-editor/src/editor/src/validation';
+import {
+  SemanticValidator,
+  formatReport,
+  formatDiagnosticLine,
+  sortDiagnostics
+} from '../../packages/noodl-editor/src/editor/src/validation';
 import { CatalogIndex } from '../../packages/noodl-editor/src/editor/src/validation/CatalogIndex';
 import { loadDefaultCatalog } from '../../packages/noodl-editor/src/editor/src/validation/catalog';
 import { loadProject } from '../../packages/noodl-editor/src/editor/src/validation/loadV2Project';
@@ -338,6 +343,16 @@ interface EntryResult {
   ok: boolean;
   problems: string[];
   warnings: number;
+  /**
+   * LBR-002. The warning *messages*, not just the count.
+   *
+   * This used to keep `summary.warnings` and throw the diagnostics away, so the
+   * gate reported "49 total warning(s)" across the library and there was no way
+   * to learn what any of them said short of re-running the validator by hand.
+   * A gate that says forty-nine things are wrong and names none of them cannot
+   * be acted on, which is most of why LIB-002/003 triage stalled on guesses.
+   */
+  warningLines: string[];
 }
 
 function listEntries(type: string): string[] {
@@ -356,14 +371,21 @@ function checkEntry(type: string, slug: string, ajv: InstanceType<typeof Ajv>, v
   const metaPath = path.join(entryDir, 'library.json');
 
   if (!fs.existsSync(metaPath)) {
-    return { type, slug, ok: false, problems: ['missing library.json'], warnings: 0 };
+    return { type, slug, ok: false, problems: ['missing library.json'], warnings: 0, warningLines: [] };
   }
 
   let meta: any;
   try {
     meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
   } catch (err) {
-    return { type, slug, ok: false, problems: [`unreadable library.json: ${(err as Error).message}`], warnings: 0 };
+    return {
+      type,
+      slug,
+      ok: false,
+      problems: [`unreadable library.json: ${(err as Error).message}`],
+      warnings: 0,
+      warningLines: []
+    };
   }
 
   const validateSchema = ajv.compile(SCHEMA);
@@ -382,6 +404,7 @@ function checkEntry(type: string, slug: string, ajv: InstanceType<typeof Ajv>, v
 
   const projectDir = path.join(entryDir, 'project');
   let warnings = 0;
+  const warningLines: string[] = [];
   if (!fs.existsSync(projectDir)) {
     problems.push('project/ directory is missing');
   } else {
@@ -390,6 +413,9 @@ function checkEntry(type: string, slug: string, ajv: InstanceType<typeof Ajv>, v
       const project = loadProject(projectDir);
       const report = validator.validate(project, {});
       warnings = report.summary.warnings;
+      for (const d of sortDiagnostics(report.diagnostics)) {
+        if (d.severity === 'warning') warningLines.push(formatDiagnosticLine(d));
+      }
       if (report.summary.errors > 0) {
         problems.push(`validator: ${report.summary.errors} error(s)\n${formatReport(report)}`);
       }
@@ -403,7 +429,7 @@ function checkEntry(type: string, slug: string, ajv: InstanceType<typeof Ajv>, v
     }
   }
 
-  return { type, slug, ok: problems.length === 0, problems, warnings };
+  return { type, slug, ok: problems.length === 0, problems, warnings, warningLines };
 }
 
 function main(): void {
@@ -432,6 +458,10 @@ function main(): void {
       const status = r.ok ? 'OK  ' : 'FAIL';
       console.log(`${status} ${r.type}/${r.slug}${r.warnings ? ` (${r.warnings} warning(s))` : ''}`);
       for (const p of r.problems) console.log(`       ${p}`);
+      // LBR-002: warnings print by default. They are still not gated — the exit
+      // code is unchanged — but "not gated" and "not shown" are different
+      // decisions, and only the first one was ever intended.
+      for (const w of r.warningLines) console.log(`       ${w}`);
     }
     console.log(
       `\n${results.length - failed.length}/${results.length} entries clean ` +

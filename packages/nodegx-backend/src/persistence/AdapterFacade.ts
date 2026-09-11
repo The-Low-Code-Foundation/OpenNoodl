@@ -393,7 +393,13 @@ export class AdapterFacade {
       if (['objectId', 'createdAt', 'updatedAt', 'id', 'ACL'].includes(key)) continue;
       if (value === null || value === undefined) continue;
       if (existing.has(key)) continue;
-      sm.addColumn(collection, { name: key, type: this.inferColumnType(value) });
+      const type = this.inferColumnType(value);
+      const column: ImportColumn = { name: key, type };
+      // Same rule as LocalSQLAdapter's create/save: a Pointer value names its
+      // class, and a column recorded without it refuses `pointsTo` forever.
+      const className = type === 'Pointer' && (value as { className?: string }).className;
+      if (className) column.targetClass = className;
+      sm.addColumn(collection, column);
       existing.add(key);
     }
   }

@@ -7,7 +7,7 @@
     "do": "Signal; performs the navigation.",
     "link": "The absolute URL (or mailto:/tel: scheme) to open."
   },
-  "examples": ["nav-url-product-page"],
+  "examples": ["nav-url-product-page", "community-csv-download"],
   "antiPatterns": [
     "Pointing External Link at the app's own routes — the full page reload throws away application state that Navigate would keep."
   ],

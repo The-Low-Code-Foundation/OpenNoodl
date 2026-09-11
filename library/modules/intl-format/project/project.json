@@ -1,0 +1,318 @@
+{
+  "name": "Intl Format Module",
+  "components": [
+    {
+      "name": "/Intl Format Demo",
+      "id": "41035700-8c8b-43eb-82cb-3d46a80dd59f",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "d6c80c88-5dc5-40bc-b438-eda74742fcb4",
+            "fromProperty": "out-timestamp",
+            "toId": "8336e802-ddc6-43c8-88a8-4bd47e11d006",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "8336e802-ddc6-43c8-88a8-4bd47e11d006",
+            "fromProperty": "Formatted",
+            "toId": "49418cfd-b621-4088-985d-de857a2f5c69",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "62d411d0-a687-4056-a459-fb0cbb1fe9df",
+            "fromProperty": "Formatted",
+            "toId": "56643e75-1b27-4a41-be20-127a1614effe",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "95fb96f1-b11a-4a4d-8ed4-2d886fa43831",
+            "fromProperty": "Formatted",
+            "toId": "f22b79db-14d4-4d9c-9144-e41a5fbbf337",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "7d54159e-47cc-4e21-9336-aae5a60c074c",
+            "fromProperty": "Formatted",
+            "toId": "b8fa3854-78bf-48d9-8419-4782ea3add08",
+            "toProperty": "text"
+          }
+        ],
+        "roots": [
+          {
+            "id": "87bd3ccb-56b0-4787-840d-6e6a5d6f31d2",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column",
+              "paddingLeft": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingTop": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": 24,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "8c983a69-d6fc-4320-b366-38001d2b1dda",
+                "type": "Text",
+                "parameters": {
+                  "text": "Intl Format",
+                  "color": "var(--foreground)"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "dc0645cb-81bf-4dc8-973d-c4629bcc2866",
+                "type": "Text",
+                "parameters": {
+                  "text": "Relative Time",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "49418cfd-b621-4088-985d-de857a2f5c69",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "color": "var(--foreground)",
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "91452cb0-d2ff-4c49-a6d2-b5aa90fdc1e8",
+                "type": "Text",
+                "parameters": {
+                  "text": "Format Number (currency, EUR)",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "56643e75-1b27-4a41-be20-127a1614effe",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "color": "var(--foreground)",
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "2c5a388b-5571-4851-a617-66ef37340087",
+                "type": "Text",
+                "parameters": {
+                  "text": "Format List (conjunction)",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "f22b79db-14d4-4d9c-9144-e41a5fbbf337",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "color": "var(--foreground)",
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "2c66a9ce-38e3-441a-b597-213345c2b854",
+                "type": "Text",
+                "parameters": {
+                  "text": "Pluralize (count 3)",
+                  "color": "var(--muted-foreground)",
+                  "marginTop": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "b8fa3854-78bf-48d9-8419-4782ea3add08",
+                "type": "Text",
+                "parameters": {
+                  "text": "",
+                  "color": "var(--foreground)",
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "d6c80c88-5dc5-40bc-b438-eda74742fcb4",
+            "type": "JavaScriptFunction",
+            "label": "Three hours ago",
+            "x": -420,
+            "y": 60,
+            "parameters": {
+              "functionScript": "Outputs.timestamp = Date.now() - 3 * 60 * 60 * 1000;"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "out-timestamp",
+                "displayName": "timestamp",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 1
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "8336e802-ddc6-43c8-88a8-4bd47e11d006",
+            "type": "nodegx.intl.relativeTime",
+            "label": "Relative Time",
+            "x": -230,
+            "y": 60,
+            "parameters": {
+              "Refresh Interval": 60
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "62d411d0-a687-4056-a459-fb0cbb1fe9df",
+            "type": "nodegx.intl.formatNumber",
+            "label": "Format Number",
+            "x": -230,
+            "y": 160,
+            "parameters": {
+              "Value": 1234567.89,
+              "Style": "currency",
+              "Currency": "EUR"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "95fb96f1-b11a-4a4d-8ed4-2d886fa43831",
+            "type": "nodegx.intl.formatList",
+            "label": "Format List",
+            "x": -230,
+            "y": 260,
+            "parameters": {
+              "Items": "Design, Data, Logic"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "7d54159e-47cc-4e21-9336-aae5a60c074c",
+            "type": "nodegx.intl.pluralize",
+            "label": "Pluralize",
+            "x": -230,
+            "y": 360,
+            "parameters": {
+              "Count": 3,
+              "One": "item",
+              "Other": "items"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          }
+        ],
+        "comments": [
+          {
+            "text": "Locale-aware formatting via the browser Intl APIs. Every node has a Locale input that defaults to the browser language.",
+            "width": 320,
+            "height": 120,
+            "fill": true,
+            "x": -420,
+            "y": -100,
+            "id": "4f568a92-daa3-4866-8de8-74d51ba63c45",
+            "color": "logic",
+            "largeFont": false
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "settings": {},
+  "version": "3",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

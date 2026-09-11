@@ -1,0 +1,553 @@
+{
+  "id": "ui-data-table",
+  "title": "Data table: a header row, and a Repeater over ONE row component",
+  "description": "The admin half of every app, and the shape most often written as duplicated rows. A table IS a Repeater over a row component: there is exactly one MemberRow in the project, a For Each instantiates it once per record, and nothing about the table grows when the data does. If you find yourself authoring a second row by hand you have already left this recipe. THE COLUMN CONTRACT — the hard part, because there is no `<table>` and a flex row will not line itself up. One rule, stated once and obeyed in two places: every cell is a Group with an explicit percentage width, the percentages sum to exactly 100, and the header Group and the row component's root Group declare the SAME list. Here it is 34 / 30 / 18 / 18. Three things keep it honest. (1) NO horizontal padding on the header, on the row root, or on the table — all of it lives inside the cells (--space-4 each side), so the header's content box and every row's content box are the same box and the columns cannot drift apart. (2) NO columnGap on either row: a gap is subtracted from the 100% and would shift the header and the rows by different amounts the moment one of them acquires a gap the other lacks. (3) Groups default to boxSizing border-box, so a cell's own padding is inside its 34%, not added to it. Vertical padding goes on the header and the row root, never on a cell, so every cell in a row shares one baseline. AT 390px the percentages would give a 44px Role column, so the table does not squeeze: it sits in a Group with flexDirection row, scrollEnabled and nativeScroll true, and carries minWidth 720px. Below 720 the whole table scrolls sideways as one object, which is what keeps the header nailed to its columns — a header that scrolls independently of its rows is the classic version of this bug. Static Array holds the rows so the recipe stands alone; swap it for Query Records (DbCollection2) on a real collection and nothing else changes. Record fields reach the row through Component Inputs, whose ports are plugged \"output\" — that is what makes them the component's INPUTS, and getting it backwards silently drops every connection drawn out of them.",
+  "demonstrates": [
+    "For Each",
+    "Static Data",
+    "Component Inputs",
+    "Group",
+    "Text",
+    "Page"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Members",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Members",
+          "parameters": {
+            "title": "Members",
+            "urlPath": "members"
+          },
+          "children": [
+            "band"
+          ]
+        },
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--background)",
+            "paddingTop": "var(--space-16)",
+            "paddingBottom": "var(--space-16)"
+          },
+          "parent": "page",
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "caption",
+            "scroller"
+          ]
+        },
+        {
+          "id": "caption",
+          "type": "Text",
+          "label": "Table caption",
+          "parameters": {
+            "text": "Members",
+            "fontSize": "var(--text-2xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)",
+            "marginBottom": "var(--space-6)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "scroller",
+          "type": "Group",
+          "label": "Sideways scroller — keeps header and rows together under 720px",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "scrollEnabled": true,
+            "nativeScroll": true
+          },
+          "parent": "shell",
+          "children": [
+            "table"
+          ]
+        },
+        {
+          "id": "table",
+          "type": "Group",
+          "label": "Table",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "minWidth": {
+              "value": 720,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "backgroundColor": "var(--surface)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "borderRadius": "var(--radius-lg)",
+            "clip": true
+          },
+          "parent": "scroller",
+          "children": [
+            "header",
+            "body"
+          ]
+        },
+        {
+          "id": "header",
+          "type": "Group",
+          "label": "Header row — same 34/30/18/18 as MemberRow",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "alignItems": "center",
+            "backgroundColor": "var(--surface-raised)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)"
+          },
+          "parent": "table",
+          "children": [
+            "th_name",
+            "th_email",
+            "th_role",
+            "th_status"
+          ]
+        },
+        {
+          "id": "th_name",
+          "type": "Group",
+          "label": "Column 1 — 34%",
+          "parameters": {
+            "width": {
+              "value": 34,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "header",
+          "children": [
+            "th_name_text"
+          ]
+        },
+        {
+          "id": "th_name_text",
+          "type": "Text",
+          "label": "Name",
+          "parameters": {
+            "text": "Name",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wider)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "th_name"
+        },
+        {
+          "id": "th_email",
+          "type": "Group",
+          "label": "Column 2 — 30%",
+          "parameters": {
+            "width": {
+              "value": 30,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "header",
+          "children": [
+            "th_email_text"
+          ]
+        },
+        {
+          "id": "th_email_text",
+          "type": "Text",
+          "label": "Email",
+          "parameters": {
+            "text": "Email",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wider)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "th_email"
+        },
+        {
+          "id": "th_role",
+          "type": "Group",
+          "label": "Column 3 — 18%",
+          "parameters": {
+            "width": {
+              "value": 18,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "header",
+          "children": [
+            "th_role_text"
+          ]
+        },
+        {
+          "id": "th_role_text",
+          "type": "Text",
+          "label": "Role",
+          "parameters": {
+            "text": "Role",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wider)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "th_role"
+        },
+        {
+          "id": "th_status",
+          "type": "Group",
+          "label": "Column 4 — 18%",
+          "parameters": {
+            "width": {
+              "value": 18,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "header",
+          "children": [
+            "th_status_text"
+          ]
+        },
+        {
+          "id": "th_status_text",
+          "type": "Text",
+          "label": "Status",
+          "parameters": {
+            "text": "Status",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-wider)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "th_status"
+        },
+        {
+          "id": "body",
+          "type": "Group",
+          "label": "Body — the Repeater draws nothing, its items land here",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column"
+          },
+          "parent": "table",
+          "children": [
+            "rows"
+          ]
+        },
+        {
+          "id": "rows",
+          "type": "For Each",
+          "label": "One MemberRow per record",
+          "parameters": {
+            "templateType": "explicit",
+            "template": "/Components/MemberRow"
+          },
+          "parent": "body"
+        },
+        {
+          "id": "members",
+          "type": "Static Data",
+          "label": "Members",
+          "parameters": {
+            "type": "json",
+            "json": "[{\"name\":\"Ada Lovelace\",\"email\":\"ada@example.com\",\"role\":\"Owner\",\"status\":\"Active\"},{\"name\":\"Grace Hopper\",\"email\":\"grace@example.com\",\"role\":\"Admin\",\"status\":\"Active\"},{\"name\":\"Alan Turing\",\"email\":\"alan@example.com\",\"role\":\"Editor\",\"status\":\"Invited\"},{\"name\":\"Katherine Johnson\",\"email\":\"katherine@example.com\",\"role\":\"Viewer\",\"status\":\"Active\"}]"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "members",
+          "fromProperty": "items",
+          "toId": "rows",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/MemberRow",
+      "nodes": [
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Row — vertical padding here, horizontal padding never",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "row",
+            "alignItems": "center",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border-subtle)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)"
+          },
+          "children": [
+            "cell_name",
+            "cell_email",
+            "cell_role",
+            "cell_status"
+          ]
+        },
+        {
+          "id": "cell_name",
+          "type": "Group",
+          "label": "Column 1 — 34%",
+          "parameters": {
+            "width": {
+              "value": 34,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "row",
+          "children": [
+            "name_text"
+          ]
+        },
+        {
+          "id": "name_text",
+          "type": "Text",
+          "label": "Name",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--foreground)"
+          },
+          "parent": "cell_name"
+        },
+        {
+          "id": "cell_email",
+          "type": "Group",
+          "label": "Column 2 — 30%",
+          "parameters": {
+            "width": {
+              "value": 30,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "row",
+          "children": [
+            "email_text"
+          ]
+        },
+        {
+          "id": "email_text",
+          "type": "Text",
+          "label": "Email",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "cell_email"
+        },
+        {
+          "id": "cell_role",
+          "type": "Group",
+          "label": "Column 3 — 18%",
+          "parameters": {
+            "width": {
+              "value": 18,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "row",
+          "children": [
+            "role_text"
+          ]
+        },
+        {
+          "id": "role_text",
+          "type": "Text",
+          "label": "Role",
+          "parameters": {
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "cell_role"
+        },
+        {
+          "id": "cell_status",
+          "type": "Group",
+          "label": "Column 4 — 18%",
+          "parameters": {
+            "width": {
+              "value": 18,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)"
+          },
+          "parent": "row",
+          "children": [
+            "status_pill"
+          ]
+        },
+        {
+          "id": "status_pill",
+          "type": "Group",
+          "label": "Status pill — sizeMode contentSize, so it shrink-wraps its label",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "backgroundColor": "var(--muted)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)"
+          },
+          "parent": "cell_status",
+          "children": [
+            "status_text"
+          ]
+        },
+        {
+          "id": "status_text",
+          "type": "Text",
+          "label": "Status",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--foreground)"
+          },
+          "parent": "status_pill"
+        },
+        {
+          "id": "row_inputs",
+          "type": "Component Inputs",
+          "label": "Record fields in",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "name",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "email",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "role",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "status",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "name",
+          "toId": "name_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "email",
+          "toId": "email_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "role",
+          "toId": "role_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "row_inputs",
+          "fromProperty": "status",
+          "toId": "status_text",
+          "toProperty": "text"
+        }
+      ]
+    }
+  ]
+}

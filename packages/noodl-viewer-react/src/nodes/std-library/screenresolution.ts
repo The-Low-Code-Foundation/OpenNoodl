@@ -42,6 +42,7 @@ const ScreenResolution: NodeDefinitionOptions = {
   },
   outputs: {
     width: {
+      group: 'Values',
       type: 'number',
       displayName: 'Width',
       description: 'Width of the browser viewport, in pixels',
@@ -50,6 +51,7 @@ const ScreenResolution: NodeDefinitionOptions = {
       }
     },
     height: {
+      group: 'Values',
       type: 'number',
       displayName: 'Height',
       description: 'Height of the browser viewport, in pixels',
@@ -58,6 +60,7 @@ const ScreenResolution: NodeDefinitionOptions = {
       }
     },
     aspectRatio: {
+      group: 'Values',
       type: 'number',
       displayName: 'Aspect Ratio',
       description: 'Width divided by Height, so anything wider than it is tall is greater than one',

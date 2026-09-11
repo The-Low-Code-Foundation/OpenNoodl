@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b2c3d4e5-0000-4000-8000-000000000002",
+  "version": 1,
+  "connections": [
+    { "fromId": "newKeyButton", "fromProperty": "onClick", "toId": "rowKey", "toProperty": "new" },
+    { "fromId": "rowKey", "fromProperty": "guid", "toId": "keyText", "toProperty": "text" },
+    { "fromId": "rowKey", "fromProperty": "done", "toId": "saveKey", "toProperty": "do" },
+    { "fromId": "rowKey", "fromProperty": "guid", "toId": "saveKey", "toProperty": "value" },
+    { "fromId": "lastKeyVar", "fromProperty": "value", "toId": "lastKeyText", "toProperty": "text" },
+
+    { "fromId": "newRecordButton", "fromProperty": "onClick", "toId": "recordId", "toProperty": "generate" },
+    { "fromId": "recordId", "fromProperty": "uuid", "toId": "recordIdText", "toProperty": "text" },
+    { "fromId": "recordId", "fromProperty": "done", "toId": "saveRecord", "toProperty": "do" },
+    { "fromId": "recordId", "fromProperty": "uuid", "toId": "saveRecord", "toProperty": "value" },
+    { "fromId": "lastRecordVar", "fromProperty": "value", "toId": "lastRecordText", "toProperty": "text" },
+
+    { "fromId": "recordId", "fromProperty": "error", "toId": "recordErrorText", "toProperty": "text" },
+    { "fromId": "recordId", "fromProperty": "failure", "toId": "saveFailure", "toProperty": "do" },
+    { "fromId": "recordId", "fromProperty": "error", "toId": "saveFailure", "toProperty": "value" },
+    { "fromId": "lastFailureVar", "fromProperty": "value", "toId": "lastFailureText", "toProperty": "text" }
+  ]
+}

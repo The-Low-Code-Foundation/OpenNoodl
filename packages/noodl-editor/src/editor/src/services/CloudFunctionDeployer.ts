@@ -33,11 +33,11 @@ import { ipcInvoke } from '@noodl-utils/ipc';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import { deployCloudFunctions, namedFailure, type CloudDeployTransport } from '../utils/exporter/cloudDeploy';
 import {
-  cloudBundleName,
-  exportCloudFunctionsToJSON,
-  getCloudFunctionNames,
-  hashCloudExport
+  CloudComponentClassification,
+  classifyCloudComponents,
+  getCloudFunctionNames
 } from '../utils/exporter/cloudFunctions';
 import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 
@@ -47,6 +47,13 @@ export const CLOUD_FUNCTIONS_DEPLOY_STATE_CHANGED = 'CloudFunctionDeployer.state
 export interface CloudDeployState {
   /** Function names in the project right now, whether or not they are pushed. */
   functionNames: string[];
+  /**
+   * DEF-015 — the same components, each with the role that decides whether the
+   * backend not serving it is news. `functionNames` is what the bundle carries;
+   * this is what the backend can be *asked* about, and the card must diff on
+   * the endpoints alone or it warns about every helper in every project.
+   */
+  cloudComponents: CloudComponentClassification[];
   /** `Date.now()` of the last successful push, per backend id. */
   lastPushedAt: Record<string, number>;
   /** Last push error, per backend id. Cleared by a success. */
@@ -98,6 +105,7 @@ class CloudFunctionDeployerImpl {
   public getState(): CloudDeployState {
     return {
       functionNames: ProjectModel.instance ? getCloudFunctionNames(ProjectModel.instance) : [],
+      cloudComponents: ProjectModel.instance ? classifyCloudComponents(ProjectModel.instance) : [],
       lastPushedAt: { ...this.lastPushedAt },
       lastError: { ...this.lastError },
       isPushing: this.isPushing
@@ -107,6 +115,13 @@ class CloudFunctionDeployerImpl {
   /**
    * Push to one backend.
    *
+   * 🔴 **HLS-013 — the decision lives in `cloudDeploy.ts` now, not here.** This
+   * method is the editor's *transport* plus its toasts and card state; the
+   * build, the fingerprint, the skip and the verdict are the same code a
+   * headless caller runs, so a mutant in any of them reddens both doors. What
+   * used to be inline here is what the two paths would have drifted apart on —
+   * and SB-017 is this repo's record of what that drift costs.
+   *
    * @param force ignore the change hash — used by the manual action and by
    *   backend start, where the backend's state is unknown rather than known to
    *   match.
@@ -115,70 +130,56 @@ class CloudFunctionDeployerImpl {
     const project = ProjectModel.instance;
     if (!project) return false;
 
-    /**
-     * `null` means the project genuinely has no cloud functions — and it must
-     * mean *only* that. The first version of this let an export failure return
-     * the same `null`, and the result was the exact silence WFA-001 exists to
-     * remove: the backend came up with `functions: []`, the editor believed it
-     * had nothing to send, and nothing anywhere said so. If there are
-     * components but no bundle, that is a bug, not an empty project.
-     */
-    const bundle = exportCloudFunctionsToJSON(project);
-    const functionCount = getCloudFunctionNames(project).length;
-    if (!bundle && functionCount > 0) {
-      const message = `Could not export ${functionCount} cloud function(s) from this project.`;
-      this.lastError[backendId] = message;
-      if (!options.quiet) ToastLayer.showError(message);
-      this.notify();
-      return false;
-    }
-
-    const hash = hashCloudExport(bundle);
-
-    if (!options.force && this.pushedHashes.get(backendId) === hash) {
-      return true;
-    }
-
-    // Nothing to push, and nothing was ever pushed: don't create an empty
-    // bundle file on a backend that has never seen this project.
-    if (!bundle && !this.pushedHashes.has(backendId)) {
-      this.pushedHashes.set(backendId, hash);
-      return true;
-    }
+    const transport: CloudDeployTransport = {
+      putBundle: async (name, workflow) => {
+        const result = await invokeIPC<{ success?: boolean; error?: string }>('backend:update-workflow', {
+          backendId,
+          name,
+          workflow
+        });
+        if (result && result.success === false) {
+          throw new Error(result.error || 'The backend rejected the function bundle.');
+        }
+      },
+      // The editor's own memory of what it last pushed to THIS backend. It is a
+      // legitimate answer to "what is it serving" only because the editor is the
+      // thing that put it there; a headless caller, which is a new process every
+      // run, has to ask the backend instead.
+      readServingHash: async () => this.pushedHashes.get(backendId) ?? null
+    };
 
     this.isPushing = true;
     this.notify();
 
+    let result;
     try {
-      const result = await invokeIPC<{ success?: boolean; error?: string }>('backend:update-workflow', {
-        backendId,
-        name: cloudBundleName(project),
-        // An emptied project still pushes — a bundle with no components is how
-        // "I deleted my last function" reaches the backend.
-        workflow: bundle ?? { components: [], settings: {}, metadata: {} }
+      result = await deployCloudFunctions(project, transport, {
+        force: options.force,
+        // Only once this backend has seen the project: pushing an empty bundle
+        // to one that never has would advertise nothing on a backend that was
+        // fine. Same condition the inline version used, kept verbatim.
+        deleteWhenEmpty: this.pushedHashes.has(backendId)
       });
-
-      if (result && result.success === false) {
-        throw new Error(result.error || 'The backend rejected the function bundle.');
-      }
-
-      this.pushedHashes.set(backendId, hash);
-      this.lastPushedAt[backendId] = Date.now();
-      delete this.lastError[backendId];
-      return true;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      // The hash is deliberately NOT recorded: the next save must retry.
-      this.lastError[backendId] = message;
-      if (!options.quiet) {
-        ToastLayer.showError(`Could not deploy cloud functions: ${message}`);
-      }
-      console.error('[CloudFunctionDeployer] push failed', backendId, error);
-      return false;
     } finally {
       this.isPushing = false;
-      this.notify();
     }
+
+    if (result.ok) {
+      this.pushedHashes.set(backendId, result.hash);
+      if (result.changed) this.lastPushedAt[backendId] = Date.now();
+      delete this.lastError[backendId];
+      this.notify();
+      return true;
+    }
+
+    // The hash is deliberately NOT recorded: the next save must retry.
+    const message = result.error || namedFailure(result);
+    this.lastError[backendId] = message;
+    if (!options.quiet) ToastLayer.showError(`Could not deploy cloud functions: ${message}`);
+    // eslint-disable-next-line no-console
+    console.error('[CloudFunctionDeployer] push failed', backendId, message);
+    this.notify();
+    return false;
   }
 
   /** Push to every running local backend. */

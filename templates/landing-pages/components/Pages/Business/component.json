@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "d7e32864-5c14-549c-8793-4b14944f7d35",
+  "name": "Business",
+  "path": "/Pages/Business",
+  "type": "page",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

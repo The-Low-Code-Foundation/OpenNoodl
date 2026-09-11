@@ -1,0 +1,168 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "a1b2c3d4-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Ticket",
+      "children": ["shell"],
+      "parameters": {
+        "title": "Ticket Desk",
+        "urlPath": "ticket"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": ["headline", "subjectInput", "clipText", "statusText", "gaugeText"],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Ticket Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "subjectInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Subject",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Type a subject, or a status word",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 360
+    },
+    {
+      "id": "subjectVar",
+      "type": "Variable2",
+      "label": "Subject",
+      "parameters": {
+        "name": "subject"
+      },
+      "x": 620,
+      "y": 360
+    },
+    {
+      "id": "clip",
+      "type": "Substring",
+      "label": "Short subject",
+      "parameters": {
+        "start": 0,
+        "end": 12
+      },
+      "x": 620,
+      "y": 440
+    },
+    {
+      "id": "clipText",
+      "type": "Text",
+      "label": "Short subject",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 440
+    },
+    {
+      "id": "status",
+      "type": "String Mapper",
+      "label": "Status label",
+      "parameters": {
+        "input 0": "open",
+        "output 0": "Open now",
+        "input 1": "waiting",
+        "output 1": "Waiting on the customer",
+        "input 2": "closed",
+        "output 2": "Closed for the day",
+        "defaultMapping": "Not a status I know"
+      },
+      "x": 620,
+      "y": 520
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status label",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "score",
+      "type": "Number",
+      "label": "Priority score",
+      "parameters": {
+        "value": 34
+      },
+      "x": 620,
+      "y": 600
+    },
+    {
+      "id": "gauge",
+      "type": "Number Remapper",
+      "label": "Priority out of ten",
+      "parameters": {
+        "minInputValue": 0,
+        "maxInputValue": 100,
+        "minOutputValue": 0,
+        "maxOutputValue": 10
+      },
+      "x": 860,
+      "y": 600
+    },
+    {
+      "id": "gaugeText",
+      "type": "Text",
+      "label": "Priority out of ten",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 600
+    }
+  ],
+  "visualRoots": ["page"]
+}

@@ -2,6 +2,8 @@ import React from 'react';
 
 import Layout from '../../../layout';
 import PointerListeners from '../../../pointerlisteners';
+import { withMediaFragment } from '../../../media-fragment';
+import { resolveVideoEmbed } from '../../../video-embed';
 import { Noodl } from '../../../types';
 
 export interface VideoProps extends Noodl.ReactProps {
@@ -49,6 +51,10 @@ export interface CachedVideoProps {
   autoplay?: boolean;
   controls?: boolean;
   src: string;
+  /** §2 — seconds into the video to begin at. Composed into the `#t=` fragment. */
+  startTime?: number;
+  /** §2 — seconds at which to stop. Composed into the `#t=` fragment. */
+  endTime?: number;
 
   innerRef: (video: HTMLVideoElement) => void;
   onCanPlay: () => void;
@@ -70,23 +76,27 @@ class CachedVideo extends React.PureComponent<CachedVideoProps> {
   }
 
   render() {
-    let src = this.props.src ? this.props.src.toString() : undefined;
+    // 🔴 Pulled OUT of the spread below, not just read from it. `{...this.props}` lands on the
+    // `<video>` element, so a port named `startTime` would become an invalid DOM attribute and
+    // React would warn about it on every render. They are inputs to the source string, not
+    // attributes of the element.
+    const { startTime, endTime, ...videoProps } = this.props;
 
-    if (src) {
-      if (src.indexOf('#t=') === -1) {
-        src += '#t=0.01'; //force Android to render the first frame
-      }
-      if (src.startsWith('/')) {
-        const baseUrl = Noodl.Env['BaseUrl'];
-        if (baseUrl) {
-          src = baseUrl + src.substring(1);
-        }
+    // §2 — the Android first-frame hack and the two ports are the same mechanism, resolved in
+    // `withMediaFragment` rather than stacked here. With both ports unset this returns exactly
+    // what this function used to build.
+    let src = withMediaFragment(this.props.src ? this.props.src.toString() : undefined, startTime, endTime);
+
+    if (src && src.startsWith('/')) {
+      const baseUrl = Noodl.Env['BaseUrl'];
+      if (baseUrl) {
+        src = baseUrl + src.substring(1);
       }
     }
 
     return (
       <video
-        {...this.props}
+        {...videoProps}
         playsInline={true}
         src={src}
         {...PointerListeners(this.props)}
@@ -205,6 +215,50 @@ export class Video extends React.Component<VideoProps> {
     }
 
     style.objectPosition = `${props.objectPositionX} ${props.objectPositionY}`;
+
+    /**
+     * §2 — a YouTube or Vimeo link plays in an `<iframe>` rather than failing in a `<video>`.
+     *
+     * 🔴 **Auto-detected from the Source rather than switched on by an enum.** The defect this
+     * fixes is *pasting a link and getting a broken element*; a type the author must also remember
+     * to change would leave that defect in place for exactly the person who hit it. Anything not
+     * recognised returns `{ kind: 'file' }` and falls through to the path below unchanged.
+     *
+     * ⚠️ **The `<video>` element's whole API is absent here** — no `play()`, no `error` event, no
+     * `videoWidth`. So `Play`/`Pause`/`Reset` and the failure ports do nothing for an embed, which
+     * is a limit of URL-parameter embedding (Richard's ruling, 2026-09-04) and not a gap to be
+     * papered over. `video.ts` says so on each affected port.
+     */
+    const embed = resolveVideoEmbed(props.dom?.src, {
+      startTime: props.dom?.startTime,
+      endTime: props.dom?.endTime,
+      autoplay: props.dom?.autoplay,
+      controls: props.dom?.controls,
+      loop: props.dom?.loop,
+      muted: props.dom?.muted
+    });
+
+    if (embed.kind === 'iframe') {
+      return (
+        <iframe
+          className={props.className}
+          style={{ ...style, border: 'none' }}
+          src={embed.url}
+          title={embed.title}
+          // Only what a player needs. `allow` is an explicit grant list, so anything the provider
+          // might reach for and is not named here stays denied.
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          referrerPolicy="strict-origin-when-cross-origin"
+          allowFullScreen
+          ref={(element) => {
+            // The drag node and `getDOMElement` expect *an* element; an iframe is the one this
+            // node renders. Nothing that reads it as an HTMLVideoElement runs on this path.
+            this.props.noodlNode?.setDOMElement(element as unknown as HTMLVideoElement);
+          }}
+          {...PointerListeners(this.props)}
+        />
+      );
+    }
 
     return (
       <CachedVideo

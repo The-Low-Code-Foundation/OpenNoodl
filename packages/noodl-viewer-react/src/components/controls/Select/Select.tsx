@@ -18,6 +18,8 @@ export interface SelectProps extends Noodl.ReactProps {
   placeholder: string;
   placeholderOpacity: string;
 
+  showChevron: boolean;
+
   useIcon: boolean;
   iconPlacement: 'left' | 'right';
   iconSpacing: string;
@@ -121,10 +123,61 @@ export function Select(props: SelectProps) {
     // options.unshift();
   }
 
+  /**
+   * 🔴 **The affordance a native `<select>` draws and this one cannot.** The visible face of this
+   * control is the `<span>` below; the real `<select>` is `opacity: 0` and `position: absolute`,
+   * overlaid for interaction only — so the browser's own arrow is invisible along with it, and a
+   * placed Dropdown was a bordered box with a word in it and nothing saying it opened a list.
+   * Richard, 2026-09-06: *"no chevron down icon by default, to make it immediately look like a
+   * 'normal' dropdown input."*
+   *
+   * ⚠️ **Inline SVG in `currentColor`, not the `Icon` ports.** Those need an icon set the project
+   * may not have installed, which would make the default draw nothing in a new project. This
+   * inherits the control's own text colour and font size, so it tracks a restyled Dropdown without
+   * a port of its own to keep in step, and `pointerEvents: none` keeps it out of the way of the
+   * overlaid `<select>` that receives every click.
+   */
+  const chevron =
+    props.showChevron === false ? null : (
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexShrink: 0,
+          marginLeft: '8px',
+          pointerEvents: 'none'
+        }}
+      >
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" focusable="false" aria-hidden="true">
+          <path
+            d="M1 1l4 4 4-4"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    );
+
   let label = null;
 
-  if (selectedIndex >= 0 && selectedIndex < props.items.items.length) {
-    label = <span>{props.items.items[selectedIndex].Label}</span>;
+  /**
+   * 🔴 **`props.items`, not `props.items.items`.** This line read `props.items.items` from the
+   * initial commit (2024-01-26) onwards, and `props.items` is a plain array — `options.ts` assigns
+   * whatever the port delivers straight through, and the `.map` twelve lines above already depends
+   * on it being one. So `props.items.items` is `undefined` and `.length` **throws**: a Dropdown
+   * with a selected value crashed its own render.
+   *
+   * ⚠️ **It survived four years because it is behind `selectedIndex >= 0`**, and `selectedIndex`
+   * is -1 whenever `value` is undefined — which it was, for every Dropdown nobody had chosen from.
+   * `4672d924` then seeded `value` with the first default item so a placed node would draw
+   * something, and that made this reachable on every freshly placed Dropdown: the node it was
+   * meant to make visible threw instead. Found while moving `items` to `optionslist` (§3); the
+   * commit that exposed it is not the commit that caused it.
+   */
+  if (selectedIndex >= 0 && selectedIndex < props.items.length) {
+    label = <span>{props.items[selectedIndex].Label}</span>;
   } else if (props.placeholder) {
     label = <span style={{ opacity: props.placeholderOpacity }}>{props.placeholder}</span>;
   }
@@ -149,6 +202,7 @@ export function Select(props: SelectProps) {
         {label}
       </div>
       {props.useIcon && props.iconPlacement === 'right' ? _renderIcon() : null}
+      {chevron}
       <select
         {...inputProps}
         disabled={!props.enabled}

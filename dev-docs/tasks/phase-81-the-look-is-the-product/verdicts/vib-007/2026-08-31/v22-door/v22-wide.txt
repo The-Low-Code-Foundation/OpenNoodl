@@ -1,0 +1,8 @@
+ARM A — Component Inputs DECLARES the port
+DELIVERED-A one
+DELIVERED-A two
+DELIVERED-A three
+ARM B — Component Inputs declares NOTHING (the corpus shape)
+NOT-DELIVERED-B
+NOT-DELIVERED-B
+NOT-DELIVERED-B

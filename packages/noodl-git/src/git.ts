@@ -15,7 +15,12 @@ import { createCommit } from './core/commit';
 import { getConfigValue, setConfigValue } from './core/config';
 import { getBranchesOld } from './core/for-each-ref';
 import { appendGitIgnore } from './core/ignore';
-import { init, installMergeDriver, NOODL_MERGE_ATTRIBUTES } from './core/init';
+import {
+  init,
+  installMergeDriver,
+  NOODL_GRAPH_ATTRIBUTES,
+  NOODL_SUPERSEDED_GRAPH_ATTRIBUTES
+} from './core/init';
 import { getChangedFiles, getCommits } from './core/logs';
 import { merge, getMergeBase, mergeTree, mergeTreeCommit } from './core/merge';
 import { BranchType } from './core/models/branch';
@@ -842,7 +847,9 @@ export class Git {
     await appendGitIgnore(this.baseDir, ['project-tmp.json*', '.DS_Store', '__MACOSX']);
 
     // Create or append the .gitattributes file
-    await appendGitAttributes(this.baseDir, NOODL_MERGE_ATTRIBUTES);
+    await appendGitAttributes(this.baseDir, NOODL_GRAPH_ATTRIBUTES, {
+      supersedes: NOODL_SUPERSEDED_GRAPH_ATTRIBUTES
+    });
 
     const remoteName = await this.getRemoteName();
     if (remoteName) {

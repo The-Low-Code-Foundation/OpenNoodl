@@ -22,6 +22,31 @@ export interface SandboxClass {
   fields: string[];
   /** Records to serve. Agent-authored where available, synthesized otherwise. */
   records: SandboxRecord[];
+  /**
+   * BEN-006 — fields the *user* wrote records for but did not fill in, which
+   * the editor completed with synthesized values so the row does not render
+   * half-blank.
+   *
+   * Informational only: the runtime serves the records either way. It exists so
+   * the data editor can say which values on screen are the user's and which are
+   * made up, because filling gaps in silently is how a preview starts lying
+   * about whose data it is showing. Absent unless the user overrode this class.
+   */
+  completed?: string[];
+  /**
+   * BEN-006 — the subset of `fields` that was **inferred from the graph**,
+   * before anything the agent or the user supplied was merged in.
+   *
+   * `fields` is what the dataset serves, which is inference *plus* whatever the
+   * records carry — so it cannot answer "what does this component actually
+   * look at". The data editor captions its column list with that question, and
+   * sourcing the caption from `fields` made it overclaim: a class nobody could
+   * infer anything about still listed the bookkeeping keys, and a class the
+   * user typed by hand listed the user's own keys as though the graph had been
+   * found to read them. Absent means "no separate answer" — treat `fields` as
+   * the inference, which is what it is when nothing was supplied.
+   */
+  inferred?: string[];
 }
 
 export interface SandboxDataset {
@@ -38,6 +63,27 @@ export interface SandboxDataset {
    * `unknownShapeNotice` in the editor's `sandboxData`.
    */
   unknownShape?: string[];
+  /**
+   * FIX-013 ruling 1(c) — whether a class the dataset did not describe gets
+   * records invented for it. Defaults to `true`, which is every dataset built
+   * before this existed.
+   *
+   * 🔴 **An empty dataset is not an empty sandbox.** `SandboxStore.list()`
+   * synthesizes `DEFAULT_RECORD_COUNT` records for any class it has never
+   * heard of — deliberately, so a preview never strands a graph — which means
+   * shipping `{ classes: {} }` serves *five invented rows per class queried*,
+   * not zero. Both of this task's earlier readings assumed otherwise and
+   * reached for `useSampleData: false` instead; that flag does something else
+   * entirely (it uninstalls the shim and lets the preview reach the project's
+   * real backend), so it cannot express this at all.
+   *
+   * Set `false` and the store serves what the dataset holds and nothing more:
+   * the component renders its real empty state, and the network is still
+   * intercepted, so nothing leaves the machine. Writes still work — creating a
+   * record pushes into the empty list, which is what makes a form previewable
+   * with no rows behind it.
+   */
+  synthesizeMissing?: boolean;
 }
 
 export const SANDBOX_METADATA_KEY = 'sandbox';

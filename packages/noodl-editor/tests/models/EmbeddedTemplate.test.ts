@@ -28,7 +28,7 @@ function tempDir(): string {
 }
 
 /**
- * `download()` writes `JSON.stringify(projectContent)`, so the file on disk is a
+ * `install()` writes `JSON.stringify(projectContent)`, so the file on disk is a
  * `ProjectContent` — the provider's own published output type. Reading it as one
  * means a field these specs assert on cannot be renamed without a compile error.
  */
@@ -54,6 +54,22 @@ function routerPages(router: NodeDefinition | undefined): RouterPages {
   return pages && typeof pages === 'object' ? (pages as RouterPages) : {};
 }
 
+/**
+ * Find a node by type anywhere in a component's graph.
+ *
+ * Depth matters here: the App component's Router used to be a root and is now a
+ * child of the full-viewport Group that gives the app its layout. A search that
+ * only looked at `graph.roots` would report the Router missing rather than moved.
+ */
+function findNodeOfType(nodes: NodeDefinition[] | undefined, type: string): NodeDefinition | undefined {
+  for (const node of nodes || []) {
+    if (node.type === type) return node;
+    const found = findNodeOfType(node.children, type);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 describe('EmbeddedTemplateProvider', () => {
   let provider: EmbeddedTemplateProvider;
 
@@ -62,8 +78,8 @@ describe('EmbeddedTemplateProvider', () => {
   });
 
   it('handles embedded:// urls and nothing else', async () => {
-    expect(await provider.canDownload('embedded://hello-world')).toBe(true);
-    expect(await provider.canDownload('https://example.com/template.zip')).toBe(false);
+    expect(await provider.canInstall('embedded://hello-world')).toBe(true);
+    expect(await provider.canInstall('https://example.com/template.zip')).toBe(false);
   });
 
   it('registers the hello-world template', () => {
@@ -73,16 +89,16 @@ describe('EmbeddedTemplateProvider', () => {
 
   it('rejects an unknown template rather than writing an empty project', async () => {
     const dir = tempDir();
-    await expectAsync(provider.download('embedded://does-not-exist', dir)).toBeRejected();
+    await expectAsync(provider.install('embedded://does-not-exist', dir)).toBeRejected();
   });
 
-  describe('download("embedded://hello-world")', () => {
+  describe('install("embedded://hello-world")', () => {
     let dir: string;
     let project: ProjectContent;
 
     beforeEach(async () => {
       dir = tempDir();
-      await provider.download('embedded://hello-world', dir);
+      await provider.install('embedded://hello-world', dir);
       project = readProject(dir);
     });
 
@@ -141,9 +157,32 @@ describe('EmbeddedTemplateProvider', () => {
     // component to be a real Page. getRouterIndex() drops nameless routers, and
     // the runtime only renders a page component that contains exactly one Page
     // node — see utils/exporter/router.ts and viewer router.tsx resetAsync.
+    /**
+     * A Router sizes itself to its content, so an App whose root *is* the Router
+     * gives every page the height of whatever that page happens to contain — a
+     * new project opened as a strip a few pixels tall. The root is a Group sized
+     * to the viewport, and the Router lives inside it.
+     *
+     * The dimensions are asserted, not assumed from the port defaults: the whole
+     * point of writing them into the template is that the starter does not depend
+     * on a declared default reaching the runtime.
+     */
+    it('roots the App in a full-viewport Group, with the Router inside it', () => {
+      const app = project.components.find((c) => c.name === 'App');
+      expect(app.graph.roots.length).toBe(1);
+
+      const group = app.graph.roots[0];
+      expect(group.type).toBe('Group');
+      expect(group.parameters.sizeMode).toBe('explicit');
+      expect(group.parameters.width).toEqual({ value: 100, unit: '%' });
+      expect(group.parameters.height).toEqual({ value: 100, unit: '%' });
+
+      expect(group.children.some((n) => n.type === 'Router')).toBe(true);
+    });
+
     it('configures the App router as a named page router pointing at the home page', () => {
       const app = project.components.find((c) => c.name === 'App');
-      const router = app.graph.roots.find((n) => n.type === 'Router');
+      const router = findNodeOfType(app.graph.roots, 'Router');
       expect(router).toBeDefined();
       expect(router.parameters.name).toBeTruthy();
       const pages = routerPages(router);
@@ -172,12 +211,16 @@ describe('EmbeddedTemplateProvider', () => {
     const dirA = tempDir();
     const dirB = tempDir();
     try {
-      await provider.download('embedded://hello-world', dirA);
-      await provider.download('embedded://hello-world', dirB);
+      await provider.install('embedded://hello-world', dirA);
+      await provider.install('embedded://hello-world', dirB);
       const a = readProject(dirA);
       const b = readProject(dirB);
 
-      const idsOf = (proj: ProjectContent) => proj.components.flatMap((c) => c.graph.roots.map((r) => r.id));
+      // Recursive: the Router is now a child of the App's Group, and a
+      // roots-only sweep would stop covering the ids `remapNode` recurses into.
+      const idsIn = (nodes: NodeDefinition[]): string[] =>
+        (nodes || []).flatMap((n) => [n.id, ...idsIn(n.children)]);
+      const idsOf = (proj: ProjectContent) => proj.components.flatMap((c) => idsIn(c.graph.roots));
       const idsA = idsOf(a);
       const idsB = idsOf(b);
 

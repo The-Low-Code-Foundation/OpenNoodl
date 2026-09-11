@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c0a1b2c3-5b3f-4e8d-9c1a-000000000060",
+  "name": "App",
+  "path": "/App",
+  "type": "root",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "description": "EXP-011 §60 fixture: the router shell — nothing beside it."
+}

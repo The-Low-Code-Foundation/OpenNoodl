@@ -59,6 +59,7 @@
 import { getIpc } from '@noodl-utils/ipc';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { getCloudServices } from '@noodl-models/projectmodel.editor';
+import { startLocalBackend } from '@noodl-models/BackendServices/startLocalBackend';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { CloudFunctionDeployer } from './CloudFunctionDeployer';
@@ -120,6 +121,12 @@ export interface ProjectBackendLifecycleDeps {
   invoke<T>(channel: string, ...args: unknown[]): Promise<T>;
   /** The bound backend id of the open project, or undefined. */
   boundBackendId(): string | undefined;
+  /**
+   * SB-015 — the open project's *directory*, so a backend started here is
+   * started for a project rather than for an id. Undefined when no project is
+   * open, which is the case a spec runs in.
+   */
+  projectDir(): string | undefined;
   notify(state: ProjectBackendState): void;
   /** WFA-001's post-start push. Failures here never make the backend look dead. */
   onBackendStarted(backendId: string): Promise<unknown>;
@@ -132,6 +139,7 @@ const defaultDeps: ProjectBackendLifecycleDeps = {
     const project = ProjectModel.instance;
     return project ? getCloudServices(project).id : undefined;
   },
+  projectDir: () => ProjectModel.instance?._retainedProjectDirectory,
   notify: (state) => EventDispatcher.instance.notifyListeners(PROJECT_BACKEND_STATE_CHANGED, state),
   onBackendStarted: (backendId) => CloudFunctionDeployer.onBackendStarted(backendId)
 };
@@ -273,7 +281,10 @@ export class ProjectBackendLifecycleImpl {
     // ── Start it ───────────────────────────────────────────────────────────
     this.setState(generation, { phase: 'starting', backendId: meta.id, backendName: meta.name });
     try {
-      const status = await this.deps.invoke<BackendStatus>('backend:start', meta.id, {});
+      // SB-015: auto-start on project open is the path a person picking a
+      // template off the shelf lands on, so it is the one that most needs to
+      // hand the service the project whose policy it should be enforcing.
+      const status = await startLocalBackend<BackendStatus>(this.deps.invoke, meta.id, this.deps.projectDir());
       this.ourStarts.add(meta.id);
 
       // WFA-001's rule, and it applies here for the same reason it applies to

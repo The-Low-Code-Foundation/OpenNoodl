@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e26567be-b809-5c11-89ec-afc12211b0ad",
+  "name": "IsValidEmail",
+  "path": "/Site/IsValidEmail",
+  "type": "visual",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

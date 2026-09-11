@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "0dd8b383-297f-51d6-8c7c-0d21f6a763f9",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "swFreelancer",
+      "fromProperty": "onClick",
+      "toId": "swToFreelancer",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "swBusiness",
+      "fromProperty": "onClick",
+      "toId": "swToBusiness",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "swLaunch",
+      "fromProperty": "onClick",
+      "toId": "swToLaunch",
+      "toProperty": "navigate"
+    }
+  ]
+}

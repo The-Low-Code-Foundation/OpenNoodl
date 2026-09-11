@@ -41,6 +41,8 @@ export interface SnapshotConnection {
   label?: string;
   /** Where that text sits along the wire (CAN-001). Presentation — not diffed. */
   labelT?: number;
+  /** How a square wire is routed (SIG-007). Presentation — not diffed, but merged. */
+  route?: { xs: number[]; ys: number[] };
   rest: Record<string, unknown>;
 }
 

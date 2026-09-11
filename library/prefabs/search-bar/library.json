@@ -1,0 +1,14 @@
+{
+  "label": "Search Bar",
+  "description": "A search field that tells you what was typed once the typing stops: textChanged restarts a Timer, the Timer runs the emit, and Enter skips the wait. Query and Changed fire on the debounce, not per keystroke, so you can wire Changed straight at a Query Records without hammering it. The clear button appears only while there is something to clear, and Result Count renders as \"1 result\" / \"1,204 results\" beside the field.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form",
+    "Data"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

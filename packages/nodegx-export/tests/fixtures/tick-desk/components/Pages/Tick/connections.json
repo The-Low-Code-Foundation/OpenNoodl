@@ -1,0 +1,109 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "b7c2d9e1-0000-4000-8000-000000000022",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "poll",
+      "fromProperty": "timerStarted",
+      "toId": "setRunning",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "poll",
+      "fromProperty": "timerFinished",
+      "toId": "setFinished",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "poll",
+      "fromProperty": "done",
+      "toId": "setDone",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "poll",
+      "fromProperty": "unchanged",
+      "toId": "setUnchanged",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "startButton",
+      "fromProperty": "onClick",
+      "toId": "poll",
+      "toProperty": "start"
+    },
+    {
+      "fromId": "stopButton",
+      "fromProperty": "onClick",
+      "toId": "poll",
+      "toProperty": "stop"
+    },
+    {
+      "fromId": "restartButton",
+      "fromProperty": "onClick",
+      "toId": "poll",
+      "toProperty": "restart"
+    },
+    {
+      "fromId": "runningConst",
+      "fromProperty": "savedValue",
+      "toId": "setRunning",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "finishedConst",
+      "fromProperty": "savedValue",
+      "toId": "setFinished",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "doneConst",
+      "fromProperty": "savedValue",
+      "toId": "setDone",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "unchangedConst",
+      "fromProperty": "savedValue",
+      "toId": "setUnchanged",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "noteVar",
+      "fromProperty": "value",
+      "toId": "noteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "statusWatch",
+      "fromProperty": "valueChanged",
+      "toId": "statusLog",
+      "toProperty": "log"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusWatch",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusLog",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusLog",
+      "fromProperty": "value",
+      "toId": "echoText",
+      "toProperty": "text"
+    }
+  ]
+}

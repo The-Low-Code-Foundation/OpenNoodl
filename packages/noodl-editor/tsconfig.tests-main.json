@@ -24,9 +24,20 @@
   // import shell, never by a test here. Keeping that split is what lets these run
   // without Electron.
   "include": [
+    // LGC-008: the ambient declarations the editor's own tsconfig includes — `TSFixme`,
+    // `NodeColor` and the `*.scss` / `*.svg` module shims. Everything under `src/editor` that
+    // this runner reaches is written against them, and a single `TSFixme` in an otherwise pure
+    // file fails the whole suite *to run* rather than failing a spec.
+    "@include-types",
     "src/main",
     "tests-main",
     "tests-unit",
+    // REL-004: `scripts/webpackHeapCeiling.ts` is the same shape as the entries
+    // below — import-free by design, so the plain-Node runner can grade it. It is
+    // the only part of the editor's build script that CAN be graded: `build.ts`
+    // is a top-level IIFE that starts a real build on import, which is precisely
+    // why the heap ceiling was lifted out of it into a module of its own.
+    "scripts/webpackHeapCeiling.ts",
     "src/editor/src/utils/provenance",
     "src/editor/src/models/nodelibrary/dynamicPortRules.ts",
     // SPR-003 §1: `portConnectivity.ts` is the third of these — the shared
@@ -39,9 +50,68 @@
     // so the edge cases are graded here instead of only by hovering the right
     // port at the right window width.
     "src/editor/src/views/ConnectionPopup/docsPopupPlacement.ts",
+    // SIG-001/002/004: three more of the same shape, all in the same folder. The
+    // connection popup's *sentences* (`portCopy`), the ranking that picks the
+    // wire a builder meant when the editor refused theirs (`refusalPlan`), and
+    // the search term that means "where is the Set?" (`searchIntent`). None of
+    // the three imports anything — `refusalPlan` deliberately takes the port
+    // rows and the already-resolved type names as data rather than reaching for
+    // `NodeLibrary` — which is what lets the copy itself be graded here,
+    // including the one clause phase 60 forbids.
+    "src/editor/src/views/ConnectionPopup/portCopy.ts",
+    // UNI-007: `AiAssistant/explain/tutor.ts` is the same shape once more — the
+    // AI tutor's lesson overlay, which is the copy TUTOR-BOUNDARY calls "the
+    // pedagogy". Its only import is `portCopy.ts` (already here, and itself
+    // import-free), because the glossary's Signal line is *derived* from phase
+    // 60's shipped sentence rather than copied from it — so a rewording that
+    // forgot the tutor fails a spec here instead of teaching two vocabularies.
+    // Nothing else in `explain/` is reachable: `ExplainSession` pulls the AI
+    // client, and the overlay is deliberately the half that does not.
+    "src/editor/src/models/AiAssistant/explain/tutor.ts",
+    // …and `prompts.ts` with it, which is the seam that actually matters. The
+    // overlay being correct says nothing about whether anything *uses* it —
+    // this phase has found that exact gap five times ("build the caller"). These
+    // two are pure for the same reason: `prompts.ts` imports the overlay and
+    // `import type`s `./types` (itself import-free), so both erase to nothing at
+    // runtime and the assembled system prompt can be asserted here.
+    "src/editor/src/models/AiAssistant/explain/prompts.ts",
+    "src/editor/src/models/AiAssistant/explain/types.ts",
+    "src/editor/src/views/ConnectionPopup/refusalPlan.ts",
+    "src/editor/src/views/ConnectionPopup/searchIntent.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
+    // CMP-008: three more of the same shape, and here the split is what makes
+    // the feature gradeable at all.
+    //
+    //  - `TokenReferences.ts` is the ONE definition of what counts as a
+    //    `var(--token)` reference, shared with `noodl-mcp` through
+    //    `editor-deps`. It imports nothing.
+    //  - `tokenGap.ts` is the decision — which of the tokens a plan lands the
+    //    target cannot resolve, and the sentence that says so. Its only imports
+    //    are `TokenReferences` and an `import type` of the engine's `types`, so
+    //    `apply.ts` (ProjectModel, the undo queue, the filesystem) does not come
+    //    with it.
+    //  - `installWarningToast.ts` is the one-click installer's half: whether
+    //    there is anything to say after an install that opened no result stage.
+    //    Import-free by requirement — `ModuleLibraryModel` around it reaches the
+    //    toast layer and ProjectModel, and this is the part that can be wrong.
+    //
+    // And `ImportFlow/model/summary.ts`, which became reachable by taking its
+    // one value import from `legacy/report` instead of the engine's barrel. It
+    // is the hop from an engine warning to the result screen, and it had no
+    // grader that did not need Electron.
+    "src/editor/src/models/StyleTokensModel/TokenReferences.ts",
+    "src/editor/src/utils/import-engine/tokenGap.ts",
+    "src/editor/src/models/installWarningToast.ts",
+    "src/editor/src/views/ImportFlow/model/summary.ts",
     "src/editor/src/validation",
+    // TUT-001: `backendVisibility.ts` is the same shape once more — which backend the Backend
+    // Services panel shows and which fall behind the finder, lifted out of the panel so the rule
+    // is graded as a function of plain data rather than by reading a `.map()` as text. Import-free
+    // by design: it takes the two backend shapes reduced to a `VisibilityCandidate` rather than
+    // importing `LocalBackendInfo` or `BackendConfig`, which is what keeps React, the IPC hook and
+    // the `BackendServices` singleton out of this runner. The panel itself is not reached.
+    "src/editor/src/views/panels/BackendServicesPanel/backendVisibility.ts",
     // MCP-001: `mcpCommands.ts` is the same shape again — the settings section's command builder
     // imports nothing at all, which is what lets the plain-Node runner assert the exact strings
     // the two Copy buttons put on the clipboard. Its component neighbour is not reached.
@@ -51,6 +121,167 @@
     // `validation/enrichedCatalog` (already here). The docs *origin* is
     // deliberately resolved by its renderer call sites rather than inside it,
     // which is exactly what keeps `@electron/remote` out of this runner.
-    "src/editor/src/utils/nodeDocs.ts"
+    "src/editor/src/utils/nodeDocs.ts",
+    // BLD-001: `AiAssistant/thread/` is the same shape once more — the turn model that
+    // maps the three session states onto one thread. Every edge it has to `../authoring`
+    // and `../review` is an `import type`, so nothing of the renderer (or of
+    // `AuthoringSession`, which reaches ProjectModel) survives compilation. That is what
+    // lets the 37 specs in `tests-unit/bld-001/` grade the mapping without Electron —
+    // and it is a boundary worth keeping: a single value import here moves these specs
+    // into the jasmine runner.
+    "src/editor/src/models/AiAssistant/thread",
+    // SIG-005: `wirePulse.ts` is the same shape again — the travelling mark's
+    // arithmetic (which mark a wire gets, where its head is at a given age, how
+    // far the value overlay has drifted) lifted out of the canvas painter so it
+    // is graded here rather than only by running an app and watching a wire.
+    // Import-free by design: it takes the point function as an argument rather
+    // than reaching for the connection, which is also what lets SIG-006's hover
+    // reuse it without inheriting the painter.
+    "src/editor/src/views/nodegrapheditor/wirePulse.ts",
+    // SIG-006: `wireEndpoints.ts` is its neighbour and the same shape — the
+    // endpoint glyph geometry (which shape a plug gets, the arrowhead's three
+    // points, the diamond's four, and how much to inflate them so they hold
+    // their screen size as the graph zooms out). Import-free for the same
+    // reason: the fill-ratio separation these shapes are chosen for is a
+    // property of the polygons, so it can be graded as arithmetic here and
+    // confirmed once on composited pixels, rather than argued about.
+    "src/editor/src/views/nodegrapheditor/wireEndpoints.ts",
+    // FUN-002: `newNodeSeed.ts` is the same shape again — whether a just-created
+    // node gets a body, and which parameter it goes in. Import-free on purpose:
+    // the seed *string* is FUN-001's and is passed in by the two call sites
+    // rather than imported here, which is what keeps `@noodl-core-ui` (and
+    // through it React and CodeMirror) out of this runner. The two guards it
+    // holds — wrong node type, node already has a body — both fail silently in
+    // the app, so they are graded here rather than by remembering to try them.
+    "src/editor/src/models/nodeSeed/newNodeSeed.ts",
+    // LGC-001 §2: `NodePicker.chooser.ts` is the same shape once more — the three
+    // sentences that say which of Expression / Visual Function / Function to
+    // reach for, lifted out of the preview component so the *copy* is graded
+    // here rather than only by cursoring a row and reading it. Import-free by
+    // design, and deliberately not part of the enriched catalog: this is a
+    // comparative note about three neighbours, and the catalog is written one
+    // node at a time. The clause it must never contain — that the Function node
+    // has one signal in and one out, which is false in both directions — is the
+    // reason it is graded at all.
+    "src/editor/src/views/NodePicker/NodePicker.chooser.ts",
+    // LGC-008: `blocklyResize.ts` is the same shape once more — the registry a
+    // splitter drag calls to make Blockly re-measure itself against its
+    // container. It is import-free *by requirement* rather than by luck: Blockly
+    // is a ~1.1 MB lazy chunk and the layout code that triggers a resize sits in
+    // the eager bundle, so the module joining them must never name `blockly`.
+    // That constraint is exactly what lets the dispatch behaviour be graded here
+    // with no Electron, no DOM and no Blockly.
+    "src/editor/src/views/BlocklyEditor/blocklyResize.ts",
+    // LGC-007: `views/BlocklyEditor/myblocks/` is the same shape again, and here
+    // the boundary is enforced by where a file sits rather than by remembering.
+    // The whole directory is pure — the saved-definition format, the cycle
+    // guard, the shape inference and the inliner — and imports nothing but
+    // itself, not even Blockly: a saved group is plain JSON, so all four are
+    // JSON transforms. Anything that touches Blockly or an editor singleton (the
+    // two shelf adapters, the call-block definitions) lives one level up in
+    // `BlocklyEditor/` and is deliberately not reached from here.
+    //
+    // That split matters more than usual for this feature. §3's failure mode is
+    // not an error message, it is a hung renderer inside a 300 ms debounce tick,
+    // which presents as the workspace freezing at random — the one class of
+    // defect a drive is worst at finding and a plain-Node runner is best at.
+    "src/editor/src/views/BlocklyEditor/myblocks",
+    // …and these three, which are not pure but are reachable anyway: all each
+    // one imports is `blockly` / `blockly/javascript`, and Blockly runs headless
+    // in Node. That is what lets `inliner.test.ts` close the loop the rest of
+    // this feature cannot close by inspection — expand the JSON, load it into a
+    // real headless workspace, run the **real** generators, and assert the
+    // JavaScript that comes out. Without them the inliner could only be graded
+    // on the shape of the JSON it produces, which is precisely the kind of
+    // proof that passes while the generated program does nothing.
+    "src/editor/src/views/BlocklyEditor/initialize.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlBlocks.ts",
+    "src/editor/src/views/BlocklyEditor/NoodlGenerators.ts",
+    // LGC-005: the Blockly type map and the block definitions that apply it. The map itself
+    // (`NoodlTypes.ts`) imports nothing at all; `NoodlBlocks.ts` imports only `blockly`, which
+    // runs headlessly in plain Node as long as nothing asks for a `WorkspaceSvg` — so the
+    // specs drive a real workspace and grade Blockly's own refusals rather than a
+    // re-implementation of them. Nothing else in `views/BlocklyEditor/` is reachable from
+    // here: `BlocklyWorkspace.tsx` is React and `BlocklyTheme.ts` reaches the canvas theme.
+    "src/editor/src/views/BlocklyEditor/NoodlTypes.ts",
+    // LGC-002: the same shape a third time. `DoIt.ts` is the offer rule ("is this a value
+    // block, and if not, what does the greyed menu item say?") plus the fragment generator, and
+    // it imports nothing but `blockly/javascript` — so both are graded against a real headless
+    // workspace, with the real blocks and the real generator. `NoodlGenerators.ts` comes with
+    // it because the fragment for a `get input` block *is* its output; grading generation
+    // against anything else would be grading a mock. The three files deliberately NOT reachable
+    // from here are the three that must not be: `DoItController` (Blockly's rendered menu),
+    // `DoItBalloons` (SVG and the canvas theme) and `DoItProbeClient` (the socket).
+    "src/editor/src/views/BlocklyEditor/DoIt.ts",
+    // LGC-003: the same shape a fourth time, and here the split is the whole design.
+    // `BlockProbes.ts` is the instrumentation — it decides what `__p` wraps and at what
+    // operator precedence — and it imports nothing but Blockly, so the claim the acceptance
+    // list actually cares about ("instrumented and uninstrumented runs of the same program
+    // produce identical outputs") is proved by *running both* against a real workspace with the
+    // real generator rather than by reading the emitted string. `BlockValueTrace.ts` imports
+    // nothing at all: it is the didn't-execute rule, the loop count, the run history and the
+    // frame coalescing — every decision §2, §3 and §5 make. Deliberately NOT reachable:
+    // `BlockValueBadges` (SVG + canvas theme), `BlockTraceClient` (the socket) and
+    // `BlockValueController` (both, plus the DOM).
+    "src/editor/src/views/BlocklyEditor/BlockProbes.ts",
+    "src/editor/src/views/BlocklyEditor/BlockValueTrace.ts",
+    // LGC-004: the rails' model half. `interfaceRails.ts` imports Blockly and the runtime's
+    // `detectInterface`, and nothing else — which is the whole argument that the rails cannot
+    // disagree with the node's ports, so it is the half that has to be gradeable. The overlay is
+    // DOM and is deliberately not reached from here.
+    "src/editor/src/views/BlocklyEditor/interfaceRails.ts",
+    // VFN-011: the bench, minus its drawing. The split is load-bearing for the same reason
+    // LGC-003's was, and then some — this is a **second execution context**, so the claim that it
+    // agrees with the runtime has to be provable by running both, which needs a runner with no DOM
+    // in it.
+    //
+    //  - `BenchRunner.ts` compiles and runs one program. Imports only `@noodl/runtime`, including
+    //    the runtime's *own* recorder, so a bench frame is a viewer frame plus a flag rather than a
+    //    lookalike. `drift-gate.spec.ts` runs the same `generatedCode` through this and through the
+    //    runtime's real `_executeLogic`, and diffs.
+    //  - `benchModel.ts` is the cell reading and the rows, and imports only the two above it.
+    //  - `BenchController.ts` holds the sandbox values and decides what one press runs. Code
+    //    generation is **injected** rather than imported, which is what keeps Blockly's generator —
+    //    and with it the whole question of a second generation path — out of this file.
+    //
+    // Deliberately NOT reachable: `InterfaceRailsOverlay` (the cells and the ▶ are DOM) and
+    // `BlocklyWorkspace.tsx` (React), which is where the wiring lives and where a drive is owed.
+    "src/editor/src/views/BlocklyEditor/BenchRunner.ts",
+    "src/editor/src/views/BlocklyEditor/benchModel.ts",
+    "src/editor/src/views/BlocklyEditor/BenchController.ts",
+    // FIX-006: the authoring prompts, which are the whole deliverable of this task — the copy IS
+    // the fix, so the copy is what has to be graded. The directory is pure by the same argument
+    // the entries above make: `traps.ts` imports exactly one module, `NodePicker.chooser.ts`
+    // (already reachable here, and import-free by design so the picker's comparative copy and the
+    // prompt's cannot drift apart); `decomposition.ts` and `design.ts` import nothing at all; and
+    // `authoring.ts` — which assembles the editor's system prompt — imports those three plus a
+    // type-only `../types`, so nothing survives to runtime.
+    //
+    // 🔴 Reachable here is the point. These strings had exactly two graders before this: a jasmine
+    // spec in `tests/ai/` that needs a real Electron renderer to run, and `noodl-mcp`'s
+    // `rejectionExamples.test.ts` over stdio. Neither asserted the node-choice copy, so session
+    // 43's edit to it was, in its own words, caught by nothing.
+    "src/editor/src/models/AiAssistant/authoring/prompts",
+    // HLS-002: `utils/codeExport/exportSequence.ts` is the same shape — the editor's export as an
+    // ordered sequence, with every editor singleton (ProjectModel, the popup layer, the toast
+    // layer, Electron's directory dialog) taken as a function rather than imported. EXP-012's
+    // `writeExport.ts` used to be the entry here; it now lives in `@nodegx/export`, because
+    // HLS-002 gave the export a second front door and two copies of the write loop is the
+    // cheapest way to make "both doors agree" untrue.
+    //
+    // 🔴 Reachable here is the whole point, not a convenience. This phase's subject is that
+    // everything which ships an app is behind a click; a sequence only a mouse can start is one
+    // only a mouse can grade. `exportReactCode.ts` beside it is the wiring that supplies the real
+    // singletons and is deliberately not reached from here.
+    "src/editor/src/utils/codeExport/exportSequence.ts",
+    // EXP-013: the "Not exportable yet" decision (`exportBadge.ts`, whose only import is the
+    // exporter's ledger reader — a JSON read), the badge component it feeds (no hooks, no `Icon`,
+    // so `renderElements` can evaluate it), and the pre-flight modal (no hooks either; graded on
+    // both fixtures' summaries). The picker card and the property header that place the badge are
+    // not reached — both import `Icon`, which this runner cannot load — so their use of it is one
+    // source-level assertion in `tests-unit/exp-013/`.
+    "src/editor/src/utils/codeExport/exportBadge.ts",
+    "src/editor/src/views/common/ExportBadge",
+    "src/editor/src/views/PopupLayer/CodeExportModal.tsx"
   ]
 }

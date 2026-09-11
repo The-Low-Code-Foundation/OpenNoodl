@@ -80,7 +80,7 @@ const RouterNavigate: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the navigation did not happen, set just before Failure fires',
       getter: function (this: RouterNavigateInstance) {
         return this._internal.lastError;

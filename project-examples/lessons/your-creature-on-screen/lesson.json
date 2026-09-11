@@ -1,0 +1,84 @@
+{
+  "title": "Your creature, on screen",
+  "description": "A blank page becomes a card with a creature, a name and a coloured frame - and a user interface turns out to be a tree of things with properties.",
+  "format": "noodl-lesson@1",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "What you are about to build",
+      "body": "## Your creature, on screen\n\nBy the end of this you will have a card on the page with a creature on it and a name underneath it.\n\nThat is worth half an hour because of what it shows you. A user interface is not a drawing. It is a **tree** - things sitting inside other things - and every one of those things has **properties** you set. Once you can see a screen that way, every screen you ever build here is the same shape.\n\nThe page already has an empty shell on it. Everything inside it is yours."
+    },
+    {
+      "title": "Add the card",
+      "body": "Add a **Group** node inside **Page shell**, and rename it `Card`.\n\nA Group is a container: it holds other things. It draws nothing at all by itself, which is why the page still looks empty. You have just made the box that everything else goes into.",
+      "detail": "Nodes come from the node picker, and you can filter it by typing the name of the node you want. To put a node *inside* another one, drop it onto that node rather than onto empty canvas - where a node lands in the tree is what decides where it appears on screen.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card",
+          "hasType": "Group"
+        }
+      ]
+    },
+    {
+      "title": "Make it look like a card",
+      "body": "Select `Card` and set two of its properties:\n\n- **Size Mode** to **Content Size**\n- **Background Color** to any colour you like\n\nThe size mode is the one that matters. A Group is **100% wide and 100% tall** until you tell it otherwise, so a brand-new one fills the entire screen. Content Size tells it to be exactly as big as whatever is inside it - which is what makes a card a card rather than a wall.",
+      "detail": "A node's properties appear in the panel on the right when you select it. **Size Mode** is in the **Dimensions** group; **Background Color** is in the **Style** group. Any colour will do here - the lesson checks that you set one, not which one you picked.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card",
+          "paramsEqual": {
+            "sizeMode": "contentSize"
+          }
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card",
+          "hasParams": [
+            "backgroundColor"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Put the creature in the card",
+      "body": "Add a **Circle** node inside `Card` and rename it `Creature`. Give it a **Size** and a **Fill Color**.\n\nNotice that you dropped it *into* the Card, not onto the page. That is the tree doing its work: the circle is drawn inside the card because that is where it sits.",
+      "detail": "Circle's **Size** is in the **Dimensions** group and **Fill Color** is in the **Style** group. If the circle turns up outside the card instead of inside it, it was dropped onto the page by mistake - drag it onto `Card` and it will move.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Creature",
+          "hasType": "Circle"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Creature",
+          "hasParams": [
+            "size",
+            "fillColor"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Give it a name",
+      "body": "Add a **Text** node inside `Card`, underneath the circle, and rename it `Name`. Type your creature's name into its **Text** property.\n\nCall it whatever you like. It is your creature, and it is going to be here for the next eleven lessons.",
+      "detail": "**Text** is the first property in the panel. The order of the children inside `Card` is the order they are drawn in, so if the name comes out above the circle rather than below it, drag it below the circle and it will swap.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Name",
+          "hasType": "Text"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Name",
+          "hasParams": [
+            "text"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "You built a tree.\n\n`Page shell` holds `Card`. `Card` holds `Creature` and `Name`. Nothing here was positioned by dragging it around a canvas - each thing is drawn where it sits in that tree, and everything you can see about it is a **property** you set.\n\nThree things worth keeping:\n\n- **A Group is a container.** It is how you hold things together so they can be spaced, coloured and moved as one.\n- **A new Group fills its parent.** 100% by 100%, until you say otherwise. A surprising number of \"why does my layout look like that\" moments start right here.\n- **Properties are just values.** Right now you typed them in by hand. Later you will wire them to things that change - and that is the moment this stops being a picture and starts being an app.\n\nYour creature currently ignores you completely. That is the next lesson."
+    }
+  ],
+  "completionBadge": "First Light",
+  "authoredBy": "ai"
+}

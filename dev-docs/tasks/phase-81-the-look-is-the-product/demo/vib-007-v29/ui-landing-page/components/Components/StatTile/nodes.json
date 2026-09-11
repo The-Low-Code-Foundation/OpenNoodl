@@ -1,0 +1,89 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "544ea73b-c887-527d-80da-80ebf4831b09",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "st_root",
+      "type": "Group",
+      "label": "Tile",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-2xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)"
+      },
+      "children": [
+        "st_value",
+        "st_label"
+      ]
+    },
+    {
+      "id": "st_value",
+      "type": "Text",
+      "label": "value",
+      "parameters": {
+        "fontSize": "var(--text-5xl)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "text": "0"
+      },
+      "parent": "st_root"
+    },
+    {
+      "id": "st_label",
+      "type": "Text",
+      "label": "label",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--gray-300)",
+        "lineHeight": "var(--leading-snug)",
+        "text": "Label"
+      },
+      "parent": "st_root"
+    },
+    {
+      "id": "st_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per instance",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "st_root"
+  ]
+}

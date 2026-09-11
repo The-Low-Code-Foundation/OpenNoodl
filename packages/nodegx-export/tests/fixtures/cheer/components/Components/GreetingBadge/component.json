@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "a23b27b1-64cb-44c9-a093-a21bb85ac41b",
+  "name": "GreetingBadge",
+  "path": "/Components/GreetingBadge",
+  "type": "visual",
+  "created": "2026-08-27T08:29:53.409Z",
+  "modified": "2026-08-27T08:29:53.409Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A pill badge showing the app-wide visitorName variable — the read side of the shared Variable."
+}

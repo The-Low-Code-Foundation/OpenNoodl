@@ -1,0 +1,207 @@
+{
+  "id": "comp-variant-badge-states",
+  "title": "One size port, three sizes: a variant selector wired into States",
+  "description": "The component a page places three times at three sizes, without three components. `size` is a `Component Inputs` port wired straight into `States.currentState` — 🔴 that port is TWO ports sharing one name: a static string **output** that reports the current state, and, once `states` is set, a generated **enum input** that selects one by name. The input is the wire that makes a variant port work, and a chain of `Condition` nodes each setting one property is the same idea written badly. The `values` parameter (`padX,padY,labelSize`) mints one input per state per value (`value-small-padX`) and one output per value, so each state assigns the whole set at once and the graph carries no branch. `showDot` is the other half of a real interface: chrome chosen at the instance, not by making a second component. And the badge publishes `clicked`, so the page can act on a press — a component that only draws is a component the page has to work around.",
+  "demonstrates": ["States", "Component Inputs", "Component Outputs", "Group", "Text"],
+  "components": [
+    {
+      "name": "/Components/Badge",
+      "nodes": [
+        {
+          "id": "badge_root",
+          "type": "Group",
+          "label": "Badge",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)",
+            "backgroundColor": "var(--muted)",
+            "borderRadius": "var(--radius-full)"
+          },
+          "children": ["badge_dot", "badge_label"],
+          "x": 40,
+          "y": 200
+        },
+        {
+          "id": "badge_dot",
+          "type": "Group",
+          "label": "Status dot — hidden unless the instance asks for it",
+          "parameters": {
+            "width": { "value": 8, "unit": "px" },
+            "height": { "value": 8, "unit": "px" },
+            "borderRadius": "var(--radius-full)",
+            "backgroundColor": "var(--primary)"
+          },
+          "parent": "badge_root"
+        },
+        {
+          "id": "badge_label",
+          "type": "Text",
+          "label": "Label",
+          "parameters": {
+            "text": "Badge",
+            "color": "var(--muted-foreground)",
+            "fontWeight": "var(--font-medium)",
+            "lineHeight": "var(--leading-none)"
+          },
+          "parent": "badge_root"
+        },
+        {
+          "id": "badge_inputs",
+          "type": "Component Inputs",
+          "label": "Badge interface in — every port plugged \"output\"",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            { "name": "label", "plug": "output", "type": "string" },
+            { "name": "size", "plug": "output", "type": "string" },
+            { "name": "showDot", "plug": "output", "type": "boolean" }
+          ]
+        },
+        {
+          "id": "badge_size",
+          "type": "States",
+          "label": "Size variants — one state per size, three values each",
+          "parameters": {
+            "states": "small,medium,large",
+            "values": "padX,padY,labelSize",
+            "value-small-padX": "var(--space-2)",
+            "value-small-padY": "var(--space-0-5)",
+            "value-small-labelSize": "var(--text-xs)",
+            "value-medium-padX": "var(--space-3)",
+            "value-medium-padY": "var(--space-1)",
+            "value-medium-labelSize": "var(--text-sm)",
+            "value-large-padX": "var(--space-4)",
+            "value-large-padY": "var(--space-2)",
+            "value-large-labelSize": "var(--text-base)"
+          },
+          "x": 460,
+          "y": 120
+        },
+        {
+          "id": "badge_outputs",
+          "type": "Component Outputs",
+          "label": "Badge interface out — plugged \"input\"",
+          "x": 860,
+          "y": 200,
+          "ports": [{ "name": "clicked", "plug": "input", "type": "signal" }]
+        }
+      ],
+      "connections": [
+        { "fromId": "badge_inputs", "fromProperty": "label", "toId": "badge_label", "toProperty": "text" },
+        { "fromId": "badge_inputs", "fromProperty": "size", "toId": "badge_size", "toProperty": "currentState" },
+        { "fromId": "badge_inputs", "fromProperty": "showDot", "toId": "badge_dot", "toProperty": "mounted" },
+        { "fromId": "badge_size", "fromProperty": "padX", "toId": "badge_root", "toProperty": "paddingLeft" },
+        { "fromId": "badge_size", "fromProperty": "padX", "toId": "badge_root", "toProperty": "paddingRight" },
+        { "fromId": "badge_size", "fromProperty": "padY", "toId": "badge_root", "toProperty": "paddingTop" },
+        { "fromId": "badge_size", "fromProperty": "padY", "toId": "badge_root", "toProperty": "paddingBottom" },
+        { "fromId": "badge_size", "fromProperty": "labelSize", "toId": "badge_label", "toProperty": "fontSize" },
+        { "fromId": "badge_root", "fromProperty": "onClick", "toId": "badge_outputs", "toProperty": "clicked" }
+      ]
+    },
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": { "title": "Orders", "urlPath": "orders" },
+          "children": ["shell"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)",
+            "backgroundColor": "var(--background)"
+          },
+          "parent": "page",
+          "children": ["heading", "row", "last_pressed"]
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Page heading",
+          "parameters": {
+            "text": "Order 4417",
+            "fontSize": "var(--text-2xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "row",
+          "type": "Group",
+          "label": "Three instances, three sizes, one component",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)"
+          },
+          "parent": "shell",
+          "children": ["badge_small", "badge_medium", "badge_large"]
+        },
+        {
+          "id": "badge_small",
+          "type": "/Components/Badge",
+          "label": "Small, no dot",
+          "parameters": { "label": "Paid", "size": "small", "showDot": false },
+          "parent": "row"
+        },
+        {
+          "id": "badge_medium",
+          "type": "/Components/Badge",
+          "label": "Medium, with the status dot",
+          "parameters": { "label": "Packing", "size": "medium", "showDot": true },
+          "parent": "row"
+        },
+        {
+          "id": "badge_large",
+          "type": "/Components/Badge",
+          "label": "Large — the one the page listens to",
+          "parameters": { "label": "Awaiting courier", "size": "large", "showDot": true },
+          "parent": "row"
+        },
+        {
+          "id": "last_pressed",
+          "type": "Text",
+          "label": "What the page learned",
+          "parameters": {
+            "text": "Nothing pressed yet",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "note_pressed",
+          "type": "JavaScriptFunction",
+          "label": "Say which badge was pressed",
+          "parameters": {
+            "functionScript": "Outputs.message = 'Courier badge pressed at ' + new Date().toLocaleTimeString();"
+          },
+          "x": 700,
+          "y": 320
+        }
+      ],
+      "connections": [
+        { "fromId": "badge_large", "fromProperty": "clicked", "toId": "note_pressed", "toProperty": "run" },
+        { "fromId": "note_pressed", "fromProperty": "out-message", "toId": "last_pressed", "toProperty": "text" }
+      ]
+    }
+  ]
+}

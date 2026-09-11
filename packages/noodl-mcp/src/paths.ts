@@ -9,7 +9,17 @@
  *
  * Tools accept either; we normalise input to `path` and preserve the on-disk
  * legacyName in responses.
+ *
+ * ⚠️ The pair must stay the editor's pair. `toPathForm` mirrors the exporter's
+ * `legacyNameToPath`; the inverse DELEGATES to the importer's `toLegacyName`
+ * rather than re-implementing it, because the local re-implementation (a bare
+ * `'/' + path`) is how SB-001's defect happened: it lacked the importer's
+ * `__cloud__/` → `/#__cloud__/` case, so an MCP-authored cloud component got
+ * `path: '/__cloud__/X'` — which fails `isCloudFunctionComponent`, ships in the
+ * BROWSER bundle, and never reaches the cloud runtime.
  */
+
+import { toLegacyName } from './editor-deps';
 
 /** Normalise any accepted component identifier to path form ("Pages/Home"). */
 export function toPathForm(input: string): string {
@@ -20,9 +30,13 @@ export function toPathForm(input: string): string {
   return p;
 }
 
-/** The legacy name a *newly created* component gets for a given path. */
+/**
+ * The legacy name a *newly created* component gets for a given path — the
+ * importer's reconstruction branch, reached by passing a component file with no
+ * stored `path` so `toLegacyName` cannot take its prefer-the-original shortcut.
+ */
 export function pathToLegacyName(path: string): string {
-  return '/' + path;
+  return toLegacyName({} as Parameters<typeof toLegacyName>[0], path);
 }
 
 /** Basic path hygiene for created components. Returns an error string or null. */

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e45ee29e-0329-454f-a028-0f47dcdd606d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "entryInput",
+      "fromProperty": "onTextChanged",
+      "toId": "noteDraftVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "noteDraftVar",
+      "fromProperty": "value",
+      "toId": "makeNote",
+      "toProperty": "prop-text"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "id",
+      "toId": "insertNote",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeNote",
+      "fromProperty": "done",
+      "toId": "insertNote",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "notesArray",
+      "fromProperty": "items",
+      "toId": "notesList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "noteDraftVar",
+      "fromProperty": "value",
+      "toId": "draftOrVisitor",
+      "toProperty": "input 0"
+    },
+    {
+      "fromId": "visitorRead",
+      "fromProperty": "value",
+      "toId": "draftOrVisitor",
+      "toProperty": "input 1"
+    },
+    {
+      "fromId": "draftOrVisitor",
+      "fromProperty": "result",
+      "toId": "canAdd",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "addButton",
+      "fromProperty": "onClick",
+      "toId": "canAdd",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "canAdd",
+      "fromProperty": "ontrue",
+      "toId": "makeNote",
+      "toProperty": "new"
+    }
+  ]
+}

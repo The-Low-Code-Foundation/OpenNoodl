@@ -13,7 +13,8 @@ import {
 import { coerceToType } from './expression-type-coercion';
 import { diagnosticsEnabled, setDiagnostic } from './diagnostics';
 import { COMPLETED_PORT, TREAT_UNCHANGED_AS } from './outcome';
-import { runOnChangeInput, runOnChangePortName, runOnValueChange } from './run-on-value-change';
+import { runOnChangeInput, runOnChangePortName, runOnValueChange, valueDidChange } from './run-on-value-change';
+import type { NodeRunContext } from './runcontext';
 
 /**
  * OBS-003. The port name is appended, so one node with two NaN inputs raises two clearable
@@ -109,6 +110,11 @@ const Node = function Node(this: RuntimeNode, context: RuntimeNodeContext, id: s
 
   // Expression subscriptions: { [portName]: { unsub: unsubscribeFn, expression: string } }
   this._expressionSubscriptions = {};
+
+  // Ports currently showing an `expression-error-<port>` warning in the editor. Lazily
+  // created, because most nodes never raise one and this is allocated per node instance.
+  // See `_clearExpressionError` for why the subscription map above cannot answer this.
+  this._expressionErrorPorts = null;
 } as unknown as NodeConstructor;
 
 Node.prototype.getInputValue = function (name) {
@@ -126,9 +132,23 @@ Node.prototype.registerInput = function (name, input) {
 
   if (type && type.units) {
     const defaultUnit = type.defaultUnit || type.units[0];
+    // FLD-004 (c), #26 — `unit`, not `type`. `setInputValue` tests
+    // `currentInputValue.unit` to decide whether a bare number arriving over a wire should be
+    // merged into the unit the port is already holding, so seeding the key under a different
+    // name meant that test could never pass for a port registered through here, and the
+    // coercion has been dead since the initial commit (`b9c60b07d`).
+    //
+    // 🔴 Library ports were never affected and the fix changes nothing that ships today:
+    // `nodedefinition.ts` assigns `node._inputs = Object.create(inputs)` directly and seeds
+    // `_inputValues` through `initializeDefaultValues`, which has always written `unit`. This
+    // function is reached only by DYNAMIC registration, and the blast-radius measurement found
+    // **272 distinct dynamic registrations across three populations — the runtime suite, the
+    // viewer suite and a 20-project render corpus — and not one of them carries a units type.**
+    // So this is a latent defect being closed, not a behaviour change: it costs nothing now and
+    // stops the first dynamic units port anyone adds from silently not merging.
     this._inputValues[name] = {
       value: input.default,
-      type: defaultUnit
+      unit: defaultUnit
     };
   } else if (input.hasOwnProperty('default')) {
     this._inputValues[name] = input.default;
@@ -182,6 +202,23 @@ Node.prototype.shouldRunOnValueChange = function (inputName) {
 };
 
 /**
+ * DEF-046 — the same question, asked by a setter that knows what the value WAS.
+ *
+ * 🔴 **The one deciding function for "does this new value re-run the node".** Two conditions,
+ * and a call site that asks only one of them is the defect: `shouldRunOnValueChange` alone
+ * re-runs on a value that did not change (a code node writing a database row twice on one
+ * press); `valueDidChange` alone ignores the author's checkbox.
+ *
+ * ⚠️ **Only for a setter that stores a value.** The event-driven call sites — a cloud-store
+ * subscription firing, a model announcing a change — have no "previous value" and must keep
+ * calling `shouldRunOnValueChange` directly. There the question really is *"may this trigger
+ * run me"*, and nothing has been compared because nothing was handed over.
+ */
+Node.prototype.shouldRunOnValueChanged = function (inputName, previous, next) {
+  return valueDidChange(previous, next) && runOnValueChange(this, inputName);
+};
+
+/**
  * Register the checkbox port governing an input discovered at runtime.
  *
  * Declared inputs get theirs from `defineNode`, which synthesises them from the
@@ -201,6 +238,53 @@ Node.prototype.deregisterRunOnValueChangeInput = function (inputName) {
   delete this._runOnValueChange[inputName];
 };
 
+/** Raise (or refresh) the expression error the editor draws on this port. */
+Node.prototype._raiseExpressionError = function (portName, message) {
+  if (!this.context || !this.context.editorConnection) return;
+
+  this.context.editorConnection.sendWarning(
+    this.nodeScope.componentOwner.name,
+    this.id,
+    'expression-error-' + portName,
+    {
+      showGlobally: true,
+      message
+    }
+  );
+
+  if (this._expressionErrorPorts === null) this._expressionErrorPorts = {};
+  this._expressionErrorPorts[portName] = true;
+};
+
+/**
+ * Take back the expression error on this port, if one is up.
+ *
+ * ⚠️ Guarded on a marker rather than cleared unconditionally, because the caller that
+ * matters is the *plain value* path — every input set in the runtime, several per frame
+ * for anything animated. Unguarded, each one would build the `'expression-error-' + port`
+ * key and call through to `EditorConnection`, for a node that has never seen an
+ * expression. `ActiveWarnings` would swallow the message, but only after the work.
+ *
+ * The marker is its own state because `_expressionSubscriptions` cannot stand in for it:
+ * an expression is only subscribed when it has dependencies to watch, and an expression
+ * that fails to *compile* — the case this whole path exists for — never gets that far.
+ */
+Node.prototype._clearExpressionError = function (portName) {
+  if (this._expressionErrorPorts === null || !this._expressionErrorPorts[portName]) return;
+
+  delete this._expressionErrorPorts[portName];
+
+  // `nodeScope` is checked because this also runs during teardown, where a throw would
+  // take the rest of the delete handling with it.
+  if (this.context && this.context.editorConnection && this.nodeScope && this.nodeScope.componentOwner) {
+    this.context.editorConnection.clearWarning(
+      this.nodeScope.componentOwner.name,
+      this.id,
+      'expression-error-' + portName
+    );
+  }
+};
+
 /**
  * Evaluate an expression parameter and return the coerced result.
  * Also sets up reactive subscriptions so the node updates when dependencies change.
@@ -218,6 +302,17 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
       }
       delete this._expressionSubscriptions[portName];
     }
+
+    // ⚠️ And take back the error, which used to outlive the expression that caused it.
+    // Pressing `fx` on a field that already holds prose makes that prose the expression,
+    // and prose does not parse — so the error is right, and the author's fix is to press
+    // `fx` again. That writes the literal back through here, where the early return above
+    // used to end the story: the warning stayed raised, so the node kept its dotted ring
+    // and the Problems panel kept quoting a JavaScript error about a field that is no
+    // longer JavaScript. The same door lets a *deleted* parameter out — it comes back as
+    // the port's default, which is also a plain value.
+    this._clearExpressionError(portName);
+
     return paramValue; // Simple value, return as-is
   }
 
@@ -232,17 +327,11 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     const compiled = compileExpression(paramValue.expression);
     if (!compiled) {
       console.warn(`Expression compilation failed for ${this.name}.${portName}: ${paramValue.expression}`);
+      // Guarded, not left to `_raiseExpressionError`: re-parsing the source just to name
+      // the syntax error is only worth doing for an editor that will show it.
       if (this.context && this.context.editorConnection) {
         const syntax = validateExpression(paramValue.expression);
-        this.context.editorConnection.sendWarning(
-          this.nodeScope.componentOwner.name,
-          this.id,
-          'expression-error-' + portName,
-          {
-            showGlobally: true,
-            message: `Expression error: ${syntax.error || 'could not compile expression'}`
-          }
-        );
+        this._raiseExpressionError(portName, `Expression error: ${syntax.error || 'could not compile expression'}`);
       }
       return paramValue.fallback;
     }
@@ -297,13 +386,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     }
 
     // Clear any previous expression errors
-    if (this.context && this.context.editorConnection) {
-      this.context.editorConnection.clearWarning(
-        this.nodeScope.componentOwner.name,
-        this.id,
-        'expression-error-' + portName
-      );
-    }
+    this._clearExpressionError(portName);
 
     return coercedValue;
   } catch (error) {
@@ -311,17 +394,7 @@ Node.prototype._evaluateExpressionParameter = function (paramValue, portName) {
     console.warn(`Expression evaluation failed for ${this.name}.${portName}:`, error);
 
     // Show warning in editor
-    if (this.context && this.context.editorConnection) {
-      this.context.editorConnection.sendWarning(
-        this.nodeScope.componentOwner.name,
-        this.id,
-        'expression-error-' + portName,
-        {
-          showGlobally: true,
-          message: `Expression error: ${(error as Error).message}`
-        }
-      );
-    }
+    this._raiseExpressionError(portName, `Expression error: ${(error as Error).message}`);
 
     // Return fallback value
     return paramValue.fallback;
@@ -565,17 +638,70 @@ Node.prototype.update = function () {
       //all inputs are now updated, flag as not dirty
       this._dirty = false;
 
+      /**
+       * FB-025 — **which port drains first, stated instead of inherited.**
+       *
+       * Two facts decide the cross-port order, and until this change both were accidents.
+       *
+       * 1. `Object.keys` on a plain object yields *insertion* order — the order each port was
+       *    first ever delivered to, not the order the entries waiting right now arrived in. A
+       *    port's key was created once and never moved again, so a signal port that happened to
+       *    be queued once before its paired value port had ever been written drained ahead of
+       *    that value **for the life of the node**. A `Run` then ran the program on the
+       *    *previous* value, every time, for ever. Fixed by letting an emptied port go of its
+       *    key at the bottom of the loop, which makes this object mean what the drain needs:
+       *    **the ports with input pending, keyed in the order that input arrived.**
+       *
+       * 2. Arrival order alone is still not the answer, because a value can be one hop behind
+       *    the signal that describes it. `_updateDependencies` (C6) has just pulled it in, so
+       *    both are pending — but the value was *emitted* first and arrived second. Hence the
+       *    two sweeps below: **a pending value is applied before a pending signal**, and only
+       *    then does arrival order break the tie within each group.
+       *
+       * This is the *signal before value* class (`NV-ii`) the corpus already names twice and had
+       * only ever repaired one node at a time: `objectchanged.ts`'s `emptyToNull` exists because
+       * a port whose first emit is `undefined` queues nothing (`sendValue` returns early), so its
+       * key was created after the signal's and lost the race permanently; and
+       * `nda-012-logic-category.test.ts` records that `Signal To Index` is merely *masked* from
+       * the same defect by `index` holding `0` rather than `undefined` when the wire was made —
+       * "an accident of the node's `initialize`, not of its ordering". `CONTRACT.md` C4 asserts
+       * the guarantee ("a value lands before the signal that follows it") that nothing in here
+       * actually implemented.
+       *
+       * ⚠️ **C7 lockstep is unchanged.** A port appears in `order` at most once per pass, so it
+       * still advances one entry per pass and a value stays in step with the signal beside it
+       * when several events are queued (`node-signal-value-pairing.test.ts`).
+       */
       const inputNames = Object.keys(this._inputValuesQueue);
+
+      /** The pass order: ports with a value pending, then ports with a signal pending. */
+      const order: string[] = [];
 
       let hasMoreInputs = true;
 
       while (hasMoreInputs && !this._cyclicLoop) {
         hasMoreInputs = false;
 
-        for (let i = 0; i < inputNames.length; i++) {
-          const inputName = inputNames[i];
+        order.length = 0;
+        for (let pass = 0; pass < 2; pass++) {
+          const wantSignal = pass === 1;
+          for (let i = 0; i < inputNames.length; i++) {
+            const queue = this._inputValuesQueue[inputNames[i]];
+            // A port emptied earlier has let go of its key, so read fresh rather than trusting
+            // the snapshot. The head entry is what classifies the port: `SIGNAL_PULSE` is the
+            // single-entry pulse form, everything else is a value.
+            if (queue === undefined || queue.length === 0) continue;
+            if ((queue[0] === SIGNAL_PULSE) !== wantSignal) continue;
+            order.push(inputNames[i]);
+          }
+        }
+
+        for (let i = 0; i < order.length; i++) {
+          const inputName = order[i];
           const queue = this._inputValuesQueue[inputName];
-          if (queue.length > 0) {
+          // Read fresh rather than trusting the snapshot: a port emptied earlier in this pass
+          // has let go of its key, and `setInputValue` can have re-queued onto it since.
+          if (queue !== undefined && queue.length > 0) {
             const queued = queue.shift();
 
             // OBS-001: for the duration of this input's processing, the event that delivered
@@ -602,8 +728,14 @@ Node.prototype.update = function () {
               if (tracingContext) tracingContext._currentCause = previousCause;
             }
 
-            if (queue.length > 0) {
+            if (this._inputValuesQueue[inputName] !== undefined && this._inputValuesQueue[inputName].length > 0) {
               hasMoreInputs = true;
+            } else {
+              // The key goes with the last entry. See the note above the snapshot: an emptied
+              // port that kept its key would keep its place at the head of every future drain,
+              // which is the whole defect.
+              delete this._inputValuesQueue[inputName];
+              delete this._inputCauseQueue[inputName];
             }
           }
         }
@@ -757,6 +889,30 @@ Node.prototype.raiseRuntimeError = function (code: string, message: string, deta
     message,
     detail
   });
+
+  // DEF-004 — the same failure, on the per-run channel, for the nodes that never adopted the
+  // outcome contract.
+  //
+  // 🔴 **This is not belt-and-braces; it is the majority of the population that matters.** The
+  // node a cloud function most often goes wrong on is the query, and `DbCollection2.setError`
+  // hand-rolls `sendSignalOnOutput('failure')` — it opens no outcome, so `beginOutcome` never
+  // ran and there is no step for `reportOutcome` to close. Eighteen std-library modules are in
+  // that state. Without this they fail invisibly in the record, which is the exact defect.
+  //
+  // ⚠️ **`_raisingForOutcome` is the duplicate guard, and it is load-bearing.**
+  // `reportOutcome('failure')` raises through here on its way out, and that raise already has a
+  // step: recording a second one would double every contract-adopting node's failures — *a check
+  // in a second pipeline is a duplicate first.* `def004-execution-steps.test.ts` asserts the
+  // cardinality on both populations.
+  if (this._raisingForOutcome) return;
+  const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+  const runContext = scope && scope.runContext;
+  if (!runContext || !runContext.beginStep || !runContext.endStep) return;
+
+  // Opened and closed in one breath: a hand-rolled failure has no "started" moment to record —
+  // the node reached this line having already decided it could not act.
+  const step = runContext.beginStep({ nodeId: this.id, nodeType: this.name });
+  if (step !== undefined && step !== null) runContext.endStep(step, { status: 'failure', code, message });
 };
 
 /**
@@ -800,8 +956,27 @@ Object.defineProperty(Node.prototype, 'diagnosticsEnabled', {
  * that exercises the node once (FINDINGS **NV-iii**). A fresh token per invocation is what makes
  * that class unrepresentable rather than merely fixed.
  */
-Node.prototype.beginOutcome = function () {
-  return { reported: undefined };
+Node.prototype.beginOutcome = function (inputData) {
+  const token: { reported: undefined; step?: unknown } = { reported: undefined };
+
+  // DEF-004 — one execution step per invocation, on the per-run channel CWF-013 built.
+  //
+  // ⚠️ **The cost discipline is the same one `tracebuffer.ts` states**: a runtime with no sink
+  // pays two property reads and allocates nothing beyond the token it already allocated. The
+  // browser attaches no `runContext` at all, so this is dead weight of two `undefined` checks
+  // there and always will be.
+  //
+  // Opened HERE rather than at `reportOutcome` on purpose: an action that begins and never
+  // reports — the hang that CWF-018's 504 exists for — leaves a `running` step naming the node
+  // that stopped, which is the single most useful row this table can hold. A step written only
+  // on completion would show nothing at all for exactly the run an author is trying to explain.
+  const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+  const runContext = scope && scope.runContext;
+  if (runContext && runContext.beginStep) {
+    token.step = runContext.beginStep({ nodeId: this.id, nodeType: this.name, inputData });
+  }
+
+  return token;
 };
 
 /**
@@ -856,51 +1031,97 @@ Node.prototype.reportOutcome = function (token, outcome, options) {
   if (token.reported !== undefined) {
     // "Exactly one" is the load-bearing half of the contract, so a second report is a library
     // defect and is reported as one rather than quietly winning or quietly losing.
-    this.raiseRuntimeError(
-      'outcome/duplicate',
-      `Reported ${token.reported} and then ${outcome} for one invocation, which the outcome contract forbids`,
-      { first: token.reported, second: outcome }
-    );
+    //
+    // Inside DEF-004's guard: this invocation already owns a step, closed by the first report.
+    // A second row here would say a node acted twice when a library bug is what happened.
+    this._raisingForOutcome = true;
+    try {
+      this.raiseRuntimeError(
+        'outcome/duplicate',
+        `Reported ${token.reported} and then ${outcome} for one invocation, which the outcome contract forbids`,
+        { first: token.reported, second: outcome }
+      );
+    } finally {
+      this._raisingForOutcome = false;
+    }
     return;
   }
   token.reported = outcome;
 
-  if (outcome === 'failure' && !(options && options.raise === false)) {
-    // Raised before the signal for the same reason values are flagged before it: a graph wiring
-    // `failure -> show` must already be able to read the reason when the pulse lands.
-    //
-    // `raise: false` means the reason is already on the channel from a more precise raise
-    // elsewhere — see `OutcomeFailureOptions.raise`. It suppresses the *duplicate*, never the
-    // only report.
-    this.raiseRuntimeError(
-      (options && options.code) || 'outcome/unspecified-failure',
-      (options && options.message) || 'The action could not be performed',
-      options && options.detail
-    );
+  // DEF-004's duplicate guard — see the note in `raiseRuntimeError`. Wraps the WHOLE block
+  // rather than only the failure raise, because `outcome/missing-port` and
+  // `outcome/missing-completed` raise on this same node for this same invocation, and each would
+  // otherwise add a step beside the one this invocation already owns.
+  //
+  // ⚠️ **Inline rather than a helper method, and the reason is a red suite.** Extracting the
+  // block as `Node.prototype._reportOutcomeSignals` broke fourteen specs at once: several suites
+  // build a node as **a bag of bound prototype methods** and never construct one, so a new method
+  // this one calls is simply absent (`this._reportOutcomeSignals is not a function`). Adding a
+  // required method to `Node.prototype` is a change to that whole spec population, not a
+  // refactor.
+  this._raisingForOutcome = true;
+  try {
+    if (outcome === 'failure' && !(options && options.raise === false)) {
+      // Raised before the signal for the same reason values are flagged before it: a graph wiring
+      // `failure -> show` must already be able to read the reason when the pulse lands.
+      //
+      // `raise: false` means the reason is already on the channel from a more precise raise
+      // elsewhere — see `OutcomeFailureOptions.raise`. It suppresses the *duplicate*, never the
+      // only report.
+      this.raiseRuntimeError(
+        (options && options.code) || 'outcome/unspecified-failure',
+        (options && options.message) || 'The action could not be performed',
+        options && options.detail
+      );
+    }
+
+    if (this.hasOutput(outcome)) {
+      this.sendSignalOnOutput(outcome);
+    } else {
+      this.raiseRuntimeError(
+        'outcome/missing-port',
+        `Reported ${outcome} but has no ${outcome} output, so the outcome reached no wire`,
+        { outcome }
+      );
+    }
+
+    // Universal, and the one port with no exemption — its whole value is that an author can rely
+    // on it being there.
+    if (this.hasOutput(COMPLETED_PORT)) {
+      this.sendSignalOnOutput(COMPLETED_PORT);
+    } else {
+      this.raiseRuntimeError(
+        'outcome/missing-completed',
+        'Adopted the outcome contract without a Completed output, which every action must have',
+        { outcome }
+      );
+    }
+
+  } finally {
+    this._raisingForOutcome = false;
   }
 
-  if (this.hasOutput(outcome)) {
-    this.sendSignalOnOutput(outcome);
-  } else {
-    this.raiseRuntimeError(
-      'outcome/missing-port',
-      `Reported ${outcome} but has no ${outcome} output, so the outcome reached no wire`,
-      { outcome }
-    );
-  }
-
-  // Universal, and the one port with no exemption — its whole value is that an author can rely
-  // on it being there.
-  if (this.hasOutput(COMPLETED_PORT)) {
-    this.sendSignalOnOutput(COMPLETED_PORT);
-  } else {
-    this.raiseRuntimeError(
-      'outcome/missing-completed',
-      'Adopted the outcome contract without a Completed output, which every action must have',
-      { outcome }
-    );
+  // DEF-004 — close the step opened in `beginOutcome`, last, once the signals are out.
+  //
+  // ⚠️ Read after the `unchanged` remap above, not before it: `Treat Unchanged as` turns a
+  // configured `unchanged` into a `failure` with its own code, and a record disagreeing with the
+  // wire an author is watching would be a second vocabulary for one event. The token's step is
+  // cleared so a duplicate report — already raised as `outcome/duplicate` — cannot close it twice.
+  const step = (token as { step?: unknown }).step;
+  if (step !== undefined && step !== null) {
+    (token as { step?: unknown }).step = undefined;
+    const scope = this.nodeScope as { runContext?: NodeRunContext } | undefined;
+    const runContext = scope && scope.runContext;
+    if (runContext && runContext.endStep) {
+      runContext.endStep(step, {
+        status: outcome,
+        code: options && options.code,
+        message: options && options.message
+      });
+    }
   }
 };
+
 
 /**
  * A value arriving over a wire.
@@ -1101,9 +1322,59 @@ Node.prototype._onNodeDeleted = function () {
   }
   this._expressionSubscriptions = {};
 
+  // ⚠️ And take the expression errors down with the instance that raised them. Warnings are
+  // keyed by node *id*, which outlives any one instance — an unmounted node with a broken
+  // expression used to leave its error in the Problems panel with nothing left to fix it on.
+  // It also keeps `_expressionErrorPorts` honest: because nothing survives the instance, a
+  // fresh instance starting with an empty marker is starting with an empty warning list too,
+  // which is what lets `_clearExpressionError` trust the marker instead of always clearing.
+  for (const portName in this._expressionErrorPorts) {
+    this._clearExpressionError(portName);
+  }
+
   for (const deleteListener of this._deleteListeners) {
     deleteListener.call(this);
   }
+};
+
+/**
+ * DEF-037 — an **editor-driven** parameter change is reflected by a real render, not by
+ * patching one declaration onto the DOM.
+ *
+ * 🔴 **Why this is not a per-port fix.** `setStyle` in `react-component-node.ts` patches the
+ * changed declaration straight onto the DOM node and re-runs render only for a hard-coded
+ * allowlist. That is correct for a *value* — but a component whose render **derives** other
+ * properties from that value (Text's `textOverflow` decides `whiteSpace`/`overflow` and then
+ * deletes itself; Checkbox copies `width`/`height` onto its inner `<input>`) never recomputes
+ * them, so the port looks broken until the preview is reloaded. Annotating the ports one at a
+ * time is how Checkbox got missed while its sibling Radio Button was fixed.
+ *
+ * ✅ **The reset branch below has done exactly this since long before DEF-037**, and its comment
+ * describes the same bug ("Noodl will modify the original dom node, outside of React … won't see
+ * any delta in the virtual dom"). Only the *set* branch was missing it. This is the known-firing
+ * control for the whole change.
+ *
+ * ⚠️ **Deliberately weaker than `_resetReactVirtualDOM`.** That one mints a new React key and
+ * remounts the node, discarding DOM state — focus, scroll position, video playback. A re-render
+ * recomputes the derived properties without any of that, which is all this needs.
+ *
+ * ⚠️ **Editor-driven only, and that is the point.** This handler runs off the node *model*'s
+ * `parameterUpdated`, which only ever fires from the editor connection
+ * (`editormodeleventshandler.ts`). A deployed app never reaches here, so the DOM fast path that
+ * exists for a wire animating a style per frame is untouched.
+ */
+Node.prototype._scheduleEditorDrivenRerender = function (this: RuntimeNode) {
+  // Not a React-backed node — nothing renders, so there is nothing to recompute.
+  if (!this._rerenderReactNode) return;
+  if (this._editorRerenderScheduled) return;
+  this._editorRerenderScheduled = true;
+
+  // After, not now: `queueInput` only *queues*: the setter that writes the style object has not
+  // run yet, so a render taken here would draw the value the author just replaced.
+  this.scheduleAfterInputsHaveUpdated(function (this: RuntimeNode) {
+    this._editorRerenderScheduled = false;
+    this._rerenderReactNode && this._rerenderReactNode();
+  });
 };
 
 Node.prototype._onNodeModelParameterUpdated = function (event: NodeModelParameterUpdatedEvent) {
@@ -1122,9 +1393,11 @@ Node.prototype._onNodeModelParameterUpdated = function (event: NodeModelParamete
       const states = this._getVisualStates();
       if (states.indexOf(event.state) !== -1) {
         this.queueInput(event.name, event.value);
+        this._scheduleEditorDrivenRerender();
       }
     } else {
       this.queueInput(event.name, event.value);
+      this._scheduleEditorDrivenRerender();
     }
   } else {
     //parameter is undefined, that means it has been removed and we should reset to default

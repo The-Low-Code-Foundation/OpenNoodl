@@ -1,0 +1,209 @@
+/* VFN-009 — the *Saved blocks* section of project settings.
+ *
+ * Every colour is a design-system token. There is no local palette here on
+ * purpose: two token namespaces already exist in this repo and a third set of
+ * hexes in a settings section is how the third one starts.
+ *
+ * ⚠️ `box-sizing` is set per box. There is no global `box-sizing: border-box` in
+ * this repo, so a padded element at `width: 100%` overflows its parent unless it
+ * says otherwise — which is the defect a settings row shows as a horizontal
+ * scrollbar on the whole panel. */
+
+.Row {
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  padding: 10px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+.Head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* The glyph the call block wears, so the row and the block read as one thing.
+ *
+ * 🔴 **`currentColor` here was a declaration that resolved to nothing.** It was
+ * copied from `CanvasTabs`' `.SavedBlockMark`, where it is correct because
+ * `.Tab` sets `color: var(--theme-color-fg-default)` two lines above it. Nothing
+ * in this section's ancestry — `.Row`, `.Head`, `CollapsableSection`, the
+ * settings panel, the launcher dialog — sets `color` at all, so `currentColor`
+ * inherited the document initial, **`rgb(0, 0, 0)`**, and the glyph measured
+ * **1.24:1** on `--theme-color-bg-2` in the dark theme. Measured in the running
+ * launcher on 2026-08-13; the same component in project settings had it too.
+ *
+ * A property that is *present and losing* is invisible to a stylesheet parser
+ * and to every spec that asserts the declaration exists, which is why this names
+ * the token the sibling `.Name` names rather than inheriting one. */
+.Glyph {
+  flex: 0 0 auto;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.Name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+}
+
+/* `value` / `statement`. A word rather than a colour: it is the fact that
+   decides whether a call block plugs into an expression, and it has to be
+   readable in a screenshot. */
+.Shape {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--theme-color-fg-muted);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+/* Which shelf. Same treatment as the shape for the same reason — a backpack
+   block is visible from the project that uses it, and which one it is has to be
+   legible rather than inferred from a tint. */
+.Shelf {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Description {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-muted);
+}
+
+.Usage {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+}
+
+/* "Where it is used", named rather than counted. A list is a thing to check;
+   a count is a number to dismiss. */
+.Sites {
+  margin: 4px 0 0;
+  padding-left: 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+}
+
+.Actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+/* ⚠️ `flex-wrap` wraps before it shrinks, so every button below declares a
+   `flex: 0 0 auto` and lets the row wrap rather than squeezing five labels into
+   illegible slivers. */
+.Action {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: var(--radius-default);
+  cursor: pointer;
+}
+
+.Action:hover {
+  border-color: var(--theme-color-primary);
+}
+
+.ActionPrimary {
+  color: var(--theme-color-primary);
+  border-color: var(--theme-color-primary);
+}
+
+/* VFN-010 — the cross-project check is I/O, so its button has a busy state.
+ *
+ * ⚠️ Muted through the foreground *token* rather than `opacity`. Opacity cannot
+ * dim a control and keep it legible — it multiplies the text and the border
+ * against the background together — and this label ("Checking…") is the only
+ * thing telling the builder the launcher has not frozen, so it has to stay
+ * readable while it is disabled. */
+.Action:disabled {
+  color: var(--theme-color-fg-muted);
+  border-color: var(--theme-color-border-default);
+  cursor: default;
+}
+
+.Action:disabled:hover {
+  border-color: var(--theme-color-border-default);
+}
+
+.Empty {
+  box-sizing: border-box;
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+  background-color: var(--theme-color-bg-2);
+  border: 1px dashed var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+}
+
+.Intro {
+  margin-bottom: 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+}
+
+/* The dialogs. A list inside a dialog body, and a body that can scroll rather
+   than one that grows past the viewport when a definition is used in twenty
+   places — `BaseDialog` measures its own body height, and an unbounded list is
+   what makes it measure past the screen. */
+.DialogBody {
+  box-sizing: border-box;
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+}
+
+.DialogList {
+  margin: 8px 0 0;
+  padding-left: 16px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+}
+
+.DialogNote {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+}
+
+.DialogButtons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}

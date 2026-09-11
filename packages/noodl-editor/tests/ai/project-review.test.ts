@@ -41,6 +41,8 @@ import {
   reviewUserMessage,
   TODO_MARKER
 } from '../../src/editor/src/models/AiAssistant/review/prompts';
+import { interviewQuestions } from '../../src/editor/src/models/AiAssistant/review/interviewQuestions';
+import { proposedDocPath } from '../../src/editor/src/models/AiAssistant/review/InterviewSession';
 import { ProjectReviewRun } from '../../src/editor/src/models/AiAssistant/review/ProjectReviewRun';
 import { ReviewDocSession } from '../../src/editor/src/models/AiAssistant/review/ReviewDocSession';
 import type { ReviewDocRequest } from '../../src/editor/src/models/AiAssistant/review/ReviewDocSession';
@@ -484,10 +486,23 @@ describe('AIX-010 review drafting turn', () => {
 
 // ── The run ───────────────────────────────────────────────────────────────────
 
+/**
+ * ⚠️ Every run below passes `interview: false`, and it is not boilerplate.
+ *
+ * BLD-008 inverted the pass — `run()` assembles, asks the interview turn to
+ * phrase its questions, and stops at `phase: 'interviewing'`; `draft()` is the
+ * second call. These specs are the *drafting loop's*, written before that
+ * existed, and they hand `scripted()` exactly the replies the drafting turns
+ * need. Leaving the interview on would feed the first of those replies to the
+ * interview turn instead, and then assert about drafts that had not been asked
+ * for yet.
+ *
+ * The interview's own behaviour is graded in `tests-unit/bld-008/`.
+ */
 describe('AIX-010 review run', () => {
   it('drafts all three documents in order and publishes progress', async () => {
     const { chat } = scripted([submitDoc(GOOD_DRAFT, 'a summary')]);
-    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat, interview: false });
 
     const phases: string[] = [];
     run.onChange((state) => phases.push(state.phase));
@@ -507,7 +522,7 @@ describe('AIX-010 review run', () => {
 
   it('publishes the coverage before any document is drafted', async () => {
     const { chat } = scripted([submitDoc(GOOD_DRAFT)]);
-    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat, interview: false });
 
     let coverageSeenAt = -1;
     let index = 0;
@@ -521,7 +536,7 @@ describe('AIX-010 review run', () => {
 
   it('hands each document the summaries of the ones already drafted', async () => {
     const { chat, seen } = scripted([submitDoc(GOOD_DRAFT, 'what the app is')]);
-    await new ProjectReviewRun(routedGraph(), {}, { chat }).run();
+    await new ProjectReviewRun(routedGraph(), {}, { chat, interview: false }).run();
 
     // The third document's opening turn must mention the first two.
     const openings = seen.filter((r) => r.messages.length === 2);
@@ -535,7 +550,7 @@ describe('AIX-010 review run', () => {
     await new ProjectReviewRun(
       routedGraph(),
       { docs: { architecture: '# Architecture\n\nWritten by a human.\n' } },
-      { chat, kinds: ['architecture'] }
+      { chat, interview: false, kinds: ['architecture'] }
     ).run();
 
     expect(String(seen[0].messages[1].content)).toContain('Written by a human.');
@@ -544,9 +559,263 @@ describe('AIX-010 review run', () => {
 
   it('carries a decline through as a draft with no content', async () => {
     const { chat } = scripted([prose('Nothing to record.')]);
-    const state = await new ProjectReviewRun(routedGraph(), {}, { chat, kinds: ['brief'] }).run();
+    const state = await new ProjectReviewRun(routedGraph(), {}, { chat, interview: false, kinds: ['brief'] }).run();
     expect(state.drafts[0].status).toBe('declined');
     expect(state.drafts[0].content).toBe(undefined);
+  });
+});
+
+// ── BLD-008: the interview ────────────────────────────────────────────────────
+
+/**
+ * The inversion, end to end: read → **ask** → draft.
+ *
+ * The pure halves — which questions exist, what a skip costs, what the thread
+ * shows — are graded in `tests-unit/bld-008/`, in a runner with no Electron.
+ * What can only be checked here is the *sequence*: that no character of a draft
+ * is written before the questions are on screen, that the answers reach the
+ * drafting prompt as facts, and that the mechanism which used to push a model
+ * towards writing TODOs is off when nothing was declined.
+ */
+function submitQuestions(entries: Array<{ id: string; guess: string }>, proposedDoc?: unknown): AiChatResponse {
+  return {
+    text: '',
+    toolCalls: [
+      {
+        id: 'interview-1',
+        name: 'submit_questions',
+        arguments: {
+          questions: entries.map((entry) => ({
+            id: entry.id,
+            question: `About ${entry.id}?`,
+            why: 'Because the graph cannot say.',
+            guess: entry.guess
+          })),
+          ...(proposedDoc ? { proposedDoc } : {})
+        }
+      }
+    ],
+    usage,
+    model: 'test',
+    stopReason: 'tool_calls'
+  };
+}
+
+/** Every question the templates currently produce, each with a guess. */
+function allQuestions(proposedDoc?: unknown): AiChatResponse {
+  return submitQuestions(
+    interviewQuestions().map((spec) => ({ id: spec.id, guess: `A guess about ${spec.heading}.` })),
+    proposedDoc
+  );
+}
+
+/**
+ * What a model that obeyed the prohibition returns.
+ *
+ * ⚠️ Deliberately not `GOOD_DRAFT`, which carries a hand-written `> TODO:`.
+ * On the interview path the drafting prompt forbids the model from writing one
+ * at all — the lines are inserted by `insertSkipTodos`, one per declined
+ * question — so a fixture with a model-authored TODO would be testing the
+ * opposite instruction. The case where a model ignores the prohibition is its
+ * own spec below, and it is a stated limit rather than a hidden one.
+ */
+const ANSWERED_DRAFT =
+  '# Architecture\n\n## Data model\n\nOrders belong to a Customer.\n\n' +
+  '## Backend contracts\n\nStripe is the only outside service.\n';
+
+/**
+ * A chat that answers the interview turn first and every drafting turn after.
+ *
+ * Split by tool name rather than by call index, because the number of drafting
+ * turns depends on the advisory passes — and a script keyed on position would
+ * quietly hand a draft reply to an interview turn the day one is added.
+ */
+function scriptedInterview(draftContent: string) {
+  const seen: AiChatRequest[] = [];
+  const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+    seen.push(request);
+    const isInterview = (request.tools ?? []).some((tool) => tool.name === 'submit_questions');
+    return isInterview ? allQuestions() : submitDoc(draftContent, 'drafted');
+  };
+  return { chat, seen };
+}
+
+describe('BLD-008 criterion 1 — coverage, then questions, before a character of draft', () => {
+  it('stops at the questions, having drafted nothing', async () => {
+    const { chat, seen } = scriptedInterview(ANSWERED_DRAFT);
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+
+    const state = await run.run();
+
+    expect(state.phase).toBe('interviewing');
+    expect(state.busy).toBe(false);
+    // Criterion 1: at least four questions, and no draft content anywhere.
+    expect(state.interview!.questions.length).toBeGreaterThanOrEqual(4);
+    expect(state.drafts.every((draft) => draft.content === undefined)).toBe(true);
+    // Exactly one provider call has happened, and it was the interview.
+    expect(seen.length).toBe(1);
+    expect((seen[0].tools ?? []).map((tool) => tool.name)).toEqual(['submit_questions']);
+  });
+
+  it('publishes the coverage before it asks anything', async () => {
+    const { chat } = scriptedInterview(ANSWERED_DRAFT);
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+
+    let coverageSeenAt = -1;
+    let questionsSeenAt = -1;
+    let index = 0;
+    run.onChange((state) => {
+      if (coverageSeenAt === -1 && state.context) coverageSeenAt = index;
+      if (questionsSeenAt === -1 && state.interview) questionsSeenAt = index;
+      index++;
+    });
+    await run.run();
+
+    expect(coverageSeenAt).toBeGreaterThan(-1);
+    expect(questionsSeenAt).toBeGreaterThan(coverageSeenAt);
+  });
+
+  it('will not draft while a question is unanswered', async () => {
+    const { chat } = scriptedInterview(ANSWERED_DRAFT);
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+    await run.run();
+    expect(run.canDraft()).toBe(false);
+
+    for (const question of run.getState().interview!.questions) run.answerQuestion(question.id, 'Because I say so.');
+    expect(run.canDraft()).toBe(true);
+  });
+
+  it('⚠️ falls back to the plain questions rather than failing the pass', async () => {
+    // A failed interview must never cost the user their run: the questions are
+    // still asked, in their generic phrasing, and a person can still answer them.
+    const chat = async (): Promise<AiChatResponse> => {
+      throw new Error('the provider is down');
+    };
+    const state = await new ProjectReviewRun(routedGraph(), {}, { chat }).run();
+    expect(state.phase).toBe('interviewing');
+    expect(state.interview!.questions.length).toBe(interviewQuestions().length);
+    expect(state.interviewNote).toContain('plain versions');
+  });
+});
+
+describe('BLD-008 criterion 2 — the drafts are made of the answers', () => {
+  async function answered(skip: string[] = [], content = ANSWERED_DRAFT) {
+    const { chat, seen } = scriptedInterview(content);
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+    await run.run();
+    for (const question of run.getState().interview!.questions) {
+      if (skip.includes(question.id)) run.skipQuestion(question.id);
+      else run.answerQuestion(question.id, `The truth about ${question.heading}.`);
+    }
+    const state = await run.draft();
+    return { state, seen };
+  }
+
+  it('hands the answers to the drafting turn as facts that outrank inference', async () => {
+    const { seen } = await answered();
+    const opening = String(seen[1].messages[1].content);
+    expect(opening).toContain('WHAT THE OWNER OF THIS PROJECT TOLD YOU');
+    expect(opening).toContain('The truth about What this app is.');
+    expect(opening).toContain('outrank anything you inferred');
+  });
+
+  it('forbids the model from writing a TODO line at all', async () => {
+    const { seen } = await answered();
+    expect(String(seen[1].messages[1].content)).toContain(`NEVER write a line beginning "${TODO_MARKER}"`);
+  });
+
+  it('⚠️ switches off the advisory that asks for TODOs when nothing was declined', async () => {
+    // `todoAdvisoryMessage` is sent when a draft carries no TODO lines. On a
+    // fully answered interview, "no TODO lines" is the goal — leaving it on
+    // would be a mechanism inside the feature arguing against it.
+    const { state, seen } = await answered();
+    expect(state.drafts.every((draft) => draft.todoCount === 0)).toBe(true);
+    expect(seen.some((request) => String(request.messages.at(-1)?.content ?? '').includes('contains no TODO lines'))).toBe(
+      false
+    );
+  });
+
+  it('skipping three produces exactly three TODOs, each naming the skipped question', async () => {
+    const { state } = await answered([
+      'brief:who-uses-it',
+      'architecture:backend-contracts',
+      'conventions:what-not-to-do'
+    ]);
+
+    const total = state.drafts.reduce((sum, draft) => sum + draft.todoCount, 0);
+    expect(total).toBe(3);
+    for (const draft of state.drafts) {
+      expect(countTodoMarkers(draft.content ?? '')).toBe(draft.todoCount);
+    }
+    const brief = state.drafts.find((draft) => draft.kind === 'brief')!;
+    expect(brief.content).toContain('you skipped this when I asked');
+  });
+
+  it('⚠️ counts a TODO the model wrote anyway — the one place the count is not ours', async () => {
+    // The stated limit, pinned rather than hidden. "Exactly three" is arithmetic
+    // over `insertSkipTodos`; a model that ignores the prohibition adds to it,
+    // and the panel then reports a number larger than the number of skips. There
+    // is no honest fix that is not "silently delete the model's own words", so
+    // the residual is a register entry and this spec is what would notice if
+    // somebody decided to strip them after all.
+    const { state } = await answered(['brief:who-uses-it'], GOOD_DRAFT);
+    const brief = state.drafts.find((draft) => draft.kind === 'brief')!;
+    expect(brief.todoCount).toBe(2);
+    expect(countTodoMarkers(brief.content ?? '')).toBe(2);
+  });
+});
+
+describe('BLD-008 item 8 — the document the interview invented', () => {
+  const proposal = {
+    title: 'UK VAT rules',
+    filename: 'uk-vat',
+    purpose: 'The VAT rates and thresholds this shop charges against.',
+    inject: 'pull',
+    why: 'VAT came up in three components and nothing records the rates.'
+  };
+
+  async function withProposal(accept: boolean) {
+    const seen: AiChatRequest[] = [];
+    const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      seen.push(request);
+      const isInterview = (request.tools ?? []).some((tool) => tool.name === 'submit_questions');
+      return isInterview ? allQuestions(proposal) : submitDoc(ANSWERED_DRAFT, 'drafted');
+    };
+    const run = new ProjectReviewRun(routedGraph(), {}, { chat });
+    await run.run();
+    for (const question of run.getState().interview!.questions) run.answerQuestion(question.id, 'Yes.');
+    run.decideProposedDoc(accept);
+    return { state: await run.draft(), run };
+  }
+
+  it('drafts a fourth document when the user says yes', async () => {
+    const { state } = await withProposal(true);
+    expect(state.drafts.map((draft) => draft.path)).toContain('docs/uk-vat.md');
+    const proposed = state.drafts.find((draft) => draft.kind === 'proposed')!;
+    expect(proposed.baseline).toBe(null);
+    expect(proposed.status).toBe('authored');
+  });
+
+  it('drafts nothing extra when the user says no', async () => {
+    const { state } = await withProposal(false);
+    expect(state.drafts.length).toBe(3);
+    expect(state.drafts.some((draft) => draft.kind === 'proposed')).toBe(false);
+  });
+
+  it('⚠️ cannot be talked out of docs/ by the file name', async () => {
+    // The name is model output. Everything that is not a word character becomes
+    // a hyphen, which disposes of `../`, absolute paths and nested folders in
+    // one rule rather than three that can each be got wrong.
+    expect(proposedDocPath('../../etc/passwd')).toBe('docs/etc-passwd.md');
+    expect(proposedDocPath('/absolute/thing.md')).toBe('docs/absolute-thing.md');
+    expect(proposedDocPath('   ')).toBe(undefined);
+  });
+
+  it('is not blocked on the interview being finished by someone else', async () => {
+    const { run } = await withProposal(true);
+    // The proposal is part of the interview: an undecided one keeps it open,
+    // which is what stops "Draft the documents" appearing over an unanswered offer.
+    expect(run.canDraft()).toBe(false); // already drafted — the phase moved on
   });
 });
 
@@ -606,7 +875,7 @@ describe('AIX-010 criterion 7 — rejecting every draft leaves the project byte-
     const state = await new ProjectReviewRun(
       fromSerialisedProject(JSON.parse(JSON.stringify(gitRepoUtf8))),
       { docs: await docs.content() },
-      { chat }
+      { chat, interview: false }
     ).run();
     expect(state.drafts.some((d) => d.status === 'authored')).toBe(true);
 
@@ -641,7 +910,7 @@ describe('AIX-010 criterion 7 — rejecting every draft leaves the project byte-
     const state = await new ProjectReviewRun(
       fromSerialisedProject(JSON.parse(JSON.stringify(gitRepoUtf8))),
       { docs: await docs.content() },
-      { chat, kinds: ['architecture'] }
+      { chat, interview: false, kinds: ['architecture'] }
     ).run();
 
     const staged = await stageReviewDrafts(state, docs);
@@ -651,6 +920,62 @@ describe('AIX-010 criterion 7 — rejecting every draft leaves the project byte-
     // with. That is what makes "never overwrites blind" true rather than hoped.
     expect(proposal.baseline).toBe(human);
     expect(proposal.proposed).toBe(GOOD_DRAFT);
+
+    docs.dispose();
+  });
+
+  /**
+   * BLD-008 criterion 5 — the same property, on the path that now ships.
+   *
+   * The two specs above go through `interview: false`, which is the drafting
+   * loop as it stood. This one asks, answers, skips, drafts a fourth invented
+   * document and rejects the lot. Worth its own run rather than trusting that
+   * the staging code is shared: the interview path adds a step that **rewrites
+   * the file content** (`insertSkipTodos`) and a document whose path came from a
+   * model, and either of those is a plausible way to reach disk by accident.
+   */
+  it('BLD-008: an interview, a skipped question and an invented document still write nothing', async () => {
+    const project = ProjectModel.fromJSON(JSON.parse(JSON.stringify(gitRepoUtf8)));
+    await saveProject(project, dir);
+    const docs = new ProjectDocsModel(dir);
+    const before = snapshot(dir);
+
+    const chat = async (request: AiChatRequest): Promise<AiChatResponse> => {
+      const isInterview = (request.tools ?? []).some((tool) => tool.name === 'submit_questions');
+      return isInterview
+        ? allQuestions({
+            title: 'UK VAT rules',
+            filename: 'uk-vat',
+            purpose: 'The rates this shop charges.',
+            inject: 'pull',
+            why: 'VAT came up three times.'
+          })
+        : submitDoc(ANSWERED_DRAFT, 'drafted');
+    };
+
+    const run = new ProjectReviewRun(
+      fromSerialisedProject(JSON.parse(JSON.stringify(gitRepoUtf8))),
+      { docs: await docs.content() },
+      { chat }
+    );
+    await run.run();
+    const questions = run.getState().interview!.questions;
+    run.skipQuestion(questions[0].id);
+    for (const question of questions.slice(1)) run.answerQuestion(question.id, 'The answer.');
+    run.decideProposedDoc(true);
+    const state = await run.draft();
+
+    expect(state.drafts.some((draft) => draft.path === 'docs/uk-vat.md')).toBe(true);
+    expect([...snapshot(dir).entries()]).toEqual([...before.entries()]);
+
+    const staged = await stageReviewDrafts(state, docs);
+    expect(staged.length).toBe(4);
+    expect([...snapshot(dir).entries()]).toEqual([...before.entries()]);
+
+    for (const entry of staged) DocProposalStore.instance.reject(entry.proposalId);
+    expect([...snapshot(dir).entries()]).toEqual([...before.entries()]);
+    // In particular, the invented document does not exist.
+    expect(fs.existsSync(path.join(dir, 'docs', 'uk-vat.md'))).toBe(false);
 
     docs.dispose();
   });

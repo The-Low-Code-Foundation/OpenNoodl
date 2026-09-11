@@ -2,7 +2,12 @@
   "id": "fn-aggregate-stats-function",
   "title": "Server-side aggregation exposed as a cloud function",
   "description": "Aggregate Records runs count/sum/min/max/average over a database class without transferring the records — it exists only in the cloud runtime, so the idiomatic shape is a small cloud function around it: Request triggers the aggregate's fetch, `fetched` sends the Response, and the aggregate results (outputs generated from the `aggregates` configuration) are returned as response params. The browser calls it like any cloud function and renders the statistic.",
-  "demonstrates": ["noodl.cloud.aggregate", "CloudFunction2", "noodl.cloud.request", "noodl.cloud.response"],
+  "demonstrates": [
+    "noodl.cloud.aggregate",
+    "CloudFunction2",
+    "noodl.cloud.request",
+    "noodl.cloud.response"
+  ],
   "components": [
     {
       "name": "/Stats Screen",
@@ -11,44 +16,118 @@
           "id": "root",
           "type": "Group",
           "label": "Screen",
-          "parameters": { "flexDirection": "column" },
-          "children": ["refresh_btn", "count_text"]
+          "parameters": {
+            "flexDirection": "column"
+          },
+          "children": [
+            "refresh_btn",
+            "count_text"
+          ]
         },
-        { "id": "refresh_btn", "type": "net.noodl.controls.button", "label": "Refresh", "parent": "root", "parameters": { "label": "Refresh stats" } },
-        { "id": "count_text", "type": "Text", "label": "Task count", "parent": "root" },
+        {
+          "id": "refresh_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Refresh",
+          "parent": "root",
+          "parameters": {
+            "label": "Refresh stats"
+          }
+        },
+        {
+          "id": "count_text",
+          "type": "Text",
+          "label": "Task count",
+          "parent": "root"
+        },
         {
           "id": "call_stats",
           "type": "CloudFunction2",
           "label": "Call TaskStats",
-          "parameters": { "function": "TaskStats" }
+          "parameters": {
+            "function": "TaskStats"
+          }
         }
       ],
       "connections": [
-        { "fromId": "refresh_btn", "fromProperty": "onClick", "toId": "call_stats", "toProperty": "call" },
-        { "fromId": "call_stats", "fromProperty": "taskCount", "toId": "count_text", "toProperty": "text" }
+        {
+          "fromId": "refresh_btn",
+          "fromProperty": "onClick",
+          "toId": "call_stats",
+          "toProperty": "call"
+        },
+        {
+          "fromId": "call_stats",
+          "fromProperty": "taskCount",
+          "toId": "count_text",
+          "toProperty": "text"
+        }
       ]
     },
     {
       "name": "/Cloud Functions/Task Stats",
       "nodes": [
-        { "id": "fn_request", "type": "noodl.cloud.request", "label": "Request" },
+        {
+          "id": "fn_request",
+          "type": "noodl.cloud.request",
+          "label": "Request"
+        },
         {
           "id": "count_tasks",
           "type": "noodl.cloud.aggregate",
           "label": "Count tasks",
-          "parameters": { "collectionName": "Task", "aggregates": "taskCount" }
+          "parameters": {
+            "collectionName": "Task",
+            "aggregates": "taskCount"
+          }
         },
         {
           "id": "fn_response",
           "type": "noodl.cloud.response",
           "label": "Response",
-          "parameters": { "params": "taskCount" }
+          "parameters": {
+            "params": "taskCount"
+          }
+        },
+        {
+          "id": "fn_fail_response",
+          "type": "noodl.cloud.response",
+          "label": "Failure response",
+          "parameters": {
+            "status": "failure"
+          }
         }
       ],
       "connections": [
-        { "fromId": "fn_request", "fromProperty": "receive", "toId": "count_tasks", "toProperty": "fetch" },
-        { "fromId": "count_tasks", "fromProperty": "taskCount", "toId": "fn_response", "toProperty": "taskCount" },
-        { "fromId": "count_tasks", "fromProperty": "fetched", "toId": "fn_response", "toProperty": "send" }
+        {
+          "fromId": "fn_request",
+          "fromProperty": "receive",
+          "toId": "count_tasks",
+          "toProperty": "fetch"
+        },
+        {
+          "fromId": "count_tasks",
+          "fromProperty": "taskCount",
+          "toId": "fn_response",
+          "toProperty": "taskCount"
+        },
+        {
+          "fromId": "count_tasks",
+          "fromProperty": "fetched",
+          "toId": "fn_response",
+          "toProperty": "send"
+        },
+        {
+          "fromId": "count_tasks",
+          "fromProperty": "error",
+          "toId": "fn_fail_response",
+          "toProperty": "errorMessage"
+        },
+        {
+          "fromId": "count_tasks",
+          "fromProperty": "failure",
+          "toId": "fn_fail_response",
+          "toProperty": "send"
+        }
       ]
     }
   ]

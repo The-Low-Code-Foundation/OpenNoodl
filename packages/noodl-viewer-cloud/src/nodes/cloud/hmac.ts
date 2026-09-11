@@ -23,7 +23,7 @@ export const node = {
   docs: 'https://docs.noodl.net/nodes/cloud-functions/hmac',
   color: 'data',
   connectionPanel: {
-    groupPriority: ['General', 'Actions', 'Value', 'Events', 'Error']
+    groupPriority: ['General', 'Actions', 'Values', 'Events', 'Error']
   },
   /** ⚠️ A declared `default` never runs its setter — these two lines are the real defaults. */
   initialize: function () {
@@ -105,7 +105,7 @@ export const node = {
     signature: {
       type: 'string',
       displayName: 'Signature',
-      group: 'Value',
+      group: 'Values',
       description: 'The HMAC of Value, rendered in Encoding. Available once Done has fired',
       getter: function () {
         return this._internal.signature;

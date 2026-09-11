@@ -51,12 +51,20 @@
   padding: 2px 0;
 }
 
+/* Two native `<input>`s — the rename field and the new-folder field. Both are CONTROLS
+   wearing a divider tone: `border-default` was 1.26:1 dark / 1.27:1 light against the
+   `bg-1` sidebar they sit in, and 1.07 / 1.15 against their own `bg-2` fill. `border-control`
+   (POL-016) is 4.17 / 3.72 on that ground and 3.57 / 3.37 on the fill.
+   ⚠️ The edge is LOAD-BEARING here: the fill step alone is 1.17 dark / 1.10 light on the
+   sidebar, under NAT-001's 1.09 bar in neither theme but nowhere near identifying a field.
+   ✅ `:focus` already names `primary` (4.80 / 4.14 on the fill) — stronger than the raised
+   resting tone, so the focus signal is not eaten by this change. Checked, not assumed. */
 .RenameInputField,
 .CreateFolderInputField {
   width: 100%;
   padding: 6px 10px;
   background-color: var(--theme-color-bg-2);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-7);
   color: var(--theme-color-fg-highlight);
   font-family: var(--font-family);
@@ -167,10 +175,15 @@
   justify-content: flex-end;
 }
 
+/* A `<button>` inside the confirmation dialog, so its GROUND is the dialog's `bg-2` — NOT the
+   `bg-1` sidebar the rest of this component lives on. `border-default` was 1.07:1 dark /
+   1.15:1 light on that ground; `border-control` is 3.57 / 3.37 on it and 3.08 / 3.05 on the
+   button's own `bg-3` fill. The fill step is only 1.16 / 1.11 on the dialog, so the edge is
+   the whole of the affordance. */
 .DeleteConfirmationCancelButton {
   padding: 7px 13px;
   background-color: var(--theme-color-bg-3);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-7);
   color: var(--theme-color-fg-highlight);
   font-family: var(--font-family);
@@ -180,6 +193,14 @@
 
   &:hover {
     background-color: var(--theme-color-bg-4);
+    /* 🔴 The sweep's hover trap in the shape that NAMES NO BORDER — session 64 hit exactly this
+       at `.FolderPickerCancelButton`, one component over in this same view, and the remedy is
+       adopted here only after being MEASURED here rather than inherited. The fill moves DOWN
+       the ramp (bg-3 -> bg-4) and POL-016 scopes `border-control` to bg-1/2/3: it is 2.64 dark
+       / 2.77 light on bg-4, so the raised resting tone above would be inherited onto a step
+       where it fails 1.4.11, and only while the pointer is on the button. `primary` is
+       3.54 / 3.40 on the hover fill and 4.80 / 4.14 on the dialog ground. */
+    border-color: var(--theme-color-primary);
   }
 }
 

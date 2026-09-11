@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "abb8e784-af7f-5144-8a02-34fe62128f37",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fqInputs",
+      "fromProperty": "question",
+      "toId": "fqQuestion",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fqInputs",
+      "fromProperty": "answer",
+      "toId": "fqAnswer",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fqHead",
+      "fromProperty": "onClick",
+      "toId": "fqStates",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "fqStates",
+      "fromProperty": "at-open",
+      "toId": "fqAnswer",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "fqStates",
+      "fromProperty": "chevron",
+      "toId": "fqChevron",
+      "toProperty": "transformRotation"
+    }
+  ]
+}

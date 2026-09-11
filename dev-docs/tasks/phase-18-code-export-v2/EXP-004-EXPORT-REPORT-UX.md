@@ -45,19 +45,19 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 - Clear next steps, with file locations
 - An honest overall confidence statement
 
-**In the code itself**: clear markers at every point needing attention, with the original node source preserved in comments so a developer can see what the code is meant to do.
+**In the code itself**: clear markers at every point needing attention, with the original node source preserved in comments so a developer can see what the code is meant to do. ✅ **Built (§23)** — a Function or Expression this export refused now carries its authored code as a comment at module scope, which before §23 was dropped along with the wrapper.
 
 ## Scope
 
 ### In Scope
-- [ ] Pre-flight export estimate from project analysis
-- [ ] Post-export report (in-editor and as a file in the exported project)
-- [ ] Per-item detail: node, location in generated code, status, reason
-- [ ] Trace-coverage communication in plain language
-- [ ] In-code markers with original source preserved
-- [ ] A `README.md` in the exported project explaining what it is, what needs work, and how to proceed
-- [ ] Honest framing of what verification does and does not prove
-- [ ] Actionable next steps ordered by priority
+- [x] Pre-flight export estimate from project analysis — **exact, not estimated**; see §21.2
+- [x] Post-export report — ✅ **as a file in the exported project** (§19), now carrying the ordered next steps (§22); ✅ **in-editor since EXP-012 (s67)**: the pre-flight modal before, a toast with the refusal count and *Show in folder* on `EXPORT-REPORT.md` after. ⚠️ **No drill-down panel** — that is the part still open, and it is a UX decision, not a wire (§21.1's block is over)
+- [x] Per-item detail: node, location in generated code, status, reason
+- [ ] Trace-coverage communication in plain language — **not applicable until EXP-003 exists**; there are no traces
+- [x] In-code markers (§20) — and since §23 a refused script node's **own code** is carried beside them
+- [x] A `README.md` in the exported project explaining what it is, what needs work, and how to proceed — §22; 🔴 it already existed and was emitted for **one project in seven**
+- [x] Honest framing of what verification does and does not prove — ⚠️ narrower than written: EXP-003 does not exist, so **nothing has been run at all**
+- [x] Actionable next steps ordered by priority — `nextSteps()`, rendered into **both** the report and the README; the criterion is in §22.2, and *“most-missing first”* is a judgement at one rank and says so
 
 ### Out of Scope
 - Fixing anything the report identifies (that is the user's work, or a future task)
@@ -91,18 +91,35 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 - Report accuracy: every stub, unverified translation, and generated component appears with the correct status.
 - Pre-flight estimate matches the actual outcome within a reasonable margin on the test corpus.
 - In-code markers are consistently formatted and greppable.
-- **Comprehension test**: a developer unfamiliar with the project reads the exported README and can state what needs doing without asking questions.
+- **Comprehension test**: a developer unfamiliar with the project reads the exported README and can state what needs doing without asking questions. ⚠️ **UNRUN, and it cannot be run by the session that wrote the prose** — the author of a document is the one reader guaranteed to find it clear. Owed to Richard or to someone outside this work; the same is true of implementation step 6's external review of the verification wording.
 - No unverified item is presented in language that implies verification.
+
+## 🔴 Where this task's own framing gave way (session 50)
+
+**"Pre-flight *estimate*", and "matches the actual outcome within a reasonable margin", are the
+wrong shape for this pipeline** — recorded here rather than quietly satisfied.
+
+`emitApp` is pure: it reads nothing, writes nothing, returns the generated files as strings, and
+runs in about a tenth of a second on every project in the corpus. Committing those strings to a
+directory is the caller's separate act. So the real answer is available before the author has
+chosen anywhere to put it, and **the pre-flight is exact**. A margin here would be a defect, not a
+tolerance.
+
+⚠️ **The cheap alternative was measured before the code was written**, because it is the one a
+later session will reach for: stopping after `planProject` sees **28** refusals across the seven
+fixtures where the export records **32**. Building that, so that a "within a reasonable margin"
+test had something to pass, would have been a measurement that could not fail — see EXP-011 §21.2
+for the numbers and the control pair that now guards the layer.
 
 ## Success Criteria
 
-- [ ] Pre-flight estimate available before export and reasonably accurate
-- [ ] Post-export report accurate and complete, in-editor and in the exported project
-- [ ] Trace-coverage caveat stated in plain language, without false precision
-- [ ] In-code markers consistent, greppable, with original source preserved
-- [ ] Exported README enables an unfamiliar developer to proceed unaided
-- [ ] Unverified work is never framed as verified
-- [ ] Report leads with what succeeded
+- [x] Pre-flight available before export — **exact**; `emit-app.ts --preflight`, writes nothing
+- [x] Post-export report — ✅ in the exported project, with next steps and file locations (§22); ✅ in-editor pre-flight + post-export toast (EXP-012, s67); ⬜ drill-down panel
+- [ ] Trace-coverage caveat — **no traces exist**; both surfaces say nothing has been run
+- [x] In-code markers consistent and greppable — **with** the original source of a refused script node (§23)
+- [ ] Exported README enables an unfamiliar developer to proceed unaided — ⚠️ **the README is built (§22); the claim is not measured.** This criterion is a comprehension test with a person, and no person has read it
+- [x] Unverified work is never framed as verified — asserted per fixture in both suites
+- [x] Report leads with what succeeded — asserted, and mutation-killed in both surfaces
 
 ## Risks & Mitigations
 
@@ -123,8 +140,8 @@ There is a specific new risk this task must handle. EXP-003 uses AI translation 
 
 - [ ] Branch `task/exp-004-export-report-ux`
 - [ ] Pre-flight estimate; report data model from generator/verifier output
-- [ ] In-editor report and exported README
-- [ ] Consistent in-code markers with original source preserved
+- [ ] In-editor report and exported README — ✅ **README built** (§22); 🔴 in-editor blocked on a task that is not this one (§21.1)
+- [x] Consistent in-code markers with original source preserved — §23; ⚠️ script-bearing nodes only, which is the population that has a source to preserve
 - [ ] Plain-language verification explanation, externally reviewed
 - [ ] Comprehension test with an unfamiliar developer
 - [ ] CHANGELOG; open PR

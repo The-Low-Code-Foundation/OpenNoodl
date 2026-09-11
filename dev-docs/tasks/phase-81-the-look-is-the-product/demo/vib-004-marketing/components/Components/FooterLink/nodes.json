@@ -1,0 +1,39 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f678dc6c-0ef6-5c9a-8562-574b09bba289",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "link_text",
+      "type": "Text",
+      "label": "Link",
+      "parameters": {
+        "text": "Link",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-normal)",
+        "color": "var(--foreground)"
+      }
+    },
+    {
+      "id": "link_inputs",
+      "type": "Component Inputs",
+      "label": "Link label in",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "link_text"
+  ]
+}

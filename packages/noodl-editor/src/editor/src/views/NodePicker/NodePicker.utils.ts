@@ -1,4 +1,5 @@
 import { NodeGraphModel, NodeGraphNode } from '@noodl-models/nodegraphmodel';
+import { seedNewNode } from '@noodl-models/nodeSeed/seedNewNode';
 import { guid } from '@noodl-utils/utils';
 
 import { ElementConfigRegistry } from '../../models/ElementConfigs';
@@ -38,6 +39,11 @@ export function createNodeFunction(
     } else {
       model.addRoot(node, { undo: true, label: 'create' });
     }
+
+    // FUN-002: a Function node arrives with a body that works, and therefore
+    // with two ports. After the add, so it is its own undo entry — one ⌘Z
+    // removes the seed and leaves the node, which is the expert's escape hatch.
+    seedNewNode(node, type.name);
   };
 }
 

@@ -1,0 +1,502 @@
+/**
+ * NAT-007 — one thread's data, and the open/closed state both surfaces share.
+ *
+ * ## 🔴 One hook, because there are two surfaces and one behaviour
+ *
+ * The rail panel is inside a project and the launcher tab is not, but *"which thread is open,
+ * what did we get, and how old is it"* is the same question in both. UNI-011 already paid for the
+ * alternative: two copies of one view model, and a fix that lands on one of them. So the panel and
+ * the tab both call this, and neither owns any of it.
+ *
+ * ## ⚠️ The cache is IN MEMORY, for this editor session, and that is a decision rather than a
+ * shortcut
+ *
+ * AC8 wants an already-opened thread to be readable offline, saying how old the copy is. The
+ * obvious implementation writes it to `userData` beside the session token, and that would be
+ * **D8** — *"caching a member directory to every laptop is a privacy decision"* — decided by
+ * whoever wrote the convenient thing. D8 is open. A post body is a stranger's words about a
+ * person's project, and a copy on disk outlives both the thread and the moderation that hid it.
+ *
+ * 🔴 So the honest scope of AC8 today: **within one editor session**, a thread you have opened
+ * stays readable when the network drops, and says how old it is. Across restarts it does not, and
+ * the reason is a ruling rather than an omission. Nothing about the shape has to change when D8
+ * lands — {@link ThreadViewInputs.cached} is already a `{thread, at}` and the store behind it is
+ * one module.
+ *
+ * @module noodl-editor/hooks/useCommunityThread
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+
+import {
+  CommunityApiClient,
+  type AnswerAccepted,
+  type MeResponse,
+  type Read,
+  type ThreadDetail,
+  type Write
+} from '@noodl-models/community/communityapi';
+import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
+import { readCommunitySession, type CommunitySession } from '@noodl-models/community/communitysession';
+import { composeThreadView, type PullOffer } from '@noodl-models/community/threadview';
+import {
+  acceptFailureLine,
+  canSendAnswer,
+  composeReplyBox,
+  deleteFailureLine,
+  editFailureLine
+} from '@noodl-models/community/threadwrites';
+import { DialogLayerModel } from '@noodl-models/DialogLayerModel';
+
+import type { CommunityReplyBox, CommunityThreadState } from '@noodl-core-ui/components/community';
+
+import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
+import { notifyCommunityChanged } from '../models/community/communitychanged';
+import {
+  COMMUNITY_THREAD_EVENT,
+  clearPendingCommunityThread,
+  takePendingCommunityThread
+} from '../utils/community/communityThreadRequest';
+
+/**
+ * Threads read this session, newest read wins.
+ *
+ * ⚠️ Module scope rather than a ref, so opening a thread, going back and opening it again does
+ * not re-fetch from nothing — and so the rail panel and the launcher tab share one copy rather
+ * than each holding their own. 🔴 Never written to disk: see the module note, and D8.
+ */
+const THREAD_CACHE = new Map<string, { thread: ThreadDetail; at: number }>();
+
+/** Exported for the suite — a cache that no test can clear is a test that depends on its order. */
+export function clearThreadCache(): void {
+  THREAD_CACHE.clear();
+}
+
+/**
+ * 🔴 THE ONLY PLACE THE TOKEN IS TOUCHED, and it is one function because a spec counts it.
+ *
+ * `uni-001/session-readers.test.ts` asserts *"the token is used once, to build a client, and
+ * nowhere else"* — *"counted rather than eyeballed: a second use is a second place a decision
+ * could hide."* AC4 and AC6 added two more requests, and three identical
+ * `new CommunityApiClient({ token: session?.token ?? null })` expressions would have satisfied
+ * every reading of that sentence except the one it was written for. ⚠️ The count went red and
+ * this is the fix; making the assertion say *"three"* would have retired the claim instead.
+ *
+ * ⚠️ Built per call rather than held in state: a session may have been refreshed since this pane
+ * opened, and a token captured at open time is the one that expires mid-thread.
+ */
+function clientFor(session: CommunitySession | null | undefined): CommunityApiClient {
+  return new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session?.token ?? null });
+}
+
+export type CommunityThreadPane = {
+  state: CommunityThreadState;
+  onBack: () => void;
+  onRetry: () => void;
+  onOpenLink: (href: string) => void;
+  reply: CommunityReplyBox | null;
+};
+
+export type CommunityThreadHost = {
+  /** `null` when no thread is open — the surface draws its lists. */
+  pane: CommunityThreadPane | null;
+  openThread: (threadId: string) => void;
+};
+
+export function useCommunityThread(options: { pullFor?: PullOffer } = {}): CommunityThreadHost {
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const [session, setSession] = useState<CommunitySession | null | undefined>(undefined);
+  const [me, setMe] = useState<Read<MeResponse> | undefined>(undefined);
+  const [read, setRead] = useState<Read<ThreadDetail> | undefined>(undefined);
+  const [generation, setGeneration] = useState(0);
+
+  // ── AC4, the composer's state ───────────────────────────────────────────────────────────
+  // 🔴 The draft lives HERE and not in the textarea, because `CommunityThreadView` is hook-free
+  // (see `renderElements.ts`) — and because a draft that lived in the DOM would be lost the
+  // moment the thread re-rendered with a fresh read, which is exactly what a successful post
+  // triggers.
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [lastWrite, setLastWrite] = useState<Write<AnswerAccepted> | null>(null);
+  const [posted, setPosted] = useState<{ at: number; postId: string } | null>(null);
+
+  // ── AC6, accepting ──────────────────────────────────────────────────────────────────────
+  const [acceptPending, setAcceptPending] = useState<string | null>(null);
+  const [acceptFailure, setAcceptFailure] = useState<{ postId: string; line: string } | null>(null);
+
+  // ── FB-001, editing and deleting your own ───────────────────────────────────────────────
+  /** The post whose composer is open. Only ever one — two open boxes is two drafts to lose. */
+  const [editingPostId, setEditingPostId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState('');
+  const [editPending, setEditPending] = useState<string | null>(null);
+  const [editFailure, setEditFailure] = useState<{ postId: string; line: string } | null>(null);
+
+  const openThread = useCallback((id: string) => {
+    // ⚠️ Cleared rather than left, so re-opening a thread never shows the previous one's posts
+    // for a frame. `undefined` is `loading`, which is what this is.
+    setRead(undefined);
+    setThreadId(id);
+    // 🔴 EVERY write-side state is per thread and is cleared with it. A draft that survived into
+    // the next thread would be somebody's answer to one question, sitting in the box under
+    // another — and one click from being posted there.
+    setDraft('');
+    setSending(false);
+    setLastWrite(null);
+    setPosted(null);
+    setAcceptPending(null);
+    setAcceptFailure(null);
+  }, []);
+
+  /**
+   * NAT-012 AC4 — a thread somebody asked for from elsewhere in the editor.
+   *
+   * 🔴 **Both halves are needed and they are not the same half.** The listener catches a request
+   * made while this hook is already mounted (the reader has the panel open and asks a second
+   * question); the `take` catches one made *before* it existed, which is the ordinary case —
+   * `AskAboutNodeDialog` is reached from a canvas right-click, so somebody asking their first
+   * question has never opened the Community panel. See `communityThreadRequest` for why an emit
+   * on its own loses exactly that case.
+   *
+   * ⚠️ In the hook rather than in the panel, so the launcher tab honours a request too. The two
+   * surfaces are exclusive routes in one window, so only one of them ever claims a given stash.
+   */
+  useEffect(() => {
+    const group = {};
+    EventDispatcher.instance.on(
+      COMMUNITY_THREAD_EVENT,
+      (id: string) => {
+        // Delivered live — drop the stash so a later remount does not reopen it.
+        clearPendingCommunityThread();
+        openThread(id);
+      },
+      group
+    );
+
+    const pending = takePendingCommunityThread();
+    if (pending) openThread(pending);
+
+    return () => EventDispatcher.instance.off(group);
+  }, [openThread]);
+
+  const onBack = useCallback(() => setThreadId(null), []);
+  const onRetry = useCallback(() => {
+    setRead(undefined);
+    setGeneration((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    let live = true;
+    void readCommunitySession().then((found) => {
+      if (live) setSession(found);
+    });
+    return () => {
+      live = false;
+    };
+  }, [generation]);
+
+  useEffect(() => {
+    // Same rule as `useCommunityMirror`: wait for the store, or the one request a reader makes
+    // goes out signed out.
+    if (threadId === null || session === undefined) return;
+
+    let live = true;
+    const client = clientFor(session);
+
+    void Promise.all([client.me(), client.thread(threadId)]).then(([meRead, threadRead]) => {
+      if (!live) return;
+      setMe(meRead);
+      setRead(threadRead);
+      if (threadRead.outcome === 'ok') {
+        THREAD_CACHE.set(threadId, { thread: threadRead.value, at: Date.now() });
+      }
+      // 🔴 A COMPLETED re-read retires the composer's "Posted. Re-reading the thread…" line —
+      // whether that read succeeded or not, because the sentence describes a request that is now
+      // over either way. ⚠️ A FAILED write is never cleared here: its text is still in the box
+      // and the reason it did not send has to stay under it until the next attempt. `posted` also
+      // survives, and `postedNote` is what turns it into the right sentence for the copy on screen.
+      setLastWrite((previous) => (previous?.outcome === 'ok' ? null : previous));
+    });
+
+    return () => {
+      live = false;
+    };
+  }, [threadId, session, generation]);
+
+  /**
+   * AC4 — post the answer.
+   *
+   * 🔴 **Nothing is drawn as having happened until the platform says it did.** A version of this
+   * that pushed the draft into `thread.answers` locally would show an answer that reads exactly
+   * like a posted one, on a thread the community never received — and it would keep reading that
+   * way after the failure line appeared beside it. What IS optimistic here is the state: the box
+   * goes busy immediately, and the outcome is drawn the moment it is known.
+   *
+   * ⚠️ The client is built here rather than held in state because the session may have been
+   * refreshed since this pane opened, and a token captured at open time is the one that expires.
+   */
+  const onSubmit = useCallback(() => {
+    if (threadId === null || sending) return;
+    // ⚠️ Re-checked here, not only in the disabled button. A keyboard, a stale render and an
+    // enter-to-send that a later session adds all reach this function without passing that button.
+    if (!canSendAnswer(draft)) return;
+
+    setSending(true);
+    // 🔴 The previous failure is cleared on the ATTEMPT, not on success. Leaving it up while a
+    // fresh request is in flight puts a stale reason under a box that is currently busy.
+    setLastWrite(null);
+
+    const client = clientFor(session);
+    void client.answer(threadId, { body: draft.trim() }).then((write) => {
+      setSending(false);
+      setLastWrite(write);
+      if (write.outcome !== 'ok') return;
+      // ✅ Only now. The text is cleared because the platform holds it, and `posted` records what
+      // it holds so the screen can say so even if the re-read never lands.
+      setDraft('');
+      setPosted({ at: Date.now(), postId: write.value.postId });
+      setGeneration((n) => n + 1);
+      // 🔴 FIX-025 — and tell everything else. Bumping only this pane's generation re-read the
+      // THREAD and left the LIST that linked to it saying "no reply yet", which is exactly what
+      // Richard reported. The list is a different hook with a different cache; it cannot know.
+      notifyCommunityChanged('threads');
+    });
+  }, [threadId, draft, sending, session]);
+
+  /**
+   * AC6 — accept an answer.
+   *
+   * ⚠️ No optimistic marking either, and for a sharper reason than the composer's: the accepted
+   * marker is the one piece of state on this screen that the ASKER cannot correct. Drawing it
+   * before the platform confirms would mean a person believing they had thanked somebody who was
+   * never told.
+   */
+  const onAccept = useCallback(
+    (postId: string) => {
+      if (threadId === null || acceptPending !== null) return;
+      setAcceptPending(postId);
+      setAcceptFailure(null);
+
+      const client = clientFor(session);
+      void client.acceptAnswer(threadId, postId).then((write) => {
+        setAcceptPending(null);
+        const line = acceptFailureLine(write);
+        if (line) {
+          setAcceptFailure({ postId, line });
+          return;
+        }
+        // The accepted marker comes from the thread, so the only honest way to draw it is to
+        // re-read the thread. ⚠️ `read` is deliberately NOT blanked: a flash of "Loading…" over a
+        // thread somebody is reading is a worse answer than a marker that appears a moment later.
+        setGeneration((n) => n + 1);
+        // Accepting awards points, so the standing line on the list surface is stale too.
+        notifyCommunityChanged('threads');
+      });
+    },
+    [threadId, acceptPending, session]
+  );
+
+  /**
+   * FB-001 — open the composer on one of your own posts.
+   *
+   * 🔴 **THE SOURCE IS FETCHED, NOT RECONSTRUCTED.** The thread payload carries `blocks`; the
+   * markdown that produced them is served only by `postSource`, to its author. Filling the box
+   * by re-serialising blocks would be a second, lossy markdown writer — and every edit would
+   * silently rewrite the person's formatting on save.
+   *
+   * ⚠️ A failure here opens NOTHING and says so, rather than opening an empty box: a composer
+   * pre-filled with nothing, saved, would replace the post with nothing.
+   */
+  const onEdit = useCallback(
+    (postId: string) => {
+      if (threadId === null || editPending !== null) return;
+      setEditPending(postId);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.postSource(threadId, postId).then((read) => {
+        setEditPending(null);
+        if (read.outcome !== 'ok') {
+          // ⚠️ `absent` is not narrated as a permission — see `editFailureLine`'s note. Here it
+          // means the post is not there for us, which is what this says.
+          setEditFailure({
+            postId,
+            line:
+              read.outcome === 'absent'
+                ? 'This post could not be opened for editing.'
+                : 'The community could not be reached, so this post could not be opened for editing.'
+          });
+          return;
+        }
+        setEditDraft(read.value.body);
+        setEditingPostId(postId);
+      });
+    },
+    [threadId, editPending, session]
+  );
+
+  /** FB-001 AC1 — save the edit. */
+  const onSaveEdit = useCallback(
+    (postId: string) => {
+      if (threadId === null || editPending !== null) return;
+      setEditPending(postId);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.editPost(threadId, postId, editDraft).then((write) => {
+        setEditPending(null);
+        const line = editFailureLine(write);
+        if (line) {
+          // 🔴 THE COMPOSER STAYS OPEN AND THE DRAFT IS NOT CLEARED. AC4's rule, and it bites
+          // harder here than on an answer: the body this replaced is no longer on screen, so
+          // closing the box would lose a rewrite the person cannot see to retype.
+          setEditFailure({ postId, line });
+          return;
+        }
+        setEditingPostId(null);
+        setEditDraft('');
+        // The post's words come from the thread, so a re-read is the only honest way to draw
+        // them. ⚠️ `read` is not blanked — `onAccept`'s reason, one screen up.
+        setGeneration((n) => n + 1);
+        // An edited body changes the excerpt the list surface draws.
+        notifyCommunityChanged('threads');
+      });
+    },
+    [threadId, editPending, editDraft, session]
+  );
+
+  /**
+   * FB-001 AC2 — withdraw the thread. The request, once it has been agreed to.
+   *
+   * 🔴 **`onBack` on success, because the thread this pane is showing no longer exists.**
+   * Leaving the pane open would re-read into a 404 and land on the `gone` arm, which is the
+   * screen for *somebody else removed this* — a person who has just deleted their own thread
+   * being told it is unavailable reads as a failure.
+   *
+   * ⚠️ Declared BEFORE `onDelete` and not after it. `onDelete` names it in a dependency array,
+   * which is evaluated on every render rather than on click, so the other order throws
+   * `Cannot access 'deleteNow' before initialization` the first time the pane draws.
+   */
+  const deleteNow = useCallback(
+    (id: string) => {
+      setEditPending(id);
+      setEditFailure(null);
+
+      const client = clientFor(session);
+      void client.deleteThread(id).then((write) => {
+        setEditPending(null);
+        const line = deleteFailureLine(write);
+        if (line) {
+          // ⚠️ Filed against the QUESTION's post id, because that is where the Delete verb is
+          // drawn — a refusal keyed to the thread id would match no post and draw nowhere.
+          const questionId = read?.outcome === 'ok' ? read.value.question.id : null;
+          if (questionId) setEditFailure({ postId: questionId, line });
+          return;
+        }
+        // The list is a different hook with a different cache; it cannot know the thread is gone.
+        notifyCommunityChanged('threads');
+        onBack();
+      });
+    },
+    [session, read, onBack]
+  );
+
+  /**
+   * FB-001 AC2 — the gesture: ask, and only then withdraw.
+   *
+   * 🔴 ASK FIRST, AND THE REQUEST DOES NOT LEAVE UNTIL THE ANSWER IS YES.
+   *
+   * D7 declined a soft delete, so this really removes the row and takes its posts with it —
+   * there is no undo anywhere to reach for afterwards. The web half has always called
+   * `window.confirm` here; until this existed the editor fired the DELETE straight off the
+   * click, so the same verb was one gesture safer on one surface than the other.
+   *
+   * 🔴 D15's verb parity could never have caught that. It is about which verbs a viewer is
+   * *offered*, and `editFor` grades exactly that — what happens between the click and the
+   * request is outside every spec in the family.
+   *
+   * ⚠️ `DialogLayerModel` rather than `window.confirm`: a native modal would sit outside the
+   * editor's own chrome, and the layer is created once in `router.tsx` for **both** routes —
+   * so this works on the launcher tab as well as in the panel, which matters because one hook
+   * draws both.
+   *
+   * ⚠️ `editPending` is set inside `deleteNow`, not before the dialog opens. Setting it early
+   * would leave the pane spinning forever on a cancel, and cancelling is the common case for a
+   * confirmation.
+   */
+  const onDelete = useCallback(() => {
+    if (threadId === null || editPending !== null) return;
+
+    DialogLayerModel.instance.showConfirm({
+      id: 'community-thread-delete',
+      title: 'Delete this question?',
+      text: 'It will be gone for good, along with its answers. This only works while nobody has answered.',
+      confirmText: 'Delete',
+      onConfirm: () => deleteNow(threadId)
+    });
+  }, [threadId, editPending, deleteNow]);
+
+  if (threadId === null) return { pane: null, openThread };
+
+  const state = composeThreadView({
+    me,
+    read,
+    cached: THREAD_CACHE.get(threadId) ?? null,
+    pullFor: options.pullFor,
+    posted,
+    accept: { pendingPostId: acceptPending, failure: acceptFailure, onAccept },
+    edit: {
+      editingPostId,
+      draft: editDraft,
+      pendingPostId: editPending,
+      failure: editFailure,
+      onEdit,
+      onDraftChange: setEditDraft,
+      onSave: onSaveEdit,
+      // ⚠️ Cancel clears the draft as well as closing the box. Keeping it would restore a stale
+      // rewrite the next time the composer opened, over a body that may have changed since.
+      onCancel: () => {
+        setEditingPostId(null);
+        setEditDraft('');
+        setEditFailure(null);
+      },
+      onDelete
+    }
+  });
+
+  return {
+    openThread,
+    pane: {
+      state,
+      onBack,
+      onRetry,
+      // 🔴 The one place a link in a stranger's post reaches the outside world, and it is a
+      // decided hand-off with a call site to audit — which is the whole of NAT-012's model.
+      // `CommunityPostBody` never navigates on its own.
+      onOpenLink: (href: string) => platformOpenExternal(href),
+      // ✅ **D5 settled 2026-08-20 — the editor gets the same session scope as the browser**, so
+      // this is a composer rather than the labelled hand-off it was. ⚠️ The hand-off did not go
+      // away: `composeReplyBox` still returns it for a reader with no session, because the thread
+      // is readable signed out and the rail has no sign-in control of its own.
+      reply: composeReplyBox({
+        signedIn: Boolean(session),
+        draft,
+        sending,
+        last: lastWrite,
+        onChange: setDraft,
+        onSubmit,
+        onHandoff: () => platformOpenExternal(`${COMMUNITY_URL}/bench/${encodeURIComponent(threadId)}`)
+      })
+    }
+  };
+}
+
+/**
+ * ⚠️ Imported lazily so this module stays loadable by a runner with no Electron.
+ * `@noodl/platform` resolves to the Electron implementation at import time in the renderer, and a
+ * spec that only wants {@link useCommunityThread}'s state machine should not need one.
+ */
+function platformOpenExternal(url: string): void {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { platform } = require('@noodl/platform') as typeof import('@noodl/platform');
+  platform.openExternal(url);
+}

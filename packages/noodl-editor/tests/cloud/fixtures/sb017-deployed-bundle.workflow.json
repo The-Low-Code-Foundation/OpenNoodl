@@ -1,0 +1,1182 @@
+{
+  "components": [
+    {
+      "name": "/#__cloud__/site/SetSectionAccess",
+      "nodes": [
+        {
+          "id": "b380ac0f-e0bb-4dcd-a717-bfabbbd084cc",
+          "type": "Component Inputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "d281f50f-50cd-4dc6-a74c-32637f412f28",
+          "type": "SetDbModelProperties",
+          "parameters": {
+            "collectionName": "Section",
+            "idSource": "explicit",
+            "storeProperties": "specified",
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              },
+              {
+                "id": "world",
+                "label": "World"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true,
+            "acl-world-target": "everyone",
+            "acl-world-write": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "76a62357-d8da-4d78-b25e-63a814c2b724",
+          "type": "Component Outputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "b380ac0f-e0bb-4dcd-a717-bfabbbd084cc",
+          "sourcePort": "objectId",
+          "targetId": "d281f50f-50cd-4dc6-a74c-32637f412f28",
+          "targetPort": "modelId"
+        },
+        {
+          "sourceId": "b380ac0f-e0bb-4dcd-a717-bfabbbd084cc",
+          "sourcePort": "Do",
+          "targetId": "d281f50f-50cd-4dc6-a74c-32637f412f28",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "d281f50f-50cd-4dc6-a74c-32637f412f28",
+          "sourcePort": "done",
+          "targetId": "76a62357-d8da-4d78-b25e-63a814c2b724",
+          "targetPort": "Success"
+        },
+        {
+          "sourceId": "d281f50f-50cd-4dc6-a74c-32637f412f28",
+          "sourcePort": "failure",
+          "targetId": "76a62357-d8da-4d78-b25e-63a814c2b724",
+          "targetPort": "Failure"
+        }
+      ],
+      "ports": [
+        {
+          "name": "Success",
+          "type": "signal",
+          "plug": "output",
+          "index": 0
+        },
+        {
+          "name": "objectId",
+          "type": {
+            "name": "string",
+            "identifierOf": "ModelName",
+            "identifierDisplayName": "Object Ids"
+          },
+          "group": "General",
+          "plug": "input",
+          "index": 0
+        },
+        {
+          "name": "Failure",
+          "type": "signal",
+          "plug": "output",
+          "index": 1
+        },
+        {
+          "name": "isPublic",
+          "type": "*",
+          "plug": "input",
+          "index": 1
+        },
+        {
+          "name": "Do",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "group": "Actions",
+          "plug": "input",
+          "index": 2
+        }
+      ],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/site/CopySectionToPage",
+      "nodes": [
+        {
+          "id": "4d9d78f5-c083-4b5f-916a-ac289555d7da",
+          "type": "Component Inputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "0c2a13ae-6530-4db4-a37c-8bcfd3068314",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-newPageId": false,
+            "functionScript": "Outputs.pageId = Inputs.newPageId;\nOutputs.built();"
+          },
+          "ports": [
+            {
+              "name": "out-built",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "b989bb51-fc69-431b-9f9a-19f233c16f84",
+          "type": "NewDbModelProperties",
+          "parameters": {
+            "collectionName": "Section",
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "249230f6-b2a0-48e2-9408-b7f44a21acba",
+          "type": "Component Outputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "4d9d78f5-c083-4b5f-916a-ac289555d7da",
+          "sourcePort": "Do",
+          "targetId": "0c2a13ae-6530-4db4-a37c-8bcfd3068314",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "0c2a13ae-6530-4db4-a37c-8bcfd3068314",
+          "sourcePort": "out-built",
+          "targetId": "b989bb51-fc69-431b-9f9a-19f233c16f84",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "b989bb51-fc69-431b-9f9a-19f233c16f84",
+          "sourcePort": "done",
+          "targetId": "249230f6-b2a0-48e2-9408-b7f44a21acba",
+          "targetPort": "Success"
+        },
+        {
+          "sourceId": "b989bb51-fc69-431b-9f9a-19f233c16f84",
+          "sourcePort": "failure",
+          "targetId": "249230f6-b2a0-48e2-9408-b7f44a21acba",
+          "targetPort": "Failure"
+        }
+      ],
+      "ports": [
+        {
+          "name": "Success",
+          "type": "signal",
+          "plug": "output",
+          "index": 0
+        },
+        {
+          "name": "kind",
+          "type": "*",
+          "plug": "input",
+          "index": 0
+        },
+        {
+          "name": "Failure",
+          "type": "signal",
+          "plug": "output",
+          "index": 1
+        },
+        {
+          "name": "order",
+          "type": "*",
+          "plug": "input",
+          "index": 1
+        },
+        {
+          "name": "data",
+          "type": "*",
+          "plug": "input",
+          "index": 2
+        },
+        {
+          "name": "newPageId",
+          "type": "*",
+          "plug": "input",
+          "index": 3
+        },
+        {
+          "name": "Do",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "group": "Actions",
+          "plug": "input",
+          "index": 4
+        }
+      ],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/site/ContactRecipient",
+      "nodes": [
+        {
+          "id": "9471b045-643b-4197-a92a-0da89116cf5a",
+          "type": "Component Inputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "8dd6ea05-8341-4848-8bcd-ebb174f48faf",
+          "type": "DbCollection2",
+          "parameters": {
+            "runOnChange-records": false,
+            "runOnChange-querySettings": false,
+            "runOnChange-collectionName": false,
+            "runOnChange-search": false,
+            "collectionName": "SiteSettings"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "569a8548-2acb-4838-9af8-d7d593719919",
+          "type": "noodl.cloud.secret",
+          "parameters": {
+            "name": "CONTACT_RECIPIENT_EMAIL"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "81e55eaf-8d5e-44ae-9a2e-8ad2da7c8f84",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-rows": false,
+            "runOnChange-in-fallback": false,
+            "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst first = rows[0] ? rows[0].data || rows[0] : {};\nconst address = first.contactRecipient || Inputs.fallback;\nif (address) {\n  Outputs.recipient = address;\n  Outputs.ready();\n} else {\n  Outputs.failed();\n}"
+          },
+          "ports": [
+            {
+              "name": "out-ready",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            },
+            {
+              "name": "out-failed",
+              "plug": "output",
+              "type": "signal",
+              "index": 1
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "1e322dc8-584b-4e50-91d8-606efbffbd66",
+          "type": "Component Outputs",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "8dd6ea05-8341-4848-8bcd-ebb174f48faf",
+          "sourcePort": "fetched",
+          "targetId": "569a8548-2acb-4838-9af8-d7d593719919",
+          "targetPort": "fetch"
+        },
+        {
+          "sourceId": "569a8548-2acb-4838-9af8-d7d593719919",
+          "sourcePort": "completed",
+          "targetId": "81e55eaf-8d5e-44ae-9a2e-8ad2da7c8f84",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "8dd6ea05-8341-4848-8bcd-ebb174f48faf",
+          "sourcePort": "failure",
+          "targetId": "1e322dc8-584b-4e50-91d8-606efbffbd66",
+          "targetPort": "Failure"
+        },
+        {
+          "sourceId": "81e55eaf-8d5e-44ae-9a2e-8ad2da7c8f84",
+          "sourcePort": "out-ready",
+          "targetId": "1e322dc8-584b-4e50-91d8-606efbffbd66",
+          "targetPort": "Ready"
+        },
+        {
+          "sourceId": "81e55eaf-8d5e-44ae-9a2e-8ad2da7c8f84",
+          "sourcePort": "out-failed",
+          "targetId": "1e322dc8-584b-4e50-91d8-606efbffbd66",
+          "targetPort": "Failure"
+        }
+      ],
+      "ports": [
+        {
+          "name": "recipient",
+          "type": "*",
+          "plug": "output",
+          "index": 0
+        },
+        {
+          "name": "Fetch",
+          "type": "*",
+          "plug": "input",
+          "index": 0
+        },
+        {
+          "name": "Ready",
+          "type": "signal",
+          "plug": "output",
+          "index": 1
+        },
+        {
+          "name": "Failure",
+          "type": {
+            "name": "signal"
+          },
+          "plug": "output",
+          "index": 2
+        }
+      ],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/publishPage",
+      "nodes": [
+        {
+          "id": "01566fed-2b07-45e6-a138-814f589926fd",
+          "type": "noodl.cloud.request",
+          "parameters": {
+            "params": "pageId,publish",
+            "ptype-pageId": "string",
+            "preq-pageId": true,
+            "ptype-publish": "boolean",
+            "preq-publish": true,
+            "allowNoAuth": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "000f8649-c00f-4420-a471-1119ff4a076e",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-pageId": false,
+            "runOnChange-in-isPublic": false,
+            "functionScript": "if (Inputs.pageId === undefined || Inputs.isPublic === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.isPublic = Inputs.isPublic;\nOutputs.ready();"
+          },
+          "ports": [
+            {
+              "name": "out-ready",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "d3c225af-ac48-4673-a4ad-99d91c753053",
+          "type": "DbCollection2",
+          "parameters": {
+            "runOnChange-collectionName": false,
+            "runOnChange-querySettings": false,
+            "collectionName": "Section",
+            "visualFilter": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "pageId",
+                  "operator": "equal to",
+                  "input": "pageId"
+                }
+              ]
+            }
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "dde84b22-ffec-420c-aba8-98bd5bce8dd6",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-sections": false,
+            "runOnChange-in-isPublic": false,
+            "functionScript": "if (Inputs.sections === undefined || Inputs.isPublic === undefined) return;\nconst flag = Inputs.isPublic;\nOutputs.tasks = (Inputs.sections || []).map((s) => ({ objectId: s.id, isPublic: flag }));\nOutputs.built();"
+          },
+          "ports": [
+            {
+              "name": "out-built",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "ae032a54-47f9-4df3-b854-e407e3f37d7b",
+          "type": "RunTasks",
+          "parameters": {
+            "taskTemplate": "/#__cloud__/site/SetSectionAccess",
+            "stopOnFailure": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "46ca3778-0629-4f80-8afc-d29f3a854d48",
+          "type": "SetDbModelProperties",
+          "parameters": {
+            "collectionName": "Page",
+            "idSource": "explicit",
+            "storeProperties": "specified",
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              },
+              {
+                "id": "world",
+                "label": "World"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true,
+            "acl-world-target": "everyone",
+            "acl-world-write": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "03f9be18-7d9d-4886-917e-0200202c0a48",
+          "type": "noodl.cloud.response",
+          "parameters": {
+            "params": "pageId,published"
+          },
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "01566fed-2b07-45e6-a138-814f589926fd",
+          "sourcePort": "receive",
+          "targetId": "000f8649-c00f-4420-a471-1119ff4a076e",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "d3c225af-ac48-4673-a4ad-99d91c753053",
+          "sourcePort": "fetched",
+          "targetId": "dde84b22-ffec-420c-aba8-98bd5bce8dd6",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "dde84b22-ffec-420c-aba8-98bd5bce8dd6",
+          "sourcePort": "out-built",
+          "targetId": "ae032a54-47f9-4df3-b854-e407e3f37d7b",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "ae032a54-47f9-4df3-b854-e407e3f37d7b",
+          "sourcePort": "completed",
+          "targetId": "46ca3778-0629-4f80-8afc-d29f3a854d48",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "46ca3778-0629-4f80-8afc-d29f3a854d48",
+          "sourcePort": "done",
+          "targetId": "03f9be18-7d9d-4886-917e-0200202c0a48",
+          "targetPort": "send"
+        }
+      ],
+      "ports": [],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/duplicatePage",
+      "nodes": [
+        {
+          "id": "925bf130-5541-4b8d-a5e8-7bce49ada089",
+          "type": "noodl.cloud.request",
+          "parameters": {
+            "params": "pageId",
+            "ptype-pageId": "string",
+            "preq-pageId": true,
+            "allowNoAuth": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "1bfab9ac-f70b-49b2-aa02-7531a73b6656",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-pageId": false,
+            "functionScript": "if (Inputs.pageId === undefined) return;\nOutputs.pageId = Inputs.pageId;\nOutputs.ready();"
+          },
+          "ports": [
+            {
+              "name": "out-ready",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "416822f6-49f4-4cc4-abaa-ea77888c9d92",
+          "type": "DbModel2",
+          "parameters": {
+            "runOnChange-modelId": false,
+            "runOnChange-record": false,
+            "collectionName": "Page",
+            "idSource": "explicit"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "f9a2b185-e3de-43a7-834a-45d809c828da",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-title": false,
+            "runOnChange-in-slug": false,
+            "functionScript": "const title = Inputs.title || 'Untitled';\nconst slug = Inputs.slug || 'page';\nOutputs.title = 'Copy of ' + title;\nOutputs.slug = slug + '-copy-' + Math.random().toString(36).slice(2, 8);\nOutputs.built();"
+          },
+          "ports": [
+            {
+              "name": "out-built",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "5d3c01f5-cf3c-4481-87d9-8e8f44de03ed",
+          "type": "NewDbModelProperties",
+          "parameters": {
+            "collectionName": "Page",
+            "prop-published": false,
+            "prop-publishedAt": null,
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "efe33d76-a3f0-42fc-afd9-eec763b9b985",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-sourcePageId": false,
+            "runOnChange-in-newPageId": false,
+            "functionScript": "if (Inputs.sourcePageId === undefined || Inputs.newPageId === undefined) return;\nOutputs.sourcePageId = Inputs.sourcePageId;\nOutputs.newPageId = Inputs.newPageId;\nOutputs.ready();"
+          },
+          "ports": [
+            {
+              "name": "out-ready",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "66e456be-87d3-4a4a-ae6c-db45d307a06b",
+          "type": "DbCollection2",
+          "parameters": {
+            "runOnChange-collectionName": false,
+            "runOnChange-querySettings": false,
+            "collectionName": "Section",
+            "visualFilter": {
+              "combinator": "and",
+              "rules": [
+                {
+                  "property": "pageId",
+                  "operator": "equal to",
+                  "input": "pageId"
+                }
+              ]
+            }
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "20f56912-8ec5-40f8-9a92-4655edbd4590",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-sections": false,
+            "runOnChange-in-newPageId": false,
+            "functionScript": "if (Inputs.sections === undefined || Inputs.newPageId === undefined) return;\nconst pageId = Inputs.newPageId;\nOutputs.tasks = (Inputs.sections || []).map((s) => {\n  const d = s.data || s;\n  return { kind: d.kind, order: d.order, data: d.data, newPageId: pageId };\n});\nOutputs.built();"
+          },
+          "ports": [
+            {
+              "name": "out-built",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "da4273ec-6e2a-4084-a662-ce62df1847d0",
+          "type": "RunTasks",
+          "parameters": {
+            "taskTemplate": "/#__cloud__/site/CopySectionToPage",
+            "stopOnFailure": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "1aa5247a-ed33-4848-819e-c33d497209a6",
+          "type": "noodl.cloud.response",
+          "parameters": {
+            "params": "pageId"
+          },
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "925bf130-5541-4b8d-a5e8-7bce49ada089",
+          "sourcePort": "receive",
+          "targetId": "1bfab9ac-f70b-49b2-aa02-7531a73b6656",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "1bfab9ac-f70b-49b2-aa02-7531a73b6656",
+          "sourcePort": "out-ready",
+          "targetId": "416822f6-49f4-4cc4-abaa-ea77888c9d92",
+          "targetPort": "fetch"
+        },
+        {
+          "sourceId": "416822f6-49f4-4cc4-abaa-ea77888c9d92",
+          "sourcePort": "fetched",
+          "targetId": "f9a2b185-e3de-43a7-834a-45d809c828da",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "f9a2b185-e3de-43a7-834a-45d809c828da",
+          "sourcePort": "out-built",
+          "targetId": "5d3c01f5-cf3c-4481-87d9-8e8f44de03ed",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "5d3c01f5-cf3c-4481-87d9-8e8f44de03ed",
+          "sourcePort": "done",
+          "targetId": "efe33d76-a3f0-42fc-afd9-eec763b9b985",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "66e456be-87d3-4a4a-ae6c-db45d307a06b",
+          "sourcePort": "fetched",
+          "targetId": "20f56912-8ec5-40f8-9a92-4655edbd4590",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "20f56912-8ec5-40f8-9a92-4655edbd4590",
+          "sourcePort": "out-built",
+          "targetId": "da4273ec-6e2a-4084-a662-ce62df1847d0",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "da4273ec-6e2a-4084-a662-ce62df1847d0",
+          "sourcePort": "completed",
+          "targetId": "1aa5247a-ed33-4848-819e-c33d497209a6",
+          "targetPort": "send"
+        }
+      ],
+      "ports": [],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/submitContactForm",
+      "nodes": [
+        {
+          "id": "0ce5b78d-b6d6-4759-bf94-ebe3a4a6ab9e",
+          "type": "noodl.cloud.request",
+          "parameters": {
+            "params": "name,email,message,pageSlug",
+            "ptype-name": "string",
+            "preq-name": true,
+            "ptype-email": "string",
+            "preq-email": true,
+            "ptype-message": "string",
+            "preq-message": true,
+            "ptype-pageSlug": "string",
+            "preq-pageSlug": false,
+            "allowNoAuth": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "150458fa-a9e6-4531-9053-e5b28e624c02",
+          "type": "/#__cloud__/site/ContactRecipient",
+          "parameters": {},
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "b79393bf-0e14-43ab-96ba-d312211ca0f0",
+          "type": "NewDbModelProperties",
+          "parameters": {
+            "collectionName": "ContactMessage",
+            "prop-handled": false,
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "3849e34b-ef52-4210-b926-8fe61a111d89",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-name": false,
+            "runOnChange-in-email": false,
+            "runOnChange-in-message": false,
+            "runOnChange-in-pageSlug": false,
+            "functionScript": "Outputs.subject = 'New enquiry from ' + (Inputs.name || 'a visitor');\nOutputs.text = [\n  'From: ' + (Inputs.name || '') + ' <' + (Inputs.email || '') + '>',\n  'Page: ' + (Inputs.pageSlug || '(unknown)'),\n  '',\n  Inputs.message || ''\n].join('\\n');\nOutputs.built();"
+          },
+          "ports": [
+            {
+              "name": "out-built",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "e00e791a-5463-4752-b01b-50dd90da2bef",
+          "type": "noodl.cloud.sendemail",
+          "parameters": {
+            "template": "none"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "31a8cbc6-2c47-4427-a5e1-b90071f9d5a4",
+          "type": "noodl.cloud.response",
+          "parameters": {
+            "params": "received"
+          },
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "0ce5b78d-b6d6-4759-bf94-ebe3a4a6ab9e",
+          "sourcePort": "receive",
+          "targetId": "150458fa-a9e6-4531-9053-e5b28e624c02",
+          "targetPort": "Fetch"
+        },
+        {
+          "sourceId": "0ce5b78d-b6d6-4759-bf94-ebe3a4a6ab9e",
+          "sourcePort": "receive",
+          "targetId": "3849e34b-ef52-4210-b926-8fe61a111d89",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "150458fa-a9e6-4531-9053-e5b28e624c02",
+          "sourcePort": "Ready",
+          "targetId": "b79393bf-0e14-43ab-96ba-d312211ca0f0",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "150458fa-a9e6-4531-9053-e5b28e624c02",
+          "sourcePort": "Failure",
+          "targetId": "b79393bf-0e14-43ab-96ba-d312211ca0f0",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "150458fa-a9e6-4531-9053-e5b28e624c02",
+          "sourcePort": "recipient",
+          "targetId": "e00e791a-5463-4752-b01b-50dd90da2bef",
+          "targetPort": "to"
+        },
+        {
+          "sourceId": "b79393bf-0e14-43ab-96ba-d312211ca0f0",
+          "sourcePort": "done",
+          "targetId": "e00e791a-5463-4752-b01b-50dd90da2bef",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "e00e791a-5463-4752-b01b-50dd90da2bef",
+          "sourcePort": "completed",
+          "targetId": "31a8cbc6-2c47-4427-a5e1-b90071f9d5a4",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "b79393bf-0e14-43ab-96ba-d312211ca0f0",
+          "sourcePort": "failure",
+          "targetId": "31a8cbc6-2c47-4427-a5e1-b90071f9d5a4",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "3849e34b-ef52-4210-b926-8fe61a111d89",
+          "sourcePort": "out-built",
+          "targetId": "31a8cbc6-2c47-4427-a5e1-b90071f9d5a4",
+          "targetPort": "pm-received"
+        }
+      ],
+      "ports": [],
+      "roots": []
+    },
+    {
+      "name": "/#__cloud__/claimSite",
+      "nodes": [
+        {
+          "id": "dc9d33b0-4f0f-4441-96f5-f457e069a6dc",
+          "type": "noodl.cloud.request",
+          "parameters": {
+            "params": "setupToken",
+            "ptype-setupToken": "string",
+            "preq-setupToken": true,
+            "allowNoAuth": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "da50f484-bc61-4738-9536-eed1ca2cc14f",
+          "type": "noodl.cloud.secret",
+          "parameters": {
+            "name": "SITE_SETUP_TOKEN"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "9a22518f-27f2-4326-bf49-3c686d4e7401",
+          "type": "DbCollection2",
+          "parameters": {
+            "runOnChange-records": false,
+            "runOnChange-search": false,
+            "collectionName": "SiteSettings",
+            "runOnChange-collectionName": false,
+            "runOnChange-querySettings": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "d864f6f8-7c73-485b-b130-5aa3522988af",
+          "type": "JavaScriptFunction",
+          "parameters": {
+            "runOnChange-in-expected": false,
+            "runOnChange-in-supplied": false,
+            "runOnChange-in-unclaimed": false,
+            "runOnChange-in-rows": false,
+            "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// an admin — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An empty expected token is never a match: an unprovisioned secret\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (tokenOk && Inputs.unclaimed === true) {\n  Outputs.claimed = true;\n  Outputs.ok();\n} else {\n  Outputs.denied();\n}"
+          },
+          "ports": [
+            {
+              "name": "out-ok",
+              "plug": "output",
+              "type": "signal",
+              "index": 0
+            },
+            {
+              "name": "out-denied",
+              "plug": "output",
+              "type": "signal",
+              "index": 1
+            }
+          ],
+          "children": []
+        },
+        {
+          "id": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "type": "noodl.cloud.addusertorole",
+          "parameters": {
+            "role": "admin",
+            "createRole": true
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "e8c831cc-96cf-4d16-9e54-5ffb1f90f7e7",
+          "type": "NewDbModelProperties",
+          "parameters": {
+            "collectionName": "SiteSettings",
+            "prop-siteName": "My site",
+            "prop-homeSlug": "home",
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              },
+              {
+                "id": "world",
+                "label": "World"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true,
+            "acl-world-target": "everyone",
+            "acl-world-read": true,
+            "acl-world-write": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "7d22d328-97fe-40c2-ba6b-88590d92b467",
+          "type": "NewDbModelProperties",
+          "parameters": {
+            "collectionName": "Theme",
+            "prop-tokens": {
+              "colorPrimary": "",
+              "colorBackground": "",
+              "colorText": "",
+              "fontFamily": ""
+            },
+            "accessControl": [
+              {
+                "id": "admin",
+                "label": "Admin"
+              },
+              {
+                "id": "world",
+                "label": "World"
+              }
+            ],
+            "acl-admin-target": "role",
+            "acl-admin-role": "admin",
+            "acl-admin-read": true,
+            "acl-admin-write": true,
+            "acl-world-target": "everyone",
+            "acl-world-read": true,
+            "acl-world-write": false
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "b1a8a793-ffbd-4a4b-bf0e-a6e580d280a3",
+          "type": "noodl.cloud.response",
+          "parameters": {
+            "params": "claimed"
+          },
+          "ports": [],
+          "children": []
+        },
+        {
+          "id": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "type": "noodl.cloud.response",
+          "parameters": {
+            "status": "failure",
+            "errorMessage": "This site cannot be claimed."
+          },
+          "ports": [],
+          "children": []
+        }
+      ],
+      "connections": [
+        {
+          "sourceId": "dc9d33b0-4f0f-4441-96f5-f457e069a6dc",
+          "sourcePort": "receive",
+          "targetId": "da50f484-bc61-4738-9536-eed1ca2cc14f",
+          "targetPort": "fetch"
+        },
+        {
+          "sourceId": "9a22518f-27f2-4326-bf49-3c686d4e7401",
+          "sourcePort": "fetched",
+          "targetId": "d864f6f8-7c73-485b-b130-5aa3522988af",
+          "targetPort": "run"
+        },
+        {
+          "sourceId": "d864f6f8-7c73-485b-b130-5aa3522988af",
+          "sourcePort": "out-ok",
+          "targetId": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "targetPort": "add"
+        },
+        {
+          "sourceId": "dc9d33b0-4f0f-4441-96f5-f457e069a6dc",
+          "sourcePort": "userId",
+          "targetId": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "targetPort": "userId"
+        },
+        {
+          "sourceId": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "sourcePort": "done",
+          "targetId": "e8c831cc-96cf-4d16-9e54-5ffb1f90f7e7",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "sourcePort": "unchanged",
+          "targetId": "e8c831cc-96cf-4d16-9e54-5ffb1f90f7e7",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "e8c831cc-96cf-4d16-9e54-5ffb1f90f7e7",
+          "sourcePort": "done",
+          "targetId": "7d22d328-97fe-40c2-ba6b-88590d92b467",
+          "targetPort": "store"
+        },
+        {
+          "sourceId": "7d22d328-97fe-40c2-ba6b-88590d92b467",
+          "sourcePort": "done",
+          "targetId": "b1a8a793-ffbd-4a4b-bf0e-a6e580d280a3",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "7d22d328-97fe-40c2-ba6b-88590d92b467",
+          "sourcePort": "failure",
+          "targetId": "b1a8a793-ffbd-4a4b-bf0e-a6e580d280a3",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "da50f484-bc61-4738-9536-eed1ca2cc14f",
+          "sourcePort": "failure",
+          "targetId": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "9a22518f-27f2-4326-bf49-3c686d4e7401",
+          "sourcePort": "failure",
+          "targetId": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "d864f6f8-7c73-485b-b130-5aa3522988af",
+          "sourcePort": "out-denied",
+          "targetId": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "39601f8a-01dd-4a1e-b42f-6ac3605a7d4e",
+          "sourcePort": "failure",
+          "targetId": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "targetPort": "send"
+        },
+        {
+          "sourceId": "e8c831cc-96cf-4d16-9e54-5ffb1f90f7e7",
+          "sourcePort": "failure",
+          "targetId": "29671851-3d3b-4b0a-a08a-1aef4fd12044",
+          "targetPort": "send"
+        }
+      ],
+      "ports": [],
+      "roots": []
+    }
+  ],
+  "settings": {
+    "navigationPathType": "path"
+  },
+  "metadata": {
+    "cloudservices": {
+      "instanceId": "backend_mtbxrca3axpbc",
+      "endpoint": "http://localhost:8588",
+      "appId": "backend_mtbxrca3axpbc",
+      "type": "nodegx"
+    },
+    "dbCollections": [
+      {
+        "name": "Page",
+        "columns": [],
+        "createdAt": null
+      },
+      {
+        "name": "SiteSettings",
+        "columns": [],
+        "createdAt": null
+      },
+      {
+        "name": "Theme",
+        "columns": [],
+        "createdAt": null
+      }
+    ],
+    "systemCollections": []
+  },
+  "modules": [
+    {
+      "name": "Inter",
+      "runtimes": [
+        "browser"
+      ],
+      "cloud": false,
+      "index": null,
+      "source": null,
+      "error": null
+    },
+    {
+      "name": "Lucide",
+      "runtimes": [
+        "browser"
+      ],
+      "cloud": false,
+      "index": null,
+      "source": null,
+      "error": null
+    }
+  ]
+}

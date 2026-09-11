@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "ec0991f9-fbe1-4274-a6e0-6a550d9b934a",
+  "name": "Sanitise Email",
+  "path": "/Parts/Sanitise Email",
+  "type": "logic",
+  "created": "2026-09-10T19:03:40.049Z",
+  "modified": "2026-09-10T19:03:40.049Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "The address someone typed, turned into the one you can store and compare: trimmed, lower-cased, unwrapped from mailto: and angle brackets, with its domain and a validity flag."
+}

@@ -277,7 +277,12 @@ const GroupNode: ReactNodeDefinition = {
         enums: [
           { label: 'Start', value: 'flex-start' },
           { label: 'End', value: 'flex-end' },
-          { label: 'Center', value: 'center' }
+          { label: 'Center', value: 'center' },
+          // Without this, a row of cards could not be made equal-height at all:
+          // each sized to its own content, so one with a shorter description sat
+          // 23px proud of its neighbours. The only workaround was hand-computing
+          // a fixed height, which then breaks on the next content change.
+          { label: 'Stretch', value: 'stretch' }
         ],
         alignComp: 'align-items'
       },
@@ -491,8 +496,16 @@ NodeSharedPortDefinitions.addPaddingInputs(GroupNode);
 NodeSharedPortDefinitions.addMarginInputs(GroupNode);
 NodeSharedPortDefinitions.addAlignInputs(GroupNode);
 NodeSharedPortDefinitions.addPointerEventOutputs(GroupNode);
+// DEF-029 — file drop, off until the author switches it on.
+NodeSharedPortDefinitions.addFileDropPorts(GroupNode);
 NodeSharedPortDefinitions.addBorderInputs(GroupNode);
 NodeSharedPortDefinitions.addShadowInputs(GroupNode);
+// VIB-002 — gradients and picture grounds. Group only, deliberately: it is the
+// page spine, every band and every card, and it is the node an authoring model
+// reaches for when it wants a section to look like anything. Widening the mixin
+// to all eighteen `addSharedVisualInputs` callers would put five ports on Text
+// for no gain and grow every one of their catalog entries.
+NodeSharedPortDefinitions.addBackgroundInputs(GroupNode);
 
 function defineTooltips(node) {
   node.inputProps.clip.tooltip = createTooltip({

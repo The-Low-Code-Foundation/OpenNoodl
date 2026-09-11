@@ -12,7 +12,11 @@
     "onError": "Signal; fires when loading fails — swap in a placeholder source here."
   },
   "runtimeBehavior": "Declared-port-groups: `objectFit`, `width` and `height` appear based on `sizeMode`; per-side border width/color ports appear once a border style is chosen; box-shadow ports appear when `boxShadowEnabled` is true; `pointerEventsEnabled` appears when `pointerEventsMode` is 'explicit'. Treat the catalog's input list as the superset the editor filters by current parameters.",
-  "examples": ["vis-columns-media-cards"],
+  "examples": [
+    "vis-columns-media-cards",
+    "ui-card-grid-repeater",
+    "ui-split-hero"
+  ],
   "patterns": [
     "Inside a Repeater item component: Component Inputs property → `src` to show per-record images.",
     "Thumbnail grid: explicit size mode + `objectFit` 'cover' so mixed aspect ratios crop instead of distort."
@@ -20,5 +24,10 @@
   "antiPatterns": [
     "Using Image for icon-font glyphs — net.noodl.visual.icon renders them sharper and tintable via `iconColor`."
   ],
-  "relatedNodes": ["Group", "net.noodl.visual.icon", "Video", "Circle"]
+  "relatedNodes": [
+    "Group",
+    "net.noodl.visual.icon",
+    "Video",
+    "Circle"
+  ]
 }

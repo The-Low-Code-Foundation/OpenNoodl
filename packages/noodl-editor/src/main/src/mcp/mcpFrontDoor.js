@@ -22,6 +22,48 @@ const fs = require('fs');
 const path = require('path');
 
 const { resolveMcpServers } = require('./resolveMcpServer');
+const { resolveNodeRuntime, warmNodeRuntime } = require('./resolveNodeRuntime');
+const { warmClaudeCli } = require('./resolveClaudeCli');
+const { claudeConfigPath, connectBootstrapServer } = require('./connectBootstrapServer');
+
+/**
+ * FIX-021 slice B — the environment variable carrying the user profile's path.
+ *
+ * 🔴 A wire contract with `packages/noodl-mcp/src/userProfile.ts`, which reads it.
+ * Renaming either end silently turns the feature off for every registration
+ * already written to disk.
+ */
+const USER_PROFILE_ENV = 'NODEGX_USER_PREFERENCES';
+
+/** The Electron-as-Node flag — the only variable NodeGX emitted before the profile. */
+const ELECTRON_AS_NODE_KEY = 'ELECTRON_RUN_AS_NODE';
+
+/** The profile's filename under `userData`. Mirrors `UserProfile/profileText`'s `PROFILE_FILE`. */
+const USER_PROFILE_FILE = 'PREFERENCES.md';
+
+/**
+ * Absolute path of `<userData>/PREFERENCES.md`, or `null` outside Electron.
+ *
+ * 🔴 **Resolved here and nowhere else.** This is the whole of BST-004's "front door,
+ * never guess" for this fact: the renderer cannot ask Electron for `userData`, and
+ * the MCP server must not derive it from `HOME`. One process knows, and it is this
+ * one — so it answers, and both of the others are handed the answer.
+ *
+ * ⚠️ Deliberately does NOT check that the file exists. It is created lazily by the
+ * editor the first time the user opens the preferences section, and a registration
+ * is written once and read for months; gating on existence would bake "the user had
+ * not opened settings yet" permanently into their config.
+ */
+function userProfilePath() {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { app } = require('electron');
+    if (!app) return null;
+    return path.join(app.getPath('userData'), USER_PROFILE_FILE);
+  } catch (e) {
+    return null;
+  }
+}
 
 /**
  * The verdict on a project directory, in `noodl-mcp`'s own words.
@@ -71,15 +113,26 @@ function describeProject(projectDir) {
 }
 
 /**
- * Both server resolutions plus the project verdict — one answer for one panel.
+ * Both server resolutions, the project verdict, and which runtime can run them — one answer for
+ * one panel.
+ *
+ * ⚠️ **BST-004: `runtime` is why the renderer does no detection of its own.** Whether `node`
+ * resolves is a property of the machine, and the renderer cannot see the machine. It is one more
+ * field here on the exact model of `entry` and `probed`.
  *
  * @param {string|null|undefined} projectDir the open project's retained directory, or nothing.
- * @param {{ packagesRoots?: string[] }} [options] passed through to the resolver, for tests.
+ * @param {{ packagesRoots?: string[] }} [options] passed through to the resolvers, for tests.
  */
 function describeMcpFrontDoor(projectDir, options) {
   return {
     servers: resolveMcpServers(options),
     project: describeProject(projectDir),
+    runtime: resolveNodeRuntime(options),
+    // FIX-021 slice B. Reported so the renderer can render the *displayed* `claude
+    // mcp add -e …` line and write it into a project's `.mcp.json`. 🔴 What the
+    // renderer sends back is NOT trusted for the one route that spawns — see
+    // `rejectUntrustedRegistration` and the connect handler below.
+    userProfilePath: (options && 'userProfilePath' in options ? options.userProfilePath : userProfilePath()),
     isPackaged: (options && typeof options.isPackaged === 'boolean' ? options.isPackaged : isPackagedApp())
   };
 }
@@ -104,6 +157,70 @@ function isPackagedApp() {
 /** The channel name, so the renderer and this file cannot drift apart on a string. */
 const MCP_FRONT_DOOR_CHANNEL = 'mcp:front-door';
 
+/** BST-003's launcher card: register the bootstrap server. */
+const MCP_CONNECT_BOOTSTRAP_CHANNEL = 'mcp:connect-bootstrap';
+
+/**
+ * Is this registration one *we* would have built?
+ *
+ * ⚠️ **The renderer composes the registration, and this handler spawns from it — so this is a trust
+ * boundary and not a formality.** Anything that reaches the renderer reaches these arguments, and
+ * "run this binary with these arguments, from the main process" is the most useful thing an
+ * attacker could ask for. The registration is therefore checked against what main independently
+ * resolves, rather than taken on its word.
+ *
+ * The check is deliberately narrow — the executable must be this Electron binary or the bare word
+ * `node`, and the entry must be the bundle path `resolveMcpServers` just reported. Nothing here
+ * consults the incoming value to decide what is allowed.
+ *
+ * @returns {string|null} the reason it was refused, or `null` when it is fine.
+ */
+function rejectUntrustedRegistration(registration, options) {
+  if (!registration || typeof registration !== 'object') return 'No registration was supplied.';
+
+  const { command, args } = registration;
+  if (typeof command !== 'string' || !Array.isArray(args) || args.length === 0) {
+    return 'The registration was malformed.';
+  }
+
+  if (command !== 'node' && command !== process.execPath) {
+    return 'The registration named a runtime NodeGX did not resolve.';
+  }
+
+  const authoring = resolveMcpServers(options)['noodl-mcp'];
+  if (!authoring || !authoring.entry || args[0] !== authoring.entry) {
+    return 'The registration did not point at NodeGX’s own authoring server.';
+  }
+
+  // The only other argument this command takes. Anything else is not ours.
+  if (args.slice(1).some((arg) => arg !== '--allow-writes')) {
+    return 'The registration carried arguments NodeGX does not emit.';
+  }
+
+  // 🔴 FIX-021 slice B — `env` is checked for the first time here, and it had to be.
+  //
+  // Until this feature there was exactly one variable NodeGX ever emitted, so an
+  // unchecked `env` was a hole nothing could reach through. It is not any more:
+  // this registration is written into the user's real `~/.claude.json` and later
+  // spawned by their agent, so a key that arrived from the renderer is a key that
+  // ends up in a process's environment. `NODE_OPTIONS=--require /tmp/x.js` is the
+  // shape of the thing this refuses.
+  //
+  // Whitelist, not a denylist — the same rule the command and args above follow:
+  // nothing here consults the incoming value to decide what is allowed.
+  const env = registration.env;
+  if (env !== undefined && (typeof env !== 'object' || env === null || Array.isArray(env))) {
+    return 'The registration carried a malformed environment.';
+  }
+  const allowedEnv = new Set([ELECTRON_AS_NODE_KEY, USER_PROFILE_ENV]);
+  const unknown = Object.keys(env || {}).find((key) => !allowedEnv.has(key));
+  if (unknown) {
+    return `The registration carried an environment variable NodeGX does not emit (${unknown}).`;
+  }
+
+  return null;
+}
+
 /**
  * Register the channel. Called once from `app.on('ready')`, beside the other `setup*IPC` calls.
  *
@@ -113,6 +230,66 @@ const MCP_FRONT_DOOR_CHANNEL = 'mcp:front-door';
  */
 function setupMcpIPC(ipcMain) {
   ipcMain.handle(MCP_FRONT_DOOR_CHANNEL, (_event, projectDir) => describeMcpFrontDoor(projectDir));
+
+  ipcMain.handle(MCP_CONNECT_BOOTSTRAP_CHANNEL, (_event, payload) => {
+    const { registration, command } = payload || {};
+
+    const refusal = rejectUntrustedRegistration(registration);
+    if (refusal) {
+      return {
+        ok: false,
+        method: null,
+        serverName: 'nodegx',
+        configPath: claudeConfigPath(),
+        removeCommand: `claude mcp remove --scope user nodegx`,
+        backupPath: null,
+        message: 'NodeGX would not register that.',
+        detail: refusal,
+        command: typeof command === 'string' ? command : null,
+        probed: [],
+        replaced: false
+      };
+    }
+
+    // 🔴 FIX-021 slice B — main OVERWRITES the profile path rather than accepting it.
+    //
+    // The renderer needs the value to render the copy-pasteable command, so it has
+    // it and sends it back inside the registration; that is convenience, not
+    // authority. What actually gets written to `~/.claude.json` and spawned is the
+    // path THIS process resolved from `app.getPath('userData')`, so a renderer that
+    // sent a different one changes the displayed string and nothing else. The
+    // whitelist above already refused unknown keys; this decides the value of the
+    // one key whose value is a filesystem path.
+    const profilePath = userProfilePath();
+    const trusted = {
+      ...registration,
+      env: {
+        ...Object.fromEntries(Object.entries(registration.env || {}).filter(([key]) => key !== USER_PROFILE_ENV)),
+        ...(profilePath ? { [USER_PROFILE_ENV]: profilePath } : {})
+      }
+    };
+
+    return connectBootstrapServer(trusted, typeof command === 'string' ? command : null);
+  });
+
+  // ⚠️ BST-004: get the login-shell PATH probe out of the way before anyone opens the panel. On a
+  // Finder-launched mac it costs ~2.3s, and this handler is synchronous — un-warmed, the first
+  // person to open settings pays it as a freeze. Deliberately not awaited: nothing here blocks
+  // startup, and if it fails the panel simply pays the cost itself.
+  warmNodeRuntime();
+
+  // BST-003: the same trick for `claude`, for the same reason — the launcher card probes it on a
+  // click, and F85 says the answer on a Finder-launched mac costs a login shell to get.
+  warmClaudeCli();
 }
 
-module.exports = { MCP_FRONT_DOOR_CHANNEL, describeProject, describeMcpFrontDoor, setupMcpIPC };
+module.exports = {
+  USER_PROFILE_ENV,
+  userProfilePath,
+  MCP_FRONT_DOOR_CHANNEL,
+  MCP_CONNECT_BOOTSTRAP_CHANNEL,
+  describeProject,
+  describeMcpFrontDoor,
+  rejectUntrustedRegistration,
+  setupMcpIPC
+};

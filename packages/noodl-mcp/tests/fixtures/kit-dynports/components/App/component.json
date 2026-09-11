@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c_dynapp",
+  "name": "App",
+  "path": "/App",
+  "type": "root",
+  "description": "Two correct kit nodes whose ports the catalog cannot enumerate statically. The known-good arm for CN-004 item 4: every diagnostic this component draws is a false positive."
+}

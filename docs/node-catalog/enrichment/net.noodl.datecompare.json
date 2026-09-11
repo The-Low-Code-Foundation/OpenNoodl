@@ -15,7 +15,7 @@
     "isSame": "Fires after a comparison that came out Same.",
     "failure": "Invalid Date — fires when a date arrived that could not be read."
   },
-  "examples": [],
+  "examples": ["bubble-is-this-date-overdue", "bubble-do-two-date-ranges-overlap", "bubble-round-a-date-down-to-the-month"],
   "patterns": [
     "Due date → Date, Now Date → Compare To, then On Before → the overdue branch."
   ],

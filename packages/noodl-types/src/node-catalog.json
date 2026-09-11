@@ -24,6 +24,7 @@
     "mediastream",
     "number",
     "object",
+    "optionslist",
     "pages",
     "proplist",
     "reference",
@@ -351,6 +352,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -592,7 +594,7 @@
         {
           "name": "hasReachedEnd",
           "displayName": "Has Reached End",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -603,7 +605,7 @@
         {
           "name": "hasReachedStart",
           "displayName": "Has Reached Start",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -723,6 +725,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -780,6 +783,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -793,6 +797,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -825,6 +830,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -867,6 +873,7 @@
         {
           "name": "falseString",
           "displayName": "String for false",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -877,6 +884,7 @@
         {
           "name": "input",
           "displayName": "Selector",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -887,6 +895,7 @@
         {
           "name": "trueString",
           "displayName": "String for true",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -899,7 +908,7 @@
         {
           "name": "currentValue",
           "displayName": "Current Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -910,7 +919,7 @@
         {
           "name": "inputChanged",
           "displayName": "Selector Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -1013,6 +1022,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -1218,6 +1228,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -1871,6 +1882,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -1881,6 +1893,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -2044,6 +2057,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -2224,6 +2238,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -2431,6 +2446,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -2925,6 +2941,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -3088,6 +3105,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -3112,7 +3130,7 @@
     },
     {
       "typeName": "Circle",
-      "displayName": "Circle",
+      "displayName": "Shape",
       "category": "Visual",
       "isVisual": true,
       "isDeprecated": false,
@@ -3129,6 +3147,31 @@
       "allowAsExportRoot": true,
       "useVariants": true,
       "inputs": [
+        {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
         {
           "name": "alignX",
           "displayName": "Align X",
@@ -3221,6 +3264,20 @@
           "default": "auto",
           "description": "Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all",
           "index": 451
+        },
+        {
+          "name": "cornerRadius",
+          "displayName": "Corner Radius",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Rounds the corners of the straight-edged shapes, in pixels; it stops at the roundest the shape can be",
+          "index": 7,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",
@@ -3497,6 +3554,20 @@
           "index": 403
         },
         {
+          "name": "points",
+          "displayName": "Points",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 5,
+          "description": "How many sides a Polygon has, or how many points a Star has; the minimum is 3",
+          "index": 6,
+          "allowVisualStates": true
+        },
+        {
           "name": "position",
           "displayName": "Position",
           "group": "Layout",
@@ -3526,6 +3597,46 @@
           "default": "relative",
           "description": "How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space",
           "index": 11
+        },
+        {
+          "name": "shape",
+          "displayName": "Shape",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Circle",
+                "value": "circle"
+              },
+              {
+                "label": "Square",
+                "value": "square"
+              },
+              {
+                "label": "Triangle",
+                "value": "triangle"
+              },
+              {
+                "label": "Polygon",
+                "value": "polygon"
+              },
+              {
+                "label": "Star",
+                "value": "star"
+              },
+              {
+                "label": "Custom SVG",
+                "value": "svg"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "circle",
+          "description": "Which outline this element draws inside its Size × Size box",
+          "index": 5,
+          "allowVisualStates": true
         },
         {
           "name": "size",
@@ -3635,6 +3746,21 @@
           "default": "/* background-color: red; */",
           "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
           "index": 100011
+        },
+        {
+          "name": "svgSource",
+          "displayName": "SVG Source",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string",
+            "allowEditOnly": true,
+            "codelanguage": "xml"
+          },
+          "isSignal": false,
+          "default": "",
+          "description": "Your own SVG markup, drawn inside the Size box. Script, event handlers, styles, animation and remote references are removed before it renders",
+          "index": 8
         },
         {
           "name": "transformOriginX",
@@ -3809,6 +3935,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -3826,6 +3953,83 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "hoverEnd",
@@ -3848,6 +4052,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -3918,6 +4133,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -3944,9 +4160,51 @@
         "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
         "declaredPortGroups": [
           {
+            "condition": "shape = circle OR shape NOT SET",
+            "inputs": [
+              "startAngle",
+              "endAngle",
+              "strokeLineCap"
+            ]
+          },
+          {
+            "condition": "shape = polygon OR shape = star",
+            "inputs": [
+              "points"
+            ]
+          },
+          {
+            "condition": "shape = square OR shape = triangle OR shape = polygon OR shape = star",
+            "inputs": [
+              "cornerRadius"
+            ]
+          },
+          {
+            "condition": "shape = svg",
+            "inputs": [
+              "svgSource"
+            ]
+          },
+          {
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           }
         ]
@@ -4091,7 +4349,7 @@
         {
           "name": "failure",
           "displayName": "Failure",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4113,7 +4371,7 @@
         {
           "name": "success",
           "displayName": "Success",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4180,7 +4438,7 @@
         {
           "name": "completed",
           "displayName": "Completed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4191,7 +4449,7 @@
         {
           "name": "done",
           "displayName": "Done",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -4213,7 +4471,7 @@
         {
           "name": "failure",
           "displayName": "Failure",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5053,6 +5311,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -5110,6 +5369,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "color"
@@ -5123,6 +5383,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5155,6 +5416,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "color"
@@ -5196,6 +5458,7 @@
         {
           "name": "blendValue",
           "displayName": "Blend Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -5209,12 +5472,13 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "color"
           },
           "isSignal": false,
-          "description": "The blended colour as a hex string; the inputs must be 6-digit hex, since any other notation yields nonsense"
+          "description": "The blended colour. Inputs may be #RGB, #RRGGBB, rgb()/rgba() or var(--token); a colour it cannot read is reported and the nearest input is shown unblended"
         }
       ],
       "dynamicPorts": {
@@ -5424,7 +5688,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -5560,7 +5824,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test"
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test. If Condition is a constant, every test pushes the same value — a mounted gate wired that way only ever turns on; a Switch is the two-way shape"
         }
       ],
       "dynamicPorts": null,
@@ -5658,6 +5922,7 @@
         {
           "name": "startValue",
           "displayName": "Start Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -5682,6 +5947,7 @@
         {
           "name": "countChanged",
           "displayName": "Count Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5692,6 +5958,7 @@
         {
           "name": "currentCount",
           "displayName": "Current Count",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -5745,17 +6012,19 @@
         {
           "name": "formatString",
           "displayName": "Format",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
           },
           "isSignal": false,
           "default": "{year}-{month}-{date}",
-          "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through"
+          "description": "Template in which these tokens are replaced and everything else is copied through. Date: {date} 09, {d} 9, {ordinal} 9th. Month: {month} 09, {m} 9, {monthShort} Sep, {monthName} September. Year: {year} 2026, {yearShort} 26. Weekday: {dayName} Thursday, {dayShort} Thu. Time: {hours} 15, {h} 15, {hours12} 03, {h12} 3, {minutes} 05, {min} 5, {seconds} 07, {s} 7, {ampm} pm, {AMPM} PM. Names follow Locale; {ordinal} is English"
         },
         {
           "name": "input",
           "displayName": "Date",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "date"
@@ -5764,8 +6033,21 @@
           "description": "The instant to render; a string arriving here is parsed as a date first"
         },
         {
+          "name": "locale",
+          "displayName": "Locale",
+          "group": "Values",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "default": "",
+          "description": "BCP 47 language tag for the month and day names — fr-FR, de-DE, ja-JP. Leave empty for English (en-US), which is what every project rendered before this port existed. It does not change the digits, the padding or {ordinal}, only the words"
+        },
+        {
           "name": "timeZone",
           "displayName": "Timezone",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -5779,7 +6061,7 @@
         {
           "name": "currentValue",
           "displayName": "Date String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -5790,7 +6072,7 @@
         {
           "name": "inputChanged",
           "displayName": "Date Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5801,7 +6083,7 @@
         {
           "name": "onError",
           "displayName": "Invalid Date",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -5844,7 +6126,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -6464,7 +6746,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -6747,7 +7029,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the record has been read and the property outputs are up to date"
+          "description": "Fires when the Id binds a record, and again when a Fetch finishes reading it — a bind has read nothing, so use Done to act on data that is really there"
         },
         {
           "name": "id",
@@ -6797,7 +7079,7 @@
             "variables": {
               "property": "a property of the cloud database class selected by the `collectionName` parameter. The names come from the class schema, not from anything on this node — a project without that class has no way to know them."
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -7071,6 +7353,7 @@
         {
           "name": "inputPositionX",
           "displayName": "Start Drag X",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -7081,6 +7364,7 @@
         {
           "name": "inputPositionY",
           "displayName": "Start Drag Y",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -7104,6 +7388,7 @@
         {
           "name": "scale",
           "displayName": "Scale",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -7256,6 +7541,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -7266,6 +7552,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -7342,7 +7629,7 @@
         {
           "name": "onDrag",
           "displayName": "Drag Moved",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -7353,7 +7640,7 @@
         {
           "name": "onStart",
           "displayName": "Drag Started",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -7364,7 +7651,7 @@
         {
           "name": "onStop",
           "displayName": "Drag Ended",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -7419,6 +7706,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -7460,6 +7748,7 @@
         {
           "name": "channelName",
           "displayName": "Channel",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -7471,6 +7760,7 @@
         {
           "name": "consume",
           "displayName": "Consume",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -7492,6 +7782,7 @@
         {
           "name": "enabled",
           "displayName": "Enabled",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -7505,6 +7796,7 @@
         {
           "name": "eventReceived",
           "displayName": "Received",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -7599,6 +7891,7 @@
         {
           "name": "sendEvent",
           "displayName": "Send",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -7634,7 +7927,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -7696,7 +7989,22 @@
       },
       "docs": "https://docs.noodl.net/nodes/math/expression",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
@@ -7707,7 +8015,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "expression"
           },
           "isSignal": false,
           "description": "JavaScript expression whose value becomes Result; every identifier in it becomes an input port"
@@ -7784,7 +8093,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -7969,6 +8278,30 @@
           "isSignal": false,
           "description": "Vertical alignment of this element within the space its parent gives it",
           "index": 6
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",
@@ -8639,6 +8972,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -8649,6 +8983,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -8692,6 +9027,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -8892,7 +9228,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -9098,7 +9434,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -9323,7 +9659,7 @@
         {
           "name": "itemActionItemId",
           "displayName": "Item Id",
-          "group": "Actions",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -9390,7 +9726,7 @@
         {
           "name": "removeCompleted",
           "displayName": "Remove Completed",
-          "group": "Events",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -9546,6 +9882,30 @@
           "isSignal": false,
           "description": "Vertical alignment of this element within the space its parent gives it",
           "index": 6
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",
@@ -10220,6 +10580,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -10230,6 +10591,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -10283,6 +10645,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -10389,6 +10752,31 @@
       ],
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignContent",
           "displayName": "Align Content",
           "group": "Layout",
@@ -10447,6 +10835,10 @@
               {
                 "label": "Center",
                 "value": "center"
+              },
+              {
+                "label": "Stretch",
+                "value": "stretch"
               }
             ]
           },
@@ -10561,6 +10953,24 @@
           "index": 100000
         },
         {
+          "name": "backdropBlur",
+          "displayName": "Backdrop Blur",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "px",
+            "units": [
+              "px"
+            ]
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over the ground it sits on. Needs a see-through Background Color to show at all",
+          "index": 206,
+          "allowVisualStates": true
+        },
+        {
           "name": "backgroundColor",
           "displayName": "Background Color",
           "group": "Style",
@@ -10572,6 +10982,96 @@
           "default": "transparent",
           "description": "Fill colour behind the children",
           "index": 201,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundGradient",
+          "displayName": "Background Gradient",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "A CSS gradient painted as the ground — normally a design token such as \"var(--gradient-brand)\". It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim",
+          "index": 203,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundImage",
+          "displayName": "Background Image",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "image"
+          },
+          "isSignal": false,
+          "description": "A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the picture so text on top stays readable",
+          "index": 202,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundPosition",
+          "displayName": "Background Position",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Center",
+                "value": "center"
+              },
+              {
+                "label": "Top",
+                "value": "top center"
+              },
+              {
+                "label": "Bottom",
+                "value": "bottom center"
+              },
+              {
+                "label": "Left",
+                "value": "center left"
+              },
+              {
+                "label": "Right",
+                "value": "center right"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "center",
+          "description": "Which part of the picture stays in view when Cover crops it",
+          "index": 205,
+          "allowVisualStates": true
+        },
+        {
+          "name": "backgroundSize",
+          "displayName": "Background Size",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Cover",
+                "value": "cover"
+              },
+              {
+                "label": "Contain",
+                "value": "contain"
+              },
+              {
+                "label": "Original Size",
+                "value": "auto"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "cover",
+          "description": "How the background picture fills the box. Cover crops it to fill; contain fits it whole",
+          "index": 204,
           "allowVisualStates": true
         },
         {
@@ -11117,6 +11617,30 @@
           "default": 2,
           "description": "How much larger than the element the shadow is drawn",
           "index": 254,
+          "allowVisualStates": true
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
           "allowVisualStates": true
         },
         {
@@ -12141,6 +12665,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -12151,6 +12676,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -12192,6 +12718,61 @@
           "description": "Fires once Focus, Scroll To Element or Scroll To Index has been carried out"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
           "name": "failure",
           "displayName": "Failure",
           "group": "Events",
@@ -12201,6 +12782,28 @@
           },
           "isSignal": true,
           "description": "Fires when the action did nothing and says why on Error — most often a scroll target that is not inside this group, or a group that has still not mounted"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "focusLost",
@@ -12245,6 +12848,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -12348,6 +12962,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -12448,6 +13063,22 @@
             ]
           },
           {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
+            ]
+          },
+          {
             "condition": "borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted ",
             "inputs": [
               "borderWidth",
@@ -12523,6 +13154,7 @@
         {
           "name": "rotationX",
           "displayName": "Rotation X",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -12533,6 +13165,7 @@
         {
           "name": "rotationY",
           "displayName": "Rotation Y",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -12543,6 +13176,7 @@
         {
           "name": "rotationZ",
           "displayName": "Rotation Z",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -12583,6 +13217,31 @@
         }
       ],
       "inputs": [
+        {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
         {
           "name": "alignX",
           "displayName": "Align X",
@@ -12640,6 +13299,7 @@
         {
           "name": "alt",
           "displayName": "Alternate text",
+          "group": "Image",
           "plug": "input",
           "type": {
             "name": "string"
@@ -13889,6 +14549,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -13906,6 +14567,83 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "hoverEnd",
@@ -13932,13 +14670,24 @@
         {
           "name": "imageError",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
           },
           "isSignal": false,
           "description": "Why the image could not be loaded, naming the source that failed"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -14031,6 +14780,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -14078,6 +14828,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           },
           {
@@ -14155,6 +14921,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -14167,6 +14934,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -14196,7 +14964,22 @@
       },
       "docs": "https://docs.noodl.net/nodes/javascript/function",
       "searchTags": [
-        "javascript"
+        "javascript",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
@@ -14207,7 +14990,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "function"
           },
           "isSignal": false,
           "description": "JavaScript run when Run fires, reading Inputs.name and writing Outputs.name"
@@ -14273,7 +15057,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -14319,7 +15103,7 @@
         "mechanisms": [
           "runtime-discovered"
         ],
-        "description": "This is the Function node. Input and output ports are discovered from the user script in the \"functionScript\" parameter: reading \"Inputs.xyz\" creates input port \"xyz\", assigning \"Outputs.xyz\" creates output port \"xyz\". Signal outputs are created by calling \"Outputs.xyz()\"."
+        "description": "This is the Function node. Input and output ports are discovered from the user script in the \"functionScript\" parameter, and the connectable port NAME carries a prefix the script does not: reading \"Inputs.xyz\" creates the input port \"in-xyz\", assigning \"Outputs.xyz\" creates the output port \"out-xyz\", and calling \"Outputs.xyz()\" creates the signal output \"out-xyz\". The property panel and the port list show the unprefixed display name (\"xyz\"), so connect to \"in-xyz\"/\"out-xyz\" — a connection written to the bare script name silently targets a port that does not exist. The node's own static ports (\"run\", \"done\", \"success\", \"failure\", \"completed\", \"unchanged\", \"error\") are never prefixed, so \"Outputs.done()\" is the separate port \"out-done\". The Script node (\"Javascript2\") does NOT prefix; that convention belongs to this node alone."
       },
       "parameterEncoding": {
         "known": true,
@@ -14419,7 +15203,8 @@
           "type": {
             "name": "string",
             "allowEditOnly": true,
-            "codeeditor": "javascript"
+            "codeeditor": "javascript",
+            "codenotation": "script"
           },
           "isSignal": false,
           "default": "",
@@ -14489,7 +15274,7 @@
           "declared-port-groups",
           "runtime-discovered"
         ],
-        "description": "This is the Script node. Ports are declared by the user script in the \"code\" parameter via \"node.addInputProps\"/\"setOutputs\" style APIs; the port set is whatever the script defines.",
+        "description": "This is the Script node. Ports are declared by the user script in the \"code\" parameter via \"node.addInputProps\"/\"setOutputs\" style APIs; the port set is whatever the script defines. Port names are exactly as declared — unlike the Function node (\"JavaScriptFunction\"), the Script node adds no \"in-\"/\"out-\" prefix.",
         "declaredPortGroups": [
           {
             "condition": "useExternalFile = no OR useExternalFile NOT SET",
@@ -15112,6 +15897,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "for",
           "displayName": "For",
           "group": "General",
@@ -15549,10 +16406,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -15789,6 +16649,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -15799,6 +16660,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -15842,6 +16704,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -15925,7 +16788,7 @@
     },
     {
       "typeName": "Logic Builder",
-      "displayName": "Logic Builder",
+      "displayName": "Visual Function",
       "category": "CustomCode",
       "isVisual": false,
       "isDeprecated": false,
@@ -15944,13 +16807,28 @@
         "visual",
         "logic",
         "blocks",
-        "nocode"
+        "nocode",
+        "math",
+        "calculate",
+        "formula",
+        "equation",
+        "add",
+        "subtract",
+        "multiply",
+        "divide",
+        "round",
+        "ceil",
+        "floor",
+        "sum",
+        "average",
+        "percent",
+        "%"
       ],
       "inputs": [
         {
           "name": "generatedCode",
           "displayName": "Generated Code",
-          "group": "",
+          "group": "Advanced",
           "plug": "input",
           "type": {
             "name": "string",
@@ -15963,7 +16841,7 @@
         {
           "name": "run",
           "displayName": "Run",
-          "group": "Signals",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -15975,7 +16853,7 @@
         {
           "name": "workspace",
           "displayName": "Logic Blocks",
-          "group": "",
+          "group": "General",
           "plug": "input",
           "type": {
             "name": "string",
@@ -16051,7 +16929,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Logic Builder looks like"
+          "description": "Fires when there are no blocks to run yet, which is what a freshly dropped Visual Function looks like"
         }
       ],
       "dynamicPorts": {
@@ -16096,6 +16974,7 @@
         {
           "name": "mapScript",
           "displayName": "Script",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -16156,7 +17035,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -16365,7 +17244,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           }
@@ -16601,7 +17480,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -16708,7 +17587,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -16875,7 +17754,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -17239,6 +18118,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -17296,6 +18176,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -17309,6 +18190,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -17341,6 +18223,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -17382,6 +18265,7 @@
         {
           "name": "blendValue",
           "displayName": "Blend Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -17393,6 +18277,7 @@
         {
           "name": "clamp",
           "displayName": "Clamp",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -17406,6 +18291,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -17596,7 +18482,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -17730,7 +18616,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -17907,6 +18793,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -18089,8 +18976,33 @@
           "index": 254
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -18840,6 +19752,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19003,6 +19916,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -19091,6 +20005,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -19141,6 +20056,30 @@
       ],
       "allowAsExportRoot": false,
       "inputs": [
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
         {
           "name": "cssClassName",
           "displayName": "CSS Class",
@@ -19239,10 +20178,60 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "enum",
+            "enums": [
+              {
+                "label": "website",
+                "value": "website"
+              },
+              {
+                "label": "article",
+                "value": "article"
+              },
+              {
+                "label": "book",
+                "value": "book"
+              },
+              {
+                "label": "profile",
+                "value": "profile"
+              },
+              {
+                "label": "video.movie",
+                "value": "video.movie"
+              },
+              {
+                "label": "video.episode",
+                "value": "video.episode"
+              },
+              {
+                "label": "video.tv_show",
+                "value": "video.tv_show"
+              },
+              {
+                "label": "video.other",
+                "value": "video.other"
+              },
+              {
+                "label": "music.song",
+                "value": "music.song"
+              },
+              {
+                "label": "music.album",
+                "value": "music.album"
+              },
+              {
+                "label": "music.playlist",
+                "value": "music.playlist"
+              },
+              {
+                "label": "music.radio_station",
+                "value": "music.radio_station"
+              }
+            ]
           },
           "isSignal": false,
-          "description": "What kind of thing this page is, e.g. website or article, which changes how the preview is laid out",
+          "description": "What kind of thing this page is, which changes how the preview is laid out. The legal values are fixed by the Open Graph protocol, so this is a closed list rather than free text.",
           "index": 80005
         },
         {
@@ -19447,16 +20436,46 @@
           "index": 100011
         },
         {
-          "name": "twitter:card",
-          "displayName": "Card",
-          "editorName": "Twitter Card",
+          "name": "title",
+          "displayName": "Title",
           "group": "General",
           "plug": "input",
           "type": {
             "name": "string"
           },
           "isSignal": false,
-          "description": "Shape of the preview on X/Twitter, e.g. summary or summary_large_image",
+          "description": "The page's title, used as the document title while this page is showing; defaults to the component name",
+          "index": 1
+        },
+        {
+          "name": "twitter:card",
+          "displayName": "Card",
+          "editorName": "Twitter Card",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "summary",
+                "value": "summary"
+              },
+              {
+                "label": "summary_large_image",
+                "value": "summary_large_image"
+              },
+              {
+                "label": "app",
+                "value": "app"
+              },
+              {
+                "label": "player",
+                "value": "player"
+              }
+            ]
+          },
+          "isSignal": false,
+          "description": "Shape of the preview on X/Twitter. A closed list: anything else is ignored and the card falls back to a small summary.",
           "index": 80009
         },
         {
@@ -19497,6 +20516,18 @@
           "isSignal": false,
           "description": "Title shown when this page is shared on X/Twitter; falls back to the Open Graph title",
           "index": 80010
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The URL pattern that routes to this page, e.g. \"product/{productId}\" — placeholders become path parameters a Page Inputs node reads",
+          "index": 2
         }
       ],
       "outputs": [
@@ -19525,6 +20556,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19535,6 +20567,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19600,6 +20633,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -19792,6 +20826,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19802,6 +20837,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -19889,6 +20925,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -19937,6 +20974,7 @@
             "variables": {
               "pageId": "the `id` of a row in the `pages` parameter — an editor-generated identifier, not a name you choose"
             },
+            "group": "Pages",
             "valueType": "component",
             "example": "pageComp-Sa1Id"
           },
@@ -20121,7 +21159,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -20242,7 +21280,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -20401,7 +21439,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -20573,7 +21611,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           }
@@ -20825,6 +21863,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -21021,6 +22060,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -21525,6 +22565,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -21678,6 +22719,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -21774,6 +22816,30 @@
           "isSignal": false,
           "description": "Vertical alignment of this element within the space its parent gives it",
           "index": 6
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "cssClassName",
@@ -22445,6 +23511,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -22455,6 +23522,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -22509,6 +23577,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -22653,6 +23722,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -22737,6 +23807,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -23359,6 +24430,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -23522,6 +24594,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -23930,6 +25003,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -23940,6 +25014,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24038,6 +25113,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -24149,7 +25225,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -24425,6 +25501,7 @@
         {
           "name": "aspectRatio",
           "displayName": "Aspect Ratio",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24435,6 +25512,7 @@
         {
           "name": "height",
           "displayName": "Height",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24445,6 +25523,7 @@
         {
           "name": "width",
           "displayName": "Width",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -24502,6 +25581,7 @@
         {
           "name": "loaded",
           "displayName": "Loaded",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -24648,7 +25728,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -25352,6 +26432,7 @@
         {
           "name": "index",
           "displayName": "Index",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -25362,6 +26443,7 @@
         {
           "name": "signalTriggered",
           "displayName": "Signal Triggered",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -25493,7 +26575,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -25539,7 +26621,7 @@
         "mechanisms": [
           "runtime-discovered"
         ],
-        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs."
+        "description": "Ports are generated from the \"states\" and \"values\" parameters: each value gets one input per state (`value-<state>-<value>`) and a current-value output; each state gets an activation signal input (`to-<state>`), a boolean output (`at-<state>`) and a signal output (`reached-<state>`). Once \"states\" is set the node also mints a single enum INPUT named `currentState` — the same name as the declared string output — which selects a state by name in one wire, without a signal port per state."
       },
       "parameterEncoding": {
         "known": true,
@@ -25723,7 +26805,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -25816,6 +26898,7 @@
         {
           "name": "saveValue",
           "displayName": "Set",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -25873,6 +26956,7 @@
         {
           "name": "value",
           "displayName": "Value",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -25886,6 +26970,7 @@
         {
           "name": "changed",
           "displayName": "Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -25918,6 +27003,7 @@
         {
           "name": "length",
           "displayName": "Length",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -25928,6 +27014,7 @@
         {
           "name": "savedValue",
           "displayName": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -25970,6 +27057,7 @@
         {
           "name": "format",
           "displayName": "Format",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string",
@@ -25983,6 +27071,7 @@
         {
           "name": "formatted",
           "displayName": "Formatted",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -26047,6 +27136,7 @@
         {
           "name": "inputString",
           "displayName": "Input String",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -26060,7 +27150,7 @@
         {
           "name": "mappedString",
           "displayName": "Mapped String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -26118,6 +27208,7 @@
         {
           "name": "index",
           "displayName": "Index",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -26131,7 +27222,7 @@
         {
           "name": "currentValue",
           "displayName": "Current Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -26142,7 +27233,7 @@
         {
           "name": "indexChanged",
           "displayName": "Index Changed",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -26380,17 +27471,19 @@
         {
           "name": "end",
           "displayName": "End",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
           },
           "isSignal": false,
-          "default": 0,
-          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing"
+          "default": -1,
+          "description": "Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result"
         },
         {
           "name": "start",
           "displayName": "Start",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -26402,6 +27495,7 @@
         {
           "name": "string",
           "displayName": "String",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -26415,6 +27509,7 @@
         {
           "name": "result",
           "displayName": "Result",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -26518,17 +27613,18 @@
         {
           "name": "state",
           "displayName": "Current State",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "True while the switch is on"
+          "description": "True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off"
         },
         {
           "name": "switched",
           "displayName": "Switched",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -26539,7 +27635,7 @@
         {
           "name": "switchedToOff",
           "displayName": "Switched To Off",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -26550,7 +27646,7 @@
         {
           "name": "switchedToOn",
           "displayName": "Switched To On",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -26602,6 +27698,31 @@
         }
       ],
       "inputs": [
+        {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
         {
           "name": "alignX",
           "displayName": "Align X",
@@ -26806,6 +27927,78 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 21,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
           "allowVisualStates": true
         },
         {
@@ -27321,6 +28514,33 @@
           "index": 14
         },
         {
+          "name": "textOverflow",
+          "displayName": "Text Overflow",
+          "group": "Text",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Wrap",
+                "value": "wrap"
+              },
+              {
+                "label": "Clip",
+                "value": "clip"
+              },
+              {
+                "label": "Ellipsis",
+                "value": "ellipsis"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "wrap",
+          "description": "What a line too long for its box does. Needs a width the text can exceed, so it has no effect while the size mode is content-sized",
+          "index": 28
+        },
+        {
           "name": "textStyle",
           "displayName": "Text Style",
           "editorName": "Text Style",
@@ -27332,10 +28552,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -27595,6 +28818,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -27612,6 +28836,83 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "hoverEnd",
@@ -27634,6 +28935,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onClick",
@@ -27704,6 +29016,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -27745,6 +29058,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           }
         ]
@@ -27844,6 +29173,7 @@
         {
           "name": "blockTouch",
           "displayName": "Block Pointer Events",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -27991,6 +29321,30 @@
           "index": 254
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clear",
           "displayName": "Clear",
           "group": "Actions",
@@ -28004,6 +29358,7 @@
         {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
+          "group": "Pointer Events",
           "plug": "input",
           "type": {
             "name": "enum",
@@ -28467,7 +29822,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "index": 22
         },
         {
@@ -28816,6 +30171,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -28927,7 +30283,7 @@
         {
           "name": "onTextChanged",
           "displayName": "Text",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -28989,6 +30345,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -29066,6 +30423,7 @@
         {
           "name": "duration",
           "displayName": "Duration",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -29077,6 +30435,7 @@
         {
           "name": "restart",
           "displayName": "Restart",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -29088,6 +30447,7 @@
         {
           "name": "start",
           "displayName": "Start",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -29099,6 +30459,7 @@
         {
           "name": "startDelay",
           "displayName": "Start Delay",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "number"
@@ -29110,6 +30471,7 @@
         {
           "name": "stop",
           "displayName": "Stop",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -29145,6 +30507,7 @@
         {
           "name": "timerFinished",
           "displayName": "Finished",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29155,6 +30518,7 @@
         {
           "name": "timerStarted",
           "displayName": "Started",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29289,7 +30653,7 @@
         {
           "name": "atTargetValue",
           "displayName": "At Target Value",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29332,6 +30696,7 @@
         {
           "name": "new",
           "displayName": "New",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
@@ -29367,6 +30732,7 @@
         {
           "name": "guid",
           "displayName": "Id",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -29627,6 +30993,7 @@
         {
           "name": "value",
           "displayName": "Input",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "*"
@@ -29639,6 +31006,7 @@
         {
           "name": "valueChanged",
           "displayName": "Value Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -29883,7 +31251,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -29959,6 +31327,31 @@
       "useVariants": true,
       "inputs": [
         {
+          "name": "acceptFileDrops",
+          "displayName": "Accept File Drops",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": false,
+          "description": "Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below",
+          "index": 350
+        },
+        {
+          "name": "acceptedFileTypes",
+          "displayName": "Accepted file types",
+          "group": "File Drop",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Comma-separated extensions or MIME types this element will take — \".png, .jpg\" or \"image/*\"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped",
+          "index": 351
+        },
+        {
           "name": "alignX",
           "displayName": "Align X",
           "group": "Alignment",
@@ -30021,7 +31414,7 @@
             "name": "boolean"
           },
           "isSignal": false,
-          "description": "Starts playing as soon as the video can; most browsers only allow this while Muted is on"
+          "description": "Starts playing as soon as the video can; most browsers only allow this while Muted is on. On a YouTube or Vimeo link it is muted automatically for that reason, because an embedded player cannot report that the browser refused"
         },
         {
           "name": "blockTouch",
@@ -30504,6 +31897,17 @@
           "default": "",
           "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
           "index": 100010
+        },
+        {
+          "name": "endTime",
+          "displayName": "End Time",
+          "group": "Video",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on. ⚠️ Approximate on YouTube, and ignored entirely on Vimeo, whose embedded player has no end setting"
         },
         {
           "name": "height",
@@ -31044,7 +32448,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "URL or project file to play; leave blank to load nothing rather than fail on a missing source"
+          "description": "What to play: an mp4, webm or ogg URL, a file in your project, or a YouTube or Vimeo link. A YouTube or Vimeo link is recognised automatically and plays in an embedded player, where Play, Pause, Reset and the failure outputs do not apply. Leave blank to load nothing rather than fail on a missing source"
         },
         {
           "name": "srcObject",
@@ -31057,6 +32461,17 @@
           "isSignal": false,
           "default": null,
           "description": "A live MediaStream to play, from a camera or screen capture, instead of a URL"
+        },
+        {
+          "name": "startTime",
+          "displayName": "Start Time",
+          "group": "Video",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Seconds into the video to begin at; leave blank to start at the beginning. Works for a video file, for YouTube and for Vimeo"
         },
         {
           "name": "styleCss",
@@ -31279,6 +32694,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -31320,6 +32736,61 @@
           "description": "Fires once a Video Action has been carried out by the element"
         },
         {
+          "name": "droppedFile",
+          "displayName": "File",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "*"
+          },
+          "isSignal": false,
+          "description": "The first accepted file, in the form an Upload File node takes"
+        },
+        {
+          "name": "droppedFileName",
+          "displayName": "File Name",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the first accepted file, extension included"
+        },
+        {
+          "name": "droppedFileSizeInBytes",
+          "displayName": "File Size In Bytes",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "Size of the first accepted file, in bytes"
+        },
+        {
+          "name": "droppedFileType",
+          "displayName": "File Type",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "MIME type the browser reports for the first accepted file, blank for one it does not recognise"
+        },
+        {
+          "name": "droppedFiles",
+          "displayName": "Files",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Every accepted file in the drop, as an array — a drop can carry more than one"
+        },
+        {
           "name": "failure",
           "displayName": "Failure",
           "group": "Events",
@@ -31329,6 +32800,28 @@
           },
           "isSignal": true,
           "description": "Fires when the action never reached the element, because it has still not mounted"
+        },
+        {
+          "name": "filesDropped",
+          "displayName": "Files Dropped",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when one or more accepted files are dropped here, after every File Drop output is up to date"
+        },
+        {
+          "name": "filesRejected",
+          "displayName": "Files Rejected",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when a drop landed here but every file in it was excluded by Accepted file types"
         },
         {
           "name": "hoverEnd",
@@ -31351,6 +32844,17 @@
           },
           "isSignal": true,
           "description": "Fires when the pointer moves over this element or any of its children"
+        },
+        {
+          "name": "isDragOver",
+          "displayName": "Is Dragging Over",
+          "group": "File Drop",
+          "plug": "output",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "description": "True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts"
         },
         {
           "name": "onCanPlay",
@@ -31421,6 +32925,7 @@
         {
           "name": "onVideoElementCreated",
           "displayName": "DOM Element",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "domelement"
@@ -31431,7 +32936,7 @@
         {
           "name": "playbackError",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -31497,6 +33002,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -31560,6 +33066,22 @@
             "condition": "pointerEventsMode = explicit",
             "inputs": [
               "pointerEventsEnabled"
+            ]
+          },
+          {
+            "condition": "acceptFileDrops = true",
+            "inputs": [
+              "acceptedFileTypes"
+            ],
+            "outputs": [
+              "filesDropped",
+              "filesRejected",
+              "droppedFile",
+              "droppedFiles",
+              "droppedFileName",
+              "droppedFileType",
+              "droppedFileSizeInBytes",
+              "isDragOver"
             ]
           },
           {
@@ -32298,6 +33820,7 @@
         {
           "name": "array",
           "displayName": "Array",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "array"
@@ -32310,6 +33833,7 @@
         {
           "name": "arrayReplaced",
           "displayName": "Array Replaced",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32353,6 +33877,7 @@
         {
           "name": "itemAdded",
           "displayName": "Item Added",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32363,6 +33888,7 @@
         {
           "name": "itemChanged",
           "displayName": "Item Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32373,6 +33899,7 @@
         {
           "name": "itemRemoved",
           "displayName": "Item Removed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -32514,7 +34041,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -32644,7 +34171,7 @@
         {
           "name": "result",
           "displayName": "Result",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "date"
@@ -32742,7 +34269,7 @@
         {
           "name": "after",
           "displayName": "Is After",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -32753,7 +34280,7 @@
         {
           "name": "before",
           "displayName": "Is Before",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -32808,7 +34335,7 @@
         {
           "name": "same",
           "displayName": "Is Same",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
@@ -32933,7 +34460,7 @@
         {
           "name": "difference",
           "displayName": "Difference",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33000,7 +34527,7 @@
         {
           "name": "date",
           "displayName": "Day of Month",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33011,7 +34538,7 @@
         {
           "name": "dayName",
           "displayName": "Day Name",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -33022,7 +34549,7 @@
         {
           "name": "dayOfWeek",
           "displayName": "Day of Week",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33044,7 +34571,7 @@
         {
           "name": "hours",
           "displayName": "Hours",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33055,7 +34582,7 @@
         {
           "name": "isoWeek",
           "displayName": "ISO Week",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33066,7 +34593,7 @@
         {
           "name": "milliseconds",
           "displayName": "Milliseconds",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33077,7 +34604,7 @@
         {
           "name": "minutes",
           "displayName": "Minutes",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33088,7 +34615,7 @@
         {
           "name": "month",
           "displayName": "Month",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33099,7 +34626,7 @@
         {
           "name": "seconds",
           "displayName": "Seconds",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33110,7 +34637,7 @@
         {
           "name": "timestamp",
           "displayName": "Timestamp",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33121,7 +34648,7 @@
         {
           "name": "year",
           "displayName": "Year",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -33210,7 +34737,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -33378,7 +34905,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -33588,7 +35115,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -33771,7 +35298,7 @@
         {
           "name": "digest",
           "displayName": "Digest",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34185,7 +35712,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "*"
@@ -34242,7 +35769,7 @@
         {
           "name": "date",
           "displayName": "Date",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "date"
@@ -34264,7 +35791,7 @@
         {
           "name": "iso",
           "displayName": "ISO String",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34275,7 +35802,7 @@
         {
           "name": "timestamp",
           "displayName": "Timestamp",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -34305,6 +35832,7 @@
         {
           "name": "object",
           "displayName": "Object",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "object"
@@ -34328,6 +35856,7 @@
         {
           "name": "keyAdded",
           "displayName": "Key Added",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -34338,6 +35867,7 @@
         {
           "name": "keyChanged",
           "displayName": "Key Changed",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -34348,6 +35878,7 @@
         {
           "name": "objectReplaced",
           "displayName": "Object Replaced",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -34572,7 +36103,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34807,7 +36338,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34856,7 +36387,7 @@
             "variables": {
               "property": "one of the comma-separated entries in the `properties` parameter"
             },
-            "group": "Changed Events",
+            "group": "Events",
             "valueType": "signal",
             "example": "changed-Sa1"
           },
@@ -34942,7 +36473,7 @@
         {
           "name": "count",
           "displayName": "Count",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -34953,7 +36484,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -34975,7 +36506,7 @@
         {
           "name": "items",
           "displayName": "Items",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "array"
@@ -35326,7 +36857,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36016,7 +37547,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36397,7 +37928,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36586,7 +38117,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -36836,7 +38367,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -37286,7 +38817,7 @@
         {
           "name": "count",
           "displayName": "Count",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "number"
@@ -37297,7 +38828,7 @@
         {
           "name": "text",
           "displayName": "CSV",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -37387,7 +38918,7 @@
         {
           "name": "uuid",
           "displayName": "Id",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -38006,7 +39537,7 @@
         {
           "name": "atTargetValue",
           "displayName": "At Target Value",
-          "group": "Signals",
+          "group": "Events",
           "plug": "output",
           "type": {
             "name": "signal"
@@ -38687,6 +40218,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -38788,6 +40343,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "height",
           "displayName": "Height",
           "group": "Dimensions",
@@ -38818,7 +40445,6 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -39418,10 +41044,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -39685,6 +41314,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -39695,6 +41325,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -39859,6 +41490,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -39903,10 +41535,13 @@
               "textStyle",
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           {
@@ -40645,6 +42280,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "check",
           "displayName": "Check",
           "group": "Actions",
@@ -40751,7 +42410,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -40902,6 +42561,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -40955,10 +42686,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -41549,6 +43283,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -41735,6 +43470,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -41798,10 +43534,13 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -42515,6 +44254,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -42613,6 +44376,78 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 21,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
           "allowVisualStates": true
         },
         {
@@ -42767,10 +44602,20 @@
           "group": "General",
           "plug": "input",
           "type": {
-            "name": "array"
+            "name": "optionslist"
           },
           "isSignal": false,
-          "description": "Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing"
+          "default": [
+            {
+              "Label": "Option 1",
+              "Value": "Option 1"
+            },
+            {
+              "Label": "Option 2",
+              "Value": "Option 2"
+            }
+          ],
+          "description": "Options to offer. Type a label per option — the value it sends is the label — or switch the editor to Advanced and give an option its own Value when it must send something different"
         },
         {
           "name": "label",
@@ -42850,6 +44695,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -42903,10 +44820,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -43268,7 +45188,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 6,
           "description": "Space inside the element's bottom edge, between it and its content",
           "index": 67,
           "allowVisualStates": true
@@ -43287,7 +45207,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 8,
           "description": "Space inside the element's left edge, between it and its content",
           "index": 64,
           "allowVisualStates": true
@@ -43306,7 +45226,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 8,
           "description": "Space inside the element's right edge, between it and its content",
           "index": 65,
           "allowVisualStates": true
@@ -43325,7 +45245,7 @@
             ]
           },
           "isSignal": false,
-          "default": 0,
+          "default": 6,
           "description": "Space inside the element's top edge, between it and its content",
           "index": 66,
           "allowVisualStates": true
@@ -43383,6 +45303,19 @@
           "default": "relative",
           "description": "How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space",
           "index": 11
+        },
+        {
+          "name": "showChevron",
+          "displayName": "Show Chevron",
+          "group": "Style",
+          "plug": "input",
+          "type": {
+            "name": "boolean"
+          },
+          "isSignal": false,
+          "default": true,
+          "description": "Draws the small downward arrow at the end of the control that marks it as a dropdown",
+          "allowVisualStates": true
         },
         {
           "name": "sizeMode",
@@ -43445,10 +45378,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -43635,6 +45571,7 @@
             "name": "string"
           },
           "isSignal": false,
+          "default": "Option 1",
           "description": "Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed"
         },
         {
@@ -43723,6 +45660,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -43887,6 +45825,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -43919,9 +45858,10 @@
       ],
       "dynamicPorts": {
         "mechanisms": [
-          "declared-port-groups"
+          "declared-port-groups",
+          "runtime-discovered"
         ],
-        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
+        "description": "The port list above is complete — this node mints no ports. It republishes its own `value` input per instance as an `enum` built from this node's `items`: one choice per option, labelled with the option's `Label` and carrying its `Value`, plus the currently stored value when that matches no option. It is declared `string` statically because nothing outside a connected editor can know the instance's options.",
         "declaredPortGroups": [
           {
             "condition": "sizeMode = explicit OR sizeMode = contentHeight",
@@ -43964,10 +45904,13 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -44023,7 +45966,7 @@
         "known": true,
         "patterns": [],
         "seededBy": [],
-        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+        "notes": "This node mints no port names. Its `value` input is declared `string` above and is republished per instance as an `enum` whose choices are this node's own `items` — labels from each option's `Label`, values from its `Value` — so the port list above is complete and only the `type` field moves. A value that matches no option is offered back as a choice of its own rather than being dropped."
       }
     },
     {
@@ -44685,6 +46628,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clickBubbling",
           "displayName": "Click Bubbling",
           "group": "Pointer Events",
@@ -44797,7 +46764,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -44948,6 +46915,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Letter Spacing",
@@ -45001,10 +47040,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -45596,6 +47638,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -45760,6 +47803,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -45812,10 +47856,13 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -45980,6 +48027,30 @@
           "isSignal": false,
           "description": "Stops every pointer event that lands on this control from reaching the nodes it sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in",
           "index": 450
+        },
+        {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
         },
         {
           "name": "clickBubbling",
@@ -47752,6 +49823,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -47916,6 +49988,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -48731,6 +50804,30 @@
           "allowVisualStates": true
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "clear",
           "displayName": "Clear",
           "group": "Actions",
@@ -48853,6 +50950,78 @@
           "isSignal": false,
           "description": "Height of the text, in pixels",
           "index": 20,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontStyle",
+          "displayName": "Font Style",
+          "editorName": "Font Style",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 20.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Numerals",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "textStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 24.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "fontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Font Weight",
+          "group": "Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "textStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 20.5,
           "allowVisualStates": true
         },
         {
@@ -49079,6 +51248,78 @@
           "allowVisualStates": true
         },
         {
+          "name": "labelfontStyle",
+          "displayName": "Font Style",
+          "editorName": "Label Font Style",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Italic",
+                "value": "italic"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Renders the text upright or italic",
+          "index": 21.6,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontVariantNumeric",
+          "displayName": "Numerals",
+          "editorName": "Label Numerals",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Normal",
+                "value": "normal"
+              },
+              {
+                "label": "Tabular",
+                "value": "tabular-nums"
+              }
+            ],
+            "parentPort": "labeltextStyle"
+          },
+          "isSignal": false,
+          "default": "normal",
+          "description": "Tabular draws every digit at the same width so columns of numbers align; Normal follows the font",
+          "index": 25.5,
+          "allowVisualStates": true
+        },
+        {
+          "name": "labelfontWeight",
+          "displayName": "Font Weight",
+          "editorName": "Label Font Weight",
+          "group": "Label Text Style",
+          "plug": "input",
+          "type": {
+            "name": "number",
+            "defaultUnit": "",
+            "parentPort": "labeltextStyle",
+            "units": [
+              ""
+            ]
+          },
+          "isSignal": false,
+          "default": "Auto",
+          "description": "How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets",
+          "index": 21.5,
+          "allowVisualStates": true
+        },
+        {
           "name": "labelletterSpacing",
           "displayName": "Letter Spacing",
           "editorName": "Label Letter Spacing",
@@ -49132,10 +51373,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -49593,7 +51837,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "default": "Type here...",
+          "default": "",
           "description": "Greyed-out hint shown while the field is empty",
           "index": 22
         },
@@ -49638,7 +51882,7 @@
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that"
+          "description": "Writes the current Value into the field now. This is additional to Value applying as it arrives; untick Value under Run On Value Change to stop that"
         },
         {
           "name": "sizeMode",
@@ -49676,14 +51920,14 @@
         },
         {
           "name": "startValue",
-          "displayName": "Text",
+          "displayName": "Value",
           "group": "Text",
           "plug": "input",
           "type": {
-            "name": "string"
+            "name": "*"
           },
           "isSignal": false,
-          "description": "The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse",
+          "description": "The value to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse",
           "index": 18
         },
         {
@@ -49741,10 +51985,13 @@
             "childPorts": [
               "fontFamily",
               "fontSize",
+              "fontWeight",
+              "fontStyle",
               "color",
               "letterSpacing",
               "lineHeight",
-              "textTransform"
+              "textTransform",
+              "fontVariantNumeric"
             ]
           },
           "isSignal": false,
@@ -50047,6 +52294,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -50177,14 +52425,14 @@
         },
         {
           "name": "onTextChanged",
-          "displayName": "Text",
+          "displayName": "Value",
           "group": "General",
           "plug": "output",
           "type": {
-            "name": "string"
+            "name": "*"
           },
           "isSignal": false,
-          "description": "What the field currently contains, updated as the user types",
+          "description": "What the field currently contains, updated as the user types. A number when Type is Number, otherwise text",
           "index": 1
         },
         {
@@ -50244,19 +52492,20 @@
         },
         {
           "name": "textChanged",
-          "displayName": "Text Changed",
+          "displayName": "Value Changed",
           "group": "General",
           "plug": "output",
           "type": {
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it",
+          "description": "Fires whenever the Value output changes, so a graph can sequence off the new value rather than poll it",
           "index": 2
         },
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -50289,9 +52538,10 @@
       ],
       "dynamicPorts": {
         "mechanisms": [
-          "declared-port-groups"
+          "declared-port-groups",
+          "runtime-discovered"
         ],
-        "description": "Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).",
+        "description": "The port list above is complete — this node mints no ports. It republishes its own two value ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the `type` parameter is `number`, `string` for every other Type. They are declared `*` statically because nothing outside a connected editor can narrow them.",
         "declaredPortGroups": [
           {
             "condition": "sizeMode = explicit OR sizeMode = contentHeight",
@@ -50334,10 +52584,13 @@
               "labeltextStyle",
               "labelfontFamily",
               "labelfontSize",
+              "labelfontWeight",
+              "labelfontStyle",
               "labelcolor",
               "labelletterSpacing",
               "labellineHeight",
               "labeltextTransform",
+              "labelfontVariantNumeric",
               "labelSpacing"
             ]
           },
@@ -50393,7 +52646,7 @@
         "known": true,
         "patterns": [],
         "seededBy": [],
-        "notes": "This node computes no port names. Its dynamic behaviour is visibility only: every port it can ever have is listed in `inputs`/`outputs` above, and `dynamicPorts.declaredPortGroups` says which parameter values reveal which of them."
+        "notes": "This node mints no port names. Its two value ports are declared `'*'` above and are republished per instance with a narrowed type — `number` when the `type` parameter is `number`, `string` otherwise — so the port list above is complete and only the `type` field moves."
       }
     },
     {
@@ -50415,17 +52668,19 @@
         {
           "name": "do",
           "displayName": "Do",
+          "group": "Actions",
           "plug": "input",
           "type": {
             "name": "signal",
             "allowConnectionsOnly": true
           },
           "isSignal": true,
-          "description": "Opens Link, or fires Failure if there is no Link or the browser blocked the new tab"
+          "description": "Opens Link, or fires Failure if there is no Link or the link was opened outside a user action"
         },
         {
           "name": "link",
           "displayName": "Link",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "string"
@@ -50436,6 +52691,7 @@
         {
           "name": "openInNewTab",
           "displayName": "Open In New Tab",
+          "group": "Values",
           "plug": "input",
           "type": {
             "name": "boolean"
@@ -50466,12 +52722,12 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist"
+          "description": "Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist"
         },
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -50488,7 +52744,7 @@
             "name": "signal"
           },
           "isSignal": true,
-          "description": "Fires when no Link was set, or the browser blocked the new tab"
+          "description": "Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done"
         },
         {
           "name": "unchanged",
@@ -51534,6 +53790,17 @@
           "description": "Id of the signed-in user record; empty while nobody is signed in"
         },
         {
+          "name": "roles",
+          "displayName": "Roles",
+          "group": "General",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Roles the signed-in user is in, resolved by the server on each session read; empty while nobody is signed in, and not set on backends that do not track roles"
+        },
+        {
           "name": "username",
           "displayName": "Username",
           "group": "General",
@@ -51896,7 +54163,7 @@
             "name": "string"
           },
           "isSignal": false,
-          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert"
+          "description": "Layout String to use below Small Below; leaving it blank makes the breakpoint inert. For more bands than these two, install the Advanced Columns prefab from the library — it drives these same inputs from a States node, so each band can set its own layout and gaps"
         },
         {
           "name": "styleCss",
@@ -51952,6 +54219,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -51962,6 +54230,7 @@
         {
           "name": "childrenCount",
           "displayName": "Children Count",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -51979,6 +54248,39 @@
           },
           "isSignal": true,
           "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "onAtMedium",
+          "displayName": "At Medium",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Medium band, once per crossing"
+        },
+        {
+          "name": "onAtSmall",
+          "displayName": "At Small",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the container narrows or widens into the Small band, once per crossing"
+        },
+        {
+          "name": "onBreakpointChanged",
+          "displayName": "Breakpoint",
+          "group": "Breakpoints",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Which layout is in force: Default, Medium or Small. It is Default until the node has been measured, and while Column Sizing is Auto Fit, where no layout string is used"
         },
         {
           "name": "screenPositionX",
@@ -52005,6 +54307,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -52101,6 +54404,30 @@
           "index": 6
         },
         {
+          "name": "boxSizing",
+          "displayName": "Box Sizing",
+          "group": "Margin and padding",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Include padding and border",
+                "value": "border-box"
+              },
+              {
+                "label": "Content only",
+                "value": "content-box"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "border-box",
+          "description": "Whether Width and Height include this element's padding and border, or only its content",
+          "index": 63,
+          "allowVisualStates": true
+        },
+        {
           "name": "cssClassName",
           "displayName": "CSS Class",
           "group": "Advanced HTML",
@@ -52123,7 +54450,7 @@
             "name": "color"
           },
           "isSignal": false,
-          "default": "#FFFFFF",
+          "default": "#000000",
           "description": "Colour of the icon",
           "index": 27,
           "allowVisualStates": true
@@ -52674,6 +55001,7 @@
         {
           "name": "childIndex",
           "displayName": "Child Index",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "number"
@@ -52717,6 +55045,7 @@
         {
           "name": "this",
           "displayName": "This",
+          "group": "Advanced",
           "plug": "output",
           "type": {
             "name": "reference"
@@ -53660,7 +55989,7 @@
         {
           "name": "signature",
           "displayName": "Signature",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -53806,7 +56135,7 @@
         {
           "name": "token",
           "displayName": "Token",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"
@@ -53908,7 +56237,7 @@
         {
           "name": "claims",
           "displayName": "Claims",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "object"
@@ -53963,13 +56292,194 @@
         {
           "name": "valid",
           "displayName": "Valid",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "boolean"
           },
           "isSignal": false,
           "description": "Whether the token verified. False whenever Failure fired, so either can be wired"
+        }
+      ],
+      "dynamicPorts": null,
+      "parameterEncoding": null
+    },
+    {
+      "typeName": "noodl.cloud.listusersinrole",
+      "displayName": "List Users In Role",
+      "category": "Cloud",
+      "isVisual": false,
+      "isDeprecated": false,
+      "inNodePicker": true,
+      "availableIn": [
+        "cloud"
+      ],
+      "providedBy": "noodl-viewer-cloud",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/list-users-in-role",
+      "inputs": [
+        {
+          "name": "limit",
+          "displayName": "Limit",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 100,
+          "description": "How many members to return in one call; Total still reports the whole membership, so a clipped page is always visible as one"
+        },
+        {
+          "name": "read",
+          "displayName": "Do",
+          "group": "Actions",
+          "plug": "input",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "isSignal": true,
+          "description": "Reads the members of the role"
+        },
+        {
+          "name": "role",
+          "displayName": "Role",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Name of the role to list the members of, matching the name a permission rule uses after \"role:\" — letters, digits, underscore and hyphen only"
+        },
+        {
+          "name": "skip",
+          "displayName": "Skip",
+          "group": "General",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "default": 0,
+          "description": "How many members to step over before this page — Skip 100 with Limit 100 is the second page"
+        },
+        {
+          "name": "treatUnchangedAs",
+          "displayName": "Treat Unchanged as",
+          "group": "Advanced",
+          "plug": "input",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ]
+          },
+          "isSignal": false,
+          "default": "unchanged",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to."
+        }
+      ],
+      "outputs": [
+        {
+          "name": "completed",
+          "displayName": "Completed",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "done",
+          "displayName": "Done",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires once Users and User Ids hold this page of the role membership"
+        },
+        {
+          "name": "error",
+          "displayName": "Error",
+          "group": "Error",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "Why the last operation could not be performed"
+        },
+        {
+          "name": "failure",
+          "displayName": "Failure",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the members could not be read — a blank Role, an unusable name, or a role that does not exist"
+        },
+        {
+          "name": "total",
+          "displayName": "Total",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "isSignal": false,
+          "description": "How many members the role has in total, before Limit — compare it with the length of Users to know whether there is another page"
+        },
+        {
+          "name": "unchanged",
+          "displayName": "Unchanged",
+          "group": "Events",
+          "plug": "output",
+          "type": {
+            "name": "signal"
+          },
+          "isSignal": true,
+          "description": "Fires when the role exists and has no members at all — the \"nobody has joined yet\" branch"
+        },
+        {
+          "name": "userIds",
+          "displayName": "User Ids",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "Object ids of the members in this page, in the same order as Users"
+        },
+        {
+          "name": "users",
+          "displayName": "Users",
+          "group": "Members",
+          "plug": "output",
+          "type": {
+            "name": "array"
+          },
+          "isSignal": false,
+          "description": "The member records for this page, shaped exactly like the account record /users/me answers with, so a For Each over them reads the same property names the User node does"
         }
       ],
       "dynamicPorts": null,
@@ -54171,6 +56681,17 @@
           },
           "isSignal": false,
           "description": "Whether the request carried a session token that resolved to a user"
+        },
+        {
+          "name": "origin",
+          "displayName": "Origin",
+          "group": "Request",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "isSignal": false,
+          "description": "The address the calling app is served from — its Origin header, or this backend’s own host when the caller sent none. Blank when neither is known (a workflow step has no caller). Caller-supplied like every header: right for links sent back to whoever called, not a proof of where the request came from."
         },
         {
           "name": "receive",
@@ -54434,7 +56955,7 @@
         {
           "name": "error",
           "displayName": "Error",
-          "group": "Events",
+          "group": "Error",
           "plug": "output",
           "type": {
             "name": "string"
@@ -54593,7 +57114,7 @@
         {
           "name": "value",
           "displayName": "Value",
-          "group": "Value",
+          "group": "Values",
           "plug": "output",
           "type": {
             "name": "string"

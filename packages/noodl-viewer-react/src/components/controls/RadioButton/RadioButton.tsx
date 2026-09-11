@@ -112,7 +112,22 @@ export function RadioButton(props: RadioButtonProps) {
     Object.assign(inputWrapperStyle, style);
   }
 
+  /**
+   * 🔴 **The author's icon is the SELECTED mark, so it draws only when selected.**
+   *
+   * Found by sweeping this component after the same defect was fixed on the Checkbox
+   * (Richard, 2026-09-04). It drew unconditionally, so an author who picked an Icon Source got
+   * that icon on **every button in the group at once** — the exact shape FB-020 already recorded
+   * for `fillColor` on this very node: *"an author who set `Fill Color` as a plain parameter got
+   * a filled dot on every option."* FB-020 gated the fill and left this path ungated beside it.
+   *
+   * ⚠️ Nobody reported this one; it was found by reading the sibling of a reported defect. The
+   * `fillColor` half is gated at `const fillColor = checked ? … : undefined` below, which is why
+   * a radio button with no icon has always behaved correctly.
+   */
   function _renderIcon() {
+    if (!checked) return null;
+
     if (props.iconSourceType === 'image' && props.iconImageSource !== undefined)
       return <img alt="" src={props.iconImageSource} style={{ width: props.iconSize, height: props.iconSize }} />;
     else if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) {
@@ -123,12 +138,33 @@ export function RadioButton(props: RadioButtonProps) {
     return null;
   }
 
+  /**
+   * FB-020 (AC4). The Radio Button has no `props.checked` desync — `checked` above is derived
+   * from the group on every render — but it shipped the *other* half of the checkbox's defect:
+   * `fillColor` has no default and `initialize` sets `props.styles.fill = {}`, so the dot was
+   * `backgroundColor: undefined` and a fresh radio button looked identical selected or not.
+   *
+   * The dot is now drawn only while this button is the selection — which is what a radio button
+   * means, and what the fill was always for. It was previously painted on every button in the
+   * group at once, so an author who set `Fill Color` as a plain parameter got a filled dot on
+   * every option including the unselected ones; setting it on the checked visual state was the
+   * only arrangement that worked, and nothing said so. A colour set on the checked state behaves
+   * exactly as before, because it is only present in `styles.fill` while checked anyway.
+   *
+   * With no colour of its own the dot takes the button's border colour, so a fresh radio button
+   * shows its selection the way a fresh checkbox now shows its tick.
+   *
+   * ⚠️ Borders are stored per side — `borderTopColor`, never the `borderColor` shorthand.
+   */
+  const borderColor = props.styles.radio?.borderTopColor || props.styles.radio?.borderColor;
+  const fillColor = checked ? props.styles.fill.backgroundColor || borderColor : undefined;
+
   const fillStyle: React.CSSProperties = {
     left: props.fillSpacing,
     right: props.fillSpacing,
     top: props.fillSpacing,
     bottom: props.fillSpacing,
-    backgroundColor: props.styles.fill.backgroundColor,
+    backgroundColor: fillColor,
     borderRadius: 'inherit',
     position: 'absolute'
   };

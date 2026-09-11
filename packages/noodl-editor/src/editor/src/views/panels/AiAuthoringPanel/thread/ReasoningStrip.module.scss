@@ -1,0 +1,103 @@
+/*
+ * BLD-004 — the reasoning channel, visually subordinate to everything it sits
+ * beside.
+ *
+ * ⚠️ It is dimmed with a **token**, not with `opacity`. BLD-005 swept nine
+ * opacities on real composited pixels in both themes and found no value that
+ * both reads as dimmed and clears AA: everything that looked dim failed light
+ * mode, and the first value passing both (0.85) is too subtle to read as
+ * dimming at all. Light binds roughly 0.1 stricter than dark, so a dark-only
+ * check ships a failure — and opacity moves contrast without appearing in any
+ * colour token, so `tsc`, every pure spec and a screenshot all pass while it
+ * does. `fg-default-shy` measures 5.57 dark / 5.06 light; italic and size carry
+ * the rest of the subordination.
+ *
+ * (`fg-muted` would be the obvious choice and is the wrong one — it fails AA on
+ * all three of this panel's surfaces. Non-text affordances only.)
+ */
+
+.Reasoning {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.Toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: inherit;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+    font-style: italic;
+  }
+
+  &:hover p {
+    color: var(--theme-color-fg-default);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+.Caret {
+  flex: 0 0 auto;
+  transition: transform var(--transition-fast, 120ms) ease;
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
+}
+
+/*
+ * BLD-017 F5 — the clock, at the right edge. The mockup's `.think .grow`.
+ *
+ * `font-style: normal` is the load-bearing declaration, not the alignment: the
+ * strip's italic marks *the model's voice*, and the elapsed time is the panel
+ * measuring, not the model speaking. Leaving it italic would attribute the
+ * number to the thing it is about. Same reason the collapsed run chip's duration
+ * is set apart, and the same `tabular-nums` so a live clock does not reflow the
+ * row on every tick from "9s" to "10s".
+ */
+/*
+ * ⚠️ Nested under `.Toggle` for **specificity**, not for tidiness. The italic
+ * above is set by `.Toggle p`, which is (0,1,1); a bare `.Elapsed` is (0,1,0)
+ * and loses, so the clock would have rendered italic with a stylesheet that
+ * plainly says `normal` — a defect `tsc` cannot see, no spec mounts, and a
+ * screenshot shows only if someone knows to look at the slant of a number.
+ */
+.Toggle .Elapsed {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The reasoning itself. Indented under its strip so it reads as that strip's
+ * detail rather than as a second voice in the turn, and `pre-wrap` because the
+ * model's summary arrives with its own paragraphing.
+ */
+.Body {
+  padding-left: 14px;
+  border-left: 1px solid var(--theme-color-bg-3);
+  margin-left: 3px;
+  white-space: pre-wrap;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.5;
+    font-style: italic;
+  }
+}

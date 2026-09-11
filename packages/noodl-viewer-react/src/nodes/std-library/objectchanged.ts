@@ -67,17 +67,23 @@ interface ModelChangeArgs {
  * ⚠️ This is not tidiness, it is the ordering fix — and the hazard is general enough to be
  * worth stating in full, because nothing in the library documents it.
  *
- * `Node.prototype.sendValue` returns early when the value is `undefined` (`node.ts:706`), so a
- * port whose first emit is `undefined` never queues anything on the receiver. The receiver
- * drains its queues with `const inputNames = Object.keys(this._inputValuesQueue)`
- * (`node.ts:566`) — **insertion order of the queue keys**, created lazily on each port's first
- * delivery. So a value port that was `undefined` the first time gets its key created *after*
- * the signal port that did fire, and from then on is delivered **after** that signal, forever.
+ * `Node.prototype.sendValue` returns early when the value is `undefined`, so a port whose first
+ * emit is `undefined` never queues anything on the receiver. The receiver used to drain its
+ * queues in `Object.keys(this._inputValuesQueue)` order — **insertion order of the queue keys**,
+ * created lazily on each port's first delivery. So a value port that was `undefined` the first
+ * time got its key created *after* the signal port that did fire, and from then on was delivered
+ * **after** that signal, forever.
  *
  * That is `NV-ii` — a signal arriving before the value it describes — reached by a cause phase
  * 30 did not record: correct ordering inside the node, defeated by queue-key creation order.
  * It cost `Previous Value` on the second and every later `Object Replaced` before this fix,
  * and only a row that drove the node **twice** could see it.
+ *
+ * ✅ **FB-025 fixed the general hazard** — `Node.update` now applies a pending value before a
+ * pending signal and an emptied port lets go of its key, so queue-key creation order decides
+ * nothing. This is therefore no longer the *only* thing standing between this node and `NV-ii`.
+ * It stays, unchanged, for the reason below: `undefined` on a port means "no opinion", and
+ * "there was no previous value" is a statement. The ordering argument above is now history.
  *
  * Emitting `null` is also what the empty-value contract asks for: `undefined` on a port means
  * "no opinion", and these ports always have an opinion — "there was no previous value" is a
@@ -160,6 +166,7 @@ const ObjectChangedNode: NodeDefinitionOptions = {
 
   inputs: {
     object: {
+      group: 'Values',
       type: 'object',
       displayName: 'Object',
       description:
@@ -198,16 +205,19 @@ const ObjectChangedNode: NodeDefinitionOptions = {
 
   outputs: {
     keyAdded: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Key Added',
       description: 'Fires when a key that did not exist on the watched Object now does'
     },
     keyChanged: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Key Changed',
       description: 'Fires when a key that already existed on the watched Object is given a different value'
     },
     objectReplaced: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Object Replaced',
       description:

@@ -1,0 +1,68 @@
+{
+  "id": "bubble-how-many-days-until",
+  "title": "How many days are left on this trial?",
+  "description": "Bubble's `<-range->` gives a range whose duration you then read; here the duration is the whole question, and Date Difference answers it directly as To minus From. Two things about that subtraction decide whether the banner is right. It is SIGNED — an expired trial reports a negative number, and that is the useful behaviour, because Absolute would turn 'three days overdue' into 'three days left'. And for fixed units it is NOT rounded: a trial with 36 hours to run reports 1.5 days, so a banner wired straight to Difference says '1.5 days left'. That is why the Expression is here rather than as an afterthought — `Math.max(0, Math.ceil(d))` rounds up (a trial with any part of a day left has a day left, which is what a person counting means), and clamps the expired case to zero so the banner never counts downward past the end. Date Add supplies the end date from the signup date, and its clamping rule matters if you ever change Unit to Months: 31 January plus one month is 28 February, not 2 March. The end date is rendered through Date To String rather than pasted in as a number, because Difference is a number and a date is not.",
+  "demonstrates": ["net.noodl.DateDifference", "net.noodl.DateAdd", "net.noodl.Now", "String Format"],
+  "components": [
+    {
+      "name": "/Trial Banner",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Trial banner",
+          "parameters": { "flexDirection": "row" },
+          "children": ["banner_text"]
+        },
+        { "id": "banner_text", "type": "Text", "label": "9 days left — your trial ends on 25 September", "parent": "root" },
+        {
+          "id": "trial_inputs",
+          "type": "Component Inputs",
+          "label": "Account in",
+          "ports": [{ "name": "signedUpAt", "plug": "output", "type": "date" }]
+        },
+        { "id": "clock", "type": "net.noodl.Now", "label": "Now" },
+        {
+          "id": "trial_end",
+          "type": "net.noodl.DateAdd",
+          "label": "Signup plus 14 days",
+          "parameters": { "amount": 14, "unit": "days" }
+        },
+        {
+          "id": "days_left",
+          "type": "net.noodl.DateDifference",
+          "label": "Now until the trial ends",
+          "parameters": { "unit": "days", "absolute": false }
+        },
+        {
+          "id": "whole_days",
+          "type": "Expression",
+          "label": "Round up, and never below zero",
+          "parameters": { "expression": "Math.max(0, Math.ceil(d))" }
+        },
+        {
+          "id": "end_label",
+          "type": "Date To String",
+          "label": "The end date, readable",
+          "parameters": { "formatString": "{d} {monthName}" }
+        },
+        {
+          "id": "banner",
+          "type": "String Format",
+          "label": "The sentence",
+          "parameters": { "format": "{days} days left — your trial ends on {ends}" }
+        }
+      ],
+      "connections": [
+        { "fromId": "trial_inputs", "fromProperty": "signedUpAt", "toId": "trial_end", "toProperty": "input" },
+        { "fromId": "clock", "fromProperty": "date", "toId": "days_left", "toProperty": "from" },
+        { "fromId": "trial_end", "fromProperty": "result", "toId": "days_left", "toProperty": "to" },
+        { "fromId": "days_left", "fromProperty": "difference", "toId": "whole_days", "toProperty": "d" },
+        { "fromId": "trial_end", "fromProperty": "result", "toId": "end_label", "toProperty": "input" },
+        { "fromId": "whole_days", "fromProperty": "asNumber", "toId": "banner", "toProperty": "days" },
+        { "fromId": "end_label", "fromProperty": "currentValue", "toId": "banner", "toProperty": "ends" },
+        { "fromId": "banner", "fromProperty": "formatted", "toId": "banner_text", "toProperty": "text" }
+      ]
+    }
+  ]
+}

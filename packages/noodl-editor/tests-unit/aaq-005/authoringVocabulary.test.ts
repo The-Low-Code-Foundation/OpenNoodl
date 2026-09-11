@@ -106,18 +106,64 @@ const PRE_AAQ005_SUBMIT_SCHEMA = {
   required: ['nodes']
 };
 
+// ── The one field LEG-001 added, and nothing else ─────────────────────────────
+//
+// The literals above are the model-facing contract as AAQ-005 froze it. LEG-001
+// changes it deliberately — `comment` was the field an agent could not write, at
+// 1 authored comment in 2,045 nodes against `label`'s 89.3% — so the expectation
+// is not edited in place. It is derived: the frozen literal PLUS one property.
+// Anything else that moves still fails the byte-for-byte check, which is the
+// property this describe block was written to hold.
+//
+// The description is pinned verbatim on purpose. It is shared with LEG-005's
+// property-panel row, and two surfaces describing one field differently is the
+// divergence `authoringVocabulary.ts` exists to prevent — a parity spec cannot
+// catch it, because the other copy is UI copy.
+const LEG001_COMMENT_DESCRIPTION =
+  'Why this node is the way it is — a constraint, a rule, or a decision with an alternative. ' +
+  'Omit when the type and label already say it.';
+
+const NODE_SCHEMA_WITH_COMMENT = {
+  ...PRE_AAQ005_NODE_SCHEMA,
+  properties: {
+    ...PRE_AAQ005_NODE_SCHEMA.properties,
+    comment: { type: 'string', description: LEG001_COMMENT_DESCRIPTION }
+  }
+};
+
+const SUBMIT_SCHEMA_WITH_COMMENT = {
+  ...PRE_AAQ005_SUBMIT_SCHEMA,
+  properties: {
+    ...PRE_AAQ005_SUBMIT_SCHEMA.properties,
+    nodes: { type: 'array', items: NODE_SCHEMA_WITH_COMMENT, minItems: 1 }
+  }
+};
+
 describe('AAQ-005 — submit_component is unchanged by the convergence', () => {
   const submitTool = AUTHORING_TOOLS.find((t) => t.name === SUBMIT_COMPONENT);
 
-  it('renders byte-for-byte what the hand-written literal produced', () => {
+  it('renders the hand-written literal plus LEG-001s one field', () => {
     expect(submitTool).toBeDefined();
-    expect(submitTool!.parameters).toEqual(PRE_AAQ005_SUBMIT_SCHEMA);
+    expect(submitTool!.parameters).toEqual(SUBMIT_SCHEMA_WITH_COMMENT);
   });
 
   it('renders the same node and connection schemas standalone', () => {
     const { node, connection } = jsonSchemasFor('editor');
-    expect(node).toEqual(PRE_AAQ005_NODE_SCHEMA);
+    expect(node).toEqual(NODE_SCHEMA_WITH_COMMENT);
     expect(connection).toEqual(PRE_AAQ005_CONNECTION_SCHEMA);
+  });
+
+  it('changed the node schema by exactly one property', () => {
+    const { node } = jsonSchemasFor('editor');
+    const added = Object.keys(node.properties!).filter((k) => !(k in PRE_AAQ005_NODE_SCHEMA.properties));
+    const removed = Object.keys(PRE_AAQ005_NODE_SCHEMA.properties).filter((k) => !(k in node.properties!));
+    expect({ added, removed }).toEqual({ added: ['comment'], removed: [] });
+  });
+
+  it('carries the exact sentence LEG-005 shares with it', () => {
+    const comment = AUTHORED_NODE_FIELDS.find((f) => f.name === 'comment')!;
+    expect(describeFor(comment, 'editor')).toBe(LEG001_COMMENT_DESCRIPTION);
+    expect(describeFor(comment, 'mcp')).toBe(LEG001_COMMENT_DESCRIPTION);
   });
 
   it('still offers exactly three tools', () => {
@@ -193,8 +239,23 @@ describe('AAQ-005 — no phantom fields', () => {
   it('every node field the vocabulary offers exists in nodes.schema.json', () => {
     const stored = Object.keys(nodesSchema.definitions.node.properties);
     for (const field of AUTHORED_NODE_FIELDS) {
-      expect(stored).toContain(field.name);
+      // LEG-001 — a field whose authored name is not its storage name declares
+      // where it goes, and the check follows the declaration to its root key.
+      // `comment` is stored at `metadata.comment`, so `metadata` is what must
+      // exist. An UNDECLARED name still has to be a stored property: this is the
+      // `widthUnit` check, and "it is really somewhere else" is exactly the
+      // excuse it must not accept without the field saying so.
+      expect(stored).toContain(field.storedAs ? field.storedAs.split('.')[0] : field.name);
     }
+  });
+
+  it('maps comment onto the metadata bag rather than a stored top-level field', () => {
+    const comment = AUTHORED_NODE_FIELDS.find((f) => f.name === 'comment')!;
+    expect(comment.storedAs).toBe('metadata.comment');
+    // Storage has no top-level `comment` and must not grow one: CAN-004's gutter
+    // stripe, hover tooltip and context menu all read `metadata.comment`, so a
+    // flat key on disk would be a comment nothing in the editor can see.
+    expect(Object.keys(nodesSchema.definitions.node.properties)).not.toContain('comment');
   });
 
   it('every port field the vocabulary offers exists in the stored port definition', () => {
@@ -209,11 +270,13 @@ describe('AAQ-005 — reading the table', () => {
   it('filters by client', () => {
     const editorNodes = fieldsFor(AUTHORED_NODE_FIELDS, 'editor').map((f) => f.name);
     const mcpNodes = fieldsFor(AUTHORED_NODE_FIELDS, 'mcp').map((f) => f.name);
-    expect(editorNodes).toEqual(['id', 'type', 'label', 'x', 'y', 'parent', 'parameters', 'ports']);
+    expect(editorNodes).toEqual(['id', 'type', 'label', 'comment', 'x', 'y', 'parent', 'parameters', 'ports']);
     expect(mcpNodes).toEqual([
       'id',
       'type',
       'label',
+      // LEG-001 — shared, not diverged: both doors, same words, same position.
+      'comment',
       'x',
       'y',
       'parent',

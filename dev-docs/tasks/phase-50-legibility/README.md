@@ -1,9 +1,41 @@
 # Phase 50 — Legibility (Track L: the review channel)
 
 **Created:** 2026-08-06
-**Status:** 📋 Specced, not started — 7 tasks. Post-alpha.
+**Status:** 📋 Specced, not started — 7 tasks. Post-alpha. Tasks are **[TASKS.md](TASKS.md)**
+(LEG-001…007), written 2026-08-10.
 **Origin:** [NODEGX-WHAT-IT-IS-FOR.md](../../reviews/NODEGX-WHAT-IT-IS-FOR.md) §7 item 1, and the
 axis it comes from — [the spectrum](../../reviews/NODEGX-VS-CODE-THE-SPECTRUM.md) §2 and §7.
+
+---
+
+## ⚠️ Correction, 2026-08-10 — read [TASKS.md](TASKS.md) before this file
+
+Everything below was written against a re-measurement that has since been done, and **the central
+claim did not survive it.** Kept as written, because the reasoning about *why review is the control*
+is the durable part and is unaffected.
+
+What changed, measured across all 35 projects in `NodeGX test projects/` and all 65 `project.json`
+in this repo:
+
+- **Agent-authored graphs label 89.3% of their nodes** (1,003 of 1,123 across the eleven phase-55/58
+  model runs; sonnet, deepseek and kimi each at 100%), with real labels — *"Gradient overlay"*,
+  *"Three up, collapsing"*. `label` has been in the authoring vocabulary since AAQ-005
+  (`authoringVocabulary.ts:143`) and it works.
+- **`project-examples/agent-chat` is not agent output.** It was hand-built during AIX-005 on
+  2026-07-27 (`b95eddb4`), before that vocabulary existed. Its 0-of-262 is a stale fixture, not a
+  measurement of the agent, and the "one number" framing below rests on it.
+- **Hand-authored graphs label 20.3%** (34 `library/` prefabs), which inverts LEG-002's polarity: the
+  specced gate is aimed at the population that already complies.
+- **What survives, and is sharper than the original claim: `metadata.comment` is empty.** One in
+  2,045 agent-authored nodes; **zero** in 5,509 nodes across this repo. The mechanism is known —
+  `metadata` is not in the authoring vocabulary and *"cannot be expressed in the editor at all"*
+  (`SURFACE_DIVERGENCES`, AAQ-011 F14). That is LEG-001.
+- **Three tasks are much smaller than budgeted**, because SUB-007, CAN-004 and `noodl-git` already
+  shipped their substrate. Revised total ~2 weeks, not ~4.
+
+Per-task corrections, including to exit criterion 2, are in the task files.
+
+---
 
 ## The one number
 
@@ -72,8 +104,37 @@ the rest.
 
 1. An agent-authored page of 40+ nodes has a label on every non-trivial node, and a human who did
    not watch it being built can say what each does.
-2. `agent-chat` is regenerated and its label coverage is above 90% — **the same fixture that
-   currently reads 0 of 262**, so the number is comparable.
+2. ~~`agent-chat` is regenerated and its label coverage is above 90% — the same fixture that
+   currently reads 0 of 262, so the number is comparable.~~ **Struck 2026-08-11. It is not
+   comparable.** The criterion assumed `agent-chat` was a sample of agent output. It is not: it was
+   hand-built during AIX-005 on 2026-07-27 (`b95eddb4`), *before* the authoring vocabulary existed.
+   Regenerating it would measure a current model, not anything this phase changed —
+   `phase55-replay-sonnet` already reads 196/196 with no LEG task shipped, and eight of twelve model
+   runs are at 100%. A criterion this phase would pass without doing any work is not a criterion.
+
+   **Replaced by, measuring the arm LEG-001 actually closed:** one phase-55 fixture is re-authored
+   with `metadata.comment` declared, and the share of nodes carrying a comment is compared against
+   the **1-in-2,045** baseline. ⚠️ **Judged, not counted** — twenty of the comments are read and
+   assessed in the register, because a run producing 100% coverage of *"This is a Group"* has failed
+   this task while passing a coverage check.
+
+   Regenerating `agent-chat` is still worth doing on its own terms — the repo's flagship
+   AI-authoring demonstration having 0 labels and 0 comments is embarrassing — but it is **fixing a
+   stale fixture, never evidence for this phase**.
+
+   🔴 **Run 2026-08-12, and it came back zero.** One cold storefront replay with the field declared
+   and verified in the served schema: **0 of 182 nodes carry a comment**, against `label` at 103
+   (56.6%) *in the same run, from the same schema*. So **this criterion is not met**, and the phase
+   does not get to claim it. Declaring the field was necessary and is not sufficient. The write-up,
+   the reproduction and the three checks that prove it is a real zero rather than a broken rig are in
+   [`measurements/LEG-001-COMMENT-REMEASUREMENT.md`](measurements/LEG-001-COMMENT-REMEASUREMENT.md).
+
+   🔴 **And the "untried lead" this criterion used to name — LEG-001 §5's doctrine half — was not
+   untried.** It shipped in `a4793530`, 52 minutes before the run, and reached the model verbatim in
+   the `get_project_info` result of **turn 1**. The zero was measured with the vocabulary row, the
+   field description *and* the doctrine prose all in place. There is no cheap documentation move left;
+   the live question is whether the storefront fixture — a brief stating almost no external
+   constraints — can measure this field at all. See LEG-001 register **L13/L14**.
 3. A wire change in `git diff` on the command line names both endpoints.
 4. Duplicating a component preserves every label and comment.
 5. A décret-style citation has an obvious home in the property panel, and it exports (EXP-006).

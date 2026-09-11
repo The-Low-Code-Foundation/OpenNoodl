@@ -1,0 +1,70 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b71e4d20-3c86-4f95-a0d2-6f83e1c94a57",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "listGroup",
+      "type": "Group",
+      "label": "Note list",
+      "children": [
+        "listRepeater"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "listRepeater",
+      "type": "For Each",
+      "label": "One row per note",
+      "parent": "listGroup",
+      "parameters": {
+        "template": "/Components/NoteRow"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "listInputs",
+      "type": "Component Inputs",
+      "label": "Interface in",
+      "ports": [
+        {
+          "name": "items",
+          "plug": "output",
+          "type": "array"
+        }
+      ],
+      "x": 460,
+      "y": 40
+    },
+    {
+      "id": "listOutputs",
+      "type": "Component Outputs",
+      "label": "Interface out",
+      "ports": [
+        {
+          "name": "rowRemoved",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "listRendered",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "relayedNoteId",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 460,
+      "y": 160
+    }
+  ]
+}

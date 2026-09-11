@@ -11,7 +11,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { call, connect, TestSession, copyFixture } from './helpers';
+import { call, connect, TestSession, copyFixture, reveal } from './helpers';
 import type { ReviewProjectResponse } from '../src/tools/review';
 
 function writeDoc(projectDir: string, rel: string, content: string): void {
@@ -27,6 +27,7 @@ describe('AIX-010 review_project', () => {
   beforeEach(async () => {
     projectDir = copyFixture();
     session = await connect(projectDir, true);
+    await reveal(session, 'docs'); // AWP-006 — review_project ships with the docs group
   });
 
   afterEach(async () => {
@@ -49,6 +50,7 @@ describe('AIX-010 review_project', () => {
   it('is registered without --allow-writes: reviewing is a read', async () => {
     const readOnly = await connect(projectDir, false);
     try {
+      await reveal(readOnly, 'docs'); // AWP-006 — deferred, not write-gated
       const result = await call<ReviewProjectResponse>(readOnly, 'review_project', {});
       expect(result.isError).toBe(false);
     } finally {

@@ -19,7 +19,12 @@ import {
   authoredNodes,
   authoredPreconditionDiagnostics,
   buildComponentRefs,
+  catalogGeneration,
+  componentInterfaces,
+  derivedPortIndices,
+  connectedInputs,
   declaredUrlPaths as collectUrlPaths,
+  dedupeDiagnostics,
   diagnosticKey,
   isBlockingForAuthoredOutput,
   loadDefaultCatalog,
@@ -39,8 +44,22 @@ import type { GraphComponent, ExplainGraph } from '../explain/types';
 import type { CandidateValidation, ComponentFiles, StructuralFailure } from './types';
 
 let semanticValidator: SemanticValidator | undefined;
+/**
+ * CN-003: memoised against the catalog generation, not forever.
+ *
+ * A `SemanticValidator` captures its `CatalogIndex` at construction, and this
+ * one is a module singleton that outlives every project opened in the session.
+ * Held across a project catalog overlay change it would validate the new
+ * project's kit nodes against the previous project's catalog — silently, and
+ * only in the checks it then skips, which looks exactly like a project whose
+ * kits are unknown.
+ */
+let validatorGeneration = -1;
 function validator(): SemanticValidator {
-  if (!semanticValidator) semanticValidator = new SemanticValidator();
+  if (!semanticValidator || validatorGeneration !== catalogGeneration()) {
+    semanticValidator = new SemanticValidator();
+    validatorGeneration = catalogGeneration();
+  }
   return semanticValidator;
 }
 
@@ -113,6 +132,20 @@ export interface ValidateCandidateOptions {
    */
   backend?: ProjectBackendFacts;
   /**
+   * REL-002a — the project's `settings.bodyScroll`, in three states.
+   *
+   * **Omitted means "do not check"; `null` means "the project has read its settings and this one
+   * is absent".** The same convention `backend` follows above, and the distinction matters for the
+   * same reason: a caller that cannot read project settings cannot tell an app that deliberately
+   * chose a fixed viewport from one whose author never met the setting.
+   *
+   * ⚠️ The MCP write gate always supplies it (`projectBodyScroll`), so a caller here that leaves it
+   * out makes the two gates report differently on the same candidate — the divergence AAQ-005
+   * closed and `gateParity.test.ts` exists to keep closed. The editor's authoring panel binds it
+   * from `ProjectModel.getSettings()`.
+   */
+  bodyScroll?: boolean | null;
+  /**
    * AAQ-001 — component names a plan in flight will create, on top of the ones
    * the graph already has.
    *
@@ -156,21 +189,30 @@ export function validateCandidateComponent(
   };
 
   const report: ValidationReport = validator().validateComponent(project, legacyName, { strict: true });
-  // AIB-001: the semantic validator reasons about types and connectivity and
-  // has no view of parameter VALUES — its normalized model does not carry them.
-  // The precondition checks run over the candidate's own v2 nodes and their
-  // diagnostics join the report's, so they flow through the repair loop, the
-  // baseline exemption and the summary by exactly the same paths.
+  // AIB-001: the precondition checks run over the candidate's own v2 nodes and
+  // their diagnostics join the report's, so they flow through the repair loop,
+  // the baseline exemption and the summary by exactly the same paths.
+  //
+  // 🔴 The reason recorded here used to be stronger — *"the semantic validator
+  // reasons about types and connectivity and has no view of parameter VALUES —
+  // its normalized model does not carry them"* — and **D13 ended that on
+  // 2026-08-18**: `NormNode` carries `parameters` and `rules/parameterValue`
+  // runs `checkParameterValues`, the same function the precondition set runs.
+  // The two sources now OVERLAP, so this join doubled every parameter-value
+  // finding — a rejection naming one mistake twice, which is what exhausted the
+  // repair loop in `AIX-006` and made `AIX-011` count 2 blocking warnings where
+  // the agent caused 1. `dedupeDiagnostics` is the same fix CN-009 AC5 made in
+  // `noodl-mcp/src/validate.ts` on the day D13 landed; it never reached here.
   //
   // AAQ-005: the four of them, and the policy below, are now one shared
   // definition (`validation/authoredCandidate.ts`) that the MCP write gate and
   // the MCP plan gate call too. Before that they existed here and nowhere else,
   // so an agent driving Claude Code through `noodl-mcp` had no parameter-value
   // check at all.
-  const diagnostics = [
+  const diagnostics = dedupeDiagnostics([
     ...report.diagnostics,
     ...preconditionDiagnostics(graph, legacyName, files, options)
-  ];
+  ]);
   // The blocking-warning policy and its reasoning now live with the checks, in
   // `validation/authoredCandidate.ts` — including why `PageWithoutPageNode` is
   // still deliberately absent from it (AAQ-011 F7).
@@ -218,14 +260,36 @@ function preconditionDiagnostics(
   const projectViews: ComponentNodesView[] = graph.components
     .filter((c) => c.name !== legacyName)
     .map((c) => ({ name: c.name, nodes: c.nodes }));
+  const views = [...projectViews, candidateView];
 
   return authoredPreconditionDiagnostics({
     component: legacyName,
     nodes: authoredNodes(files.nodes.nodes),
     components: [...graph.components.map((c) => c.name), legacyName, ...(options.plannedComponents ?? [])],
-    urlPaths: collectUrlPaths([...projectViews, candidateView]),
+    urlPaths: collectUrlPaths(views),
+    // LAS-001 — from the same views as the url paths, and for the same reason:
+    // the candidate replaces its own stale on-disk copy, so an interface it is
+    // adding in this very submission counts. `GraphNode.ports` carries the plug
+    // this needs; `instancePorts` alone cannot tell an input from a backwards one.
+    interfaces: componentInterfaces(views),
+    // DEF-002 §1(b)/§1(c) — the same views once more, read for the ports an
+    // editor adapter mints inside the target rather than for a declared
+    // interface. Supplied here as well as on the MCP door because the two gates
+    // diverging on what they check is the defect AAQ-005 closed and
+    // `gateParity.test.ts` exists to keep closed.
+    derived: derivedPortIndices(views),
+    // LAS-012 — a `template` fed by a wire is a working list, and only the
+    // candidate's own connections can say so.
+    connections: connectedInputs(files.connections.connections),
+    // FIX-007 — the same connections undigested. `connectedInputs` has dropped
+    // the source port by the time it arrives, and a Function node's outputs are
+    // half of what this checks.
+    wires: files.connections.connections,
     catalog: loadDefaultCatalog(),
-    backend: options.backend
+    backend: options.backend,
+    // REL-002a — threaded rather than read here: this module is pure over an ExplainGraph and has
+    // no project root. Omitted by a caller that does not know, which reads as "do not check".
+    bodyScroll: options.bodyScroll
   });
 }
 

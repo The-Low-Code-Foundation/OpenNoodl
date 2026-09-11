@@ -60,6 +60,22 @@ export interface BackendServiceOptions {
    * when an operator asks for one. Persisted in secrets.json beside adminToken.
    */
   readonlyToken: string | null;
+  /**
+   * SB-015: the project directory this backend was provisioned for, when the
+   * spawner knows one.
+   *
+   * Its ONLY use is `applyProjectPolicy` — if the project has a
+   * `nodegx.security.json` and this data dir has no `security.json` yet, the
+   * project's policy is installed before `SecurityState` reads it. A headless
+   * deploy passes nothing and is unaffected; so is every existing spawner that
+   * has not been taught to pass it.
+   *
+   * ⚠️ Deliberately NOT a general "the project lives here" channel. The package
+   * boundary in this file's header is real: the service knows nothing about
+   * projects, and this is one path used for one file at one moment. Anything
+   * else that wants project state should go over HTTP like every other caller.
+   */
+  projectDir: string | null;
 }
 
 /** Non-loopback bind => a token is mandatory. */
@@ -82,7 +98,8 @@ const DEFAULTS: BackendServiceOptions = {
   backendId: 'nodegx-backend',
   backendName: 'NodeGX Backend',
   adminDashboard: true,
-  readonlyToken: null
+  readonlyToken: null,
+  projectDir: null
 };
 
 /**

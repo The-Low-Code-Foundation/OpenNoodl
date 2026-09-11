@@ -331,6 +331,10 @@ describe('FH-024 — the startup interlock still refuses dev-open on a wide bind
    */
   const facade = {} as AdapterFacade;
 
+  // SB-016: `deployedFunctions: []` throughout, and it means *this backend
+  // serves no cloud endpoints* rather than *nobody looked*. These data dirs are
+  // mkdtemp'd with no `workflows/` in them, so it is the true answer, and it
+  // keeps the second interlock out of the way of the one under test here.
   beforeEach(() => {
     dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'nodegx-fh024-interlock-'));
   });
@@ -340,11 +344,11 @@ describe('FH-024 — the startup interlock still refuses dev-open on a wide bind
   });
 
   it('refuses to start with dev-open on a non-loopback bind', () => {
-    expect(() => new SecurityState({ dataDir, loopback: false, cliToken: null, facade })).toThrow(
+    expect(() => new SecurityState({ dataDir, loopback: false, cliToken: null, deployedFunctions: [], facade })).toThrow(
       SecurityStartupError
     );
     try {
-      new SecurityState({ dataDir, loopback: false, cliToken: null, facade });
+      new SecurityState({ dataDir, loopback: false, cliToken: null, deployedFunctions: [], facade });
       throw new Error('expected the interlock to refuse');
     } catch (e) {
       expect((e as SecurityStartupError).code).toBe('DEV_OPEN_ON_PUBLIC_BIND');
@@ -353,7 +357,7 @@ describe('FH-024 — the startup interlock still refuses dev-open on a wide bind
 
   it('starts on a non-loopback bind once dev-open is off, with dev-open inactive', () => {
     fs.writeFileSync(path.join(dataDir, 'security.json'), JSON.stringify(ENFORCING_CONFIG));
-    const state = new SecurityState({ dataDir, loopback: false, cliToken: null, facade });
+    const state = new SecurityState({ dataDir, loopback: false, cliToken: null, deployedFunctions: [], facade });
     expect(state.devOpenActive).toBe(false);
   });
 
@@ -361,7 +365,7 @@ describe('FH-024 — the startup interlock still refuses dev-open on a wide bind
     // The distinction that keeps this fix honest: `devOpenActive` means the same
     // thing it always did. What changed is that `checkAccess` consults it after
     // the admin gate instead of before it.
-    const state = new SecurityState({ dataDir, loopback: true, cliToken: null, facade });
+    const state = new SecurityState({ dataDir, loopback: true, cliToken: null, deployedFunctions: [], facade });
     expect(state.devOpenActive).toBe(true);
     expect(state.config.devOpen).toBe(true);
   });

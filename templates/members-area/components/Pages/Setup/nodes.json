@@ -1,0 +1,750 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "568b05ff-bd29-5171-80c3-3933e9bf9272",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-8",
+      "type": "Page",
+      "label": "Set up",
+      "children": [
+        "pageShell-6"
+      ],
+      "parameters": {
+        "title": "Set up this members’ area",
+        "urlPath": "setup"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-6",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-8",
+      "children": [
+        "pageBody-6",
+        "pageFooter-7"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-6",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-6",
+      "children": [
+        "pageMain-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-6",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-6",
+      "children": [
+        "heroBand-4",
+        "ground-7",
+        "prompt-4",
+        "inside-5"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "prompt-4",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "pageMain-6",
+      "parameters": {
+        "heading": "Already set up?",
+        "line": "If this association has been created, this page is not the one you want.",
+        "action": "Sign in"
+      },
+      "x": 280,
+      "y": 2920
+    },
+    {
+      "id": "inside-5",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "pageMain-6",
+      "x": 280,
+      "y": 3040
+    },
+    {
+      "id": "heroBand-4",
+      "type": "Group",
+      "label": "The photograph, and what this page is",
+      "parent": "pageMain-6",
+      "children": [
+        "heroShell-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 300,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/work-carpenter.webp"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "heroShell-4",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand-4",
+      "children": [
+        "headingHead-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 640
+    },
+    {
+      "id": "pageFooter-7",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-6",
+      "x": 160,
+      "y": 3160
+    },
+    {
+      "id": "ground-7",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-6",
+      "children": [
+        "blurb",
+        "form-3",
+        "refusal-4",
+        "missing"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "headingHead-5",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "heroShell-4",
+      "children": [
+        "headingEyebrow-5",
+        "heading-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "headingEyebrow-5",
+      "type": "Text",
+      "label": "First run",
+      "parent": "headingHead-5",
+      "parameters": {
+        "text": "First run",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 880
+    },
+    {
+      "id": "heading-6",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-5",
+      "parameters": {
+        "text": "Set up this members’ area",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "blurb",
+      "type": "Text",
+      "label": "What this does",
+      "parent": "ground-7",
+      "parameters": {
+        "text": "Name your association and create the first moderator account. The setup token comes from your backend configuration.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 1240
+    },
+    {
+      "id": "form-3",
+      "type": "Group",
+      "label": "The setup form",
+      "parent": "ground-7",
+      "children": [
+        "nameField-2",
+        "taglineField",
+        "aboutField",
+        "yourNameField",
+        "emailField-2",
+        "passwordField-2",
+        "tokenField",
+        "claimButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 1360
+    },
+    {
+      "id": "nameField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Association name",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Association name"
+      },
+      "x": 400,
+      "y": 1480
+    },
+    {
+      "id": "taglineField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Tagline",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "One line about the association (e.g. “Meeting on the green since 1894”)"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "aboutField",
+      "type": "net.noodl.controls.textinput",
+      "label": "About the association",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "About the association",
+        "type": "textArea"
+      },
+      "x": 400,
+      "y": 1720
+    },
+    {
+      "id": "yourNameField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Your name",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Your name"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "emailField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Moderator email",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Your email",
+        "type": "email"
+      },
+      "x": 400,
+      "y": 1960
+    },
+    {
+      "id": "passwordField-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Moderator password",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Choose a password",
+        "type": "password"
+      },
+      "x": 400,
+      "y": 2080
+    },
+    {
+      "id": "tokenField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Setup token",
+      "parent": "form-3",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Setup token",
+        "type": "password"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "claimButton",
+      "type": "net.noodl.controls.button",
+      "label": "Set up",
+      "parent": "form-3",
+      "parameters": {
+        "label": "Set up this members’ area",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 2320
+    },
+    {
+      "id": "refusal-4",
+      "type": "Group",
+      "label": "The one refusal",
+      "parent": "ground-7",
+      "children": [
+        "refusalText-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2440
+    },
+    {
+      "id": "refusalText-4",
+      "type": "Text",
+      "label": "The one refusal — the words",
+      "parent": "refusal-4",
+      "parameters": {
+        "text": "This members’ area cannot be set up with those details.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2560
+    },
+    {
+      "id": "missing",
+      "type": "Group",
+      "label": "Which box is empty",
+      "parent": "ground-7",
+      "children": [
+        "missingText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "missingText",
+      "type": "Text",
+      "label": "Which box is empty — the words",
+      "parent": "missing",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "claim",
+      "type": "CloudFunction2",
+      "label": "claimAssociation",
+      "parameters": {
+        "function": "claimAssociation"
+      },
+      "x": 710,
+      "y": 1480
+    },
+    {
+      "id": "check",
+      "type": "JavaScriptFunction",
+      "label": "Is anything still blank?",
+      "parameters": {
+        "runOnChange-in-associationName": false,
+        "runOnChange-in-moderatorName": false,
+        "runOnChange-in-email": false,
+        "runOnChange-in-password": false,
+        "runOnChange-in-setupToken": false,
+        "functionScript": "const blank = [];\nif (!(Inputs.associationName || '').trim()) blank.push('the association’s name');\nif (!(Inputs.moderatorName || '').trim()) blank.push('your name');\nif (!(Inputs.email || '').trim()) blank.push('your email');\nif (!(Inputs.password || '').trim()) blank.push('a password');\nif (!(Inputs.setupToken || '').trim()) blank.push('the setup token');\nif (blank.length === 0) {\n  Outputs.problem = '';\n  Outputs.ready();\n  return;\n}\n// Rule 2: the sentence and the signal that reveals it leave from the\n// same node, so nothing downstream can act on a value still in flight.\nOutputs.problem = blank.length === 1\n  ? 'Please fill in ' + blank[0] + '.'\n  : 'Please fill in ' + blank.slice(0, -1).join(', ') + ' and ' + blank[blank.length - 1] + '.';\nOutputs.blocked();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-blocked",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-associationName",
+          "displayName": "associationName",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-moderatorName",
+          "displayName": "moderatorName",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-password",
+          "displayName": "password",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-setupToken",
+          "displayName": "setupToken",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-problem",
+          "displayName": "problem",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 710,
+      "y": 2920
+    },
+    {
+      "id": "refusalGate-4",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 710,
+      "y": 2440
+    },
+    {
+      "id": "missingGate",
+      "type": "Condition",
+      "label": "Show what is blank",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 710,
+      "y": 2680
+    },
+    {
+      "id": "missingClear",
+      "type": "Condition",
+      "label": "Hide it once the form is complete",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 710,
+      "y": 2800
+    },
+    {
+      "id": "toSignIn-2",
+      "type": "RouterNavigate",
+      "label": "Sign in as the moderator",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 710,
+      "y": 3040
+    }
+  ],
+  "visualRoots": [
+    "page-8"
+  ]
+}

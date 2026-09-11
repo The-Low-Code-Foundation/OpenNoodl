@@ -1,0 +1,269 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "bbd82f9e-25bb-415d-8ff3-0a2b6d72b4ea",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hero-root",
+      "type": "Group",
+      "label": "Hero Band",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "hero-text-col",
+        "hero-image-col"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "minHeight": {
+          "value": 520,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--surface)",
+        "paddingLeft": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 80,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 80,
+          "unit": "px"
+        },
+        "columnGap": {
+          "value": 64,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "hero-text-col",
+      "type": "Group",
+      "label": "Text Column",
+      "x": 0,
+      "y": 100,
+      "parent": "hero-root",
+      "children": [
+        "hero-eyebrow",
+        "hero-headline",
+        "hero-subtext",
+        "hero-ctas"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": {
+          "value": 24,
+          "unit": "px"
+        },
+        "maxWidth": {
+          "value": 540,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "hero-eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "x": 0,
+      "y": 200,
+      "parent": "hero-text-col",
+      "parameters": {
+        "text": "SMALL-BATCH · HANDMADE",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary)",
+        "letterSpacing": "var(--tracking-widest)"
+      }
+    },
+    {
+      "id": "hero-headline",
+      "type": "Text",
+      "label": "Headline",
+      "x": 0,
+      "y": 260,
+      "parent": "hero-text-col",
+      "parameters": {
+        "text": "Ceramics, coffee and home goods from our studio to yours",
+        "fontSize": "var(--text-5xl)",
+        "fontWeight": "var(--font-bold)",
+        "color": "var(--foreground)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tighter)"
+      }
+    },
+    {
+      "id": "hero-subtext",
+      "type": "Text",
+      "label": "Subtext",
+      "x": 0,
+      "y": 320,
+      "parent": "hero-text-col",
+      "parameters": {
+        "text": "Every piece is thrown, trimmed and glazed by hand in our Yorkshire studio. We make in small batches — between 20 and 60 of a thing, then we move on to the next.",
+        "fontSize": "var(--text-lg)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-relaxed)"
+      }
+    },
+    {
+      "id": "hero-ctas",
+      "type": "Group",
+      "label": "CTA Buttons",
+      "x": 0,
+      "y": 380,
+      "parent": "hero-text-col",
+      "children": [
+        "hero-cta-primary",
+        "hero-cta-secondary"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": {
+          "value": 16,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "hero-cta-primary",
+      "type": "net.noodl.controls.button",
+      "label": "Shop Now",
+      "x": 0,
+      "y": 480,
+      "parent": "hero-ctas",
+      "parameters": {
+        "label": "Shop Now",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderWidth": 0,
+        "boxShadowEnabled": true,
+        "sizeMode": "explicit",
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 12,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 12,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "hero-cta-secondary",
+      "type": "net.noodl.controls.button",
+      "label": "View Ceramics",
+      "x": 0,
+      "y": 540,
+      "parent": "hero-ctas",
+      "parameters": {
+        "label": "View Ceramics",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderColor": "var(--border)",
+        "borderStyle": "solid",
+        "sizeMode": "explicit",
+        "paddingLeft": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 12,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 12,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 8,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "hero-image-col",
+      "type": "Group",
+      "label": "Image Column",
+      "x": 0,
+      "y": 600,
+      "parent": "hero-root",
+      "children": [
+        "hero-image"
+      ],
+      "parameters": {
+        "flexDirection": "none",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        },
+        "height": {
+          "value": 420,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 16,
+          "unit": "px"
+        },
+        "clip": true,
+        "backgroundColor": "var(--muted)"
+      }
+    },
+    {
+      "id": "hero-image",
+      "type": "Image",
+      "label": "Hero Photo",
+      "x": 0,
+      "y": 700,
+      "parent": "hero-image-col",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "objectFit": "cover",
+        "src": "https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=800&q=80"
+      }
+    }
+  ]
+}

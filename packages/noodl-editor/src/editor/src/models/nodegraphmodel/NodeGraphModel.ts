@@ -8,8 +8,13 @@ import { UndoQueue } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { guid } from '@noodl-utils/utils';
 
+import { reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
+
 import Model from '../../../../shared/model';
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
+import { unconvertedCast } from './connectionCoercion';
+import { resolveConnectionEnds } from './connectionEnds';
+import { isRootWithinRemoved } from './rootNodeRemoval';
 
 export type Connection = {
   fromProperty: string;
@@ -30,6 +35,25 @@ export type Connection = {
   label?: string;
   /** Normalised position of the label along the curve, 0.15–0.85 (CAN-001). */
   labelT?: number;
+  /**
+   * How a **square** wire is routed (SIG-007) — the positions of its runs.
+   *
+   * `xs[i]` is a fraction of the horizontal gap between the two ports; `ys[j]`
+   * is an offset in graph px from the source port's row; runs alternate, and
+   * `xs.length === ys.length + 1` because the first and last runs belong to the
+   * ports. **Absent when the wire has never been routed**, so a wire that was
+   * routed and reset is indistinguishable from one that never was and
+   * `project.json` does not churn.
+   *
+   * ⚠️ Only square wires have one. A curved wire is a *look*, not a routing
+   * mode — that decision is what makes this a list of runs rather than a list of
+   * points, since a point has nowhere to record "this run moved 40px left".
+   *
+   * Structural rather than an import of `wireRouting.WireRoute`: the geometry
+   * lives in the canvas painter's directory and a model does not reach into a
+   * view.
+   */
+  route?: { xs: number[]; ys: number[] };
 };
 
 type NodeGraphModelJson = {
@@ -38,6 +62,83 @@ type NodeGraphModelJson = {
   connections: Connection[];
   comments: NodeGraphModelJson[] | undefined;
 };
+
+/**
+ * The ordinary health-pass debounce. A pass walks every node and every
+ * connection in the graph, and its bulk callers (`updateTypes`, module
+ * registration, type renames) fire in storms during load — so it is deliberately
+ * lazy.
+ */
+const EVALUATE_HEALTH_DEBOUNCE_MS = 2000;
+
+/**
+ * FIX-007 fix 4 — the urgent lane.
+ *
+ * `evaluateConnectionHealth` raises `con-no-target-port` whenever a wire's
+ * endpoint is not in `getPort()`. For a **runtime-discovered** port that verdict
+ * is correct and temporary: the ports do not exist until the running viewer
+ * mints them and pushes them back (`instanceports` → `setDynamicPorts` →
+ * `Model.instancePortsChanged`). The wire is fine; the editor does not know yet.
+ *
+ * Clearing it was reaching the user ~2 s late, because the only route from the
+ * ports arriving to a re-evaluation is `instancePortsChanged` →
+ * `scheduleUpdateTypes` (1 ms) → `updateTypes` → `scheduleEvaluateHealth`
+ * (2000 ms). Two seconds of red on a wire that was never wrong — and the user
+ * report this fix comes from is somebody deleting and redrawing that wire.
+ *
+ * This is a second, faster lane rather than a smaller number for everybody: the
+ * bulk callers still want the lazy pass. It is taken only when the node's own
+ * wires actually carry a stale unresolved-port warning
+ * (`hasUnresolvedPortWarning`), so ports arriving for a healthy node schedule
+ * nothing at all.
+ */
+const URGENT_EVALUATE_HEALTH_DEBOUNCE_MS = 50;
+
+/**
+ * The two warning keys that ports arriving can legitimately clear. Deliberately
+ * *not* the `-type` or `con-type-mismatch` keys: those describe a wire that is
+ * wrong about types, and a port appearing does not make them stale.
+ */
+const UNRESOLVED_PORT_WARNING_KEYS = ['con-no-source-port', 'con-no-target-port'];
+
+/**
+ * P77 SBR-008 §9 — the wire into a port the author is *declaring*, not a wire into a port
+ * that does not exist.
+ *
+ * A node type may say (`wireDeclaredPortPrefix`, set in `data/dbmodelcrudbase.ts` and
+ * `data/dbmodelnode2.ts`) that ports under some prefix are minted from the author's own
+ * wires. `prop-<field>` on the Record family is the case: on a fresh site a column exists
+ * only once something has written it, so the schema cannot name the port and the wire is
+ * the only declaration there is.
+ *
+ * 🔴 Without this, that is a **deadlock rather than a delay**, and the delay is what the
+ * `URGENT_EVALUATE_HEALTH_DEBOUNCE_MS` note above describes. The runtime mints the port from
+ * the node's wires — but it reads those wires off the component `exportComponent` handed it,
+ * and `exportComponent` drops every wire this verdict calls unhealthy. So the wire is
+ * dropped, the runtime never sees it, the port is never minted, and the verdict stays true
+ * for ever: `editor health → exported wires → runtime ports → editor health`. Measured on a
+ * wizard-fresh Site Builder project — the create node announced its three `prop-` ports that
+ * are also saved parameters and neither of the two that arrive only over a wire, so a page
+ * created through the panel had no title and no slug and the page editor's save wrote
+ * nothing at all.
+ *
+ * The loop is broken here, once, and deliberately not in the two other places it could be:
+ * not in `exportComponent`'s filter (SBR-008 §4 — it keeps meaning what it says) and not by
+ * minting the port in the editor (SBR-008 §2 — `setDynamicPorts` replaces, so a second
+ * writer erases the runtime's). The runtime stays the only thing that mints a port; this
+ * only stops the editor calling the wire broken before it can.
+ *
+ * ⚠️ **The stated cost, which is the same one the ruling already accepted**: a mistyped
+ * `prop-titel` no longer reddens. `record-ports.ts`'s docblock accepts exactly this for the
+ * runtime half — the wire *does* register the port at run time — and the warning was only
+ * ever correct for as long as the port set came from the schema alone. Scoped by prefix and
+ * by node type so nothing else on the canvas loses a warning it should keep.
+ */
+function isWireDeclaredPort(node, portName: string | undefined): boolean {
+  if (!node || typeof portName !== 'string') return false;
+  const prefix = node.type && node.type.wireDeclaredPortPrefix;
+  return typeof prefix === 'string' && prefix.length > 0 && portName.startsWith(prefix);
+}
 
 export class NodeGraphModel extends Model {
   roots: NodeGraphNode[];
@@ -51,6 +152,15 @@ export class NodeGraphModel extends Model {
 
   private evaluatehealthScheduled: boolean;
   private updateTypesScheduled: boolean;
+
+  /**
+   * The pending health pass, so an urgent request can pre-empt a lazy one that
+   * is already in flight. The old code kept only a boolean, which meant
+   * `if (scheduled) return` silently swallowed the faster request — exactly the
+   * case FIX-007 fix 4 exists for.
+   */
+  private evaluatehealthTimer: ReturnType<typeof setTimeout> | undefined;
+  private evaluatehealthDeadline = Infinity;
 
   constructor(args?) {
     super();
@@ -86,6 +196,13 @@ export class NodeGraphModel extends Model {
     this.boundTypeModels.forEach((type) => type.off && type.off(this));
     this.boundTypeModels.clear();
     this.removeAllListeners();
+
+    // A pending health pass on a disposed graph walks nodes whose component is
+    // gone. Harmless before, because nothing held the handle to cancel it.
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+    this.evaluatehealthTimer = undefined;
+    this.evaluatehealthScheduled = false;
+    this.evaluatehealthDeadline = Infinity;
   }
 
   scheduleUpdateTypes() {
@@ -120,6 +237,28 @@ export class NodeGraphModel extends Model {
         'Model.portRearranged'
       ],
       () => this.scheduleUpdateTypes(),
+      this
+    );
+
+    // FIX-007 fix 4. Ports arriving from the running viewer is the event that
+    // makes a `con-no-*-port` warning stale, so it is the moment to clear it —
+    // not 2 s later, via the lazy pass `scheduleUpdateTypes` above will book.
+    //
+    // Scoped to this graph's own node (`e.model.owner === this`) so one node's
+    // ports do not start a health pass in every other component, and gated on
+    // there actually being a warning to clear.
+    EventDispatcher.instance.on(
+      'Model.instancePortsChanged',
+      (e) => {
+        const node = e && e.model;
+        // A node can have no graph yet — `setDynamicPorts` runs during
+        // `ComponentModel.fromJSON` before the owner is assigned (see the same
+        // guard in `ViewerConnection`).
+        if (!node || node.owner !== this) return;
+        if (!this.hasUnresolvedPortWarning(node.id)) return;
+
+        this.scheduleEvaluateHealth({ urgent: true });
+      },
       this
     );
 
@@ -328,6 +467,28 @@ export class NodeGraphModel extends Model {
   removeNode(model, args?) {
     const _this = this;
 
+    /**
+     * DEF-040 (phase 80) — **undo has to put the home back, and it did not.**
+     *
+     * Driven in DEF-007 s38: delete the home node, press *"Delete it anyway"*, undo. The `Group`
+     * came back into the graph and `ProjectModel.getRootNode()` was **still `null`**. The undo
+     * action below re-adds the node; the root pointer is cleared somewhere else entirely — a
+     * module-scope `Model.nodeRemoved` listener in `projectmodel.ts` — as a **side effect of an
+     * event rather than as part of the undoable act**, so nothing in the undo group knew to
+     * reverse it.
+     *
+     * 🔴 This is not tidiness. DEF-007 §7.2 shipped a *confirm* rather than a refusal, on the
+     * argument that a person may legitimately restructure and undo exists. Undo did not in fact
+     * repair this, which made that confirm the only protection there was.
+     *
+     * Read **before** the removal, because afterwards the listener has already cleared it. The
+     * whole subtree counts: the listener is now subtree-aware, and this has to agree with it or
+     * the two disagree exactly for a home nested inside a deleted Group.
+     */
+    const project = this.owner && (this.owner as { owner?: any }).owner;
+    const rootNodeBefore = project && typeof project.getRootNode === 'function' ? project.getRootNode() : undefined;
+    const removingTheRoot = isRootWithinRemoved(rootNodeBefore, model);
+
     // Start by removing all connections to/from this node
     this.removeConnectionsForNode(model, args);
 
@@ -372,6 +533,12 @@ export class NodeGraphModel extends Model {
         undo: function () {
           if (parent) parent.insertChild(model, index);
           else _this.addRoot(model);
+
+          // DEF-040: the node is back in the graph; the home pointer has to come back with it,
+          // and only after the re-add, so the project never points at a node it does not contain.
+          if (removingTheRoot && project && typeof project.setRootNode === 'function') {
+            project.setRootNode(rootNodeBefore);
+          }
         }
       });
     }
@@ -488,7 +655,24 @@ export class NodeGraphModel extends Model {
     }
   }
 
-  getConnectionStatus(args) {
+  /**
+   * Whether a wire may be drawn, and — since SIG-001 — *what kind* of refusal it
+   * is when it may not.
+   *
+   * The explicit return type is load-bearing rather than decorative: without it
+   * TypeScript infers the union of the three literal objects below, and
+   * `WorkflowGraphModel`, which overrides this and returns refusals of its own,
+   * stops being assignable to its own base class the moment either side grows a
+   * field the other lacks. It did, immediately.
+   *
+   * `reason` is a plain `string` here on purpose. The narrow union lives in the
+   * connection popup (`portCopy.ts`), which is the only reader that has to
+   * decide what to *say* about each kind; a model has no business importing a
+   * view's vocabulary, and the popup normalises anything it does not recognise
+   * to `'other'` — which it renders as "refused, and I am not going to guess
+   * why". That is the honest answer for a subclass this file has never seen.
+   */
+  getConnectionStatus(args): { connectable: boolean; reason?: string; message?: string } {
     const _this = this;
     const targetNode = args.targetNode;
     const targetPort = targetNode.getPort(args.targetPort);
@@ -502,6 +686,13 @@ export class NodeGraphModel extends Model {
       if (!typesCompatible) {
         return {
           connectable: false,
+          // SIG-001: the *category* of the refusal, alongside the prose. The
+          // connection popup used to throw both away — it dropped every refused
+          // port from the list one loop after writing this message — and now
+          // renders the row, which means it has to say which kind of refusal it
+          // was in a sentence a beginner can act on. It cannot recover that from
+          // the string without parsing English.
+          reason: 'type-mismatch',
           message:
             'Type mismatch a source port of type <strong>' +
             NodeLibrary.nameForPortType(sourcePort.type) +
@@ -526,6 +717,7 @@ export class NodeGraphModel extends Model {
       if (isDuplicate) {
         return {
           connectable: false,
+          reason: 'duplicate',
           message: 'These ports are already connected in this direction'
         };
       }
@@ -536,19 +728,68 @@ export class NodeGraphModel extends Model {
     };
   }
 
-  getConnectionHealth(c) {
-    const sourceId = c.sourceId ? c.sourceId : c.sourceNode.id;
-    const targetId = c.targetId ? c.targetId : c.targetNode.id;
+  /**
+   * DEF-034 (phase 80) — `args.levels` narrows which verdicts count as unhealthy.
+   *
+   * 🔴 **Omitting it keeps every level, which is what the canvas wants.** A wire the editor calls
+   * merely questionable still gets FB-021's dash; that is the surface Richard asked for.
+   *
+   * 🔴 **`exportComponent` passes `['error']`, and the difference is a deleted wire.** Two of the
+   * seven keys this function can see are `level: 'warning'` — `con-target-port-gated` (a wire into
+   * a `basic`-gated port, *"valid and its value is ignored"*) and `con-type-unconverted`
+   * (FIX-025's `string → number`, which the runtime delivers verbatim). Both describe wires that
+   * **work**. Without the narrowing they left the build exactly like a wire to a deleted port.
+   *
+   * ⚠️ Measured before it was changed, over 179 projects on this machine: **290** gated wires and
+   * **23** unconverted ones were being dropped, across 34 projects. **27 of the 290 had the gate
+   * port itself driven by a wire** — a `States` node or a Component Input feeding `flexDirection`,
+   * `useIcon` or `useLabel` — so the condition the editor evaluated against a *saved parameter*
+   * was never the condition the running app would be in. Those are reusable components ("Pretty
+   * button", "Secondary Button", "Toggle Switch"), where a parameter arriving from outside is the
+   * entire point. ✅ Both shipped templates (Site Builder, TPL-001) measured **0**, so this was
+   * never visible from the templates alone.
+   */
+  getConnectionHealth(c, args?: { levels?: string[] }) {
+    /**
+     * DEF-039 (phase 80) — **an end that is not there is an unhealthy wire, not a `TypeError`.**
+     *
+     * The two callers hand this function opposite shapes, and each is missing what the other
+     * relies on. `exportComponent` (`utils/exporter/util.ts:115`) sends `sourceId: c.fromId` and
+     * no node; the canvas (`NodeGraphEditorConnection.getHealth`) sends `sourceNode` and no id.
+     * So `c.sourceId ? c.sourceId : c.sourceNode.id` dereferenced `undefined` in **both**
+     * directions, for different inputs:
+     *
+     *  - a `connections.json` written with field names v2 does not know arrives with `fromId`
+     *    undefined, and killed the export — the preview never mounted and the message named
+     *    neither the file nor the component nor the wire;
+     *  - a wire whose `fromId` names a node that is not in the component (a bad merge, a partial
+     *    copy) resolves to no node, and reaches the same line from the canvas side.
+     *
+     * A wire with an end we cannot name genuinely cannot work, so `error` is the honest level:
+     * `exportComponent` passes `levels: ['error']` and drops it, and the canvas dashes it.
+     * ⚠️ Answering here rather than consulting `WarningsModel` is deliberate — the lookup key is
+     * built from these very ids, so there is nothing to look it up by.
+     *
+     * The resolution itself lives in `./connectionEnds` so it can be graded: this module reads
+     * `platform.getUserDataPath()` at module scope and cannot be imported outside Electron.
+     */
+    const { sourceId, targetId, unresolved } = resolveConnectionEnds(c);
+    if (unresolved) {
+      return { healthy: false, message: unresolved };
+    }
 
-    const warnings = WarningsModel.instance.getWarnings({
-      component: this.owner,
-      connection: {
-        fromId: sourceId,
-        fromProperty: c.sourcePort,
-        toId: targetId,
-        toProperty: c.targetPort
-      }
-    });
+    const warnings = WarningsModel.instance.getWarnings(
+      {
+        component: this.owner,
+        connection: {
+          fromId: sourceId,
+          fromProperty: c.sourcePort,
+          toId: targetId,
+          toProperty: c.targetPort
+        }
+      },
+      args
+    );
 
     if (warnings) {
       return { healthy: false, message: warnings.shortMessage };
@@ -557,16 +798,98 @@ export class NodeGraphModel extends Model {
     return { healthy: true };
   }
 
-  scheduleEvaluateHealth() {
+  /**
+   * @param options.urgent run in ~50 ms instead of ~2 s. See
+   * `URGENT_EVALUATE_HEALTH_DEBOUNCE_MS` for when that is worth the extra pass.
+   */
+  scheduleEvaluateHealth(options?: { urgent?: boolean }) {
     const _this = this;
+    const delay = options && options.urgent ? URGENT_EVALUATE_HEALTH_DEBOUNCE_MS : EVALUATE_HEALTH_DEBOUNCE_MS;
+    const deadline = Date.now() + delay;
 
-    if (this.evaluatehealthScheduled) return;
+    // A pass already landing at or before this one covers it. Comparing
+    // deadlines rather than just "is one scheduled" is what lets an urgent
+    // request pre-empt a lazy one — and what stops a lazy request from
+    // *delaying* an urgent one already in flight.
+    if (this.evaluatehealthScheduled && this.evaluatehealthDeadline <= deadline) return;
+
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+
     this.evaluatehealthScheduled = true;
+    this.evaluatehealthDeadline = deadline;
 
-    setTimeout(function () {
+    this.evaluatehealthTimer = setTimeout(function () {
+      _this.evaluatehealthTimer = undefined;
+      _this.evaluatehealthDeadline = Infinity;
       _this.evaluatehealthScheduled && _this.evaluateHealth();
       _this.evaluatehealthScheduled = false;
-    }, 2000);
+    }, delay);
+  }
+
+  /**
+   * Settle connection health NOW, so a caller about to *read* a health verdict
+   * reads the project rather than the clock.
+   *
+   * DEF-028 (phase 80) · P77 D13. `getConnectionHealth` reads no ports — it asks
+   * `WarningsModel` whether a warning is recorded, and "none recorded" is also
+   * what it answers when none has been *evaluated*. The pass that records them
+   * is debounced (~2 s lazy, ~50 ms urgent, above), and nothing forced it to
+   * land before an export. So two builds of a byte-identical project could
+   * differ in which wires they contained, with no diagnostic and nothing in the
+   * artefact saying which one you got.
+   *
+   * 🔴 **Unconditional, and that is the whole point.** "Run the pending pass if
+   * one is scheduled" would be a no-op in the window D13 is actually about: a
+   * freshly imported graph has never scheduled a pass at all, which is exactly
+   * what a build taken shortly after opening a project is made of. The measured
+   * flip went 32 healthy → 13 healthy on one project with no edit between the
+   * readings.
+   *
+   * Cost is one walk of this graph's nodes and connections — the same order as
+   * the export that is about to walk them anyway — and `setWarning` coalesces
+   * its listeners through `scheduleNotifyChanged`, so this does not fan out one
+   * notification per warning it writes.
+   *
+   * ⚠️ It inherits `evaluateHealth`'s own guards: with the node library
+   * unloaded, or this component's module unregistered, it is a no-op and the
+   * verdict stays whatever was last recorded. Those are states in which a build
+   * should not be taken at all, and this does not make them safe — it declines
+   * to invent an answer for them.
+   */
+  flushEvaluateHealth() {
+    // Drop any pending pass on the floor: it would recompute exactly what the
+    // call below is about to compute, and leaving the timer armed lets it land
+    // mid-export on a graph the caller has already read.
+    if (this.evaluatehealthTimer !== undefined) clearTimeout(this.evaluatehealthTimer);
+    this.evaluatehealthTimer = undefined;
+    this.evaluatehealthScheduled = false;
+    this.evaluatehealthDeadline = Infinity;
+
+    this.evaluateHealth();
+  }
+
+  /**
+   * Does any wire touching this node currently carry a warning that the node's
+   * ports arriving could clear?
+   *
+   * The gate on the urgent lane. Cheap — one pass over this graph's own
+   * connections, and `getWarnings` is a two-level object lookup — and it keeps
+   * the fast pass off the common path, where a viewer pushing ports for a
+   * hundred healthy nodes during load would otherwise schedule a hundred
+   * graph-wide health passes at 50 ms instead of coalescing into one at 2 s.
+   */
+  hasUnresolvedPortWarning(nodeId: string): boolean {
+    if (!this.owner) return false;
+
+    return this.connections.some((c) => {
+      if (c.fromId !== nodeId && c.toId !== nodeId) return false;
+
+      const w = WarningsModel.instance.getWarnings({ component: this.owner, connection: c });
+      if (!w) return false;
+
+      // Entries are `{ ref, warning }`; the warning's key lives on the ref.
+      return w.warnings.some((entry) => UNRESOLVED_PORT_WARNING_KEYS.indexOf(entry.ref.key) !== -1);
+    });
   }
 
   evaluateHealth() {
@@ -598,7 +921,7 @@ export class NodeGraphModel extends Model {
     const sourcePort = sourceNode && c.fromProperty ? sourceNode.getPort(c.fromProperty) : undefined;
     WarningsModel.instance.setWarning(
       { component: this.owner, connection: c, key: 'con-no-source-port' },
-      !sourcePort
+      !sourcePort && !isWireDeclaredPort(sourceNode, c.fromProperty)
         ? {
             message: "Source port doesn't exist.",
             showGlobally: true,
@@ -610,11 +933,78 @@ export class NodeGraphModel extends Model {
     const targetPort = targetNode && c.toProperty ? targetNode.getPort(c.toProperty) : undefined;
     WarningsModel.instance.setWarning(
       { component: this.owner, connection: c, key: 'con-no-target-port' },
-      !targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])
+      (!targetPort || !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['extended'])) &&
+      !isWireDeclaredPort(targetNode, c.toProperty)
         ? {
             message: "Target port doesn't exist.",
             showGlobally: true,
             level: 'error'
+          }
+        : undefined
+    );
+
+    /**
+     * FB-021 — the wire into a port that is SWITCHED OFF rather than missing.
+     *
+     * Richard: *"maybe make it dotted for a port that can't work? That's what happens when a
+     * port is deleted at the moment and the connector is still there."* The precedent he is
+     * remembering is the statement directly above, and this is the case it excludes.
+     *
+     * 🔴 **The `['extended']` scope above is the whole gap.** `portConnectivity.ts` spells the
+     * two apart: `extended` means *"not on the node at all"*, while an unnamed group — which
+     * `nodelibraryexport.ts:146` defaults to `conditionalports/basic` — *"only suppresses the
+     * property row; the port still exists and a wire to it stays valid."* So a `basic`-gated
+     * port is live, accepts the wire, delivers the value, and the consumer then ignores it:
+     * **328 input ports on the shipped catalog are in that state**, against 21 `extended` ones.
+     * `modelProxy` hid the row and this function left the wire solid — one defect, two surfaces.
+     *
+     * ⚠️ `level: 'warning'`, ruled by Richard, and it is not a hedge: the wire is *valid* and
+     * its value is *ignored*, which is a different thing from the deleted port above. Red keeps
+     * meaning "this cannot work at all". The dash comes free either way — `getConnectionHealth`
+     * turns any unhealthy verdict into `setLineDash([5])` in every paint path, which is why
+     * this deliberately adds **no fourth dash pattern** to the three `restoreWireDash` already
+     * warns are barely distinguishable.
+     *
+     * ✅ **Nothing new has to trigger this, and that is measured rather than assumed.**
+     * `setParameter` → `notifyListeners('parametersChanged')` → `model.js:76`'s global bridge
+     * → `Model.parametersChanged` (bound in `bindModels`) → `scheduleUpdateTypes` → 1 ms →
+     * `updateTypes` → `scheduleEvaluateHealth` → this function, 2 s later. So flipping the
+     * control that gates the port re-evaluates the wire on the path that already exists, and
+     * FB-022's 13-writes-per-60px-drag is coalesced by the debounce that is already there.
+     *
+     * 🔴 A prior session recorded the opposite — *"nothing re-evaluates health on a parameter
+     * change"* — from `grep parameterChanged`, which **misses `parametersChanged`**. The
+     * conclusion that followed (a new trigger, guarded against the hot path) would have been a
+     * second scheduler racing the first. **A bounded query reports its bound.**
+     *
+     * ⚠️ Deliberately NOT added to `UNRESOLVED_PORT_WARNING_KEYS`. That list is what *ports
+     * arriving* can clear, and it arms FIX-007's 50 ms urgent lane; this warning is cleared by
+     * a parameter, on the lazy lane above, and putting it there would fire the fast path for a
+     * condition `instancePortsChanged` cannot change.
+     */
+    const gatedReason =
+      targetPort && targetNode && !NodeLibrary.instance.isConditionalPortValid(targetNode, c.toProperty, ['basic'])
+        ? reasonsForGatedPorts(targetNode.type && targetNode.type.dynamicports, [c.toProperty], targetNode.getPorts())
+            .get(c.toProperty)
+        : undefined;
+    WarningsModel.instance.setWarning(
+      { component: this.owner, connection: c, key: 'con-target-port-gated' },
+      gatedReason
+        ? {
+            /*
+             * One explanation, from the module that already owns it. `portGateReason` narrates
+             * the same declaration the property row narrates, so the wire and the panel cannot
+             * drift into two different accounts of why the port is off — and a port whose
+             * condition that module refuses to put words to raises nothing here either, which
+             * is BCN-010's rule: a mark with no reason reads as "broken", not as "switched off".
+             */
+            message:
+              'This wire is delivering a value the node ignores: <strong>' +
+              gatedReason.gateLabel +
+              '</strong> has switched this port off. ' +
+              gatedReason.sentence,
+            showGlobally: true,
+            level: 'warning'
           }
         : undefined
     );
@@ -660,6 +1050,34 @@ export class NodeGraphModel extends Model {
               NodeLibrary.nameForPortType(sourcePort.type) +
               '</strong>',
             level: 'error'
+          }
+        : undefined
+    );
+
+    /**
+     * FIX-025 — the wire the table ALLOWS and the runtime does not convert.
+     *
+     * The mismatch warning above only fires when `canCastPortTypes` says no. Richard's report
+     * is the case where it says yes and the value still arrives wrong: a string wired into a
+     * `number` input on a Visual Function, which the runtime stores verbatim. See
+     * `connectionCoercion.ts` for why this is a `warning` and not an error, and why it is
+     * deliberately narrow.
+     */
+    const coercion =
+      targetPort && sourcePort ? unconvertedCast(sourcePort.type as never, targetPort.type as never) : null;
+    WarningsModel.instance.setWarning(
+      { component: this.owner, connection: c, key: 'con-type-unconverted' },
+      coercion
+        ? {
+            message:
+              'This connects a <strong>' +
+              coercion.from +
+              '</strong> to a <strong>' +
+              coercion.to +
+              '</strong> port, and ' +
+              coercion.consequence +
+              '.',
+            level: 'warning'
           }
         : undefined
     );

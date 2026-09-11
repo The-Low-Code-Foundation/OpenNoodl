@@ -25,8 +25,14 @@ interface RequestOptions {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   success(response?: any): void;
+  /**
+   * DEF-026: also receives `xhr.status`, because `response` alone cannot
+   * separate the two failures with opposite fixes — a backend that answered
+   * with an error body, and a backend that never answered at all (a connection
+   * refusal is `status 0` with an empty body, so `response` is `undefined`).
+   */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error(response?: any): void;
+  error(response?: any, status?: number): void;
 }
 
 function _makeRequest(path: string, options: RequestOptions): void {
@@ -43,7 +49,7 @@ function _makeRequest(path: string, options: RequestOptions): void {
 
       if (xhr.status === 200 || xhr.status === 201) {
         options.success(json);
-      } else options.error(json);
+      } else options.error(json, xhr.status);
     }
   };
 
@@ -149,7 +155,7 @@ const CloudFunctionNode: NodeDefinitionOptions = {
     // ⚠️ **No `Unchanged`.** The node cannot know whether the function it invoked changed
     // anything — only the function does, and it says so through its own result outputs.
     ...outcomeOutputs({
-      group: 'Signals',
+      group: 'Events',
       done: 'Fires once the function has returned and its result outputs are up to date',
       failure:
         'Fires when the function could not be reached or answered with an error, after the reason has been reported on the error channel'
@@ -308,8 +314,20 @@ const CloudFunctionNode: NodeDefinitionOptions = {
           // Last, after every `out-…` output it describes.
           reportOutcomes(this, tokens, 'done');
         },
-        error: (e) => {
-          const error = typeof e === 'string' ? e : e.error || 'Failed running cloud function.';
+        // DEF-026: this handler must be total over everything the XHR can hand it.
+        // It used to dereference `e.error` unconditionally, so a connection refusal
+        // (`status 0`, empty body ⇒ `e === undefined`) threw a TypeError inside the
+        // XHR callback and the one route to the `failure` outcome never ran — a
+        // graph wired correctly for failure showed nothing when the backend was
+        // simply not running, which is the ordinary way this breaks.
+        error: (e, status) => {
+          const error =
+            typeof e === 'string'
+              ? e
+              : (e && e.error) ||
+                (status === 0
+                  ? 'Could not reach the backend at ' + endpoint
+                  : 'Failed running cloud function.');
           this._internal.lastCallResult = {
             status: 'failure',
             error

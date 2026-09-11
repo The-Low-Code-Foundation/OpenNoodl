@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "4a5dff26-a4d2-5774-85d9-5b4999b0c09b",
+  "name": "SignIn",
+  "path": "/Pages/SignIn",
+  "type": "page",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

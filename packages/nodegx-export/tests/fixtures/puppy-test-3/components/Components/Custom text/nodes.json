@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f3a115f2-fbaf-2591-c111-71db4d963e37",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "2c15df58-77e9-c52d-9cec-2ff89f7f1921",
+      "type": "Group",
+      "x": 0,
+      "y": 0
+    }
+  ],
+  "visualRoots": [
+    "2c15df58-77e9-c52d-9cec-2ff89f7f1921"
+  ]
+}

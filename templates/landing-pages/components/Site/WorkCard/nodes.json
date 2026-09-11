@@ -1,0 +1,259 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4550ca70-324a-53e7-8e16-bf394c02391e",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "wcCard",
+      "type": "Group",
+      "label": "One piece of work",
+      "children": [
+        "wcPhoto",
+        "wcBody"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "cssClassName": "card-lift photo-zoom pressable"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "wcPhoto",
+      "type": "Image",
+      "label": "The photograph",
+      "parent": "wcCard",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 220,
+          "unit": "px"
+        },
+        "src": "",
+        "alt": ""
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "wcBody",
+      "type": "Group",
+      "label": "The words",
+      "parent": "wcCard",
+      "children": [
+        "wcTag",
+        "wcTitle",
+        "wcMeta",
+        "wcLine",
+        "wcMore"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "wcTag",
+      "type": "Group",
+      "label": "What kind of work",
+      "parent": "wcBody",
+      "children": [
+        "wcTagText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "wcTagText",
+      "type": "Text",
+      "label": "The kind",
+      "parent": "wcTag",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "wcTitle",
+      "type": "Text",
+      "label": "What it was",
+      "parent": "wcBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h3"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "wcMeta",
+      "type": "Text",
+      "label": "Who it was for, and when",
+      "parent": "wcBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "wcLine",
+      "type": "Text",
+      "label": "What changed",
+      "parent": "wcBody",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "wcMore",
+      "type": "Text",
+      "label": "The way in",
+      "parent": "wcBody",
+      "parameters": {
+        "text": "Read the story →",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "wcMetaFmt",
+      "type": "String Format",
+      "label": "Client · year",
+      "parameters": {
+        "format": "{client} · {year}"
+      },
+      "x": 470,
+      "y": 760
+    },
+    {
+      "id": "wcPopup",
+      "type": "NavigationShowPopup",
+      "label": "Open this story",
+      "parameters": {
+        "target": "/Site/CaseStudy",
+        "stackPolicy": "replace"
+      },
+      "x": 470,
+      "y": 40
+    },
+    {
+      "id": "wcInputs",
+      "type": "Component Inputs",
+      "label": "The piece of work",
+      "ports": [
+        {
+          "name": "picture",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "alt",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "client",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "year",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "category",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "summary",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "brief",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "did",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "outcome",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 470,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "wcCard"
+  ]
+}

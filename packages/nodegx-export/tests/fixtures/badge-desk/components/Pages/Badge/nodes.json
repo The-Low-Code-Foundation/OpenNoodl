@@ -1,0 +1,232 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b2c3d4e5-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Badge",
+      "children": ["shell"],
+      "parameters": {
+        "title": "Badge Desk",
+        "urlPath": "badge"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "keyText",
+        "newKeyButton",
+        "lastKeyText",
+        "recordIdText",
+        "newRecordButton",
+        "lastRecordText",
+        "recordErrorText",
+        "lastFailureText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Badge Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+
+    {
+      "id": "rowKey",
+      "type": "Unique Id",
+      "label": "Row key",
+      "x": 620,
+      "y": 360
+    },
+    {
+      "id": "keyText",
+      "type": "Text",
+      "label": "Row key",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 360
+    },
+    {
+      "id": "newKeyButton",
+      "type": "net.noodl.controls.button",
+      "label": "New row key",
+      "parent": "shell",
+      "parameters": {
+        "label": "New row key"
+      },
+      "x": 160,
+      "y": 420
+    },
+    {
+      "id": "saveKey",
+      "type": "Set Variable",
+      "label": "Save row key",
+      "parameters": {
+        "name": "lastKey"
+      },
+      "x": 880,
+      "y": 420
+    },
+    {
+      "id": "lastKeyVar",
+      "type": "Variable2",
+      "label": "Last key",
+      "parameters": {
+        "name": "lastKey"
+      },
+      "x": 880,
+      "y": 480
+    },
+    {
+      "id": "lastKeyText",
+      "type": "Text",
+      "label": "Last key saved",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 480
+    },
+
+    {
+      "id": "recordId",
+      "type": "net.noodl.UUID",
+      "label": "Record id",
+      "x": 620,
+      "y": 600
+    },
+    {
+      "id": "recordIdText",
+      "type": "Text",
+      "label": "Record id",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 600
+    },
+    {
+      "id": "newRecordButton",
+      "type": "net.noodl.controls.button",
+      "label": "New record id",
+      "parent": "shell",
+      "parameters": {
+        "label": "New record id"
+      },
+      "x": 160,
+      "y": 660
+    },
+    {
+      "id": "saveRecord",
+      "type": "Set Variable",
+      "label": "Save record id",
+      "parameters": {
+        "name": "lastRecord"
+      },
+      "x": 880,
+      "y": 660
+    },
+    {
+      "id": "lastRecordVar",
+      "type": "Variable2",
+      "label": "Last record",
+      "parameters": {
+        "name": "lastRecord"
+      },
+      "x": 880,
+      "y": 720
+    },
+    {
+      "id": "lastRecordText",
+      "type": "Text",
+      "label": "Last record saved",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 720
+    },
+
+    {
+      "id": "recordErrorText",
+      "type": "Text",
+      "label": "Record id problem",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 780
+    },
+    {
+      "id": "saveFailure",
+      "type": "Set Variable",
+      "label": "Save failure",
+      "parameters": {
+        "name": "lastFailure"
+      },
+      "x": 880,
+      "y": 840
+    },
+    {
+      "id": "lastFailureVar",
+      "type": "Variable2",
+      "label": "Last failure",
+      "parameters": {
+        "name": "lastFailure"
+      },
+      "x": 880,
+      "y": 900
+    },
+    {
+      "id": "lastFailureText",
+      "type": "Text",
+      "label": "Last failure saved",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 840
+    }
+  ],
+  "visualRoots": ["page"]
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e7a1c4d2-5b3f-4e8d-9c1a-00000000009b",
+  "name": "TabOverview",
+  "path": "/Components/TabOverview",
+  "type": "visual",
+  "modified": "2026-09-05T10:00:00.000Z",
+  "description": "EXP-011 \u00a761 fixture: the overview tab."
+}

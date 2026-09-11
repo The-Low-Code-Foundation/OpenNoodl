@@ -1,0 +1,393 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "8c74118f-e74c-5892-8887-67aee46d76af",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req",
+      "type": "noodl.cloud.request",
+      "label": "claimAssociation(setupToken, associationName, tagline, blurb, moderatorName, email, password)",
+      "parameters": {
+        "params": "setupToken,associationName,tagline,blurb,moderatorName,email,password",
+        "ptype-setupToken": "string",
+        "preq-setupToken": true,
+        "ptype-associationName": "string",
+        "preq-associationName": true,
+        "ptype-moderatorName": "string",
+        "preq-moderatorName": true,
+        "ptype-tagline": "string",
+        "preq-tagline": false,
+        "ptype-blurb": "string",
+        "preq-blurb": false,
+        "ptype-email": "string",
+        "preq-email": true,
+        "ptype-password": "string",
+        "preq-password": true,
+        "allowNoAuth": true
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "secret",
+      "type": "noodl.cloud.secret",
+      "label": "ASSOCIATION_SETUP_TOKEN",
+      "parameters": {
+        "name": "ASSOCIATION_SETUP_TOKEN"
+      },
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "existing",
+      "type": "DbCollection2",
+      "label": "Has this members’ area been set up?",
+      "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "collectionName": "Association",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "gate",
+      "type": "JavaScriptFunction",
+      "label": "Token matches AND nobody has set this up yet",
+      "parameters": {
+        "runOnChange-in-moderatorName": true,
+        "runOnChange-in-expected": false,
+        "runOnChange-in-supplied": false,
+        "runOnChange-in-unclaimed": false,
+        "runOnChange-in-rows": false,
+        "runOnChange-in-name": false,
+        "runOnChange-in-tagline": false,
+        "runOnChange-in-blurb": false,
+        "runOnChange-in-email": false,
+        "runOnChange-in-password": false,
+        "functionScript": "if (Inputs.rows === undefined) return;\nif (Inputs.expected === undefined || Inputs.supplied === undefined) return;\nconst expected = Inputs.expected || '';\nconst supplied = Inputs.supplied || '';\n// Constant-time compare. A plain === leaks the matching prefix length\n// through timing, and this is the one door in the template that mints\n// a moderator — the three extra lines are cheaper than the argument.\nlet diff = expected.length ^ supplied.length;\nconst n = Math.max(expected.length, supplied.length);\nfor (let i = 0; i < n; i++) {\n  diff |= (expected.charCodeAt(i) || 0) ^ (supplied.charCodeAt(i) || 0);\n}\n// An unprovisioned secret is never a match: an empty expected token\n// must not let a caller in with an empty string.\nconst tokenOk = expected.length > 0 && diff === 0;\nif (!tokenOk || Inputs.unclaimed !== true) {\n  Outputs.denied();\n  return;\n}\n// Rule 2: everything the rest of the graph needs leaves from HERE, so\n// no node downstream can act on a value that is still in flight.\nOutputs.username = Inputs.email;\nOutputs.email = Inputs.email;\nOutputs.password = Inputs.password;\nOutputs.name = Inputs.name || 'Our association';\nOutputs.moderatorName = Inputs.moderatorName || '';\nOutputs.tagline = Inputs.tagline || '';\nOutputs.blurb = Inputs.blurb || '';\nOutputs.claimed = true;\nOutputs.ok();"
+      },
+      "ports": [
+        {
+          "name": "out-ok",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-denied",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-expected",
+          "displayName": "expected",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-supplied",
+          "displayName": "supplied",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-unclaimed",
+          "displayName": "unclaimed",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-password",
+          "displayName": "password",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-name",
+          "displayName": "name",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-moderatorName",
+          "displayName": "moderatorName",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-tagline",
+          "displayName": "tagline",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-blurb",
+          "displayName": "blurb",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-username",
+          "displayName": "username",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-email",
+          "displayName": "email",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-password",
+          "displayName": "password",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-moderatorName",
+          "displayName": "moderatorName",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-tagline",
+          "displayName": "tagline",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-blurb",
+          "displayName": "blurb",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-claimed",
+          "displayName": "claimed",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "create",
+      "type": "noodl.cloud.createuser",
+      "label": "Create the moderator’s account",
+      "parameters": {
+        "emailVerified": true
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "grant",
+      "type": "noodl.cloud.addusertorole",
+      "label": "Make them the moderator",
+      "parameters": {
+        "role": "admin",
+        "createRole": true
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "mark",
+      "type": "NewDbModelProperties",
+      "label": "Write the association row — the landing page’s content",
+      "parameters": {
+        "collectionName": "Association",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          },
+          {
+            "id": "world",
+            "label": "World"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true,
+        "acl-world-target": "everyone",
+        "acl-world-read": true,
+        "acl-world-write": false
+      },
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "founding",
+      "type": "JavaScriptFunction",
+      "label": "The founding moderator’s own directory row",
+      "parameters": {
+        "runOnChange-in-moderatorName": true,
+        "runOnChange-in-userId": false,
+        "runOnChange-in-email": false,
+        "functionScript": "function tpl002Token() {\n  const c = typeof crypto !== 'undefined' ? crypto : undefined;\n  if (!c || typeof c.randomUUID !== 'function') return '';\n  return (c.randomUUID() + c.randomUUID()).replace(/-/g, '');\n}\nif (Inputs.userId === undefined || Inputs.email === undefined) return;\nconst email = Inputs.email === null ? '' : String(Inputs.email);\nOutputs.userId = Inputs.userId;\nOutputs.email = email;\n// D22: setup now asks the founder their own name, so the directory can\n// show a person rather than an address. The fallback stays because a\n// row filed under an email is still better than one filed under\n// nothing — but the door makes moderatorName required, so it is dead.\nconst who = (Inputs.moderatorName || '').trim();\nOutputs.name = who === '' ? email : who;\nOutputs.joinedAt = new Date().toISOString();\nOutputs.standing = 'moderator';\nOutputs.notifyByEmail = false;\nOutputs.unsubscribeToken = tpl002Token();\nOutputs.file();"
+      },
+      "ports": [
+        {
+          "name": "out-file",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-userId",
+          "displayName": "userId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-moderatorName",
+          "displayName": "moderatorName",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-userId",
+          "displayName": "userId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-email",
+          "displayName": "email",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-joinedAt",
+          "displayName": "joinedAt",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-standing",
+          "displayName": "standing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-notifyByEmail",
+          "displayName": "notifyByEmail",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-unsubscribeToken",
+          "displayName": "unsubscribeToken",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 880
+    },
+    {
+      "id": "founder",
+      "type": "NewDbModelProperties",
+      "label": "File the founding moderator in the directory",
+      "parameters": {
+        "collectionName": "Member",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true
+      },
+      "x": 40,
+      "y": 1000
+    },
+    {
+      "id": "res",
+      "type": "noodl.cloud.response",
+      "label": "Set up",
+      "parameters": {
+        "params": "claimed"
+      },
+      "x": 40,
+      "y": 1120
+    },
+    {
+      "id": "deny",
+      "type": "noodl.cloud.response",
+      "label": "Refused",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "This members’ area cannot be set up with those details."
+      },
+      "x": 40,
+      "y": 1240
+    }
+  ]
+}

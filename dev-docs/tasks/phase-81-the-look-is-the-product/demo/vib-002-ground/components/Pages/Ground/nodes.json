@@ -1,0 +1,586 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "009e7907-1903-5cb9-89b3-e8b338a5ddb2",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "The ground",
+      "parameters": {
+        "title": "The ground",
+        "urlPath": ""
+      },
+      "children": [
+        "r0_hero",
+        "r1_band",
+        "r2_hero"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "r0_hero",
+      "type": "Group",
+      "label": "Hero band — gradient ground",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-spotlight)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "parent": "r0_page",
+      "children": [
+        "r0_shell"
+      ],
+      "x": 60,
+      "y": 160
+    },
+    {
+      "id": "r0_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "r0_hero",
+      "children": [
+        "r0_eyebrow",
+        "r0_headline",
+        "r0_lead",
+        "r0_actions",
+        "r0_stats"
+      ],
+      "x": 120,
+      "y": 270
+    },
+    {
+      "id": "r0_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "For independent studios",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r0_shell",
+      "x": 180,
+      "y": 380
+    },
+    {
+      "id": "r0_headline",
+      "type": "Text",
+      "label": "Display headline — fluid",
+      "parameters": {
+        "text": "Ship the site you sketched, not the one the template allowed.",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 900,
+          "unit": "px"
+        }
+      },
+      "parent": "r0_shell",
+      "x": 60,
+      "y": 490
+    },
+    {
+      "id": "r0_lead",
+      "type": "Text",
+      "label": "Lead",
+      "parameters": {
+        "text": "Every band gets its own ground. Every headline sets itself to the width it is read at. Nothing here is a browser default with your words poured into it.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "parent": "r0_shell",
+      "x": 120,
+      "y": 600
+    },
+    {
+      "id": "r0_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r0_shell",
+      "children": [
+        "r0_cta",
+        "r0_secondary"
+      ],
+      "x": 180,
+      "y": 710
+    },
+    {
+      "id": "r0_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary CTA",
+      "parameters": {
+        "label": "Start building",
+        "backgroundColor": "var(--primary-foreground)",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r0_actions",
+      "x": 60,
+      "y": 820
+    },
+    {
+      "id": "r0_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary CTA",
+      "parameters": {
+        "label": "See a worked page",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r0_actions",
+      "x": 120,
+      "y": 930
+    },
+    {
+      "id": "r0_stats",
+      "type": "Group",
+      "label": "Glass panel — translucent over the gradient",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        },
+        "flexDirection": "row",
+        "columnGap": "var(--space-10)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-2xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "marginTop": "var(--space-6)"
+      },
+      "parent": "r0_shell",
+      "children": [
+        "r0_stat_a",
+        "r0_stat_b"
+      ],
+      "x": 180,
+      "y": 1040
+    },
+    {
+      "id": "r0_stat_a",
+      "type": "Text",
+      "label": "Stat A",
+      "parameters": {
+        "text": "9 of 9 pages judged",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r0_stats",
+      "x": 60,
+      "y": 1150
+    },
+    {
+      "id": "r0_stat_b",
+      "type": "Text",
+      "label": "Stat B",
+      "parameters": {
+        "text": "0 flat-colour bands",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r0_stats",
+      "x": 120,
+      "y": 1260
+    },
+    {
+      "id": "r1_band",
+      "type": "Group",
+      "label": "Image band — picture ground under a scrim",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 520,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundImage": "/assets/hero.jpg",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "parent": "r1_page",
+      "children": [
+        "r1_shell"
+      ],
+      "x": 180,
+      "y": 1370
+    },
+    {
+      "id": "r1_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight"
+      },
+      "parent": "r1_band",
+      "children": [
+        "r1_heading",
+        "r1_sub"
+      ],
+      "x": 60,
+      "y": 1480
+    },
+    {
+      "id": "r1_heading",
+      "type": "Text",
+      "label": "Heading over the picture",
+      "parameters": {
+        "text": "The workshop, on the morning of the first firing",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        }
+      },
+      "parent": "r1_shell",
+      "x": 120,
+      "y": 1590
+    },
+    {
+      "id": "r1_sub",
+      "type": "Text",
+      "label": "Sub-line",
+      "parameters": {
+        "text": "Six weeks of glazing tests, and one kiln that finally behaved.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "parent": "r1_shell",
+      "x": 180,
+      "y": 1700
+    },
+    {
+      "id": "r2_hero",
+      "type": "Group",
+      "label": "Hero band — gradient ground",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-brand)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "parent": "r2_page",
+      "children": [
+        "r2_shell"
+      ],
+      "x": 60,
+      "y": 1810
+    },
+    {
+      "id": "r2_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "r2_hero",
+      "children": [
+        "r2_eyebrow",
+        "r2_headline",
+        "r2_lead",
+        "r2_actions",
+        "r2_stats"
+      ],
+      "x": 120,
+      "y": 1920
+    },
+    {
+      "id": "r2_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "The same band, one token apart",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r2_shell",
+      "x": 180,
+      "y": 2030
+    },
+    {
+      "id": "r2_headline",
+      "type": "Text",
+      "label": "Display headline — fluid",
+      "parameters": {
+        "text": "Change the mood without touching the layout.",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 900,
+          "unit": "px"
+        }
+      },
+      "parent": "r2_shell",
+      "x": 60,
+      "y": 2140
+    },
+    {
+      "id": "r2_lead",
+      "type": "Text",
+      "label": "Lead",
+      "parameters": {
+        "text": "This band is the hero recipe with var(--gradient-brand) instead of var(--gradient-spotlight). Nothing else moved.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "parent": "r2_shell",
+      "x": 120,
+      "y": 2250
+    },
+    {
+      "id": "r2_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r2_shell",
+      "children": [
+        "r2_cta",
+        "r2_secondary"
+      ],
+      "x": 180,
+      "y": 2360
+    },
+    {
+      "id": "r2_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary CTA",
+      "parameters": {
+        "label": "Start building",
+        "backgroundColor": "var(--primary-foreground)",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r2_actions",
+      "x": 60,
+      "y": 2470
+    },
+    {
+      "id": "r2_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary CTA",
+      "parameters": {
+        "label": "See a worked page",
+        "backgroundColor": "transparent",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "r2_actions",
+      "x": 120,
+      "y": 2580
+    },
+    {
+      "id": "r2_stats",
+      "type": "Group",
+      "label": "Glass panel — translucent over the gradient",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        },
+        "flexDirection": "row",
+        "columnGap": "var(--space-10)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-2xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "marginTop": "var(--space-6)"
+      },
+      "parent": "r2_shell",
+      "children": [
+        "r2_stat_a",
+        "r2_stat_b"
+      ],
+      "x": 180,
+      "y": 2690
+    },
+    {
+      "id": "r2_stat_a",
+      "type": "Text",
+      "label": "Stat A",
+      "parameters": {
+        "text": "Same nodes",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r2_stats",
+      "x": 60,
+      "y": 2800
+    },
+    {
+      "id": "r2_stat_b",
+      "type": "Text",
+      "label": "Stat B",
+      "parameters": {
+        "text": "Different ground",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "parent": "r2_stats",
+      "x": 120,
+      "y": 2910
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

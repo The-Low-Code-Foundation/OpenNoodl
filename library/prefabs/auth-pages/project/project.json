@@ -1,0 +1,2179 @@
+{
+  "name": "Auth Pages",
+  "components": [
+    {
+      "name": "/Auth Pages",
+      "id": "27baec80-dac6-55cb-840b-9e0695657fff",
+      "graph": {
+        "connections": [],
+        "roots": [
+          {
+            "id": "e008eb40-0679-5cc4-a0c1-be5b27f77102",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "dd05189f-bfd9-58e4-a550-c916bb3aef1c",
+                "type": "Router",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "name": "Auth",
+                  "pages": {
+                    "startPage": "/Auth Pages/Sign In",
+                    "routes": [
+                      "/Auth Pages/Sign In",
+                      "/Auth Pages/Sign Up",
+                      "/Auth Pages/Forgot Password",
+                      "/Auth Pages/Reset Password"
+                    ]
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [],
+                "label": "Auth Router"
+              }
+            ],
+            "label": "Auth Pages"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Auth Pages/Sign In",
+      "id": "3f8a2bee-ff7a-57e7-af44-fae27cbdce3f",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+            "fromProperty": "onClick",
+            "toId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "toProperty": "login"
+          },
+          {
+            "fromId": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+            "fromProperty": "onClick",
+            "toId": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "toProperty": "to-Busy"
+          },
+          {
+            "fromId": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+            "fromProperty": "onClick",
+            "toId": "65b19862-1148-5c10-aeb2-813945d3cef2",
+            "toProperty": "to-Hidden"
+          },
+          {
+            "fromId": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "fromProperty": "Label",
+            "toId": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "fromProperty": "Enabled",
+            "toId": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "fromProperty": "failure",
+            "toId": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "fromProperty": "failure",
+            "toId": "65b19862-1148-5c10-aeb2-813945d3cef2",
+            "toProperty": "to-Shown"
+          },
+          {
+            "fromId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "fromProperty": "error",
+            "toId": "32341bf9-6190-559e-951f-657165ea1427",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "65b19862-1148-5c10-aeb2-813945d3cef2",
+            "fromProperty": "Visible",
+            "toId": "32341bf9-6190-559e-951f-657165ea1427",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "3b13e616-4dd2-57c0-aea9-2132860da6bd",
+            "fromProperty": "onTextChanged",
+            "toId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "toProperty": "username"
+          },
+          {
+            "fromId": "fc9bb66d-e23f-5d0c-9622-cd28ab8dcd0a",
+            "fromProperty": "onTextChanged",
+            "toId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "toProperty": "password"
+          },
+          {
+            "fromId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "fromProperty": "done",
+            "toId": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "fromProperty": "done",
+            "toId": "56a831b1-4f38-540e-861a-30b63384bb85",
+            "toProperty": "sendEvent"
+          },
+          {
+            "fromId": "190ad2d6-6e98-5207-8b56-ec1ef3b8610b",
+            "fromProperty": "onClick",
+            "toId": "1c1b0abd-b001-5f11-abdd-a4ce8698da30",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "d3df7cd5-cd0e-51a6-b44e-7a3202af4992",
+            "fromProperty": "onClick",
+            "toId": "e1494521-0916-5f04-9f21-0c438cf6ba6b",
+            "toProperty": "navigate"
+          }
+        ],
+        "roots": [
+          {
+            "id": "867f0182-d7c7-5317-8e9f-3844c21232fa",
+            "type": "Page",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "title": "Sign In",
+              "urlPath": "sign-in"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "d3745393-cfa6-53f6-a99a-fab505c0024c",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 380,
+                    "unit": "px"
+                  },
+                  "maxWidth": {
+                    "value": 90,
+                    "unit": "%"
+                  },
+                  "alignX": "center",
+                  "alignY": "center",
+                  "paddingTop": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": 1,
+                  "borderColor": "var(--border)",
+                  "borderRadius": 12
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "92c05790-3ffa-5667-9290-fc00d85a0631",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Sign in",
+                      "as": "h1",
+                      "fontSize": 24,
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Heading"
+                  },
+                  {
+                    "id": "ad0216a3-5125-5a17-83a0-c34aa2363694",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Welcome back. Enter your email and password.",
+                      "fontSize": 14,
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Subtitle"
+                  },
+                  {
+                    "id": "3b13e616-4dd2-57c0-aea9-2132860da6bd",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Email",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "email",
+                      "placeholder": "you@example.com",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Email input"
+                  },
+                  {
+                    "id": "fc9bb66d-e23f-5d0c-9622-cd28ab8dcd0a",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Password",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "password",
+                      "placeholder": "Your password",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Password input"
+                  },
+                  {
+                    "id": "32341bf9-6190-559e-951f-657165ea1427",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": 13,
+                      "color": "var(--destructive)",
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Error message"
+                  },
+                  {
+                    "id": "223393a2-85f8-5dc1-9660-cbf8d2057efa",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Sign in",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "fontSize": 14
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Sign in button"
+                  },
+                  {
+                    "id": "7c86d3ee-e40b-545d-845a-af7458bf8f35",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "columnGap": 6,
+                      "sizeMode": "contentSize",
+                      "alignX": "center",
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "64fa97e5-4284-579d-8f4e-e7e07827d380",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "New here?",
+                          "fontSize": 13,
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Prompt"
+                      },
+                      {
+                        "id": "190ad2d6-6e98-5207-8b56-ec1ef3b8610b",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Create an account",
+                          "fontSize": 13,
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Create an account link"
+                      }
+                    ],
+                    "label": "Links"
+                  },
+                  {
+                    "id": "8af7e117-87f3-5eda-b8ee-8dad4a428239",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "columnGap": 6,
+                      "sizeMode": "contentSize",
+                      "alignX": "center",
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "d3df7cd5-cd0e-51a6-b44e-7a3202af4992",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Forgot your password?",
+                          "fontSize": 13,
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Forgot your password? link"
+                      }
+                    ],
+                    "label": "Links"
+                  }
+                ],
+                "label": "Card"
+              }
+            ],
+            "label": "Sign In"
+          },
+          {
+            "id": "ce3fdac5-4e33-5711-add9-376b307e2815",
+            "type": "net.noodl.user.LogIn",
+            "x": -800,
+            "y": -100,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Log In"
+          },
+          {
+            "id": "de2be93c-0e72-5c4f-83d0-5c5eeea74448",
+            "type": "States",
+            "x": -500,
+            "y": -200,
+            "parameters": {
+              "states": "Idle,Busy",
+              "values": "Label,Enabled",
+              "type-Label": "string",
+              "type-Enabled": "boolean",
+              "value-Idle-Label": "Sign in",
+              "value-Busy-Label": "Signing in\u2026",
+              "value-Idle-Enabled": true,
+              "value-Busy-Enabled": false,
+              "currentState": "Idle"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "Enabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 2
+              },
+              {
+                "name": "to-Idle",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              },
+              {
+                "name": "to-Busy",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "label": "Submit state"
+          },
+          {
+            "id": "65b19862-1148-5c10-aeb2-813945d3cef2",
+            "type": "States",
+            "x": -500,
+            "y": 0,
+            "parameters": {
+              "states": "Hidden,Shown",
+              "values": "Visible",
+              "type-Visible": "boolean",
+              "value-Hidden-Visible": false,
+              "value-Shown-Visible": true,
+              "currentState": "Hidden"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Visible",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "to-Hidden",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 2
+              },
+              {
+                "name": "to-Shown",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "label": "Error visibility"
+          },
+          {
+            "id": "56a831b1-4f38-540e-861a-30b63384bb85",
+            "type": "Event Sender",
+            "x": -800,
+            "y": -300,
+            "parameters": {
+              "channelName": "Auth Success"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Announce signed in"
+          },
+          {
+            "id": "1c1b0abd-b001-5f11-abdd-a4ce8698da30",
+            "type": "RouterNavigate",
+            "x": -500,
+            "y": 200,
+            "parameters": {
+              "target": "/Auth Pages/Sign Up",
+              "router": "Auth"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Go to Sign Up"
+          },
+          {
+            "id": "e1494521-0916-5f04-9f21-0c438cf6ba6b",
+            "type": "RouterNavigate",
+            "x": -500,
+            "y": 320,
+            "parameters": {
+              "target": "/Auth Pages/Forgot Password",
+              "router": "Auth"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Go to Forgot Password"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Auth Pages/Sign Up",
+      "id": "983e39b0-3bcc-5f44-a447-df5009a0280c",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "9ba9d631-430b-5852-8b23-958cf18338bc",
+            "fromProperty": "onClick",
+            "toId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "toProperty": "signup"
+          },
+          {
+            "fromId": "9ba9d631-430b-5852-8b23-958cf18338bc",
+            "fromProperty": "onClick",
+            "toId": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "toProperty": "to-Busy"
+          },
+          {
+            "fromId": "9ba9d631-430b-5852-8b23-958cf18338bc",
+            "fromProperty": "onClick",
+            "toId": "647a49d1-f413-59af-8bfe-e8130d67d146",
+            "toProperty": "to-Hidden"
+          },
+          {
+            "fromId": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "fromProperty": "Label",
+            "toId": "9ba9d631-430b-5852-8b23-958cf18338bc",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "fromProperty": "Enabled",
+            "toId": "9ba9d631-430b-5852-8b23-958cf18338bc",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "fromProperty": "failure",
+            "toId": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "fromProperty": "failure",
+            "toId": "647a49d1-f413-59af-8bfe-e8130d67d146",
+            "toProperty": "to-Shown"
+          },
+          {
+            "fromId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "fromProperty": "error",
+            "toId": "9ab9cba0-5c95-52ee-8f6a-7513e5100d29",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "647a49d1-f413-59af-8bfe-e8130d67d146",
+            "fromProperty": "Visible",
+            "toId": "9ab9cba0-5c95-52ee-8f6a-7513e5100d29",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "7cebd334-ac1a-530a-9296-f107f9f1a014",
+            "fromProperty": "onTextChanged",
+            "toId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "toProperty": "username"
+          },
+          {
+            "fromId": "7cebd334-ac1a-530a-9296-f107f9f1a014",
+            "fromProperty": "onTextChanged",
+            "toId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "toProperty": "email"
+          },
+          {
+            "fromId": "4f971283-b478-5e6a-b5f4-fdf48bd22c87",
+            "fromProperty": "onTextChanged",
+            "toId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "toProperty": "password"
+          },
+          {
+            "fromId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "fromProperty": "done",
+            "toId": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "fromProperty": "done",
+            "toId": "964f699f-0539-548c-8a86-ffc60f870f28",
+            "toProperty": "sendEvent"
+          },
+          {
+            "fromId": "db8a6046-01de-581a-898f-1c1c9495a45d",
+            "fromProperty": "onClick",
+            "toId": "242e3872-5d10-5f78-ac00-e52e44f09008",
+            "toProperty": "navigate"
+          }
+        ],
+        "roots": [
+          {
+            "id": "17f9bda3-999d-5437-b769-9a8f27b2afe9",
+            "type": "Page",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "title": "Sign Up",
+              "urlPath": "sign-up"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "b79bce46-1dac-5841-a5d2-9ebeb0f2e1cd",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 380,
+                    "unit": "px"
+                  },
+                  "maxWidth": {
+                    "value": 90,
+                    "unit": "%"
+                  },
+                  "alignX": "center",
+                  "alignY": "center",
+                  "paddingTop": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": 1,
+                  "borderColor": "var(--border)",
+                  "borderRadius": 12
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "4526ba1f-2de0-5c9d-bf5b-527331b5148e",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Create an account",
+                      "as": "h1",
+                      "fontSize": 24,
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Heading"
+                  },
+                  {
+                    "id": "36863bab-c19a-5b97-86e1-8da77f4d4ad2",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Sign up with your email and a password.",
+                      "fontSize": 14,
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Subtitle"
+                  },
+                  {
+                    "id": "7cebd334-ac1a-530a-9296-f107f9f1a014",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Email",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "email",
+                      "placeholder": "you@example.com",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Email input"
+                  },
+                  {
+                    "id": "4f971283-b478-5e6a-b5f4-fdf48bd22c87",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Password",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "password",
+                      "placeholder": "Choose a password",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Password input"
+                  },
+                  {
+                    "id": "9ab9cba0-5c95-52ee-8f6a-7513e5100d29",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": 13,
+                      "color": "var(--destructive)",
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Error message"
+                  },
+                  {
+                    "id": "9ba9d631-430b-5852-8b23-958cf18338bc",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Create account",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "fontSize": 14
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Create account button"
+                  },
+                  {
+                    "id": "be650e84-24e8-5757-97db-c24f0ceb7d5d",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "columnGap": 6,
+                      "sizeMode": "contentSize",
+                      "alignX": "center",
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "0a8860c1-b408-5a0e-ad60-a4d99f0dc40c",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Already have an account?",
+                          "fontSize": 13,
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Prompt"
+                      },
+                      {
+                        "id": "db8a6046-01de-581a-898f-1c1c9495a45d",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Sign in",
+                          "fontSize": 13,
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Sign in link"
+                      }
+                    ],
+                    "label": "Links"
+                  }
+                ],
+                "label": "Card"
+              }
+            ],
+            "label": "Sign Up"
+          },
+          {
+            "id": "84d72ece-57fc-5b0d-81ee-553bf4b68cd0",
+            "type": "net.noodl.user.SignUp",
+            "x": -800,
+            "y": -100,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Sign Up"
+          },
+          {
+            "id": "153a74b3-94c4-53e2-ba40-f59b02029918",
+            "type": "States",
+            "x": -500,
+            "y": -200,
+            "parameters": {
+              "states": "Idle,Busy",
+              "values": "Label,Enabled",
+              "type-Label": "string",
+              "type-Enabled": "boolean",
+              "value-Idle-Label": "Create account",
+              "value-Busy-Label": "Creating account\u2026",
+              "value-Idle-Enabled": true,
+              "value-Busy-Enabled": false,
+              "currentState": "Idle"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "Enabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 2
+              },
+              {
+                "name": "to-Idle",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              },
+              {
+                "name": "to-Busy",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "label": "Submit state"
+          },
+          {
+            "id": "647a49d1-f413-59af-8bfe-e8130d67d146",
+            "type": "States",
+            "x": -500,
+            "y": 0,
+            "parameters": {
+              "states": "Hidden,Shown",
+              "values": "Visible",
+              "type-Visible": "boolean",
+              "value-Hidden-Visible": false,
+              "value-Shown-Visible": true,
+              "currentState": "Hidden"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Visible",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "to-Hidden",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 2
+              },
+              {
+                "name": "to-Shown",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "label": "Error visibility"
+          },
+          {
+            "id": "964f699f-0539-548c-8a86-ffc60f870f28",
+            "type": "Event Sender",
+            "x": -800,
+            "y": -300,
+            "parameters": {
+              "channelName": "Auth Success"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Announce signed in"
+          },
+          {
+            "id": "242e3872-5d10-5f78-ac00-e52e44f09008",
+            "type": "RouterNavigate",
+            "x": -500,
+            "y": 200,
+            "parameters": {
+              "target": "/Auth Pages/Sign In",
+              "router": "Auth"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Go to Sign In"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Auth Pages/Forgot Password",
+      "id": "ac9baa22-56d4-5f4d-aed0-0f85977e5ea3",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "fromProperty": "onClick",
+            "toId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "toProperty": "send"
+          },
+          {
+            "fromId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "fromProperty": "onClick",
+            "toId": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "toProperty": "to-Busy"
+          },
+          {
+            "fromId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "fromProperty": "onClick",
+            "toId": "2ad297e9-8b0a-5f56-b932-b2eca2a7ab0b",
+            "toProperty": "to-Hidden"
+          },
+          {
+            "fromId": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "fromProperty": "Label",
+            "toId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "fromProperty": "Enabled",
+            "toId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "fromProperty": "failure",
+            "toId": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "fromProperty": "failure",
+            "toId": "2ad297e9-8b0a-5f56-b932-b2eca2a7ab0b",
+            "toProperty": "to-Shown"
+          },
+          {
+            "fromId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "fromProperty": "error",
+            "toId": "31b0c358-1fe0-5a52-8b4d-6509e5d1c44d",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "2ad297e9-8b0a-5f56-b932-b2eca2a7ab0b",
+            "fromProperty": "Visible",
+            "toId": "31b0c358-1fe0-5a52-8b4d-6509e5d1c44d",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "983d32a0-9013-5243-8d86-e8e8f08818af",
+            "fromProperty": "onTextChanged",
+            "toId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "toProperty": "email"
+          },
+          {
+            "fromId": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+            "fromProperty": "onClick",
+            "toId": "0cee7804-b98c-5de7-981e-49e3204e9c7d",
+            "toProperty": "to-Hidden"
+          },
+          {
+            "fromId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "fromProperty": "success",
+            "toId": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "fromProperty": "success",
+            "toId": "0cee7804-b98c-5de7-981e-49e3204e9c7d",
+            "toProperty": "to-Shown"
+          },
+          {
+            "fromId": "0cee7804-b98c-5de7-981e-49e3204e9c7d",
+            "fromProperty": "Visible",
+            "toId": "17b1cdfd-165f-5501-b7fb-7ded47895fc2",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "4498dbbb-0b52-5408-8850-755a98106d0b",
+            "fromProperty": "onClick",
+            "toId": "5865f54d-f547-5744-b5f5-041c8b16b34b",
+            "toProperty": "navigate"
+          }
+        ],
+        "roots": [
+          {
+            "id": "b7d8d04c-5d7f-5245-8501-e4bbe1dfa0d3",
+            "type": "Page",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "title": "Forgot Password",
+              "urlPath": "forgot-password"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "335835d1-6c81-552e-9613-b879a5d53436",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 380,
+                    "unit": "px"
+                  },
+                  "maxWidth": {
+                    "value": 90,
+                    "unit": "%"
+                  },
+                  "alignX": "center",
+                  "alignY": "center",
+                  "paddingTop": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": 1,
+                  "borderColor": "var(--border)",
+                  "borderRadius": 12
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f5a5c8e1-1e95-51cd-9d04-fe294b8f1cef",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Forgot your password?",
+                      "as": "h1",
+                      "fontSize": 24,
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Heading"
+                  },
+                  {
+                    "id": "02f0eaa6-cc0b-5255-87aa-c5702b855c07",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Enter your email and we will send you a reset link.",
+                      "fontSize": 14,
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Subtitle"
+                  },
+                  {
+                    "id": "983d32a0-9013-5243-8d86-e8e8f08818af",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Email",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "email",
+                      "placeholder": "you@example.com",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Email input"
+                  },
+                  {
+                    "id": "31b0c358-1fe0-5a52-8b4d-6509e5d1c44d",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": 13,
+                      "color": "var(--destructive)",
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Error message"
+                  },
+                  {
+                    "id": "17b1cdfd-165f-5501-b7fb-7ded47895fc2",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "If an account exists for that email, a reset link is on its way.",
+                      "fontSize": 13,
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Sent confirmation"
+                  },
+                  {
+                    "id": "9d2d6be8-804c-5f1e-a89b-d6eaa1fcfeb3",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Send reset link",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "fontSize": 14
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Send reset link button"
+                  },
+                  {
+                    "id": "c73ebe2b-81f1-5ba8-878f-0f9173740417",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "columnGap": 6,
+                      "sizeMode": "contentSize",
+                      "alignX": "center",
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "6be3b2a1-899d-53ed-98aa-5b8d1083dba8",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Remembered it?",
+                          "fontSize": 13,
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Prompt"
+                      },
+                      {
+                        "id": "4498dbbb-0b52-5408-8850-755a98106d0b",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Back to sign in",
+                          "fontSize": 13,
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Back to sign in link"
+                      }
+                    ],
+                    "label": "Links"
+                  }
+                ],
+                "label": "Card"
+              }
+            ],
+            "label": "Forgot Password"
+          },
+          {
+            "id": "00740a36-7cd8-5f61-b119-37c31f03b10d",
+            "type": "net.noodl.user.RequestPasswordReset",
+            "x": -800,
+            "y": -100,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Request Password Reset"
+          },
+          {
+            "id": "24fc5efa-f88d-516c-9c48-6b94f7fb6cfc",
+            "type": "States",
+            "x": -500,
+            "y": -200,
+            "parameters": {
+              "states": "Idle,Busy",
+              "values": "Label,Enabled",
+              "type-Label": "string",
+              "type-Enabled": "boolean",
+              "value-Idle-Label": "Send reset link",
+              "value-Busy-Label": "Sending\u2026",
+              "value-Idle-Enabled": true,
+              "value-Busy-Enabled": false,
+              "currentState": "Idle"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "Enabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 2
+              },
+              {
+                "name": "to-Idle",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              },
+              {
+                "name": "to-Busy",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "label": "Submit state"
+          },
+          {
+            "id": "2ad297e9-8b0a-5f56-b932-b2eca2a7ab0b",
+            "type": "States",
+            "x": -500,
+            "y": 0,
+            "parameters": {
+              "states": "Hidden,Shown",
+              "values": "Visible",
+              "type-Visible": "boolean",
+              "value-Hidden-Visible": false,
+              "value-Shown-Visible": true,
+              "currentState": "Hidden"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Visible",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "to-Hidden",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 2
+              },
+              {
+                "name": "to-Shown",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "label": "Error visibility"
+          },
+          {
+            "id": "0cee7804-b98c-5de7-981e-49e3204e9c7d",
+            "type": "States",
+            "x": -500,
+            "y": 120,
+            "parameters": {
+              "states": "Hidden,Shown",
+              "values": "Visible",
+              "type-Visible": "boolean",
+              "value-Hidden-Visible": false,
+              "value-Shown-Visible": true,
+              "currentState": "Hidden"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Visible",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "to-Hidden",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 2
+              },
+              {
+                "name": "to-Shown",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "label": "Sent visibility"
+          },
+          {
+            "id": "5865f54d-f547-5744-b5f5-041c8b16b34b",
+            "type": "RouterNavigate",
+            "x": -500,
+            "y": 260,
+            "parameters": {
+              "target": "/Auth Pages/Sign In",
+              "router": "Auth"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Go to Sign In"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Auth Pages/Reset Password",
+      "id": "3ed20f7e-8a73-58b7-9209-a8dd79a88b15",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+            "fromProperty": "onClick",
+            "toId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "toProperty": "reset"
+          },
+          {
+            "fromId": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+            "fromProperty": "onClick",
+            "toId": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "toProperty": "to-Busy"
+          },
+          {
+            "fromId": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+            "fromProperty": "onClick",
+            "toId": "ef8168ef-3f6b-5aab-8ce8-fd67b68667bb",
+            "toProperty": "to-Hidden"
+          },
+          {
+            "fromId": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "fromProperty": "Label",
+            "toId": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "fromProperty": "Enabled",
+            "toId": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "fromProperty": "failure",
+            "toId": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "fromProperty": "failure",
+            "toId": "ef8168ef-3f6b-5aab-8ce8-fd67b68667bb",
+            "toProperty": "to-Shown"
+          },
+          {
+            "fromId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "fromProperty": "error",
+            "toId": "8c322994-6cf6-5ee5-a9d4-4ebfe65ea863",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ef8168ef-3f6b-5aab-8ce8-fd67b68667bb",
+            "fromProperty": "Visible",
+            "toId": "8c322994-6cf6-5ee5-a9d4-4ebfe65ea863",
+            "toProperty": "visible"
+          },
+          {
+            "fromId": "10c21d85-b210-55f8-bfad-aa3b643520b8",
+            "fromProperty": "pm-token",
+            "toId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "toProperty": "token"
+          },
+          {
+            "fromId": "10c21d85-b210-55f8-bfad-aa3b643520b8",
+            "fromProperty": "pm-username",
+            "toId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "toProperty": "username"
+          },
+          {
+            "fromId": "ff8b82d1-7cd3-59af-a5de-314ed815b81c",
+            "fromProperty": "onTextChanged",
+            "toId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "toProperty": "newPassword"
+          },
+          {
+            "fromId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "fromProperty": "success",
+            "toId": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "63276664-4634-5bc3-a636-4569224a0d33",
+            "fromProperty": "success",
+            "toId": "0f163514-0b8e-50cd-a90c-cebfe468b1b8",
+            "toProperty": "navigate"
+          },
+          {
+            "fromId": "f728aaac-81ad-5908-9fbc-a6ec50e1be7c",
+            "fromProperty": "onClick",
+            "toId": "0f163514-0b8e-50cd-a90c-cebfe468b1b8",
+            "toProperty": "navigate"
+          }
+        ],
+        "roots": [
+          {
+            "id": "84961415-ef91-5f45-922c-75c1c2f1f30e",
+            "type": "Page",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "title": "Reset Password",
+              "urlPath": "reset-password"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "292a6e43-0025-5eef-97a1-970b0a53721a",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 380,
+                    "unit": "px"
+                  },
+                  "maxWidth": {
+                    "value": 90,
+                    "unit": "%"
+                  },
+                  "alignX": "center",
+                  "alignY": "center",
+                  "paddingTop": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": 1,
+                  "borderColor": "var(--border)",
+                  "borderRadius": 12
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "cf0b7073-1b3e-5dea-94f3-e7cc96437b95",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Choose a new password",
+                      "as": "h1",
+                      "fontSize": 24,
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Heading"
+                  },
+                  {
+                    "id": "48287f73-5b4b-5312-b5e9-2679cac7b57b",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Enter the new password for your account.",
+                      "fontSize": 14,
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Subtitle"
+                  },
+                  {
+                    "id": "ff8b82d1-7cd3-59af-a5de-314ed815b81c",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "New password",
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": 13,
+                      "labelSpacing": 6,
+                      "type": "password",
+                      "placeholder": "New password",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": 1,
+                      "borderColor": "var(--border)",
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--background)",
+                      "color": "var(--foreground)",
+                      "fontSize": 14,
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "New password input"
+                  },
+                  {
+                    "id": "8c322994-6cf6-5ee5-a9d4-4ebfe65ea863",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": 13,
+                      "color": "var(--destructive)",
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "visible": false
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Error message"
+                  },
+                  {
+                    "id": "5d6a133d-7e51-5b98-88c6-93bbfb735fd3",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Set new password",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "borderRadius": 8,
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "fontSize": 14
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Set new password button"
+                  },
+                  {
+                    "id": "285fb8df-255a-5863-aead-79b47d593444",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "columnGap": 6,
+                      "sizeMode": "contentSize",
+                      "alignX": "center",
+                      "marginTop": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f728aaac-81ad-5908-9fbc-a6ec50e1be7c",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Back to sign in",
+                          "fontSize": 13,
+                          "color": "var(--primary)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Back to sign in link"
+                      }
+                    ],
+                    "label": "Links"
+                  }
+                ],
+                "label": "Card"
+              }
+            ],
+            "label": "Reset Password"
+          },
+          {
+            "id": "10c21d85-b210-55f8-bfad-aa3b643520b8",
+            "type": "PageInputs",
+            "x": -800,
+            "y": -300,
+            "parameters": {
+              "queryParams": "token,username"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "pm-token",
+                "displayName": "token",
+                "plug": "output",
+                "type": "*",
+                "group": "Query Parameters",
+                "index": 1
+              },
+              {
+                "name": "pm-username",
+                "displayName": "username",
+                "plug": "output",
+                "type": "*",
+                "group": "Query Parameters",
+                "index": 2
+              }
+            ],
+            "children": [],
+            "label": "Reset link parameters"
+          },
+          {
+            "id": "63276664-4634-5bc3-a636-4569224a0d33",
+            "type": "net.noodl.user.ResetPassword",
+            "x": -800,
+            "y": -100,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Reset Password"
+          },
+          {
+            "id": "55ca5ef6-992e-5252-996e-b854a831c85e",
+            "type": "States",
+            "x": -500,
+            "y": -200,
+            "parameters": {
+              "states": "Idle,Busy",
+              "values": "Label,Enabled",
+              "type-Label": "string",
+              "type-Enabled": "boolean",
+              "value-Idle-Label": "Set new password",
+              "value-Busy-Label": "Saving\u2026",
+              "value-Idle-Enabled": true,
+              "value-Busy-Enabled": false,
+              "currentState": "Idle"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "Enabled",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 2
+              },
+              {
+                "name": "to-Idle",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              },
+              {
+                "name": "to-Busy",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "label": "Submit state"
+          },
+          {
+            "id": "ef8168ef-3f6b-5aab-8ce8-fd67b68667bb",
+            "type": "States",
+            "x": -500,
+            "y": 0,
+            "parameters": {
+              "states": "Hidden,Shown",
+              "values": "Visible",
+              "type-Visible": "boolean",
+              "value-Hidden-Visible": false,
+              "value-Shown-Visible": true,
+              "currentState": "Hidden"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "Visible",
+                "plug": "output",
+                "type": {
+                  "name": "boolean",
+                  "allowConnectionsOnly": true
+                },
+                "group": "Values",
+                "index": 1
+              },
+              {
+                "name": "to-Hidden",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 2
+              },
+              {
+                "name": "to-Shown",
+                "plug": "input",
+                "type": "signal",
+                "group": "States",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "label": "Error visibility"
+          },
+          {
+            "id": "0f163514-0b8e-50cd-a90c-cebfe468b1b8",
+            "type": "RouterNavigate",
+            "x": -500,
+            "y": 200,
+            "parameters": {
+              "target": "/Auth Pages/Sign In",
+              "router": "Auth"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Go to Sign In"
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

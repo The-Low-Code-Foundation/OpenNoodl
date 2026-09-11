@@ -87,7 +87,17 @@ describe('one legal and one illegal value per constrained port type', () => {
     ['number (units)', 'Group', 'paddingTop', { value: 16, unit: 'px' }, '16px'],
     ['dimension', 'Group', 'width', { value: 100, unit: '%' }, [100, '%']],
     ['color', 'Group', 'backgroundColor', 'var(--primary)', 0x3b82f6],
-    ['boolean', 'Group', 'scrollEnabled', true, 'false']
+    ['boolean', 'Group', 'scrollEnabled', true, 'false'],
+    // VIB-003. The illegal value is the glyph's NAME — the one FB-019 measured as an empty,
+    // styled span that still takes its size in layout, and which this rule used to ACCEPT while
+    // its own hint recommended it.
+    [
+      'icon',
+      'net.noodl.visual.icon',
+      'iconIconSource',
+      { class: 'lucide', code: 'icon-check', codeAsClass: true },
+      'icon-check'
+    ]
   ];
 
   it.each(CASES)('%s: accepts the legal value', (_label, type, port, legal) => {
@@ -143,12 +153,33 @@ describe('what it deliberately lets through', () => {
   });
 
   it('a parameter on a node type the catalog does not carry — unknown-node-type owns that', () => {
-    expect(check([{ id: 'm', type: 'module.somethingCustom', parameters: { anything: [1, 2] } }])).toEqual([]);
+    const out = check([{ id: 'm', type: 'module.somethingCustom', parameters: { anything: [1, 2] } }]);
+
+    // CN-002 changed what this returns but not what it *means*. The guarantee
+    // this test protects is that an unresolvable type raises no problem here —
+    // `[1, 2]` on a port we cannot see is not evidence of anything. That still
+    // holds: the only thing emitted is `info`, which never fails a gate and
+    // never blocks authored output.
+    //
+    // What is new is that the skip is now *announced* instead of returning an
+    // empty array that reads as a pass. Asserting `toEqual([])` again would
+    // re-hide it, so this asserts the property rather than the shape.
+    expect(out.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(out.map((d) => d.code)).toEqual([DiagnosticCode.UnknownTypeCheckSkipped]);
   });
 
   it('a parameter naming an unknown port on a DYNAMIC node — the port is very likely real', () => {
     // `States` names its ports from a seed parameter; the catalog cannot see them.
-    expect(check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }])).toEqual([]);
+    const out = check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }]);
+
+    // CN-010 / AC2 — updated for the same reason, and by the same rule, as the
+    // CN-002 case above: the guarantee this test exists to protect is that a
+    // port the node really creates draws **no accusation**. That still holds and
+    // is what is asserted. What changed is that the skip is announced instead of
+    // returning an empty array that reads as a pass, so `toEqual([])` would now
+    // re-hide exactly what CN-010 set out to surface.
+    expect(out.filter((d) => d.severity !== 'info')).toEqual([]);
+    expect(out.map((d) => d.code)).toEqual([DiagnosticCode.DynamicPortSkipped]);
   });
 
   it('never invents a default for a parameter that is simply absent', () => {
@@ -169,11 +200,59 @@ describe('a parameter that names no port at all', () => {
     expect(diagnostic.suggestion).toBe('clamp');
   });
 
-  it('is skipped entirely on a node that declares dynamic ports', () => {
-    // Group carries declared port groups, so a name the catalog cannot see is
-    // not evidence of a mistake. 96 of the 153 catalog types are in this class.
+  it('is skipped only when the ports are genuinely runtime-determined', () => {
+    // `States` names its ports from a seed parameter: the catalog cannot
+    // enumerate them, so an accusation is not available.
+    //
+    // 🔴 The comment here used to end "so silence is the only honest answer",
+    // and CN-010 / AC2 is the finding that it was not: *not accusing* is honest,
+    // *saying nothing at all* reported an unverified parameter as a checked one.
+    // 947 parameters across 321 nodes in the 29 real test projects landed here.
+    // The distinction this test guards — runtime-determined is exempt from the
+    // **warning**, conditional groups are not — is unchanged and asserted below.
+    expect(catalog.hasRuntimeDynamicPorts('States')).toBe(true);
+    const out = check([{ id: 's', type: 'States', parameters: { 'value-on-opacity': 1 } }]);
+
+    expect(out.map((d) => [d.code, d.severity])).toEqual([[DiagnosticCode.DynamicPortSkipped, 'info']]);
+    expect(out.map((d) => d.code)).not.toContain(DiagnosticCode.UnknownParameter);
+  });
+
+  it('checks a node whose only dynamism is conditional port groups', () => {
+    // `Group` declares dynamic ports, but every one of them is listed in the
+    // catalog under a condition — so the catalog *can* say that `widht` is not
+    // among them. The exemption used to key on `isDynamicNode`, which covers 88
+    // of the 175 types and swallowed this entire class: `Text`, `Group`,
+    // `Image`, `Button`, `Text Input` — the whole visual vocabulary a page is
+    // built from. That is how 18 `fontWeight` parameters validated clean while
+    // no node in the runtime has ever had a `fontWeight` port.
     expect(catalog.isDynamicNode('Group')).toBe(true);
-    expect(check([{ id: 'g', type: 'Group', parameters: { widht: 100 } }])).toEqual([]);
+    expect(catalog.hasRuntimeDynamicPorts('Group')).toBe(false);
+
+    const [diagnostic, ...rest] = check([{ id: 'g', type: 'Group', parameters: { widht: 100 } }]);
+    expect(rest).toHaveLength(0);
+    expect(diagnostic.code).toBe(DiagnosticCode.UnknownParameter);
+    expect(diagnostic.severity).toBe('warning');
+    expect(diagnostic.suggestion).toBe('width');
+  });
+
+  it('accepts the weight token that a whole page was silently losing', () => {
+    // An authored page carried 18 of these and rendered every word at 400: the
+    // design system shipped nine `--font-*` weight tokens and four Inter faces
+    // to serve them, `ElementConfigs` gave every variant a `fontWeight`, and
+    // `StyleVocabulary` handed those variants to the model as the worked
+    // example — while no node in the runtime had a port to consume any of it.
+    // The port exists now, typed like `lineHeight` so a token is legal on it.
+    expect(catalog.hasPort('Text', 'input', 'fontWeight')).toBe(true);
+    expect(check([{ id: 't', type: 'Text', parameters: { fontWeight: 'var(--font-semibold)' } }])).toEqual([]);
+    // and the plain numeric form the CSS property actually takes
+    expect(check([{ id: 't', type: 'Text', parameters: { fontWeight: 600 } }])).toEqual([]);
+  });
+
+  it('still catches a parameter the visual vocabulary genuinely has no port for', () => {
+    // `padding` is a CSS shorthand, not a port — the four edges are.
+    const found = check([{ id: 'g', type: 'Group', parameters: { padding: '16px' } }]);
+    expect(found.map((d) => d.code)).toEqual([DiagnosticCode.UnknownParameter]);
+    expect(found[0].message).toContain('padding');
   });
 
   it('can be turned off for callers that only want value problems', () => {
@@ -182,6 +261,64 @@ describe('a parameter that names no port at all', () => {
       reportUnknownParameters: false
     });
     expect(found).toEqual([]);
+  });
+});
+
+/**
+ * VIB-003 — the icon port, which had no coverage here at all while its rule taught two values that
+ * do not draw.
+ *
+ * 🔴 The distinction every row below turns on: an icon value's `class` and `codeAsClass` come from
+ * the **installed set's manifest**, and only `code` comes from the glyph name. `IconGlyph.tsx`
+ * branches on `codeAsClass === true` — true puts the code among the element's classes, anything
+ * else puts it in the element's TEXT. So a value that looks two-thirds right renders the string
+ * `icon-check` in the icon font, at whatever `iconSize` says, and every gate in the product was
+ * green while the door's own hint recommended exactly that shape.
+ *
+ * ⚠️ What this rule deliberately CANNOT check is whether `codeAsClass` is right for the set: that
+ * depends on a manifest under `noodl_modules/`, which a pure value rule cannot see. The hint sends
+ * the author to `get_style_vocabulary`, which reads the project and answers exactly.
+ */
+describe('the icon port — a value assembled from a description does not draw', () => {
+  const icon = (value: unknown) => errors('net.noodl.visual.icon', { iconIconSource: value });
+
+  it('rejects the glyph name on its own, which is what a description of the format produces', () => {
+    const found = icon('icon-check');
+    expect(found).toHaveLength(1);
+    expect(found[0].message).toContain('draws nothing');
+    // Says where a correct value comes from, rather than only that this one is wrong.
+    expect(found[0].message).toContain('get_style_vocabulary');
+  });
+
+  it('accepts the complete font value, all three fields', () => {
+    expect(icon({ class: 'lucide', code: 'icon-check', codeAsClass: true })).toEqual([]);
+  });
+
+  it('accepts the two-field material-icons shape, because for THAT set it is complete', () => {
+    // 🔴 The reason the rule cannot simply require `codeAsClass`. Material Icons puts the glyph in
+    // the element's text and its manifest says so; Lucide is the opposite convention. Both are
+    // correct values, and which one is correct here is a fact about the project, not about the port.
+    expect(icon({ class: 'material-icons', code: 'search' })).toEqual([]);
+  });
+
+  it('accepts a sprite value, which carries no `code` at all', () => {
+    // ⚠️ Caught by writing this spec: the old rule tested `typeof value.code === 'string'` and would
+    // have rejected the third arm of `Noodl.Icon` outright. Nothing shipped one, so nothing noticed.
+    expect(icon({ kind: 'sprite', url: 'noodl_modules/my-icons/sprite.svg', symbolId: 'star' })).toEqual([]);
+  });
+
+  it('rejects a value with none of the union\'s fields', () => {
+    expect(icon({ name: 'check' })).toHaveLength(1);
+  });
+
+  it('the hint names the field whose absence is visible, and where to get a real value', () => {
+    const hint = wireFormatHint(catalog.getPort('net.noodl.visual.icon', 'input', 'iconIconSource'));
+    expect(hint).toContain('codeAsClass');
+    expect(hint).toContain('get_style_vocabulary');
+    // 🔴 The regression this row exists for: the hint used to offer
+    // `{"class":"material-icons","code":"search"}` — a set no project created here has, in a shape
+    // that renders the glyph's name for the set every project DOES have.
+    expect(hint).not.toContain('material-icons');
   });
 });
 
@@ -212,6 +349,15 @@ describe('the hint the model is given is the rule the gate enforces', () => {
   it('states the rules a whole type shares exactly once', () => {
     expect(WIRE_FORMAT_LEGEND).toContain('DROPPED silently');
     expect(WIRE_FORMAT_LEGEND).toContain('var(--token)');
+  });
+
+  // FIX-007 — the legend is the one thing both authoring clients send
+  // unconditionally, so the prefix rule goes here rather than only in the
+  // catalog entry a caller may never fetch.
+  it('carries the Function node port prefix, and says which ports it does not apply to', () => {
+    expect(WIRE_FORMAT_LEGEND).toContain('in-x');
+    expect(WIRE_FORMAT_LEGEND).toContain('out-y');
+    expect(WIRE_FORMAT_LEGEND).toContain('stay unprefixed');
   });
 });
 
@@ -271,10 +417,22 @@ describe('the styling a candidate believes it set', () => {
     it('stays quiet when the author already used the object form', () => {
       // The unit is already right, so the stray sibling costs nothing and
       // erroring would spend a repair round making the candidate no better.
-      // (Image has dynamic ports, so it does not even draw the unknown-parameter
-      // warning — the trap fires ahead of that exemption on purpose, because the
-      // port it pairs with is statically declared.)
-      expect(one('Image', { width: { value: 228, unit: 'px' }, widthUnit: 'px' })).toEqual([]);
+      const found = one('Image', { width: { value: 228, unit: 'px' }, widthUnit: 'px' });
+      expect(found.filter((d) => d.code === DiagnosticCode.InvalidParameterValue)).toEqual([]);
+      expect(found.filter((d) => d.code === DiagnosticCode.UnitlessDimension)).toEqual([]);
+      // What it does say is two separate true things: `Image`'s `sizeMode`
+      // defaults to `contentSize`, so this perfectly-formed width is ignored;
+      // and `widthUnit` is not a port on anything, so it is never read either.
+      // The unit *trap* stays quiet because the width needs no repair — that is
+      // a different claim from "the stray sibling is a real port".
+      //
+      // DSG-004 §2.2 renamed the first of those: the `sizeMode` family reports
+      // as `InertDimension` so that it alone can block authored output. Same
+      // finding, same node, its own code.
+      expect(found.map((d) => d.code)).toEqual([
+        DiagnosticCode.InertDimension,
+        DiagnosticCode.UnknownParameter
+      ]);
     });
 
     it('fires on a node with dynamic ports, whose static ports are still static', () => {
@@ -323,7 +481,17 @@ describe('the styling a candidate believes it set', () => {
 
     it('does not double-report when the unit sibling already explains it', () => {
       const codes = one('Image', { width: 228, widthUnit: 'px' }).map((d) => d.code);
-      expect(codes).toEqual([DiagnosticCode.InvalidParameterValue]);
+      // One report for the unit mistake, not two — plus the independent fact
+      // that `sizeMode` leaves the width unread either way. Both are needed:
+      // repairing only the unit gives an image that is still ignored, and
+      // repairing only `sizeMode` gives one that is 228% wide.
+      expect(codes).toEqual([DiagnosticCode.InertDimension, DiagnosticCode.InvalidParameterValue]);
+    });
+
+    it('says nothing about a conditional port whose condition is met', () => {
+      // The same width, with the sibling the condition asks for.
+      const codes = one('Image', { sizeMode: 'explicit', width: { value: 228, unit: 'px' } }).map((d) => d.code);
+      expect(codes).toEqual([]);
     });
 
     it('blocks an authored candidate even though it is only a warning', () => {

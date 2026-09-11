@@ -1,0 +1,35 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000066",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "plain-root",
+      "type": "Group",
+      "label": "Plain",
+      "children": [
+        "plain-note"
+      ],
+      "parameters": {
+        "paddingTop": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "plain-note",
+      "type": "Text",
+      "label": "Note",
+      "parent": "plain-root",
+      "parameters": {
+        "text": "Plain",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 220
+    }
+  ],
+  "visualRoots": [
+    "plain-root"
+  ]
+}

@@ -23,6 +23,8 @@ export type {
   VocabToken,
   VocabTokenCategory
 } from './StyleVocabulary';
+export { STYLE_COMPOSITIONS, formatCompositionValue } from './StyleCompositions';
+export type { VocabComposition, VocabCompositionGroup, VocabParamValue } from './StyleCompositions';
 export type {
   StyleToken,
   StyleTokenMap,

@@ -69,6 +69,14 @@ This task should follow rather than precede the pilots where possible. LEARN-006
 
 **No accounts by default.** Student identity should be local — a name on a device, or a class code — with no external service. Accounts are a privacy liability, an IT obstacle, and a friction point, and the educational value does not require them.
 
+> 🔴 **Amended 2026-08-14 by phase 67's D10 ruling.** This law still stands as the **default**, and everything in this task remains valid — but it is no longer the *only* path. [Phase 67](../phase-67-nodegx-university/README.md) adds an **opt-in** route for orgs that want rostering and graded results: **org-owned pseudonymous accounts**, where the school is the data controller and the platform holds no child PII. [ECO-004](../phase-20-ecosystem/ECO-004-HOSTED-PLATFORM.md) required that reversal to be a deliberate, recorded choice rather than an implementation detail — this note is that record. Three conditions attach to it:
+>
+> 1. **Account-free local classroom mode remains supported.** A school that wants what this task describes gets it, with no account anywhere.
+> 2. **Pseudonymity must be real.** The handle → pupil-name mapping stays with the org (its GitHub org or its own list). If the platform ever stores that mapping it holds child PII by another route, and the ruling is void.
+> 3. **The local-AI constraint below is untouched.** "Verified zero external data transmission" is a network-level claim about minors' work reaching third-party model APIs, and no account decision relaxes it — phase 67's AI lesson-projection is off by default for org-minor accounts.
+>
+> Rationale and the full obligation list: [PRIOR-ART-RECONCILIATION.md](../phase-67-nodegx-university/PRIOR-ART-RECONCILIATION.md) §F4.
+
 **Local-first data.** Student work lives on the student's machine; sharing is an explicit action, and the teacher dashboard aggregates what has been shared rather than surveilling continuously. This is both the privacy-respecting design and the simpler one.
 
 **Local AI must be genuinely easy**, not merely possible. If configuring Ollama requires a terminal, no teacher will do it. Consider bundling or scripted setup, model-download guidance, and clear messaging about which features work with local models and which need more capable ones.

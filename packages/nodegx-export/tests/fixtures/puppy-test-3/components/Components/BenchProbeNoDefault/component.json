@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c6f2a27d-f5fc-486d-8e93-67a4556a05a0",
+  "name": "BenchProbeNoDefault",
+  "path": "/Components/BenchProbeNoDefault",
+  "type": "visual",
+  "modified": "2026-08-11T14:07:54.364Z"
+}

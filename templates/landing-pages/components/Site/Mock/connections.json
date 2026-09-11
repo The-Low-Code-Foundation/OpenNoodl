@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "ed5b46fb-eeee-53b0-8d01-8515359bb31b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "mkInputs",
+      "fromProperty": "title",
+      "toId": "mkTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "mkInputs",
+      "fromProperty": "row1",
+      "toId": "mkRow1",
+      "toProperty": "label"
+    },
+    {
+      "fromId": "mkInputs",
+      "fromProperty": "row2",
+      "toId": "mkRow2",
+      "toProperty": "label"
+    },
+    {
+      "fromId": "mkInputs",
+      "fromProperty": "row3",
+      "toId": "mkRow3",
+      "toProperty": "label"
+    }
+  ]
+}

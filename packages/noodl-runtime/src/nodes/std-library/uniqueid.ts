@@ -27,6 +27,7 @@ const UniqueIdNode: NodeDefinitionOptions = {
   },
   inputs: {
     new: {
+      group: 'Actions',
       displayName: 'New',
       description: 'Generates a fresh id, replacing the one on Id',
       valueChangedToTrue: function (this: UniqueIdNodeInstance) {
@@ -47,6 +48,7 @@ const UniqueIdNode: NodeDefinitionOptions = {
   },
   outputs: {
     guid: {
+      group: 'Values',
       type: 'string',
       displayName: 'Id',
       /**

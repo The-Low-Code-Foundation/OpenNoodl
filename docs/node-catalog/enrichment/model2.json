@@ -13,7 +13,7 @@
     "completed": "Signal; fires after every Fetch whatever the outcome — wire it to carry on regardless."
   },
   "runtimeBehavior": "Property ports are generated from the `properties` list on the node instance (and the connected schema where one exists) — they are per-instance, not in the catalog. `idSource` swaps the id between an explicit input and the enclosing repeater item (declared-port-groups). NDA-012: an empty Id (null or an empty string) binds nothing and does not fire `fetched`, rather than minting a throwaway object; a real id still springs into existence on first use. Property values that arrive before the Id are held and written the moment an object is bound.",
-  "examples": ["comp-create-object-on-event", "comp-repeater-set-item-object"],
+  "examples": ["comp-create-object-on-event", "comp-repeater-set-item-object", "community-tiptap-text-editor"],
   "patterns": [
     "Repeater row: item id → Object → property outputs into the row's visuals.",
     "Ids travel over wires; Objects resolve them where the data is needed."

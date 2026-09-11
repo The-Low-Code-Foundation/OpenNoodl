@@ -1,0 +1,370 @@
+/**
+ * LearnerPathSection — UNI-007 AC1.
+ *
+ * Same tokens and the same rhythm as LearningSection beside it, one elevation
+ * step down again: the path is a plan, and a plan that shouted louder than the
+ * lessons you already hold would have the launcher's priorities backwards.
+ *
+ * 🔴 `.Truth` is the one rule here that is not decoration. It is set at body
+ * weight and full foreground rather than as muted small print, because it is
+ * the sentence saying the lessons are not installable yet — and small grey
+ * text under a confident heading is how a caveat gets read as boilerplate.
+ */
+
+.Root {
+  margin-bottom: 28px;
+}
+
+.HeadRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.Title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Count {
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Muted {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+  margin: 0 0 12px;
+}
+
+.Detail {
+  font-family: var(--font-family-code);
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.Truth {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--theme-color-fg-default);
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-left: 3px solid var(--theme-color-primary);
+  border-radius: var(--radius-7);
+}
+
+.Questions {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.Question {
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.Prompt {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  padding: 0;
+  margin-bottom: 8px;
+}
+
+.Options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/*
+ * 🔴 phase-75 border sweep. `.Option` is a `<button aria-pressed>`, so 1.4.11 asks that a reader
+ * can identify it — and `border-default` is a DIVIDER tone (colors.css, NAT-003/POL-016), which
+ * measured 1.07:1 dark / 1.15:1 light on this button's own `bg-2` fill.
+ *
+ * The edge is entirely load-bearing here, because the fill does not carry the object on its own:
+ * `bg-2` on the launcher's `bg-0` content area is a step of 1.361 dark and **1.028 light** — the
+ * light figure is far under NAT-001's own 1.09 perceptual bar. With a divider edge, an unchosen
+ * option in light theme is a label.
+ */
+.Option {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-border-control);
+  background: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-3);
+  }
+
+  &[data-chosen='yes'] {
+    border-color: var(--theme-color-primary);
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+/*
+ * ⚠️ DELIBERATELY NOT SWEPT, and it is not a judgement call — it is a measurement. `.Primary`
+ * paints its edge the SAME tone as its fill (1.00:1 between them), which reads as a defect until
+ * you ask what the fill is doing: `primary` on the `bg-0` content area is 6.53:1 dark / 4.03:1
+ * light, so the object is identified by its fill many times over and the border is only keeping
+ * its box the same size as `.Ghost` and `.Option` beside it. Same shape as `.SaveButton`, the
+ * false positive session 63 found. The spec grades this by its FILL STEP rather than excusing it.
+ */
+.Primary {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-primary);
+  background: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+}
+
+/*
+ * 🔴 phase-75 border sweep, and the harder of the two: `.Ghost` paints NO fill, so the edge is the
+ * only thing that identifies it — the `.Action` / `.Button` shape from sessions 61 and 63.
+ *
+ * ⚠️ It is also placed on TWO different grounds from this one file: the head row sits on the
+ * launcher's `bg-0` content area, and the "Explain this for me" button sits inside a `.Step`,
+ * which paints `bg-1`. `border-default` was 1.46 / 1.12 on the first and 1.26 / 1.27 on the
+ * second; `border-control` is 4.86 / 3.28 and 4.17 / 3.72. Counting the component's CALL SITES
+ * would have found one and missed the second ground entirely.
+ */
+.Ghost {
+  font-family: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-border-control);
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-2);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.Steps {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.Step {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+
+  /* A lesson that cannot be installed yet is quieter, never struck through or
+     greyed to unreadability: it is coming, not cancelled. */
+  &[data-installable='no'] {
+    opacity: 0.82;
+  }
+}
+
+.Position {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-muted);
+}
+
+.StepBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.StepHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.StepTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Standing {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-3);
+}
+
+.Minutes {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  margin-left: auto;
+}
+
+.StepDescription {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-color-fg-default);
+  margin: 4px 0 0;
+}
+
+.Reason {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.Projection {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-default);
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  background: var(--theme-color-bg-2);
+  border-radius: var(--radius-7);
+}
+
+.Omitted {
+  padding: 12px 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+}
+
+.OmittedTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-color-fg-default);
+  margin: 0 0 6px;
+}
+
+.OmittedList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+
+  strong {
+    color: var(--theme-color-fg-default);
+    font-weight: 600;
+  }
+}
+
+/* A failed submit. Warning-weight rather than muted: it reports an action that did
+   not happen, which is the one thing on this form a learner must not read past. */
+.Error {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-color-danger);
+  margin: 0 0 10px;
+}
+
+/* ── 2026-09-06 — a step with an installed copy is a control ─────────────────────────────── */
+
+/* The title as a button: inherits the heading's look, gains a pointer and a focus ring. */
+.StepTitleButton {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  h3 {
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 3px;
+    transition: text-decoration-color 0.12s;
+  }
+
+  &:hover h3 {
+    text-decoration-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+.StepActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  &:not(:empty) {
+    margin-top: 10px;
+  }
+}
+
+.Standing[data-state='completed'] {
+  background: var(--theme-color-success, var(--theme-color-primary));
+  color: var(--theme-color-on-primary);
+}
+
+.Standing[data-state='in-progress'] {
+  border: 1px solid var(--theme-color-primary);
+  color: var(--theme-color-fg-highlight);
+}

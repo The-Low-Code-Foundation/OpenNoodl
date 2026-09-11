@@ -95,6 +95,7 @@ const NumberBlend: NodeDefinitionOptions = {
   },
   inputs: {
     blendValue: {
+      group: 'Values',
       type: 'number',
       displayName: 'Blend Value',
       description: 'Position along the number list, where 1 is exactly Number 1 and 1.5 is halfway to Number 2',
@@ -105,6 +106,7 @@ const NumberBlend: NodeDefinitionOptions = {
       }
     },
     clamp: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Clamp',
       description: 'Holds Blend Value inside the list rather than extrapolating past either end',
@@ -117,6 +119,7 @@ const NumberBlend: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'number',
       displayName: 'Result',
       description: 'The interpolated number',

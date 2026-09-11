@@ -1,0 +1,912 @@
+{
+  "name": "Advanced Columns",
+  "components": [
+    {
+      "name": "/Advanced Columns",
+      "id": "ac000000-0000-4000-8000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000011",
+            "fromProperty": "boundingWidth",
+            "toId": "ac000000-0000-4000-8000-000000000013",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000013",
+            "fromProperty": "result",
+            "toId": "ac000000-0000-4000-8000-000000000014",
+            "toProperty": "currentState"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000014",
+            "fromProperty": "Layout",
+            "toId": "ac000000-0000-4000-8000-000000000011",
+            "toProperty": "layoutString"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000014",
+            "fromProperty": "Horizontal Gap",
+            "toId": "ac000000-0000-4000-8000-000000000011",
+            "toProperty": "marginX"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000014",
+            "fromProperty": "Vertical Gap",
+            "toId": "ac000000-0000-4000-8000-000000000011",
+            "toProperty": "marginY"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000014",
+            "fromProperty": "currentState",
+            "toId": "ac000000-0000-4000-8000-000000000015",
+            "toProperty": "Breakpoint"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000016",
+            "fromProperty": "Large Below",
+            "toId": "ac000000-0000-4000-8000-000000000013",
+            "toProperty": "large"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000016",
+            "fromProperty": "Medium Below",
+            "toId": "ac000000-0000-4000-8000-000000000013",
+            "toProperty": "medium"
+          },
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000016",
+            "fromProperty": "Small Below",
+            "toId": "ac000000-0000-4000-8000-000000000013",
+            "toProperty": "small"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ac000000-0000-4000-8000-000000000016",
+            "type": "Component Inputs",
+            "x": -1040,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Large Below",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "index": 0
+              },
+              {
+                "name": "Medium Below",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "index": 1
+              },
+              {
+                "name": "Small Below",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "ac000000-0000-4000-8000-000000000013",
+            "type": "Expression",
+            "label": "Which band",
+            "x": -700,
+            "y": 40,
+            "parameters": {
+              "expression": "width < small ? 'Small' : width < medium ? 'Medium' : width < large ? 'Large' : 'Default'",
+              "small": 600,
+              "medium": 900,
+              "large": 1200
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "width",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 2
+              },
+              {
+                "name": "small",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 3
+              },
+              {
+                "name": "medium",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 4
+              },
+              {
+                "name": "large",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 5
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "expression"
+                ]
+              }
+            }
+          },
+          {
+            "id": "ac000000-0000-4000-8000-000000000014",
+            "type": "States",
+            "label": "Breakpoint settings",
+            "x": -360,
+            "y": 40,
+            "parameters": {
+              "states": "Default,Large,Medium,Small",
+              "values": "Layout,Horizontal Gap,Vertical Gap",
+              "useTransitions": false,
+              "type-Layout": "string",
+              "type-Horizontal Gap": "number",
+              "type-Vertical Gap": "number",
+              "value-Default-Layout": "1 1 1 1",
+              "value-Default-Horizontal Gap": 24,
+              "value-Default-Vertical Gap": 24,
+              "value-Large-Layout": "1 1 1",
+              "value-Large-Horizontal Gap": 20,
+              "value-Large-Vertical Gap": 20,
+              "value-Medium-Layout": "1 1",
+              "value-Medium-Horizontal Gap": 16,
+              "value-Medium-Vertical Gap": 16,
+              "value-Small-Layout": "1",
+              "value-Small-Horizontal Gap": 12,
+              "value-Small-Vertical Gap": 12,
+              "currentState": "Default"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "string",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "output",
+                "group": "Values",
+                "name": "Layout",
+                "index": 6
+              },
+              {
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    {
+                      "label": "Number",
+                      "value": "number"
+                    },
+                    {
+                      "label": "String",
+                      "value": "string"
+                    },
+                    {
+                      "label": "Boolean",
+                      "value": "boolean"
+                    },
+                    {
+                      "label": "Color",
+                      "value": "color"
+                    },
+                    {
+                      "label": "Text Style",
+                      "value": "textStyle"
+                    }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "number",
+                "plug": "input",
+                "group": "Types",
+                "displayName": "Layout",
+                "name": "type-Layout",
+                "index": 7
+              },
+              {
+                "type": {
+                  "name": "number",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "output",
+                "group": "Values",
+                "name": "Horizontal Gap",
+                "index": 8
+              },
+              {
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    {
+                      "label": "Number",
+                      "value": "number"
+                    },
+                    {
+                      "label": "String",
+                      "value": "string"
+                    },
+                    {
+                      "label": "Boolean",
+                      "value": "boolean"
+                    },
+                    {
+                      "label": "Color",
+                      "value": "color"
+                    },
+                    {
+                      "label": "Text Style",
+                      "value": "textStyle"
+                    }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "number",
+                "plug": "input",
+                "group": "Types",
+                "displayName": "Horizontal Gap",
+                "name": "type-Horizontal Gap",
+                "index": 9
+              },
+              {
+                "type": {
+                  "name": "number",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "output",
+                "group": "Values",
+                "name": "Vertical Gap",
+                "index": 10
+              },
+              {
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    {
+                      "label": "Number",
+                      "value": "number"
+                    },
+                    {
+                      "label": "String",
+                      "value": "string"
+                    },
+                    {
+                      "label": "Boolean",
+                      "value": "boolean"
+                    },
+                    {
+                      "label": "Color",
+                      "value": "color"
+                    },
+                    {
+                      "label": "Text Style",
+                      "value": "textStyle"
+                    }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "number",
+                "plug": "input",
+                "group": "Types",
+                "displayName": "Vertical Gap",
+                "name": "type-Vertical Gap",
+                "index": 11
+              },
+              {
+                "plug": "input",
+                "type": "string",
+                "group": "Default Values",
+                "name": "value-Default-Layout",
+                "displayName": "Layout",
+                "editorName": "Default|Layout",
+                "index": 12
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Default Values",
+                "name": "value-Default-Horizontal Gap",
+                "displayName": "Horizontal Gap",
+                "editorName": "Default|Horizontal Gap",
+                "index": 13
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Default Values",
+                "name": "value-Default-Vertical Gap",
+                "displayName": "Vertical Gap",
+                "editorName": "Default|Vertical Gap",
+                "index": 14
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Default",
+                "name": "to-Default",
+                "group": "Go to state",
+                "index": 15
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Default",
+                "name": "at-Default",
+                "group": "Current state",
+                "index": 16
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Default",
+                "name": "reached-Default",
+                "group": "Current state",
+                "index": 17
+              },
+              {
+                "plug": "input",
+                "type": "string",
+                "group": "Large Values",
+                "name": "value-Large-Layout",
+                "displayName": "Layout",
+                "editorName": "Large|Layout",
+                "index": 18
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Large Values",
+                "name": "value-Large-Horizontal Gap",
+                "displayName": "Horizontal Gap",
+                "editorName": "Large|Horizontal Gap",
+                "index": 19
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Large Values",
+                "name": "value-Large-Vertical Gap",
+                "displayName": "Vertical Gap",
+                "editorName": "Large|Vertical Gap",
+                "index": 20
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Large",
+                "name": "to-Large",
+                "group": "Go to state",
+                "index": 21
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Large",
+                "name": "at-Large",
+                "group": "Current state",
+                "index": 22
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Large",
+                "name": "reached-Large",
+                "group": "Current state",
+                "index": 23
+              },
+              {
+                "plug": "input",
+                "type": "string",
+                "group": "Medium Values",
+                "name": "value-Medium-Layout",
+                "displayName": "Layout",
+                "editorName": "Medium|Layout",
+                "index": 24
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Medium Values",
+                "name": "value-Medium-Horizontal Gap",
+                "displayName": "Horizontal Gap",
+                "editorName": "Medium|Horizontal Gap",
+                "index": 25
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Medium Values",
+                "name": "value-Medium-Vertical Gap",
+                "displayName": "Vertical Gap",
+                "editorName": "Medium|Vertical Gap",
+                "index": 26
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Medium",
+                "name": "to-Medium",
+                "group": "Go to state",
+                "index": 27
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Medium",
+                "name": "at-Medium",
+                "group": "Current state",
+                "index": 28
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Medium",
+                "name": "reached-Medium",
+                "group": "Current state",
+                "index": 29
+              },
+              {
+                "plug": "input",
+                "type": "string",
+                "group": "Small Values",
+                "name": "value-Small-Layout",
+                "displayName": "Layout",
+                "editorName": "Small|Layout",
+                "index": 30
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Small Values",
+                "name": "value-Small-Horizontal Gap",
+                "displayName": "Horizontal Gap",
+                "editorName": "Small|Horizontal Gap",
+                "index": 31
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "Small Values",
+                "name": "value-Small-Vertical Gap",
+                "displayName": "Vertical Gap",
+                "editorName": "Small|Vertical Gap",
+                "index": 32
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Small",
+                "name": "to-Small",
+                "group": "Go to state",
+                "index": 33
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Small",
+                "name": "at-Small",
+                "group": "Current state",
+                "index": 34
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Small",
+                "name": "reached-Small",
+                "group": "Current state",
+                "index": 35
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    "Default",
+                    "Large",
+                    "Medium",
+                    "Small"
+                  ]
+                },
+                "group": "States",
+                "displayName": "State",
+                "name": "currentState",
+                "default": "Default",
+                "index": 36
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "ac000000-0000-4000-8000-000000000011",
+            "type": "net.noodl.visual.columns",
+            "label": "Columns",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "layoutString": "1 1 1 1",
+              "marginX": {
+                "value": 24,
+                "unit": "px"
+              },
+              "marginY": {
+                "value": 24,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ac000000-0000-4000-8000-000000000012",
+                "type": "Component Children",
+                "label": "Your content",
+                "parameters": {},
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "ac000000-0000-4000-8000-000000000015",
+            "type": "Component Outputs",
+            "x": 360,
+            "y": 260,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Breakpoint",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Advanced Columns/Demo",
+      "id": "ac000000-0000-4000-8000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "ac000000-0000-4000-8000-000000000110",
+            "fromProperty": "Breakpoint",
+            "toId": "ac000000-0000-4000-8000-000000000103",
+            "toProperty": "text"
+          }
+        ],
+        "roots": [
+          {
+            "id": "ac000000-0000-4000-8000-000000000101",
+            "type": "Group",
+            "label": "Demo",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "flexDirection": "column",
+              "backgroundColor": "var(--background)",
+              "paddingTop": "var(--space-6)",
+              "paddingBottom": "var(--space-6)",
+              "paddingLeft": "var(--space-6)",
+              "paddingRight": "var(--space-6)",
+              "rowGap": "var(--space-4)"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "ac000000-0000-4000-8000-000000000102",
+                "type": "Text",
+                "parameters": {
+                  "text": "Advanced Columns \u2014 narrow the window",
+                  "fontSize": 18,
+                  "color": "var(--foreground)"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "ac000000-0000-4000-8000-000000000103",
+                "type": "Text",
+                "label": "Band readout",
+                "parameters": {
+                  "text": "Default",
+                  "fontSize": 14,
+                  "color": "var(--muted-foreground)"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "ac000000-0000-4000-8000-000000000110",
+                "type": "/Advanced Columns",
+                "label": "Advanced Columns",
+                "parameters": {},
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000120",
+                    "type": "Group",
+                    "label": "Tile 1",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000130",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 1",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000121",
+                    "type": "Group",
+                    "label": "Tile 2",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000131",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 2",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000122",
+                    "type": "Group",
+                    "label": "Tile 3",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000132",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 3",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000123",
+                    "type": "Group",
+                    "label": "Tile 4",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000133",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 4",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000124",
+                    "type": "Group",
+                    "label": "Tile 5",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000134",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 5",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "ac000000-0000-4000-8000-000000000125",
+                    "type": "Group",
+                    "label": "Tile 6",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "backgroundColor": "var(--surface)",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-7)",
+                      "paddingBottom": "var(--space-7)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "alignItems": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "ac000000-0000-4000-8000-000000000135",
+                        "type": "Text",
+                        "parameters": {
+                          "text": "Item 6",
+                          "fontSize": 16,
+                          "color": "var(--foreground)",
+                          "textAlignX": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

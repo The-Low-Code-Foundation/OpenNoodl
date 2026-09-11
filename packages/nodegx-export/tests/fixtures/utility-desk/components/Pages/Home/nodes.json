@@ -1,0 +1,274 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000096",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Utility Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "plainInput",
+        "hashBtn",
+        "digestText",
+        "hashErrorText",
+        "lastDigestText",
+        "hashFailedText",
+        "nonceBtn",
+        "nonceText",
+        "widthText",
+        "heightText",
+        "aspectText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Utility Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "plainInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Plaintext",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Text to hash"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "hashBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Hash it",
+      "parent": "shell",
+      "parameters": {
+        "label": "Hash it"
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "digestText",
+      "type": "Text",
+      "label": "Digest",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "hashErrorText",
+      "type": "Text",
+      "label": "Hash error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 600
+    },
+    {
+      "id": "lastDigestText",
+      "type": "Text",
+      "label": "Last digest",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "hashFailedText",
+      "type": "Text",
+      "label": "Hash failed",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "nonceBtn",
+      "type": "net.noodl.controls.button",
+      "label": "New nonce",
+      "parent": "shell",
+      "parameters": {
+        "label": "New nonce"
+      },
+      "x": 100,
+      "y": 840
+    },
+    {
+      "id": "nonceText",
+      "type": "Text",
+      "label": "Nonce",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "widthText",
+      "type": "Text",
+      "label": "Width",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "heightText",
+      "type": "Text",
+      "label": "Height",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1080
+    },
+    {
+      "id": "aspectText",
+      "type": "Text",
+      "label": "Aspect",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1160
+    },
+    {
+      "id": "plainVar",
+      "type": "Variable2",
+      "label": "Plaintext variable",
+      "parameters": {
+        "name": "plaintext"
+      },
+      "x": 400,
+      "y": 360
+    },
+    {
+      "id": "hash",
+      "type": "net.noodl.Hash",
+      "label": "Hash",
+      "parameters": {
+        "algorithm": "SHA-256",
+        "encoding": "hex"
+      },
+      "x": 400,
+      "y": 440
+    },
+    {
+      "id": "setLastDigest",
+      "type": "Set Variable",
+      "label": "Remember digest",
+      "parameters": {
+        "name": "lastDigest"
+      },
+      "x": 700,
+      "y": 440
+    },
+    {
+      "id": "setHashFailed",
+      "type": "Set Variable",
+      "label": "Remember failure",
+      "parameters": {
+        "name": "hashFailed"
+      },
+      "x": 700,
+      "y": 560
+    },
+    {
+      "id": "lastDigestVar",
+      "type": "Variable2",
+      "label": "Last digest",
+      "parameters": {
+        "name": "lastDigest"
+      },
+      "x": 400,
+      "y": 680
+    },
+    {
+      "id": "hashFailedVar",
+      "type": "Variable2",
+      "label": "Hash failed",
+      "parameters": {
+        "name": "hashFailed"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "nonce",
+      "type": "net.noodl.RandomBytes",
+      "label": "Nonce",
+      "parameters": {
+        "length": 16,
+        "encoding": "base64url"
+      },
+      "x": 400,
+      "y": 840
+    },
+    {
+      "id": "screen",
+      "type": "Screen Resolution",
+      "label": "Viewport",
+      "parameters": {},
+      "x": 400,
+      "y": 1000
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

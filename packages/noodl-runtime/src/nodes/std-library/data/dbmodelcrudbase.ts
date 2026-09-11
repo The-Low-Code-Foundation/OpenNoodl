@@ -1,3 +1,17 @@
+/// <reference path="../../../globals.d.ts" />
+//
+// Same rule as `TokenLifecycle.ts` and `ParseWireAdapter`, and the same reason: this file is
+// compiled by every consumer's program, `_noodl_cloud_runtime_version` (used by
+// `_getCurrentUser` below) is declared only in this package's `src/globals.d.ts`, and the
+// identifier must stay **bare** for webpack's DefinePlugin to substitute it.
+//
+// 🔴 P77 SBR-008 s16 — without this line the file does not COMPILE under a consumer's
+// program, and `tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts` was
+// requiring it from noodl-editor's jest: six of the seven Record nodes in the site-builder
+// template threw `TS2304` at require time, and the spec's central assertion — *"the runtime
+// announces NO `prop-` port"* — had been passing its own throw off as an empty port list.
+// ts-jest renders that TSError with a blank message, so the red said nothing at all.
+
 'use strict';
 
 import type {
@@ -33,6 +47,7 @@ import {
   recordBackendPickerPorts,
   recordClassPorts,
   recordFieldPorts,
+  recordWiredFieldPorts,
   recordRelationPorts,
   recordSchemaContext
 } from './record-ports';
@@ -367,8 +382,14 @@ function _addBaseInfo(
             ports.push(...recordRelationPorts(ctx));
           }
 
-          if (def._hasInputProperties && ctx.selectedCollection) {
-            ports.push(...recordFieldPorts(ctx, { plug: 'input' }));
+          if (def._hasInputProperties) {
+            // Two producers of one family, in this order on purpose. The schema half
+            // knows the column's type; the wire half only knows the name, and returns
+            // nothing the schema half already covered — see `recordWiredFieldPorts`
+            // (P77 SBR-008) for why the second one has to exist at all.
+            const fieldPorts = ctx.selectedCollection ? recordFieldPorts(ctx, { plug: 'input' }) : [];
+            ports.push(...fieldPorts);
+            ports.push(...recordWiredFieldPorts(node, fieldPorts, { plug: 'input' }));
           }
 
           def._additionalDynamicPorts && def._additionalDynamicPorts(node, ports, graphModel);
@@ -385,6 +406,34 @@ function _addBaseInfo(
         node.on('parameterUpdated', function () {
           _updatePorts();
         });
+
+        // P77 SBR-008 — the wire-derived half of `prop-*` changes when a WIRE changes, and
+        // nothing above fires for that. Both events are needed and neither covers the other:
+        // `inputConnectionAdded` reaches only the wire's TARGET node
+        // (`models/componentmodel.ts:149-158`), which is the write nodes' case and not the
+        // Record node's, whose `prop-*` are outputs. The component-level event carries both
+        // ends, so it is filtered to wires touching this node.
+        node.on('inputConnectionAdded', function () {
+          _updatePorts();
+        });
+
+        node.on('inputConnectionRemoved', function () {
+          _updatePorts();
+        });
+
+        const onConnectionChanged = function (connection: { sourceId?: string; targetId?: string }) {
+          if (!connection) return;
+          if (connection.sourceId !== node.id && connection.targetId !== node.id) return;
+          _updatePorts();
+        };
+
+        // `on` rather than the component being present: every real `ComponentModel` is an
+        // `EventSender`, but a node reaching here without one must not take the whole
+        // `setup()` down — it would cost the node every OTHER port on this list too.
+        if (typeof node.component?.on === 'function') {
+          node.component.on('connectionAdded', onConnectionChanged, node);
+          node.component.on('connectionRemoved', onConnectionChanged, node);
+        }
 
         graphModel.on('metadataChanged.dbCollections', function () {
           CloudStore.invalidateCollections();
@@ -612,6 +661,29 @@ function _addInputProperties(def: DbCrudNodeModule) {
   // The `prop-<field>` ports exist because *this* mixin registers their setters, so this is
   // the only honest place to say a node has them. See `_addBaseInfo`.
   def._hasInputProperties = true;
+
+  /**
+   * P77 SBR-008 §9 — the wire is the declaration, said where the EDITOR can hear it.
+   *
+   * `recordWiredFieldPorts` mints `prop-<field>` from this node's own wires, which is what
+   * lets a fresh site name a column nothing has written yet. But it reads those wires off
+   * the component the *runtime* holds, and that component reached it through
+   * `exportComponent`, which has already dropped every wire the editor called unhealthy —
+   * and a wire into a port the editor does not know about is exactly that. So the wire half
+   * could only ever recover the fields that are also saved parameters, and the bootstrap
+   * case it was built for stayed deadlocked: measured on a wizard-fresh site, this node
+   * announced `prop-published/showInNav/navOrder` (its three parameters) and neither of the
+   * two that arrive only over a wire.
+   *
+   * The loop is `editor health → exported wires → runtime ports → editor health`, and it has
+   * to be broken exactly once. Not in the exporter (§4's trap: the filter keeps meaning what
+   * it says) and not by minting these ports in the editor (§2: `setDynamicPorts` replaces, so
+   * a second writer erases the first). What is left is the *verdict*: a wire into a
+   * `prop-` port on this family is not a wire into a port that does not exist — it is the
+   * author declaring the field, which is this whole task's ruling. The editor reads this to
+   * say so, and the runtime stays the only thing that mints a port.
+   */
+  def.node.wireDeclaredPortPrefix = 'prop-';
 
   Object.assign(def.node, {
     inputs: def.node.inputs || {},

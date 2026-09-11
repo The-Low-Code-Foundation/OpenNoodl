@@ -1,0 +1,70 @@
+/**
+ * 🔴 THE BACKGROUND IS HERE BECAUSE `BaseDialog`'S DOES NOT REACH THE BOTTOM OF A TALL ONE.
+ *
+ * `BaseDialog` paints its surface with `.VisibleDialog::after`, absolutely positioned at
+ * `inset: 0`. An absolutely-positioned box resolves against the **padding box**, not the
+ * scrollable content, so on a dialog that overflows its `max-height` the paint stops at the
+ * visible height and the scrolled remainder sits on nothing. Measured 2026-08-19 with the
+ * capture enabled: `::after` 700.9px against 858px of content, `overflow-y: auto` — the last
+ * ~157px was see-through, showing the canvas and the white preview pane behind it.
+ *
+ * ⚠️ THE COMPOSER IS THE DIALOG THAT NOTICES because it is the tall one; its siblings
+ * (`GitHubDeviceCodeDialog`, `ReportProblemDialog`) set no background either and get away
+ * with it by fitting. So this is a LOCAL fix to a SHARED defect, chosen deliberately over
+ * editing `noodl-core-ui` mid-session — moving the paint onto `.VisibleDialog` itself would
+ * cover the scroll extent and fix every dialog at once, but it changes a component every
+ * dialog in the app renders through and wants a visual pass across all of them.
+ *
+ * ⚠️ `--theme-color-bg-4` is not a guess: it is the value `BaseDialog`'s own `--background`
+ * resolves to here (`#2c3540`), read off the live element. If that token moves, this moves.
+ */
+.Root {
+  width: 620px;
+  max-width: 90vw;
+  background: var(--theme-color-bg-4);
+  /* The chrome's rounding is on the element whose paint falls short; match it or the
+     corners square off against the shadow. */
+  border-radius: inherit;
+}
+
+/**
+ * The payload preview. It scrolls rather than growing, because a graph excerpt on a busy node is
+ * taller than the dialog and a composer that pushes its own buttons off the screen cannot be used.
+ */
+/**
+ * UNI-011 AC3 — the per-port consent list.
+ *
+ * It scrolls for the same reason the payload does: a `Group` has over a hundred ports, and a
+ * consent list that pushes the button that ends the decision off the screen is a consent list
+ * nobody reaches the end of.
+ */
+.PortList {
+  max-height: 180px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-2);
+}
+
+/** The value beside each toggle, in the same face the payload uses — it is the same string. */
+.PortValue {
+  font-family: var(--font-family-code, monospace);
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.Payload {
+  margin: 0;
+  max-height: 260px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 3px;
+  background: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code, monospace);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  /* A long unbroken token — a URL in a warning — must not widen the dialog. */
+  word-break: break-word;
+}

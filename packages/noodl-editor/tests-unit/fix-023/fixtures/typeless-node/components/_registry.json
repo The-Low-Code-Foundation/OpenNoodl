@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
+  "version": 1,
+  "comment": "FIX-023 — 'Pages/Admin Login' is listed FIRST on purpose. The loader walks the registry in insertion order, so the component carrying the typeless node is validated before 'Pages/Home'. That makes Home's own diagnostic evidence that the component loop survived the malformed one, rather than a coincidence of ordering.",
+  "components": {
+    "Pages/Admin Login": { "path": "Pages/Admin Login", "type": "visual" },
+    "Pages/Home": { "path": "Pages/Home", "type": "visual" }
+  }
+}

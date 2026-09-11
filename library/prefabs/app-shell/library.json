@@ -1,0 +1,14 @@
+{
+  "label": "App Shell",
+  "description": "The frame an app lives inside: a sidebar (app name slot + data-driven nav items with active-route highlighting), a top bar (page title, actions slot, user area placeholder), and a content outlet where your Page Router goes. Nav items are a plain array (Label/Icon/Target) fed from a Static Data node or the Nav Items input; clicking one navigates to its Target and emits Nav Click/Nav Target. Below the Collapse Below breakpoint (default 768px) the sidebar collapses behind a hamburger button.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Layout",
+    "Navigation"
+  ],
+  "version": "1.1.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

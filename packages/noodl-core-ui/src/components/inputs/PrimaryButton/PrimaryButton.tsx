@@ -130,8 +130,22 @@ export function PrimaryButton({
         )}
         {label}
       </span>
+      {/*
+        FLD-017 — mount the dots only while they mean something.
+
+        `.Spinner` hides itself with `opacity: 0`, and an `opacity: 0` element
+        still animates: only `display: none` and being out of the tree stop a
+        CSS animation. So every PrimaryButton on screen was running three
+        `bouncedelay 1.4s infinite` dots forever. Measured in the packaged
+        build with a project open: `document.getAnimations()` returned three,
+        all of them the Deploy button's, with nothing loading.
+
+        The wrapper keeps its opacity transition, so the fade IN is unchanged —
+        the child is in the tree from the first frame of it. What is given up is
+        a 200ms fade OUT at the end of a load, which is the cheapest thing here.
+      */}
       <div className={classNames([css['Spinner'], isLoading && css['is-loading']])}>
-        <ActivityIndicator color={activityColor} />
+        {isLoading && <ActivityIndicator color={activityColor} />}
       </div>
     </button>
   );

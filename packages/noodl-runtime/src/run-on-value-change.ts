@@ -188,6 +188,45 @@ export function runOnValueChange(node: NodeInstance, inputName: string): boolean
   return !state || state[inputName] !== false;
 }
 
+/**
+ * Whether `next` is a different value from `previous`, for the purpose of re-running a node.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔴 **DEF-046. Until this existed, an input that had NOT changed re-ran the node anyway.**
+ * `set` stored the value and called the scheduler with no comparison to what was already
+ * there, so a code node handed `title: 'Pricing'` twice ran twice and wrote a database row on
+ * each run — three quarters of a defect where one *Duplicate* press created four pages.
+ *
+ * 🔴 **AND IT CONTRADICTED THIS MODULE'S OWN CONTRACT.** *"What `Run` is still for"*, above,
+ * justifies keeping the control signal on the grounds that *"an async re-fetch that returns an
+ * identical value fires no change"*. That sentence is only true if an identical value is not a
+ * change. It was one.
+ *
+ * 🔴 **PRIMITIVES ONLY, AND THE EXCLUSION IS THE LOAD-BEARING HALF.** An array or object that
+ * was MUTATED IN PLACE is the same reference, so `Object.is` would call it unchanged and the
+ * node would go quiet on a real change — every collection node passes rows this way. So a
+ * non-primitive on either side is always "changed", and only two comparable values are ever
+ * compared. **A version of this that compared everything would be a silent data-loss bug
+ * dressed as an optimisation.**
+ *
+ * ⚠️ **`undefined` on either side counts as changed**, which keeps the FIRST arrival on an
+ * input a change however the family stores its "not set yet" state. `null` is comparable —
+ * `null` → `null` is not a change, `null` → `'x'` is. `NaN` → `NaN` is not a change, because
+ * `Object.is` says so and a re-run there would be the same defect with a rarer value.
+ * ═══════════════════════════════════════════════════════════════════════════════
+ */
+export function valueDidChange(previous: unknown, next: unknown): boolean {
+  if (!isComparableValue(previous) || !isComparableValue(next)) return true;
+  return !Object.is(previous, next);
+}
+
+/** A value two of which can be compared for equality without lying about mutation. */
+function isComparableValue(value: unknown): boolean {
+  if (value === null) return true;
+  const t = typeof value;
+  return t !== 'object' && t !== 'function' && t !== 'undefined';
+}
+
 /** Record a deliberate answer for `inputName`. */
 export function setRunOnValueChange(node: NodeInstance, inputName: string, enabled: boolean): void {
   const owner = node as unknown as { _runOnValueChange?: Record<string, boolean> };

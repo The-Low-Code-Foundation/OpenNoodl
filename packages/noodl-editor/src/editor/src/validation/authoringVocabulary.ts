@@ -105,6 +105,18 @@ export interface VocabField {
   readonly divergence?: string;
   readonly enumValues?: readonly string[];
   readonly minItems?: number;
+  /**
+   * LEG-001 — where the field lives on disk, when that is not a top-level key of
+   * the same name. Dotted, e.g. `metadata.comment`.
+   *
+   * The authored name is what an agent says; this is where the renderers put it.
+   * Declared rather than implied because `tests-unit/aaq-005` checks every node
+   * field against `schemas/nodes.schema.json` and would otherwise call a mapped
+   * field a phantom — the `widthUnit` check is the reason that spec exists, and
+   * "it is really `metadata.comment`" is exactly the excuse it must not accept
+   * from an undeclared field.
+   */
+  readonly storedAs?: string;
 }
 
 /** A vocabulary surface: one named table of fields. */
@@ -141,6 +153,33 @@ export const AUTHORED_NODE_FIELDS: readonly VocabField[] = [
     requiredIn: ['editor', 'mcp']
   },
   { name: 'label', kind: 'string', description: 'What this node is for, in this graph' },
+  // LEG-001 — the other arm of a natural experiment this repo already ran.
+  // `label` is in this table and 1,003 of 1,123 authored nodes (89.3%) carry
+  // one; `metadata.comment` was not, and carried **1 in 2,045**. It was never
+  // "the agent does not bother": through MCP the field reached disk only because
+  // the node schema is `.passthrough()`, undeclared and undescribed, and in the
+  // editor it was absent from the schema entirely — a model cannot write what
+  // nothing names. This row is the sentence `label` got, written for the field
+  // that never had one.
+  //
+  // Optional, deliberately: the 89.3% arm was optional, and `requiredIn: ['mcp']`
+  // would hard-reject calls that are valid today (see the module header). The
+  // judgement lives in the description because no validator can hold it — whether
+  // a sentence restates the type is not checkable, so "omit when the type and
+  // label already say it" goes where a model reads it before writing.
+  {
+    name: 'comment',
+    kind: 'string',
+    description:
+      'Why this node is the way it is — a constraint, a rule, or a decision with an alternative. ' +
+      'Omit when the type and label already say it.',
+    // Flat here, `metadata.comment` on disk (CAN-004's stripe, tooltip and
+    // context menu all read it there). The bag also holds `merge` and the
+    // CED-001 code history, and an agent has no business knowing that: the
+    // renderers fold the flat field in on the way to storage and surface it back
+    // on the way out. See `foldNodeComment` / `unfoldNodeComment` below.
+    storedAs: 'metadata.comment'
+  },
   // No description, in either client, before or after. `x`/`y` are self-evident
   // and adding text here would change `submit_component`'s prompt surface for no
   // gain.
@@ -211,6 +250,17 @@ export const AUTHORED_PORT_FIELDS: readonly VocabField[] = [
 
 export const AUTHORED_CONNECTION_FIELDS: readonly VocabField[] = [
   { name: 'fromId', kind: 'string', requiredIn: ['editor', 'mcp'] },
+  // FIX-007 note, deliberately a comment and not schema text. Both of these name
+  // the port *name*, never the display label, and on a Function node those
+  // differ (`Outputs.y` is named "out-y", displayed "y") — a wire to the label
+  // dies on the canvas as "Target port doesn't exist". Spelling that out here
+  // cost ~87 tokens of the tool surface across the schema's three renderings and
+  // broke `toolDisclosure`'s 8,200 budget, whose header asks each new cost to
+  // argue for itself. This one does not have to: `checkFunctionNodePorts` now
+  // rejects the wire at write time naming the exact replacement, and a rejection
+  // carrying a suggestion is the carrier this repo has measured as effective.
+  // The rule is stated in WIRE_FORMAT_LEGEND, both catalogs and all three worked
+  // examples.
   {
     name: 'fromProperty',
     kind: 'string',
@@ -325,11 +375,13 @@ export const SURFACE_DIVERGENCES: readonly { readonly what: string; readonly why
   {
     what: 'MCP node and port schemas are `.passthrough()`; the editor drops unknown node fields',
     why:
-      '⚠️ The consequence is asymmetric and worth knowing: `stateParameters`, `stateTransitions` and `metadata` ' +
-      'reach disk through MCP (the storage schema allows additional properties) and cannot be expressed in the ' +
-      'editor at all, where `CARRIED_NODE_FIELDS` carries them over from the base instead. Both solve "an AI ' +
+      '⚠️ The consequence is asymmetric and worth knowing: `stateParameters`, `stateTransitions` and the rest of ' +
+      '`metadata` reach disk through MCP (the storage schema allows additional properties) and cannot be expressed ' +
+      'in the editor at all, where `CARRIED_NODE_FIELDS` carries them over from the base instead. Both solve "an AI ' +
       'revision must not eat hand-tuned work"; only one of them lets an agent author it in the first place. Same ' +
-      'gap as `variant` above — AAQ-011 F14.'
+      'gap as `variant` above — AAQ-011 F14. **One key of that bag is now an exception**: LEG-001 declares ' +
+      '`comment` as a flat authored field on both doors and maps it onto `metadata.comment`, because a field ' +
+      'reachable only by knowing the storage format got written once in 2,045 nodes.'
   },
   {
     what: 'These schemas are enforcement in MCP and instruction in the editor',
@@ -396,6 +448,88 @@ export function declaredDivergences(): DeclaredDivergence[] {
  */
 export function undeclaredDivergences(): DeclaredDivergence[] {
   return declaredDivergences().filter((d) => d.why.trim().length === 0);
+}
+
+// ─── LEG-001: the one field whose authored name is not its stored one ─────────
+//
+// `comment` is flat in the vocabulary and `metadata.comment` on disk. Both
+// renderers describe the flat field; these two functions are the only place that
+// knows about the bag, and every write path goes through them so the mapping
+// cannot be half-applied.
+//
+// ⚠️ The bag is shared. It also holds `merge` (the SUB-007 merge driver's
+// `soureCodePorts`) and, in projects saved before CED-001, `codeHistory_*` keys
+// that `stripCodeHistoryMetadata` removes on the way in. Writing a comment must
+// leave every other key exactly as it was — so these copy the bag and set one
+// key, and never rebuild it.
+
+/** The node field the vocabulary declares. */
+export const AUTHORED_COMMENT_FIELD = 'comment';
+
+/** Its key inside the stored node's metadata bag. */
+export const STORED_COMMENT_KEY = 'comment';
+
+interface CommentBearingNode {
+  comment?: unknown;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/**
+ * The metadata bag with `comment` set — or cleared, when the text is empty after
+ * trimming, which is `NodeGraphNode.setComment`'s rule and therefore the one the
+ * editor's own context menu already applies.
+ *
+ * Returns `undefined` rather than `{}` when nothing is left: a node that never
+ * had metadata must not gain a `"metadata": {}` key it did not have before, which
+ * is a spurious diff on every save (F46) for no content.
+ */
+export function metadataWithComment(
+  metadata: Record<string, unknown> | undefined,
+  comment: string | undefined
+): Record<string, unknown> | undefined {
+  const text = typeof comment === 'string' ? comment.trim() : '';
+  const next = { ...(metadata ?? {}) };
+  if (text) next[STORED_COMMENT_KEY] = text;
+  else delete next[STORED_COMMENT_KEY];
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+/**
+ * Authored → stored. Moves a flat `comment` into `metadata.comment`.
+ *
+ * Returns the node **unchanged and unaliased** when it carries no `comment` key,
+ * so a graph written by an agent that never uses the field is byte-identical to
+ * what it sent. Never mutates its argument — fc36d61a is the whole reason the
+ * metadata bag is safe to write into at all.
+ */
+export function foldNodeComment<T extends CommentBearingNode>(node: T): T {
+  if (!(AUTHORED_COMMENT_FIELD in node)) return node;
+  const { comment, ...rest } = node;
+  const metadata = metadataWithComment(node.metadata, typeof comment === 'string' ? comment : undefined);
+  const out = rest as unknown as T;
+  if (metadata) return { ...out, metadata };
+  const cleared = { ...out };
+  delete cleared.metadata;
+  return cleared;
+}
+
+/**
+ * Stored → authored. Surfaces `metadata.comment` as the flat field an agent knows
+ * about, and removes it from the bag it hands back, so a read-modify-write round
+ * trip is a fixed point rather than a graph carrying the same sentence twice.
+ *
+ * Unchanged when there is no comment to surface.
+ */
+export function unfoldNodeComment<T extends CommentBearingNode>(node: T): T {
+  const stored = node.metadata?.[STORED_COMMENT_KEY];
+  if (typeof stored !== 'string' || !stored.trim()) return node;
+  const metadata = { ...node.metadata };
+  delete metadata[STORED_COMMENT_KEY];
+  const out: CommentBearingNode = { ...node, [AUTHORED_COMMENT_FIELD]: stored };
+  if (Object.keys(metadata).length > 0) out.metadata = metadata;
+  else delete out.metadata;
+  return out as T;
 }
 
 // ─── Rendering: JSON Schema (the editor's tool surface) ───────────────────────

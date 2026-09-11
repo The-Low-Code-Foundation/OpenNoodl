@@ -2,36 +2,69 @@
 
 How to cut, verify, publish, and roll back a signed NodeGX release.
 
-> **Status (REV-007):** the release *infrastructure* is complete and wired —
-> tag-triggered CI, per-platform signing hooks, notarisation, auto-update feed,
-> draft-then-publish. What is **not** done, and cannot be done in code, is the
-> **credential provisioning**: an Apple Developer account, a Windows
-> code-signing certificate, and the CI secrets built from them. Until a human
-> completes [§1](#1-one-time-credential-setup-human-required), releases produced
-> by CI are **unsigned** (they still build and publish as drafts, but macOS
-> Gatekeeper will warn and Windows SmartScreen will block).
+> **Status (updated 2026-08-08, after shipping v0.1.4).**
 >
-> **Distributing unsigned test builds is fully supported** in the meantime —
-> that is the current v0 plan. Point testers at
-> [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md) (copy it into
-> the GitHub Release notes) for the one-step "open it anyway" instructions per
-> OS. Signing just removes that friction; it is not required to ship.
+> **macOS is signed and notarised.** The five Apple secrets were added to the
+> repository on 2026-08-07 and both v0.1.3 and v0.1.4 built with them. From a
+> release log:
+>
+> ```
+> • signing  file=dist/mac-arm64/NodeGX.app type=distribution
+>            identityName=Developer ID Application: Osborne Solutions (…)
+> • notarization successful
+> [notarize] Notarisation complete — ticket will be stapled by electron-builder.
+> ```
+>
+> **macOS auto-update works, and has now been observed doing so** — 0.1.3 → 0.1.4,
+> unattended, on 2026-08-08. This section used to say the opposite. Squirrel.Mac
+> requires a signed app, so the in-app updater had nothing it could install for as
+> long as builds were unsigned.
+>
+> ⚠️ **It installs on quit and shows nothing while downloading**, so it reads as
+> broken to the person it is working for. Know this before debugging a report of
+> "it isn't updating" — see the auto-update entry under §Known limitations for the
+> three places the evidence actually lives.
+>
+> **Do not paste [INSTALLING-UNSIGNED-BUILDS.md](./INSTALLING-UNSIGNED-BUILDS.md)
+> into macOS release notes any more.** It tells users to bypass Gatekeeper, which
+> is now both unnecessary and bad advice. It remains correct for Windows until
+> the item below is closed.
+>
+> **Windows signing is NOT confirmed.** `WIN_CSC_LINK` is unset, so no certificate
+> is provisioned — but electron-builder still logged `signing with signtool.exe`
+> and raised no error, which is ambiguous rather than reassuring. Nobody has run
+> a Windows artifact on a clean machine to see whether SmartScreen blocks it.
+> Treat Windows as unsigned until someone checks, and keep the unsigned-install
+> instructions in the notes for that platform.
+>
+> The infrastructure itself has been complete since REV-007: tag-triggered CI,
+> per-platform signing hooks, notarisation, auto-update feed, draft-then-publish.
+> [§1](#1-one-time-credential-setup-human-required) is now only outstanding for
+> Windows.
 
 ---
 
 ## 0. TL;DR
 
 ```bash
-# 1. Bump the version in packages/noodl-editor/package.json (e.g. 0.1.0 -> 0.1.1).
-# 2. Commit it.
-# 3. Tag and push:
-git tag v0.1.1
-git push origin v0.1.1
-# 4. Watch the "Release" workflow in GitHub Actions.
-# 5. Go to GitHub → Releases → the new DRAFT release.
-# 6. Download and smoke-test each platform artifact on a CLEAN machine.
-# 7. Click "Publish release". Only now can existing installs auto-update.
+# 1. Bump the version in packages/noodl-editor/package.json (e.g. 0.2.2 -> 0.2.3).
+# 2. Commit it on cline-dev and push.
+# 3. Get the six required checks GREEN, then merge cline-dev into main (PR #20).
+#    main is protected with enforce_admins, so a red check stops everyone. See §3.
+# 4. Tag on main — the branch a reader can actually clone:
+git checkout main && git pull
+git tag v0.2.3
+git push origin v0.2.3
+# 5. Watch the "Release" workflow in GitHub Actions.
+# 6. Go to GitHub → Releases → the new DRAFT release.
+# 7. Download and smoke-test each platform artifact on a CLEAN machine.
+# 8. Click "Publish release". Only now can existing installs auto-update.
+# 9. Close the issues held open for a shipped — not merely committed — fix.
 ```
+
+> ⚠️ **Releases up to v0.2.2 were tagged on `cline-dev`, not `main`.** If you are
+> comparing against an older release, that is why its tag is not on `main`.
+> §3 explains what changed and why.
 
 The tag **must** match the `version` in `packages/noodl-editor/package.json`
 prefixed with `v`. electron-builder names the release from the package version,
@@ -123,16 +156,23 @@ dispatch):
 
 ### Linux is install-only, deliberately
 
-There is **no `latest-linux.yml`, and there is not meant to be.**
 `src/main/src/autoupdater.js` returns early on `process.platform === 'linux'`,
 so the Linux build never asks for an update feed and would not read one if it
 were published: electron-updater cannot replace an AppImage it did not itself
 launch, and a `.deb` belongs to the package manager. Linux users update by
 downloading the next AppImage.
 
-This is written down because an absent feed and a broken feed look identical
-from the outside — the v0.1.0 draft had no `latest-linux.yml` and it was read as
-a bug for over a week. It was a bug, but a different one: see below.
+**A `latest-linux.yml` *is* published, and it is inert.** This section used to
+say there was none and none was intended; electron-builder emits one for the
+Linux targets regardless, and v0.1.4 shipped with it. Nothing reads it — the
+early return above is what makes Linux install-only, not the absence of a feed.
+Corrected here because the file's presence looks like a promise the app does not
+keep.
+
+The distinction is worth writing down because an absent feed and a broken feed
+look identical from the outside — the v0.1.0 draft had no `latest-linux.yml` and
+it was read as a bug for over a week. It was a bug, but a different one: see
+below.
 
 > **What actually happened to Linux in v0.1.0.** The leg is recorded as
 > "succeeded, no update feed". It did not succeed — it **failed**, after the
@@ -194,17 +234,55 @@ that arrives late and says little. Add all five macOS secrets together.
 
 ## 3. Cutting a release
 
+> ### 🔴 Changed for v0.2.3: a release is cut from `main`, not from `cline-dev`
+>
+> Every release up to and including **v0.2.2 was tagged on `cline-dev`** — the
+> tags `v0.2.0` and `v0.2.2` are reachable only from that branch, and `main` sat
+> **1920 commits behind** with its last commit dated 2026-08-07. That was
+> defensible while nothing pointed at `main`; it stopped being defensible once
+> six public issue replies named [PR #20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20)
+> as the thing that puts the exporter there, and once people started cloning the
+> repo to get what the release notes describe.
+>
+> **The rule now: when an alpha is judged stable enough to ship, it lands on
+> `main` first and the tag is cut there.** `main` is what a reader can get; a
+> release tagged off a development branch describes a tree nobody else has.
+>
+> ⚠️ **This is a gate, not a formality.** `main` is protected with
+> `enforce_admins: true` and six required checks — *Typecheck, Lint, Test
+> (editor), Test (platform-node), Build (viewer + editor bundles), Check build
+> artefacts*. **Nobody can merge past a red one, including the repository
+> owner.** If a check is red the release does not move until it is green or the
+> protection is deliberately and visibly changed. That is the point: it makes
+> "stable enough to ship" a measured claim rather than a feeling.
+
 1. Decide the new version (semver). Update `version` in
    `packages/noodl-editor/package.json`. **The version must only ever increase** —
    electron-updater compares semver and will never offer a lower version.
-2. Commit on `cline-dev` (per `.clinerules`): `chore(release): v0.1.1`.
-3. Tag and push:
+2. Commit the bump on `cline-dev` (per `.clinerules`): `chore(release): v0.2.3`.
+3. **Get the six required checks green on `cline-dev`** and push. Watch them on
+   the PR, not locally: `typecheck:backend-tests` and the editor suite behave
+   differently on a clean checkout, and the run list is not the log — read the
+   duration before believing a result.
+4. **Merge `cline-dev` into `main`** through the standing PR. Do not squash: the
+   history is the record, and a squash of 1900+ commits is not a merge anyone can
+   read afterwards.
+5. **Tag on `main`**, so the tag and the branch a reader can clone agree:
    ```bash
-   git tag v0.1.1
-   git push origin cline-dev
-   git push origin v0.1.1
+   git checkout main && git pull
+   git tag v0.2.3
+   git push origin v0.2.3
    ```
-4. Watch **Actions → Release**. All four matrix jobs must go green.
+   The tag **must** match `packages/noodl-editor/package.json`'s `version`
+   prefixed with `v` — see the note under §0.
+6. Watch **Actions → Release**. All four matrix jobs must go green.
+7. Verify per §4, publish the draft, and only then close the issues that were
+   deliberately left open waiting for a shipped fix rather than a source fix.
+
+> **If a release ever has to be cut without `main`** — a security fix that cannot
+> wait for a red gate, say — tag it on `cline-dev` as before, and say so in the
+> release notes. An undocumented exception is how the `main` of 2026-08-07
+> happened in the first place.
 
 ---
 
@@ -267,18 +345,45 @@ These are documented deliberately rather than silently shipped:
   universal app, so a real universal build needs each arch's natives built
   separately and lipo-merged — a CI change worth doing later, not required for
   distribution now.
-- **macOS multi-arch auto-update feed (future, signed phase only).** Once
-  signing + auto-update are live, the two mac jobs each write `latest-mac.yml`
-  and the later one wins, so the feed would point at one arch. This is **moot
-  today** — macOS auto-update (Squirrel.Mac) requires a *signed* app, so
-  auto-update does not run at all in the current unsigned phase. It becomes a
-  must-fix the moment an Apple Developer ID is added: resolve it then with a
-  universal build or arch-scoped update channels.
-- **Signing is credential-gated, not verified end-to-end.** No Apple/Windows
-  certificates exist yet, so the signed/notarised path has never actually run.
-  The hooks are wired and will engage the moment the secrets in §1 are present,
-  but the first real signed build is where notarisation/entitlement problems
-  surface — expect to iterate there.
+- ~~**macOS multi-arch auto-update feed.**~~ **Resolved.** The two mac jobs each
+  write a `latest-mac.yml` and the later upload would have won, leaving the feed
+  pointing at one arch. The `merge mac update feed` job now rebuilds it from both
+  legs' artifacts and re-uploads; v0.1.4's published feed lists all four mac
+  files (arm64 and x64, `.zip` and `.dmg`) under one `version: 0.1.4`.
+- ~~**Signing is credential-gated, not verified end-to-end.**~~ **Done for
+  macOS** as of 2026-08-07 — see the status banner. Notarisation ran clean on the
+  first attempt, so the entitlement problems anticipated here did not materialise.
+  **Still open for Windows:** `WIN_CSC_LINK` is unset and no artifact has been run
+  past SmartScreen on a clean machine.
+- ~~**The auto-update *upgrade path* has never been exercised.**~~ **Proven
+  2026-08-08**, 0.1.3 → 0.1.4, unattended on macOS arm64. Feed read, 169MB zip
+  downloaded, Squirrel swapped the bundle, signature still verifies after the
+  in-place replacement.
+
+  **It looks broken while it is working, and that is the finding.** The update
+  applies on **quit**, not on a prompt (`autoInstallOnAppQuit` defaults true;
+  `ShipItState.plist` carries `launchAfterInstallation => false`), and
+  `autoupdater.js` messages the renderer only on `update-downloaded` — nothing on
+  `update-available`, no `download-progress`. So the app sits silent for the
+  ~90 seconds it downloads, and a user who restarts inside that window sees
+  nothing at all and concludes auto-update is broken. That is exactly what
+  happened on the first real run. `update-available` and `download-progress` are
+  both available and unused; wiring them is the fix.
+
+  **Where to look when someone reports it "not updating"** — there is no
+  app-level update log, so do not go hunting for one:
+
+  | | |
+  |---|---|
+  | `~/Library/Caches/com.nodegx.app.ShipIt/ShipIt_stderr.log` | the real story. `Aborting update attempt because there are 1 running instances` → `Installation completed successfully` once the app quits |
+  | `~/Library/Caches/noodl-editor-updater/` | `update.zip` and `pending/`. Its byte size matching `latest-mac.yml` proves the download finished |
+  | `defaults read /Applications/NodeGX.app/Contents/Info.plist CFBundleShortVersionString` | ground truth for what is installed |
+
+- **`releaseType: draft` in the shipped `app-update.yml` is inert.** It is the
+  publish-side setting copied into the read-side config, and it looks alarming
+  when debugging an update that is not appearing. `GitHubProvider` never reads
+  it — it goes straight to `releases.atom`, then `/releases/latest` for the tag.
+  Noted because it was the first thing suspected and it cost time.
 - **AppImage build is CI-verified only.** AppImage cannot be built on macOS, so
   it is exercised by the Linux runner, not locally. Local verification here
   covered the macOS packaging path only.

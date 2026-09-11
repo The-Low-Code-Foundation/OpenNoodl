@@ -1,0 +1,109 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c0a11de5-3ea1-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageRec",
+      "fromProperty": "done",
+      "toId": "afterSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "prop-title",
+      "toId": "afterSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "failure",
+      "toId": "failSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "error",
+      "toId": "failSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "pageIdInput",
+      "fromProperty": "onTextChanged",
+      "toId": "pageIdVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "pageIdVar",
+      "fromProperty": "value",
+      "toId": "pageRec",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "pageIdVar",
+      "fromProperty": "value",
+      "toId": "liveRec",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "prop-title",
+      "toId": "titleText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "prop-published",
+      "toId": "publishedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "prop-navOrder",
+      "toId": "orderText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "id",
+      "toId": "idText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pageRec",
+      "fromProperty": "error",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastRead",
+      "fromProperty": "value",
+      "toId": "lastText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "failRead",
+      "fromProperty": "value",
+      "toId": "failText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "liveRec",
+      "fromProperty": "prop-title",
+      "toId": "liveText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "liveRec",
+      "fromProperty": "error",
+      "toId": "liveErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "loadBtn",
+      "fromProperty": "onClick",
+      "toId": "pageRec",
+      "toProperty": "fetch"
+    }
+  ]
+}

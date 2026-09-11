@@ -1,0 +1,7 @@
+@font-face {
+  font-family: 'Dots';
+  src: url(dots.woff2) format('woff2');
+}
+.dots { font-family: 'Dots'; }
+.dots.icon-dot::before { content: '\e001'; }
+.dots.icon-ring::before { content: '\e002'; }

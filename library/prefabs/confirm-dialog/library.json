@@ -1,0 +1,13 @@
+{
+  "label": "Confirm Dialog",
+  "description": "A modal confirmation dialog with the ERG-001 outcome contract: distinct Confirmed and Cancelled signal outputs (never a single ambiguous Closed), Open/Close signal inputs, Title/Message/Confirm Label/Cancel Label string inputs, and a Danger boolean that restyles the confirm button for destructive actions. Clicking the scrim or the cancel button emits Cancelled; only the confirm button emits Confirmed.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Feedback"
+  ],
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

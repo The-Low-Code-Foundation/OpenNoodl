@@ -22,6 +22,15 @@
 // A value import would drag all of Blockly in with it and undo the lazy load.
 import type * as Blockly from 'blockly';
 
+// A plain string constant out of the runtime's pure port detector — no Blockly, nothing to
+// drag in, so the lazy load above is unaffected.
+import { HAT_BLOCK_TYPE } from '@noodl/runtime/src/nodes/std-library/logic-builder-io';
+
+// Two string constants and a category id out of a module that imports nothing but a type — the
+// lazy load above is unaffected.
+import { APP_CONFIG_CATEGORY, APP_CONFIG_HUE } from './appConfig';
+import { BROWSER_CATEGORY, BROWSER_HUE } from './appLibraries';
+
 /** Category colours. Hues, not hex — Blockly derives block shading from these. */
 const HUE = {
   io: '230',
@@ -29,28 +38,87 @@ const HUE = {
   variables: '330',
   objects: '20',
   arrays: '260',
+  appConfig: APP_CONFIG_HUE,
+  browser: BROWSER_HUE,
   logic: '210',
   loops: '120',
   math: '230',
   text: '160',
   lists: '260',
+  /**
+   * FIX-004 §C — the same hue as {@link HUE.objects}, deliberately.
+   *
+   * `Data` is to `App Objects` what `Lists` is to `App Arrays`: the generic half of a pair
+   * whose other half is the seam to Noodl's own registry. Those two already share hue `260`,
+   * so sharing `20` here states the same relationship the same way.
+   */
+  data: '20',
+  // FIX-004 §A — red, and unused by any other category. A diagnostic block should not be
+  // mistakable at a glance for a block that does the app's work.
+  debug: '0',
   blocklyVariables: '330',
-  functions: '290'
+  functions: '290',
+  myBlocks: '55'
 } as const;
 
 export interface ToolboxLabels {
   noodlInputsOutputs: string;
   noodlSignals: string;
+  /**
+   * `Noodl.Variables` — the runtime bag written by Variable nodes: mutable, created by being
+   * used, gone when the page reloads.
+   *
+   * 🔴 **Called `App Variables`, and this name has been round the houses. Read this before
+   * changing it again.**
+   *
+   * VFN-012 renamed it *away* from `App Variables` to `Runtime Variables`, so that
+   * `Noodl.Config` could be `App Config` without two shelves reading as the same thing.
+   * FIX-005 reverses that, on Richard's ruling and for the opposite reason: every other
+   * `Noodl.*` surface in this toolbox is already `App <something>` — `App Objects`
+   * (`Noodl.Objects`), `App Arrays` (`Noodl.Arrays`), `App Config` (`Noodl.Config`) — so
+   * `Runtime Variables` was the one shelf named after its *lifetime* while its four neighbours
+   * were named after their API. One vocabulary beats one disambiguation.
+   *
+   * ⚠️ **VFN-012's concern was real and is not dismissed**, it is answered elsewhere: the two
+   * bags are told apart by `App Config`'s own flyout, which names
+   * {@link appConfig.APP_CONFIG_SETTINGS_PATH} — *"Settings → Project → App Config"* — so the
+   * declared bag says where it is declared. A category name was never going to carry that.
+   *
+   * 🔴 **Copy only, both times.** The block type ids `noodl_get_variable` /
+   * `noodl_set_variable` are in every saved project and did not change under either rename.
+   */
   noodlVariables: string;
   noodlObjects: string;
   noodlArrays: string;
+  /** VFN-012 §1 — `Noodl.Config`: declared in app settings, typed, read only at runtime. */
+  noodlAppConfig: string;
+  /**
+   * VFN-012 §2/§3 — the libraries this app registered, and `window`.
+   *
+   * One category for both because they are the same escape hatch at two levels of ceremony: a
+   * registered library generates `window.<global>` and the browser block generates
+   * `window["a"]["b"]`. The report asked for them in one sentence, too.
+   */
+  noodlLibraries: string;
   logic: string;
   loops: string;
   math: string;
   text: string;
   lists: string;
+  /**
+   * FIX-004 §C — objects as data: making one, computing a key, listing its keys, JSON.
+   *
+   * ⚠️ **Named `Data`, not `Objects`.** The obvious name collides with `App Objects` two
+   * categories up, and two similarly-named categories in one toolbox is the discovery problem
+   * this fix exists to solve, not a cosmetic one. `Data` also covers the JSON pair, which is
+   * about crossing a boundary rather than about objects as such.
+   */
+  data: string;
+  /** FIX-004 §A — `console.log`, given a findable home of its own. */
+  debug: string;
   variables: string;
   functions: string;
+  myBlocks: string;
 }
 
 /** English category names — the fallback for any locale we have no translation for. */
@@ -60,14 +128,163 @@ export const DEFAULT_TOOLBOX_LABELS: ToolboxLabels = {
   noodlVariables: 'App Variables',
   noodlObjects: 'App Objects',
   noodlArrays: 'App Arrays',
+  noodlAppConfig: 'App Config',
+  noodlLibraries: 'Libraries & Browser',
   logic: 'Logic',
   loops: 'Loops',
   math: 'Math',
   text: 'Text',
   lists: 'Lists',
+  data: 'Data',
+  debug: 'Debug',
   variables: 'Variables',
-  functions: 'Functions'
+  functions: 'Functions',
+  // LGC-007 §1: Scratch's own term for custom blocks, tested on millions of
+  // non-technical users and plain English. Preferred over "Snippets", "Macros"
+  // or "Procedures", all of which are words a builder has to already know.
+  myBlocks: 'My Blocks'
 };
+
+/**
+ * Toolbox category names per language. Only languages translated with confidence appear
+ * here; the rest fall back to {@link DEFAULT_TOOLBOX_LABELS}.
+ */
+const TOOLBOX_LABELS: Record<string, ToolboxLabels> = {
+  fr: {
+    noodlInputsOutputs: 'Entrées / Sorties',
+    noodlSignals: 'Signaux',
+    noodlVariables: "Variables de l'app",
+    noodlObjects: "Objets de l'app",
+    noodlArrays: "Tableaux de l'app",
+    noodlAppConfig: "Config de l'app",
+    noodlLibraries: 'Bibliothèques & navigateur',
+    logic: 'Logique',
+    loops: 'Boucles',
+    math: 'Maths',
+    text: 'Texte',
+    lists: 'Listes',
+    data: 'Données',
+    debug: 'Débogage',
+    variables: 'Variables',
+    functions: 'Fonctions',
+    myBlocks: 'Mes blocs'
+  },
+  es: {
+    noodlInputsOutputs: 'Entradas / Salidas',
+    noodlSignals: 'Señales',
+    noodlVariables: 'Variables de la app',
+    noodlObjects: 'Objetos de la app',
+    noodlArrays: 'Arreglos de la app',
+    noodlAppConfig: 'Config de la app',
+    noodlLibraries: 'Bibliotecas y navegador',
+    logic: 'Lógica',
+    loops: 'Bucles',
+    math: 'Matemáticas',
+    text: 'Texto',
+    lists: 'Listas',
+    data: 'Datos',
+    debug: 'Depuración',
+    variables: 'Variables',
+    functions: 'Funciones',
+    myBlocks: 'Mis bloques'
+  },
+  de: {
+    noodlInputsOutputs: 'Eingänge / Ausgänge',
+    noodlSignals: 'Signale',
+    noodlVariables: 'App-Variablen',
+    noodlObjects: 'App-Objekte',
+    noodlArrays: 'App-Arrays',
+    noodlAppConfig: 'App-Konfiguration',
+    noodlLibraries: 'Bibliotheken & Browser',
+    logic: 'Logik',
+    loops: 'Schleifen',
+    math: 'Mathematik',
+    text: 'Text',
+    lists: 'Listen',
+    data: 'Daten',
+    debug: 'Debug',
+    variables: 'Variablen',
+    functions: 'Funktionen',
+    myBlocks: 'Meine Blöcke'
+  },
+  it: {
+    noodlInputsOutputs: 'Ingressi / Uscite',
+    noodlSignals: 'Segnali',
+    noodlVariables: "Variabili dell'app",
+    noodlObjects: "Oggetti dell'app",
+    noodlArrays: "Array dell'app",
+    noodlAppConfig: "Config dell'app",
+    noodlLibraries: 'Librerie e browser',
+    logic: 'Logica',
+    loops: 'Cicli',
+    math: 'Matematica',
+    text: 'Testo',
+    lists: 'Liste',
+    data: 'Dati',
+    debug: 'Debug',
+    variables: 'Variabili',
+    functions: 'Funzioni',
+    myBlocks: 'I miei blocchi'
+  },
+  nl: {
+    noodlInputsOutputs: 'Invoer / Uitvoer',
+    noodlSignals: 'Signalen',
+    noodlVariables: 'App-variabelen',
+    noodlObjects: 'App-objecten',
+    noodlArrays: 'App-arrays',
+    noodlAppConfig: 'App-configuratie',
+    noodlLibraries: 'Bibliotheken & browser',
+    logic: 'Logica',
+    loops: 'Lussen',
+    math: 'Wiskunde',
+    text: 'Tekst',
+    lists: 'Lijsten',
+    data: 'Gegevens',
+    debug: 'Debug',
+    variables: 'Variabelen',
+    functions: 'Functies',
+    myBlocks: 'Mijn blokken'
+  },
+  'pt-br': {
+    noodlInputsOutputs: 'Entradas / Saídas',
+    noodlSignals: 'Sinais',
+    noodlVariables: 'Variáveis do app',
+    noodlObjects: 'Objetos do app',
+    noodlArrays: 'Arrays do app',
+    noodlAppConfig: 'Config do app',
+    noodlLibraries: 'Bibliotecas e navegador',
+    logic: 'Lógica',
+    loops: 'Laços',
+    math: 'Matemática',
+    text: 'Texto',
+    lists: 'Listas',
+    data: 'Dados',
+    debug: 'Depuração',
+    variables: 'Variáveis',
+    functions: 'Funções',
+    myBlocks: 'Meus blocos'
+  }
+};
+
+/**
+ * The category names for a language code, English for anything untranslated.
+ *
+ * 🔴 **Split out of {@link applyLanguage} so the translations can be graded at all.** That
+ * function loads Blockly and a message bundle first, and **catches every failure into
+ * `DEFAULT_TOOLBOX_LABELS`** — so a spec calling it could not tell "this locale is translated
+ * correctly" from "the message bundle would not load in the test runner", and the second reads
+ * as a pass for any assertion English happens to satisfy. This is the same table `applyLanguage`
+ * returns, reachable without the import that can fail.
+ *
+ * ⚠️ A caller wanting the *side effect* — `Blockly.setLocale`, which is what actually translates
+ * block text — still needs `applyLanguage`. This returns copy, and only copy.
+ */
+export function toolboxLabelsFor(code: string): ToolboxLabels {
+  return TOOLBOX_LABELS[code] || DEFAULT_TOOLBOX_LABELS;
+}
+
+/** The language codes with translated category names. English is the fallback, not a member. */
+export const TRANSLATED_TOOLBOX_LANGUAGES = Object.keys(TOOLBOX_LABELS);
 
 function category(name: string, colour: string, blocks: string[]) {
   return {
@@ -95,17 +312,73 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'noodl_set_output'
       ]),
       category(labels.noodlSignals, HUE.signals, [
+        // LGC-009 — first, because it is where a program starts. Scratch and MakeCode both put
+        // the hat at the top of the first category a beginner opens, for the same reason: the
+        // commonest question in any block tool is "why didn't this run?", and the answer is
+        // easier to reach for than to explain.
+        HAT_BLOCK_TYPE,
         'noodl_define_signal_input',
         'noodl_define_signal_output',
         'noodl_send_signal'
       ]),
       category(labels.noodlVariables, HUE.variables, ['noodl_get_variable', 'noodl_set_variable']),
+      /**
+       * FIX-004 §C — the four object-shaped blocks are listed **here as well as under `Data`**.
+       *
+       * They are reached from two genuinely different starting points — *"I have an App Object,
+       * now what?"* and *"I have some data, now what?"* — and findability is the complaint
+       * behind this whole fix. This toolbox already lists one block in two categories for
+       * exactly that reason (`noodl_convert`, under Math and Text).
+       *
+       * ⚠️ **Order is the argument.** Each computed-key block sits directly beneath the
+       * literal-key sibling it generalises, so the flyout reads as a pair — *the field I know*,
+       * then *the field I work out* — rather than as four extra rows at the bottom. `the
+       * property names of` and `has property` follow, because both are questions you ask about
+       * an object you already have.
+       *
+       * ⚠️ **This was built and withdrawn once** (session 37) because
+       * `tests-unit/vfn-012/browser-blocks.spec.ts` held these three seam categories
+       * **byte-identical** to their VFN-012 contents. Ruled in session 42: dual-list, and narrow
+       * that fence to the claim its own title makes — *"changes no existing block type id"*,
+       * which an addition does not do. The narrowing is legitimate only because the guard was
+       * stricter than its stated claim; it still rejects a renamed, removed or reordered
+       * existing id.
+       *
+       * 🔴 The three VFN-012 ids below are load-bearing and unchanged. `noodl_get_object_property`
+       * (literal field) is **not** the same block as `noodl_get_object_property_expr` (computed);
+       * every saved project holds the former, and neither may absorb the other.
+       */
       category(labels.noodlObjects, HUE.objects, [
         'noodl_get_object',
         'noodl_get_object_property',
-        'noodl_set_object_property'
+        'noodl_get_object_property_expr',
+        'noodl_set_object_property',
+        'noodl_set_object_property_expr',
+        'noodl_object_members',
+        'noodl_object_has_property'
       ]),
       category(labels.noodlArrays, HUE.arrays, ['noodl_get_array', 'noodl_array_length', 'noodl_array_add']),
+      /**
+       * VFN-012 — the app's own declared config variables, where Richard asked for them: beside
+       * App Objects and App Arrays, at the bottom of the seam to the graph.
+       *
+       * `custom`, like `VARIABLE` / `PROCEDURE` / `MY_BLOCKS`, because its contents are the
+       * project's app settings and those change under an open editor. `BlocklyWorkspace`
+       * registers the callback; a workspace that does not gets an empty category rather than an
+       * error, which is why the callback's own empty state has to be distinguishable from it —
+       * see `hasAppConfigEmptyState`.
+       */
+      { kind: 'category', name: labels.noodlAppConfig, colour: HUE.appConfig, custom: APP_CONFIG_CATEGORY },
+      /**
+       * VFN-012 §2/§3 — the libraries the app registered, and `window`. Last in the seam,
+       * because it is the seam to everything *outside* Noodl rather than to the node graph.
+       *
+       * `custom` for App Config's reason and one more: the library list is read off disk
+       * asynchronously, so the contents are not merely stale-able, they are *unknown* for the
+       * first tick of a session — see the tri-state snapshot in `appLibraries.ts`. A static
+       * category could not express that at all.
+       */
+      { kind: 'category', name: labels.noodlLibraries, colour: HUE.browser, custom: BROWSER_CATEGORY },
 
       { kind: 'sep' },
 
@@ -130,6 +403,10 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
       category(labels.math, HUE.math, [
         'math_number',
         'math_arithmetic',
+        // FIX-004 §A — first after the literal, because "I wasn't able to use a Number()
+        // operator to turn a string into a number" is a question asked *in* this category.
+        // It also appears under Text, which is the other place an author goes looking.
+        'noodl_convert',
         'math_single',
         'math_trig',
         'math_constant',
@@ -137,6 +414,9 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'math_round',
         'math_modulo',
         'math_constrain',
+        // FIX-004 §B — already registered by Blockly; one toolbox line each.
+        'math_change',
+        'math_on_list',
         'math_random_int',
         'math_random_float'
       ]),
@@ -150,9 +430,19 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'text_charAt',
         'text_getSubstring',
         'text_changeCase',
-        'text_trim'
+        'text_trim',
+        // FIX-004 §B
+        'text_replace',
+        'text_reverse',
+        'text_count',
+        // FIX-004 §A — the same block as under Math. A conversion is reached for from
+        // whichever side the author is standing on, and Blockly is happy to list one block
+        // type in two flyouts.
+        'noodl_convert'
       ]),
       category(labels.lists, HUE.lists, [
+        // FIX-004 §B
+        'lists_create_empty',
         'lists_create_with',
         'lists_repeat',
         'lists_length',
@@ -162,14 +452,54 @@ export function buildToolbox(labels: ToolboxLabels = DEFAULT_TOOLBOX_LABELS) {
         'lists_setIndex',
         'lists_getSublist',
         'lists_split',
-        'lists_sort'
+        'lists_sort',
+        // FIX-004 §B
+        'lists_reverse'
       ]),
+      /**
+       * FIX-004 §C — Data, immediately after Lists and for the same reason it is next to it:
+       * Blockly ships a full vocabulary for lists and **none at all** for objects, so this is
+       * the missing counterpart to the category above rather than a new idea.
+       *
+       * Order is the order an author meets them: make one, read from it, write to it, ask what
+       * is in it, then the JSON boundary.
+       *
+       * ⚠️ Four of these seven are **also** listed under `App Objects` — see the note there.
+       * `noodl_new_object` and the JSON pair are not: making an object out of nothing and
+       * crossing the JSON boundary are not things you reach for *because you have an App
+       * Object*, so they would be noise in that category rather than help.
+       */
+      category(labels.data, HUE.data, [
+        'noodl_new_object',
+        'noodl_get_object_property_expr',
+        'noodl_set_object_property_expr',
+        'noodl_object_members',
+        'noodl_object_has_property',
+        'noodl_json_parse',
+        'noodl_json_stringify'
+      ]),
+      /**
+       * FIX-004 §A — Debug.
+       *
+       * A category of one, which is the right size for it: *"there's no log block"* was a
+       * complaint about **finding** one, and a log block filed under Logic or Inputs/Outputs is
+       * a log block nobody finds. Block languages this node's audience have met put it in its
+       * own place for the same reason.
+       */
+      category(labels.debug, HUE.debug, ['noodl_log']),
 
       { kind: 'sep' },
 
       /* --- Dynamic categories Blockly fills in itself --------------------- */
       { kind: 'category', name: labels.variables, colour: HUE.blocklyVariables, custom: 'VARIABLE' },
-      { kind: 'category', name: labels.functions, colour: HUE.functions, custom: 'PROCEDURE' }
+      { kind: 'category', name: labels.functions, colour: HUE.functions, custom: 'PROCEDURE' },
+      // LGC-007: dynamic for the same reason as the two above — its contents change
+      // whenever a definition is saved, renamed or deleted, and Blockly rebuilds a
+      // `custom` category on every flyout open. `BlocklyWorkspace` registers the
+      // callback; a workspace that does not gets an empty category rather than an error.
+      // Last, which is both where Scratch puts My Blocks and where this toolbox already
+      // keeps its dynamic categories.
+      { kind: 'category', name: labels.myBlocks, colour: HUE.myBlocks, custom: 'MY_BLOCKS' }
     ]
   } as Blockly.utils.toolbox.ToolboxDefinition;
 }

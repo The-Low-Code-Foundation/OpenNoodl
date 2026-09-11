@@ -1,0 +1,428 @@
+# Phase 57 — the tasks (BLD: the Build conversation)
+
+**Created:** 2026-08-08, out of [README.md](README.md) and the approved mockup
+([artifact](https://claude.ai/code/artifact/a37f0d32-b7f8-4104-97fd-2ee46a188c9f)).
+
+**The bar, restated as an exit test:** one continuous session builds across four components, attaches
+a mock, mentions a component and a doc, asks the agent to look at the rendered result, accepts, writes
+project docs by answering questions rather than correcting guesses, adds a doc of its own invention
+that the next build actually uses — and **the thread never resets and no control appears twice**.
+Then quit, reopen, and the thread is still there. Full criteria in the README.
+
+**Sixteen tasks is a large phase. It cuts cleanly at the track line:** Track A alone fixes every
+defect D1–D10 and is a complete, coherent release. Track B is what makes it the builder Richard
+described, and every one of its tasks needs BLD-001 to exist first.
+
+**Two corrections that must survive into every task** (both measured, both in the README):
+contrast is **not** the legibility problem — type scale is; and the project run is **not** a black
+box — its header is inside the scroll area.
+
+---
+
+## Track A — the conversation
+
+| Task | File | One line | Closes |
+|---|---|---|---|
+| BLD-001 ⭐ ✅ | [BLD-001-ONE-THREAD.md](BLD-001-ONE-THREAD.md) | one thread, one composer; scope inferred, not chosen | **D1 ✅** |
+| BLD-002 ✅ | [BLD-002-MESSAGE-HIERARCHY.md](BLD-002-MESSAGE-HIERARCHY.md) | five message kinds, five treatments; collapsed activity runs | **D4 ✅** |
+| BLD-003 ⭐ ✅ | [BLD-003-DECISIONS-ON-THE-CARD.md](BLD-003-DECISIONS-ON-THE-CARD.md) | actions attach to their subject; one owner; Discard, not red Reject | **D2 ✅ D3 ✅** D8ᵃ |
+| BLD-004 ✅ | [BLD-004-THINKING-AND-HEARTBEAT.md](BLD-004-THINKING-AND-HEARTBEAT.md) | surface `onActivity`; add a reasoning channel the XML parser cannot see | **D6 ✅ D7 ✅** C8 ✅ R2 ✅ |
+| BLD-005 ⭐ ✅ | [BLD-005-LEGIBLE-LONG-RUN.md](BLD-005-LEGIBLE-LONG-RUN.md) | pin the run header out of the scroll area; plan-as-map; honest estimate | **corr. 2 ✅** |
+| BLD-006 ✅ | [BLD-006-THREADS-PERSIST.md](BLD-006-THREADS-PERSIST.md) | threads survive accept, navigation and restart; a switcher | **D5 ✅** |
+| BLD-007 ⭐ ✅ | [BLD-007-DOCS-ARE-OPEN.md](BLD-007-DOCS-ARE-OPEN.md) | front-matter `inject`; the one-value enum becomes a discovered list | **D9 ✅** |
+| BLD-008 ⭐ ✅ | [BLD-008-DOCS-INTERVIEW.md](BLD-008-DOCS-INTERVIEW.md) | the agent asks before it drafts; TODO count stops being a feature | **D8 closed — driven $0.0588, 3 defects fixed (R11–R13); drafting turns + restart-resume still specs** |
+| BLD-009 ✅ | [BLD-009-EXPANDED-MODE.md](BLD-009-EXPANDED-MODE.md) | the same thread as a document, two-pane with the live preview | **D10 ✅ — driven, no billed call; R1–R5 fixed, R6 filed** |
+| BLD-017 ⭐ ✅ | [BLD-017-MOCKUP-FIDELITY.md](BLD-017-MOCKUP-FIDELITY.md) | the panel does not look like the mockup it was approved from | **F1–F6 closed, driven; F7 → design system, F8 → BLD-011** |
+| BLD-010 | [BLD-010-ACCEPTANCE-PASS.md](BLD-010-ACCEPTANCE-PASS.md) | drive every state live, both widths, both themes, and measure | — |
+
+ᵃ BLD-003 closes the *duplicate-bar* half of D8 (the Docs panel hand-off); BLD-008 closes the rest.
+
+✅ = built **and on `cline-dev`** (BLD-007 and BLD-012 merged 2026-08-09; **BLD-001 built, driven and
+closed 2026-08-09** — `a93720b3`, `02c3072c`, `458e189f`).
+
+**Session 18 (2026-08-10) — BLD-009 built and driven, no billed call. 15 of 17 fully built.**
+Counted off the tables below, not incremented: **Track A is 10 of 11** (only BLD-010, the sweep,
+is left), **Track B is 5 of 6** (BLD-015, deferred). **Every feature in this phase is now built.**
+
+🔴 **The design decision that was the task.** The obvious build — mount `AiAuthoringPanel` a second
+time inside the document — satisfies "one component, two hosts" and *breaks the task*: two mounts
+means two `AuthoringSession` refs, two subscriptions and two composers, which is precisely the
+doubled activity feed the task file warns about, and it makes *"expand mid-run, nothing restarts"*
+**unsatisfiable rather than merely unbuilt.** The panel is therefore mounted **once, ever**:
+`SidePanel` already keeps every visited panel alive behind `display: none`, so the expanded document
+is a **shell** that publishes an empty box and the panel paints into it with `createPortal`.
+Expanding changes where the component renders, not whether it exists — and the acceptance criterion
+becomes true by construction rather than by care. Expanded-ness is never stored either: it is
+`CurrentDocumentId`, read through `threadHost()` on the subscription `decisionOwner` already had.
+
+🔴 **The wide workspace was narrower than the panel it replaced.** A document sits *beside* the
+sidebar (BLD-003 states this), so on a 1368px window the rail kept 452px and the candidate pane got
+**396px** — less than the 400px panel the whole task exists to escape. **A feature can be built
+exactly as specified and not deliver its own premise.** Expanding now stands the rail down through a
+new `layout.hideIfShown()`, and 🔴 **the reveal is keyed on leaving the host, not on the Collapse
+button** — because Accept and Review changes both leave by other doors, and hung off the button they
+would have left the sidebar hidden *and* the document gone, with the thread alive and on screen
+nowhere.
+
+🔴 **And a defect that is not BLD-009's: AIB-003's saved plan is never restored.** The effect that
+reads `.nodegx/plan/session.json` lives inside `ProjectAuthoringView`, which since BLD-001 mounts
+**only as a plan turn's outcome card** — so the only thing that can restore a plan is a component
+that mounts only once a plan has been restored. Confirmed statically, empirically (valid snapshot +
+restart = nothing) and against the shipped parser (the fixture is fine). It is BLD-001's B6 one
+instance later. **Filed to BLD-010, deliberately not fixed here** — see BLD-009's R6 for why half a
+fix is worse than none.
+
+**Session 17 (2026-08-10) — BLD-014's CDP half built and driven, no billed call. 14 of 17 fully
+built.** Counted off the tables below, not incremented: **Track A is 9 of 11** (BLD-009, BLD-010
+open), **Track B is 5 of 6** — BLD-015 is the only one left, and Q4 was **deferred by Richard this
+session**, so it is unscheduled rather than merely unstarted.
+
+🔴 **The finding worth more than the task: "reuse the existing harness" was unreachable, and no
+register had said so.** The build item named `render-report.js` and a `Page.navigate` entry point.
+Checked before building: `scripts/` is **not in `package.json`'s `build.files`**, so it is absent
+from a packaged app entirely — and `checkPrerequisites` additionally wants a **Chrome binary on the
+user's machine**, the built viewer bundle at a repo path, and `ws` from the repo's `node_modules`.
+Every one of those is a dev-checkout assumption, so the named route would have shipped a feature
+that works in this checkout and is dead for every user. **F22 freed the *measurement* half; the
+*transport* had its own packaging blocker that nobody had filed.** Electron **is** Chromium, so
+`webContents.debugger` now carries the identical CDP commands with no Chrome to find, no `ws`, no
+`child_process` and no packaging change — and no browser to launch, so it is faster than the harness
+it replaces. **A resolved blocker on one half of a task is not a resolved blocker on the other.**
+
+🔴 **Two defects that only a drive could reach, because the transport is deliberately not mocked.**
+A `BrowserWindow` with no `loadURL` has **no renderer process behind its `webContents`**, so
+`attach()` succeeds — it is local and synchronous — and `Page.enable` **never resolves**. Not a
+throw, not an error result: a promise that never settles, and a control reading *"Rendering…"*
+forever, which looks exactly like a slow network. `await win.loadURL('about:blank')` first takes
+`Page.enable` from a 45s timeout to **4ms**. The second defect is that the hang **had no deadline at
+all** — every CDP step can fail that way, so the deadline went around the whole operation, with the
+window teardown deliberately *outside* the race because `Promise.race` does not cancel the loser.
+
+⚠️ **And a third that every spec passed with wrong.** `summarise` must see all viewports at once or
+it loses the findings that compare them — but `report.summary` then describes the *whole render*,
+and it was being pasted onto each per-viewport capture. The **desktop** chip's twin read *"2
+warnings … desktop 1280×900px …; phone 390×844px …"*: two warnings on a picture that has one, and
+measurements from an image the model cannot see. The findings were split correctly the whole time;
+only the sentence above them was not. **A right mechanism with a wrong presentation** — and the
+kind of thing a green suite cannot express.
+
+**Session 16 (2026-08-10) — BLD-016 built and driven, no billed call. 13 of 17 fully built, plus
+BLD-014's webview half.** Counted off the tables below, not incremented: Track A is 9 of 11
+(BLD-009, BLD-010), Track B is 4 of 6 plus a half (BLD-015 open, BLD-014's CDP half open).
+
+🔴 **The finding worth more than the task: the acceptance criterion decided the architecture.**
+*"Deleting the token removes the chip, and vice versa"* cannot be satisfied by a menu that inserts a
+token **and** attaches a reference — that is two writes to two stores, and keeping them equal needs
+a third mechanism nobody would maintain. So the composer text was made the **single source of
+truth** and the chip row derived from it on every change. The menu inserts text and attaches
+nothing; the chip's Remove button deletes text and detaches nothing. Both directions then fall out
+of one pure function, and typing a mention works for free — which is the AIB-010 half of the task,
+because a name typed rather than picked must not silently mean nothing.
+
+⚠️ **The interaction between the two halves of that function is the part a refactor breaks:**
+`attach` respects the settled rule (a token still under the caret is not read) and `detach` does
+**not**. They look like they should agree. If they did, deleting the space after a finished mention
+would drop its chip — a chip row disagreeing with the text it was derived from, which is the one
+state the design exists to make unreachable. Driven, all four states, and pinned as a spec.
+
+🔴 **And BLD-011's own union carried a default nobody had measured.** `REFERENCE_CAPS.page` was
+12,000 — declared beside `doc` when the union was written ahead of its tasks — while a page's
+payload is a **component's** v2 serialization. Every mentioned page would have been silently cut in
+half. Raised to 24,000. The union-up-front bet paid off everywhere else (the chip row, meter,
+carry-over and persistence took no changes at all), and this is what it costs: **a member declared
+ahead of its task is a default nobody measured.**
+
+⚠️ **A near-miss, and the third of this shape in two sessions.** The first contrast sweep reported
+**4.58 in light** for the refusal line and I nearly filed it — it was the *danger icon*, a graphical
+object at a 3:1 threshold, because `querySelector('span')` grabbed the wrong child. The sentence
+measures **7.70 / 7.10**. Session 15's phantom 71px overflow was the same error in a different
+dimension: **measure the element you are making a claim about, and print what you measured.**
+
+**Session 15 (2026-08-10) — BLD-013 built and driven; BLD-014's webview half built and driven.**
+
+⚠️ **Count as of session 15: 12 tasks fully built of 17, plus BLD-014's webview half.** Earlier
+sessions' running total was off by one and session 15 propagated it before checking. Counted off the
+tables below at the time: Track A had 9 of 11 (BLD-009 and BLD-010 not started); Track B had 3 of 6
+plus BLD-014's first half (BLD-015 and BLD-016 not started). **Recount from the tables, do not
+increment.** Track B's frame paid for itself exactly as promised: both tasks are a
+`ReferenceKind` member, a resolver, a glyph — plus the one thing BLD-011 declared and never wired,
+which was the media path from the composer to the wire.
+
+✅ **Q5 answered, and the answer removed the dependency rather than costing one.** Richard: *"If
+they're using an image model (Anthropic, OpenAI, Google) accept. If not throw a warning like 'PDFs
+might not be supported by this model'."* That is a **capability gate, not a parser** — Anthropic's
+Messages API takes a base64 `application/pdf` block natively and extracts server-side, so
+`pdfjs-dist` (the phase's one genuinely new dependency) would have bought a worse version of
+something the endpoint already does. ⚠️ The registry flag `documents` is deliberately **narrower
+than `vision`**: a model that reads images is not one whose endpoint takes a PDF, and claiming it
+from the vision flag would have sent bytes to an endpoint that refuses them.
+
+✅ **Q6 answered**: a one-click offer on the receipt, not an automatic ~8s render on every apply.
+
+🔴 **The finding worth more than either task: media placement on the authoring turn is a Rule 6
+question, not a formatting one.** Media cannot be concatenated into a string, so a turn carrying it
+converts its character `cacheBoundary` into a `cache: true` marker — and the natural implementation
+(media first, as every provider's guidance says, and as the planning turn correctly does) puts a
+900KB screenshot **ahead of the breakpoint**. That does not cost the screenshot; it re-bills the
+entire AIX-007 stable prefix, uncached, on every operation of every plan, with nothing on screen to
+say so. `mediaCacheSafety.test.ts` asserts the marked block's **index**, not just its bytes, and was
+inverted before it was trusted — 4 of 7 go red.
+
+🔴 **And BLD-011's own fix became this task's defect.** `.Picker { position: relative; width: 100% }`
+was BLD-011's answer to a list that opened 113.8px wide; with two more buttons in the row, a
+full-width flex item claims the whole line and pushed both onto a second row at **every** width —
+67px tall at 248px and still 67px at 800px, where all three fit in 742px. **A rule that was right
+about its old subject, for the sixth time this phase.**
+
+⚠️ **A near-miss worth carrying: the first width sweep reported a 71px overflow that did not exist.**
+A synchronous loop measured before layout settled in an occluded renderer. Re-swept with real frame
+waits it is 0 everywhere. **The occlusion trap that clamps timers and kills `ResizeObserver` also
+poisons a synchronous measurement sweep** — the tool this phase reaches for most.
+
+**Session 14 (2026-08-10) — BLD-011 built and driven. 12 of 17 built, 10 driven.** Track B's frame
+exists: the composer is a context builder, a turn carries references, and each remaining Track B task
+adds a `kind` plus a resolver and touches nothing else. Driven for **$0.029799**, one call.
+
+🔴 **The finding worth more than the task: two of the three defects the drive found were invisible to
+every gate, and one of them broke nothing.** The picker's list opened **113.8px wide** — the width of
+its own button, because `left/right: 0` resolved against a wrapper that shrink-wrapped inside an
+`HStack` — so the one control whose entire job is *letting you find a component by name* ellipsized
+`Library/Layout/Breadcrumbs` to `Library/L…`. It threw nothing, rendered fine, and passed
+typecheck, 103 jest suites and every contrast measurement. **A control that works and cannot be read
+is a defect no green check has a way to express**, and it is the second time this phase a right
+mechanism has been measured in the wrong state (BLD-004's collision painted only in a frame nobody
+screenshotted).
+
+⚠️ **And the accent trap has now been seen three times in three tasks.** `Ghost` at **4.33:1 in
+light** — C7's row, hardened by BLD-008's R12, and it caught this task's own primary affordance.
+**It was fixed by not using `Ghost`**, not by a local override: five call-site overrides of one token
+defect is five copies that can disagree, and the design-system row is deliberately still open.
+
+⚠️ **The billed call proved transport and not comprehension**, and the reason is worth carrying:
+the probe was a naming rule in an attached `CONVENTIONS.md`, and the model correctly **reused** an
+existing component rather than creating one, so the rule never applied. **A comprehension test must
+be answerable by the route the request will actually take.** BLD-012 earned this with a blue square;
+half of it was relearned here.
+
+**Session 11 (2026-08-09) — BLD-008 built, all six acceptance criteria pinned as specs, none
+driven.** **10 of 16 built, 8 driven.** The docs pass is inverted: `startProjectReview` now returns
+with **questions on screen and nothing drafted**, and `run.draft()` is a second call the card makes
+once they are settled. The question set is parsed out of `templates.ts` — there is nowhere else for
+it to come from — and the TODO lines are written by `insertSkipTodos`, one per declined question, so
+"exactly three" is arithmetic rather than a hope about a prompt.
+
+🔴 **And one finding that is not about BLD-008 at all: BLD-017 is new.** Richard, looking at the
+shipped panel: *"why does the interface still look like a CS student's winter project?"* The mockup
+this phase was approved from is specific about **surfaces** — the collapsed run is a filled chip, an
+outcome is a bordered card with a footer band for its actions, an accepted card collapses to a
+success-ruled receipt — and **nine tasks were built against its structure without anyone diffing its
+CSS.** It is not a redesign: the mockup uses NodeGX's own dark tokens verbatim and says so. Eight
+gaps are measured in [BLD-017](BLD-017-MOCKUP-FIDELITY.md); the ninth, the interview's question
+card, was closed in this session as the worked example.
+
+⚠️ **Three findings, and the first two are the same shape as the phase's running theme — a
+mechanism that was right about its old subject:**
+
+- ⚠️ **`ProjectReviewView`'s Stop button has done nothing since BLD-001.** Its run came from a
+  `useRef` filled only by `start()`, and `start()` is unreachable from the one mount that ships. The
+  run lives on `ProjectReviewStore` now, beside the state it produces.
+- ⚠️ **A busy flag guarded the work instead of the door.** `run()` sets `busy`, then delegated to
+  `draft()`, whose guard saw its caller's own flag — every pre-BLD-008 run spec went red, which is
+  exactly what a suite written against the old flow is for.
+- ⚠️ **The TODO advisory was a mechanism inside the feature arguing against it.**
+  `todoAdvisoryMessage` asks a draft with no TODO lines to add some; on a fully answered interview
+  that is the acceptance criterion. Switched off whenever nothing was declined.
+
+**Session 10 (2026-08-09) — BLD-006 built, driven and closed. D5 is closed.** **9 of 16 built, 8
+driven.** The conversation now lives in `ThreadStore` (per project, injected persistence) and on disk
+at `.nodegx/threads/<id>.jsonl`, with a switcher in the header slot BLD-005 left free. All five
+acceptance criteria are live measurements — accept, restart, project switch, three threads, and a
+human-readable file.
+
+⚠️ **Three findings worth more than the task, and one correction that changes what a session can
+assume:**
+
+- **The editor DOES have a real Anthropic provider configured** (`ai.provider = "anthropic"`,
+  `ai.hasKey.anthropic`, verified — in `editorSettings.json`, not localStorage). Session 9's "no
+  provider is configured, deliberately" is stale, and the first send of this session was a **real
+  billed API call** before that was noticed. **Check the settings file, not localStorage.**
+- ⚠️ **`PlanSessionSidecar.flush()` was built for the quit path in AIB-003 and never had a caller.**
+  A build staged inside its 750ms debounce was lost to ⌘Q. Both AI sidecars now ride the existing
+  `flush-project-save` handshake.
+- ⚠️ **`MenuDialog.is-highlighted` does not recolour its `EndSlot`** — the *selected* row's text
+  measured **1.16:1**. Fixed locally; filed as a design-system trap at every `MenuDialog` with an
+  end slot. The same 1.16:1 as BLD-004's state-class collision, and the same shape for the fifth
+  time this phase: **a rule that was right about its old subject.**
+
+**R6 is closed too** — the request rendered twice for the whole of every component build, because
+`send` awaits `routePlan` which awaits the build, so the pending turn outlived the producer holding
+the same words. Removing it uncovered the hole it was hiding: a **docs** run had no request at all.
+
+**Session 9 (2026-08-09) — BLD-007 driven and closed; BLD-012's live claim taken.** **8 of 16 built,
+7 driven.** BLD-007's three open acceptance criteria are all live measurements now, and the drive
+found **B8** (the panel stated the per-turn cost and the ellipsis ate the number). BLD-012's image
+block **reached a real Anthropic endpoint** on both `chat` and `chatStream` — the model was shown a
+blue square and said "Blue", so acceptance is distinguished from comprehension. That one call also
+closed **BLD-005's R5** (cost against a real provider: $0.000042, arithmetic exact) and showed
+**BLD-004's `onActivity` firing against a real provider** for the first time. ⚠️ BLD-012 is *not*
+closed: no UI produces an image message until BLD-011, and OpenAI's leg is still stub-only.
+
+**BLD-001 is driven and closed** (2026-08-09). The first drive closed B1, confirmed six claims and
+found two defects, neither reachable offline; both are now fixed and re-driven:
+
+- ✅ **B9 — the thread reset on every successful send.** `history` accumulated on the declined and
+  failed paths but not the success one. Fixed by `retireLive` (`458e189f`) and re-driven from an
+  empty thread: three sends, three provider calls, **three turns, in order**. **D1 is closed.**
+- ✅ **B10 — a retired turn kept the Accept card.** Found while fixing B9, not by driving it: the
+  outcome *kind* plus a session-wide `canDecide` is not turn-specific, so a second staged build put
+  a second Accept on the historical turn. `renderOutcome` now matches the live id.
+- ✅ **B8 — the composer answered no key at all**; the refactor dropped the old `onEnter`. Fixed and
+  driven.
+
+⚠️ **The reusable lesson from the fix:** the id prefix *is* the liveness. `liveTurns(sources,
+idPrefix?)` is one derivation read twice — with no prefix for the live turns, with `history-N` for
+retired ones — and because the live ids are exactly what `renderOutcome` matches, a retired turn
+**cannot** mount a live control. Anything else keying off a turn's identity must use the same
+convention. And retiring is a **pair**: freeze the record, then release what produced it; doing only
+the first half is worse than doing neither.
+
+**BLD-003 is driven and closed** (2026-08-09, `49d06961` + `eb23291c`). **B5's measurement is
+answered:** where there were 2 Accept and 2 Review changes, with the two copies disagreeing on
+wording, there is now **exactly one of each**, moving between surfaces as the document opens and
+closes — counted from the DOM in all three states.
+
+⚠️ **The defect table listed two surfaces; there are three.** `ChangeReviewDocument` is reached from
+the card's own *"Review changes"* button and a document sits **beside** the sidebar, not over it, so
+the ownership rule had to cover it or this task's own control would have opened the duplicate it
+exists to remove. The rule takes *every document that shows the candidate*, not a preview flag.
+
+⚠️ **The one half of BLD-003 that has never been on screen is the docs route** — each draft's
+Accept / Review changes / Discard. It is built and gated; it is not driven. **BLD-010 owns it.**
+
+**BLD-002 is driven and closed** (2026-08-09). **D4 is closed.** Measured before and after, in both
+themes, on the surfaces the thread actually paints:
+
+- **The premise is confirmed on screen.** `is-type-secondary` and `is-type-default` measured the
+  *identical ratio* in both themes (7.70 dark, 7.10 light), so the ~40 call sites alternating between
+  them expressed no hierarchy at all. Every row was `12px / normal / 400`. And **no text role failed
+  AA before the change** — README correction 1 is now empirical, not just arithmetic.
+- Four sizes and explicit leading where there was one size and inherited leading; the user's message
+  is now the highest-contrast element in its turn (13.03 / 14.20 against 7.70 / 7.10).
+- Twelve tool activities collapse to one line and expand to twelve. **Driven.**
+
+⚠️ **The rule that specs alone could not have protected: a *failed* submission never collapses.**
+Driven with a real rejection through the real gate. A run that had swallowed it would look completely
+normal on screen — the cure for noise must not also be a cure for signal.
+
+✅ **C5 is fixed, and BLD-003's stated mechanism was half wrong** — which is why it said to
+re-measure. The cause is not a stray stretch: **`Stack` sets `height: 100%` on every `HStack` that
+does not declare one** ([Stack.tsx:38](../../../packages/noodl-core-ui/src/components/layout/Stack/Stack.tsx#L38)),
+and the header is a *block* container, so the row resolved 100% against the whole header rather than
+its own line. That is also why the "60px" did not close: the overflow **equals** the offset, always,
+because the row becomes as tall as the header while starting below whatever is above it. Confirmed by
+intervention before fixing.
+
+⚠️ **Two findings filed rather than fixed, both design-system scope:** the `height: 100%` above is a
+trap at **every** `HStack` in a block parent (C6), and `PrimaryButtonVariant.Ghost`'s label measures
+**4.33:1 in light mode**, below AA, on every `bg-1` surface in the editor (C7). Neither is this
+panel's to change; both need a full-surface pass.
+
+**BLD-004 is driven and closed** (2026-08-09). **D6, D7, C8 and BLD-005's R2 are closed.** The
+heartbeat, the reasoning channel, the collapsed run's duration, and the run map's motion.
+
+⚠️ **The task's own premise was wrong about the mechanism, and one field was the whole of it.**
+`display: 'omitted'` was never protecting the XML-parsed text — thinking has never been in a `text`
+block on any setting — it made the thinking blocks arrive **empty**. The reasoning channel would
+have shipped inert, and every spec above it would have passed. See the task doc's header.
+
+⚠️ **Two defects came out of the drive that nothing else could have caught**, and both are the same
+shape as the defect the task exists to remove:
+
+- **A clock outlived what it measured.** The reasoning strip ran while `streaming` was set, and a
+  hung turn stays `streaming` until the deadline — a one-second think showed **"Thinking… 3m 2s"**.
+- **A state class collided with an animated modifier**, painting `primary` behind the sentence at
+  **1.16:1**. ⚠️ Found by *measuring composited pixels*: every screenshot was taken in `waiting`,
+  where the collision does not paint, so it was absent from every frame captured and present the
+  whole time.
+
+⚠️ **BLD-012's golden request spec caught the `display` change** — a spec BLD-004 never touched. A
+golden that pins the *whole* request rather than the fields one task cared about is what made a
+deliberate byte-change visible instead of silent.
+
+⚠️ **BLD-007 and BLD-012 still have not been driven**, and BLD-012's is the one with a bill attached
+to getting it wrong — its image block has never reached a real endpoint.
+
+**The frame is up, so Track A is unblocked.** Everything below renders inside `BuildThread`
+(`views/panels/AiAuthoringPanel/thread/`) over the pure turn model
+(`models/AiAssistant/thread/`) — read both before starting any of them; between them they are ~600
+lines and they are the vocabulary the rest of the track speaks.
+
+## Track B — what the agent can see
+
+| Task | File | One line | Rests on |
+|---|---|---|---|
+| BLD-011 ⭐ ✅ | [BLD-011-TURN-CARRIES-REFERENCES.md](BLD-011-TURN-CARRIES-REFERENCES.md) | the composer becomes a context builder; one `Reference` model | **driven $0.0298; 4 of 6 criteria met, 2 partly — staleness needs BLD-014, `.jsonl` needs a 2nd send. F8 built here.** |
+| BLD-012 ⭐ ✅ | [BLD-012-MULTIMODAL-MESSAGES.md](BLD-012-MULTIMODAL-MESSAGES.md) | `AiMessage.content` widens to blocks; declared degradation | adapters exist |
+| BLD-013 ✅ | [BLD-013-ATTACHMENTS.md](BLD-013-ATTACHMENTS.md) | drop/paste/pick markdown, text, images **and PDFs** | **driven — Q5 answered, ZERO new deps** |
+| BLD-014 ⭐ ✅ | [BLD-014-LOOK-AT-IT.md](BLD-014-LOOK-AT-IT.md) | two capture paths: the live webview, and CDP for any viewport or URL | **both halves driven, no billed call. Q6 answered; F22 + a second packaging decision (R5) resolved. One criterion → BLD-010** |
+| BLD-015 | [BLD-015-WEB-SEARCH.md](BLD-015-WEB-SEARCH.md) | one editor-side backend; citations carry source and read-time | nothing |
+| BLD-016 ✅ | [BLD-016-MENTIONS.md](BLD-016-MENTIONS.md) | `@` over components, docs, pages, collections, attachments | **driven, no billed call — 5 of 6 criteria met, the 6th needs one. CM6 rejected on inspection** |
+
+---
+
+## Dependency map
+
+```
+  BLD-001  one thread ──┬── BLD-002  hierarchy ── BLD-004  thinking ─┐
+  (the frame)           │                                            ├─ BLD-005  long run
+                        ├── BLD-003  decisions ──────────────────────┤
+                        ├── BLD-006  persistence                     ├─ BLD-009  expanded
+                        └── BLD-011  references ─┬─ BLD-012  blocks ─┤
+                                                 │      └─ BLD-013  attachments
+  BLD-007  docs open ──── BLD-008  interview     │      └─ BLD-014  look at it
+        └──────────────────── BLD-016  mentions ─┘         (also needs F22)
+                                                 └─ BLD-015  search
+
+  BLD-010  acceptance pass ── everything
+```
+
+**The two real serialisation points:**
+
+- **BLD-001 before everything.** It is the frame; every other task renders inside it. Starting
+  BLD-002 or BLD-011 first means building against a component that is about to be deleted.
+- **BLD-012 before 013 and 014.** Both carry images. Attempting either first produces a resolver with
+  nowhere to put its output.
+
+**BLD-007 is independent** and can be picked up in parallel by a second session — it touches
+`ProjectDocs/` and `projectDocsTool.ts`, which no Track A task goes near. ⚠️ If two sessions run,
+re-read [`no-concurrent-session-on-opennoodl`] discipline: pathspec-scope every commit, never
+`git add -A`.
+
+## Suggested order
+
+1. **BLD-001** — nothing else is safe to start.
+2. **BLD-003 + BLD-002** — together they are most of what Richard actually complained about, and they
+   are visible immediately.
+3. ~~**BLD-005** + **BLD-004** — the long-run legibility pair. **Both closed.**~~ BLD-005 was built
+   *before* BLD-004 rather than after: only step 4's motion needed the heartbeat, and motion is the
+   one thing there that must not be faked. BLD-004 then closed C8 and R2 along with its own D6/D7.
+4. **BLD-006** — cheap, and it is the difference between a tool and a form.
+5. **BLD-007 → BLD-008** — the docs pair. 007 is mechanical, 008 is the interesting one.
+6. **BLD-011 → BLD-012 → BLD-014** — the context spine. 014 is the payoff and should be prioritised
+   over 013/015/016 because it closes doctrine §11 inside the editor for the first time.
+7. **BLD-013, BLD-015, BLD-016** — in whatever order the open decisions (Q4, Q5) resolve.
+8. **BLD-009**, then **BLD-010**.
+
+## Working habits carried in
+
+- **Write the check before the fix** (phase 39). Several tasks here are "the mechanism exists and
+  nothing surfaces it" — BLD-004 especially. The check proves the *surfacing*, not the mechanism.
+- **Verify the consequence, not just the mechanism.** A right mechanism is not a right prediction;
+  run it both ways and diff. BLD-004's heartbeat and BLD-005's estimate are both easy to build
+  correctly and still have lie on screen.
+- **Anything filed-not-fixed gets a row** in that task's register, with its blocker named — the
+  LAS-005/F22 precedent is exactly why BLD-014 is scopeable at all.
+- **A green check proves nothing about a panel.** Every visual claim gets driven live (BLD-010), and
+  the editor is a **queue** — if another session is using it, wait and poll.
+- ⚠️ **The editor holds the project in memory.** An MCP write never reaches the running preview, and
+  restarting to pick it up can overwrite your work.

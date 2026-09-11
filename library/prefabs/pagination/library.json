@@ -1,6 +1,6 @@
 {
   "label": "Pagination",
-  "description": "A component for pagination, showing available pages and letting user switch.",
+  "description": "Full pagination control: page numbers with ellipsis overflow, prev/next buttons, an optional rows-per-page selector and an optional \"Showing X–Y of Z\" summary. Inputs: Total Items, Items Per Page, Current Page. Outputs: Current Page, Offset (plugs into Query Records' Skip), Items Per Page (plugs into Limit) and a Changed signal. Merges the former Pages And Rows prefab.",
   "type": "prefab",
   "tags": [
     "UI",
@@ -8,7 +8,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/prefabs/pagination/",
-  "version": "0.2.0",
+  "version": "2.1.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

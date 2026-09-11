@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "2d8f4b61-9c07-4e3a-b5f2-7a1e6c3d9b84",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "peopleData",
+      "fromProperty": "items",
+      "toId": "peopleList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "peopleList",
+      "fromProperty": "itemOutputSignal-removed",
+      "toId": "removedVar",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "removedLabel",
+      "fromProperty": "savedValue",
+      "toId": "removedVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastAddedVar",
+      "fromProperty": "value",
+      "toId": "lastAddedText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -144,7 +144,12 @@ describe('AnthropicProvider.chatStream', () => {
     );
 
     expect(calls[0].temperature).toBeUndefined();
-    expect(calls[0].thinking).toEqual({ type: 'adaptive', display: 'omitted' });
+    // ⚠️ BLD-004 changed `display`, deliberately. `'omitted'` was not keeping
+    // reasoning out of the XML-parsed text (thinking has never been in a `text`
+    // block on any setting) — it made the thinking blocks arrive **empty**, so
+    // the reasoning channel would have been inert. `'summarized'` is billed
+    // identically; display controls visibility only.
+    expect(calls[0].thinking).toEqual({ type: 'adaptive', display: 'summarized' });
   });
 
   it('passes temperature through for models that accept it', async () => {

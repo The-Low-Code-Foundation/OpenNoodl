@@ -7,20 +7,14 @@
 
 // ─── Token Category Types ─────────────────────────────────────────────────────
 
-export type TokenCategory =
-  | 'color-semantic'
-  | 'color-palette'
-  | 'spacing'
-  | 'typography-size'
-  | 'typography-weight'
-  | 'typography-leading'
-  | 'typography-tracking'
-  | 'typography-family'
-  | 'border-radius'
-  | 'border-width'
-  | 'shadow'
-  | 'animation-duration'
-  | 'animation-easing';
+// ─── Token Category Types ─────────────────────────────────────────────────────
+
+// 🔴 `TokenCategory` and `StyleTokenRecord` moved to `@nodegx/project-contract` with the token
+// vocabulary that uses them (HLS-001): the exporter needs all three and cannot import them from
+// the editor. Re-exported here so every existing import in the editor keeps working.
+export type { TokenCategory, StyleTokenRecord } from '@nodegx/project-contract/tokens';
+import type { StyleTokenRecord, TokenCategory } from '@nodegx/project-contract/tokens';
+
 
 export const TOKEN_CATEGORIES: Record<
   TokenCategory,
@@ -81,6 +75,15 @@ export const TOKEN_CATEGORIES: Record<
     description: 'Box shadow scale',
     group: 'Effects'
   },
+  // VIB-002. Grouped under Effects beside shadows rather than under Colors,
+  // because a gradient is a decorative ground, not a colour a border or a label
+  // can be set to — and because every port that accepts one accepts a shadow's
+  // kind of value (a complete CSS declaration) rather than a colour's.
+  gradient: {
+    label: 'Gradients',
+    description: 'Decorative grounds for heroes, CTA bands and image scrims',
+    group: 'Effects'
+  },
   'animation-duration': {
     label: 'Durations',
     description: 'Transition and animation durations',
@@ -126,13 +129,6 @@ export type StyleTokenMap = Map<string, StyleToken>;
 
 // ─── Serializable storage format (for project.json) ─────────────────────────
 
-export interface StyleTokenRecord {
-  name: string;
-  value: string;
-  category: TokenCategory;
-  isCustom: boolean;
-  description?: string;
-}
 
 export interface StyleTokensData {
   /** Version for future migration support */

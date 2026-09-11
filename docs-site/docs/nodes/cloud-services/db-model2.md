@@ -52,7 +52,7 @@ Use it to read one record's properties — a detail page, or the current item in
 | `changed` | Signal | — | Fires when a property of the bound record changes, including a change another node made |
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
 | `done` | Signal | — | Fires when a Fetch finished and the property outputs are up to date |
-| `fetched` | Signal | — | Fires once the record has been read and the property outputs are up to date |
+| `fetched` | Signal | — | Fires when the Id binds a record, and again when a Fetch finishes reading it — a bind has read nothing, so use Done to act on data that is really there |
 
 ### Failure outputs
 

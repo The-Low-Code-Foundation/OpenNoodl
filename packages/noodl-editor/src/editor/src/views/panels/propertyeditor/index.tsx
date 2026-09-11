@@ -12,6 +12,7 @@ import { BasePanel } from '@noodl-core-ui/components/sidebar/BasePanel';
 import { Frame } from '../../common/Frame';
 import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import { AiChat } from './components/AiChat';
+import { NodeComment } from './components/NodeComment';
 import { NodeLabel } from './components/NodeLabel';
 import { PortsTab } from './components/PortsTab';
 import { PropertyEditor as PropertyEditorView } from './propertyeditor';
@@ -178,6 +179,22 @@ function PropertyEditorTabs(props: PropertyEditorProps & { instance: PropertyEdi
       }}
     >
       {Boolean(props.model) && <NodeLabel model={props.model} showHelp={!props.hasAiAssistant} />}
+
+      {/*
+       * LEG-005: the comment row, between the header and the tab strip.
+       *
+       * Above the ports and below the label, which is the ordering the spec
+       * asks for: *what this is*, then *why it is*, then *what it is wired to*.
+       * Outside the `Tabs` rather than inside the Properties tab because a
+       * comment describes the node, not its parameters — the `Ports` tab is
+       * about the same node and the row belongs there too.
+       *
+       * ⚠️ Not conditional on the node having a comment. A row that appears
+       * only when a comment exists teaches nobody that comments exist, and is
+       * the context menu again with more pixels — which is the entire finding
+       * (L12) this task was written from.
+       */}
+      {Boolean(props.model) && <NodeComment model={props.model} />}
 
       <Tabs
         variant={TabsVariant.Sidebar}

@@ -167,6 +167,54 @@ export class ViewerConnection extends Model {
       return;
     }
 
+    /**
+     * HLS-009 — an external agent asks this editor to open a project.
+     *
+     * 🔴 **The only inbound branch here that is not `type === 'viewer'`, and that is deliberate.**
+     * Every other command on this socket comes from the preview, which stamps its own messages;
+     * this one comes from a peer that registered as a `service` and is addressed to this window by
+     * `clientId`. Requiring `type === 'viewer'` would mean an agent had to claim to be the preview
+     * to be heard, and the transport would then be unable to tell the two apart at all.
+     *
+     * ⚠️ **The token is the authorisation, not this branch.** An unauthorised socket is closed by
+     * the relay on its first message (OBS-004/HLS-006) and never reaches `processRequest`. Nothing
+     * here re-checks it, and nothing here should: a second, weaker check in a second place is how a
+     * gate acquires a hole.
+     *
+     * Transport only, exactly like the trace replies below it: the decision — already open, open,
+     * switch, or refuse — belongs to `ExternalProjectOpen`, which owns routing and the project
+     * lifecycle. Importing that here would also close an import cycle, since it imports this.
+     */
+    if (request.cmd === 'openProject') {
+      EventDispatcher.instance.emit('ViewerConnection.openProjectRequested', {
+        directory: request.directory,
+        requestId: request.requestId,
+        replyTo: request.clientId
+      });
+      return;
+    }
+
+    /**
+     * FLD-010 — an external agent asks whether a person is in here.
+     *
+     * The second inbound branch that is not `type === 'viewer'`, and it arrives the same way as
+     * `openProject` above: from a peer registered as a `service`, addressed to this window by
+     * `clientId`. The token is the authorisation — an unauthorised socket is closed by the relay
+     * before `processRequest` ever sees it — and nothing here re-checks it, for the reason
+     * spelled out above.
+     *
+     * Transport only. `models/sessionStatus` owns the reading, because answering it needs the
+     * project, the save baselines and the node graph, and importing any of those here would grow
+     * this file into the thing it deliberately is not.
+     */
+    if (request.cmd === 'sessionStatus') {
+      EventDispatcher.instance.emit('ViewerConnection.sessionStatusRequested', {
+        requestId: request.requestId,
+        replyTo: request.clientId
+      });
+      return;
+    }
+
     // A new viewer is connected
     if (request.cmd === 'registered' && request.type === 'viewer') {
       WarningsModel.instance.clearWarningsForRefMatching((ref) => ref.isFromViewer);
@@ -241,6 +289,22 @@ export class ViewerConnection extends Model {
     } else if (request.cmd === 'portValues' && request.type === 'viewer') {
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
       EventDispatcher.instance.emit('TracePortValues', { clientId: request.clientId, values: content.values });
+    } else if (request.cmd === 'blockFragmentResult' && request.type === 'viewer') {
+      // LGC-002 — the answer to one "Do It". Re-emitted rather than handled, like the trace
+      // replies above and for the same reason: this file is transport, and the block editor
+      // that asked is a lazily-loaded module this one must not import.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockFragmentResult', { clientId: request.clientId, result: content });
+    } else if (request.cmd === 'blockTraceState' && request.type === 'viewer') {
+      // LGC-003 — "I have (or do not have) the node you asked me to trace." `clientId` is what
+      // the block editor pins, so its badges come from one viewer rather than from whichever
+      // preview spoke last.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockTraceState', { clientId: request.clientId, state: content });
+    } else if (request.cmd === 'blockValues' && request.type === 'viewer') {
+      // LGC-003 — one run's `{blockId → value}` map.
+      const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
+      EventDispatcher.instance.emit('BlockValues', { clientId: request.clientId, frame: content });
     } else if (request.cmd === 'inputResult' && request.type === 'viewer') {
       // OBS-004 — the reply to an injected click or keystroke.
       const content = typeof request.content === 'string' ? JSON.parse(request.content) : request.content;
@@ -330,6 +394,37 @@ export class ViewerConnection extends Model {
     if (!json) return;
 
     this._exportToClient(clientId, JSON.stringify(json));
+  }
+
+  /**
+   * BEN-002 / register B2 — a model update aimed at **one** client.
+   *
+   * Every other `modelUpdate` on this connection is a broadcast, because every
+   * other one is a fact about the project and true of every viewer attached to
+   * it. A component bench's input is not: it is a value someone typed into a
+   * synthetic harness that exists in exactly one client's export, and sending it
+   * to the app preview names a component that preview has never heard of.
+   *
+   * ⚠️ **The runtime needed no change for this, and the task file said it would.**
+   * BEN-002 proposed mirroring the trace channel's `content.clientId`, which the
+   * runtime matches against its own. That is the right shape for a *request*
+   * every viewer must receive and only one must answer. It is the wrong shape
+   * here: the relay already routes on `target` for any message that carries one
+   * (`relay-server.js` — `request.target` picks the socket, and only the
+   * `else` broadcasts), which is how `export` has always reached a single
+   * sandbox client. So this is transport-level addressing, the message never
+   * reaches the other clients at all, and there is no runtime code that could
+   * get the filtering wrong.
+   *
+   * Existing behaviour is untouched by construction: a send with no `target`
+   * still broadcasts, and nothing that broadcast before now passes one.
+   */
+  sendModelUpdateToClient(clientId: string, content: object) {
+    this.send({
+      cmd: 'modelUpdate',
+      content,
+      target: clientId
+    });
   }
 
   _exportToClient(clientId, exportedJSON) {
@@ -501,11 +596,19 @@ export class ViewerConnection extends Model {
    * the point: `TraceSession` should not have to remember to identify itself, and a send that
    * forgot would fall back to the runtime's single anonymous key and share a switch with
    * `nodegx-observe` exactly as before.
+   *
+   * `target` arms **one** client instead of every viewer, and needs no runtime change for the
+   * same reason `sendModelUpdateToClient` did not (register B2): the relay routes any message
+   * carrying one and broadcasts only the rest. It exists for the component bench, which must
+   * be able to watch its own sandbox without switching on the trace in the app preview the
+   * user is running beside it — measured before it was built, and the broadcast did exactly
+   * that (register B17). Omitting it broadcasts, so every existing caller is unaffected.
    */
-  sendTraceEnabled(enabled: boolean) {
+  sendTraceEnabled(enabled: boolean, target?: string) {
     this.send({
       cmd: 'traceEnabled',
-      content: JSON.stringify({ enabled, owner: this.clientId })
+      content: JSON.stringify({ enabled, owner: this.clientId }),
+      ...(target ? { target } : {})
     });
   }
 
@@ -538,10 +641,75 @@ export class ViewerConnection extends Model {
     });
   }
 
+  /**
+   * HLS-009 — the answer to an `openProject`, addressed back to the peer that asked.
+   *
+   * ⚠️ **`target`, never a broadcast.** `broadcastMessage` fans to every peer of the *opposite*
+   * type, so an un-targeted reply from an editor peer would go to every preview window attached
+   * to this relay and to no agent at all — the reply would be delivered precisely everywhere it
+   * is useless. The relay's `target` branch matches on `clientId`, which is why the request had
+   * to carry the asker's.
+   */
+  sendOpenProjectResult(replyTo: string, requestId: string, result: unknown) {
+    if (!replyTo) return;
+    this.send({ cmd: 'openProjectResult', target: replyTo, requestId, content: JSON.stringify(result) });
+  }
+
+  /**
+   * FLD-010 — this window's answer to `sessionStatus`, addressed back to the peer that asked.
+   *
+   * ⚠️ **`target`, never a broadcast**, for the same reason as `sendOpenProjectResult`: an
+   * untargeted reply from an editor peer fans to every *preview* attached to this relay and to
+   * no agent at all. It also means the answer — which names the open project and the component
+   * the person is on — is delivered to exactly one socket rather than to every viewer.
+   */
+  sendSessionStatusResult(replyTo: string, requestId: string, result: unknown) {
+    if (!replyTo) return;
+    this.send({ cmd: 'sessionStatusResult', target: replyTo, requestId, content: JSON.stringify(result) });
+  }
+
   sendGetPortValues(clientId: string, ports: Array<{ node: string; port: string; direction: 'input' | 'output' }>) {
     this.send({
       cmd: 'getPortValues',
       content: JSON.stringify({ clientId, ports })
+    });
+  }
+
+  /**
+   * LGC-002 — "Do It": ask the running app what one block comes to.
+   *
+   * ⚠️ **Broadcast, not addressed.** Every other request on this channel names the viewer it is
+   * for, because its caller already knows which client it is talking to. A block editor tab
+   * knows a node id and nothing else — the node is in whichever preview happens to have that
+   * component mounted — so every viewer is asked and each one answers whether it has the node.
+   * `blockFragmentResult` carries the answering client's id, and `requestId` pairs the answer
+   * with its question.
+   */
+  sendEvaluateBlockFragment(request: { requestId: string; nodeId: string; code: string }) {
+    this.send({
+      cmd: 'evaluateBlockFragment',
+      content: JSON.stringify(request)
+    });
+  }
+
+  /**
+   * LGC-003 — start or stop recording one Logic Builder's block values.
+   *
+   * ⚠️ **Broadcast to arm, addressed on the way back.** Same constraint as Do It's — a block
+   * editor tab knows a node id and nothing else — so every viewer arms and each replies with
+   * its own `clientId` and whether it actually has the node. The block editor pins the first
+   * one that does and ignores frames from anybody else, which is the "address the client being
+   * traced" correction LGC-002's handover asked for, applied at the only end that can enforce
+   * it.
+   *
+   * ⚠️ **This is not `traceEnabled`.** It does not touch the switch the Provenance panel and
+   * `nodegx-observe` share, so it cannot clear a recording a human is in the middle of — the
+   * accident TALK-003 recorded. See `NodeContext.setBlockTracing`.
+   */
+  sendSetBlockTracing(request: { nodeId: string; enabled: boolean }) {
+    this.send({
+      cmd: 'setBlockTracing',
+      content: JSON.stringify(request)
     });
   }
 
@@ -893,6 +1061,26 @@ export class ViewerConnection extends Model {
         if (e.args.model.owner === undefined) return; // Not part of component
         if (e.args.model.owner !== ProjectModel.instance) return; // Not part of current project
 
+        // 🔴 REL-009b AC3 — the add half of a reload swap. The incremental
+        // pair is wrong here and MEASURED wrong: the runtime's `componentRemoved`
+        // runs `graphModel.removeComponentWithName`, which tears down the live
+        // instances of that component, and `componentAdded` only registers the
+        // replacement's MODEL. Nothing re-mounts it, so a Router showing that
+        // page is left with an empty page container — the preview goes blank and
+        // STAYS blank: after the swap an ordinary editor edit no longer reaches
+        // it either. Driven both ways on 2026-09-03: editor edit → preview
+        // updates; agent write → preview blank; editor edit → still blank.
+        //
+        // A reload is rare (it costs an agent writing a file), so it takes the
+        // path `rootNodeChanged` already takes for a change the incremental
+        // protocol cannot express: re-export the project. The preview restarts,
+        // which is a visible cost and a truthful one — the alternative on the
+        // record is a blank page.
+        if (e.args.reloadingFromDisk === true) {
+          _this.export();
+          return;
+        }
+
         _this.send({
           cmd: 'modelUpdate',
           content: {
@@ -908,6 +1096,11 @@ export class ViewerConnection extends Model {
       'Model.componentRemoved',
       function (e) {
         if (_this.watchModelChangesDisabled) return;
+
+        // REL-009b AC3: the remove half of a reload swap. Say nothing — the
+        // `componentAdded` that follows it re-exports, and sending the removal
+        // first would blank the preview for the width of that round trip.
+        if (e.args.reloadingFromDisk === true) return;
 
         _this.send({
           cmd: 'modelUpdate',

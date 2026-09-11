@@ -25,6 +25,12 @@
 /** What the renderer actually uses of `ipcRenderer`. */
 export interface IpcRendererLike {
   invoke(channel: string, ...args: unknown[]): Promise<unknown>;
+  /**
+   * Fire-and-forget, for the channels main answers nothing on. HLS-009 added the first caller
+   * (`main-window-focus`); before it every consumer here wanted a value back, which is why the
+   * interface had only `invoke`.
+   */
+  send(channel: string, ...args: unknown[]): void;
   on(channel: string, listener: (event: unknown, ...args: never[]) => void): void;
   removeListener(channel: string, listener: (event: unknown, ...args: never[]) => void): void;
 }

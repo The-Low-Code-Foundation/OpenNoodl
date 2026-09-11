@@ -20,13 +20,22 @@ import { CompletionContext } from '@codemirror/autocomplete';
 import { javascript } from '@codemirror/lang-javascript';
 import { EditorState } from '@codemirror/state';
 
-import { setCodeAuthoringContext } from '@noodl-core-ui/components/code-editor/authoringContext';
+import { setCodeAuthoringContext, setOpenNodeContext } from '@noodl-core-ui/components/code-editor/authoringContext';
 import { createNoodlCompletionSource } from '@noodl-core-ui/components/code-editor/noodl-completions';
 import type { ValidationType } from '@noodl-core-ui/components/code-editor/utils/types';
 
 function contextAt(doc: string, pos: number = doc.length, explicit = false): CompletionContext {
   const state = EditorState.create({ doc, extensions: [javascript()] });
   return new CompletionContext(state, pos, explicit);
+}
+
+function openFunctionNode(inputs: string[], outputs: { name: string; type: string }[]) {
+  setOpenNodeContext({
+    nodeId: 'n1',
+    typeName: 'JavaScriptFunction',
+    declaredInputs: inputs.map((name) => ({ name, type: 'string' })),
+    declaredOutputs: outputs
+  });
 }
 
 function labelsFor(doc: string, explicit = false, mode: ValidationType = 'function'): string[] | null {
@@ -138,6 +147,87 @@ describe('noodlCompletionSource', () => {
     });
   });
 
+  /**
+   * FIX-017 §B. `Noodl.` has listed `Records` since FH-019, and `Noodl.Records.`
+   * then answered nothing — the editor named a thing and went blank when the
+   * user followed its advice. These pin the second level, and just as
+   * importantly the four places it must *not* answer.
+   */
+  describe('a second level under `Noodl.` (FIX-017 §B)', () => {
+    it('answers `Noodl.Records.` — the literal complaint', () => {
+      expect(labelsFor('Noodl.Records.')).toEqual(
+        expect.arrayContaining(['query', 'create', 'save', 'delete'])
+      );
+    });
+
+    it('carries the call signature in `info`, not just the name', () => {
+      const result = createNoodlCompletionSource('function')(contextAt('Noodl.Records.'))!;
+      const query = result.options.find((option) => option.label === 'query')!;
+
+      expect(query.info).toContain('query(className, query, options)');
+    });
+
+    it('answers for the other namespaces `Noodl.` advertises', () => {
+      expect(labelsFor('Noodl.Users.')).toEqual(expect.arrayContaining(['logIn', 'signUp', 'Current']));
+      expect(labelsFor('Noodl.CloudFunctions.')).toEqual(['run']);
+      expect(labelsFor('Noodl.Navigation.')).toEqual(expect.arrayContaining(['navigate', 'navigateToPath']));
+      expect(labelsFor('Noodl.Files.')).toEqual(['upload']);
+      expect(labelsFor('Noodl.SEO.')).toEqual(expect.arrayContaining(['setTitle', 'setMeta']));
+      expect(labelsFor('Noodl.Config.')).toEqual(expect.arrayContaining(['appName', 'favicon']));
+    });
+
+    it('spells the current user `Current`, because that is what the runtime spells it', () => {
+      // `users.ts:40` — capital C, and the sort of detail a list written from
+      // memory gets wrong in a way no test would have caught.
+      expect(labelsFor('Noodl.Users.')).toContain('Current');
+      expect(labelsFor('Noodl.Users.')).not.toContain('current');
+    });
+
+    it('gives an alias the same members as the thing it aliases', () => {
+      // ⚠️ The `toContain` is not padding. Comparing the two calls alone passes
+      // vacuously when *both* return null — which is exactly what the
+      // pre-§B build did, so the equality below agreed with the defect. Pin
+      // that each side actually answered before pinning that they agree.
+      expect(labelsFor('Noodl.Object.')).toContain('get');
+      expect(labelsFor('Noodl.Array.')).toContain('get');
+      expect(labelsFor('Noodl.Events.')).toContain('emit');
+
+      expect(labelsFor('Noodl.Model.')).toEqual(labelsFor('Noodl.Object.'));
+      expect(labelsFor('Noodl.Collection.')).toEqual(labelsFor('Noodl.Array.'));
+      expect(labelsFor('Noodl.eventEmitter.')).toEqual(labelsFor('Noodl.Events.'));
+    });
+
+    // ⚠️ The four refusals. Each one is a wrong answer this walk could easily
+    // have given, and three of them would be actively worse than silence.
+    it('refuses the bare `Object.` — that is JavaScript’s, not Noodl’s', () => {
+      expect(labelsFor('Object.')).toBeNull();
+      expect(labelsFor('Array.')).toBeNull();
+    });
+
+    it('refuses a second level in an Expression, whose `Noodl` has none', () => {
+      expect(labelsFor('Noodl.Records.', false, 'expression')).toBeNull();
+      expect(labelsFor('Noodl.Users.', false, 'expression')).toBeNull();
+    });
+
+    it('refuses a third level rather than repeating the second', () => {
+      expect(labelsFor('Noodl.Records.query.')).toBeNull();
+      expect(labelsFor('Noodl.Users.Current.')).toBeNull();
+    });
+
+    it('still lets the project answer for `Noodl.Variables.`', () => {
+      // The ordering guard: the static walk knows the *name* `Variables` and
+      // has nothing under it, so running it first would replace a right answer
+      // with silence.
+      setCodeAuthoringContext({ libraries: [], variables: ['cartTotal'], objects: [], arrays: [] });
+      expect(labelsFor('Noodl.Variables.')).toEqual(['cartTotal']);
+    });
+
+    it('still answers plain `Noodl.` — the branch the walk replaced', () => {
+      expect(labelsFor('Noodl.')).toEqual(expect.arrayContaining(['Records', 'Variables']));
+      expect(labelsFor('Noodl.', false, 'expression')).toEqual(['Variables', 'Objects', 'Arrays', 'Object']);
+    });
+  });
+
   describe('at top level', () => {
     it('completes the Noodl namespace itself', () => {
       expect(labelsFor('Nood')).toEqual(['Noodl']);
@@ -145,6 +235,62 @@ describe('noodlCompletionSource', () => {
 
     it('offers nothing at an empty position while typing', () => {
       expect(labelsFor('const x = ')).toBeNull();
+    });
+
+    /**
+     * FIX-017 §A. The list exists for someone who does not know what to type,
+     * and until now it was withheld from exactly that person: a fresh Function
+     * body offered nothing until they guessed a first letter.
+     *
+     * ⚠️ These cases only mean something next to the two guard cases either
+     * side of them — `const x = ` still silent, and ports still gated below. A
+     * source that answered at *every* empty position would pass the first three
+     * of these and be the menu-on-every-keystroke noise FH-017 removed.
+     */
+    describe('on a fresh line, where the user has nothing to type yet', () => {
+      it('offers the Function globals in an empty body, with no keystroke', () => {
+        expect(labelsFor('')).toEqual(['Inputs', 'Outputs', 'Noodl', 'Component', 'Script']);
+      });
+
+      it('offers the Expression globals too — both modes, per the criterion', () => {
+        expect(labelsFor('', false, 'expression')).toContain('Noodl');
+      });
+
+      it('answers on a blank line after existing code', () => {
+        expect(labelsFor('const total = 1;\n')).toContain('Noodl');
+      });
+
+      it('answers on an indented blank line', () => {
+        expect(labelsFor('if (true) {\n  ')).toContain('Noodl');
+      });
+
+      it('stays silent mid-expression, which is what keeps ordinary code readable', () => {
+        // The discriminator is "starting a statement", not "the word is empty".
+        expect(labelsFor('const x = ')).toBeNull();
+        expect(labelsFor('foo(')).toBeNull();
+        expect(labelsFor('const total = 1 + ')).toBeNull();
+      });
+
+      it('still refuses a member position, whoever the object is', () => {
+        expect(labelsFor('myArray.')).toBeNull();
+      });
+
+      it('gates the bare-port offers out, so the globals are not buried', () => {
+        openFunctionNode(['Input_1'], []);
+        const labels = labelsFor('')!;
+
+        expect(labels).toContain('Noodl');
+        expect(labels).not.toContain('Inputs.Input_1');
+      });
+
+      it('keeps them gated even on an explicit request — a prefix is what they answer', () => {
+        // Not a §A decision: `barePortCompletions` has always refused an empty
+        // prefix. Pinned because §A is the change that made the globals appear
+        // beside them, so this is now the only thing keeping the empty-body
+        // menu to the five names the criterion asks for.
+        openFunctionNode(['Input_1'], []);
+        expect(labelsFor('', true)).toEqual(['Inputs', 'Outputs', 'Noodl', 'Component', 'Script']);
+      });
     });
 
     it('offers what a Function node is compiled with when asked explicitly', () => {
@@ -168,5 +314,164 @@ describe('noodlCompletionSource', () => {
       expect(everything).not.toContain('State');
       expect(everything).not.toContain('Props');
     });
+  });
+});
+
+/**
+ * FUN-008 — a bare port name completes to its notation.
+ *
+ * The originating user typed `Input_1`, not `Inputs.`, and nothing was
+ * listening. Completion cannot help someone who never types the trigger.
+ *
+ * ⚠️ **The failure mode this file has actually shipped is a source that never
+ * fires**, and it typechecks and reads correctly while doing nothing (FH-017
+ * slice 1, pinned at the top of this file). These rows are the unit half; the
+ * task is explicit that they are not sufficient and it must be driven, because
+ * a source that silently never fires is indistinguishable from one that is not
+ * installed.
+ */
+describe('a bare port name completes to its notation (FUN-008)', () => {
+  afterEach(() => {
+    setCodeAuthoringContext(null);
+    setOpenNodeContext(null);
+  });
+
+  function completionsFor(doc: string, mode: ValidationType = 'function') {
+    const result = createNoodlCompletionSource(mode)(contextAt(doc, doc.length, false));
+    return result ? result.options : [];
+  }
+
+  function portOptions(doc: string, mode: ValidationType = 'function') {
+    return completionsFor(doc, mode).filter((option) => option.boost === 99);
+  }
+
+  it('offers the read expression for a declared input, from a partial word', () => {
+    openFunctionNode(['Input_1'], []);
+    const [first] = completionsFor('Inp');
+
+    expect(first.label).toBe('Inputs.Input_1');
+    expect(first.apply).toBe('Inputs.Input_1');
+    expect(first.detail).toBe('input port');
+  });
+
+  it('sorts the port above the globals, which is the whole of §4', () => {
+    // `Inp` also prefixes the global `Inputs`. Without the boost the port lands
+    // under it and under every identifier in the document.
+    openFunctionNode(['Input_1'], []);
+    const options = completionsFor('Inp');
+
+    expect(options[0].label).toBe('Inputs.Input_1');
+    expect(options.some((option) => option.label === 'Inputs')).toBe(true);
+    expect(options[0].boost).toBeGreaterThan(0);
+  });
+
+  it('completes a value output to an assignment, caret after the `=`', () => {
+    openFunctionNode([], [{ name: 'Output_1', type: 'string' }]);
+    const [first] = portOptions('Out');
+
+    expect(first.apply).toBe('Outputs.Output_1 = ');
+    expect(first.detail).toBe('output port (value)');
+  });
+
+  it('completes a signal output to a call', () => {
+    openFunctionNode([], [{ name: 'Done', type: 'signal' }]);
+    const [first] = portOptions('Don');
+
+    expect(first.apply).toBe('Outputs.Done()');
+    expect(first.detail).toBe('output port (signal)');
+  });
+
+  it('matches on the port name even though the label is the expression', () => {
+    // `Outputs.Done()` does not begin with `Don`, so CodeMirror's own filter
+    // would drop it. This is why the result sets `filter: false`.
+    openFunctionNode([], [{ name: 'Done', type: 'signal' }]);
+    const result = createNoodlCompletionSource('function')(contextAt('Don', 3, false));
+
+    expect(result.filter).toBe(false);
+    expect(result.options.some((option) => option.label === 'Outputs.Done()')).toBe(true);
+  });
+
+  it('offers a port mined from the code, not only a declared one', () => {
+    const options = portOptions('const a = Inputs.Value;\nVal');
+    expect(options.map((option) => option.label)).toContain('Inputs.Value');
+  });
+
+  it('uses bracket notation for a name the dot form would not mine', () => {
+    openFunctionNode(['My Value'], []);
+    expect(portOptions('My').map((option) => option.apply)).toContain('Inputs["My Value"]');
+  });
+
+  describe('§3 — where it must not fire', () => {
+    it('offers nothing in expression mode', () => {
+      // A bare identifier there already *becomes* the port; prefixing it would
+      // create a port called `Inputs`.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('Inp', 'expression')).toEqual([]);
+    });
+
+    it('offers nothing after a dot', () => {
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('foo.Inp')).toEqual([]);
+    });
+
+    it('offers nothing in a declaration position', () => {
+      // `var Inputs.Input_1` is a syntax error — a completion that breaks the
+      // document is worse than no completion.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('var Inp')).toEqual([]);
+      expect(portOptions('let Inp')).toEqual([]);
+      expect(portOptions('const Inp')).toEqual([]);
+      expect(portOptions('function Inp')).toEqual([]);
+    });
+
+    it('still offers in a reference position', () => {
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('return Inp').length).toBeGreaterThan(0);
+      expect(portOptions('var x = Inp').length).toBeGreaterThan(0);
+    });
+
+    it('offers nothing at an empty position', () => {
+      // Every port on the node, ahead of every language completion, on every
+      // keystroke of whitespace.
+      openFunctionNode(['Input_1'], []);
+      expect(portOptions('')).toEqual([]);
+      expect(portOptions('return ')).toEqual([]);
+    });
+
+    it('offers nothing when no node is open and nothing is mined', () => {
+      expect(portOptions('Inp')).toEqual([]);
+    });
+  });
+
+  it('does not disturb the member completions this file already had', () => {
+    openFunctionNode(['Input_1'], []);
+    const result = createNoodlCompletionSource('function')(contextAt('Inputs.', 7, false));
+
+    expect(result).not.toBeNull();
+    // The bare-name offer is a top-level thing; after a dot the member branch
+    // answers, unboosted, exactly as it did before.
+    expect(result.options.every((option) => option.boost !== 99)).toBe(true);
+    expect(result.options.map((option) => option.label)).toEqual(['Input_1']);
+  });
+
+  it('completes a declared-but-unread port after `Inputs.` too', () => {
+    // ⚠️ Found by the row above going red. `Inputs.` read `minePorts` alone, so a
+    // port added in the panel and not yet mentioned did not complete — the exact
+    // position a beginner is in one second after creating it, and the one place
+    // completion knew the answer and withheld it.
+    openFunctionNode(['Declared_1'], []);
+    const result = createNoodlCompletionSource('function')(contextAt('Inputs.', 7, false));
+
+    expect(result.options.map((option) => option.label)).toEqual(['Declared_1']);
+    expect(result.options[0].info).toContain('not yet read');
+  });
+
+  it('still says why a mined port exists, which is the thing being taught', () => {
+    const result = createNoodlCompletionSource('function')(
+      contextAt('const a = Inputs.Value;\nInputs.', 31, false)
+    );
+
+    expect(result.options[0].label).toBe('Value');
+    expect(result.options[0].info).toContain('because your code reads it');
   });
 });

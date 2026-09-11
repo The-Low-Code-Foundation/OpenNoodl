@@ -1,0 +1,18 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Budget Desk",
+  "id": "c7e41a90-0000-4000-8000-000000000010",
+  "version": "4",
+  "nodegxVersion": "0.2.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-09T12:00:00.000Z",
+  "modified": "2026-09-09T12:00:00.000Z",
+  "settings": {
+    "htmlTitle": "Budget Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components"
+  },
+  "rootNodeId": "router"
+}

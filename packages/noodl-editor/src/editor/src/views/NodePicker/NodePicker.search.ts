@@ -18,6 +18,7 @@
  */
 import { INodeType } from '@noodl-types/nodeTypes';
 import { pickerCapabilityReason } from '@noodl-utils/capability-gating/pickerReason';
+import { exportBadgeFor, type ExportBadge } from '@noodl-utils/codeExport/exportBadge';
 
 import { INodeIndex, INodeIndexCategory } from '@noodl-utils/createnodeindex';
 
@@ -50,6 +51,17 @@ export interface PickerItem {
   tint: PickerTint;
   /** Secondary line on the card, when the match itself doesn't explain the row. */
   meta: string;
+  /**
+   * LEG-006 — the component's own sentence, for the project components that
+   * have one. Core node types carry `docs`/`shortDocs` and never set this, so
+   * it is present only on a project component whose `component.json` has a
+   * `description`.
+   *
+   * It is the reason the field exists: a picker row that says
+   * `/Pages/Checkout` and nothing else cannot be told apart from
+   * `/Pages/CheckoutV2` without opening both.
+   */
+  description?: string;
   /** Why this matched, when it wasn't the name. */
   reason: MatchReason | null;
   /** Lower sorts first. `-1` means "no query". */
@@ -70,6 +82,15 @@ export interface PickerItem {
    * "supported here".
    */
   unavailableReason?: string;
+  /**
+   * EXP-013 — the code export has no rule for this type, and the ledger's word on it.
+   *
+   * ⚠️ The row stays in the list, exactly as `unavailableReason` does and for the same reason
+   * (Richard's ruling, EXP-011 §50: *warn*, not *hide*). The node works in the running app; what
+   * it does not do is export, and a person finds that out here rather than at the pre-flight.
+   * `undefined` is both "exports" and "not the ledger's to say" (a kit node, a component).
+   */
+  exportBadge?: ExportBadge;
 }
 
 export interface PickerGroup {
@@ -112,6 +133,35 @@ export interface PickerResults {
  */
 const RANK_TAG = 1_000;
 const RANK_PORT = 2_000;
+
+/**
+ * LGC-001 §1 — a match that is *not* on the name is ordered by the library's own
+ * listing order, not by label length.
+ *
+ * The tie-break used to be "shorter name first", which is arbitrary: it is a
+ * property of the string, not of the node. It also actively fought the one
+ * ordering this codebase has already thought about. `multiply` matches
+ * Expression, Visual Function and Function all three on a tag, all at
+ * `RANK_TAG`, and shortest-first answers **Function** (8 characters) first — the
+ * one node LGC-001 says must not lead, because it is the wrong tool for a
+ * one-liner.
+ *
+ * `nodelibraryexport.ts`'s `coreNodes` is a hand-curated list whose order is
+ * deliberate, so it is used here as the tie-break. Nothing about the triad is
+ * named in this file: reordering that list reorders these results.
+ *
+ * The offset is clamped so a tag match can never reach the port band — the two
+ * bands are 1000 apart and the library is ~250 entries, but the clamp makes that
+ * a guarantee rather than an observation.
+ */
+const MAX_LIBRARY_ORDER = 999;
+
+function withLibraryOrder(match: Match | null, ordinal: number): Match | null {
+  // Name matches keep their raw offset; only the "why is this here?" rows are
+  // re-ordered, and those are exactly the ones carrying a `reason`.
+  if (!match || !match.reason) return match;
+  return { ...match, rank: match.rank + Math.min(ordinal, MAX_LIBRARY_ORDER) };
+}
 
 export function getItemLabel(type: INodeType): string {
   return type.displayName || type.displayNodeName || type.name;
@@ -187,6 +237,8 @@ interface FlatNode {
   categoryType: string;
   subCategoryName: string;
   source: 'core' | 'custom';
+  /** Position in the library's own listing order — see {@link withLibraryOrder}. */
+  ordinal: number;
 }
 
 /** Walk the index once — categories, sub-categories and loose category items. */
@@ -202,7 +254,10 @@ function flatten(categories: INodeIndexCategory[], source: 'core' | 'custom'): F
           categoryName: category.name,
           categoryType: category.type,
           subCategoryName,
-          source
+          source,
+          // Filled in by `flattenIndex`, which is the only place that can see
+          // core and custom nodes as one sequence.
+          ordinal: 0
         });
       }
     };
@@ -218,19 +273,46 @@ function flatten(categories: INodeIndexCategory[], source: 'core' | 'custom'): F
 }
 
 export function flattenIndex(index: INodeIndex): FlatNode[] {
-  return [...flatten(index?.coreNodes || [], 'core'), ...flatten(index?.customNodes || [], 'custom')];
+  const all = [...flatten(index?.coreNodes || [], 'core'), ...flatten(index?.customNodes || [], 'custom')];
+  // Core nodes before project components, each in the order the library lists
+  // them — the walk order *is* the intended order, so it only has to be counted.
+  all.forEach((node, index) => (node.ordinal = index));
+  return all;
+}
+
+/**
+ * LEG-006 — a project component's own sentence, when it has one.
+ *
+ * Project component rows are `ComponentModel`s cast through the index
+ * (`createnodeindex.ts` pushes `NodeLibrary.getComponents()` straight into
+ * "Project components"), so this reads the model field rather than anything on
+ * `INodeType`, which has no such key.
+ */
+function componentDescription(type: INodeType): string | undefined {
+  const value = (type as unknown as { description?: unknown }).description;
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 }
 
 function toItem(node: FlatNode, match: Match | null, isSearching: boolean): PickerItem {
   const label = getItemLabel(node.type);
   const reason = match?.reason ?? null;
+  const description = componentDescription(node.type);
 
   // In browse the group heading is the sub-category, so the card's second line
   // carries the category. While searching the heading is the category, so the
   // card carries the sub-category — unless the match itself needs explaining,
   // which always wins.
+  //
+  // LEG-006 — a component's own description outranks both, because for a
+  // project component the category line reads "Project components", which the
+  // group heading already said. The match reason still wins: "why is this row
+  // here" is a question the description does not answer.
   const meta = reason
     ? `${reason.kind} · ${reason.text}`
+    : description
+    ? description
     : isSearching
     ? node.subCategoryName || node.categoryName
     : node.categoryName;
@@ -245,10 +327,12 @@ function toItem(node: FlatNode, match: Match | null, isSearching: boolean): Pick
     subCategoryName: node.subCategoryName,
     tint: tintFor(node.type.color, node.categoryType),
     meta,
+    ...(description ? { description } : {}),
     reason,
     rank: match?.rank ?? -1,
     highlight: match?.highlight ?? null,
-    unavailableReason: pickerCapabilityReason(node.type.name)
+    unavailableReason: pickerCapabilityReason(node.type.name),
+    exportBadge: exportBadgeFor(node.type.name)
   };
 }
 
@@ -296,7 +380,7 @@ export function buildResults({ index, query, activeCategory }: BuildResultsOptio
   for (const node of nodes) {
     const match = isSearching ? matchNode(node.type, term) : null;
     if (isSearching && !match) continue;
-    matched.push(toItem(node, match, isSearching));
+    matched.push(toItem(node, withLibraryOrder(match, node.ordinal), isSearching));
   }
 
   // Counts are computed before the category filter — clicking a rail item must

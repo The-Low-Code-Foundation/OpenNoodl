@@ -1,0 +1,56 @@
+# WHAT THIS IS, STATED ACCURATELY: the runtime bundles as they stood at 2026-09-02 21:27:59,
+# captured seconds before peer opennoodl-a0's P77/D46 rebuild landed at 21:28:48.
+# 🔴 IT IS *NOT* THE RUNTIME THAT RENDERED vib-001's 60 IMAGES. Those were taken
+# 2026-09-01 23:25; external/viewer/noodl.viewer.js was already rebuilt once on 09-02 at
+# 14:39 before this snapshot, and again at 21:28:48 after it:
+#     rendered the images -> (unknown, overwritten, unrecoverable)
+#     this snapshot       -> 0e9766f608b7ed226edc4c4ec2ccff8e
+#     after peer rebuild  -> e41d0fe751c9a59eaeecba70d85f9ba4
+# CONSEQUENCE: vib-001's images are not byte-reproducible. The manifest pins the project
+# file; nothing has ever pinned the runtime that paints it.
+# captured 2026-09-02 21:27:59 CEST — immediately before peer opennoodl-a0 rebuilt external/ for P77/D46
+# door head 9537db4b | living head b1c56a5d
+
+efd032e8b0153024abdb109e5db6775c  2025-12-06T23:15  packages/noodl-editor/src/external/cloudruntime 3/manifest.json
+9689dc1b4900b8101d76ecb9f1b1dfec  2025-12-06T23:15  packages/noodl-editor/src/external/cloudruntime 3/sandbox.viewer.bundle.js
+efd032e8b0153024abdb109e5db6775c  2026-07-25T11:32  packages/noodl-editor/src/external/cloudruntime/manifest.json
+cd6528498187cd4e8651d128c0323750  2026-07-25T15:12  packages/noodl-editor/src/external/cloudruntime/sandbox.viewer.bundle.js
+b7cc96a1cc3fedad1152421501735f4b  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/index.js
+d540fab2eb861fc1496caa438a78e6dc  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/index.json
+dbd238edadde7ed0c63eb7886bc0f544  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/load_terminator.js
+1e13ae11e51e355d2041ac418d8c9081  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/noodl.deploy.js
+6764e3f5bede5e303f7579e6f672ba7e  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/react-dom.production.min.js
+648b52e105850db91ae2bebe20548455  2025-12-06T23:15  packages/noodl-editor/src/external/deploy 2/react.production.min.js
+9d333295e71312538b37bb2758da8776  2026-08-16T17:29  packages/noodl-editor/src/external/deploy/index.js
+d540fab2eb861fc1496caa438a78e6dc  2025-12-07T15:23  packages/noodl-editor/src/external/deploy/index.json
+dbd238edadde7ed0c63eb7886bc0f544  2025-12-07T15:23  packages/noodl-editor/src/external/deploy/load_terminator.js
+b6151ecf43d1c2a5f6c7976c4debd1f2  2026-09-02T14:39  packages/noodl-editor/src/external/deploy/noodl.deploy.js
+7d4842a904e5d5d1b19240075998b111  2025-12-13T22:09  packages/noodl-editor/src/external/deploy/react-dom.production.min.js
+e91b2616629791b375867c298dc846cc  2025-12-13T22:09  packages/noodl-editor/src/external/deploy/react.production.min.js
+8e3c5dbd20efc333665a51e670379bbe  2026-07-24T23:03  packages/noodl-editor/src/external/deploy/react19/react-dom.production.min.js
+47a4ae505f4bd86fb14e417a0b3770ff  2026-07-24T23:03  packages/noodl-editor/src/external/deploy/react19/react.production.min.js
+2f82ffbdcefe529463c0ae6d20df998d  2025-12-06T23:15  packages/noodl-editor/src/external/ssr 3/index.js
+dba610e53c1edfd51f771e9904f37f8b  2025-12-06T23:15  packages/noodl-editor/src/external/ssr 3/index.json
+21fc024be394887670d03f7fb4cffdb3  2025-12-06T23:15  packages/noodl-editor/src/external/ssr 3/noodl.deploy.js
+911c93a768aebaa5f754f894c1400170  2025-12-06T23:15  packages/noodl-editor/src/external/ssr 3/package.json
+5f85cbe63efb4bb2526246c5cd7ec35e  2026-08-18T16:21  packages/noodl-editor/src/external/ssr/index.js
+8936ab7e9923f8a6ff384b6ed7fd6f69  2026-08-18T16:18  packages/noodl-editor/src/external/ssr/index.json
+41fc1030609065f436f801741bf304ce  2026-07-25T09:32  packages/noodl-editor/src/external/ssr/inject-seo.js
+c79b39e09a19722d74441af00ac748da  2026-08-18T18:00  packages/noodl-editor/src/external/ssr/kit-modules.js
+d11457e7e081afcf19a24395146c9b02  2026-09-02T14:39  packages/noodl-editor/src/external/ssr/noodl.deploy.js
+112d183b3a0043f743a6d38ea818baa7  2026-07-25T13:06  packages/noodl-editor/src/external/ssr/package.json
+5bc7782437f34e9e36f4fa3fd5619315  2026-07-25T12:43  packages/noodl-editor/src/external/ssr/render-gate.js
+16b67a9813f8187b63b5e6103a8f207e  2026-08-16T17:30  packages/noodl-editor/src/external/ssr/runtime-globals.js
+66941f817a6ea0d3083c8f4d0a52273a  2026-07-25T13:03  packages/noodl-editor/src/external/ssr/server-core.js
+d7997773c1465cb2348c57daae1dc92e  2026-07-25T13:03  packages/noodl-editor/src/external/ssr/ssg-paths.js
+70fc87db3399173e06f86af52b747ad0  2026-08-18T13:30  packages/noodl-editor/src/external/ssr/ssg.js
+dbd238edadde7ed0c63eb7886bc0f544  2025-12-06T23:15  packages/noodl-editor/src/external/viewer 3/load_terminator.js
+56fce0f863aed45103d71d3d1f739801  2025-12-06T23:15  packages/noodl-editor/src/external/viewer 3/noodl.viewer.js
+6764e3f5bede5e303f7579e6f672ba7e  2025-12-06T23:15  packages/noodl-editor/src/external/viewer 3/react-dom.production.min.js
+648b52e105850db91ae2bebe20548455  2025-12-06T23:15  packages/noodl-editor/src/external/viewer 3/react.production.min.js
+dbd238edadde7ed0c63eb7886bc0f544  2025-12-07T15:34  packages/noodl-editor/src/external/viewer/load_terminator.js
+0e9766f608b7ed226edc4c4ec2ccff8e  2026-09-02T14:39  packages/noodl-editor/src/external/viewer/noodl.viewer.js
+7d4842a904e5d5d1b19240075998b111  2025-12-13T22:09  packages/noodl-editor/src/external/viewer/react-dom.production.min.js
+e91b2616629791b375867c298dc846cc  2025-12-13T22:09  packages/noodl-editor/src/external/viewer/react.production.min.js
+8e3c5dbd20efc333665a51e670379bbe  2026-07-24T23:03  packages/noodl-editor/src/external/viewer/react19/react-dom.production.min.js
+47a4ae505f4bd86fb14e417a0b3770ff  2026-07-24T23:03  packages/noodl-editor/src/external/viewer/react19/react.production.min.js

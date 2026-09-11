@@ -259,9 +259,13 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         else if (typeof value === 'object' && value !== null)
           value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
+        // DEF-046: read before write. ⚠️ AFTER the object→id dereference above, so an
+        // identical record handed over twice compares as the same id rather than as two
+        // freshly-minted objects.
+        const previous = this._internal.modelId;
         this._internal.modelId = value as string; // Wait to fetch data
         // NDA-017 §2. Was `if (this.isInputConnected('fetch') === false)`.
-        if (this.shouldRunOnValueChange('modelId')) this.setModelID(value as string);
+        if (this.shouldRunOnValueChanged('modelId', previous, value)) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -513,7 +517,7 @@ function updatePorts(nodeId: string, parameters: Record<string, unknown>, editor
       ports.push({
         type: 'signal',
         plug: 'output',
-        group: 'Changed Events',
+        group: 'Events',
         displayName: p + ' Changed',
         name: 'changed-' + p,
         description: 'Fires when the ' + p + ' property changes, from this node or from anywhere else'

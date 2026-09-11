@@ -19,6 +19,8 @@ interface ExportedPort {
   default?: unknown;
   index?: unknown;
   tooltip?: unknown;
+  /** FB-015 — a shape hint shown in the empty field, for a port whose value has a syntax. */
+  placeholder?: unknown;
   tab?: unknown;
   popout?: unknown;
   allowVisualStates?: unknown;
@@ -51,6 +53,12 @@ interface NodeExportMetadata {
   module?: unknown;
   deprecated?: unknown;
   haveComponentPorts?: unknown;
+  /**
+   * P77 SBR-008 §9 — ports with this prefix on this node type are declared by the author's
+   * wires, not only by the node. The editor reads it to stop calling such a wire broken
+   * before the runtime has minted the port; see `data/dbmodelcrudbase.ts`.
+   */
+  wireDeclaredPortPrefix?: string;
   category?: string;
   allowAsExportRoot?: unknown;
   allowChildren?: unknown;
@@ -58,6 +66,7 @@ interface NodeExportMetadata {
   singleton?: unknown;
   allowAsChild?: unknown;
   docs?: string;
+  docsUrl?: string;
   shortDocs?: string;
   panels?: unknown;
   usePortAsLabel?: unknown;
@@ -83,12 +92,15 @@ interface ExportedNodeType {
   module?: unknown;
   deprecated?: boolean;
   haveComponentPorts?: boolean;
+  /** P77 SBR-008 §9 — see the same field on the metadata above. */
+  wireDeclaredPortPrefix?: string;
   allowAsChild?: boolean;
   allowAsExportRoot?: unknown;
   color?: unknown;
   allowChildrenWithCategory?: unknown;
   singleton?: boolean;
   docs?: string;
+  docsUrl?: string;
   shortDocs?: string;
   category?: string;
   panels?: unknown;
@@ -181,6 +193,9 @@ function formatPort(portName: string, portData: Record<string, unknown>, plugTyp
   }
   if (portData.tooltip) {
     port.tooltip = portData.tooltip;
+  }
+  if (portData.placeholder) {
+    port.placeholder = portData.placeholder;
   }
   if (portData.tab) {
     port.tab = portData.tab;
@@ -293,51 +308,63 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     // consumers that don't go through CanvasTheme (node picker, connection
     // popup, references panel, headless preview). Shape is load-bearing; keep
     // the keys exactly as they are.
+    //
+    // 🔴 NAT-003 (2026-08-19) RE-DERIVED EVERY VALUE BELOW, and did not hand-pick one. The editor
+    // builds a node scheme as `mix(bg-1, categoryAccent, 0.2)` for the card and
+    // `mix(bg-0, categoryAccent, 0.2)` for the header, so lifting the elevation ramp moves the
+    // node cards WITH the canvas — which is the point: a card that dissolved into a near-black
+    // ground would still dissolve if only the ground moved. These are those same mixes against
+    // the new `bg-0`/`bg-1`, so this blob and CanvasTheme still agree.
+    // ⚠️ THIS IS A SECOND PALETTE and it is only kept honest by a spec:
+    // `noodl-editor/tests/canvas/CanvasThemeNodeSchemes.test.ts` compares CanvasTheme's derived
+    // scheme to these literals within 16 per channel. If you change the ramp and not these, that
+    // spec is what tells you — and it lives in the ELECTRON suite (`npm run test:ci`), not the
+    // fast one, so it will not be the first thing that goes red.
     colors: {
       nodes: {
         component: {
-          base: '#363050',
-          baseHighlighted: '#464066',
-          header: '#2a2440',
-          headerHighlighted: '#363050',
-          outline: '#2a2440',
+          base: '#3c3d5a',
+          baseHighlighted: '#4c4872',
+          header: '#33324f',
+          headerHighlighted: '#3c3d5a',
+          outline: '#33324f',
           outlineHighlighted: '#a78bfa',
           text: '#EEF2F6'
         },
         visual: {
-          base: '#1e3450',
-          baseHighlighted: '#2a4466',
-          header: '#16283e',
-          headerHighlighted: '#1e3450',
-          outline: '#16283e',
+          base: '#2d435b',
+          baseHighlighted: '#345274',
+          header: '#243850',
+          headerHighlighted: '#2d435b',
+          outline: '#243850',
           outlineHighlighted: '#5ca9ff',
           text: '#EEF2F6'
         },
         data: {
-          base: '#1c3f2b',
-          baseHighlighted: '#275239',
-          header: '#14301f',
-          headerHighlighted: '#1c3f2b',
-          outline: '#14301f',
+          base: '#284a44',
+          baseHighlighted: '#2d5e4e',
+          header: '#1f4038',
+          headerHighlighted: '#284a44',
+          outline: '#1f4038',
           outlineHighlighted: '#45d08a',
           text: '#EEF2F6'
         },
         javascript: {
-          base: '#4c2940',
-          baseHighlighted: '#603552',
-          header: '#3a1f30',
-          headerHighlighted: '#4c2940',
-          outline: '#3a1f30',
+          base: '#4c384f',
+          baseHighlighted: '#654261',
+          header: '#432e44',
+          headerHighlighted: '#4c384f',
+          outline: '#432e44',
           outlineHighlighted: '#f776c4',
           text: '#EEF2F6'
         },
         default: {
-          base: '#222933',
-          baseHighlighted: '#2c3540',
-          header: '#181d24',
-          headerHighlighted: '#222933',
-          outline: '#181d24',
-          outlineHighlighted: '#6b7682',
+          base: '#333c46',
+          baseHighlighted: '#3e4853',
+          header: '#2b323b',
+          headerHighlighted: '#333c46',
+          outline: '#2b323b',
+          outlineHighlighted: '#7d8a98',
           text: '#EEF2F6'
         }
       },
@@ -412,6 +439,9 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     if (nodeMetadata.haveComponentPorts) {
       nodeObj.haveComponentPorts = true;
     }
+    if (nodeMetadata.wireDeclaredPortPrefix) {
+      nodeObj.wireDeclaredPortPrefix = nodeMetadata.wireDeclaredPortPrefix;
+    }
     if (nodeMetadata.category === 'Visual') {
       nodeObj.allowAsChild = true;
       nodeObj.allowAsExportRoot = true;
@@ -437,6 +467,14 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     }
     if (nodeMetadata.docs) {
       nodeObj.docs = nodeMetadata.docs;
+    }
+    // D10. Carried separately from `docs` and deliberately NOT fed into the
+    // `shortDocs` derivation below: that branch turns a `docs.noodl.net` URL
+    // into a companion `-short.md` path on the docs site, which exists for
+    // shipped nodes only. A kit's `docsUrl` points at the author's own page and
+    // has no such companion.
+    if (nodeMetadata.docsUrl) {
+      nodeObj.docsUrl = nodeMetadata.docsUrl;
     }
     if (nodeMetadata.shortDocs) {
       nodeObj.shortDocs = nodeMetadata.shortDocs;
@@ -614,7 +652,20 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           ]
         },
         {
-          name: 'Logic',
+          /**
+           * Was `Logic`. Renamed on Richard's ruling 2026-08-12, because
+           * LGC-001 §4 gave the `javascript` rail the label `Logic` and the
+           * picker then showed a rail entry and this unrelated group heading
+           * with the same word. The ruling was to rename here rather than
+           * revert the rail — the rail names a choice a builder makes, this
+           * names six boolean and branching primitives, and the second is the
+           * one that can move without losing anything.
+           *
+           * ⚠️ Display string only, same as the rail label: the nodes' own
+           * `category` field is untouched, nothing saved refers to it, and
+           * `node-catalog.json` does not contain it.
+           */
+          name: 'Conditions & Booleans',
           items: ['Boolean To String', 'Switch', 'And', 'Or', 'Condition', 'Inverter']
         },
         {
@@ -791,13 +842,47 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
       ]
     },
     {
-      name: 'Custom Code',
-      description: 'Custom JavaScript and CSS',
+      /**
+       * LGC-001 §4. This read `Custom Code` — an implementation word. A person
+       * who wants to work out a total does not think "custom code"; the test
+       * user in the originating video never opened this rail entry at all. The
+       * rail is where a builder *chooses*, so it names the choice.
+       *
+       * ⚠️ This is a **display string only**: it is the picker's rail label and
+       * group heading and nothing else. It is not the nodes' `category` field
+       * (still `CustomCode`, which is what the catalog carries and what
+       * `generate-node-docs.js` slugs into the docs-site path), it is not in any
+       * saved project, and `node-catalog.json` does not contain it. One line to
+       * revert.
+       *
+       * ⚠️ Two known consequences were recorded in LGC-001's Register. The
+       * first is now closed:
+       *  - ✅ `Logic & Utilities` above had a **sub-category** called `Logic`,
+       *    so the picker showed a rail entry and an unrelated group heading
+       *    with the same word. Confirmed visually 2026-08-12. Ruled: rename
+       *    the sub-category, keep this rail label. It is now
+       *    `Conditions & Booleans`;
+       *  - 📋 the category still holds `Javascript2` (labelled "Script") and
+       *    `CSS Definition`, so "Logic" contains one node that is not logic.
+       *    Moving it out is a taxonomy change, not a display string, so it was
+       *    left alone.
+       */
+      name: 'Logic',
+      description: 'Three ways to compute — pick by how much you want to type',
       type: 'javascript',
       subCategories: [
         {
+          /**
+           * LGC-001 §1/§4 — the order is load-bearing, not cosmetic. A picker
+           * row that matched on a *tag* rather than on its name is ranked by its
+           * position in this list (`NodePicker.search.ts`, `withLibraryOrder`),
+           * so this is what makes `multiply` answer
+           * Expression → Visual Function → Function: the cheapest correct answer
+           * for `price * quantity` first, and the one that is the wrong tool for
+           * a one-liner last.
+           */
           name: '',
-          items: ['Expression', 'JavaScriptFunction', 'Javascript2', 'Logic Builder', 'CSS Definition']
+          items: ['Expression', 'Logic Builder', 'JavaScriptFunction', 'Javascript2', 'CSS Definition']
         }
       ]
     },
@@ -857,7 +942,15 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
           // that do. An author scanning the picker should be able to see that
           // granting privilege is its own thing.
           name: 'Roles',
-          items: ['noodl.cloud.addusertorole', 'noodl.cloud.removeuserfromrole', 'noodl.cloud.getuserroles']
+          items: [
+            'noodl.cloud.addusertorole',
+            'noodl.cloud.removeuserfromrole',
+            'noodl.cloud.getuserroles',
+            // DEF-005 (b). Beside Get User Roles rather than under Users,
+            // because the two are the two directions of one junction and an
+            // author who found one should see the other.
+            'noodl.cloud.listusersinrole'
+          ]
         }
       ]
     }
@@ -867,22 +960,47 @@ function generateNodeLibrary(nodeRegister: NodeRegisterLike, options?: { runtime
     coreNodes
   };
 
-  const moduleNodes: string[] = [];
+  // CN-018 — one picker subcategory per kit, named after the kit.
+  //
+  // 🔴 This loop used to read `nodeMetadata.module` purely as a boolean ("is this
+  // a module node?") and then emit a single group named `''`. Every kit in a
+  // project therefore collapsed into one unnamed section under "External
+  // libraries": two kits each shipping a `Stat Tile` drew two identical cards —
+  // same name, same category, same tooltip — with nothing on screen to tell an
+  // author which kit either came from. Found by driving the editor in CN-006 s11.
+  //
+  // The name was always right here. `NoodlRuntime.registerModule` stamps
+  // `module.name || 'Unknown Module'` onto every definition it registers
+  // (`noodl-runtime.ts:517`), and since CN-003 that name is the kit's
+  // `manifest.json` name, adopted in `defineModule` from the
+  // `window.__noodl_module_name` marker the injector writes before each kit's
+  // script tag. So the only thing missing was carrying it across.
+  //
+  // ⚠️ `'Unknown Module'` is a real group, not a bug to filter out: a kit whose
+  // manifest names it nothing, loaded by a page the injector did not build, is
+  // genuinely unattributable and saying so beats silently merging it into a
+  // neighbour's section.
+  const moduleNodesByKit = new Map<string, string[]>();
 
   nodeTypes.forEach((type) => {
     const nodeMetadata = nodeRegister._constructors[type].metadata;
     if (nodeMetadata.module) {
-      moduleNodes.push(type);
+      const kitName = String(nodeMetadata.module);
+      const items = moduleNodesByKit.get(kitName);
+      if (items) items.push(type);
+      else moduleNodesByKit.set(kitName, [type]);
     }
   });
 
-  if (moduleNodes.length) {
-    obj.nodeIndex.moduleNodes = [
-      {
-        name: '',
-        items: moduleNodes
-      }
-    ];
+  if (moduleNodesByKit.size) {
+    // Sorted by name rather than left in registration order: module load order is
+    // an implementation detail no author can predict, so an alphabetical picker is
+    // the only ordering that stays put between sessions. Plain code-unit
+    // comparison, not `localeCompare` — the latter varies with the runtime's
+    // locale, and this blob is snapshot-compared across machines.
+    obj.nodeIndex.moduleNodes = Array.from(moduleNodesByKit.entries())
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([name, items]) => ({ name, items }));
   }
 
   return obj;

@@ -18,8 +18,10 @@
 
 import React, { useCallback, useMemo } from 'react';
 import { Remarkable } from 'remarkable';
+import { platform } from '@noodl/platform';
 
 import { CITATION_SCHEME } from '@noodl-models/AiAssistant/explain/citations';
+import { linkActionFor } from '@noodl-core-ui/components/ai/AiMarkdown/linkActions';
 
 import { clearCitedHighlight, highlightCitedNode, revealCitedNode } from '../canvasLink';
 import css from './ExplanationView.module.scss';
@@ -28,6 +30,15 @@ export interface ExplanationViewProps {
   markdown: string;
   /** Component the explanation was assembled from; citations resolve within it. */
   componentName: string;
+  /**
+   * FIX-001 §1c — which component a cited node actually lives in.
+   *
+   * Most citations point inside `componentName`, but an explanation that read
+   * inside a selected component instance cites nodes that live somewhere else,
+   * and clicking one has to switch components before it can select anything.
+   * Absent, every citation resolves against `componentName` as before.
+   */
+  componentForNode?: (nodeId: string) => string;
 }
 
 function citedNodeId(target: EventTarget | null): string | undefined {
@@ -37,7 +48,7 @@ function citedNodeId(target: EventTarget | null): string | undefined {
   return href ? href.slice(CITATION_SCHEME.length) : undefined;
 }
 
-export function ExplanationView({ markdown, componentName }: ExplanationViewProps) {
+export function ExplanationView({ markdown, componentName, componentForNode }: ExplanationViewProps) {
   const html = useMemo(() => {
     // html:false escapes any markup the model emitted rather than running it.
     const renderer = new Remarkable({ html: false, breaks: true });
@@ -47,11 +58,23 @@ export function ExplanationView({ markdown, componentName }: ExplanationViewProp
   const onClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       const nodeId = citedNodeId(event.target);
-      if (!nodeId) return;
+      if (nodeId) {
+        event.preventDefault();
+        revealCitedNode(componentForNode?.(nodeId) ?? componentName, nodeId);
+        return;
+      }
+
+      // FIX-003: any other link the model emits opens in the OS browser — or
+      // nowhere. Swallow the navigation either way; this window never leaves
+      // the editor, even for a scheme the policy refuses to open.
+      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      if (!anchor) return;
       event.preventDefault();
-      revealCitedNode(componentName, nodeId);
+
+      const href = anchor.getAttribute('href');
+      if (linkActionFor(href) === 'open') platform.openExternal(href);
     },
-    [componentName]
+    [componentName, componentForNode]
   );
 
   const onMouseOver = useCallback((event: React.MouseEvent<HTMLDivElement>) => {

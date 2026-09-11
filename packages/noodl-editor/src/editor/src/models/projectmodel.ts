@@ -4,6 +4,7 @@ import { filesystem, platform } from '@noodl/platform';
 import { UndoQueue, UndoActionGroup } from '@noodl-models/undo-queue-model';
 import { WarningsModel } from '@noodl-models/warningsmodel';
 import { verifyJsonFile } from '@noodl-utils/verifyJson';
+import { shouldDescendIntoProjectDirectory } from '@noodl-utils/projectDirectoryWalk';
 
 import Model from '../../../shared/model';
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
@@ -12,6 +13,9 @@ import Utils from '../utils/utils';
 import { ComponentModel } from './componentmodel';
 import LessonModel from './lessonmodel';
 import { NodeGraphModel, NodeGraphNode } from './nodegraphmodel';
+// DEF-040: one definition of "is the home inside this removed subtree", shared with
+// `NodeGraphModel.removeNode`. It imports nothing, so it adds no cycle here.
+import { isRootWithinRemoved } from './nodegraphmodel/rootNodeRemoval';
 import { NodeLibrary } from './nodelibrary';
 import {
   listProjectIconSets,
@@ -22,11 +26,21 @@ import {
 } from './projectmodel.modules';
 import { VariantModel } from './VariantModel';
 import { projectStructureService, projectMigrator } from '../services/ProjectStructure';
-import type { PreflightReport, MigrationResult } from '../services/ProjectStructure';
+import type { PreflightReport, MigrationResult, ProjectLevelKey, ProjectLevelTarget } from '../services/ProjectStructure';
+import { applyProjectLevelSlice } from '../services/ProjectStructure';
+import { hashComponent } from '../services/ProjectStructure/ComponentSaver';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
+import { decideComponentReload } from '../services/ProjectFileWatcher/decide';
 
 /** Which on-disk format a loaded project uses. Set at load; drives the save path. */
 export type ProjectFormatKind = 'legacy' | 'v2';
+
+/**
+ * REL-009b — what {@link ProjectModel.reloadComponentFromDisk} did about a
+ * component whose files changed underneath the editor. A boolean could not say
+ * the thing a caller most needs to act on: *why* nothing was applied.
+ */
+export type ReloadFromDiskOutcome = 'reloaded' | 'unchanged' | 'refused-dirty' | 'not-applicable';
 
 /**
  * WF-007: discriminates whether the endpoint this pointer targets is known
@@ -119,6 +133,27 @@ export class ProjectModel extends Model {
     }
   }
 
+  /**
+   * DSG-007/F30 — the project's durable identity, and the ownership key a
+   * backend is bound to.
+   *
+   * ⚠️ This field existed and was **written to by nobody who could persist it**.
+   * `LocalProjectsModel._addProject` minted one (`project.id = guid()`) for a new
+   * project, the constructor did not read it back off the file, and `toJSON()`
+   * did not emit it — so it lived in memory for one session and was **deleted
+   * from disk by the first save**, which also made
+   * `ProjectExporter.buildProjectV2File`'s `if (project.id !== undefined)` dead
+   * code on every v2 write.
+   *
+   * The consequence was not cosmetic. `BackendServices/provisionBackend.ts`
+   * reads `project.id` as the ownership half of `findReusableBackend`, so after
+   * any reload a project could not prove it owned anything: it got a *second*
+   * backend, stamped `projectIds: []`, reusable by nobody, forever. Four such
+   * directories accumulated on one machine before anyone noticed.
+   *
+   * Set at creation and read from the file. Nothing mutates it afterwards, which
+   * is why it needs no entry in {@link projectSaveTriggers}.
+   */
   public id?: string;
   public name?: string;
   public version?: string;
@@ -146,6 +181,12 @@ export class ProjectModel extends Model {
     this.variants = [];
     this.settings = {};
     if (args) {
+      // DSG-007/F30. Read, never minted: a project that arrives without an id
+      // must stay without one here. Generating one on load would write a fresh
+      // identity into every legacy project the editor opens, and two copies of
+      // the same project would then diverge silently — the opposite of what an
+      // ownership key is for. Minting stays where it already is, at creation.
+      this.id = args.id;
       this.name = args.name;
       // A project.json with no `settings` block must still leave this an object —
       // four read sites index it directly and the panel crashes on undefined (POL-001).
@@ -301,11 +342,15 @@ export class ProjectModel extends Model {
     this.components.push(component);
     this.notifyListeners('componentAdded', {
       model: component,
-      undo: args ? args.undo : undefined
+      undo: args ? args.undo : undefined,
+      // REL-009b — see the matching note in `removeComponent`.
+      reloadingFromDisk: args?.reloadingFromDisk === true
     });
 
     NodeLibrary.instance.notifyListeners('typeAdded', {
-      model: component
+      model: component,
+      // REL-009b — see the matching note in `removeComponent`.
+      reloadingFromDisk: args?.reloadingFromDisk === true
     });
 
     // Undo
@@ -335,7 +380,17 @@ export class ProjectModel extends Model {
     const newComponent = new ComponentModel({
       name: newComponentName,
       graph: NodeGraphModel.fromJSON(JSON.parse(JSON.stringify(component.graph.toJSON()))),
-      id: Utils.guid()
+      id: Utils.guid(),
+      // The graph was already deep-copied above; the component's OWN fields were
+      // not carried at all, so a duplicate silently lost its description and its
+      // whole metadata bag. Preserved rather than restamped, matching
+      // `ProjectExporter`'s rule for `modifiedBy`. ⚠️ When a field is added to
+      // `ComponentModel` the seams are four, not two: importer, model, exporter
+      // and here.
+      description: component.description,
+      created: component.created,
+      modifiedBy: component.modifiedBy,
+      metadata: component.metadata ? JSON.parse(JSON.stringify(component.metadata)) : undefined
     });
 
     newComponent.rekeyAllIds();
@@ -372,18 +427,41 @@ export class ProjectModel extends Model {
       component.owner = undefined;
       this.components.splice(idx, 1);
 
-      //reset the root node if we're deleting the root component
-      if (this.rootNode?.owner?.owner === component) {
+      /**
+       * Reset the root node if we're deleting the root component.
+       *
+       * DEF-040 (phase 80) — **the same hole as `removeNode`, on a path that is not refused.**
+       * Deleting the root component from the Components panel is refused today, but
+       * `utils/import-engine/apply.ts` calls `removeComponent` directly and is not, so this
+       * branch is reachable by an import that replaces the component holding the home. The undo
+       * pushed below re-adds the component and — until DEF-040 — left the project with no home.
+       */
+      const rootNodeBefore = this.rootNode;
+      const removingTheRootComponent = this.rootNode?.owner?.owner === component;
+      if (removingTheRootComponent) {
         this.setRootNode(null);
       }
 
       this.notifyListeners('componentRemoved', {
         model: component,
-        undo: args ? args.undo : undefined
+        undo: args ? args.undo : undefined,
+        // REL-009b: this removal is half of a swap, not a deletion. A view that
+        // reacts to a component disappearing — the node graph navigates away
+        // from it — must be able to tell the two apart, or reloading the
+        // component someone is looking at throws them off it.
+        reloadingFromDisk: args?.reloadingFromDisk === true
       });
 
+      // 🔴 REL-009b: the removal fans out onto TWO event buses, and a flag on one
+      // of them reaches only half the listeners. Guarding `componentRemoved`
+      // alone left `EditorEventBindings`' `typeRemoved` handler — a different
+      // bus, the same question — calling `switchToComponent()` with nothing, so
+      // the canvas still went blank on a reload. Measured, not reasoned: the
+      // instrumented drive logged `switchToComponent(UNDEFINED)` between the
+      // remove and the add.
       NodeLibrary.instance.notifyListeners('typeRemoved', {
-        model: component
+        model: component,
+        reloadingFromDisk: args?.reloadingFromDisk === true
       });
       component.off(this);
 
@@ -398,6 +476,12 @@ export class ProjectModel extends Model {
           },
           undo: function () {
             _this.addComponent(component);
+
+            // DEF-040: the component is back; the home has to come back with it, and only after
+            // the re-add so the project never points at a node no component contains.
+            if (removingTheRootComponent) {
+              _this.setRootNode(rootNodeBefore);
+            }
           }
         });
 
@@ -662,6 +746,35 @@ export class ProjectModel extends Model {
         .saveProject(retainedProjectDirectory, this.toJSON())
         .then((res) => {
           if (res.result === 'success') {
+            // REL-009a arm C. The saver left these alone because their files
+            // moved under us — an agent, a git checkout, another editor. Saying
+            // nothing here is the defect this row exists for: the user's edit to
+            // that component is still only in memory, and they must be told.
+            if (res.refused && res.refused.length > 0) {
+              console.warn(
+                'Project save skipped ' +
+                  res.refused.length +
+                  ' component(s) changed on disk by something else: ' +
+                  res.refused.join(', ')
+              );
+              EventDispatcher.instance.emit('ProjectModel.saveRefusedExternalChange', {
+                components: res.refused
+              });
+            }
+            // FLD-009, the project-level half. Same rule, different files: the
+            // agent's write is still on disk and the person's project-level
+            // change is still only in memory, and saying nothing is the defect.
+            if (res.refusedProjectFiles && res.refusedProjectFiles.length > 0) {
+              console.warn(
+                'Project save skipped ' +
+                  res.refusedProjectFiles.length +
+                  ' project file(s) changed on disk by something else: ' +
+                  res.refusedProjectFiles.join(', ')
+              );
+              EventDispatcher.instance.emit('ProjectModel.saveRefusedExternalProjectFileChange', {
+                files: res.refusedProjectFiles
+              });
+            }
             callback && callback({ result: 'success' });
           } else {
             callback && callback({ result: 'failure', message: res.message || 'Error writing project files.' });
@@ -739,33 +852,164 @@ export class ProjectModel extends Model {
    * save baseline for the component, so the next autosave neither clobbers nor
    * echoes the external change.
    *
-   * v2 projects only; a no-op (resolves false) otherwise. Autosave is suspended
-   * during the swap so the reload itself does not schedule a save-back.
+   * v2 projects only; `'not-applicable'` otherwise. Autosave is suspended during
+   * the swap so the reload itself does not schedule a save-back.
+   *
+   * REL-009b gave it the three judgements a file watcher needs it to make, all
+   * of them in `decideComponentReload`:
+   *
+   * - `'unchanged'` — the disk already matches our baseline, so this is the
+   *   editor's own save coming back through the watcher. Applying it would be
+   *   harmless but it would still churn the canvas, and at autosave frequency
+   *   that is every few seconds.
+   * - `'refused-dirty'` — the human has unsaved edits to this component.
+   *   Reloading would discard them silently, which is REL-009a arm C wearing
+   *   its other face; those two rows must not answer it differently.
+   * - `'reloaded'` — swapped in, and `componentReloadedFromDisk` carries both the
+   *   new model and the one it replaced, so a view holding the old reference can
+   *   follow it rather than discover it is showing a detached model.
    *
    * @param componentPath Registry path of the component (e.g. "Pages/Home").
-   * @returns true if a component was reloaded and swapped in.
    */
-  async reloadComponentFromDisk(componentPath: string): Promise<boolean> {
-    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return false;
+  async reloadComponentFromDisk(componentPath: string): Promise<ReloadFromDiskOutcome> {
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) return 'not-applicable';
 
-    const legacyComponent = await projectStructureService.reloadComponent(
-      this._retainedProjectDirectory,
-      componentPath
-    );
-    const newModel = ComponentModel.fromJSON(legacyComponent);
+    const { component: legacyComponent, diskHash, baselineHash } =
+      await projectStructureService.readComponentFromDisk(this._retainedProjectDirectory, componentPath);
+
     const existing = this.getComponentWithName(legacyComponent.name);
+    const decision = decideComponentReload({
+      baselineHash,
+      inMemoryHash: existing ? hashComponent(existing.toJSON()) : undefined,
+      diskHash
+    });
+
+    if (decision.action === 'skip-unchanged') return 'unchanged';
+
+    if (decision.action === 'refuse-dirty') {
+      // 🔴 The baseline is deliberately NOT advanced here. It still describes the
+      // version this editor loaded, which is what keeps REL-009a's
+      // `findExternallyChanged` able to see that the file has moved underneath
+      // us — so the next autosave refuses to write over the external change
+      // rather than clobbering it. Telling the person is the other half; a
+      // refusal nobody is told about is the same data loss with a nicer name.
+      this.notifyListeners('componentReloadRefused', { componentPath, component: existing });
+      EventDispatcher.instance.notifyListeners('ProjectModel.componentReloadRefused', { componentPath });
+      return 'refused-dirty';
+    }
+
+    projectStructureService.markComponentBaseline(componentPath, legacyComponent);
+    const newModel = ComponentModel.fromJSON(legacyComponent);
 
     const wasSaving = saveOnModelChange;
     ProjectModel.setSaveOnModelChange(false);
     try {
-      if (existing) this.removeComponent(existing);
-      this.addComponent(newModel);
+      // `reloadingFromDisk` rides on the removal so the views that treat a
+      // `componentRemoved` as a deletion can tell this apart from one. Without
+      // it the node graph, whose active component is the model being swapped
+      // out, navigates the person away to the default component mid-reload —
+      // REL-009b §4 U3, and the reason this is not a two-line change.
+      if (existing) this.removeComponent(existing, { reloadingFromDisk: true });
+      this.addComponent(newModel, { reloadingFromDisk: true });
     } finally {
       ProjectModel.setSaveOnModelChange(wasSaving);
     }
 
-    this.notifyListeners('componentReloadedFromDisk', { component: newModel });
-    return true;
+    this.notifyListeners('componentReloadedFromDisk', { component: newModel, previous: existing });
+    return 'reloaded';
+  }
+
+  /**
+   * FLD-009 — the same seam for the project-level files.
+   *
+   * `reloadComponentFromDisk` gave an agent's component write a way into the
+   * canvas. `nodegx.project.json`, the routes file and the styles file had no
+   * such way: the watcher did not report them and the saver did not check them,
+   * so an agent's backend binding or design-token block sat on disk unread until
+   * the editor's next project-level change wrote over it.
+   *
+   * 🔴 **This is what makes the saver's refusal usable rather than merely
+   * correct.** Without it, the guard added in `saveProjectLevelFiles` would
+   * refuse the person's project-level change *forever*: the editor's copy would
+   * never learn what the agent wrote, so every save would find the file moved
+   * and decline again, and the person's own change would never land. Adopting
+   * the disk copy is what closes that loop.
+   *
+   * The decision is per FILE, not per project, and that is deliberate: adopting
+   * a whole reconstructed project would overwrite an unsaved colour edit with
+   * the disk copy the moment an agent wrote an unrelated backend binding — the
+   * data loss this task exists to stop, wearing the other face.
+   *
+   * @returns the outcome for each file the caller asked about.
+   */
+  async reloadProjectLevelFromDisk(keys: ProjectLevelKey[]): Promise<Record<string, ReloadFromDiskOutcome>> {
+    const outcomes: Record<string, ReloadFromDiskOutcome> = {};
+    if (this._projectFormat !== 'v2' || !this._retainedProjectDirectory) {
+      for (const key of keys) outcomes[key] = 'not-applicable';
+      return outcomes;
+    }
+
+    const { slice, raw, decisions } = await projectStructureService.readProjectLevelFromDisk(
+      this._retainedProjectDirectory,
+      this.toJSON()
+    );
+
+    const refused: ProjectLevelKey[] = [];
+    const reloaded: ProjectLevelKey[] = [];
+
+    // The whole adoption runs with autosave disarmed. Every field written here
+    // already exists on disk, so a save triggered by writing it would at best be
+    // a no-op and at worst race the agent's next write.
+    const wasSaving = saveOnModelChange;
+    ProjectModel.setSaveOnModelChange(false);
+    try {
+      for (const key of keys) {
+        const decision = decisions[key];
+        if (!decision || decision.action === 'skip-unchanged') {
+          outcomes[key] = 'unchanged';
+          continue;
+        }
+        if (decision.action === 'refuse-dirty') {
+          // 🔴 The baseline is deliberately NOT advanced, exactly as on the
+          // component path: it still describes the version this editor loaded,
+          // which is what keeps `saveProjectLevelFiles` able to see that the
+          // file moved and refuse to write over it.
+          outcomes[key] = 'refused-dirty';
+          refused.push(key);
+          continue;
+        }
+
+        // `ProjectModel` carries the project-level fields directly (`settings`,
+        // `metadata`, `rootNodeId`, …) — it IS the legacy project shape with
+        // behaviour on top — but it declares them rather than an index
+        // signature, which is what this cast bridges.
+        applyProjectLevelSlice(this as unknown as ProjectLevelTarget, slice, key);
+        projectStructureService.markProjectLevelBaseline(key, raw[key] ?? null, this.toJSON());
+        outcomes[key] = 'reloaded';
+        reloaded.push(key);
+      }
+    } finally {
+      ProjectModel.setSaveOnModelChange(wasSaving);
+    }
+
+    for (const key of reloaded) {
+      // The panels that read project metadata listen for this, and a reload
+      // nobody redraws is a reload the person cannot see.
+      EventDispatcher.instance.notifyListeners('ProjectModel.metadataChanged', {
+        key: 'projectLevelReload',
+        data: key
+      });
+    }
+    if (reloaded.length > 0) {
+      this.notifyListeners('projectLevelReloadedFromDisk', { files: reloaded });
+      EventDispatcher.instance.notifyListeners('ProjectModel.projectLevelReloadedFromDisk', { files: reloaded });
+    }
+    if (refused.length > 0) {
+      this.notifyListeners('projectLevelReloadRefused', { files: refused });
+      EventDispatcher.instance.notifyListeners('ProjectModel.projectLevelReloadRefused', { files: refused });
+    }
+
+    return outcomes;
   }
 
   // ── v2 migration (SUB-003) ──────────────────────────────────────────────────
@@ -937,6 +1181,9 @@ export class ProjectModel extends Model {
           if (args && args.ignoreFullPath && args.ignoreFullPath.indexOf(fileEntry.fullPath) !== -1) continue; // Ignore files if specifed
 
           if (fileEntry.isDirectory) {
+            // FB-015 AC3 — installed dependencies and tooling state are not the author's files.
+            if (!shouldDescendIntoProjectDirectory(fileEntry.name)) continue;
+
             // Recurse into directory
             dirs++;
             _this._listFilesInDirectory(
@@ -1384,6 +1631,11 @@ export class ProjectModel extends Model {
   toJSON() {
     const json = {
       name: this.name,
+      // DSG-007/F30. `undefined` here serialises to an absent key rather than a
+      // null, so a project with no identity still round-trips to a byte-identical
+      // file — which is what keeps this from rewriting every legacy project the
+      // moment it is opened.
+      id: this.id,
       components: [],
       settings: this.settings,
       rootNodeId: this.rootNode ? this.rootNode.id : undefined,
@@ -1406,11 +1658,31 @@ export class ProjectModel extends Model {
   }
 }
 
-// Watch if the project root is removed
+/**
+ * Watch if the project root is removed.
+ *
+ * DEF-040 (phase 80) — **the whole removed subtree counts, not just its top.**
+ *
+ * `NodeGraphModel.removeNode` drops every descendant from `nodeMap` but notifies for the node it
+ * was handed and **nothing else**. So a home node sitting *inside* a deleted Group left this test
+ * reading `false`: the home was gone from the graph while `rootNode` went on pointing at it — a
+ * **dangling** root rather than a null one, which is the opposite failure and the worse of the
+ * two. `getRootNode()` then answers a node no component contains, and `toJSON` writes its id into
+ * `rootNodeId` for a node that is not in the file.
+ *
+ * ⚠️ `NodeGraphNode.forEach` visits the node itself first and **stops on the first truthy
+ * return** — it is a `find`, not a `forEach`. That is exactly what is wanted here, and it is why
+ * this covers the `=== e.args.model` case too.
+ */
 EventDispatcher.instance.on(
   'Model.nodeRemoved',
   function (e) {
-    if (ProjectModel.instance && ProjectModel.instance.getRootNode() === e.args.model) {
+    if (!ProjectModel.instance) return;
+
+    const rootNode = ProjectModel.instance.getRootNode();
+    if (!rootNode) return;
+
+    if (isRootWithinRemoved(rootNode, e.args.model)) {
       ProjectModel.instance.setRootNode(undefined);
     }
   },
@@ -1469,9 +1741,13 @@ let savePending = false;
  *
  * Adding those two names to the denylist would have fixed the symptom and kept
  * the design. So the list is inverted: an event has to be *named here* to reach
- * disk, and the membership rule is `ProjectModel.toJSON()` — `name`,
+ * disk, and the membership rule is `ProjectModel.toJSON()` — `name`, `id`,
  * `components[]`, `settings`, `rootNodeId`, `runtimeVersion`, `lesson`,
  * `metadata`, `variants[]`. Anything a save would not write is not here.
+ *
+ * `id` (DSG-007/F30) needs no entry either, for the opposite reason to
+ * `metadata`'s: it is set once at project creation and never mutated, so no
+ * event can change it and no event should arm a save for it.
  *
  * `metadata` needs no entry: `setMetaData` calls `scheduleProjectSave()` itself,
  * which is what covers app config, styles and style tokens.
@@ -1756,4 +2032,22 @@ export function flushPendingProjectSave(): Promise<void> {
       EventDispatcher.instance.emit('ProjectModel.projectSavedToDisk');
     }
   });
+}
+
+/**
+ * FLD-010 — is there an edit in memory that has not reached disk?
+ *
+ * The same flag {@link flushPendingProjectSave} reads, exported so `session_status` can answer
+ * an agent's "is the person mid-edit?" from the editor's own state rather than from a guess.
+ *
+ * ⚠️ **Read-only, and deliberately not a lock.** R6 ruled the advisory lock out: FLD-009 already
+ * refuses to reload over a dirty buffer, so what an agent needs is the *fact*, not a protocol.
+ *
+ * ⚠️ `true` means "armed and not yet landed", which deliberately outlives the debounce timer —
+ * see the note on `savePending` itself. It is therefore the conservative answer of the two: it
+ * stays true across the second between an edit and its write, which is exactly the window an
+ * agent must not race.
+ */
+export function hasPendingProjectSave(): boolean {
+  return savePending;
 }

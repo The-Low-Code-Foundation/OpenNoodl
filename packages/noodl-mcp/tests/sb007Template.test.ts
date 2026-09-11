@@ -1,0 +1,2823 @@
+/**
+ * SB-007 — the site builder ships as a template, and the template is the app.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * ## What this file is for, given five suites already grade these components
+ *
+ * `sb004Authoring`, `sb005AdminPanel` and `sb006PublicSite` grade the graphs;
+ * `sb008-public-site-drive` grades the running site in a browser. All four read
+ * the **component sets**. None of them reads the thing a person actually gets,
+ * which is a `project.json` with nineteen components in it — and the difference
+ * between those two populations is where a template breaks:
+ *
+ *  - the four suites author into `tests/fixtures/demo-app`, which **already
+ *    contains** an `App` component holding a `Router` named `Main`. Nothing in
+ *    the three component sets writes one. A template has no fixture.
+ *  - the door checks a reference against **what is on disk when the write
+ *    happens**. A shipped artefact is a different population: a component
+ *    dropped from the emitted set is a reference the door once resolved and the
+ *    project no longer contains.
+ *  - `checkNavigation` resolves a Navigate target against **component names**,
+ *    not against router registration — `pageRegistration.ts`'s own header calls
+ *    that out (*"Gate parity without apply parity is a gate that lies"*). A page
+ *    that exists and is not routed is a button that does nothing, and it is
+ *    green everywhere else.
+ *
+ * So every assertion below is over `site-builder.content.json` — the committed
+ * artefact — and §1 is what stops that artefact drifting away from the graphs
+ * the other five suites measure.
+ *
+ * ⚠️ Reading the JSON rather than importing the editor's `.template.ts`: this
+ * package's `tsconfig` is its own, and the editor module adds nothing to grade
+ * (an id, a name, a category — the editor's own spec has those, where the
+ * provider that reads them lives).
+ */
+import * as fs from 'fs';
+import * as path from 'path';
+
+import {
+  EMPTY_PAGE_LIST_TEXT,
+  PAGE_LIST_ERROR_TEXT,
+  ROUTER,
+  SIGNED_OUT_TEXT,
+  SIGNIN_REFUSAL_TEXT
+} from './sb005Components';
+import { SITE_URL_PATH } from './sb006Components';
+import { APP_COMPONENT, buildSiteTemplateProject, toTemplateContent } from './sb007Template';
+import {
+  governedInputsFor,
+  planRunOnValueChangeMigration,
+  runOnChangePortName,
+  RUN_ON_CHANGE_FAMILIES,
+  RUN_ON_CHANGE_PREFIX,
+  type MigrationNodeLike,
+  type MigrationProjectLike
+} from '../../noodl-editor/src/editor/src/models/ProjectPatches/runOnValueChangeMigration';
+
+jest.setTimeout(600000);
+
+const ARTEFACT = path.join(
+  __dirname,
+  '..',
+  '..',
+  'noodl-editor',
+  'src',
+  'editor',
+  'src',
+  'models',
+  'template',
+  'templates',
+  'site-builder.content.json'
+);
+
+const REGENERATE = 'npm run template:site-builder';
+
+// ── Reading the artefact ─────────────────────────────────────────────────────
+
+interface Node {
+  id: string;
+  type: string;
+  parameters?: Record<string, unknown>;
+  children?: Node[];
+}
+interface Component {
+  name: string;
+  graph: { roots: Node[]; connections: Array<{ fromId: string; fromProperty: string; toId: string; toProperty: string }> };
+}
+interface Content {
+  name: string;
+  rootComponent?: string;
+  components: Component[];
+}
+
+const shipped = JSON.parse(fs.readFileSync(ARTEFACT, 'utf-8')) as Content;
+
+/** Every node in a component, roots and descendants alike. */
+function nodesOf(component: Component): Node[] {
+  const out: Node[] = [];
+  const walk = (nodes: Node[]) => {
+    for (const node of nodes) {
+      out.push(node);
+      if (node.children?.length) walk(node.children);
+    }
+  };
+  walk(component.graph.roots ?? []);
+  return out;
+}
+
+/** Every node in the whole project, tagged with the component holding it. */
+function allNodes(): Array<{ component: string; node: Node }> {
+  return shipped.components.flatMap((c) => nodesOf(c).map((node) => ({ component: c.name, node })));
+}
+
+function componentNamed(name: string): Component | undefined {
+  return shipped.components.find((c) => c.name === name);
+}
+
+const APP_LEGACY = `/${APP_COMPONENT}`;
+
+/** The one Router node the app has. */
+function routerNode(): Node {
+  const app = componentNamed(APP_LEGACY);
+  if (!app) throw new Error(`the shipped project has no ${APP_LEGACY} component`);
+  const router = nodesOf(app).find((n) => n.type === 'Router');
+  if (!router) throw new Error(`${APP_LEGACY} holds no Router node`);
+  return router;
+}
+
+interface Pages {
+  startPage?: string;
+  routes?: string[];
+}
+
+function routerPages(): Pages {
+  return (routerNode().parameters?.pages as Pages) ?? {};
+}
+
+// ── 1. The artefact is what the door writes, and not a twin of it ────────────
+
+describe('SB-007 — the committed template is a regeneration, not a copy', () => {
+  /**
+   * 🔴 **THE ONE ASSERTION THE WHOLE FILE STANDS ON.**
+   *
+   * Everything below reads the committed JSON. If that JSON can drift from the
+   * component sets, then every claim below is a claim about a stale file and the
+   * four suites that grade the sets are measuring something else. This regenerates
+   * through the real MCP server and compares bytes.
+   *
+   * ⚠️ Regeneration is deterministic and that is a property, not luck: the door's
+   * id remapping, its auto-placement and its page registration are all functions
+   * of the authoring order, and the three per-write fields that are not
+   * (`created`, `modifiedBy`, a component `id`) are dropped by `toTemplateContent`
+   * precisely so this comparison can be over the whole artefact rather than over
+   * a chosen part of it.
+   */
+  it('regenerating from the component sets reproduces the committed file byte for byte', async () => {
+    const built = await buildSiteTemplateProject();
+    const regenerated = JSON.stringify(toTemplateContent(built.project), null, 2) + '\n';
+    const committed = fs.readFileSync(ARTEFACT, 'utf-8');
+
+    if (regenerated !== committed) {
+      const a = committed.split('\n');
+      const b = regenerated.split('\n');
+      const first = a.findIndex((line, i) => line !== b[i]);
+      throw new Error(
+        `site-builder.content.json is not what the door writes today.\n` +
+          `  first difference at line ${first + 1}:\n` +
+          `    committed:    ${a[first]}\n` +
+          `    regenerated:  ${b[first]}\n` +
+          `  If a component set changed on purpose, run \`${REGENERATE}\` and commit the result.`
+      );
+    }
+    expect(regenerated).toBe(committed);
+  });
+
+  it('control: the generation really ran — it produced nineteen components, not an empty project', async () => {
+    // 🔴 Without this, the comparison above is satisfiable by two empty strings,
+    // and a build that silently authored nothing would read as agreement.
+    const built = await buildSiteTemplateProject();
+    // 19 → 21: SBR-006 adds `/Admin/Shell` and `/Admin/NewPageDialog`.
+    // 21 → 22: SBR-017 adds `/Pages/SignIn`.
+    // 22 → 24: SBR-007 AC2 adds `/#__cloud__/reorderSection` and the worker it
+    // runs, `/#__cloud__/site/SetSectionOrder`.
+    // 24 → 30: SBR-005 gives every section kind a component of its own —
+    // `/Site/HeroSection`, `/Site/GallerySection`, `/Site/GalleryTile`,
+    // `/Site/CtaSection`, `/Site/RichTextSection`, `/Site/ContactSection` — and
+    // `/Site/SectionView` becomes the switch that mounts one of them.
+    // 30 → 31 with SBR-009's `/Admin/PresetChip` — one preset chip, placed three
+    // times with a different `name`, rather than three buttons and three
+    // one-line scripts that can disagree.
+    // 31 → 33 with SBR-010's `/Admin/MessageRow` and `/Pages/Messages` — the
+    // screen that reads a `ContactMessage` back, and the row it repeats.
+    expect(built.project.components).toHaveLength(33);
+    expect(built.order[0]).toBe(APP_COMPONENT);
+  });
+});
+
+// ── 2. The finding: a page can be written into no router, silently ───────────
+
+/**
+ * 🔴 **THE ONE-EDGE ARM, AND IT IS THE REASON THIS TASK HAS AN `App` COMPONENT
+ * AT ALL.**
+ *
+ * `pageRegistration.ts` states the behaviour outright — *"A project with no
+ * router is not an error. Single-screen apps exist, and refusing an
+ * otherwise-good write over a missing router would be this phase's mistake in
+ * the other direction."* That is a defensible rule for `create_component`. What
+ * it means for anything **assembling a project** is that six page writes can
+ * come back green, with `registeredPages` simply absent from the payload, and
+ * the app opens on nothing.
+ *
+ * An absence is not evidence on its own: `registeredPages` could be missing
+ * because the write failed, because the response shape changed, because the
+ * pages were not pages. So the two arms below differ in **one component** —
+ * everything else, the skeleton, the order, the door, the eighteen component
+ * sets, is held constant — and they disagree.
+ */
+describe('SB-007 — the App component is the difference between a router and none', () => {
+  it('🔴 with no App: every page is written, every write succeeds, and NOTHING is registered', async () => {
+    const built = await buildSiteTemplateProject({ omitApp: true });
+
+    // The pages were written. This is not a run that fell over.
+    // 6 → 7 with SBR-010's `/Pages/Messages`.
+    expect(built.order.filter((key) => key.startsWith('Pages/'))).toHaveLength(7);
+    // 18 → 20, same two components, minus the App this arm deliberately omits.
+    // 20 → 21 with SBR-017's sign-in page.
+    // 21 → 23 with AC2's endpoint and its worker — both cloud components, which
+    // this arm writes exactly as the other one does. That they are here at all is
+    // the point of the assertion below: written, and registered nowhere.
+    // 23 → 29 with SBR-005's six section-kind components.
+    // 29 → 30 with SBR-009's `/Admin/PresetChip`.
+    // 30 → 32 with SBR-010's two.
+    expect(built.project.components).toHaveLength(32);
+
+    // And not one of them landed in a router, with no diagnostic anywhere.
+    expect(built.registrations).toEqual({});
+  });
+
+  it('control: with the App, the same components register six pages', async () => {
+    // 🔴 The arm that turns the absence above into a measurement. Without it,
+    // `registrations === {}` is consistent with a builder that never populates
+    // that map at all — which is the same reading, and the opposite fix.
+    const built = await buildSiteTemplateProject();
+    // 🟢 SBR-010's `/Pages/Messages` is the seventh, and it registered itself:
+    // the generator never states a `pages` list, so this set IS the door's own
+    // registration and a page that failed to register would be missing here
+    // rather than reported anywhere.
+    expect(Object.keys(built.registrations).sort()).toEqual([
+      'Pages/Admin',
+      'Pages/Messages',
+      'Pages/PageEditor',
+      'Pages/Setup',
+      'Pages/SignIn',
+      'Pages/Site',
+      'Pages/ThemeEditor'
+    ]);
+    expect(built.registrations['Pages/Site'].startPage).toBe('/Pages/Site');
+  });
+});
+
+// ── 3. The app has an entry point ────────────────────────────────────────────
+
+describe('SB-007 — the router the component sets never author', () => {
+  it('ships an App component holding exactly one Router', () => {
+    const app = componentNamed(APP_LEGACY);
+    expect(app).toBeDefined();
+    expect(nodesOf(app as Component).filter((n) => n.type === 'Router')).toHaveLength(1);
+  });
+
+  it('🔴 names that router what every RouterNavigate in both panels asks for', () => {
+    // 🔴 UNCHECKED AT THE DOOR, and unchecked for a reason that is visible in
+    // every authoring run: `RouterNavigate`'s ports are derived from the target
+    // router, so all eleven of them raise `dynamic-port-skipped` — "unverified by
+    // that check rather than verified as correct", in the diagnostic's own words.
+    // A router named anything else is eleven buttons that do nothing, on a green
+    // authoring run and a green deploy.
+    expect(routerNode().parameters?.name).toBe(ROUTER);
+  });
+
+  it('lists every page component in the routes', () => {
+    const pages = shipped.components.map((c) => c.name).filter((n) => n.startsWith('/Pages/'));
+    expect(pages.length).toBeGreaterThan(0);
+    expect([...(routerPages().routes ?? [])].sort()).toEqual([...pages].sort());
+  });
+
+  it('🔴 opens on the public site, not on an editor for no record', () => {
+    // SB-006 F17: the door makes the FIRST page written the start page, so the
+    // authoring order decides where the app opens. The panel-first order that
+    // built SB-005 left `startPage: /Pages/PageEditor` — an editor with no page
+    // selected — which is why `buildSiteTemplateProject` authors the site first.
+    expect(routerPages().startPage).toBe('/Pages/Site');
+  });
+
+  it('control: the routes list is not simply everything', () => {
+    // Without this, "every page is routed" passes on a router that lists all
+    // nineteen components, including the seven cloud ones a browser cannot show.
+    const routes = routerPages().routes ?? [];
+    expect(routes.length).toBeLessThan(shipped.components.length);
+    expect(routes.some((r) => r.startsWith('/#__cloud__/'))).toBe(false);
+  });
+});
+
+// ── 3. Nothing in the shipped project points outside it ──────────────────────
+
+describe('SB-007 — the artefact is closed under its own references', () => {
+  const names = new Set(shipped.components.map((c) => c.name));
+
+  it('every component an instance node names is in the project', () => {
+    // An instance uses the target's legacy name as its node `type`. The door
+    // resolved each of these against the disk at write time; this is the same
+    // question asked of the population that ships.
+    const missing = allNodes()
+      .filter(({ node }) => node.type.startsWith('/') && !names.has(node.type))
+      .map(({ component, node }) => `${component} › ${node.id} (${node.type})`);
+    expect(missing).toEqual([]);
+  });
+
+  it('every repeater template is in the project', () => {
+    const missing = allNodes()
+      .filter(({ node }) => node.type === 'For Each')
+      .map(({ component, node }) => ({ component, node, template: node.parameters?.template as string | undefined }))
+      .filter((row) => !row.template || !names.has(row.template))
+      .map((row) => `${row.component} › ${row.node.id} → ${String(row.template)}`);
+    expect(missing).toEqual([]);
+  });
+
+  it('🔴 every page a RouterNavigate targets is REGISTERED, not merely present', () => {
+    // 🔴 THE GAP `pageRegistration.ts` NAMES IN ITS OWN HEADER: `checkNavigation`
+    // resolves a target against the project's component names, and it is sound in
+    // the editor only because the editor's apply registers the page immediately
+    // afterwards. A page component that exists and is not in `routes` passes every
+    // gate in the repository and does nothing when clicked.
+    const routes = new Set(routerPages().routes ?? []);
+    const unrouted = allNodes()
+      .filter(({ node }) => node.type === 'RouterNavigate')
+      .map(({ component, node }) => ({ component, node, target: node.parameters?.target as string | undefined }))
+      .filter((row) => !row.target || !routes.has(row.target))
+      .map((row) => `${row.component} › ${row.node.id} → ${String(row.target)}`);
+    expect(unrouted).toEqual([]);
+  });
+
+  it('control: there are RouterNavigate nodes to grade, and they name pages', () => {
+    // 🔴 The three assertions above are all `toEqual([])`, which is what an empty
+    // population also produces. This is the arm that says the population is not
+    // empty — the failure mode that would make all three vacuous at once.
+    const navigates = allNodes().filter(({ node }) => node.type === 'RouterNavigate');
+    expect(navigates.length).toBeGreaterThan(0);
+    expect(allNodes().filter(({ node }) => node.type === 'For Each').length).toBeGreaterThan(0);
+    expect(allNodes().filter(({ node }) => node.type.startsWith('/')).length).toBeGreaterThan(0);
+  });
+
+  it('control: an invented target would be caught — the matcher discriminates', () => {
+    const routes = new Set(routerPages().routes ?? []);
+    expect(routes.has('/Pages/NoSuchPage')).toBe(false);
+  });
+});
+
+// ── 4. F14's tie, re-read on the shipped router ──────────────────────────────
+
+describe('SB-007 — the public site catch-all does not compete with an admin path', () => {
+  /**
+   * SB-006 F14: `{slug}` matches any one-segment path, and the Router breaks a
+   * pattern tie by the order its `pages` list happens to name (`router.tsx:775-783`,
+   * the guard is `>` not `>=`). SB-005's four page paths moved under `admin/` so
+   * the tie is removed rather than relied on — and *this* is the artefact where
+   * that either holds or does not, because it is the one carrying both panels'
+   * `urlPath`s and one router's ordering.
+   */
+  function urlPathOf(componentName: string): string | undefined {
+    const component = componentNamed(componentName);
+    if (!component) return undefined;
+    return nodesOf(component).find((n) => n.type === 'Page')?.parameters?.urlPath as string | undefined;
+  }
+
+  const routed = () => routerPages().routes ?? [];
+
+  it('the public site is the catch-all it is meant to be', () => {
+    expect(urlPathOf('/Pages/Site')).toBe(SITE_URL_PATH);
+  });
+
+  it('🔴 every other page has more segments than the catch-all', () => {
+    const segments = (p: string) => p.split('/').filter(Boolean).length;
+    const site = segments(SITE_URL_PATH);
+
+    for (const name of routed()) {
+      if (name === '/Pages/Site') continue;
+      const urlPath = urlPathOf(name);
+      expect(urlPath).toBeDefined();
+      // Distance is read before order (`router.tsx`), so a deeper path wins on
+      // its own merits and never on where it sits in the list.
+      expect(segments(urlPath as string)).toBeGreaterThan(site);
+    }
+  });
+
+  it('control: the catch-all is one segment, so "more than" is a real bar', () => {
+    // Without this the assertion above is satisfied by a catch-all of zero
+    // segments, against which everything is deeper and nothing was tested.
+    expect(SITE_URL_PATH.split('/').filter(Boolean)).toHaveLength(1);
+  });
+
+  it('every page carries a Page node, so it renders at all', () => {
+    // A page component without one renders blank — the `PageWithoutPageNode`
+    // diagnostic. Checked here over the routed set rather than the written set.
+    for (const name of routed()) expect(urlPathOf(name)).toBeDefined();
+  });
+});
+
+// ── 5. The halves that make it a site rather than a demo ─────────────────────
+
+describe('SB-007 — what the template contains', () => {
+  it('ships the cloud half, so a deploy has the publication flow', () => {
+    const cloud = shipped.components.map((c) => c.name).filter((n) => n.startsWith('/#__cloud__/'));
+    // 7 → 9: SBR-007 AC2's `reorderSection` and its `site/SetSectionOrder` worker.
+    expect(cloud).toHaveLength(9);
+    expect(cloud).toEqual(expect.arrayContaining(['/#__cloud__/publishPage', '/#__cloud__/claimSite']));
+  });
+
+  it('names a root component that the project actually contains', () => {
+    // 🔴 `EmbeddedTemplateProvider.instantiateContent` resolves `rootComponent`
+    // by an exact name match to set a concrete `rootNodeId`; the fallback it
+    // exists to avoid — `ProjectModel.fromJSON`'s `setRootComponent()` name hint —
+    // silently no-ops on the launcher's empty NodeLibrary. A `rootComponent` that
+    // matches nothing is therefore a project with no home component, and no error.
+    expect(shipped.rootComponent).toBe(APP_LEGACY);
+    expect(componentNamed(shipped.rootComponent as string)).toBeDefined();
+  });
+
+  it('control: the bare name would NOT have matched', () => {
+    // 🔴 The near-miss this is guarding. `hello-world.template.ts` names its root
+    // `App` because its component is called `App`; every component the v2 door
+    // writes is `/App`. One character, no diagnostic, no home component.
+    expect(componentNamed(APP_COMPONENT)).toBeUndefined();
+  });
+
+  it('carries no per-write provenance, which is what makes it comparable at all', () => {
+    for (const component of shipped.components) {
+      expect(component).not.toHaveProperty('created');
+      expect(component).not.toHaveProperty('modifiedBy');
+    }
+  });
+});
+
+// ── 3. The migration fires on this artefact, and one shape of node it silences
+//       is a defect rather than a no-op ─────────────────────────────────────────
+
+/**
+ * 🔴 **SBR-004 §9.2 and §10. This is the check that would have found the root
+ * URL, and it is artefact-wide because the defect was never SBR-004's.**
+ *
+ * Nothing in the component sets authors `runOnChange-*: false`. The NDA-017
+ * back-compat migration writes it on **every project load** (`applypatches.js`),
+ * for the value inputs of any node in the fifteen families whose control signal
+ * is wired — and it cannot tell a graph authored before NDA-017 §2 from one this
+ * template minted this morning. Over the shipped artefact it silences 27 nodes.
+ *
+ * Most of those are harmless: the control signal is a *consequence* — a query's
+ * `fetched`, a button's `onClick`, a request's `receive` — and a consequence
+ * arrives after the values that caused it. **The exception is a control signal
+ * that fires on a clock the values do not share, and the template has exactly one
+ * such signal: `Page.didMount`.** A node triggered by mount, whose value comes
+ * from something asynchronous, hits its own `undefined` guard once and never runs
+ * again. That was `/Pages/Site`'s `The slug to show`, whose `in-homeSlug` comes
+ * from the `SiteSettings` fetch — driven at `/`: zero variables, empty `h1`, no
+ * page (§9.2).
+ *
+ * ✅ **Graded, not exempted.** The rule is not a list of forgiven node names — it
+ * is a property of the producer. `PageInputs` is the one producer guaranteed to
+ * have delivered before mount: `router.tsx:586` calls `_updatePageInputs` before
+ * `addChild(group)` puts the page in the tree. Every other producer into a
+ * mount-triggered node has to answer for itself, which is what a reason column
+ * that cannot fail would not have made anyone do.
+ */
+describe('SB-007 — the NDA-017 migration cannot silence a mount-triggered node', () => {
+  /**
+   * The artefact in the shape the migration reads — concrete rather than
+   * `MigrationProjectLike`, whose fields are all optional because it also has to
+   * describe a half-loaded project. Grading needs them present, and
+   * `typecheck:mcp` is right to insist.
+   */
+  interface GradableNode {
+    id: string;
+    type: string;
+    parameters?: Record<string, unknown>;
+  }
+  interface GradableComponent {
+    name: string;
+    graph: {
+      roots: GradableNode[];
+      connections: Array<{ fromId: string; fromProperty: string; toId: string; toProperty: string }>;
+    };
+  }
+  interface GradableProject {
+    components: GradableComponent[];
+  }
+
+  const migrationProject = (): GradableProject => ({
+    components: shipped.components.map((c) => ({
+      name: c.name,
+      // `eachNode` recurses through `children`, and a saved v2 graph's `children`
+      // are id strings rather than nodes. The migration decides per node and never
+      // per subtree, so a flat list of every node is the whole graph to it.
+      // 🔴 DEEP clone, and D32's control arm is why. The spread below used to be
+      // shallow, so every node's `parameters` was the SAME object as the
+      // module-level `shipped` artefact's — and the two mutant arms in this
+      // block `delete` from it. The mutation outlived the test that made it and
+      // leaked into every later reader of `shipped`, which is how a fresh
+      // `migrationProject()` came back with the mutant's damage already applied.
+      graph: {
+        roots: nodesOf(c).map(({ children, ...node }) => ({
+          ...node,
+          parameters: node.parameters ? { ...node.parameters } : node.parameters
+        })),
+        connections: (c.graph.connections ?? []).map((w) => ({ ...w }))
+      } as GradableComponent['graph']
+    }))
+  });
+
+  /**
+   * 🔴 **DEF-007 §3.2 moved the population these two passes grade, and the move is the point.**
+   *
+   * Both used to iterate `plan.writes` — *"the inputs the migration is about to silence"*. Since
+   * the template states its own `runOnChange-*` values (`pinRunOnValueChangeDefaults`), that list
+   * is **empty**, and this block's own control comment says what an empty plan does to every
+   * assertion below it: they pass for free.
+   *
+   * So the passes now grade what the artefact **states**, which is the thing that actually ships.
+   * The two questions were always different and are now asked of different sets:
+   *
+   * | pass | question | population |
+   * |---|---|---|
+   * | `gradeMountTriggered` | does silencing this input leave the node with no trigger? | silenced |
+   * | `gradeWriteBackCycle` | is running on this input the thing that loops? | runs |
+   *
+   * 🔴 **An ABSENT key is in BOTH, and that is not double-counting.** Absent means opposite things
+   * on the two sides of DEF-007's seam: `runOnValueChange()` reads it as **ticked**, so on disk —
+   * export, deploy, headless render — the node runs; and the NDA-017 migration writes **`false`**
+   * over it on every editor load, so in the editor the node is silent. An unstated input is
+   * therefore a candidate for *both* hazards depending on who is reading, which is the sharpest
+   * statement of why the template must state them and the reason both mutants below still work by
+   * simply deleting a key.
+   */
+  interface GovernedInput {
+    component: string;
+    nodeId: string;
+    nodeType: string;
+    input: string;
+    parameter: string;
+  }
+
+  /**
+   * Every governed input on a signal-driven node whose stated value satisfies `accept`.
+   *
+   * The population is derived through the migration module's own `governedInputsFor` and
+   * `RUN_ON_CHANGE_FAMILIES` rather than restated here, for the reason the mutants in this block
+   * exist: a grader that re-implements the rule proves the rule is writable, not that it runs.
+   */
+  function statedInputs(project: GradableProject, accept: (value: unknown) => boolean): GovernedInput[] {
+    const out: GovernedInput[] = [];
+    for (const component of project.components) {
+      const ids = new Set(component.graph.roots.map((n) => n.id));
+      const incoming = new Map<string, string[]>();
+      for (const wire of component.graph.connections) {
+        if (!ids.has(wire.fromId)) continue;
+        const ports = incoming.get(wire.toId);
+        if (ports) ports.push(wire.toProperty);
+        else incoming.set(wire.toId, [wire.toProperty]);
+      }
+      for (const node of component.graph.roots) {
+        const family = RUN_ON_CHANGE_FAMILIES[node.type];
+        if (!family) continue;
+        const ports = incoming.get(node.id) ?? [];
+        if (ports.indexOf(family.controlSignal) === -1) continue;
+        for (const input of governedInputsFor(node as MigrationNodeLike, family, ports)) {
+          const parameter = runOnChangePortName(input);
+          if (!accept(node.parameters?.[parameter])) continue;
+          out.push({ component: component.name, nodeId: node.id, nodeType: node.type, input, parameter });
+        }
+      }
+    }
+    return out;
+  }
+
+  /** Silent once the editor has loaded it: stated `false`, or absent and about to be migrated to `false`. */
+  const silenced = (project: GradableProject) => statedInputs(project, (v) => v === false || v === undefined);
+
+  /** Runs when a value lands: stated `true`, or absent — which `runOnValueChange()` reads as ticked. */
+  const runsOnValue = (project: GradableProject) => statedInputs(project, (v) => v !== false);
+
+  /** The signals that fire on the page lifecycle rather than on a value. */
+  const MOUNT_SIGNALS = ['didMount'];
+
+  /**
+   * The one producer that is ordered before mount by the runtime itself, so a
+   * value from it is present when `didMount` fires. Anything else is a race.
+   */
+  const ORDERED_BEFORE_MOUNT = ['PageInputs'];
+
+  /** Every `runOnChange-*: true` taken back out — the artefact as it stood before DEF-007 §3.2. */
+  function asIfUnstated(project: GradableProject): GradableProject {
+    for (const component of project.components) {
+      for (const node of component.graph.roots) {
+        const parameters = node.parameters;
+        if (!parameters) continue;
+        for (const key of Object.keys(parameters)) {
+          if (key.startsWith(RUN_ON_CHANGE_PREFIX) && parameters[key] === true) delete parameters[key];
+        }
+      }
+    }
+    return project;
+  }
+
+  it('the migration no longer fires on this template — and the instrument that says so still works', () => {
+    // 🟢 DEF-007 AC3. `toTemplateContent` states every governed value, and an already-present key
+    // is never touched, so there is nothing left for the load-time pass to write.
+    expect(planRunOnValueChangeMigration(migrationProject() as MigrationProjectLike).writes).toEqual([]);
+
+    // 🔴 THE KNOWN-FIRING SIGNAL, and it is needed MORE now than when the plan was expected to be
+    // full. A plan that writes nothing is also what a broken import, a renamed family or a
+    // planner that returns `emptyPlan()` early would produce — and every absence asserted in this
+    // block passes for free on one. So the same planner is shown firing in bulk on the same
+    // artefact with only the statements removed: what is quiet above is quiet because the
+    // template answered, not because nobody asked.
+    const plan = planRunOnValueChangeMigration(asIfUnstated(migrationProject()) as MigrationProjectLike);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+    expect(plan.writes.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * The grading pass itself, as a function, so the mutant below can call **this**
+   * rather than a restatement of it. A mutant that re-implements the rule proves
+   * the rule is writable, not that the check runs.
+   */
+  function gradeMountTriggered(project: GradableProject): { offenders: string[]; graded: string[] } {
+    const population = silenced(project);
+    const byComponent = new Map(project.components.map((c) => [c.name, c]));
+    const nodeIndex = new Map<string, { id: string; type: string }>();
+    for (const c of project.components) for (const n of c.graph.roots) nodeIndex.set(`${c.name}::${n.id}`, n);
+
+    const offenders: string[] = [];
+    const graded: string[] = [];
+
+    for (const write of population) {
+      const component = byComponent.get(write.component);
+      if (!component) continue;
+      const incoming = component.graph.connections.filter((w) => w.toId === write.nodeId);
+
+      // Is this node triggered by the page lifecycle at all? If not, its control
+      // signal is a consequence and arrives after the values that caused it.
+      if (!incoming.some((w) => MOUNT_SIGNALS.includes(w.fromProperty))) continue;
+
+      // It is. Then every producer of the input being silenced must be one the
+      // runtime orders before mount — or there must be no producer at all, in
+      // which case a stored parameter is the only value there ever was and
+      // silencing the port changes nothing.
+      const producers = incoming.filter((w) => w.toProperty === write.input);
+      const target = nodeIndex.get(`${write.component}::${write.nodeId}`);
+      const label = `${write.component} ${target?.type}#${write.nodeId}.${write.input}`;
+
+      if (producers.length === 0) {
+        graded.push(`${label} — no wire, a stored parameter is its only value`);
+        continue;
+      }
+      for (const producer of producers) {
+        const type = nodeIndex.get(`${write.component}::${producer.fromId}`)?.type ?? '(missing)';
+        if (ORDERED_BEFORE_MOUNT.includes(type)) {
+          graded.push(`${label} <= ${type} — set before addChild, router.tsx:586`);
+        } else {
+          offenders.push(`${label} <= ${type}.${producer.fromProperty}`);
+        }
+      }
+    }
+    return { offenders: offenders.sort(), graded: graded.sort() };
+  }
+
+  /**
+   * 🔴 **D32 — what the pass above REACHES, asserted as a number.**
+   *
+   * `gradeMountTriggered` opens with a `continue`, so it examines a write only
+   * when the node is triggered by `didMount`. Over the shipped artefact that is
+   * **one write of sixty-five**. The pass is not wrong — it grades a real hazard
+   * correctly — but it reads as coverage of the migration and is coverage of
+   * 1.5% of it, and that is how D31 shipped past a suite that already knew about
+   * the migration.
+   *
+   * The number is pinned here so it cannot drift silently. If the artefact grows
+   * a second mount-triggered node this arm fails and someone reads the reason.
+   * ✅ *A pass whose first line is a `continue` is not coverage until you have
+   * counted what it REACHED.*
+   */
+  it('D32 — the mount pass reaches 0 of the 19 silenced inputs, and the rest are graded below', () => {
+    const project = migrationProject();
+    const { graded, offenders } = gradeMountTriggered(project);
+
+    // 🔴 The population, asserted first, because the count below is ZERO and a zero read off an
+    // empty population is the vacuous pass this whole block is built to refuse. There are 26
+    // inputs the editor runs silent; none of them is on a node `didMount` triggers.
+    //
+    // 🔴 **19 → 32 is SBR-005, and every one of the thirteen is a deliberate key.** They are three
+    // different defects, and the arithmetic is worth following because each block is one of them:
+    //
+    //   **+7, D36 — the write-back cycle.** Three new fields on `/Admin/SectionRow merge`
+    //   (`in-heading`, `in-linkLabel`, `in-linkTarget`), the whole of `absorb` (`in-data`,
+    //   `in-kind`, `in-image`), and `dropLast.in-data`; less `merge.in-image`, which left when the
+    //   picture fold moved to `absorb`. Plus `/Site/CtaSection route.in-target`, which is new and
+    //   correct rather than a repair. The three `merge` keys shipped **missing** for one run and
+    //   the write-back arm below named all three by hand.
+    //
+    //   **+2, D39 — both answers on load.** `/Site/ContactForm`'s `sentGate` and `refusedGate` are
+    //   `Condition` nodes that carried `condition: true` and no key, so the parameter's own value
+    //   landed at load, both gates published `result: true`, and every visitor read *"Thanks — your
+    //   message has been sent."* AND *"That message could not be sent."* before typing a word.
+    //
+    //   **+4, D41 — the form sent itself.** `/Site/ContactForm gather`'s four value inputs. Its
+    //   script's last statement is `Outputs.go()` into a cloud call, so the instant the third field
+    //   stopped being empty the function was called with nobody having pressed anything, and every
+    //   keystroke after that called it again. Measured anonymously in a real browser: three fields
+    //   filled, nothing clicked, and the page already said *"Thanks — your message has been sent."*
+    //
+    // 🔴 **All six of D39's and D41's inputs were in the `runsOnValue` population below for five
+    // sessions, and it was RIGHT to be silent about them** — that census grades write-back cycles,
+    // and none of these six writes anything it reads. **A node can sit in a hazard census, be
+    // correctly cleared of THAT hazard, and be carrying another one.**
+    //
+    // ✅ The shape all three share, and the one nothing in this repository checks: **an unstated
+    // `runOnChange-*` on a node whose script ends in an EFFECT is a defect, whatever the effect is.**
+    //
+    //   **+1, SBR-009 — the fourth instance of that shape, and it was found in a browser.**
+    //   `/Pages/ThemeEditor presets.in-pick` (`in-name` until D54 renamed the port). Three preset
+    //   chips publish their `name` at MOUNT (a `Component Inputs` constant per placement), so with
+    //   the box ticked the picker ran three times before anybody touched anything, last placement
+    //   winning: the screen booted showing the **Night** palette in its preview with all five
+    //   boxes pre-filled, picked by nobody. Measured on the rendered screen
+    //   (`sbr009ThemeEditorDrive`), not reasoned — and it is the same lesson one more time, that
+    //   `run` is ADDITIVE and wiring it does not stop a node running on its own.
+    //
+    //   🔴 **And silencing it was necessary and NOT sufficient — D54.** The checkbox stopped the
+    //   picker running at mount; it did nothing about the *value* that mount had left in the port.
+    //   All three chips still wrote into one `in-name`, last placement won, and every press
+    //   thereafter answered `night` — so the row above was a correct fix to the half of the defect
+    //   a screenshot could see. 🔴 **A `runOnChange` census asks WHEN a node runs and never asks
+    //   WHAT it will read**, and this is the second population in this file to be correctly
+    //   cleared of one hazard while carrying another.
+    // ⚠️ **33 → 36 with SBR-010, and all three are the same lesson twice over.**
+    // +1 is `/Pages/Messages tally.in-rows`, stated `false` after the drive read
+    // the count sentence running on a REFUSED query; +2 are
+    // `/#__cloud__/site/ContactRecipient settings`'s two query checkboxes, which
+    // is **D42** — the load-time fetch beside a `storageFetch` wire that stored
+    // every enquiry twice. `run` is additive, and a second trigger nobody meant
+    // is what both rows are.
+    //
+    // ⚠️ **36 → 37 with D54, and the new row is the fix, not a new hazard.**
+    // `/Admin/PresetChip pick.in-name` is the script that republishes a chip's own
+    // name at the moment it is pressed; the chip's `Component Inputs` constant
+    // arrives at MOUNT, so an unstated box would fire `Picked` on all three chips
+    // before anybody pressed one — the same shape as `presets` above, one level
+    // down. Counted here rather than exempted, because it belongs in this census.
+    expect(silenced(project)).toHaveLength(37);
+
+    // ⚠️ Was `1 of 65` before DEF-007 §3.2. The one row it reached — `/Pages/PageEditor
+    // hold.in-pageId` — left this population by being stated `true`: it is no longer silenced, so
+    // there is no longer a question about what triggers it. The row moved out of the hazard, it
+    // was not stopped being looked for, and `MUTANT: the defect as it actually shipped` below is
+    // what proves this pass can still red.
+    expect(graded.length + offenders.length).toBe(0);
+  });
+
+  // ── D32's second pass: the failure mode nothing graded ──────────────────────
+
+  /** The nodes that write a record. A write is what closes the loop below. */
+  const RECORD_WRITE_TYPES = ['SetDbModelProperties', 'NewDbModelProperties'];
+  /** The node that reads a collection back out. */
+  const COLLECTION_TYPES = ['DbCollection2'];
+  const COMPONENT_INPUTS = 'Component Inputs';
+  const FOR_EACH = 'For Each';
+
+  /**
+   * 🔴 **D32's repair: the OTHER failure mode, and the one D31 actually was.**
+   *
+   * `gradeMountTriggered` asks whether silencing an input BREAKS the node. This
+   * asks the mirror question — whether silencing it is the only thing STOPPING
+   * the node from running forever: the node's output reaches a record write on
+   * collection `K`, and the silenced input is fed from `K`.
+   *
+   * 🔴 **Why an offender is a TEMPLATE defect, not a migration one.** NDA-017
+   * writes these flags on **editor load only**. A headless render, a deploy taken
+   * from the artefact, or an agent reading through the MCP door never runs it. A
+   * load-bearing flag the template leaves to the migration is therefore present
+   * exactly for the consumer that was going to be fine and absent for the three
+   * that were not. D31 was 115,755 write errors in eleven seconds of a page
+   * nobody touched.
+   *
+   * ⚠️ This does NOT require the template to state all 65. It reaches a write
+   * only when that write's node both reads and writes one collection.
+   *
+   * **Two confidences, kept apart on purpose** — see the arms below:
+   *  - `repeaterItem` — the input is a **repeater item** and the node writes the
+   *    very collection the repeater draws from. This is D31 exactly: the write
+   *    lands on the item's own model, so the item changes, so the node re-runs.
+   *    A **confirmed** hazard, and the mutant restores it.
+   *  - `sameCollection` — the node reads and writes one collection by any other
+   *    route. **Plausible, unconfirmed**: whether the value actually cycles
+   *    depends on whether the write reaches the input again at runtime, and D31
+   *    needed the runtime's own `[runtime/cyclic-loop]` to settle that. Pinned as
+   *    a census rather than asserted as a defect.
+   */
+  function gradeWriteBackCycle(project: GradableProject): {
+    repeaterItem: string[];
+    sameCollection: string[];
+    cleared: string[];
+    reached: number;
+  } {
+    const population = runsOnValue(project);
+    const byComponent = new Map(project.components.map((c) => [c.name, c]));
+
+    /** Every collection a node's output reaches a record write on, transitively. */
+    function collectionsWritten(component: GradableComponent, nodeId: string): Set<string> {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const found = new Set<string>();
+      const seen = new Set<string>([nodeId]);
+      const queue = [nodeId];
+      while (queue.length > 0) {
+        const current = queue.shift() as string;
+        for (const wire of component.graph.connections) {
+          if (wire.fromId !== current || seen.has(wire.toId)) continue;
+          seen.add(wire.toId);
+          const target = nodes.get(wire.toId);
+          if (target && RECORD_WRITE_TYPES.includes(target.type)) {
+            const name = target.parameters?.['collectionName'];
+            if (typeof name === 'string') found.add(name);
+          }
+          queue.push(wire.toId);
+        }
+      }
+      return found;
+    }
+
+    /** Collections that reach this component as a `For Each` item, project-wide. */
+    function collectionsFeedingTemplate(templateName: string): Set<string> {
+      const found = new Set<string>();
+      for (const carrier of project.components) {
+        const nodes = new Map(carrier.graph.roots.map((n) => [n.id, n]));
+        for (const each of carrier.graph.roots) {
+          if (each.type !== FOR_EACH) continue;
+          if (each.parameters?.['template'] !== templateName) continue;
+          for (const wire of carrier.graph.connections) {
+            if (wire.toId !== each.id || wire.toProperty !== 'items') continue;
+            const source = nodes.get(wire.fromId);
+            if (!source || !COLLECTION_TYPES.includes(source.type)) continue;
+            const name = source.parameters?.['collectionName'];
+            if (typeof name === 'string') found.add(name);
+          }
+        }
+      }
+      return found;
+    }
+
+    /**
+     * Every collection whose contents can reach this input, walking BACKWARDS,
+     * and whether the route was the component's own interface (a repeater item).
+     */
+    function feeding(
+      component: GradableComponent,
+      nodeId: string,
+      input: string
+    ): { collections: Set<string>; viaInterface: Set<string> } {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const collections = new Set<string>();
+      const viaInterface = new Set<string>();
+      const seen = new Set<string>();
+      const queue: Array<{ id: string; port?: string }> = [{ id: nodeId, port: input }];
+      while (queue.length > 0) {
+        const current = queue.shift() as { id: string; port?: string };
+        for (const wire of component.graph.connections) {
+          if (wire.toId !== current.id) continue;
+          if (current.port !== undefined && wire.toProperty !== current.port) continue;
+          if (seen.has(wire.fromId)) continue;
+          seen.add(wire.fromId);
+          const source = nodes.get(wire.fromId);
+          if (source && COLLECTION_TYPES.includes(source.type)) {
+            const name = source.parameters?.['collectionName'];
+            if (typeof name === 'string') collections.add(name);
+          }
+          if (source && source.type === COMPONENT_INPUTS) {
+            for (const name of collectionsFeedingTemplate(component.name)) {
+              collections.add(name);
+              viaInterface.add(name);
+            }
+          }
+          queue.push({ id: wire.fromId });
+        }
+      }
+      return { collections, viaInterface };
+    }
+
+    const repeaterItem: string[] = [];
+    const sameCollection: string[] = [];
+    const cleared: string[] = [];
+    let reached = 0;
+
+    for (const write of population) {
+      const component = byComponent.get(write.component);
+      if (!component) continue;
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+
+      const written = collectionsWritten(component, write.nodeId);
+      if (written.size === 0) continue;
+      reached++;
+
+      const { collections, viaInterface } = feeding(component, write.nodeId, write.input);
+      const shared = [...written].filter((k) => collections.has(k)).sort();
+      const label = `${write.component} ${nodes.get(write.nodeId)?.type}#${write.nodeId}.${write.input}`;
+      if (shared.length === 0) {
+        cleared.push(`${label} — writes "${[...written].sort().join(', ')}", which does not feed it`);
+        continue;
+      }
+      if (shared.some((k) => viaInterface.has(k))) {
+        repeaterItem.push(`${label} — writes "${shared.join(', ')}" and is fed it AS A REPEATER ITEM`);
+      } else {
+        sameCollection.push(`${label} — reads and writes "${shared.join(', ')}"`);
+      }
+    }
+    return {
+      repeaterItem: repeaterItem.sort(),
+      sameCollection: sameCollection.sort(),
+      cleared: cleared.sort(),
+      reached
+    };
+  }
+
+  /**
+   * 🔴 **D32's own number, applied to D32's own repair.** The pass above must not
+   * be graded the way `gradeMountTriggered` was — by its offender count, with
+   * nobody asking what it examined. It reaches **29 of 65**, against the mount
+   * pass's **1**, and every one of the 29 is either named as a hazard or cleared
+   * with a stated reason.
+   */
+  it('D32 — the second pass reaches 29 of the 72 running inputs, and clears the rest by name', () => {
+    const project = migrationProject();
+    const { repeaterItem, sameCollection, cleared, reached } = gradeWriteBackCycle(project);
+
+    // ⚠️ Was `29 of 65` — the 65 being what the migration was about to silence.
+    //
+    // 🔴 **The population grew by 7 and `reached` by 1, and the 7 are the finding.** They are the
+    // inputs an author had already pinned `true` BY HAND — `/Site/NavLink linkState.in-slug` and
+    // `.in-current`, `/Pages/Site resolveSlug.in-slug` and `.in-homeSlug`, `/Pages/Admin
+    // pages-2.collectionName` and `count.in-rows`, and `/Pages/PageEditor sections-2.qp-pageId`.
+    // The old pass could not see one of them, structurally: it iterated `plan.writes`, and a key
+    // that is already present is never written, *"the whole of idempotency"*. So the seven inputs
+    // somebody had thought hard enough about to state explicitly were the seven this hazard check
+    // skipped.
+    //
+    // The 30th reached row is `sections-2.qp-pageId`, which writes "Section" and is **cleared** —
+    // the collection it writes does not feed it. No new hazard; seven inputs that were never
+    // asked.
+    // ⚠️ **72 → 65, and not one of the seven is a section kind.** −2 for D39's two `Condition`
+    // gates, −4 for D41's four `gather` inputs, both moving into `silenced`; and −1 for
+    // `/Pages/Site readSections.in-rows`, which went with the duplicate page-level contact form
+    // (D37). **Every one of the seven is a defect leaving, not a feature arriving.**
+    //
+    // 🔴 **SBR-005 added six components and put NOTHING in this population.** Not luck:
+    // `statedInputs` only reaches a node whose control signal is WIRED (`:558`), so the five kinds
+    // are structurally outside it — `/Site/SectionView unpack` and `/Site/GallerySection`'s
+    // repeater run on value alone and have no `run`. The four SBR-005 nodes that DO have one —
+    // `merge`, `absorb`, `dropLast`, `route` — state every value input `false`, so all of them land
+    // in `silenced` (32) and none of them here.
+    //
+    // 🔴 **This number read 75 for one run, and the three were the defect.** `merge`'s new
+    // `in-heading`/`in-linkLabel`/`in-linkTarget` arrived unstated, which is what put them in this
+    // population and then in the write-back hazard below. **Name what the instrument cannot see:**
+    // an unwired-`run` node's value inputs are invisible to BOTH counts, so this pair of numbers
+    // says nothing about the five kinds either way — and D39 is the standing proof that a node
+    // present in this census can still be carrying a defect it does not grade.
+    // ⚠️ **30 → 28 with SBR-009, and the drop is not a repair.** Measured, both
+    // buckets, rather than derived: `sameCollection` swapped four rows for five
+    // (see the census below) and `cleared` moved 24 → 21, `theme-2`'s four stated
+    // query inputs and `presets.in-name` arriving among them.
+    //
+    // 🔴 **`buildTokens`'s four rows left this census and its read/write
+    // relationship did not change.** `statedInputs` reaches a node only when its
+    // control signal is WIRED (`:558`); SBR-009 took `run` off `buildTokens` —
+    // Save now wires the button straight to the record write and the object is
+    // always current — so the node fell out of the population this pass grades.
+    // It still reads "Theme" through `readTheme` and still writes it through
+    // `saveTheme`. **Name what the instrument cannot see:** this pass answers
+    // "what would the migration silence", and a node the migration no longer
+    // touches leaves it silently, whatever else is true of the node.
+    // ⚠️ 65 → 64, and it is the SAME row as the `+1` in the silenced census above:
+    // `presets.in-name` moved from "runs on value" to "waits for the signal" when
+    // SBR-009 stated its box `false`. A pair of counts moving one each in opposite
+    // directions is the whole of the change, and either alone would have looked
+    // like a population that had drifted.
+    // ⚠️ 64 → 65 with SBR-010, and exactly one row: `/Pages/Messages tally.in-rows`.
+    // 🔴 The row's OTHER code node, `/Admin/MessageRow stamp`, is invisible to
+    // both buckets and that is structural rather than an omission —
+    // `statedInputs` reaches a node only when its control signal is WIRED
+    // (`:558`), and `stamp` has no `run`. **Name what the instrument cannot
+    // see:** its three `runOnChange-in-*: true` keys are authored against a
+    // future `run` wire and no pass in this file grades them today.
+    // ⚠️ 65 → 62, and it is the SAME three rows as the `+3` in the silenced
+    // census above, moving the other way. A pair of counts moving three each in
+    // opposite directions is the whole of the change; either alone would have
+    // looked like a population that had drifted.
+    expect(runsOnValue(project)).toHaveLength(62);
+    // …and `reached` follows it down, 28 → 27: `presets.in-name` was one of the
+    // `cleared` rows ("writes Theme, which does not feed it"), so silencing it
+    // takes it out of this pass as well. One statement, three numbers, all three
+    // asserted — which is what stops a later reader treating any one of them as
+    // an independent measurement.
+    expect(reached).toBe(27);
+    // Cardinality where the three buckets meet: nothing reached is unaccounted for.
+    expect(repeaterItem.length + sameCollection.length + cleared.length).toBe(reached);
+  });
+
+  it('D32 — no write the migration must make stands in a REPEATER-ITEM write-back cycle', () => {
+    // 🟢 Green because the template states D31's three flags itself since s32, so
+    // the migration no longer plans them. The mutant below is what proves this
+    // arm can fail.
+    expect(gradeWriteBackCycle(migrationProject()).repeaterItem).toEqual([]);
+  });
+
+  it('D32 MUTANT: D31 as it shipped — the three flags back off the template', () => {
+    const project = migrationProject();
+    const row = project.components.find((c) => c.name === '/Admin/SectionRow')!;
+    const merge = row.graph.roots.find((n) => n.parameters?.['runOnChange-in-data'] === false)!;
+    expect(merge).toBeDefined();
+    for (const input of ['in-data', 'in-body', 'in-image']) {
+      delete (merge.parameters as Record<string, unknown>)[`runOnChange-${input}`];
+    }
+
+    // 🔴 TWO of the three, and which two is the finding rather than a detail.
+    // `in-data` is the repeater item itself; `in-body` traces back to it through
+    // `unpack-2 → bodyField.startValue → bodyField.onTextChanged`, which is why
+    // D31's fix needed three flags and not one. `in-image` is absent because it
+    // comes from `upload.cloudFile` — the upload, not the collection — so it is
+    // in the migration's write set without being in the cycle. A grader that
+    // named all three would be naming the port list, not the loop.
+    expect(gradeWriteBackCycle(project).repeaterItem).toEqual([
+      `/Admin/SectionRow JavaScriptFunction#${merge.id}.in-body — writes "Section" and is fed it AS A REPEATER ITEM`,
+      `/Admin/SectionRow JavaScriptFunction#${merge.id}.in-data — writes "Section" and is fed it AS A REPEATER ITEM`
+    ]);
+  });
+
+  it('D32 CONTROL: the second pass reaches a write the mount pass cannot see', () => {
+    // 🔴 The two passes must not be the same pass. The mount arm reaches ONE
+    // write, and it is not this one — so if this arm ever started agreeing with
+    // it, the mutant above would be passing for the wrong reason.
+    const project = migrationProject();
+    const row = project.components.find((c) => c.name === '/Admin/SectionRow')!;
+    const merge = row.graph.roots.find((n) => n.parameters?.['runOnChange-in-data'] === false)!;
+    for (const input of ['in-data', 'in-body', 'in-image']) {
+      delete (merge.parameters as Record<string, unknown>)[`runOnChange-${input}`];
+    }
+    const mount = gradeMountTriggered(project);
+    const cycle = gradeWriteBackCycle(project);
+
+    expect([...mount.offenders, ...mount.graded].some((line) => line.includes('.in-data'))).toBe(false);
+    expect(cycle.repeaterItem.some((line) => line.includes('.in-data'))).toBe(true);
+  });
+
+  /**
+   * 🔴 **The unconfirmed six, pinned rather than hidden.**
+   *
+   * These reach a record write on a collection they also read, but NOT as a
+   * repeater item — so whether the written value comes back round to the input
+   * is a runtime question this artefact cannot answer. Every one is on
+   * `/Pages/ThemeEditor`, and the plausible reading is benign: `startValue` on a
+   * text input does not emit `onTextChanged`, so the write may never re-enter.
+   *
+   * ⚠️ **Plausible is not measured.** D31 looked benign by the same reasoning
+   * until the runtime named it — `[noodl] JavaScriptFunction (/Admin/SectionRow):
+   * Cyclic loop detected [runtime/cyclic-loop]`. These are owed a drive on the
+   * theme editor, filed as phase 77 **D33**.
+   *
+   * The census is asserted exactly so a SEVENTH cannot appear quietly. A new
+   * entry fails this arm and someone reads the reason.
+   */
+  it('D32 — the unconfirmed same-collection census is exactly the seven known rows', () => {
+    // ⚠️ **SBR-009 swapped four rows for five, and the hazard is the same one
+    // wearing a different node's name.** `buildTokens`'s four left because Save
+    // stopped running it (see the reach spec above — the instrument's population
+    // changed, not the graph's read/write relationship). The five that arrived are
+    // the text fields themselves: `presets` now wires `set` on all five, which is
+    // what puts `startValue` in the migration's write set for the first time.
+    //
+    // The reading is the same one D33 is owed a drive for, and it is a little
+    // stronger now: `setText` flags `onTextChanged` on the way through, so the
+    // record → `startValue` → `onTextChanged` → `buildTokens` path DOES close —
+    // but it closes on `prop-tokens`, which `SetDbModelProperties` only stages.
+    // Nothing writes without `store`, and `store` is a button. **Plausible is
+    // still not measured**, and D33 still owns it.
+    expect(gradeWriteBackCycle(migrationProject()).sameCollection).toEqual([
+      '/Pages/ThemeEditor JavaScriptFunction#readSettings-2.in-rows — reads and writes "SiteSettings"',
+      '/Pages/ThemeEditor JavaScriptFunction#readTheme.in-rows — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#backgroundField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#fontField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#primaryField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#radiusField.startValue — reads and writes "Theme"',
+      '/Pages/ThemeEditor net.noodl.controls.textinput#textField.startValue — reads and writes "Theme"'
+    ]);
+  });
+
+  it('no node the migration silences is triggered by mount off an unordered producer', () => {
+    const { offenders, graded } = gradeMountTriggered(migrationProject());
+
+    // 🔴 The reason column used to be asserted here rather than the emptiness, because a grading
+    // pass that graded nothing satisfies `offenders == []` exactly as well as one that cleared
+    // every row for a stated reason. Since DEF-007 §3.2 there is no row to give a reason for:
+    // the single input this pass ever reached is now stated `true`, so it is not silenced and
+    // not at risk. Both lists are empty because the hazard has no members, not because the pass
+    // stopped running — which is a claim that needs the two lines below rather than this one.
+    expect(graded).toEqual([]);
+    expect(offenders).toEqual([]);
+
+    // The population is non-empty (19 silenced inputs, asserted by count above) and the pass is
+    // demonstrably able to name a row — `MUTANT: the defect as it actually shipped` restores the
+    // shipped defect and this same grader reddens on it.
+    expect(silenced(migrationProject()).length).toBeGreaterThan(0);
+  });
+
+  it('MUTANT: the defect as it actually shipped reddens the grader', () => {
+    // `/Pages/Site`'s slug resolver with its explicit checkboxes dropped — which is
+    // exactly what the migration converts, and exactly the state the site shipped
+    // in when `/` rendered no page. Calls the same grader the green arm calls.
+    const project = migrationProject();
+    const site = project.components.find((c) => c.name === '/Pages/Site')!;
+    const resolver = site.graph.roots.find((n) => n.parameters?.['runOnChange-in-homeSlug'] !== undefined)!;
+    expect(resolver).toBeDefined();
+    delete (resolver.parameters as Record<string, unknown>)['runOnChange-in-homeSlug'];
+    delete (resolver.parameters as Record<string, unknown>)['runOnChange-in-slug'];
+
+    const { offenders, graded } = gradeMountTriggered(project);
+
+    // 🔴 It reds on `in-homeSlug` alone, and that is the finding rather than a
+    // detail: the migration silences BOTH of this node's inputs, and only one of
+    // them is a race. `in-slug` comes from `PageInputs`, which the router sets
+    // before the page is in the tree, so mount genuinely has it. `in-homeSlug`
+    // comes from the settings read, which answers when the backend answers.
+    // A grader that named both would be naming the port list, not the defect.
+    expect(offenders).toEqual([
+      `/Pages/Site JavaScriptFunction#${resolver.id}.in-homeSlug <= JavaScriptFunction.out-homeSlug`
+    ]);
+    expect(graded).toContain(
+      `/Pages/Site JavaScriptFunction#${resolver.id}.in-slug <= PageInputs — set before addChild, router.tsx:586`
+    );
+  });
+});
+
+// ── 3b. DEF-007 AC3: the artefact means the same thing loaded as it does on disk ──
+
+/**
+ * 🔴 **DEF-007 AC3 — the disk half of the pair, as an invariant rather than a number.**
+ *
+ * A project means one thing on disk and another once loaded, and the whole seam is one call:
+ * `applyPatches(content)` immediately before `ProjectModel.fromJSON`. Every path that reaches
+ * `fromJSON` without it — export, deploy, headless render, MCP, and the template artefact itself,
+ * which is never loaded at all — sees the file as written. So *"does loading this change it?"*
+ * is answerable from the artefact alone, and this asks it.
+ *
+ * `toTemplateContent` now pins the explicit values (`pinRunOnValueChangeDefaults`), so the answer
+ * must be **nothing**.
+ *
+ * ## Why the byte gate above cannot stand in for this
+ *
+ * 🔴 `sb007Template.test.ts`'s regeneration check compares the committed artefact to a fresh run
+ * of the **same generator**. A field neither side writes is a field both sides agree about — it
+ * is a *drift* check and cannot see a defect present from the first run. DEF-007 §5 records it
+ * passing over phase 78 D9 in exactly that way. The reader this artefact disagreed with is a
+ * **third** one, `applyPatches`, which no generator runs and every editor open does.
+ *
+ * ## Why the count is not asserted
+ *
+ * It was **56** when DEF-007 §6.1 measured it, **65** two days later, and the breakdown moved
+ * underneath it — `/#__cloud__/reorderSection` appeared, `/Admin/SectionRow` went. Pinning a
+ * number here would make an ordinary component edit red this gate for no reason. **Zero is the
+ * only figure that is stable under authoring**, which is the argument for fixing it in the
+ * generator rather than by hand: a hand-settled artefact would have been stale before it landed.
+ *
+ * ## 🔴 What this gate does NOT cover — read before treating AC3 as discharged
+ *
+ * **One artefact of two.** This block reads `shipped`, which is `site-builder.content.json`. The
+ * repository ships a second generated template — **TPL-001, `templates/members-area`**, written by
+ * `tpl001Template.ts`'s `prepareArtefact`, which does **not** pin its values.
+ *
+ * 📊 **Measured 2026-08-31: TPL-001 disagrees in 57 places** — `writes 57, familyNodes 105,
+ * signalDriven 76, preserved 77`, against this artefact's `writes 0, familyNodes 82`. Both arms
+ * report a non-zero `familyNodes`, which is what makes the 0 an absence and the 57 a presence
+ * rather than two readings of a dead instrument. First three:
+ * `/#__cloud__/claimAssociation` `DbCollection2` `runOnChange-records` / `runOnChange-search`,
+ * and `JavaScriptFunction runOnChange-in-moderatorName`.
+ *
+ * ⚠️ **So the name of this block is a scope, not a claim about AC3 as a whole**, and that is the
+ * correction: it was `loading the shipped template`, definite and singular, while two are shipped.
+ *
+ * 🔴 **The shape is the one AC4 exists to prevent** — a check that names the artefact it was
+ * written for, and silently declines to notice a second one. Whoever ports the pin should make the
+ * gate **enumerate the shipped generators** and assert each settles, rather than add a second
+ * hand-written block beside this one. Owned as **Row 10** in `UNOWNED-ROWS-TO-MEASURE.md`
+ * (owner `NONE`); the measurement above is already done, so what remains is the port and the gate.
+ */
+describe('DEF-007 AC3 — loading the shipped SITE-BUILDER template changes nothing in it', () => {
+  it('plans no writes over the committed artefact', () => {
+    const plan = planRunOnValueChangeMigration(shipped as unknown as MigrationProjectLike);
+
+    // The failure message carries the work, because a bare `toEqual([])` on a regression here
+    // says "56 things are wrong" and names none of them.
+    expect(
+      plan.writes.map((w) => `${w.component} ${w.nodeType}#${w.nodeId} ${w.parameter}`)
+    ).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The positive control, and it is not optional.**
+   *
+   * An empty `writes` is an absence, and this suite has already been bitten once by an absence
+   * that passed for the wrong reason: DEF-028's AC3 asserted `not.toContain` against a list whose
+   * every entry had been renamed to `undefined->undefined`, so it was satisfied by a list of the
+   * wrong *shape* rather than by the thing it was looking for being gone.
+   *
+   * `writes` would also be empty if `RUN_ON_CHANGE_FAMILIES` stopped matching the artefact's node
+   * types, if `shipped` failed to parse into the shape the planner walks, or if a refactor left
+   * the planner returning `emptyPlan()` early. All three are silent. So the population is asserted
+   * beside the zero: the planner must still be **finding** the nodes it declines to write to.
+   */
+  it('and the planner can still see the population it declines to write to', () => {
+    const plan = planRunOnValueChangeMigration(shipped as unknown as MigrationProjectLike);
+
+    expect(plan.familyNodes).toBeGreaterThan(0);
+    expect(plan.signalDrivenNodes).toBeGreaterThan(0);
+
+    // Every governed input the planner reached had a stored answer waiting. `preserved` is the
+    // counter it increments only on a node it walked into and a parameter it actually looked up,
+    // so a non-zero here is the one reading that cannot be produced by the planner giving up
+    // early — `emptyPlan()` returns zero for it, and so does a families table that matches
+    // nothing.
+    expect(plan.preserved).toBeGreaterThan(0);
+  });
+
+  /**
+   * 🔴 **A gate that cannot go red is not a gate.** The two tests above are both satisfied by a
+   * settled artefact *and* by a planner that has quietly stopped looking. This mutant separates
+   * them: remove one pinned answer and the exact node it was removed from must be named.
+   */
+  it('reds, naming the node, when one pinned answer is removed', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as unknown as MigrationProjectLike;
+
+    // Find any pinned checkbox in the artefact and take it back out, exactly as an unpinned
+    // generator would have left it.
+    let removed: { component: string; nodeId: string; parameter: string } | undefined;
+    for (const component of mutant.components ?? []) {
+      const walk = (nodes: MigrationNodeLike[] | undefined) => {
+        for (const node of nodes ?? []) {
+          if (removed) return;
+          const parameters = node.parameters ?? {};
+          for (const key of Object.keys(parameters)) {
+            if (key.startsWith(RUN_ON_CHANGE_PREFIX) && parameters[key] === true) {
+              delete parameters[key];
+              removed = { component: component.name ?? '', nodeId: node.id, parameter: key };
+              return;
+            }
+          }
+          walk(node.children);
+        }
+      };
+      walk(component.graph?.roots);
+      if (removed) break;
+    }
+
+    // 🔴 Read this first. If the artefact carries no pinned `true` at all, the mutant is a no-op
+    // and the assertion below would pass on an unpinned artefact — the exact defect this block
+    // exists to catch, reported as a pass.
+    expect(removed).toBeDefined();
+
+    const plan = planRunOnValueChangeMigration(mutant);
+    expect(plan.writes).toContainEqual(
+      expect.objectContaining({ nodeId: removed?.nodeId, parameter: removed?.parameter })
+    );
+  });
+});
+
+// ── 4. SBR-016: a query in a page nobody has edited yet ──────────────────────
+
+/**
+ * 🔴 **SBR-016. The defect: `/admin/pages` rendered the shell, the heading and
+ * `New page`, and no rows — while the session the panel itself held read the row
+ * over HTTP in 2 ms.** Not refused, not empty: the collection never asked.
+ *
+ * ## Why the gate SB-005 already had could not see it
+ *
+ * `assertUnfilteredQuery` (`sb005AdminPanel.test.ts`) asserts precisely the right
+ * thing about the page list — that the author did **not** write
+ * `runOnChange-collectionName: false` — and it was green throughout. It reads the
+ * parameters the door wrote. The runtime does not read those parameters: it reads
+ * them after `applyPatches` has run the NDA-017 migration over them, and the
+ * migration writes that exact `false` into any node in the fifteen families whose
+ * control signal is wired. The page list's `storageFetch` is wired — from a
+ * create and from a row edit, both *consequences of an edit* — so every load
+ * silenced the one trigger that fires without one.
+ *
+ * **The gate and the runtime were reading two different graphs, and only one of
+ * them was the one that runs.** Every check in this file that reads
+ * `node.parameters` directly has the same blind spot; this one closes it for the
+ * query family by grading the artefact **after** the migration has had it.
+ *
+ * ## What is graded
+ *
+ * Every `DbCollection2` in the artefact — no population split, no exemptions.
+ * A query is asked one question: *after the migration, is there any way for you
+ * to run that does not require a person to have already edited something?* The
+ * answer must be yes, and the **reason** is asserted by name, because a pass with
+ * no reason is what an exclusion list produces.
+ *
+ * Triggers come in two shapes and both are graded:
+ *
+ * - a wire into `storageFetch` — the shape the acceptance criterion names;
+ * - a **value input whose checkbox survived the migration**, which is the shape
+ *   the whole template is actually built on. `/Pages/Admin` fetches because
+ *   `collectionName` lands at load; `/Pages/PageEditor` fetches because
+ *   `qp-pageId` arrives. Neither is a wire into `storageFetch`, and a gate that
+ *   only looked for wires would have demanded a mount fetch on the filtered
+ *   query — which is F12, the defect `NO_LOAD_TIME_FETCH` exists to prevent.
+ *
+ * ## The producers are classified, never listed
+ *
+ * A source is edit-free, edit-driven, or **transparent** — a node that merely
+ * passes its own trigger along, graded by recursing into whatever makes *it* run.
+ * The control signal it recurses through is read from `RUN_ON_CHANGE_FAMILIES`
+ * rather than restated, so a family whose control signal is renamed cannot leave
+ * this walk quietly reading the wrong port. Anything the classifier does not
+ * recognise is an **offender**, named with its type and port: an unknown producer
+ * reds the gate rather than being skipped, which is the difference between a rule
+ * and a list of the cases somebody happened to think of.
+ */
+describe('SBR-016 — every query can run before anybody has edited anything', () => {
+  interface GNode {
+    id: string;
+    type: string;
+    parameters?: Record<string, unknown>;
+  }
+  interface GWire {
+    fromId: string;
+    fromProperty: string;
+    toId: string;
+    toProperty: string;
+  }
+  interface GComponent {
+    name: string;
+    graph: { roots: GNode[]; connections: GWire[] };
+  }
+  interface GProject {
+    components: GComponent[];
+  }
+
+  /**
+   * The artefact flattened, exactly as the migration reads it — and **deep-copied**.
+   *
+   * ⚠️ A shallow `{ children, ...node }` spread shares the `parameters` object with
+   * `shipped`, so a mutant's `delete` reached the module-level artefact and every
+   * later test in this block inherited it. Measured, not imagined: the page-editor
+   * mutant reported the page list as an offender too, because the mutant before it
+   * had already removed the page list's checkbox from the shared object.
+   */
+  const flatProject = (): GProject =>
+    JSON.parse(
+      JSON.stringify({
+        components: shipped.components.map((c) => ({
+          name: c.name,
+          graph: {
+            roots: nodesOf(c).map(({ children, ...node }) => node),
+            connections: c.graph.connections ?? []
+          }
+        }))
+      })
+    ) as GProject;
+
+  /**
+   * The artefact **as the runtime gets it** — the migration's writes applied.
+   *
+   * This single call is the whole difference between this gate and the one that
+   * was green while the panel was blank.
+   */
+  function migrated(project: GProject): GProject {
+    const out: GProject = JSON.parse(JSON.stringify(project));
+    const plan = planRunOnValueChangeMigration(out as MigrationProjectLike);
+    const index = new Map<string, GNode>();
+    for (const c of out.components) for (const n of c.graph.roots) index.set(`${c.name}::${n.id}`, n);
+    for (const write of plan.writes) {
+      const node = index.get(`${write.component}::${write.nodeId}`);
+      if (!node) continue;
+      (node.parameters ??= {})[write.parameter] = false;
+    }
+    return out;
+  }
+
+  /**
+   * Which stored parameter names carry a value for which checkbox.
+   *
+   * `dbcollectionnode2.ts`: `setCollectionName` (`:561`) asks about
+   * `collectionName`; `setVisualFilter` (`:1047`) and `setVisualSorting`
+   * (`:1052`) both ask about `querySettings`. A parameter here means the value is
+   * in the file, so it lands at load with no wire and no person involved.
+   */
+  const PARAMETER_CHECKBOX: Record<string, string> = {
+    collectionName: 'collectionName',
+    visualFilter: 'querySettings',
+    visualSort: 'querySettings'
+  };
+
+  /**
+   * The other half of the same population: a stored parameter that is **not** a
+   * trigger, and why not.
+   *
+   * 🔴 SBR-011 is what forced this to exist, and the shape of the near-miss is
+   * worth keeping. `realtime` arrived on three queries, the control below went
+   * red because the mapping no longer covered every parameter, and the cheap fix
+   * -- adding `realtime: 'records'` to `PARAMETER_CHECKBOX` -- would have been
+   * **wrong in the one direction this gate cannot afford**. Shape 2 reads that
+   * mapping as *"this parameter is stored, so the query runs with nobody
+   * involved"*, so `sections` -- which carries `NO_LOAD_TIME_FETCH` precisely so
+   * it CANNOT run before its `pageId` filter exists -- would have been graded
+   * free, and the rule protecting it would have started passing because of the
+   * one parameter that does not trigger it.
+   *
+   * `realtime` cannot fetch at load, and that is a code path rather than an
+   * opinion: the subscription's confirmation frame is `init`, and
+   * `handleRealtimeChange` returns on `init` **before** `scheduleFetch`
+   * (`dbcollectionnode2.ts:760`) -- *"firing `created` for every row already in
+   * the collection would make a subscription look like a burst of writes the
+   * moment it connects"*. `handleRealtimeStatus` fetches nothing either. So it
+   * belongs in the population and outside the mapping, which is the distinction
+   * a single list could not carry.
+   */
+  const NOT_A_TRIGGER: Record<string, string> = {
+    realtime: 'the subscription confirms with `init`, and handleRealtimeChange returns on `init` before scheduleFetch'
+  };
+
+  /**
+   * The population, derived twice and cross-checked.
+   *
+   * 🔴 **A cloud component is invoked, not arrived at**, and the difference is not
+   * cosmetic: inside `duplicatePage` a `Create Record`'s `done` is a step in
+   * answering a request, while on `/Pages/Admin` the identical port means *a
+   * person has already made a page*. One rule cannot read both, and running the
+   * browser rule over the cloud half produced three rows that were about the
+   * classifier rather than the template. The cloud half has its own gate — every
+   * terminal path reaches a Response, below.
+   *
+   * 🔴 **The split is the name prefix, and the attempt to derive it twice is what
+   * proved that.** The first draft of this gate called a component cloud if it held
+   * a `noodl.cloud.request` or a `Component Outputs` — and the control below caught
+   * it immediately: `/Admin/PageRow` and `/Admin/SectionRow` have `Component
+   * Outputs` too, because that is how a repeater row signals `Changed`. Worse, two
+   * of the three worker components hold **no** `noodl.cloud.*` node at all
+   * (`SetSectionAccess`, `CopySectionToPage`), so there is no graph property that
+   * separates them from a browser component. `/#__cloud__/` is not a naming habit
+   * here; it is what the door reads to decide where a component is deployed.
+   *
+   * ⚠️ So the control below is **one-directional, and says so**: a cloud-only node
+   * may never appear outside the prefix. It does not prove the prefixed set is
+   * exactly the cloud set — nothing in the artefact can — and the mis-classification
+   * it caught was invisible to the rule itself, because neither row component holds
+   * a query. A control that only ran over the graded rows would have stayed green.
+   */
+  const CLOUD_PREFIX = '/#__cloud__/';
+  const isCloud = (c: GComponent) => c.name.startsWith(CLOUD_PREFIX);
+
+  /**
+   * Signal and value ports that fire because the app *arrived*, not because
+   * somebody did something. Each carries the reason it is one.
+   */
+  const ARRIVAL: Array<{ type: string; port: RegExp; why: string }> = [
+    { type: 'Page', port: /^didMount$/, why: 'the page mounted' },
+    { type: 'PageInputs', port: /^pm-/, why: 'the router set it before addChild (router.tsx:586)' },
+    { type: 'noodl.cloud.request', port: /./, why: 'the request is the arrival' }
+  ];
+
+  /**
+   * Ports that exist only because a person acted, or because a write they caused
+   * finished. A query whose only triggers are these is the defect.
+   */
+  const EDIT: Array<{ type: RegExp; port: RegExp; why: string }> = [
+    { type: /^net\.noodl\.controls\./, port: /./, why: 'a control the person operated' },
+    { type: /^(New|Set|Delete)DbModelProperties$/, port: /./, why: 'a write the person caused' },
+    { type: /^For Each$/, port: /^itemOutputSignal-/, why: 'a row signalled a change' },
+    { type: /^NavigationShowPopup$/, port: /^close/, why: 'the person closed the dialog' }
+  ];
+
+  /**
+   * Families that pass a trigger along rather than originating one. Graded by
+   * recursing into what makes them run — their control signal where they have
+   * one, and their own value inputs where they do not.
+   */
+  const TRANSPARENT = new Set([
+    'JavaScriptFunction',
+    'Expression',
+    'Condition',
+    'States',
+    'DbCollection2',
+    'DbModel2',
+    'CloudFunction2',
+    'Component Inputs'
+  ]);
+
+  /**
+   * 🔴 **Node types that cannot emit anything without being invoked, and the port
+   * that invokes them.** `nodeIsFree`'s fallback — *"it is not signal-driven, so
+   * a value landing runs it"* — reads `RUN_ON_CHANGE_FAMILIES` to decide whether
+   * a node has a control signal, and a type absent from that registry falls
+   * through to being graded by its VALUE inputs. For `CloudFunction2` that is
+   * simply untrue: `scheduleCall` is *"the only method the `Call` port reaches"*
+   * (`cloudfunction2.ts:225-227`), so a cloud call with an edit-free `in-pageId`
+   * and a button on its `Call` was being graded edit-free.
+   *
+   * It went unnoticed because nothing had ever reached it: `CloudFunction2` is in
+   * `TRANSPARENT`, but until SBR-007 AC2 wired `reorder.done → storageFetch` no
+   * cloud call had ever sat on a query's trigger path. The walk then reported
+   * `/Pages/PageEditor sections-2` as running because *"the page mounted"* —
+   * true of the value it followed, and false of the trigger it was grading.
+   *
+   * The registry cannot answer this on its own, and should not be made to: it
+   * describes which value inputs re-run a node, and these types have none. So
+   * the assumption is written here, where the rule that depends on it lives.
+   */
+  const INVOCATION_ONLY: Record<string, string> = {
+    CloudFunction2: 'call'
+  };
+
+  interface Verdict {
+    free: boolean;
+    why: string;
+  }
+
+  /** Grade one query, and every producer behind it. */
+  function gradeQueries(project: GProject): { offenders: string[]; graded: string[] } {
+    const offenders: string[] = [];
+    const graded: string[] = [];
+
+    for (const component of project.components.filter((c) => !isCloud(c))) {
+      const nodes = new Map(component.graph.roots.map((n) => [n.id, n]));
+      const wires = component.graph.connections;
+      const incoming = (id: string, port?: string) =>
+        wires.filter((w) => w.toId === id && (port === undefined || w.toProperty === port));
+
+      /** Guard against a cycle: a node already being graded cannot vouch for itself. */
+      const inFlight = new Set<string>();
+
+      /** Does this node produce anything without a person having acted? */
+      function nodeIsFree(node: GNode): Verdict {
+        if (inFlight.has(node.id)) return { free: false, why: 'a cycle' };
+        inFlight.add(node.id);
+        try {
+          const family = RUN_ON_CHANGE_FAMILIES[node.type];
+          // 🔴 `INVOCATION_ONLY` first. A type in it has no value-driven run at
+          // all, so falling through to the value-input branch below would grade
+          // it by something that cannot make it produce. See the map's note.
+          const control = INVOCATION_ONLY[node.type] ?? family?.controlSignal;
+          const controlWires = control ? incoming(node.id, control) : [];
+
+          // An invocation-only node with nothing on its invoking port never runs,
+          // so it cannot vouch for anything — and saying so is not the same
+          // sentence as "run only by an edit".
+          if (INVOCATION_ONLY[node.type] && controlWires.length === 0) {
+            return { free: false, why: `${node.type} is never invoked` };
+          }
+
+          // Its control signal is wired: that signal is the only thing that runs it.
+          if (controlWires.length > 0) {
+            for (const w of controlWires) {
+              const v = sourceIsFree(w);
+              if (v.free) return { free: true, why: `${node.type} run by ${v.why}` };
+            }
+            return { free: false, why: `${node.type} run only by an edit` };
+          }
+
+          // It is not signal-driven, so a value landing runs it. A stored
+          // parameter lands at load; a wired value inherits its producer.
+          const stored = Object.keys(node.parameters ?? {}).filter((k) => !k.startsWith('runOnChange-'));
+          if (stored.length > 0 && incoming(node.id).length === 0) {
+            return { free: true, why: `${node.type} has only stored parameters` };
+          }
+          for (const w of incoming(node.id)) {
+            const v = sourceIsFree(w);
+            if (v.free) return { free: true, why: `${node.type} fed by ${v.why}` };
+          }
+          if (stored.length > 0) return { free: true, why: `${node.type} has stored parameters` };
+          return { free: false, why: `${node.type} fed only by an edit` };
+        } finally {
+          inFlight.delete(node.id);
+        }
+      }
+
+      /** Grade one wire by what is on the far end of it. */
+      function sourceIsFree(wire: GWire): Verdict {
+        const from = nodes.get(wire.fromId);
+        if (!from) return { free: false, why: `a wire from a node that is gone (${wire.fromId})` };
+
+        for (const rule of ARRIVAL) {
+          if (from.type === rule.type && rule.port.test(wire.fromProperty)) {
+            return { free: true, why: `${from.type}.${wire.fromProperty} — ${rule.why}` };
+          }
+        }
+        for (const rule of EDIT) {
+          if (rule.type.test(from.type) && rule.port.test(wire.fromProperty)) {
+            return { free: false, why: `${from.type}.${wire.fromProperty} — ${rule.why}` };
+          }
+        }
+        if (TRANSPARENT.has(from.type)) {
+          const v = nodeIsFree(from);
+          return { free: v.free, why: `${from.type}.${wire.fromProperty} <= ${v.why}` };
+        }
+        // 🔴 Not recognised. This is an offender rather than a skip.
+        return { free: false, why: `UNCLASSIFIED ${from.type}.${wire.fromProperty}` };
+      }
+
+      for (const query of component.graph.roots.filter((n) => n.type === 'DbCollection2')) {
+        const where = `${component.name} ${query.id}`;
+        const parameters = query.parameters ?? {};
+        const ticked = (input: string) => parameters[`runOnChange-${input}`] !== false;
+
+        let verdict: Verdict | undefined;
+        /** Every trigger considered and why it did not count — an offender must be actionable. */
+        const tried: string[] = [];
+
+        // Shape 1 — a wire into `storageFetch` from something that is not an edit.
+        for (const w of incoming(query.id, 'storageFetch')) {
+          const v = sourceIsFree(w);
+          if (v.free) {
+            verdict = { free: true, why: `storageFetch <= ${v.why}` };
+            break;
+          }
+          tried.push(`storageFetch <= ${v.why}`);
+        }
+
+        // Shape 2 — a value input whose checkbox survived the migration, holding a
+        // value that arrives without a person: a stored parameter, or an
+        // edit-free producer.
+        if (!verdict) {
+          for (const [parameter, checkbox] of Object.entries(PARAMETER_CHECKBOX)) {
+            if (!(parameter in parameters)) continue;
+            if (incoming(query.id, parameter).length > 0) continue;
+            if (!ticked(checkbox)) {
+              tried.push(`${parameter} is stored but the migration silenced runOnChange-${checkbox}`);
+              continue;
+            }
+            verdict = { free: true, why: `${parameter} is stored and runOnChange-${checkbox} survived the migration` };
+            break;
+          }
+        }
+        if (!verdict) {
+          for (const w of incoming(query.id)) {
+            if (w.toProperty === 'storageFetch') continue;
+            if (!ticked(w.toProperty)) {
+              tried.push(`${w.toProperty} arrives but the migration silenced runOnChange-${w.toProperty}`);
+              continue;
+            }
+            const v = sourceIsFree(w);
+            if (v.free) {
+              verdict = { free: true, why: `${w.toProperty} <= ${v.why}` };
+              break;
+            }
+            tried.push(`${w.toProperty} <= ${v.why}`);
+          }
+        }
+
+        if (verdict?.free) graded.push(`${where} — ${verdict.why}`);
+        else offenders.push(`${where} — no trigger that predates an edit: ${tried.join('; ') || 'nothing wired and nothing stored'}`);
+      }
+    }
+    return { offenders: offenders.sort(), graded: graded.sort() };
+  }
+
+  it('CONTROL: no cloud-only node lives outside the cloud prefix', () => {
+    // The one direction that IS provable from the graph. A browser component that
+    // grew a `noodl.cloud.*` node would mean the prefix had stopped deciding where
+    // things run, and this rule would be grading the wrong half.
+    const strays = flatProject()
+      .components.filter((c) => !isCloud(c))
+      .flatMap((c) => c.graph.roots.filter((n) => n.type.startsWith('noodl.cloud.')).map((n) => `${c.name} ${n.type}`));
+    expect(strays).toEqual([]);
+
+    // …beside the signal that makes that emptiness mean something: those nodes do
+    // exist in this artefact, on the other side of the split.
+    const inCloud = flatProject()
+      .components.filter(isCloud)
+      .flatMap((c) => c.graph.roots.filter((n) => n.type.startsWith('noodl.cloud.')));
+    expect(inCloud.length).toBeGreaterThan(0);
+  });
+
+  it('CONTROL: the graded half is not empty, and holds the two screens this task is about', () => {
+    // A rule over nothing passes. This is what makes every green below mean
+    // "checked" rather than "not present".
+    const withQueries = flatProject()
+      .components.filter((c) => !isCloud(c))
+      .filter((c) => c.graph.roots.some((n) => n.type === 'DbCollection2'))
+      .map((c) => c.name);
+    // `/Admin/Shell` joined the list with SBR-009 AC1: the admin panel reads the
+    // Theme record so it wears the client's colours too, and it reads it in the
+    // shell because every admin screen places one.
+    // `/Pages/Messages` joined it with SBR-010: the screen that reads a
+    // `ContactMessage` back, which is the first thing in this template that ever
+    // has.
+    expect(withQueries.sort()).toEqual([
+      '/Admin/Shell',
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/PageEditor',
+      '/Pages/Site',
+      '/Pages/ThemeEditor',
+      '/Site/Nav'
+    ]);
+  });
+
+  it('CONTROL: the mapping above covers every parameter a query in this artefact carries', () => {
+    // 🔴 An unmapped parameter would be silently ignored by shape 2, and the rule
+    // would then be about the parameters somebody remembered. This is what makes
+    // `PARAMETER_CHECKBOX` a mapping rather than an exclusion list.
+    const seen = new Set<string>();
+    for (const c of shipped.components) {
+      for (const n of nodesOf(c)) {
+        if (n.type !== 'DbCollection2') continue;
+        for (const key of Object.keys(n.parameters ?? {})) {
+          if (!key.startsWith('runOnChange-')) seen.add(key);
+        }
+      }
+    }
+    expect([...seen].sort()).toEqual([...Object.keys(PARAMETER_CHECKBOX), ...Object.keys(NOT_A_TRIGGER)].sort());
+
+    // 🔴 And the two halves are disjoint, because the whole point of splitting
+    // them is that shape 2 reads one and not the other. A parameter in both
+    // would be graded as a trigger, which is the mistake the split exists to
+    // stop rather than merely to describe.
+    expect(Object.keys(NOT_A_TRIGGER).filter((k) => k in PARAMETER_CHECKBOX)).toEqual([]);
+  });
+
+  it('CONTROL: the migration has nothing left to rewrite here, and it is the template that stopped it', () => {
+    // ⚠️ This arm used to assert the opposite — that the migration rewrites `DbCollection2` nodes
+    // in bulk before they are graded — and it was right to: every green below is a claim about
+    // the graph that RUNS, and while the template left these flags unstated that graph was the
+    // migrated one. DEF-007 §3.2 made the artefact state them, so the migrated graph and the
+    // written one are now the same graph and `migrated()` below is an identity.
+    expect(planRunOnValueChangeMigration(flatProject() as MigrationProjectLike).writes).toEqual([]);
+
+    // 🔴 Which is exactly the reading that could also be produced by a broken import or a renamed
+    // family, so the same planner is shown firing on the same artefact with only the statements
+    // removed. `DbCollection2` specifically, because that is the family this block is about and
+    // an emptiness measured on some other family would not be about these queries at all.
+    const unstated = flatProject();
+    for (const component of unstated.components) {
+      for (const node of component.graph.roots) {
+        const parameters = node.parameters;
+        if (!parameters) continue;
+        for (const key of Object.keys(parameters)) {
+          if (key.startsWith('runOnChange-') && parameters[key] === true) delete parameters[key];
+        }
+      }
+    }
+    const plan = planRunOnValueChangeMigration(unstated as MigrationProjectLike);
+    expect(plan.writes.filter((w) => w.nodeType === 'DbCollection2').length).toBeGreaterThan(0);
+  });
+
+  it('every query has a trigger that predates any edit, and the reason is named', () => {
+    const { offenders, graded } = gradeQueries(migrated(flatProject()));
+
+    // 🔴 The reasons, in full. `offenders: []` is satisfied just as well by a walk
+    // that graded nothing, and the two are not the same claim — so the census is
+    // the reason column itself.
+    expect(graded).toEqual([
+      // SBR-009 AC1's Theme read in the admin shell. It is in this census on the
+      // same terms as the four below it — an unfiltered singleton whose only
+      // trigger is the load-time fetch — and it needed no explicit checkbox,
+      // because nothing in `/Admin/Shell` wires `storageFetch` and the migration
+      // therefore never reaches it. `/Pages/ThemeEditor`'s copy DOES wire one and
+      // states `true` out loud; the same node, correctly configured two ways.
+      '/Admin/Shell adminTheme — collectionName is stored and runOnChange-collectionName survived the migration',
+      // 🔴 The two SBR-016 fixed. Neither is a wire into `storageFetch`, and that
+      // is the finding the acceptance criterion's wording did not anticipate:
+      // this template's queries run because a VALUE lands, and the migration is
+      // what takes those values away.
+      '/Pages/Admin pages-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      // 🔴 SBR-010's message list, and it is in this census on `/Admin/Shell`'s
+      // terms rather than `/Pages/Admin`'s — which is the distinction this whole
+      // block exists to keep straight. Nothing on `/Pages/Messages` writes a
+      // record, so nothing wires `storageFetch`, so the migration's population
+      // does not include this node and the absent checkbox keeps its ticked
+      // default. `/Pages/Admin`'s page list is the same KIND of query — unfiltered,
+      // load-time — and has to state `true` out loud only because a create and a
+      // row edit refresh it.
+      '/Pages/Messages messages — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/PageEditor sections-2 — qp-pageId <= JavaScriptFunction.out-pageId <= JavaScriptFunction run by Page.didMount — the page mounted',
+      // The seven that were already right, and why — three hops deep on the last
+      // one, which is the chain a list of forgiven node names would never have said.
+      '/Pages/Site pageQuery — qp-slug <= JavaScriptFunction.out-slug <= JavaScriptFunction run by Page.didMount — the page mounted',
+      '/Pages/Site sections — qp-pageId <= JavaScriptFunction.out-pageId <= JavaScriptFunction run by DbCollection2.fetched <= DbCollection2 fed by JavaScriptFunction.out-slug <= JavaScriptFunction run by Page.didMount — the page mounted',
+      '/Pages/Site settings — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/Site theme — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/ThemeEditor settings-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Pages/ThemeEditor theme-2 — collectionName is stored and runOnChange-collectionName survived the migration',
+      '/Site/Nav pages — collectionName is stored and runOnChange-collectionName survived the migration'
+    ]);
+    expect(offenders).toEqual([]);
+  });
+
+  it('MUTANT: the defect exactly as it shipped — the page list without its explicit checkbox', () => {
+    // 🔴 Not "delete the trigger": the trigger was never deleted. The author wrote
+    // the graph that wants a load-time fetch and left the checkbox to its default,
+    // and the migration did the rest. Removing the one explicit `true` is the
+    // whole of the regression, and it is what every project minted before this
+    // session actually holds.
+    const project = flatProject();
+    const admin = project.components.find((c) => c.name === '/Pages/Admin')!;
+    const pages = admin.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    expect(pages.parameters?.['runOnChange-collectionName']).toBe(true);
+    delete (pages.parameters as Record<string, unknown>)['runOnChange-collectionName'];
+
+    const { offenders } = gradeQueries(migrated(project));
+    // 🔴 The offender says what it tried. A red with nothing to act on is what
+    // sent three sessions looking at the network tab instead of the parameter bag.
+    expect(offenders).toEqual([
+      '/Pages/Admin pages-2 — no trigger that predates an edit: storageFetch <= NewDbModelProperties.done — a write the person caused; ' +
+        'storageFetch <= For Each.itemOutputSignal-Changed — a row signalled a change; ' +
+        'collectionName is stored but the migration silenced runOnChange-collectionName'
+    ]);
+  });
+
+  it('MUTANT: the same defect on the page editor, which had it too', () => {
+    const project = flatProject();
+    const editor = project.components.find((c) => c.name === '/Pages/PageEditor')!;
+    const sections = editor.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    expect(sections.parameters?.['runOnChange-qp-pageId']).toBe(true);
+    delete (sections.parameters as Record<string, unknown>)['runOnChange-qp-pageId'];
+
+    const { offenders } = gradeQueries(migrated(project));
+    expect(offenders).toEqual([
+      '/Pages/PageEditor sections-2 — no trigger that predates an edit: storageFetch <= NewDbModelProperties.done — a write the person caused; ' +
+        'storageFetch <= For Each.itemOutputSignal-Changed — a row signalled a change; ' +
+        // 🔴 AC2's third producer, and the reason it reads this way rather than
+        // vouching for the query is `INVOCATION_ONLY` — see that map's note. A
+        // cloud call is only ever run by whatever presses its `Call`.
+        'storageFetch <= CloudFunction2.done <= CloudFunction2 run only by an edit; ' +
+        'collectionName is stored but the migration silenced runOnChange-collectionName; ' +
+        'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
+        // D30's `visualSort`, reported by the same clause and for the same reason: it is
+        // governed by `runOnChange-querySettings`, which `NO_LOAD_TIME_FETCH` switches off. It
+        // is a stored parameter, never a trigger — which is why the spec above still grades
+        // this query as having one, and `offenders` there is still empty.
+        'visualSort is stored but the migration silenced runOnChange-querySettings; ' +
+        'qp-pageId arrives but the migration silenced runOnChange-qp-pageId'
+    ]);
+  });
+
+  /**
+   * AC2's structural half — the words.
+   *
+   * 🔴 The point of the criterion is that an empty list and a populated one must
+   * not be told apart only by row count. The old sentence for zero rows was `No
+   * pages, no published`, which is the count sentence with a zero in it; and it
+   * was never rendered anyway, because the query never ran. **Three states, three
+   * sentences**, and each is asserted by the constant's own name so a reworded
+   * message cannot pass by being *a* string.
+   */
+  it('AC2 (words): the empty list says so, and the refused list says something else', () => {
+    const admin = componentNamed('/Pages/Admin') as Component;
+    const nodes = nodesOf(admin);
+
+    // 1. Empty — inside the script that derives the count sentence, on its own branch.
+    const counter = nodes.find(
+      (n) => n.type === 'JavaScriptFunction' && String(n.parameters?.functionScript).includes('Outputs.sentence')
+    ) as Node;
+    const script = String(counter.parameters?.functionScript);
+    expect(script).toContain('rows.length === 0');
+    expect(script).toContain(JSON.stringify(EMPTY_PAGE_LIST_TEXT));
+    // …and the other branch still exists, so "says so when empty" was not bought
+    // by saying the same thing always.
+    expect(script).toContain("word(published).toLowerCase() + ' published'");
+
+    // 2. Refused — a different sentence, absent until a query actually fails.
+    const error = nodes.find((n) => n.parameters?.text === PAGE_LIST_ERROR_TEXT) as Node;
+    expect(error?.type).toBe('Text');
+    expect(error.parameters?.mounted).toBe(false);
+    expect(error.parameters?.color).toBe('var(--destructive)');
+
+    // 3. It is raised by `failure` and lowered by `fetched` — two ports of the one
+    // query, so the refusal cannot outlive the query it was about.
+    const raised = admin.graph.connections.filter((w) => w.toId === error.id && w.toProperty === 'mounted');
+    expect(raised).toHaveLength(1);
+    const state = nodes.find((n) => n.id === raised[0].fromId) as Node;
+    expect(state.type).toBe('States');
+    const into = admin.graph.connections
+      .filter((w) => w.toId === state.id)
+      .map((w) => `${(nodes.find((n) => n.id === w.fromId) as Node).type}.${w.fromProperty} -> ${w.toProperty}`)
+      .sort();
+    expect(into).toEqual(['DbCollection2.failure -> to-Refused', 'DbCollection2.fetched -> to-Quiet']);
+  });
+
+  it('MUTANT: a refusal raised by `fetched` would stand beside a working list', () => {
+    // The mistake this shape exists to prevent, and the one `completed` made on
+    // the sign-in page: a port that fires on every outcome cannot mean failure.
+    const admin = componentNamed('/Pages/Admin') as Component;
+    const error = nodesOf(admin).find((n) => n.parameters?.text === PAGE_LIST_ERROR_TEXT) as Node;
+    const raised = admin.graph.connections.find((w) => w.toId === error.id && w.toProperty === 'mounted')!;
+    const into = admin.graph.connections.filter((w) => w.toId === raised.fromId);
+    // Both arms present, and they are different ports. If a future edit drove both
+    // states from one port this equality is what reds.
+    expect(new Set(into.map((w) => w.fromProperty)).size).toBe(2);
+  });
+
+  it('MUTANT: an unrecognised producer reds rather than being skipped', () => {
+    // The property that makes this a rule and not a list. A query triggered by a
+    // node type the classifier has never heard of must fail loudly.
+    const project = flatProject();
+    const nav = project.components.find((c) => c.name === '/Site/Nav')!;
+    const pages = nav.graph.roots.find((n) => n.type === 'DbCollection2')!;
+    delete (pages.parameters as Record<string, unknown>).collectionName;
+    nav.graph.roots.push({ id: 'inventedProducer', type: 'A Node Nobody Classified' });
+    nav.graph.connections.push({
+      fromId: 'inventedProducer',
+      fromProperty: 'somethingHappened',
+      toId: pages.id,
+      toProperty: 'storageFetch'
+    });
+
+    const { offenders } = gradeQueries(migrated(project));
+    expect(offenders).toEqual([
+      '/Site/Nav pages — no trigger that predates an edit: ' +
+        'storageFetch <= UNCLASSIFIED A Node Nobody Classified.somethingHappened; ' +
+        // Wiring `storageFetch` brought this node into the migration's population,
+        // which is what silenced its two stored parameters as well — the same
+        // mechanism as the real defect, arriving here as a side effect.
+        'visualFilter is stored but the migration silenced runOnChange-querySettings; ' +
+        'visualSort is stored but the migration silenced runOnChange-querySettings'
+    ]);
+  });
+});
+
+/**
+ * SBR-015 — every terminal path of a cloud function reaches a Response.
+ *
+ * The defect this gate exists for: `publishPage` and `duplicatePage` shipped with
+ * **no `failure` wire at all**. Every node in both graphs had exactly one way out,
+ * the happy path, so any error anywhere became a thirty-second 504 with no status,
+ * no message and no node named — while `claimSite`, the same file and the same
+ * mechanism, answered in 29 ms because all five of its failure edges land on a
+ * `status: 'failure'` Response.
+ *
+ * 🔴 **The population is derived, not listed.** An endpoint is a component holding
+ * a `noodl.cloud.request` node. The three worker components (`SetSectionAccess`,
+ * `CopySectionToPage`, `ContactRecipient`) have no Response node at all — they
+ * answer through the Run Tasks template contract's own `Failure` output — so they
+ * are a genuinely different population, and the control below pins that the split
+ * is two-and-not-one rather than letting the rule quietly widen to both.
+ */
+describe('SBR-015 — a cloud function has no silent exit', () => {
+  /**
+   * ⚠️ **Classified, not filtered.** A bare list of failure-capable types is an
+   * exclusion list that cannot fail: a node type added to a cloud function later
+   * would simply not appear, and the gate would go green by not looking. So every
+   * type actually present in an endpoint is classified here, and the first test
+   * is that the classification is TOTAL — an unclassified type reds before any
+   * failure wire is graded.
+   */
+  const FAILURE_CAPABLE: Record<string, string> = {
+    JavaScriptFunction: 'fires Failure when the script throws (simplejavascript.ts)',
+    DbCollection2: 'query error → setError → Failure (dbcollectionnode2.ts:812)',
+    DbModel2: 'modelcrudbase addFailure mixin',
+    SetDbModelProperties: 'modelcrudbase addFailure mixin',
+    NewDbModelProperties: 'modelcrudbase addFailure mixin',
+    RunTasks: 'outcome contract — done / unchanged / failure',
+    'noodl.cloud.secret': 'an unprovisioned secret is a Failure',
+    'noodl.cloud.addusertorole': 'a role write can fail',
+    'noodl.cloud.sendemail': 'a bounced or unconfigured mail service is a Failure',
+    // A component instance answers through its own `Component Outputs`, which
+    // this one declares a `Failure` signal on. Same obligation, different port.
+    '/#__cloud__/site/ContactRecipient': 'its Component Outputs declares a Failure signal'
+  };
+  const CANNOT_FAIL: Record<string, string> = {
+    'noodl.cloud.request': 'the entry point — it has no failure to report',
+    'noodl.cloud.response': 'the exit itself'
+  };
+
+  /**
+   * 🔴 **Graded, not skipped.** An exclusion list cannot fail — so each entry
+   * carries a reason, the reason is asserted non-empty, and a stale entry (a node
+   * that no longer exists, or one that now DOES answer) reds rather than sitting
+   * there forever. That last half is the one that usually rots.
+   */
+  const EXEMPT: Record<string, string> = {
+    '/#__cloud__/submitContactForm recipient':
+      'its Failure is handled by CONTINUING rather than by answering: both Ready and Failure ' +
+      'wire to save.store, so a recipient that cannot be resolved still records the message ' +
+      'and the answer still comes from mail.completed / save.failure downstream.',
+    '/#__cloud__/submitContactForm compose':
+      'a throw here degrades the email rather than stalling: it does not gate save, ' +
+      'stored still runs and mail.completed still answers. Answering on its failure ' +
+      'would pre-empt the save and tell the visitor "received" before the row exists.'
+  };
+
+  const endpoints = shipped.components.filter((c) => nodesOf(c).some((n) => n.type === 'noodl.cloud.request'));
+
+  it('control: there are endpoints to grade, and workers that are NOT endpoints', () => {
+    // Both halves matter. The first says the population is not empty (a gate over
+    // nothing is green for the wrong reason); the second says the split is real,
+    // because a rule that had silently widened to the workers would demand a
+    // Response node on components that correctly have none.
+    expect(endpoints.map((c) => c.name).sort()).toEqual([
+      '/#__cloud__/claimSite',
+      '/#__cloud__/duplicatePage',
+      '/#__cloud__/publishPage',
+      // SBR-007 AC2. Its worker `site/SetSectionOrder` is deliberately NOT here,
+      // which is the half of this assertion that keeps the split honest.
+      '/#__cloud__/reorderSection',
+      '/#__cloud__/submitContactForm'
+    ]);
+    const workers = shipped.components.filter(
+      (c) => c.name.startsWith('/#__cloud__/') && !nodesOf(c).some((n) => n.type === 'noodl.cloud.request')
+    );
+    // 3 → 4: SBR-007 AC2's `site/SetSectionOrder`, which is a worker for the same
+    // reason the other three are — Run Tasks drives it, and it answers through
+    // Component Outputs rather than a Response.
+    expect(workers).toHaveLength(4);
+    expect(workers.every((c) => nodesOf(c).every((n) => n.type !== 'noodl.cloud.response'))).toBe(true);
+  });
+
+  it('🔴 every node type inside an endpoint is classified — the rule cannot skip one by not knowing it', () => {
+    const unclassified = [
+      ...new Set(
+        endpoints.flatMap((c) =>
+          nodesOf(c)
+            .map((n) => n.type)
+            .filter((t) => FAILURE_CAPABLE[t] === undefined && CANNOT_FAIL[t] === undefined)
+        )
+      )
+    ].sort();
+    expect(unclassified).toEqual([]);
+  });
+
+  /** Nodes whose `failure` reaches a Response `send`, per endpoint. */
+  function unanswered(component: Component): string[] {
+    const nodes = nodesOf(component);
+    const responses = new Set(nodes.filter((n) => n.type === 'noodl.cloud.response').map((n) => n.id));
+    // 🔴 The edge, not the node. The first version of this grader asked "does
+    // this node reach a Response's send?" — and every node on a happy path does,
+    // so a node with `done -> res.send` and NO failure wire graded as answered.
+    // That is a hole exactly the shape of the defect: it would have passed the
+    // unfixed `publishPage`, whose `page.done -> res.send` was the one edge it
+    // had. The mutant below is what caught it.
+    //
+    // `completed` counts as well as `failure`, and correctly: it "fires after
+    // every invocation, whatever the outcome" (`outcome.ts`), so a node wired by
+    // it does answer on its failure path — that is exactly why
+    // `submitContactForm` uses it for the mail.
+    const answered = new Set(
+      component.graph.connections
+        .filter(
+          (w) =>
+            responses.has(w.toId) &&
+            w.toProperty === 'send' &&
+            (w.fromProperty === 'failure' || w.fromProperty === 'completed')
+        )
+        .map((w) => w.fromId)
+    );
+    return nodes
+      .filter((n) => FAILURE_CAPABLE[n.type] !== undefined && !answered.has(n.id))
+      .filter((n) => EXEMPT[`${component.name} ${n.id}`] === undefined)
+      .map((n) => `${component.name} ${n.type}#${n.id} ${(n as { label?: string }).label ?? ''}`.trim());
+  }
+
+  /** Every exempted node, whether it still exists and whether it still needs the exemption. */
+  function exemptionState(): Array<{ key: string; exists: boolean; stillNeeded: boolean; reason: string }> {
+    return Object.entries(EXEMPT).map(([key, reason]) => {
+      const [componentName, nodeId] = [key.slice(0, key.lastIndexOf(' ')), key.slice(key.lastIndexOf(' ') + 1)];
+      const component = shipped.components.find((c) => c.name === componentName);
+      const node = component && nodesOf(component).find((n) => n.id === nodeId);
+      if (!component || !node) return { key, exists: false, stillNeeded: false, reason };
+      const responses = new Set(nodesOf(component).filter((n) => n.type === 'noodl.cloud.response').map((n) => n.id));
+      const answers = component.graph.connections.some(
+        (w) =>
+          w.fromId === nodeId &&
+          responses.has(w.toId) &&
+          w.toProperty === 'send' &&
+          (w.fromProperty === 'failure' || w.fromProperty === 'completed')
+      );
+      return { key, exists: true, stillNeeded: !answers, reason };
+    });
+  }
+
+  it('🔴 every exemption still names a real node, still needs exempting, and says why', () => {
+    // Three ways an exclusion list rots, all three graded: the node was deleted,
+    // the node was fixed and the entry outlived it, and the entry never had a
+    // reason in the first place.
+    expect(exemptionState().filter((e) => !e.exists).map((e) => e.key)).toEqual([]);
+    expect(exemptionState().filter((e) => !e.stillNeeded).map((e) => e.key)).toEqual([]);
+    expect(exemptionState().filter((e) => e.reason.trim().length < 40).map((e) => e.key)).toEqual([]);
+  });
+
+  it('🔴 no failure-capable node in any endpoint fails into nothing', () => {
+    const offenders = endpoints.flatMap(unanswered).sort();
+    expect(offenders).toEqual([]);
+  });
+
+  it('control: the grader discriminates — removing one failure wire reds, and names the node', () => {
+    // 🔴 The mutant is the point. `toEqual([])` on a list built by a filter is
+    // green when the filter is wrong, when the population is empty, and when the
+    // walk never reached the nodes — three ways to pass without measuring. This
+    // proves the grader can go red, and that what it says when it does is the
+    // offending node rather than a count.
+    const publish = endpoints.find((c) => c.name === '/#__cloud__/publishPage') as Component;
+    const mutant = JSON.parse(JSON.stringify(publish)) as Component;
+    const nodes = nodesOf(mutant);
+    const page = nodes.find((n) => (n as { label?: string }).label === 'Write the page: mirror + access rules');
+    expect(page).toBeDefined();
+    mutant.graph.connections = mutant.graph.connections.filter(
+      (w) => !(w.fromId === page?.id && w.fromProperty === 'failure')
+    );
+    // It must red, and the node it names must be the one whose wire was cut —
+    // not merely "something is wrong".
+    const offenders = unanswered(mutant);
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('Write the page: mirror + access rules');
+    // …and the unmutated original is clean, so the difference is the wire.
+    expect(unanswered(publish)).toEqual([]);
+  });
+
+  it('🔴 Run Tasks is never wired by `completed` where the graph means success', () => {
+    // `completed` "fires after every invocation, whatever the outcome"
+    // (`outcome.ts`, COMPLETED_WITH_OTHER_OUTCOMES). Wired into a writer or a
+    // Response it reports success after a run that FAILED — publishPage marked a
+    // page published having set no section's access rules, and duplicatePage
+    // answered with a page id after a section copy that failed, which is exactly
+    // the partial-copy-that-looks-like-success its own graph warns about.
+    //
+    // ⚠️ `completed` is legitimate for "carry on regardless" and two wires use it
+    // that way on purpose, so this grades WHERE it lands rather than banning it:
+    // into a Response `send` or a record write is a success claim; into another
+    // node's `run` is not.
+    const claims = shipped.components
+      .filter((c) => c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => {
+        const nodes = nodesOf(c);
+        const type = new Map(nodes.map((n) => [n.id, n.type]));
+        return c.graph.connections
+          .filter(
+            (w) =>
+              w.fromProperty === 'completed' &&
+              type.get(w.fromId) === 'RunTasks' &&
+              (w.toProperty === 'send' || w.toProperty === 'store')
+          )
+          .map((w) => `${c.name} ${w.fromId}.completed -> ${w.toProperty}`);
+      });
+    expect(claims).toEqual([]);
+  });
+
+  /**
+   * 🔴 SBR-015 AC1 — the population this file's other rules structurally cannot see.
+   *
+   * The rules above derive their population as *a component holding a
+   * `noodl.cloud.request`*: cloud endpoints. That is a better rule than a hand
+   * list and it **still** could not see the same defect one layer up, in the
+   * browser components that CALL those endpoints. `/Admin/PageRow`'s three
+   * `CloudFunction2` nodes wired `done` only, so after the endpoints were fixed
+   * the backend answered `400` in 19 ms with a correct refusal and the browser
+   * threw it away — measured with a `MutationObserver`: zero text changes in 47 s.
+   *
+   * Deriving a population removes the "I forgot one" failure and leaves the
+   * "I framed it too narrowly" one. The consumer of a fixed producer is the
+   * first place to look next.
+   */
+  it('🔴 every browser call to a cloud function handles its Failure', () => {
+    const offenders = shipped.components
+      .filter((c) => !c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => {
+        const calls = nodesOf(c).filter((n) => n.type === 'CloudFunction2');
+        return calls
+          .filter(
+            (n) =>
+              !c.graph.connections.some(
+                (w) => w.fromId === n.id && (w.fromProperty === 'failure' || w.fromProperty === 'error')
+              )
+          )
+          .map((n) => `${c.name} ${(n as { label?: string }).label ?? n.id}`);
+      })
+      .sort();
+    expect(offenders).toEqual([]);
+  });
+
+  it('control: there are browser cloud calls to grade, and the rule can red', () => {
+    // ⚠️ Necessary, not sufficient: this asserts the failure signal LEAVES the
+    // node, not that a person ever sees it. The browser has no Response node to
+    // aim at, so there is no structural equivalent of the endpoint rule — the
+    // person-facing half is AC1's drive, not a spec.
+    const calls = shipped.components
+      .filter((c) => !c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => nodesOf(c).filter((n) => n.type === 'CloudFunction2'));
+    expect(calls.length).toBeGreaterThan(0);
+
+    const pageRow = shipped.components.find((c) => c.name === '/Admin/PageRow') as Component;
+    const mutant = JSON.parse(JSON.stringify(pageRow)) as Component;
+    mutant.graph.connections = mutant.graph.connections.filter(
+      (w) => w.fromProperty !== 'failure' && w.fromProperty !== 'error'
+    );
+    const unhandled = nodesOf(mutant)
+      .filter((n) => n.type === 'CloudFunction2')
+      .filter(
+        (n) =>
+          !mutant.graph.connections.some(
+            (w) => w.fromId === n.id && (w.fromProperty === 'failure' || w.fromProperty === 'error')
+          )
+      );
+    expect(unhandled.length).toBe(3);
+  });
+
+  it('control: the two deliberate `completed` wires survive — this rule did not ban the port', () => {
+    // If the rule above had been "no `completed` anywhere" it would have gone
+    // green by deleting two correct wires. Both are documented in
+    // `sb004Components.ts`: an unprovisioned secret must still reach the picker,
+    // and a bounced mail must still answer the visitor.
+    const kept = shipped.components
+      .filter((c) => c.name.startsWith('/#__cloud__/'))
+      .flatMap((c) => c.graph.connections.filter((w) => w.fromProperty === 'completed').map(() => c.name))
+      .sort();
+    expect(kept).toEqual(['/#__cloud__/site/ContactRecipient', '/#__cloud__/submitContactForm']);
+  });
+});
+
+// ── 8. SBR-017: there is a way back in ───────────────────────────────────────
+
+/**
+ * SBR-017 AC4. The finding this gate exists to make impossible to reintroduce:
+ * the shipped template held **one** authentication node across twenty-one
+ * components — `SignUp`, on `/Pages/Setup` — and no `Log In` anywhere. An owner
+ * who claimed their site and later lost the session had no screen that would
+ * take their password.
+ *
+ * 🔴 **"Contains a `LogIn`" is not the criterion, and grading it would be the
+ * hole shaped like the defect.** A `net.noodl.user.LogIn` sitting in a component
+ * no router names is a node in a file, not a way back in — and it is exactly
+ * what a well-meaning later edit produces (author the page, forget that a page
+ * is only reachable when a Router lists it). So the gate walks the router's own
+ * `routes`, closes over what those pages **place**, and asks whether the LogIn
+ * is inside that set. The mutant below removes the one route and the gate reds,
+ * which is what says the walk is load-bearing rather than decoration.
+ */
+describe('SBR-017 — the owner can get back in', () => {
+  /**
+   * The components a person can actually arrive at: every page the Router lists,
+   * plus everything those pages place, transitively.
+   *
+   * A component instance is a node whose `type` IS another component's legacy
+   * name (the MCP guidance's own rule), and a `For Each` names its row component
+   * in `template` — both are placements, and both are how `/Admin/Shell` and
+   * `/Admin/PageRow` get on screen at all.
+   *
+   * ⚠️ Navigation targets are deliberately NOT followed. A `RouterNavigate`
+   * pointing at a page proves the page can be *asked for*, not that the Router
+   * will answer — and a page reachable only that way is the defect one step
+   * along. Every page must earn its place in `routes`.
+   */
+  function reachableComponents(content: Content): Set<string> {
+    const byName = new Map(content.components.map((c) => [c.name, c]));
+    const app = content.components.find((c) => c.name === APP_LEGACY);
+    const router = app && nodesOf(app).find((n) => n.type === 'Router');
+    const pages = (router?.parameters?.pages as Pages) ?? {};
+
+    const seen = new Set<string>();
+    const queue = [...(pages.routes ?? []), ...(pages.startPage ? [pages.startPage] : []), APP_LEGACY];
+    while (queue.length) {
+      const name = queue.shift() as string;
+      if (seen.has(name)) continue;
+      const component = byName.get(name);
+      if (!component) continue;
+      seen.add(name);
+      for (const node of nodesOf(component)) {
+        if (byName.has(node.type)) queue.push(node.type);
+        const template = node.parameters?.template;
+        if (typeof template === 'string' && byName.has(template)) queue.push(template);
+      }
+    }
+    return seen;
+  }
+
+  const AUTH_TYPES = ['net.noodl.user.LogIn', 'net.noodl.user.LogOut', 'net.noodl.user.SignUp'] as const;
+
+  it('CONTROL: the census the rest of this block reads — three auth nodes, and where they are', () => {
+    // 🔴 Read first, so the assertions below are about a population that exists.
+    // Before SBR-017 this census was ONE row (`SignUp`), and every check under it
+    // would have been vacuously satisfiable by looking somewhere else.
+    const census = allNodes()
+      .filter((n) => (AUTH_TYPES as readonly string[]).includes(n.node.type))
+      .map((n) => `${n.node.type} in ${n.component}`)
+      .sort();
+    expect(census).toEqual([
+      'net.noodl.user.LogIn in /Pages/SignIn',
+      'net.noodl.user.LogOut in /Admin/Shell',
+      'net.noodl.user.SignUp in /Pages/Setup'
+    ]);
+  });
+
+  it('AC4: the LogIn is inside a component the Router can actually reach', () => {
+    const reachable = reachableComponents(shipped);
+    const holders = allNodes()
+      .filter((n) => n.node.type === 'net.noodl.user.LogIn')
+      .map((n) => n.component);
+    expect(holders).toEqual(['/Pages/SignIn']);
+    for (const holder of holders) expect(`${holder}:${reachable.has(holder)}`).toBe(`${holder}:true`);
+  });
+
+  it('MUTANT: drop the sign-in page from the router and the same gate reds', () => {
+    // The half that turns "contains a LogIn" into "there is a way back in".
+    // Without this, a page authored into no router would pass the check above by
+    // simply existing on disk.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const app = mutant.components.find((c) => c.name === APP_LEGACY) as Component;
+    const router = nodesOf(app).find((n) => n.type === 'Router') as Node;
+    const pages = router.parameters?.pages as Pages;
+    pages.routes = (pages.routes ?? []).filter((r) => r !== '/Pages/SignIn');
+
+    expect(reachableComponents(mutant).has('/Pages/SignIn')).toBe(false);
+    // …and the control that the mutation was surgical: everything else still is.
+    expect(reachableComponents(mutant).has('/Pages/Admin')).toBe(true);
+  });
+
+  /**
+   * 🔴 SBR-017 §3's ordering trap, as a gate rather than a comment: *"Do not add
+   * sign-out without adding sign-in first."* A rail that can end a session on a
+   * template that cannot start one is the original defect made one click easier
+   * to reach, and it is a plausible future edit — sign-out is the easy half.
+   */
+  it("a LogOut may only ship where a reachable LogIn ships too", () => {
+    const reachable = reachableComponents(shipped);
+    const has = (type: string) =>
+      allNodes().some((n) => n.node.type === type && reachable.has(n.component));
+    expect(`logOut:${has('net.noodl.user.LogOut')}`).toBe(`logOut:${has('net.noodl.user.LogIn')}`);
+    // Asserted positively as well, so the rule cannot be satisfied by there being
+    // neither — which is the state SBR-017 found.
+    expect(has('net.noodl.user.LogIn')).toBe(true);
+  });
+
+  /**
+   * AC2, as far as the artefact can carry it: **the refused path and the accepted
+   * path are not the same screen.** The drive is what grades the person sentence;
+   * this is what stops the wiring silently collapsing back into one.
+   */
+  it('AC2 (structure): success navigates, refusal reveals, and neither is `completed`', () => {
+    const signIn = componentNamed('/Pages/SignIn') as Component;
+    expect(signIn).toBeDefined();
+    const nodes = nodesOf(signIn);
+    const login = nodes.find((n) => n.type === 'net.noodl.user.LogIn') as Node;
+    const from = (property: string) =>
+      signIn.graph.connections.filter((w) => w.fromId === login.id && w.fromProperty === property);
+
+    // The accepted path leaves the screen.
+    const done = from('done').map((w) => nodes.find((n) => n.id === w.toId)?.type).sort();
+    expect(done).toEqual(['RouterNavigate', 'States']);
+
+    // The refused path changes something on it, and reaches the refusal's
+    // `mounted` — the port that makes an absent refusal take no space.
+    const refusedInto = from('failure').map((w) => `${nodes.find((n) => n.id === w.toId)?.type}.${w.toProperty}`);
+    expect(refusedInto).toEqual(['States.to-Refused']);
+    const states = nodes.find((n) => n.type === 'States') as Node;
+    // Named by its WORDS rather than by a label, so this cannot go green against
+    // some other Text that happens to be wired to the same node.
+    const refusal = nodes.find((n) => n.parameters?.text === SIGNIN_REFUSAL_TEXT) as Node;
+    expect(refusal).toBeDefined();
+    const revealed = signIn.graph.connections
+      .filter((w) => w.fromId === states.id)
+      .map((w) => `${w.toId === refusal.id ? 'the refusal' : w.toId}.${w.toProperty}`);
+    expect(revealed).toEqual(['the refusal.mounted']);
+
+    // 🔴 And `completed` is wired nowhere on this node. It fires on EVERY
+    // outcome, so a `completed` here would raise the refusal on the successful
+    // sign-in too — the two paths would be one screen again, and the drive would
+    // still pass its first arm.
+    expect(from('completed')).toEqual([]);
+  });
+
+  it('AC3 (words): a signed-out visitor to an admin screen is told so, in the shell every screen places', () => {
+    // 🔴 The words, not the absence of rows. SBR-016's finding is that a refused
+    // query, an empty collection and a collection that never asked all render the
+    // same blank panel; "signed out" used to be a FOURTH state rendering
+    // identically, and asserting "no rows" would grade none of them apart.
+    const shell = componentNamed('/Admin/Shell') as Component;
+    const notice = nodesOf(shell).find((n) => n.parameters?.text === SIGNED_OUT_TEXT);
+    expect(notice?.type).toBe('Text');
+    // It starts absent and something raises it — a standing sentence would say
+    // "you are not signed in" to a signed-in admin.
+    expect(notice?.parameters?.mounted).toBe(false);
+    const raised = shell.graph.connections.filter((w) => w.toId === notice?.id && w.toProperty === 'mounted');
+    expect(raised).toHaveLength(1);
+
+    // …and what raises it is the INVERSE of `authenticated`, not `authenticated`
+    // itself. That one wire is the difference between the notice appearing for
+    // the person who needs it and appearing for everybody else.
+    const inverter = nodesOf(shell).find((n) => n.id === raised[0].fromId) as Node;
+    expect(inverter.type).toBe('Inverter');
+    const source = shell.graph.connections.find((w) => w.toId === inverter.id && w.toProperty === 'value');
+    const user = nodesOf(shell).find((n) => n.id === source?.fromId) as Node;
+    expect(`${user.type}.${source?.fromProperty}`).toBe('net.noodl.user.User.authenticated');
+  });
+});
+
+// ── D18 — the header row a client on a narrow window could not reach ─────────
+
+/**
+ * 🔴 **D18**: `/Pages/PageEditor`'s header row — `Editing · <title>`, the status
+ * pill, the unsaved mark, `Preview` and `Save page` — was clipped below 1001px
+ * and `Save page` was **unreachable** below 897px, with no gesture that got to
+ * it (`document.scrollWidth === innerWidth` at every width, SBR-007 §14).
+ *
+ * The mechanism is `layout.ts:82`: every node starts `flexShrink: 0`, and only a
+ * percentage size ALONG the parent's direction opts back in to shrinking. Every
+ * child of this row is `IN_A_ROW` (`contentSize`), which assigns a percentage on
+ * NEITHER axis — so no child can shrink, and under the default `nowrap` the row
+ * overflows its container and is clipped. 🔴 This is also why `flex-grow` was
+ * never the lever (SBR-004 §8.2): growing a child that cannot shrink changes
+ * nothing about overflow.
+ *
+ * ⚠️ **What the population is, and why it is not "every row".** Eleven
+ * row-direction Groups ship in this artefact, and five are `nowrap` with every
+ * graded child non-shrinking — but SBR-007 §14 MEASURED two of those five
+ * reflowing correctly on the driven screen (`/Admin/PageRow`'s buttons track the
+ * viewport 1336 → 884 → 496; `/Pages/Admin`'s header is fine at every width). A
+ * rule reading "row + cannot shrink ⇒ broken" would contradict readings already
+ * taken. What actually separates this row is that it carries a **wire-fed** Text
+ * at a **display** font size: its width is a user's page title, unknown when the
+ * template is authored. That is the property graded below, so a future row built
+ * the same way is caught — and a row whose contents are all author-fixed is not
+ * flagged on a guess.
+ */
+const NON_SHRINKING = ['contentSize', 'contentHeight'];
+const DISPLAY_SIZES = ['var(--text-2xl)', 'var(--text-3xl)', 'var(--text-4xl)', 'var(--text-5xl)'];
+
+/**
+ * 🔴 **D20 corrected this rule, and the correction is the point.** `sizeMode`
+ * ALONE cannot say whether a child shrinks. `layout.ts:82` opts a node back in
+ * only where it converts a percentage size ALONG THE PARENT'S DIRECTION into
+ * `flexGrow` + `flexShrink: 1` — so for a ROW the question is whether the child
+ * has a **percentage `width`**, and the mode only decides whether a width is
+ * assigned at all (`explicit` and `contentHeight` assign one; `contentSize` and
+ * `contentWidth` do not).
+ *
+ * Graded against the driven readings of SBR-007 §30: the page-editor heading is
+ * `contentHeight` — a member of `NON_SHRINKING` — and measured `flexShrink: 1`,
+ * `flexGrow: 60` on the rendered screen, tracking the viewport 1296 → 193px.
+ * The old list-only test called that node non-shrinking and stayed GREEN while
+ * saying so, which is the failure mode this suite has hit before: the literal
+ * did not move, the sentence beside it stopped being true.
+ */
+function childCanShrinkInARow(child: { parameters?: Record<string, unknown> }): boolean {
+  const p = child.parameters ?? {};
+  const mode = p.sizeMode;
+  const assignsWidth = typeof mode === 'string' && !['contentSize', 'contentWidth'].includes(mode);
+  if (!assignsWidth) return false;
+  const w = p.width as { unit?: string } | undefined;
+  return typeof w === 'object' && w !== null && w.unit === '%';
+}
+
+/**
+ * Rows whose width depends on a string nobody has typed yet. Grades the reason,
+ * not just the emptiness — a pass that graded no rows at all would satisfy
+ * `unreachable == []` exactly as well as one that cleared every row, and those
+ * are not the same claim.
+ */
+function gradeUnboundedRows(project: Content): { graded: string[]; unreachable: string[] } {
+  const graded: string[] = [];
+  const unreachable: string[] = [];
+
+  for (const component of project.components) {
+    for (const node of nodesOf(component)) {
+      const p = node.parameters ?? {};
+      if (p.flexDirection !== 'row') continue;
+
+      const children = node.children ?? [];
+      const modes = children
+        .map((c) => (c.parameters ?? {}).sizeMode)
+        .filter((m): m is string => typeof m === 'string');
+      if (modes.length === 0) continue;
+
+      // A child whose text arrives over a wire has no width the template can know.
+      const unbounded = children.filter((c) => {
+        const cp = c.parameters ?? {};
+        return c.type === 'Text' && DISPLAY_SIZES.includes(cp.fontSize as string) && cp.text === '';
+      });
+      if (unbounded.length === 0) continue;
+
+      const label = `${component.name} #${node.id}`;
+      const canShrink = children.some((c) => childCanShrinkInARow(c));
+      const wraps = p.flexWrap === 'wrap' || p.flexWrap === 'wrap-reverse';
+      const scrolls = p.scrollEnabled === true;
+
+      if (canShrink) graded.push(`${label} — a child can shrink, so the row reflows`);
+      else if (wraps) graded.push(`${label} — flexShrink:0 throughout, and the row wraps (D18's lever)`);
+      else if (scrolls) graded.push(`${label} — flexShrink:0 throughout, but the row scrolls`);
+      else unreachable.push(`${label} — flexShrink:0 throughout, and it neither wraps nor scrolls`);
+    }
+  }
+  return { graded: graded.sort(), unreachable: unreachable.sort() };
+}
+
+/**
+ * The wire-fed display Text inside a row — the child whose width nobody can know
+ * when the template is authored, and the one both mutants below operate on.
+ * Resolved through the row's own `children`, never by authored id.
+ */
+function unboundedChildOf(row: { children?: { type?: string; parameters?: Record<string, unknown> }[] }) {
+  const child = (row.children ?? []).find(
+    (c) => c.type === 'Text' && DISPLAY_SIZES.includes((c.parameters ?? {}).fontSize as string) && (c.parameters ?? {}).text === ''
+  );
+  if (!child) throw new Error('the header row no longer carries a wire-fed display Text — D18/D20 cannot be graded');
+  child.parameters = child.parameters ?? {};
+  return child as { parameters: Record<string, unknown> };
+}
+
+describe('D18 — a row sized by a string nobody has typed yet stays reachable', () => {
+  it('the page editor header wraps rather than clipping its actions away', () => {
+    const { graded, unreachable } = gradeUnboundedRows(shipped);
+
+    // 🔴 The reason moved with D20, and the reason is what this grades. The row
+    // no longer relies on wrapping alone: its heading carries a percentage width,
+    // so a child genuinely shrinks (`flexShrink: 1`, measured on the screen).
+    expect(graded).toEqual(['/Pages/PageEditor #headerRow — a child can shrink, so the row reflows']);
+    expect(unreachable).toEqual([]);
+  });
+
+  it('MUTANT: the row as it actually shipped reddens the grader', () => {
+    // 🔴 **The mutant needs BOTH levers dropped now, and that is the finding.**
+    // Before D20 this test removed `flexWrap` alone and the row went unreachable.
+    // It no longer does — with a shrinkable heading the row reflows without
+    // wrapping at all — so removing wrap by itself would leave the grader GREEN
+    // and this mutant would have quietly stopped testing anything.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const row = mutant.components.flatMap((c) => nodesOf(c)).find((n) => n.id === 'headerRow');
+    if (!row) throw new Error('the artefact no longer holds #headerRow — D18 cannot be graded');
+    // 🔴 By the row's OWN CHILD, never by a global id: the door rewrites ids on
+    // write (`heading` ships as `heading-2`), and a `find` on the authored id
+    // silently matches a DIFFERENT component's node — which is what made the
+    // first version of this mutant mutate nothing and still read green.
+    const heading = unboundedChildOf(row);
+    delete (row.parameters as Record<string, unknown>).flexWrap;
+    delete (heading.parameters as Record<string, unknown>).width;
+    (heading.parameters as Record<string, unknown>).sizeMode = 'contentSize';
+
+    const { graded, unreachable } = gradeUnboundedRows(mutant);
+    expect(unreachable).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and it neither wraps nor scrolls']);
+    expect(graded).toEqual([]);
+  });
+
+  it('MUTANT: dropping D20 alone still reddens nothing, because D18 wrap remains', () => {
+    // The other half of the pair — it proves the two levers are INDEPENDENT, and
+    // that the green above is not being carried by wrap alone.
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const row = mutant.components.flatMap((c) => nodesOf(c)).find((n) => n.id === 'headerRow');
+    if (!row) throw new Error('the artefact no longer holds #headerRow');
+    const heading = unboundedChildOf(row);
+    delete (heading.parameters as Record<string, unknown>).width;
+    (heading.parameters as Record<string, unknown>).sizeMode = 'contentSize';
+
+    const { graded, unreachable } = gradeUnboundedRows(mutant);
+    expect(graded).toEqual(['/Pages/PageEditor #headerRow — flexShrink:0 throughout, and the row wraps (D18\'s lever)']);
+    expect(unreachable).toEqual([]);
+  });
+});
+
+// ── 12. The document outline ─────────────────────────────────────────────────
+//
+// 🔴 **Written because the site-builder template's `as` tags had no gate at
+// all, and the absence was invisible from every suite in this package.** The
+// members' area got §8 of `tpl001Template.test.ts` one session ago after its
+// artefact measured **0 semantic tags in 100 files**; this template was never
+// that bad — it shipped 26 tags, including an `h1` on all seven pages — and
+// that is exactly what made the hole easy to miss. Measured at HEAD before this
+// block was written:
+//
+// | | reading |
+// |---|---|
+// | pages declaring exactly one `h1` | 7 of 7 |
+// | pages declaring a `main` | **0 of 7** |
+// | tags held by any assertion anywhere | **0 of 26** |
+//
+// So every heading on every screen sat in no landmark, and a reader who jumps
+// to the main content of an admin page had nothing to jump to. The fix is one
+// parameter on six pages (the admin screens each hang a single content column
+// off their shell) plus one node on `/Pages/Site`, whose `shell` also holds the
+// nav and the foot — see `SITE_NODES`.
+//
+// ⚠️ **Only `Group` and `Text` have an `as` port** (`group.ts:247`,
+// `text.ts`), and `Text`'s enum is `div|h1…h6|p|span` — the landmark names live
+// on `Group` alone. §12.5 is what holds that, because an `as` on any other type
+// is a parameter nothing reads.
+
+describe('SB-007 — every screen has a document outline, and the landmark holds the heading', () => {
+  /** The predicate §12.1–§12.4 are written in terms of; §12.6 grades it. */
+  const tagsIn = (nodes: readonly Node[], tag: string): string[] =>
+    nodes.filter((n) => (n.parameters ?? {}).as === tag).map((n) => n.id);
+
+  /**
+   * Is `childId` anywhere under `root`? A real walk, because the defect this
+   * exists for is one level apart in the members' template and a one-level
+   * check would have passed on it.
+   */
+  const contains = (root: Node | undefined, childId: string): boolean =>
+    root !== undefined && (root.children ?? []).some((c) => c.id === childId || contains(c, childId));
+
+  const pages = shipped.components
+    .filter((c) => c.name.startsWith('/Pages/'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  /**
+   * The components that DECLARE a `<nav>`, resolved from the artefact rather
+   * than named: `/Site/Nav` (the public band) and `/Admin/Shell` (the rail).
+   * A page places these as instances, so the nav is not a node in the page's
+   * own graph at all — which is why §12.4 is written over instance TYPES.
+   */
+  const navComponents = new Set(
+    shipped.components.filter((c) => tagsIn(nodesOf(c), 'nav').length > 0).map((c) => c.name)
+  );
+
+  it('§12.1 every page declares exactly one h1, and there are seven pages', () => {
+    expect(pages.length).toBe(7);
+    const wrong = pages
+      .map((c) => ({ page: c.name, h1: tagsIn(nodesOf(c), 'h1') }))
+      .filter((r) => r.h1.length !== 1)
+      .map((r) => `${r.page}: ${r.h1.length} h1 (${r.h1.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  it('§12.2 every page declares exactly one main', () => {
+    const wrong = pages
+      .map((c) => ({ page: c.name, main: tagsIn(nodesOf(c), 'main') }))
+      .filter((r) => r.main.length !== 1)
+      .map((r) => `${r.page}: ${r.main.length} main (${r.main.join(', ') || 'none'})`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The one a census cannot see.** §12.1 counts an `h1` and §12.2 counts a
+   * `main`, and both are satisfied by a page where the two are SIBLINGS — which
+   * is what the members' area shipped for a session (REL-002c §9). Here the six
+   * admin screens put the landmark on the column that already held the heading,
+   * so it holds by construction; `/Pages/Site` is the one that had to be built
+   * to hold, and it is the one this would catch.
+   */
+  it('§12.3 every page keeps its h1 INSIDE its main', () => {
+    const wrong = pages
+      .map((c) => {
+        const nodes = nodesOf(c);
+        const [h1] = tagsIn(nodes, 'h1');
+        const [main] = tagsIn(nodes, 'main');
+        const mainNode = nodes.find((n) => n.id === main);
+        return { page: c.name, h1, main, ok: h1 !== undefined && mainNode !== undefined && contains(mainNode, h1) };
+      })
+      .filter((r) => !r.ok)
+      .map((r) => `${r.page}: h1 ${r.h1} is not inside main ${r.main}`);
+    expect(wrong).toEqual([]);
+  });
+
+  /**
+   * 🔴 **The other direction, and it is the half a "fix" gets wrong.** The
+   * cheap way to make §12.3 green on `/Pages/Site` is to move the landmark up
+   * to `shell`, which also holds the nav band and the colophon — a `main` that
+   * announces the site's navigation as this page's content. On the admin
+   * screens the same shortcut is tagging the `/Admin/Shell` instance instead of
+   * the column inside it, which swallows the rail.
+   *
+   * ⚠️ The nav is never a node in the page's own graph — both nav-bearing
+   * components are placed as INSTANCES — so this is written over instance types
+   * and over any `as: 'nav'` a page might grow later.
+   */
+  it('§12.4 no page puts its navigation inside its main', () => {
+    expect([...navComponents].sort()).toEqual(['/Admin/Shell', '/Site/Nav']);
+
+    const swallowed = pages.flatMap((c) => {
+      const nodes = nodesOf(c);
+      const mainNode = nodes.find((n) => n.id === tagsIn(nodes, 'main')[0]);
+      return nodes
+        .filter((n) => navComponents.has(n.type) || (n.parameters ?? {}).as === 'nav')
+        .filter((n) => contains(mainNode, n.id))
+        .map((n) => `${c.name}: ${n.id} (${n.type}) is inside main ${mainNode?.id}`);
+    });
+    expect(swallowed).toEqual([]);
+
+    // 🔴 **Not a vacuous sweep, and the number is FIVE.** `/Pages/Site` places
+    // `/Site/Nav`; the four admin screens place `/Admin/Shell`. `/Pages/SignIn`
+    // and `/Pages/Setup` are doors and place neither — counted here so the
+    // assertion above cannot silently become a walk over nothing.
+    const placingNav = pages.filter((c) => nodesOf(c).some((n) => navComponents.has(n.type)));
+    expect(placingNav.map((c) => c.name).sort()).toEqual([
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/PageEditor',
+      '/Pages/Site',
+      '/Pages/ThemeEditor'
+    ]);
+  });
+
+  it('§12.5 no node carries an `as` its type has no port for', () => {
+    const stray = allNodes()
+      .filter(({ node }) => 'as' in (node.parameters ?? {}))
+      .filter(({ node }) => node.type !== 'Group' && node.type !== 'Text')
+      .map(({ component, node }) => `${component} › ${node.id} (${node.type})`);
+    expect(stray).toEqual([]);
+  });
+
+  /**
+   * 🔴 **CONTROL — it grades the PREDICATE, not the artefact.** A census that
+   * read the wrong field would report clean on a template with no tags in it at
+   * all, which is the state every other template in this repo was in until
+   * REL-002c. And the near-miss is not hypothetical here: `/Admin/Shell` holds
+   * a `Group` whose **id is literally `main`** and which carries no `as` at all.
+   */
+  it('§12.6 CONTROL — the census reads the `as` parameter, not an id that looks like one', () => {
+    const mutant = [
+      { id: 'real', type: 'Group', parameters: { as: 'main' } },
+      { id: 'main', type: 'Group', parameters: { flexDirection: 'column' } },
+      { id: 'decoy', type: 'Text', parameters: { text: 'main', label: 'main' } }
+    ] as unknown as Node[];
+    expect(tagsIn(mutant, 'main')).toEqual(['real']);
+    expect(tagsIn(mutant, 'h1')).toEqual([]);
+
+    // The live decoy: the shell's content column is NAMED `main` and is not one.
+    const shell = componentNamed('/Admin/Shell');
+    if (!shell) throw new Error('the artefact no longer holds /Admin/Shell');
+    expect(nodesOf(shell).some((n) => n.id === 'main')).toBe(true);
+    expect(tagsIn(nodesOf(shell), 'main')).toEqual([]);
+
+    // And the same predicate over the artefact is not vacuous: one per page.
+    expect(pages.flatMap((c) => tagsIn(nodesOf(c), 'h1')).length).toBe(7);
+    expect(pages.flatMap((c) => tagsIn(nodesOf(c), 'main')).length).toBe(7);
+  });
+
+  /**
+   * 🔴 **CONTROL for §12.3/§12.4, and a different predicate from `tagsIn`.** A
+   * walk that answered `true` for everything — or one that only ever looked one
+   * level down — passes §12.3 on the very artefact that provokes it. So it is
+   * run over a hand-built tree whose answers are known in both directions and
+   * at both depths.
+   */
+  it('§12.7 CONTROL — containment is a real walk, not a same-parent check', () => {
+    const tree = {
+      id: 'shell',
+      type: 'Group',
+      children: [
+        { id: 'nav', type: '/Site/Nav' },
+        { id: 'main', type: 'Group', parameters: { as: 'main' }, children: [{ id: 'band', type: 'Group', children: [{ id: 'head', type: 'Text', parameters: { as: 'h1' } }] }] }
+      ]
+    } as unknown as Node;
+    const main = (tree.children ?? []).find((n) => n.id === 'main');
+    // Two levels down is still inside.
+    expect(contains(main, 'head')).toBe(true);
+    // A sibling of the landmark is not — this is the shipped defect's shape.
+    expect(contains(main, 'nav')).toBe(false);
+    // Neither is the root itself, nor a node the walk never reaches.
+    expect(contains(main, 'main')).toBe(false);
+    expect(contains(main, 'orphan')).toBe(false);
+    expect(contains(undefined, 'head')).toBe(false);
+  });
+
+  /**
+   * 🔴 **MUTANT: the outline exactly as it shipped.** Every `as: 'main'` comes
+   * off, which is the artefact at `1784396c`. §12.2 and §12.3 must both redden,
+   * and — the point of running it — §12.1, §12.5 and §12.4's own swallow sweep
+   * must all stay GREEN, because a heading census and a stray-port census are
+   * satisfied by seven pages with no landmark between them.
+   */
+  it('§12 MUTANT: the template as it shipped — a heading on every page and a landmark on none', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const mutantPages = mutant.components.filter((c) => c.name.startsWith('/Pages/'));
+    let stripped = 0;
+    for (const c of mutantPages) {
+      for (const n of nodesOf(c)) {
+        if ((n.parameters ?? {}).as === 'main') {
+          delete (n.parameters as Record<string, unknown>).as;
+          stripped += 1;
+        }
+      }
+    }
+    expect(stripped).toBe(7);
+
+    // What the shipped state DID satisfy, and why nothing caught it.
+    expect(mutantPages.every((c) => tagsIn(nodesOf(c), 'h1').length === 1)).toBe(true);
+    expect(
+      mutant.components
+        .flatMap((c) => nodesOf(c))
+        .filter((node) => 'as' in (node.parameters ?? {}))
+        .filter((node) => node.type !== 'Group' && node.type !== 'Text').length
+    ).toBe(0);
+
+    // And what it did not.
+    expect(mutantPages.filter((c) => tagsIn(nodesOf(c), 'main').length !== 1).map((c) => c.name).sort()).toEqual([
+      '/Pages/Admin',
+      '/Pages/Messages',
+      '/Pages/PageEditor',
+      '/Pages/Setup',
+      '/Pages/SignIn',
+      '/Pages/Site',
+      '/Pages/ThemeEditor'
+    ]);
+  });
+
+  /**
+   * 🔴 **MUTANT: the shortcut fix.** `/Pages/Site`'s landmark moves up one level
+   * onto `shell`, which passes §12.1, §12.2 and §12.3 — the page still declares
+   * one heading and one landmark, and the heading is inside it — and announces
+   * the nav band and the colophon as the page's content. §12.4 is the only
+   * assertion in this block that can see it.
+   */
+  it('§12 MUTANT: a main that swallows the band passes the census and fails the containment', () => {
+    const mutant = JSON.parse(JSON.stringify(shipped)) as Content;
+    const site = mutant.components.find((c) => c.name === '/Pages/Site');
+    if (!site) throw new Error('the artefact no longer holds /Pages/Site');
+    const nodes = nodesOf(site);
+    const siteMain = nodes.find((n) => (n.parameters ?? {}).as === 'main');
+    const shell = nodes.find((n) => n.id === 'shell');
+    if (!siteMain || !shell) throw new Error('/Pages/Site no longer has a shell and a main');
+    delete (siteMain.parameters as Record<string, unknown>).as;
+    shell.parameters = { ...(shell.parameters ?? {}), as: 'main' };
+
+    // The census half is untouched: one h1, one main, and the h1 is inside it.
+    expect(tagsIn(nodes, 'h1').length).toBe(1);
+    expect(tagsIn(nodes, 'main')).toEqual(['shell']);
+    expect(contains(shell, tagsIn(nodes, 'h1')[0])).toBe(true);
+
+    // The half that reddens.
+    const swallowed = nodes.filter((n) => navComponents.has(n.type)).filter((n) => contains(shell, n.id));
+    expect(swallowed.map((n) => `${n.id} (${n.type})`)).toEqual(['nav (/Site/Nav)']);
+  });
+});

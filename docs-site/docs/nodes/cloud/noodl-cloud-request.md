@@ -35,6 +35,7 @@ Place exactly one at the start of every cloud function component. It is meaningl
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `auth` | Boolean | — | Whether the request carried a session token that resolved to a user |
+| `origin` | String | — | The address the calling app is served from — its Origin header, or this backend’s own host when the caller sent none. Blank when neither is known (a workflow step has no caller). Caller-supplied like every header: right for links sent back to whoever called, not a proof of where the request came from. |
 | `userId` | Boolean | — | Id of the user the session token resolved to, and blank for an unauthenticated request |
 
 ### Signals

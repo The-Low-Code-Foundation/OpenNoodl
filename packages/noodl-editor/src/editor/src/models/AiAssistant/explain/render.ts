@@ -14,7 +14,11 @@
  * @module AiAssistant/explain/render
  */
 
-import type { ContextNode, ContextNodeType, ExplainContext } from './types';
+import { renderRuntime, runtimeIndex, type RuntimePortValue, type RuntimeSnapshot } from './runtime';
+import type { ContextConnection, ContextNestedComponent, ContextNode, ContextNodeType, ExplainContext } from './types';
+
+/** Current values for the nodes being rendered, keyed as `node|port|direction`. */
+type RuntimeValues = Map<string, RuntimePortValue>;
 
 function nodeHeading(node: ContextNode): string {
   const parts = [`- \`${node.id}\` — ${node.displayName}`];
@@ -24,20 +28,119 @@ function nodeHeading(node: ContextNode): string {
   return parts.join(' ');
 }
 
-function renderNode(node: ContextNode): string {
+/**
+ * FIX-001 §1a — the current value of an authored input, written beside it.
+ *
+ * Beside rather than instead of, and never in place of: the two disagree
+ * constantly and legitimately (an input the graph sets to `"Loading…"` is
+ * `"Ready"` a moment after the fetch returns), and *which* of them a question is
+ * about is the thing the reader most often cannot tell. Omitted when they agree,
+ * because a `now =` that only ever echoes the line above it teaches the model to
+ * stop reading it.
+ */
+function nowSuffix(values: RuntimeValues | undefined, node: ContextNode, port: string, authored: string): string {
+  const entry = values?.get(node.id + '|' + port + '|input');
+  if (!entry || agrees(entry.value, authored)) return '';
+  return `    [now = ${entry.value}${entry.truncated ? ' (cut short)' : ''}]`;
+}
+
+/**
+ * Whether a current value and an authored one say the same thing *as far as
+ * either was shown*.
+ *
+ * Not `===`, because both sides arrive pre-cut and by different caps — assembly
+ * allows 400 characters of an authored parameter at node scope, the runtime
+ * layer allows 200 of a value. A script body identical on both sides therefore
+ * fails an equality test every time, and would print a `[now = …]` announcing a
+ * change that did not happen. That is the same class of confident-wrong answer
+ * the whole runtime layer exists to remove, so a prefix match on the visible
+ * part counts as agreement: the honest claim is "nothing I can see differs".
+ */
+function agrees(current: string, authored: string): boolean {
+  if (current === authored) return true;
+  const a = current.replace(/…$/, '');
+  const b = authored.replace(/…$/, '');
+  return a.length && b.length ? a.startsWith(b) || b.startsWith(a) : false;
+}
+
+function renderNode(node: ContextNode, values?: RuntimeValues): string {
   const lines = [nodeHeading(node)];
   if (node.comment) lines.push(`    note from the author: ${node.comment}`);
   for (const p of node.parameters) {
+    const now = nowSuffix(values, node, p.name, p.value);
     // Multi-line values (script bodies, text content) get a fenced block so the
     // structure survives; short ones stay inline to keep the block scannable.
     if (p.value.includes('\n')) {
       lines.push(`    ${p.name}:`);
       for (const line of p.value.split('\n')) lines.push(`      ${line}`);
+      if (now) lines.push(`    ${now.trim()}`);
     } else {
-      lines.push(`    ${p.name}: ${p.value}`);
+      lines.push(`    ${p.name}: ${p.value}${now}`);
     }
   }
   if (node.parametersOmitted) lines.push(`    (${node.parametersOmitted} further parameter(s) not shown)`);
+  return lines.join('\n');
+}
+
+function renderConnections(connections: readonly ContextConnection[]): string[] {
+  return connections.map((c) => {
+    const arrow = c.isSignal ? '⇒ (signal)' : '→';
+    return `- \`${c.fromId}\`.${c.fromProperty} ${arrow} \`${c.toId}\`.${c.toProperty}`;
+  });
+}
+
+/**
+ * FIX-001 §1c — one component instance's interior.
+ *
+ * The heading says whose interior it is and the preamble says three things the
+ * model would otherwise have to infer, each of which it infers wrongly: these
+ * nodes are somewhere else, citing them navigates there, and **no runtime value
+ * was read for any of them**. That last one matters most when a preview *is*
+ * running: the Runtime section lists what was asked about, an interior node was
+ * never asked about, and "absent from the list" would otherwise read as "not
+ * mounted" — the exact `asked − answered` confusion the runtime layer was fixed
+ * for in §1a.
+ */
+function renderNested(nested: ContextNestedComponent, parentName: string): string {
+  const instances = nested.instanceIds.map((id) => `\`${id}\``).join(', ');
+  const lines = [
+    `### Inside ${nested.name}`,
+    `This is what the ${nested.instanceIds.length === 1 ? 'instance' : 'instances'} ${instances} in ` +
+      `${parentName} ${nested.instanceIds.length === 1 ? 'is' : 'are'} made of. These nodes live in ` +
+      `${nested.name}, not in ${parentName}; a citation to one navigates the reader into that component.`,
+    `${nested.nodeCount} node(s) in total, ${nested.nodes.length} shown.`
+  ];
+  if (nested.description) lines.push(`description, written by the author: ${nested.description}`);
+
+  // 🔴 The empty cases are stated, never left to inference. Measured on the §1c
+  // drive: given a *complete* two-node interior with no interface, the model
+  // still wrote "this is only a 2-node, bounded read … I can't rule out the
+  // component having its own Inputs defined elsewhere". Both facts were in the
+  // context — as two numbers to compare, and as a line that was simply absent.
+  // A reader cannot tell "no inputs" from "inputs not included", so it hedged,
+  // and the hedge was false. Same rule as §1a's no-preview branch: an absence
+  // that has to be derived gets derived wrongly.
+  lines.push(
+    nested.inputPorts.length
+      ? `it takes in: ${nested.inputPorts.join(', ')}`
+      : `it takes nothing in: it has no Component Inputs ports at all.`
+  );
+  lines.push(
+    nested.outputPorts.length
+      ? `it gives out: ${nested.outputPorts.join(', ')}`
+      : `it gives nothing out: it has no Component Outputs ports at all.`
+  );
+  lines.push(
+    nested.nodesOmitted > 0
+      ? `${nested.nodesOmitted} of its nodes are not shown; do not describe what they do.`
+      : `That is the whole component — nothing inside it was left out of this read.`
+  );
+
+  lines.push('', ...nested.nodes.map((node) => renderNode(node)));
+
+  if (nested.connections.length) {
+    lines.push('', `Wires inside ${nested.name}:`, ...renderConnections(nested.connections));
+  }
   return lines.join('\n');
 }
 
@@ -60,9 +163,17 @@ function renderType(type: ContextNodeType): string {
   return lines.join('\n');
 }
 
-/** Serialise the assembled context and record its size on `context.stats`. */
-export function renderContext(context: ExplainContext): string {
+/**
+ * Serialise the assembled context and record its size on `context.stats`.
+ *
+ * `runtime` is optional and its absence is meaningful: no snapshot renders no
+ * Runtime section at all, which is exactly the pre-FIX-001 output. A caller with
+ * no way to reach a preview (the MCP assembler, the measurement harness) is
+ * therefore unchanged, and no prompt claims a value it was never given.
+ */
+export function renderContext(context: ExplainContext, runtime?: RuntimeSnapshot): string {
   const sections: string[] = [];
+  const values = runtime ? runtimeIndex(runtime) : undefined;
 
   const shape = context.component;
   const overview = [
@@ -70,6 +181,10 @@ export function renderContext(context: ExplainContext): string {
     `name: ${shape.name}`,
     `${shape.nodeCount} nodes, ${shape.connectionCount} connections`
   ];
+  // LEG-003 §2. The author's own sentence about their component, marked as
+  // theirs so the model treats it as evidence rather than as something to
+  // restate. The panel shows it verbatim above the answer either way.
+  if (shape.description) overview.push(`description, written by the author: ${shape.description}`);
   if (shape.inputPorts.length) overview.push(`component inputs: ${shape.inputPorts.join(', ')}`);
   if (shape.outputPorts.length) overview.push(`component outputs: ${shape.outputPorts.join(', ')}`);
   if (context.scope === 'component' && shape.typeCounts.length) {
@@ -86,24 +201,50 @@ export function renderContext(context: ExplainContext): string {
       `## Nodes`,
       `Every node below is identified by its id in backticks. Roles: [upstream] feeds the selection,`,
       `[downstream] is fed by it, [container] is a parent or child in the visual hierarchy.`,
+      ...(values
+        ? [
+            `A line reading \`[now = …]\` is the value the running app holds for that input at this`,
+            `moment; the value before it is what the user authored. They differ legitimately.`
+          ]
+        : []),
       '',
-      context.nodes.map(renderNode).join('\n')
+      context.nodes.map((node) => renderNode(node, values)).join('\n')
     ].join('\n')
   );
 
   if (context.connections.length) {
-    const lines = context.connections.map((c) => {
-      const arrow = c.isSignal ? '⇒ (signal)' : '→';
-      return `- \`${c.fromId}\`.${c.fromProperty} ${arrow} \`${c.toId}\`.${c.toProperty}`;
-    });
-    sections.push(`## Connections\n${lines.join('\n')}`);
+    sections.push(`## Connections\n${renderConnections(context.connections).join('\n')}`);
   } else {
     sections.push(`## Connections\n(none between the nodes shown)`);
+  }
+
+  // FIX-001 §1c. After the parent's own nodes and wires, because it answers a
+  // question the reader only has once they have those: "and what does that
+  // instance actually do with what I send it".
+  if (context.nested?.length) {
+    sections.push(
+      [
+        `## Inside the component instances that were selected`,
+        `A component instance is a whole other component placed in this graph. The reader selected`,
+        `${context.nested.length === 1 ? 'one' : String(context.nested.length)}, so ${
+          context.nested.length === 1 ? 'its' : 'their'
+        } interior follows. No current values were read for any node below,`,
+        `whatever the Runtime section says — those nodes were never asked about, which is not the`,
+        `same as their being unmounted.`,
+        '',
+        context.nested.map((n) => renderNested(n, context.component.name)).join('\n\n')
+      ].join('\n')
+    );
   }
 
   if (context.nodeTypes.length) {
     sections.push(`## Node types in this context\n${context.nodeTypes.map(renderType).join('\n')}`);
   }
+
+  // FIX-001 §1a. Last of the evidence sections and immediately before the bounds
+  // note, so "here is what is true now" and "here is what you cannot see" are
+  // read together — they are the two halves of the same honesty instruction.
+  if (runtime) sections.push(renderRuntime(context, runtime));
 
   if (context.bounds.truncated) {
     sections.push(

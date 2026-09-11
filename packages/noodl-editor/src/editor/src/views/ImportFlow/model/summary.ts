@@ -8,16 +8,21 @@
  * between the model changes (one undo step) and the file writes (not undoable).
  *
  * @module noodl-editor/views/ImportFlow/model/summary
- */ import {
-  reportSummaryLine,
-  type ImportPlan,
-  type ImportReport,
-  type ImportResult,
-  type PlannedItem
-} from '@noodl-utils/import-engine';
+ */
+// CMP-008: the VALUE import is taken from `legacy/report` directly rather than
+// from the engine's barrel, and the difference is which runner can grade this
+// file. The barrel re-exports `apply.ts`, which reaches `ProjectModel` and the
+// undo queue, so importing `reportSummaryLine` through it dragged the whole
+// renderer in and put `summarizeResult` out of reach of the plain-Node runner —
+// leaving the hop from an engine warning to the result screen graded by nothing
+// short of starting Electron. `legacy/report` imports only its own types.
+import { reportSummaryLine } from '@noodl-utils/import-engine/legacy/report';
+import type { ImportPlan, ImportReport, ImportResult, PlannedItem } from '@noodl-utils/import-engine';
 
 import { CATEGORY_NOUN, ItemCategory, splitPath } from './items';
-import { PlannedStatus } from './selection';
+// `import type`: `selection.ts` has a value import of its own (`deriveInventory`),
+// so a plain import here would re-open the door this file just closed.
+import type { PlannedStatus } from './selection';
 
 const isActive = (item: { policy: { action: string } }) => item.policy.action !== 'skip';
 

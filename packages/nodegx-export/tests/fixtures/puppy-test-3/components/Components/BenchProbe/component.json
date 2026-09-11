@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f7585e21-581f-4fda-8433-efabb50a30df",
+  "name": "BenchProbe",
+  "path": "/Components/BenchProbe",
+  "type": "visual",
+  "modified": "2026-08-11T14:07:54.362Z",
+  "metadata": {
+    "bench.scenarios": {
+      "scenarios": [
+        {
+          "name": "Loaded",
+          "inputs": {
+            "Title": "Rex the beagleRex the beagle II",
+            "Start": 7,
+            "Big": true
+          },
+          "frame": {
+            "width": 768
+          },
+          "stretch": false
+        },
+        {
+          "name": "Empty",
+          "inputs": {},
+          "frame": {
+            "width": 768
+          },
+          "stretch": false
+        },
+        {
+          "name": "Narrow",
+          "inputs": {
+            "Title": "Narrow state"
+          },
+          "frame": {
+            "width": 360
+          },
+          "stretch": false
+        },
+        {
+          "name": "Blue centred",
+          "inputs": {
+            "Title": "Adoption day",
+            "Start": 42,
+            "Big": true,
+            "Align": "center",
+            "Accent": "var(--blue-500)"
+          },
+          "frame": {
+            "width": 320
+          },
+          "stretch": false
+        },
+        {
+          "name": "Plain wide",
+          "inputs": {
+            "Title": "Plain and wide",
+            "Start": 42,
+            "Big": true,
+            "Align": "center",
+            "Accent": "var(--blue-500)"
+          },
+          "frame": {
+            "width": 768
+          },
+          "stretch": false
+        }
+      ]
+    }
+  }
+}

@@ -21,7 +21,7 @@ import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 import { WorkflowEditorService } from '@noodl-models/workflow/WorkflowEditorService';
 import { PORT_PARAM_MAPPING } from '@noodl-models/workflow/workflowPorts';
 
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 import { ConditionEditor } from '../components/WorkflowCondition/ConditionEditor';
 import { FunctionRefRow } from '../components/WorkflowCondition/FunctionRefRow';

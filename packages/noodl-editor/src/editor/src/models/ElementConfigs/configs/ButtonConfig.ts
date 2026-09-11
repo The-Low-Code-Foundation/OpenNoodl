@@ -85,7 +85,11 @@ export const ButtonConfig: ElementConfig = {
       backgroundColor: 'transparent',
       color: 'var(--foreground)',
       borderWidth: 'var(--border-1)',
-      borderColor: 'var(--border)',
+      // DEF-001: the third control on the same 1.23:1 edge, and its `hover` was worse still —
+      // `--border` over `--accent` bottoms out at **1.04:1** in `soft`, because the hover tint and
+      // the hairline are neighbours on the same scale. `--border-control` clears 3:1 over both
+      // `--background` and `--accent` in every preset.
+      borderColor: 'var(--border-control)',
       borderStyle: 'solid',
       states: {
         hover: { backgroundColor: 'var(--accent)', color: 'var(--accent-foreground)' },
@@ -114,16 +118,16 @@ export const ButtonConfig: ElementConfig = {
       }
     },
 
+    // No `textDecoration` port on this node, so the underline-on-hover this
+    // variant described never rendered. Dropped rather than left claiming it;
+    // the variant is now the colour and the absent chrome, which is the part
+    // that always worked.
     link: {
       backgroundColor: 'transparent',
       color: 'var(--primary)',
       borderWidth: '0',
-      textDecoration: 'none',
       paddingLeft: '0',
-      paddingRight: '0',
-      states: {
-        hover: { textDecoration: 'underline' }
-      }
+      paddingRight: '0'
     }
   }
 };

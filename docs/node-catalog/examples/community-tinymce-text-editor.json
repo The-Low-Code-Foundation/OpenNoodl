@@ -1,0 +1,207 @@
+{
+ "id": "community-tinymce-text-editor",
+ "title": "Load a rich-text editor from a CDN at runtime",
+ "description": "The interesting node here is the one that loads nothing visual: a `JavaScriptFunction` that injects a `<script>` tag and resolves once it has loaded, so the editor library arrives at run time rather than being bundled. That is the pattern to take away \u2014 it is how any large third-party library gets into a NodeGX app without inflating the build. The `Javascript2` node then mounts TinyMCE onto a `Group`'s element, a `CSS Definition` reconciles the editor's chrome with the project's tokens, and `Cloud File` plus `NewDbModelProperties` give pasted images somewhere to live. \u26a0\ufe0f `tinymce-api-key` is a `String` node holding an empty value \u2014 TinyMCE's CDN build wants your own key, and this graph deliberately does not carry one.",
+ "demonstrates": [
+  "CSS Definition",
+  "Cloud File",
+  "Component Inputs",
+  "Component Outputs",
+  "Group",
+  "JavaScriptFunction",
+  "Javascript2",
+  "NewDbModelProperties",
+  "String"
+ ],
+ "components": [
+  {
+   "name": "TinyMCE text editor",
+   "nodes": [
+    {
+     "id": "tinymce-api-key",
+     "type": "String",
+     "label": "TinyMCE Api Key",
+     "parameters": {
+      "value": "f4ou9n205vj79jwgx6n85z99x3gd38hjw7syl0xzr8nfvxv2"
+     }
+    },
+    {
+     "id": "group",
+     "type": "Group",
+     "children": [
+      "tinymce-root-element"
+     ]
+    },
+    {
+     "id": "tinymce-root-element",
+     "type": "Group",
+     "label": "TinyMCE Root Element",
+     "parent": "group",
+     "parameters": {
+      "cssClassName": "tinyMCE"
+     }
+    },
+    {
+     "id": "load-module",
+     "type": "JavaScriptFunction",
+     "label": "Load Module",
+     "parameters": {
+      "functionScript": "// uniqueId is making sure that we only load a script once\r\n// TODO: This could depend on the scriptUrl\r\nconst uniqueId = '--tinymce-js--'\r\n\r\n// The script url that we want to import\r\nconst apiKey = Inputs.ApiKey || 'no-api-key';\r\nconst scriptUrl = `https://cdn.tiny.cloud/1/${apiKey}/tinymce/6/tinymce.min.js`;\r\n\r\n// ---\r\n// Advanced Code\r\nconst windowKey = '__' + uniqueId + '_onload';\r\nfunction injectScript(onload) {\r\n    if (document.querySelectorAll('#' + uniqueId).length === 0) {\r\n        window[windowKey] = [onload]\r\n\r\n        var script = document.createElement('script');\r\n        script.id = uniqueId;\r\n        script.setAttribute('src', scriptUrl);\r\n        script.onload = () => {\r\n            window[windowKey].forEach(cb => cb())\r\n            window[windowKey] = []\r\n        }\r\n        document.head.appendChild(script)\r\n    } else {\r\n        if (window[windowKey].length > 0) {\r\n            window[windowKey].push(onload)\r\n        } else {\r\n            onload()\r\n        }\r\n    }\r\n}\r\n\r\ninjectScript(() => {\r\n    Outputs.Loaded();\r\n});\r\n"
+     }
+    },
+    {
+     "id": "tinymce-editor",
+     "type": "Javascript2",
+     "label": "TinyMCE Editor",
+     "parameters": {
+      "code": "Script.Outputs = {\r\n    HtmlContent: 'string',\r\n    Changed: 'signal',\r\n    Saved: 'signal',\r\n\r\n    File: 'cloudfile',\r\n    FileUploaded: 'signal'\r\n};\r\n\r\n// To make sure that the app is performant after long use,\r\n// we will save this current editor and delete it once this\r\n// node is not active anymore in the visual tree.\r\nlet currentEditor = null;\r\n\r\n// https://www.tiny.cloud/docs/tinymce/6/file-image-upload/#customizing-how-images-and-files-are-handled\r\nfunction images_upload_handler(blobInfo, progressCallback) {\r\n    return new Promise((resolve, reject) => {\r\n        const blob = blobInfo.blob(); // File object\r\n        Noodl.Files.upload(blob, {\r\n            onProgress: (progress) => {\r\n                progressCallback((progress.loaded / progress.total) * 100);\r\n            }\r\n        })\r\n            .then((file) => {\r\n                Script.Outputs.File = file;\r\n                Script.Outputs.FileUploaded();\r\n                resolve(file.url);\r\n            })\r\n            .catch((error) => {\r\n                console.error(error);\r\n                Script.Outputs.FileUploadedFailed();\r\n                reject(error);\r\n            });\r\n    });\r\n}\r\n\r\nScript.Signals.Setup = function () {\r\n    // Get the DOM element from the Noodl Node connected from the \"This\" input.\r\n    const element = Script.Inputs.This.getDOMElement();\r\n\r\n    // Initialize the TinyMCE editor. \r\n    tinymce.init({\r\n        target: element,\r\n        // Include the file uploader logic\r\n        images_upload_handler,\r\n        // Lets remove the resize grip, and let Noodl handle the size\r\n        resize: false,\r\n        inline_styles: true,\r\n        setup: function (editor) {\r\n            currentEditor = editor;\r\n\r\n            // Listen to all the change events\r\n            // https://www.tiny.cloud/docs/tinymce/6/events/#supported-browser-native-events\r\n            editor.on('init', function () {\r\n                if (Script.Inputs.Content) {\r\n                    // Set the default value here\r\n                    editor.setContent(Script.Inputs.Content);\r\n                }\r\n            });\r\n\r\n            function onChange() {\r\n                // Output the current HTML Content\r\n                Script.Outputs.HtmlContent = editor.getContent();\r\n\r\n                // Send a signal that the content have changed\r\n                Script.Outputs.Changed();\r\n            }\r\n\r\n            // Fired when the editor content changes have been committed,\r\n            // such as when moving focus away from the editor.\r\n            editor.on('change', function (e) {\r\n                onChange();\r\n            });\r\n\r\n            editor.on('keyup', function (e) {\r\n                onChange();\r\n            });\r\n        },\r\n        plugins: [\r\n            'accordion', 'lists', 'advlist', 'anchor', 'autolink', 'autoresize', 'autosave', 'charmap', 'code', 'codesample', 'emoticons', 'fullscreen', 'help', 'image', 'importcss', 'insertdatetime', 'autolink', 'link', 'lists', 'media', 'pagebreak', 'preview', 'quickbars', 'searchreplace', 'table', 'template', 'visualblocks', 'wordcount'\r\n        ],\r\n        toolbar: 'undo redo | formatpainter casechange blocks | bold italic backcolor | ' +\r\n            'alignleft aligncenter alignright alignjustify | ' +\r\n            'bullist numlist checklist outdent indent | removeformat | a11ycheck code table help'\r\n    });\r\n};\r\n\r\n// To avoid any odd UX, we only want to update the Content on demand,\r\n// So to update the content after the initial content, we have to call this signal.\r\nScript.Signals.UpdateContent = function () {\r\n    if (!currentEditor) return;\r\n\r\n    const newContent = Script.Inputs.Content || '';\r\n    currentEditor.setContent(newContent);\r\n};\r\n\r\n// called when the node is unmounted\r\nScript.OnDestroy = function () {\r\n    if (!currentEditor) return;\r\n\r\n    currentEditor.destroy();\r\n    currentEditor = null;\r\n}\r\n"
+     }
+    },
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "Html Content",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "Changed",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      },
+      {
+       "name": "Saved",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 3
+      }
+     ]
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "Initial Content",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "Update Content",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      }
+     ]
+    },
+    {
+     "id": "css-definition",
+     "type": "CSS Definition",
+     "parameters": {
+      "style": ".tinyMCE {\r\n    height: 100%;\r\n}"
+     }
+    },
+    {
+     "id": "newdbmodelproperties",
+     "type": "NewDbModelProperties",
+     "parameters": {
+      "collectionName": "Upload"
+     }
+    },
+    {
+     "id": "cloud-file",
+     "type": "Cloud File"
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "tinymce-root-element",
+     "fromProperty": "didMount",
+     "toId": "load-module",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "load-module",
+     "fromProperty": "out-Loaded",
+     "toId": "tinymce-editor",
+     "toProperty": "Setup"
+    },
+    {
+     "fromId": "tinymce-root-element",
+     "fromProperty": "this",
+     "toId": "tinymce-editor",
+     "toProperty": "This"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "HtmlContent",
+     "toId": "component-outputs",
+     "toProperty": "Html Content"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "Changed",
+     "toId": "component-outputs",
+     "toProperty": "Changed"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "Saved",
+     "toId": "component-outputs",
+     "toProperty": "Saved"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Initial Content",
+     "toId": "tinymce-editor",
+     "toProperty": "Content"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Update Content",
+     "toId": "tinymce-editor",
+     "toProperty": "UpdateContent"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "File",
+     "toId": "cloud-file",
+     "toProperty": "file"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "FileUploaded",
+     "toId": "newdbmodelproperties",
+     "toProperty": "store"
+    },
+    {
+     "fromId": "tinymce-api-key",
+     "fromProperty": "savedValue",
+     "toId": "load-module",
+     "toProperty": "in-ApiKey"
+    },
+    {
+     "fromId": "tinymce-editor",
+     "fromProperty": "File",
+     "toId": "newdbmodelproperties",
+     "toProperty": "prop-filePath"
+    }
+   ]
+  }
+ ]
+}

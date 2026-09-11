@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "4f5c2adb-068c-5a26-863a-ab66de012c6b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs-2",
+      "fromProperty": "title",
+      "toId": "rowTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-2",
+      "fromProperty": "body",
+      "toId": "firstLine",
+      "toProperty": "in-body"
+    },
+    {
+      "fromId": "firstLine",
+      "fromProperty": "out-line",
+      "toId": "rowExcerpt",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-2",
+      "fromProperty": "postedAt",
+      "toId": "when",
+      "toProperty": "in-postedAt"
+    },
+    {
+      "fromId": "when",
+      "fromProperty": "out-label",
+      "toId": "rowDate",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-2",
+      "fromProperty": "id",
+      "toId": "goDetail",
+      "toProperty": "pm-announcementId"
+    },
+    {
+      "fromId": "readButton",
+      "fromProperty": "onClick",
+      "toId": "goDetail",
+      "toProperty": "navigate"
+    }
+  ]
+}

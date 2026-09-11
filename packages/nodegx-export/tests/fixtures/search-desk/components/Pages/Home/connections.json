@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5ea4c1d3-7b2e-4c8a-9d1f-000000000058",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "query",
+      "fromProperty": "items",
+      "toId": "filter",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "searchInput",
+      "fromProperty": "onTextChanged",
+      "toId": "searchVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "searchVar",
+      "fromProperty": "value",
+      "toId": "filter",
+      "toProperty": "fp-search"
+    },
+    {
+      "fromId": "filter",
+      "fromProperty": "items",
+      "toId": "contactList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "filter",
+      "fromProperty": "count",
+      "toId": "countText",
+      "toProperty": "text"
+    }
+  ]
+}

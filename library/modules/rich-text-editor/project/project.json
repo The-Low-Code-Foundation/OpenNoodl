@@ -1,0 +1,77 @@
+{
+    "name": "Rich Text Editor Module",
+    "components": [
+        {
+            "name": "/Rich Text Demo",
+            "id": "7f3a91c2-4b6d-4e8a-9c15-2d80f6a1b394",
+            "graph": {
+                "connections": [],
+                "roots": [
+                    {
+                        "id": "a1c47e05-9d32-4f6b-8a70-513c9e2d84f1",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "backgroundColor": "var(--background)",
+                            "paddingLeft": { "value": 24, "unit": "px" },
+                            "paddingRight": { "value": 24, "unit": "px" },
+                            "paddingTop": { "value": 24, "unit": "px" },
+                            "paddingBottom": { "value": 24, "unit": "px" }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "b2d58f16-0e43-4a7c-9b81-624daf3e95a2",
+                                "type": "Text",
+                                "x": 40,
+                                "y": 60,
+                                "parameters": {
+                                    "text": "Rich Text Editor",
+                                    "color": "var(--foreground)",
+                                    "marginBottom": { "value": 8, "unit": "px" }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "c3e69027-1f54-4b8d-8c92-735eb04fa6b3",
+                                "type": "Text",
+                                "x": 40,
+                                "y": 120,
+                                "parameters": {
+                                    "text": "Type below — the node's HTML and Text outputs update on every edit, and the Changed signal fires.",
+                                    "color": "var(--muted-foreground)",
+                                    "marginBottom": { "value": 16, "unit": "px" }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "d4f70138-2a65-4c9e-9da3-846fc15ab7c4",
+                                "type": "nodegx.richtext",
+                                "x": 40,
+                                "y": 180,
+                                "parameters": {
+                                    "html": "<h2>Hello</h2><p>This is the <strong>Rich Text Editor</strong> node. Try the toolbar: <em>italic</em>, headings, lists, links, undo and redo.</p>",
+                                    "placeholder": "Write something…"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {
+    },
+    "version": "1",
+    "metadata": {
+    }
+}

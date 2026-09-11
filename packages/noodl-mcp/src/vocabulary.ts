@@ -25,7 +25,18 @@
  *   storage schema allows and this package therefore must not strip. (The editor
  *   solves the same problem the other way, by carrying those fields over from the
  *   base node; see `CARRIED_NODE_FIELDS`.) A connection has exactly four fields
- *   and an unknown fifth is a mistake worth reporting.
+ *   an agent may *author*, and an unknown fifth is a mistake worth reporting.
+ *
+ *   ⚠️ **That last sentence used to end at "four fields", and by SIG-007 it was
+ *   false in a way that lost data.** A connection has four *authorable* fields
+ *   and, on disk, three more it does not: `label`, `labelT` (CAN-001/CAN-002)
+ *   and `anchors` (SIG-007's hand-drawn routing). Because zod's default is
+ *   **strip** rather than reject, read-modify-write silently returned graphs
+ *   with all three gone — the schema was not reporting the mistake it claimed
+ *   to. The rule is kept as written, because an agent still has no business
+ *   authoring where a wire bends and the schema surface is already 27k tokens a
+ *   turn; the three fields are **carried over from the baseline** instead. See
+ *   `carryConnectionPresentation` in `tools/author.ts`.
  * - **`parameters` is `z.record(z.unknown())`**, not a bare object: parameter
  *   values are validated by the shared gate (AIB-001), not by the tool schema.
  */
@@ -33,6 +44,7 @@
 import { z } from 'zod';
 
 import {
+  AUTHORED_COMMENT_FIELD,
   AUTHORED_CONNECTION_FIELDS,
   AUTHORED_NODE_FIELDS,
   AUTHORED_PAYLOAD_FIELDS,
@@ -88,6 +100,20 @@ export function zodForField(field: VocabField, nested: Nested = {}): z.ZodTypeAn
   return description ? schema.describe(description) : schema;
 }
 
+/**
+ * LEG-001 — the `comment` argument on its own, rendered from the same row
+ * `nodeSchema` renders, for the one place that needs it outside a whole node:
+ * `update_node.set`. Re-deriving it there would be a second copy of the sentence,
+ * which is the exact failure this module exists to prevent — and the throw is a
+ * tripwire, because a `comment` row deleted from the table must not leave a delta
+ * door quietly describing a field the doors no longer share.
+ */
+export const NODE_COMMENT_ARG: z.ZodTypeAny = (() => {
+  const field = AUTHORED_NODE_FIELDS.find((f) => f.name === AUTHORED_COMMENT_FIELD);
+  if (!field) throw new Error('The authoring vocabulary declares no `comment` field on a node (LEG-001).');
+  return zodForField(field);
+})();
+
 /** A record of zod types, keyed by field name — what `registerTool` takes. */
 export function zodShapeFor(fields: readonly VocabField[], nested: Nested = {}): Record<string, z.ZodTypeAny> {
   const shape: Record<string, z.ZodTypeAny> = {};
@@ -129,6 +155,11 @@ type NodeShape = {
   id: Opt<z.ZodString>;
   type: z.ZodString;
   label: Opt<z.ZodString>;
+  // LEG-001. Flat here, `metadata.comment` on disk — `foldNodeComment` in
+  // `tools/author.ts` and `graph.ts` does the mapping, so a caller never names
+  // the bag. Declared in the shape type for the reason the block above gives:
+  // without it the write handlers' inferred argument type loses the field.
+  comment: Opt<z.ZodString>;
   x: Opt<z.ZodNumber>;
   y: Opt<z.ZodNumber>;
   parent: Opt<z.ZodString>;

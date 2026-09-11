@@ -1,0 +1,39 @@
+// @nodegx:generated (api module — provenance markers complete in EXP-007)
+import { create, query, update } from './client';
+
+export interface Puppy {
+  id: string;
+  name?: string;
+  breed?: string;
+  age?: string;
+  available?: boolean;
+  description?: string;
+  photo?: string;
+}
+
+/**
+ * Source: "Query available puppies" (DbCollection2 `puppyQuery` on /Pages/Landing)
+ * Fetches the `Puppy` collection from the project's NodeGX backend
+ * (src/api/client.ts); the export report lists every call site.
+ */
+export async function fetchPuppies(): Promise<Puppy[]> {
+  return query<Puppy>('Puppy');
+}
+
+/**
+ * Source: "Create Puppy" (NewDbModelProperties `createRecord` on /Pages/Admin)
+ * Creates a record in the `Puppy` collection on the project's NodeGX backend.
+ * A failed request throws, which is what the graph's Failure path already handles.
+ */
+export async function createPuppy(data: Partial<Puppy>): Promise<Puppy> {
+  return create<Puppy>('Puppy', data);
+}
+
+/**
+ * Source: "Update Puppy" (SetDbModelProperties `updateRecord` on /Pages/Admin)
+ * Updates a record in the `Puppy` collection on the project's NodeGX backend.
+ * A failed request throws, which is what the graph's Failure path already handles.
+ */
+export async function updatePuppy(id: string, data: Partial<Puppy>): Promise<Puppy> {
+  return update<Puppy>('Puppy', id, data);
+}

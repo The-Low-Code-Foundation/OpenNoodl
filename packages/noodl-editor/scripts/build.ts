@@ -1,5 +1,6 @@
 import { execSync } from 'child_process';
 
+import { withHeapCeiling } from './webpackHeapCeiling';
 import { valueToBoolean } from '../../../scripts/helper';
 import { BuildTarget, getDistPlatform } from './platform/build-platforms';
 
@@ -26,7 +27,7 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   console.log("--- Run webpack 'webpack.renderer.production.js' ...");
   execSync('npx webpack --config=webpackconfigs/webpack.renderer.production.js', {
     stdio: 'inherit',
-    env: process.env
+    env: withHeapCeiling(process.env)
   });
   console.log('--- done!');
 
@@ -34,7 +35,7 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   console.log("--- Run webpack 'webpack.main.production.js' ...");
   execSync('npx webpack --config=webpackconfigs/webpack.main.production.js', {
     stdio: 'inherit',
-    env: process.env
+    env: withHeapCeiling(process.env)
   });
   console.log('--- done!');
 
@@ -108,7 +109,13 @@ import { BuildTarget, getDistPlatform } from './platform/build-platforms';
   //
   // A mac certificate is mac material and a Windows certificate is Windows
   // material; neither is a fallback for the other. This makes that true.
-  const MAC_ONLY = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER'];
+  // ⚠️ `CSC_KEYCHAIN` and `CSC_NAME` are mac material for the same reason the
+  // rest of this list is: release.yml prepares a signing keychain on the darwin
+  // legs (see its "Prepare the signing keychain" step) and hands the path and
+  // identity down through GITHUB_ENV. They are set only on those legs today, so
+  // dropping them elsewhere changes nothing — it keeps the rule true rather than
+  // relying on the workflow to keep being careful.
+  const MAC_ONLY = ['CSC_LINK', 'CSC_KEY_PASSWORD', 'CSC_KEYCHAIN', 'CSC_NAME', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER'];
   const WIN_ONLY = ['WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD'];
   const foreign = target.platform === 'darwin' ? WIN_ONLY : target.platform === 'win32' ? MAC_ONLY : [...MAC_ONLY, ...WIN_ONLY];
   const dropped = foreign.filter((key) => env[key] !== undefined);

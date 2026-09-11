@@ -1,0 +1,362 @@
+{
+ "id": "community-web-rtc-video-record",
+ "title": "Record video from the camera and store the result",
+ "description": "The same shape as the audio recorder and worth reading beside it, because what the two have in common is the part that generalises: ask for the device, gate every control on the answer, let one `Javascript2` node own the `MediaRecorder`, and convert the finished `Blob` before anything tries to store it. Video adds the preview problem \u2014 you need a live `<video>` element while recording and a playable one afterwards \u2014 which is why a Custom HTML node holds the player rather than an `Image`. \u26a0\ufe0f `getUserMedia` requires a secure origin: this works on `localhost` and over HTTPS and fails on a plain-HTTP deploy, which is a deployment fault that presents as a permission one.",
+ "demonstrates": [
+  "Component Inputs",
+  "Component Outputs",
+  "Expression",
+  "Group",
+  "Inverter",
+  "JavaScriptFunction",
+  "Javascript2",
+  "NewDbModelProperties",
+  "States",
+  "Text",
+  "module.inlineHtml",
+  "net.noodl.controls.button"
+ ],
+ "components": [
+  {
+   "name": "Web RTC video record",
+   "nodes": [
+    {
+     "id": "video-recorder-prefab",
+     "type": "Group",
+     "label": "Video recorder prefab",
+     "parameters": {
+      "flexDirection": "column",
+      "sizeMode": "contentSize"
+     },
+     "children": [
+      "recording-buttons-group",
+      "video-player-preview"
+     ]
+    },
+    {
+     "id": "recording-buttons-group",
+     "type": "Group",
+     "label": "Recording buttons group",
+     "parent": "video-recorder-prefab",
+     "parameters": {
+      "flexDirection": "row",
+      "sizeMode": "contentSize",
+      "columnGap": "var(--space-5)",
+      "marginBottom": "var(--space-5)",
+      "alignX": "center"
+     },
+     "children": [
+      "record-button",
+      "seconds-counter",
+      "stop-button"
+     ]
+    },
+    {
+     "id": "record-button",
+     "type": "net.noodl.controls.button",
+     "label": "Record button",
+     "parent": "recording-buttons-group",
+     "parameters": {
+      "label": "Start recording"
+     }
+    },
+    {
+     "id": "seconds-counter",
+     "type": "Text",
+     "label": "Seconds counter",
+     "parent": "recording-buttons-group",
+     "parameters": {
+      "sizeMode": "contentSize",
+      "color": "Black",
+      "alignY": "center"
+     }
+    },
+    {
+     "id": "stop-button",
+     "type": "net.noodl.controls.button",
+     "label": "Stop button",
+     "parent": "recording-buttons-group",
+     "parameters": {
+      "label": "Stop"
+     }
+    },
+    {
+     "id": "video-player-preview",
+     "type": "module.inlineHtml",
+     "label": "Video player preview",
+     "parent": "video-recorder-prefab",
+     "parameters": {
+      "html": " <video width=\"320\" height=\"240\" controls>\n  <source src={{videoURL}} type=\"video/webm\">\nYour browser does not support the video tag.\n</video> "
+     }
+    },
+    {
+     "id": "video-recorder-script",
+     "type": "Javascript2",
+     "label": "Video recorder script",
+     "parameters": {
+      "code": "// Check if the browser supports the getUserMedia API\nconst getUserMedia = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)) \n  || (navigator.webkitGetUserMedia && navigator.webkitGetUserMedia.bind(navigator))\n  || (navigator.mozGetUserMedia && navigator.mozGetUserMedia.bind(navigator))\n  || (navigator.msGetUserMedia && navigator.msGetUserMedia.bind(navigator));\n\nif (!getUserMedia) {\n  console.log(\"getUserMedia API not supported.\");\n  Script.Outputs.Failure();\n  return;\n}\n\n// Create a new MediaRecorder instance\nlet mediaRecorder;\nlet chunks = [];\n\n// Add promise variables here\nlet resolveDataAvailable;\nlet dataAvailablePromise = new Promise(resolve => {\n  resolveDataAvailable = resolve;\n});\n\n// Start recording video\nScript.Signals.start = async function () {\n  try {\n    const stream = await getUserMedia({ audio: true, video: true });\n    mediaRecorder = new MediaRecorder(stream);\n    console.log(\"Started recording...\");\n\n    // Create a new Promise for each recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n\n    mediaRecorder.addEventListener('dataavailable', (event) => {\n      chunks.push(event.data);\n      console.log(\"Data available:\", event.data); // Log the data chunks\n      resolveDataAvailable(); // Resolve the promise\n    });\n\n    mediaRecorder.addEventListener('stop', () => {\n      console.log(\"Stopped recording...\");\n    });\n\n    mediaRecorder.start();\n    Script.Outputs.videoBlob = \"\";\n    Script.Outputs.videoUrl = \"\"; // Reset the video URL\n    Script.Outputs.recordingStarted();\n  } catch (error) {\n    console.log(\"Error:\", error); // Log the error\n    Script.Outputs.error = error;\n    Script.Outputs.Failure();\n  }\n};\n\n\n// Stop recording video\nScript.Signals.stop = async function() {\n  if (mediaRecorder && mediaRecorder.state === 'recording') {\n    mediaRecorder.stop();\n    // Wait for the dataavailable event\n    await dataAvailablePromise;\n    const blob = new Blob(chunks, { type: 'video/webm' });\n    console.log(\"Video blob:\", blob); // Log the blob\n\n    // Convert Blob to base64 string\n    const reader = new FileReader();\n    reader.readAsDataURL(blob);\n    reader.onloadend = function() {\n      const base64data = reader.result;\n      Script.Outputs.videoBlob = base64data; // Output the base64 string\n\n      // Create a URL for the blob\n      const url = URL.createObjectURL(blob);\n      Script.Outputs.videoUrl = url; // Output the URL\n\n      Script.Outputs.success();\n    }\n\n    chunks = []; // Clear the chunks array for future recordings\n    // Reset for the next recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n  }\n};\n"
+     }
+    },
+    {
+     "id": "check-if-camera-access-is-given",
+     "type": "JavaScriptFunction",
+     "label": "Check if camera access is given",
+     "parameters": {
+      "functionScript": "\nconst hasVideoAccess = Inputs.HasVideoAccess || false;\nconst hasMicrophoneAccess = Inputs.HasMicrophoneAccess || false;\n\nif (!hasVideoAccess || !hasMicrophoneAccess) {\n  navigator.mediaDevices.getUserMedia({ video: true, audio: true })\n    .then(() => {\n      Outputs.Success();\n    })\n    .catch((error) => {\n      Outputs.Error = error;\n      Outputs.Failure();\n    });\n} else {\n  Outputs.Success();\n}\n"
+     }
+    },
+    {
+     "id": "states",
+     "type": "States",
+     "parameters": {
+      "states": "Record,Please wait...,Recording...,Restart",
+      "values": "label,enabled",
+      "useTransitions": false,
+      "type-label": "string",
+      "value-Record-label": "Record",
+      "value-Please wait...-label": "Please wait...",
+      "value-Recording...-label": "Recording...",
+      "value-Restart-label": "Restart",
+      "type-enabled": "boolean",
+      "value-Record-enabled": true,
+      "value-Please wait...-enabled": false,
+      "value-Recording...-enabled": false,
+      "value-Restart-enabled": true,
+      "currentState": "Record"
+     }
+    },
+    {
+     "id": "inverter",
+     "type": "Inverter"
+    },
+    {
+     "id": "start-and-stop-seconds-counter",
+     "type": "Javascript2",
+     "label": "Start and stop seconds counter",
+     "parameters": {
+      "code": "let timerId;\nlet seconds = 0;\n\nScript.Signals.Start = async function () {\n  if (timerId) {\n    return;\n  }\n\n  seconds = 0; // Reset the seconds\n  Script.Outputs.Seconds = \"0:00\";\n\n  timerId = setInterval(() => {\n    seconds++;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }, 1000);\n}\n\nScript.Signals.Stop = async function () {\n  if (timerId) {\n    clearInterval(timerId);\n    timerId = null;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }\n}\n"
+     }
+    },
+    {
+     "id": "expression",
+     "type": "Expression",
+     "parameters": {
+      "expression": "seconds !=\"\" && seconds != null"
+     }
+    },
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "videoURL",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "uploadId",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      }
+     ]
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "assignmentId",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      }
+     ]
+    },
+    {
+     "id": "convert-blob-to-webm-file",
+     "type": "Javascript2",
+     "label": "Convert blob to webm file",
+     "parameters": {
+      "code": "Script.Inputs = {\n    VideoBlob: 'string' // This should be the base64 string of the video blob\n};\n\nScript.Outputs = {\n    FileUrl: 'string',\n    fileName: 'string',\n    Success: 'signal',\n    Error: 'string',\n    Failure: 'signal'\n};\n\n// Function to convert base64 data to Blob\nfunction base64ToBlob(base64, mimeType) {\n    const byteCharacters = atob(base64);\n    const byteNumbers = new Array(byteCharacters.length);\n    for (let i = 0; i < byteCharacters.length; i++) {\n        byteNumbers[i] = byteCharacters.charCodeAt(i);\n    }\n    const byteArray = new Uint8Array(byteNumbers);\n    \n    // Create blob object\n    const blob = new Blob([byteArray], {type: mimeType});\n    return blob;\n}\n\nScript.Signals.UploadVideo = async function () {\n    const videoDataUrl = Script.Inputs.VideoBlob;\n    if (!videoDataUrl) return;\n\n    const base64Data = videoDataUrl.split(',')[1]; // Extract the base64 data from the data URL\n    const blob = base64ToBlob(base64Data, 'video/webm'); // Convert base64 to Blob\n    const fileName = `video_${Date.now()}.webm`;\n    const file = new File([blob], fileName, { type: 'video/webm' }); // Create File object\n\n    console.log('File created:', file); // Log the created file\n\n    try {\n        const cloudFile = await Noodl.Files.upload(file, {\n            onProgress: (p) => {\n                console.log('Upload progress:', p.total, p.loaded); // Log the upload progress\n            },\n        });\n        console.log('File uploaded:', cloudFile); // Log the uploaded file\n\n        Script.Outputs.File = cloudFile;\n        Script.Outputs.FileUrl = cloudFile.url; // Assuming the URL is the file path\n        Script.Outputs.fileName = cloudFile.name;\n        Script.Outputs.Success();\n    } catch (error) {\n        console.error('Upload error:', error); // Log the error\n        Script.Outputs.Error = error;\n        Script.Outputs.Failure();\n    }\n};\n"
+     }
+    },
+    {
+     "id": "newdbmodelproperties",
+     "type": "NewDbModelProperties",
+     "parameters": {
+      "collectionName": "Upload"
+     }
+    },
+    {
+     "id": "expression-2",
+     "type": "Expression",
+     "parameters": {
+      "expression": "blob != \"\" && blob != null"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "video-recorder-script",
+     "toProperty": "start"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "video-recorder-script",
+     "toProperty": "stop"
+    },
+    {
+     "fromId": "video-recorder-prefab",
+     "fromProperty": "didMount",
+     "toId": "check-if-camera-access-is-given",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "states",
+     "fromProperty": "label",
+     "toId": "record-button",
+     "toProperty": "label"
+    },
+    {
+     "fromId": "states",
+     "fromProperty": "enabled",
+     "toId": "record-button",
+     "toProperty": "enabled"
+    },
+    {
+     "fromId": "record-button",
+     "fromProperty": "onClick",
+     "toId": "states",
+     "toProperty": "to-Please wait..."
+    },
+    {
+     "fromId": "video-recorder-script",
+     "fromProperty": "recordingStarted",
+     "toId": "states",
+     "toProperty": "to-Recording..."
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "states",
+     "toProperty": "to-Restart"
+    },
+    {
+     "fromId": "states",
+     "fromProperty": "enabled",
+     "toId": "inverter",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "inverter",
+     "fromProperty": "result",
+     "toId": "stop-button",
+     "toProperty": "enabled"
+    },
+    {
+     "fromId": "start-and-stop-seconds-counter",
+     "fromProperty": "Seconds",
+     "toId": "seconds-counter",
+     "toProperty": "text"
+    },
+    {
+     "fromId": "start-and-stop-seconds-counter",
+     "fromProperty": "Seconds",
+     "toId": "expression",
+     "toProperty": "seconds"
+    },
+    {
+     "fromId": "expression",
+     "fromProperty": "result",
+     "toId": "seconds-counter",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "video-recorder-script",
+     "fromProperty": "recordingStarted",
+     "toId": "start-and-stop-seconds-counter",
+     "toProperty": "Start"
+    },
+    {
+     "fromId": "stop-button",
+     "fromProperty": "onClick",
+     "toId": "start-and-stop-seconds-counter",
+     "toProperty": "Stop"
+    },
+    {
+     "fromId": "convert-blob-to-webm-file",
+     "fromProperty": "FileUrl",
+     "toId": "component-outputs",
+     "toProperty": "videoURL"
+    },
+    {
+     "fromId": "convert-blob-to-webm-file",
+     "fromProperty": "fileName",
+     "toId": "newdbmodelproperties",
+     "toProperty": "prop-name"
+    },
+    {
+     "fromId": "convert-blob-to-webm-file",
+     "fromProperty": "File",
+     "toId": "newdbmodelproperties",
+     "toProperty": "prop-filePath"
+    },
+    {
+     "fromId": "convert-blob-to-webm-file",
+     "fromProperty": "Success",
+     "toId": "newdbmodelproperties",
+     "toProperty": "store"
+    },
+    {
+     "fromId": "newdbmodelproperties",
+     "fromProperty": "id",
+     "toId": "component-outputs",
+     "toProperty": "uploadId"
+    },
+    {
+     "fromId": "video-recorder-script",
+     "fromProperty": "videoBlob",
+     "toId": "convert-blob-to-webm-file",
+     "toProperty": "VideoBlob"
+    },
+    {
+     "fromId": "video-recorder-script",
+     "fromProperty": "videoUrl",
+     "toId": "video-player-preview",
+     "toProperty": "prop-videoURL"
+    },
+    {
+     "fromId": "video-recorder-script",
+     "fromProperty": "videoBlob",
+     "toId": "expression-2",
+     "toProperty": "blob"
+    },
+    {
+     "fromId": "expression-2",
+     "fromProperty": "isTrueEv",
+     "toId": "convert-blob-to-webm-file",
+     "toProperty": "UploadVideo"
+    }
+   ]
+  }
+ ],
+ "requiresModules": [
+  {
+   "module": "custom-html",
+   "nodes": [
+    "module.inlineHtml"
+   ]
+  }
+ ]
+}

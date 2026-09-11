@@ -124,7 +124,7 @@ describe('provisionFromScope', () => {
     expect(spec?.name).toBe(DEFAULT_PROVISIONED_BACKEND_NAME);
   });
 
-  it('maps only field types it recognises, and never the backend\'s own columns', () => {
+  it('maps the field types it recognises, defaults the rest, and never takes the backend\'s own columns', () => {
     const spec = provisionFromScope(
       scopeWith({
         backend: {
@@ -138,8 +138,10 @@ describe('provisionFromScope', () => {
                 { name: 'unread', type: 'yes/no' },
                 { name: 'sentAt', type: 'timestamp' },
                 { name: 'score', type: 'number' },
-                // Unmapped: the backend infers it from the first record, which
-                // beats a createTable the schema manager refuses.
+                // Unmapped hints become String rather than vanishing: the column
+                // is what gives a Record node its `prop-*` ports, so dropping it
+                // leaves the authored UI unable to write the first record the old
+                // "the backend will infer it" reasoning depended on.
                 { name: 'mood', type: 'a vibe' },
                 { name: 'createdAt', type: 'date' }
               ]
@@ -152,7 +154,57 @@ describe('provisionFromScope', () => {
       { name: 'body', type: 'String' },
       { name: 'unread', type: 'Boolean' },
       { name: 'sentAt', type: 'Date' },
-      { name: 'score', type: 'Number' }
+      { name: 'score', type: 'Number' },
+      { name: 'mood', type: 'String' }
+    ]);
+  });
+
+  // The puppy-adoption regression: the conversation agreed a Puppy object with
+  // five fields, ARCHITECTURE.md listed all five, the pages wired `prop-name`,
+  // `prop-breed` and `prop-age` — and the provisioned table had no columns at
+  // all, because the object path passed `fields: undefined` and every bare name
+  // was then dropped for having no type hint. Both halves are needed: fixing
+  // only the first still yields zero columns.
+  it('provisions columns from a scope object, whose fields are prose', () => {
+    const spec = provisionFromScope(
+      scopeWith({
+        backend: { kind: 'nodegx', description: 'x' },
+        objects: [{ name: 'Puppy', fields: ['name', 'photo', 'breed', 'age', 'description'] }]
+      })
+    );
+    expect(spec?.collections).toEqual([
+      {
+        name: 'Puppy',
+        columns: [
+          { name: 'name', type: 'String' },
+          { name: 'photo', type: 'String' },
+          { name: 'breed', type: 'String' },
+          { name: 'age', type: 'String' },
+          { name: 'description', type: 'String' }
+        ]
+      }
+    ]);
+  });
+
+  it('reads the type hint out of a prose field, however it was written', () => {
+    const spec = provisionFromScope(
+      scopeWith({
+        backend: { kind: 'nodegx', description: 'x' },
+        objects: [
+          {
+            name: 'Book',
+            fields: ['title (text)', 'finished (yes/no)', 'published — date', 'pages: number', 'first-name']
+          }
+        ]
+      })
+    );
+    expect(spec?.collections[0].columns).toEqual([
+      { name: 'title', type: 'String' },
+      { name: 'finished', type: 'Boolean' },
+      { name: 'published', type: 'Date' },
+      { name: 'pages', type: 'Number' },
+      // A hyphenated name is one name, not a "first — name" split.
+      { name: 'firstname', type: 'String' }
     ]);
   });
 });

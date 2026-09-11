@@ -15,6 +15,7 @@
  * asserts it there (`cacheVerified`).
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { AUTHORING_EFFORT, AuthoringSession } from '../../src/editor/src/models/AiAssistant/authoring/AuthoringSession';
 import {
   initialUserMessage,
@@ -114,7 +115,7 @@ describe('AIX-007 cache breakpoints', () => {
     expect(params.system).toBe('Contract.');
     expect(breakpointCount(params)).toBe(0);
     // The boundary is a hint, not an instruction: the turn goes whole.
-    expect((params.messages as AnthropicRequestMessage[])[0].content).toBe(OPENING.content);
+    expect((params.messages as AnthropicRequestMessage[])[0].content).toBe(asText(OPENING.content));
   });
 
   it('splits the opening turn at its boundary and caches only the stable half', async () => {
@@ -127,7 +128,7 @@ describe('AIX-007 cache breakpoints', () => {
     expect(blocks[0].cache_control).toEqual({ type: 'ephemeral' });
     expect(blocks[1].text).toBe('VARIABLE TASK');
     // Splitting must not change what was sent, only how it is billed.
-    expect(String(blocks[0].text) + String(blocks[1].text)).toBe(OPENING.content);
+    expect(String(blocks[0].text) + String(blocks[1].text)).toBe(asText(OPENING.content));
   });
 
   it('marks the newest turn, so the next request can read this one', async () => {
@@ -177,7 +178,7 @@ describe('AIX-007 cache breakpoints', () => {
     // worth keeping; the last turn falls back to unsplit content.
     expect(Array.isArray(out.messages[0].content)).toBe(true);
     expect(Array.isArray(out.messages[1].content)).toBe(true);
-    expect(out.messages[2].content).toBe(turns[2].content);
+    expect(out.messages[2].content).toBe(asText(turns[2].content));
   });
 
   it('never exceeds the four-breakpoint cap, which the API rejects outright', async () => {

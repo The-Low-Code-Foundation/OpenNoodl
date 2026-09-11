@@ -85,6 +85,23 @@ const PLACEHOLDER = '{{*}}';
 const _condFuncCache: Record<string, (params: unknown) => unknown> = {};
 
 /**
+ * Split a `<param> <op> <value> [AND|OR …]` condition into its words.
+ *
+ * Exported so {@link evaluateDynamicPortsCondition} and FB-021's
+ * `portGateReason.ts` read one condition the same way. They ask different
+ * questions of it — *"is this true?"* and *"what would make it true?"* — and a
+ * port whose row explains itself with a clause the evaluator never saw is worse
+ * than no explanation at all. One tokenizer is the cheapest way to make that
+ * disagreement impossible; the header above says the same thing about
+ * `conditionalports/*` and `namedports/list` sharing one evaluator.
+ *
+ * Whitespace-separated, single quotes respected.
+ */
+export function tokenizeCondition(cond: string): string[] {
+  return cond.match(/(?:[^\s']+|'[^']*')+/g) || [];
+}
+
+/**
  * Evaluate a `dynamicports` condition against a node's parameters.
  *
  * Moved here verbatim from `nodelibrary.ts` so `conditionalports/*` and
@@ -114,7 +131,7 @@ export function evaluateDynamicPortsCondition(cond: string, node: RuleNodeLike):
     );
   }
 
-  const tokens = cond.match(/(?:[^\s']+|'[^']*')+/g); // Split on whitespace but respect single qoutes
+  const tokens = tokenizeCondition(cond);
 
   function evalCond(i: number) {
     if (tokens.length < i + 3) return true;

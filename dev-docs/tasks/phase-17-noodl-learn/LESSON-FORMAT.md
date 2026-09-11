@@ -69,6 +69,7 @@ format still runs (the 8 legacy lessons use it) but new lessons should use this.
 |---|---|---|
 | `title` | for cards | Short imperative shown on the timeline card, e.g. "Create a Group". |
 | `body` | optional | Fuller instructions shown in the popup (Markdown — see §4). |
+| `detail` | optional | The hand-holding half — a disclosure under the body, open by default (§4a). |
 | `media` | optional | A `video` or `image` shown in the popup (§5). |
 | `kind` | optional | `"card"` (default) or `"popup"` (modal-only, no card). |
 | `completeWhen` | optional | Conditions that auto-advance the step (§3). Omit for a manual *Next* button. |
@@ -127,6 +128,88 @@ Matching is case-insensitive. Example: `App:#Card:%Text` means "inside component
 > part of the task, then match on it — it is the most robust way to identify a
 > node the learner created.
 
+#### ⚠️ `%Type` takes the node's **type name**, not the name on the button
+
+Every lesson carries two vocabularies and they are frequently different strings:
+
+- **Prose** (`title`, `body`) must use the **display name** — what the learner
+  reads in the node picker and on the canvas.
+- **Conditions** (`%Type`, `hastype`) must use the **type name** — the internal
+  identifier. `findNodeWithPath` matches `node.type.name`
+  ([lessonevalconditions.ts](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts)),
+  and `hastype` does the same.
+
+> ✅ **You do not have to hold this in your head any more.** UNI-007 shipped a
+> static check —
+> [`models/lessonverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonverify.ts),
+> `verifyLessonManifest()` — which reads every `%Type` segment and every
+> `hasType` in a manifest, classifies it against the catalog, and names the
+> problem. Run it before shipping a lesson. It is the same check UNI-010 runs
+> over an AI-authored bundle before it may install.
+
+##### The real shape of the divergence
+
+🔴 **Corrected 2026-08-14.** This section previously tabulated **nine**
+divergences and named `Variable`, `Button` and `Text Input` among the nodes that
+"use the same string for both". Both statements were wrong. Re-derived from
+`node-catalog.json` (175 entries), there are **three classes**, not one list:
+
+| Class | Count | What it is | What to do |
+|---|---|---|---|
+| **Plain divergence** | **103** | The display name is not any type name and maps to exactly one | Use the type name — the checker suggests it |
+| **Ambiguous** | **4** | The display name maps to **two** type names | 🔴 Write the type name you mean. The checker **rejects and does not substitute** |
+| **Shadowed** | **6** | The string **is** a real type name — of a **deprecated** node — while the node the learner actually places carries it as a *display* name | 🔴 Use the live type name |
+
+**The four ambiguous names:**
+
+| Display name | Could mean |
+|---|---|
+| Array | `Collection` *or* `Collection2` |
+| Object | `Model` *or* `Model2` |
+| Component Object | `Component State` *or* `net.noodl.ComponentObject` |
+| Parent Component Object | `Parent Component State` *or* `net.noodl.ParentComponentObject` |
+
+An ambiguous name is not merely unreachable — it can resolve to the **wrong one
+of two**, which is a lesson that grades the wrong node and says nothing. That is
+why the checker refuses to guess for you.
+
+**The six shadowed names — the dangerous class**, because "does this type exist?"
+returns **true** for every one of them:
+
+| Written in a condition | Actually names | The node the learner places |
+|---|---|---|
+| `Variable` | the deprecated Variable | **`Variable2`** |
+| `Button` | the deprecated Button | **`net.noodl.controls.button`** |
+| `Text Input` | the deprecated Text Input | **`net.noodl.controls.textinput`** |
+| `Checkbox` | the deprecated Checkbox | **`net.noodl.controls.checkbox`** |
+| `Radio Button` | the deprecated Radio Button | **`net.noodl.controls.radiobutton`** |
+| `Cloud Function` | the deprecated Cloud Function | **`CloudFunction2`** |
+
+`Variable` is in the curriculum spine (CURRICULUM-DESIGN D3 — *"Counter first,
+Variable revealed in L6"*), and `Button` and `Text Input` appear in any beginner
+lesson, so this class is not a corner case.
+
+**The nine originally tabulated** are all still true, and are the ones a
+curriculum author meets first:
+
+| Prose says (display name) | Conditions must say (type name) |
+|---|---|
+| Repeater | `For Each` |
+| Repeater Item | `For Each Actions` |
+| Static Array | `Static Data` |
+| Delay | `Timer` |
+| Insert Object Into Array | `CollectionInsert` |
+| Record | `DbModel2` |
+| Page Router | `Router` |
+| Array | ⚠️ **ambiguous** — `Collection` *or* `Collection2` |
+| Object | ⚠️ **ambiguous** — `Model` *or* `Model2` |
+
+`Group`, `Text`, `Image`, `Circle`, `Condition`, `Expression` and `Counter` do
+use the same string for both.
+
+The failure is silent: a condition naming a display name matches nothing, and the
+learner is told they have not done a step they have in fact done.
+
 ---
 
 ## 4. `body` — Markdown
@@ -135,6 +218,46 @@ Matching is case-insensitive. Example: `App:#Card:%Text` means "inside component
 Supported: `**bold**`, `*italic*`, `` `code` ``, `[links](https://…)`, `#`–`####`
 headings, `- ` bullet lists, `1. ` numbered lists, and blank-line-separated
 paragraphs. HTML in prose is escaped, so a stray `<` can never break the step.
+
+### 4a. `detail` — the hand-holding half
+
+**SYL-001.** `detail` is Markdown on the same terms as `body`, rendered as a native
+`<details>` disclosure beneath it, **open by default**, which the learner can collapse.
+
+The split is by *audience*, not by importance:
+
+| | |
+|---|---|
+| `body` | what to do — *"Add a **Group** and set its direction to Horizontal."* |
+| `detail` | where the thing is — *"The node picker is the **+** in the top left; type to filter it."* |
+
+🔴 **Why the field exists.** The University intake asks how much programming experience a
+learner has, and Richard's ruling is that the answer *"change[s] the voice and level of hand
+holding throughout the tutorial — don't need to explain to an intermediate user how to access
+the node picker."* One `body` per step cannot express that: serving the beginner buries the
+instruction, and serving the experienced learner strands the beginner. Two fields can.
+
+⚠️ **Split, do not omit.** Closing a disclosure costs an experienced learner one click. A
+beginner who was never told where the picker is has nowhere to look at all. If a body explains
+the editor's furniture before it says what to do, the furniture is a `detail`.
+
+**What reads it today:** the disclosure itself, and — since SYL-001 slice B — the editor's own
+record of whether this learner wants the hand-holding. The **default open state** is the only
+thing that varies, so a lesson authored before slice B needed no revision after it, and one
+authored now needs none when the platform's `experience` answer can reach the editor.
+
+🔴 **The bundle never carries the answer.** `experience` is asked on the platform and the
+disclosure is drawn by the editor, and the thing that must not close that gap is the bundle: D17
+requires a lesson stay installable from a local directory with no origin, and a bundle carrying
+one learner's preference is not that. The editor holds the preference; the bundle carries both
+halves; the runner picks which to expand.
+
+**How the editor learns it, today:** the learner collapsing a `Show me how` is the answer, and
+opening one again is the answer changing back — stored under `lessons.detailOpenByDefault` in
+editor settings, read on every step. ⚠️ Absent means *open*: a learner we know nothing about gets
+the hand-holding. When the platform answer can cross, it seeds that same key — **none** opens,
+**some** and **fluent** collapse, which is Richard's sentence ("*don't need to explain to an
+intermediate user how to access the node picker*") read literally.
 
 ---
 

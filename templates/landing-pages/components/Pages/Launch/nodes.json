@@ -1,0 +1,2083 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "695d1fd8-10b3-5066-8683-59020dfa4270",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "lnPage",
+      "type": "Page",
+      "label": "Product launch",
+      "children": [
+        "lnGround"
+      ],
+      "parameters": {
+        "title": "Product launch",
+        "urlPath": "launch"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "lnGround",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "lnPage",
+      "children": [
+        "lnSwitcher",
+        "lnHeader",
+        "lnMain",
+        "lnFooter"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "lnSwitcher",
+      "type": "/Site/Switcher",
+      "label": "The look switcher",
+      "parent": "lnGround",
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "lnHeader",
+      "type": "/Site/Header",
+      "label": "EDIT — the three nav links at the top",
+      "parent": "lnGround",
+      "parameters": {
+        "nav1": "What it does",
+        "nav1Target": "section-lnFeatures",
+        "nav2": "How it works",
+        "nav2Target": "section-lnSteps",
+        "nav3": "Price",
+        "nav3Target": "section-lnPricing"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "lnMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "lnGround",
+      "children": [
+        "lnHero",
+        "lnFeatures",
+        "lnNumbers",
+        "lnSteps",
+        "lnPricing",
+        "lnFaq",
+        "lnCta",
+        "lnContactAnchor"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "lnContactAnchor",
+      "type": "Group",
+      "label": "Where \"Get in touch\" lands",
+      "parent": "lnMain",
+      "children": [
+        "lnContact"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "cssClassName": "site-contact"
+      },
+      "x": 220,
+      "y": 11920
+    },
+    {
+      "id": "lnContact",
+      "type": "/Site/Contact",
+      "label": "The contact band",
+      "parent": "lnContactAnchor",
+      "parameters": {
+        "heading": "Get early access",
+        "line": "Leave your name and a line about what you would use it for. The first people in get it first, and free.",
+        "button": "Count me in"
+      },
+      "x": 280,
+      "y": 12040
+    },
+    {
+      "id": "lnFooter",
+      "type": "/Site/Footer",
+      "label": "The foot of the page",
+      "parent": "lnGround",
+      "x": 160,
+      "y": 12160
+    },
+    {
+      "id": "lnGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "To the form",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 770,
+      "y": 1840
+    },
+    {
+      "id": "lnGoSecond",
+      "type": "/Site/ScrollTo",
+      "label": "To the section the hero’s second button names",
+      "parameters": {
+        "target": "section-lnSteps"
+      },
+      "x": 770,
+      "y": 1960
+    },
+    {
+      "id": "lnHero",
+      "type": "Group",
+      "label": "The hero",
+      "parent": "lnMain",
+      "children": [
+        "lnHeroShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-spotlight)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "lnHeroShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnHero",
+      "children": [
+        "lnHeroColumns"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "lnHeroColumns",
+      "type": "net.noodl.visual.columns",
+      "label": "The words beside the window",
+      "parent": "lnHeroShell",
+      "children": [
+        "lnHeroWords",
+        "lnHeroMockCell"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 40,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 880
+    },
+    {
+      "id": "lnHeroWords",
+      "type": "Group",
+      "label": "The promise",
+      "parent": "lnHeroColumns",
+      "children": [
+        "lnHeroBadge",
+        "lnHeroHeading",
+        "lnHeroLead",
+        "lnHeroActions",
+        "lnHeroNote"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-5)",
+        "justifyContent": "center"
+      },
+      "x": 400,
+      "y": 1000
+    },
+    {
+      "id": "lnHeroBadge",
+      "type": "Group",
+      "label": "The badge",
+      "parent": "lnHeroWords",
+      "children": [
+        "lnHeroBadgeGlyph",
+        "lnHeroBadgeText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1120
+    },
+    {
+      "id": "lnHeroBadgeGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The badge — glyph",
+      "parent": "lnHeroBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-rocket",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary-foreground)"
+      },
+      "x": 520,
+      "y": 1240
+    },
+    {
+      "id": "lnHeroBadgeText",
+      "type": "Text",
+      "label": "EDIT — the badge on the hero",
+      "parent": "lnHeroBadge",
+      "parameters": {
+        "text": "Launching this spring",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)",
+        "fontWeight": "var(--font-medium)"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "lnHeroHeading",
+      "type": "Text",
+      "label": "EDIT — the headline",
+      "parent": "lnHeroWords",
+      "parameters": {
+        "text": "The promise, in one line, in words a customer would use",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 460,
+      "y": 1480
+    },
+    {
+      "id": "lnHeroLead",
+      "type": "Text",
+      "label": "EDIT — the line under the headline",
+      "parent": "lnHeroWords",
+      "parameters": {
+        "text": "Two sentences on what it replaces and what it feels like to use instead. Say the boring thing it saves people from.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 460,
+      "y": 1600
+    },
+    {
+      "id": "lnHeroActions",
+      "type": "Group",
+      "label": "The two actions",
+      "parent": "lnHeroWords",
+      "children": [
+        "lnHeroPrimary",
+        "lnHeroSecondary"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 460,
+      "y": 1720
+    },
+    {
+      "id": "lnHeroPrimary",
+      "type": "net.noodl.controls.button",
+      "label": "Get early access",
+      "parent": "lnHeroActions",
+      "parameters": {
+        "label": "Get early access",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 1840
+    },
+    {
+      "id": "lnHeroSecondary",
+      "type": "net.noodl.controls.button",
+      "label": "How it works",
+      "parent": "lnHeroActions",
+      "parameters": {
+        "label": "How it works",
+        "backgroundColor": "var(--surface-glass)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 1960
+    },
+    {
+      "id": "lnHeroNote",
+      "type": "Text",
+      "label": "EDIT — the small line under the buttons",
+      "parent": "lnHeroWords",
+      "parameters": {
+        "text": "Free while it is in beta · no card needed",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 460,
+      "y": 2080
+    },
+    {
+      "id": "lnHeroMockCell",
+      "type": "Group",
+      "label": "The window",
+      "parent": "lnHeroColumns",
+      "children": [
+        "lnHeroMock"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "justifyContent": "center"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "lnHeroMock",
+      "type": "/Site/Mock",
+      "label": "EDIT — a picture of the product goes here (this window is a stand-in)",
+      "parent": "lnHeroMockCell",
+      "parameters": {
+        "title": "What the product shows first",
+        "row1": "The first thing in it",
+        "row2": "The second thing in it",
+        "row3": "The third thing in it"
+      },
+      "x": 460,
+      "y": 2320
+    },
+    {
+      "id": "lnFeatures",
+      "type": "Group",
+      "label": "What it does",
+      "parent": "lnMain",
+      "children": [
+        "lnFeaturesShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-lnFeatures"
+      },
+      "x": 220,
+      "y": 2440
+    },
+    {
+      "id": "lnFeaturesShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnFeatures",
+      "children": [
+        "lnFeaturesHead",
+        "lnFeatureA",
+        "lnFeatureB"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 2560
+    },
+    {
+      "id": "lnFeaturesHead",
+      "type": "Group",
+      "label": "What it does — head",
+      "parent": "lnFeaturesShell",
+      "children": [
+        "lnFeaturesEyebrow",
+        "lnFeaturesHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "lnFeaturesEyebrow",
+      "type": "Text",
+      "label": "What it does — eyebrow",
+      "parent": "lnFeaturesHead",
+      "parameters": {
+        "text": "What it does",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "lnFeaturesHeading",
+      "type": "Text",
+      "label": "EDIT — What it does — heading",
+      "parent": "lnFeaturesHead",
+      "parameters": {
+        "text": "Two things it does that nothing else does",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 2920
+    },
+    {
+      "id": "lnFeatureA",
+      "type": "net.noodl.visual.columns",
+      "label": "The words, then the window",
+      "parent": "lnFeaturesShell",
+      "children": [
+        "lnFeatureAWords",
+        "lnFeatureAMockCell"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 32,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 3040
+    },
+    {
+      "id": "lnFeatureAWords",
+      "type": "Group",
+      "label": "The first thing",
+      "parent": "lnFeatureA",
+      "children": [
+        "lnFeatureAEyebrow",
+        "lnFeatureAHeading",
+        "lnFeatureABody",
+        "lnFeatureAPoints"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "justifyContent": "center"
+      },
+      "x": 400,
+      "y": 3160
+    },
+    {
+      "id": "lnFeatureAEyebrow",
+      "type": "Text",
+      "label": "The first thing — eyebrow",
+      "parent": "lnFeatureAWords",
+      "parameters": {
+        "text": "The first thing",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 3280
+    },
+    {
+      "id": "lnFeatureAHeading",
+      "type": "Text",
+      "label": "EDIT — The first thing — heading",
+      "parent": "lnFeatureAWords",
+      "parameters": {
+        "text": "What it does, said as a benefit",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 460,
+      "y": 3400
+    },
+    {
+      "id": "lnFeatureABody",
+      "type": "Text",
+      "label": "EDIT — The first thing — the paragraph",
+      "parent": "lnFeatureAWords",
+      "parameters": {
+        "text": "A paragraph on the problem it removes. Describe the Tuesday afternoon it saves, not the feature list.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 460,
+      "y": 3520
+    },
+    {
+      "id": "lnFeatureAPoints",
+      "type": "Group",
+      "label": "The points",
+      "parent": "lnFeatureAWords",
+      "children": [
+        "lnFeatureAPoint1",
+        "lnFeatureAPoint2",
+        "lnFeatureAPoint3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 460,
+      "y": 3640
+    },
+    {
+      "id": "lnFeatureAPoint1",
+      "type": "/Site/Check",
+      "label": "EDIT — The first thing — point 1",
+      "parent": "lnFeatureAPoints",
+      "parameters": {
+        "text": "A specific thing it does",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 3760
+    },
+    {
+      "id": "lnFeatureAPoint2",
+      "type": "/Site/Check",
+      "label": "EDIT — The first thing — point 2",
+      "parent": "lnFeatureAPoints",
+      "parameters": {
+        "text": "Another specific thing it does",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 3880
+    },
+    {
+      "id": "lnFeatureAPoint3",
+      "type": "/Site/Check",
+      "label": "EDIT — The first thing — point 3",
+      "parent": "lnFeatureAPoints",
+      "parameters": {
+        "text": "The thing people will not believe until they try it",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 4000
+    },
+    {
+      "id": "lnFeatureAMockCell",
+      "type": "Group",
+      "label": "The window",
+      "parent": "lnFeatureA",
+      "children": [
+        "lnFeatureAMock"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 4120
+    },
+    {
+      "id": "lnFeatureAMock",
+      "type": "/Site/Mock",
+      "label": "EDIT — a picture of the product goes here (this window is a stand-in)",
+      "parent": "lnFeatureAMockCell",
+      "parameters": {
+        "title": "The first thing, shown",
+        "row1": "A row that shows it",
+        "row2": "Another row",
+        "row3": "A third row"
+      },
+      "x": 460,
+      "y": 4240
+    },
+    {
+      "id": "lnFeatureB",
+      "type": "net.noodl.visual.columns",
+      "label": "The window, then the words",
+      "parent": "lnFeaturesShell",
+      "children": [
+        "lnFeatureBMockCell",
+        "lnFeatureBWords"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 32,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 4360
+    },
+    {
+      "id": "lnFeatureBWords",
+      "type": "Group",
+      "label": "The second thing",
+      "parent": "lnFeatureB",
+      "children": [
+        "lnFeatureBEyebrow",
+        "lnFeatureBHeading",
+        "lnFeatureBBody",
+        "lnFeatureBPoints"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "justifyContent": "center"
+      },
+      "x": 400,
+      "y": 4720
+    },
+    {
+      "id": "lnFeatureBEyebrow",
+      "type": "Text",
+      "label": "The second thing — eyebrow",
+      "parent": "lnFeatureBWords",
+      "parameters": {
+        "text": "The second thing",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 4840
+    },
+    {
+      "id": "lnFeatureBHeading",
+      "type": "Text",
+      "label": "EDIT — The second thing — heading",
+      "parent": "lnFeatureBWords",
+      "parameters": {
+        "text": "The second thing, as a benefit",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 460,
+      "y": 4960
+    },
+    {
+      "id": "lnFeatureBBody",
+      "type": "Text",
+      "label": "EDIT — The second thing — the paragraph",
+      "parent": "lnFeatureBWords",
+      "parameters": {
+        "text": "A paragraph on what happens on its own once it is set up. Say what they never have to think about again.",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 460,
+      "y": 5080
+    },
+    {
+      "id": "lnFeatureBPoints",
+      "type": "Group",
+      "label": "The points",
+      "parent": "lnFeatureBWords",
+      "children": [
+        "lnFeatureBPoint1",
+        "lnFeatureBPoint2",
+        "lnFeatureBPoint3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 460,
+      "y": 5200
+    },
+    {
+      "id": "lnFeatureBPoint1",
+      "type": "/Site/Check",
+      "label": "EDIT — The second thing — point 1",
+      "parent": "lnFeatureBPoints",
+      "parameters": {
+        "text": "A specific thing it does",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 5320
+    },
+    {
+      "id": "lnFeatureBPoint2",
+      "type": "/Site/Check",
+      "label": "EDIT — The second thing — point 2",
+      "parent": "lnFeatureBPoints",
+      "parameters": {
+        "text": "Another specific thing it does",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 5440
+    },
+    {
+      "id": "lnFeatureBPoint3",
+      "type": "/Site/Check",
+      "label": "EDIT — The second thing — point 3",
+      "parent": "lnFeatureBPoints",
+      "parameters": {
+        "text": "What it costs them if they keep doing it by hand",
+        "color": "var(--foreground)"
+      },
+      "x": 520,
+      "y": 5560
+    },
+    {
+      "id": "lnFeatureBMockCell",
+      "type": "Group",
+      "label": "The window",
+      "parent": "lnFeatureB",
+      "children": [
+        "lnFeatureBMock"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 4480
+    },
+    {
+      "id": "lnFeatureBMock",
+      "type": "/Site/Mock",
+      "label": "EDIT — a picture of the product goes here (this window is a stand-in)",
+      "parent": "lnFeatureBMockCell",
+      "parameters": {
+        "title": "The second thing, shown",
+        "row1": "A row that shows it",
+        "row2": "Another row",
+        "row3": "A third row"
+      },
+      "x": 460,
+      "y": 4600
+    },
+    {
+      "id": "lnNumbers",
+      "type": "Group",
+      "label": "The numbers",
+      "parent": "lnMain",
+      "children": [
+        "lnNumbersShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "backgroundGradient": "var(--gradient-deep)"
+      },
+      "x": 220,
+      "y": 5680
+    },
+    {
+      "id": "lnNumbersShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnNumbers",
+      "children": [
+        "lnNumbersHead",
+        "lnNumbersGrid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 5800
+    },
+    {
+      "id": "lnNumbersHead",
+      "type": "Group",
+      "label": "The numbers — head",
+      "parent": "lnNumbersShell",
+      "children": [
+        "lnNumbersEyebrow",
+        "lnNumbersHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 5920
+    },
+    {
+      "id": "lnNumbersEyebrow",
+      "type": "Text",
+      "label": "The numbers — eyebrow",
+      "parent": "lnNumbersHead",
+      "parameters": {
+        "text": "From the pilot",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 6040
+    },
+    {
+      "id": "lnNumbersHeading",
+      "type": "Text",
+      "label": "EDIT — The numbers — heading",
+      "parent": "lnNumbersHead",
+      "parameters": {
+        "text": "Three numbers you can stand behind",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 6160
+    },
+    {
+      "id": "lnNumbersGrid",
+      "type": "net.noodl.visual.columns",
+      "label": "The grid",
+      "parent": "lnNumbersShell",
+      "children": [
+        "lnNumber1Cell",
+        "lnNumber2Cell",
+        "lnNumber3Cell"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 300,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        },
+        "marginY": {
+          "value": 32,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 6280
+    },
+    {
+      "id": "lnNumber1Cell",
+      "type": "Group",
+      "label": "Number 1 — its cell",
+      "parent": "lnNumbersGrid",
+      "children": [
+        "lnNumber1"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 6400
+    },
+    {
+      "id": "lnNumber1",
+      "type": "/Site/BigStat",
+      "label": "EDIT — the number, first",
+      "parent": "lnNumber1Cell",
+      "parameters": {
+        "value": "2,400",
+        "label": "Of the thing it counts, in the pilot"
+      },
+      "x": 460,
+      "y": 6520
+    },
+    {
+      "id": "lnNumber2Cell",
+      "type": "Group",
+      "label": "Number 2 — its cell",
+      "parent": "lnNumbersGrid",
+      "children": [
+        "lnNumber2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 6640
+    },
+    {
+      "id": "lnNumber2",
+      "type": "/Site/BigStat",
+      "label": "EDIT — the number, second",
+      "parent": "lnNumber2Cell",
+      "parameters": {
+        "value": "98%",
+        "label": "Of the thing it improves"
+      },
+      "x": 460,
+      "y": 6760
+    },
+    {
+      "id": "lnNumber3Cell",
+      "type": "Group",
+      "label": "Number 3 — its cell",
+      "parent": "lnNumbersGrid",
+      "children": [
+        "lnNumber3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 6880
+    },
+    {
+      "id": "lnNumber3",
+      "type": "/Site/BigStat",
+      "label": "EDIT — the number, third",
+      "parent": "lnNumber3Cell",
+      "parameters": {
+        "value": "11 min",
+        "label": "Saved every time, on average"
+      },
+      "x": 460,
+      "y": 7000
+    },
+    {
+      "id": "lnSteps",
+      "type": "Group",
+      "label": "How it works",
+      "parent": "lnMain",
+      "children": [
+        "lnStepsShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-lnSteps"
+      },
+      "x": 220,
+      "y": 7120
+    },
+    {
+      "id": "lnStepsShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnSteps",
+      "children": [
+        "lnStepsHead",
+        "lnStepsList"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 7240
+    },
+    {
+      "id": "lnStepsHead",
+      "type": "Group",
+      "label": "How it works — head",
+      "parent": "lnStepsShell",
+      "children": [
+        "lnStepsEyebrow",
+        "lnStepsHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 7360
+    },
+    {
+      "id": "lnStepsEyebrow",
+      "type": "Text",
+      "label": "How it works — eyebrow",
+      "parent": "lnStepsHead",
+      "parameters": {
+        "text": "How it works",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 7480
+    },
+    {
+      "id": "lnStepsHeading",
+      "type": "Text",
+      "label": "EDIT — How it works — heading",
+      "parent": "lnStepsHead",
+      "parameters": {
+        "text": "Three steps, one afternoon",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 7600
+    },
+    {
+      "id": "lnStepsList",
+      "type": "Group",
+      "label": "The steps",
+      "parent": "lnStepsShell",
+      "children": [
+        "lnStep1",
+        "lnStep2",
+        "lnStep3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-8)"
+      },
+      "x": 340,
+      "y": 7720
+    },
+    {
+      "id": "lnStep1",
+      "type": "/Site/Step",
+      "label": "EDIT — the first step",
+      "parent": "lnStepsList",
+      "parameters": {
+        "number": "01",
+        "title": "The first step",
+        "line": "What they do first, and how long it takes. This is the only step that costs them anything."
+      },
+      "x": 400,
+      "y": 7840
+    },
+    {
+      "id": "lnStep2",
+      "type": "/Site/Step",
+      "label": "EDIT — the second step",
+      "parent": "lnStepsList",
+      "parameters": {
+        "number": "02",
+        "title": "The second step",
+        "line": "What happens next, without them doing anything."
+      },
+      "x": 400,
+      "y": 7960
+    },
+    {
+      "id": "lnStep3",
+      "type": "/Site/Step",
+      "label": "EDIT — the third step",
+      "parent": "lnStepsList",
+      "parameters": {
+        "number": "03",
+        "title": "The third step",
+        "line": "What they have at the end that they did not have before."
+      },
+      "x": 400,
+      "y": 8080
+    },
+    {
+      "id": "lnPricing",
+      "type": "Group",
+      "label": "The price",
+      "parent": "lnMain",
+      "children": [
+        "lnPricingShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-lnPricing"
+      },
+      "x": 220,
+      "y": 8200
+    },
+    {
+      "id": "lnPricingShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnPricing",
+      "children": [
+        "lnPricingHead",
+        "lnPeriodRow",
+        "lnPlans",
+        "lnPeriodNote"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 8320
+    },
+    {
+      "id": "lnPricingHead",
+      "type": "Group",
+      "label": "The price — head",
+      "parent": "lnPricingShell",
+      "children": [
+        "lnPricingEyebrow",
+        "lnPricingHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 8440
+    },
+    {
+      "id": "lnPricingEyebrow",
+      "type": "Text",
+      "label": "The price — eyebrow",
+      "parent": "lnPricingHead",
+      "parameters": {
+        "text": "The price",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 8560
+    },
+    {
+      "id": "lnPricingHeading",
+      "type": "Text",
+      "label": "EDIT — The price — heading",
+      "parent": "lnPricingHead",
+      "parameters": {
+        "text": "Say the number",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 8680
+    },
+    {
+      "id": "lnPeriodRow",
+      "type": "Group",
+      "label": "Monthly or yearly",
+      "parent": "lnPricingShell",
+      "children": [
+        "lnPeriodMonthly",
+        "lnPeriodYearly"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-1)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)",
+        "paddingLeft": "var(--space-1)",
+        "paddingRight": "var(--space-1)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)"
+      },
+      "x": 340,
+      "y": 8800
+    },
+    {
+      "id": "lnPeriodMonthly",
+      "type": "net.noodl.controls.button",
+      "label": "Monthly",
+      "parent": "lnPeriodRow",
+      "parameters": {
+        "label": "Monthly",
+        "sizeMode": "contentSize",
+        "borderStyle": "none",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "backgroundColor": "transparent",
+        "color": "var(--muted-foreground)",
+        "cssClassName": "pill pressable"
+      },
+      "x": 400,
+      "y": 8920
+    },
+    {
+      "id": "lnPeriodYearly",
+      "type": "net.noodl.controls.button",
+      "label": "Yearly",
+      "parent": "lnPeriodRow",
+      "parameters": {
+        "label": "Yearly",
+        "sizeMode": "contentSize",
+        "borderStyle": "none",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "backgroundColor": "transparent",
+        "color": "var(--muted-foreground)",
+        "cssClassName": "pill pressable"
+      },
+      "x": 400,
+      "y": 9040
+    },
+    {
+      "id": "lnPeriodNote",
+      "type": "Text",
+      "label": "EDIT — what the yearly price actually saves them",
+      "parent": "lnPricingShell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "textAlignX": "center"
+      },
+      "x": 340,
+      "y": 9760
+    },
+    {
+      "id": "lnPeriod",
+      "type": "States",
+      "label": "EDIT — the two prices, monthly and yearly",
+      "parameters": {
+        "states": "monthly,yearly",
+        "values": "freePrice,paidPrice,note,mBg,mFg,yBg,yFg",
+        "type-freePrice": "string",
+        "type-paidPrice": "string",
+        "type-note": "string",
+        "type-mBg": "color",
+        "type-mFg": "color",
+        "type-yBg": "color",
+        "type-yFg": "color",
+        "value-monthly-freePrice": "Free",
+        "value-yearly-freePrice": "Free",
+        "value-monthly-paidPrice": "The number, a month",
+        "value-yearly-paidPrice": "The number, a year",
+        "value-monthly-note": "Say what a month costs. If you have not decided, say “pricing when we launch”.",
+        "value-yearly-note": "Say what a year costs, and what that saves against paying monthly.",
+        "value-monthly-mBg": "var(--surface-raised)",
+        "value-yearly-mBg": "transparent",
+        "value-monthly-mFg": "var(--foreground)",
+        "value-yearly-mFg": "var(--muted-foreground)",
+        "value-monthly-yBg": "transparent",
+        "value-yearly-yBg": "var(--surface-raised)",
+        "value-monthly-yFg": "var(--muted-foreground)",
+        "value-yearly-yFg": "var(--foreground)",
+        "useTransitions": false
+      },
+      "x": 770,
+      "y": 9400
+    },
+    {
+      "id": "lnPlans",
+      "type": "net.noodl.visual.columns",
+      "label": "Two plans",
+      "parent": "lnPricingShell",
+      "children": [
+        "lnPlanFreeCell",
+        "lnPlanPaidCell"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 24,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 9160
+    },
+    {
+      "id": "lnPlanFreeCell",
+      "type": "Group",
+      "label": "The free plan — its cell",
+      "parent": "lnPlans",
+      "children": [
+        "lnPlanFree"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 9280
+    },
+    {
+      "id": "lnPlanFree",
+      "type": "/Site/Plan",
+      "label": "EDIT — the first plan",
+      "parent": "lnPlanFreeCell",
+      "parameters": {
+        "name": "While it is in beta",
+        "line": "For everyone who joins before launch.",
+        "point1": "Everything it does today",
+        "point2": "A say in what it does next",
+        "point3": "Your price held when it launches",
+        "action": "Get early access",
+        "ground": "var(--surface)",
+        "edge": "var(--border)",
+        "ink": "var(--foreground)"
+      },
+      "x": 460,
+      "y": 9400
+    },
+    {
+      "id": "lnPlanPaidCell",
+      "type": "Group",
+      "label": "The paid plan — its cell",
+      "parent": "lnPlans",
+      "children": [
+        "lnPlanPaid"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 9520
+    },
+    {
+      "id": "lnPlanPaid",
+      "type": "/Site/Plan",
+      "label": "EDIT — the second plan",
+      "parent": "lnPlanPaidCell",
+      "parameters": {
+        "name": "After launch",
+        "line": "Everything in the first plan, and the thing people pay for.",
+        "point1": "Everything in the first plan",
+        "point2": "The thing the paid plan adds",
+        "point3": "The other thing it adds",
+        "action": "Join the list",
+        "ground": "var(--foreground)",
+        "edge": "var(--foreground)",
+        "ink": "var(--primary-foreground)"
+      },
+      "x": 460,
+      "y": 9640
+    },
+    {
+      "id": "lnFaq",
+      "type": "Group",
+      "label": "Questions",
+      "parent": "lnMain",
+      "children": [
+        "lnFaqShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "as": "section",
+        "cssClassName": "section-lnFaq"
+      },
+      "x": 220,
+      "y": 9880
+    },
+    {
+      "id": "lnFaqShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnFaq",
+      "children": [
+        "lnFaqHead",
+        "lnFaqColumns"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 280,
+      "y": 10000
+    },
+    {
+      "id": "lnFaqHead",
+      "type": "Group",
+      "label": "Questions — head",
+      "parent": "lnFaqShell",
+      "children": [
+        "lnFaqEyebrow",
+        "lnFaqHeading"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-10)"
+      },
+      "x": 340,
+      "y": 10120
+    },
+    {
+      "id": "lnFaqEyebrow",
+      "type": "Text",
+      "label": "Questions — eyebrow",
+      "parent": "lnFaqHead",
+      "parameters": {
+        "text": "Questions",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 10240
+    },
+    {
+      "id": "lnFaqHeading",
+      "type": "Text",
+      "label": "EDIT — Questions — heading",
+      "parent": "lnFaqHead",
+      "parameters": {
+        "text": "The things people ask before they sign up",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 400,
+      "y": 10360
+    },
+    {
+      "id": "lnFaqColumns",
+      "type": "net.noodl.visual.columns",
+      "label": "Two columns of questions",
+      "parent": "lnFaqShell",
+      "children": [
+        "lnFaqLeft",
+        "lnFaqRight"
+      ],
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "marginY": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 10480
+    },
+    {
+      "id": "lnFaqLeft",
+      "type": "Group",
+      "label": "The left column",
+      "parent": "lnFaqColumns",
+      "children": [
+        "lnFaq1",
+        "lnFaq2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 10600
+    },
+    {
+      "id": "lnFaqRight",
+      "type": "Group",
+      "label": "The right column",
+      "parent": "lnFaqColumns",
+      "children": [
+        "lnFaq3",
+        "lnFaq4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 400,
+      "y": 10960
+    },
+    {
+      "id": "lnFaq1",
+      "type": "/Site/FaqRow",
+      "label": "EDIT — the first question",
+      "parent": "lnFaqLeft",
+      "parameters": {
+        "question": "The question people ask first",
+        "answer": "The honest answer, in two sentences. If the answer is “not yet”, say so and say when."
+      },
+      "x": 460,
+      "y": 10720
+    },
+    {
+      "id": "lnFaq2",
+      "type": "/Site/FaqRow",
+      "label": "EDIT — the second question",
+      "parent": "lnFaqLeft",
+      "parameters": {
+        "question": "Whether their data is safe",
+        "answer": "Where it lives, who can see it, and how they get it out again."
+      },
+      "x": 460,
+      "y": 10840
+    },
+    {
+      "id": "lnFaq3",
+      "type": "/Site/FaqRow",
+      "label": "EDIT — the third question",
+      "parent": "lnFaqRight",
+      "parameters": {
+        "question": "What happens after they sign up",
+        "answer": "The next thing they will hear from you, and roughly when."
+      },
+      "x": 460,
+      "y": 11080
+    },
+    {
+      "id": "lnFaq4",
+      "type": "/Site/FaqRow",
+      "label": "EDIT — the fourth question",
+      "parent": "lnFaqRight",
+      "parameters": {
+        "question": "Whether they can leave",
+        "answer": "How to cancel, and what happens to what they made."
+      },
+      "x": 460,
+      "y": 11200
+    },
+    {
+      "id": "lnCta",
+      "type": "Group",
+      "label": "The closing band",
+      "parent": "lnMain",
+      "children": [
+        "lnCtaShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundGradient": "var(--gradient-brand)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)",
+        "as": "section"
+      },
+      "x": 220,
+      "y": 11320
+    },
+    {
+      "id": "lnCtaShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "lnCta",
+      "children": [
+        "lnCtaHeading",
+        "lnCtaLead",
+        "lnCtaButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "alignItems": "center"
+      },
+      "x": 280,
+      "y": 11440
+    },
+    {
+      "id": "lnCtaHeading",
+      "type": "Text",
+      "label": "EDIT — the closing line",
+      "parent": "lnCtaShell",
+      "parameters": {
+        "text": "Be first through the door",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "as": "h2",
+        "textAlignX": "center"
+      },
+      "x": 340,
+      "y": 11560
+    },
+    {
+      "id": "lnCtaLead",
+      "type": "Text",
+      "label": "EDIT — the line under the closing line",
+      "parent": "lnCtaShell",
+      "parameters": {
+        "text": "One sentence on what the first people in get that nobody else will.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        },
+        "textAlignX": "center"
+      },
+      "x": 340,
+      "y": 11680
+    },
+    {
+      "id": "lnCtaButton",
+      "type": "net.noodl.controls.button",
+      "label": "Join the list",
+      "parent": "lnCtaShell",
+      "parameters": {
+        "label": "Join the list",
+        "backgroundColor": "var(--primary-foreground)",
+        "color": "var(--primary)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 340,
+      "y": 11800
+    }
+  ],
+  "visualRoots": [
+    "lnPage"
+  ]
+}

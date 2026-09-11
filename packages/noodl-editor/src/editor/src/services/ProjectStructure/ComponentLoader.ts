@@ -88,7 +88,10 @@ export class ComponentLoader {
       componentPath,
       componentFile,
       nodesFile,
-      connectionsFile
+      connectionsFile,
+      // DEF-039: the single-component reload has no warnings channel to return on, and this is
+      // the same door — a wire the loader cannot read must not pass in silence here either.
+      (message) => console.warn('[v2] ' + message)
     );
 
     this.cache.set(key, { component, loadedAt: this.now() });

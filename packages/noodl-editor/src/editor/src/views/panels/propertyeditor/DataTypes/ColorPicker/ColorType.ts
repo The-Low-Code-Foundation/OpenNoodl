@@ -6,7 +6,7 @@ import { ProjectModel } from '@noodl-models/projectmodel';
 import { EventDispatcher } from '../../../../../../../shared/utils/EventDispatcher';
 import { ColorInput } from '../../components/ColorInput';
 import { TypeView } from '../../TypeView';
-import { getEditType } from '../../utils';
+import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../../utils';
 import ColorPicker from './colorpicker';
 import ColorStylePicker from './colorstylepicker';
 
@@ -126,6 +126,8 @@ export class ColorType extends TypeView {
         resolvedColor: ProjectModel.instance.resolveColor(current.value),
         isChanged: !this.isDefault,
         isConnected: this.isConnected,
+        connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
+        onConnectionClick: this.isConnected ? getConnectionSourceNavigate(this.parent.model, this.name) : undefined,
         dataIdentifier: this.name,
         onCommit: (text: string) => {
           let value: TSFixme = text.trim();

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "c_kitwidget",
+  "name": "Widget",
+  "path": "/Widget",
+  "type": "visual",
+  "description": "A kit node at the root, with no visualRoots recorded — so derivation has to answer."
+}

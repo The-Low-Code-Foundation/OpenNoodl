@@ -60,6 +60,12 @@ For passwordless sign-in, and as a password-free recovery path on backends that 
 - Showing 'check your inbox' only when the account exists — this node cannot tell you that, and a UI that appears to know re-creates the oracle the backend removed.
 - Treating `done` as 'signed in'. The sign-in happens when the user clicks the link, on a later page load.
 
+## Examples
+
+**Sign in with a emailed link, or with Google**
+
+Two ways past the password field, and both have a behaviour that decides how the screen around them must be built. Request Magic Link posts the address and the backend mails a single-use, short-lived link; `done` means THE REQUEST WAS ACCEPTED and never that an account exists — the endpoint answers identically either way, deliberately, because a different answer would turn the sign-in form into a way to test whether somebody has an account here. So the message on `done` has to be 'if that address has an account, a link is on its way', and a screen that says 'check your inbox' for one address and 'no such user' for another has reintroduced exactly the leak the endpoint is avoiding. Sign In With is more drastic: triggering it NAVIGATES THE BROWSER AWAY to the provider, so nothing downstream of that signal runs and the graph on this page is torn down mid-flight. Treat it as the end of the flow, not a step in it — there is no 'after' to wire, and a spinner set by the same click is a spinner nobody ever sees stop. `signingIn` is the output for the brief moment before the redirect. Both take a `redirect` that must be same-origin with the backend or on its redirect allow-list; an off-list target means no mail is sent and no provider round trip starts, which is a configuration failure that looks exactly like nothing happening. Provider ids ('google', 'github', or whatever the operator named their OIDC provider) come from the backend, not from this graph. One wiring detail that catches people: `done` is a SIGNAL, and a signal wired straight into a value input like `visible` is played as true and then false in the same pass, so the confirmation would flash and vanish. A Switch latches the pulse into remembered state, which is what 'we have sent it' actually is.
+
 ## Related nodes
 
 [Sign In With](./net-noodl-user-sign-in-with.md), [User](./net-noodl-user-user.md), [Log In](./net-noodl-user-log-in.md), [Request Password Reset](./net-noodl-user-request-password-reset.md)

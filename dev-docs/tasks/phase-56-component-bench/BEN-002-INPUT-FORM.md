@@ -1,0 +1,163 @@
+# BEN-002 — The inputs rail, and changing a value without a reload
+
+**Status:** 📋 not started · ⭐ · depends on **BEN-001**
+
+## The evidence
+
+The schema for this form already exists and nobody has ever rendered it as a form.
+`ComponentModel.getPorts()` returns, for every component port:
+
+```ts
+{ name, type, default, group, plug, index }
+```
+— [componentmodel.ts:167-198](../../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L167-L198)
+
+> ⚠️ **CORRECTION, 2026-08-08.** The next sentence is wrong about which end it is
+> describing. On a port **declared** on a `Component Inputs` node, `plug: 'output'`
+> means a component input (LAS-001). But `getPorts()` — the function this section
+> is about — **republishes** it as `plug: 'input'`. The rail must filter
+> `getPorts()` on `plug === 'input'`; see BEN-001's correction and register **B5**.
+> Use `benchInterface()` from `componentBench.ts`, which already does this and is
+> the only place in the phase that should have to know.
+
+`plug: 'output'` means an **input** of the component (the inversion; see BEN-001). `group` is already
+populated and already used by the component ports panel, so the rail gets grouping for free.
+
+**The honest limitation, read in source:** `type` is derived from connections
+([`_deriveType`](../../../packages/noodl-editor/src/editor/src/models/componentmodel.ts#L136)), and
+`default` only when there is exactly one connection. An input wired to nothing returns `type: '*'`
+and no default. On the corpus that is common, so degradation is the normal path, not the edge case.
+`validation/componentInterface.ts` is the better source where a declared interface exists — prefer
+it, fall back to `getPorts`.
+
+## The problem that decides the design
+
+**Rebuilding the export on every keystroke is not an option.** A changed export makes the runtime
+call `location.reload()` — that is precisely why `lastExports[clientId]` has to be cleared for
+sandbox clients ([ViewerConnection.ts:577-581](../../../packages/noodl-editor/src/editor/src/ViewerConnection.ts#L577-L581)).
+A reload throws away every bit of state the user clicked into: the open dropdown, the typed text, the
+hovered state they were inspecting. Typing "Hello" into a title field would flash the preview five
+times and lose the thing they were looking at.
+
+The runtime already has the right message for this — `modelUpdate` / `parameterChanged`
+([:827-843](../../../packages/noodl-editor/src/editor/src/ViewerConnection.ts#L827-L843)) — which is
+how editing a node property updates the live preview without a reload.
+
+⚠️ **But `modelUpdate` is broadcast.** Unlike `export`, the send carries no `target` and the runtime
+does no clientId matching for it. A synthetic `parameterChanged` for the harness would also reach the
+app preview, naming a component that does not exist in its export.
+
+> ⚠️ **CORRECTION, 2026-08-08 (session 3). Option 1 below describes the wrong mechanism, and
+> the right one needs no runtime change at all.**
+>
+> The relay already routes on `target`: any message carrying one goes to that socket alone,
+> and only messages without one are broadcast
+> ([relay-server.js:154-163](../../../packages/noodl-editor/src/main/src/relay-server.js#L154-L163)).
+> That is how `export` has always reached a single sandbox client. So the fix is
+> `ViewerConnection.sendModelUpdateToClient(clientId, content)` — four lines, transport-level,
+> and the message never reaches the other clients at all rather than reaching them and being
+> filtered. `content.clientId` matched by the runtime is the right shape for a *request* every
+> viewer receives and one answers (`getPortValues`, the trace commands); it is the wrong shape
+> for an update meant for one client, and it would have put the filtering in runtime code that
+> could get it wrong.
+>
+> ⚠️ Note what a broadcast would have done instead of erroring loudly: the runtime **silently
+> ignores a delta naming a component it does not have** (`editormodeleventshandler.ts` returns
+> early on an unknown `componentName`). So option 2 would have *looked* like it worked, and
+> the crossing that does bite — two bench clients, which share the harness name `/#bench` and
+> the node id `bench-subject` — would have shown up as one bench driving another.
+
+**Decide this first, and record the decision in the phase register (B2).** Two options:
+
+1. **Add client targeting to `modelUpdate`** — mirror the self-filtering `getPortValues` and the
+   trace commands already use (`content.clientId`, matched by the runtime against its own). Touches
+   the runtime, benefits every future per-client update, and is the honest fix.
+2. **Debounce and reload** — cheap, no runtime change, and visibly worse. Acceptable only as a first
+   slice, and only if BEN-007 records the flicker as a known issue.
+
+Recommendation: **option 1**, sliced as its own commit with a spec, before the form is written.
+Verify the consequence: send a targeted update and confirm the *app* preview did not receive it.
+
+## Build
+
+### 1. The control mapping
+
+| Port type | Control |
+|---|---|
+| `string` | text field. ⚠️ a text input commits on **blur/Enter only** — do not rely on `input` events when driving it in QA |
+| `number` | number field / stepper |
+| `boolean` | toggle |
+| `color` | the existing token picker. Emit `var(--token)`, never raw hex — the design-token rule holds inside the bench |
+| enum / `stringlist` | select. ⚠️ a property-panel select opened by `.click()` never closes (portalled options) — relevant to BEN-007's driver, not to the code |
+| `object`, `array` | small JSON editor, with a "generate sample" button wired to the same inference BEN-006 exposes |
+| `*` (underived) | raw text field, with the value parsed as JSON when it parses and passed as a string when it does not. Label it as untyped — the user should know the bench is guessing, and that a wire would fix it |
+| signal | a **button** that fires the signal. This is the input half of "see how it works" |
+
+Use the UIX-003 control kit; do not hand-roll inputs. `muted` is not a control variant
+(`muted-button-was-never-a-control`).
+
+### 2. The rail
+
+- Grouped by the port `group` when present, flat otherwise; ordered by `index`, as `getPorts` already
+  sorts.
+- A **Reset** per input (back to the derived default) and for the whole set.
+- An empty state that is useful rather than blank: *"This component declares no inputs. Add a
+  `Component Inputs` node to make it configurable."* — with the count of instances in the project
+  that pass parameters, if any, because that is the LAS-001 defect and this is where it becomes
+  visible to a human.
+
+### 3. State ownership
+
+Input values are **preview state, never project state** (R5) until BEN-005 saves them. Nothing here
+calls `setMetaData`, nothing dirties the project, and closing the bench discards. This is the rule
+`signedIn` already follows and the comment at [SandboxPreview.tsx:95-101](../../../packages/noodl-editor/src/editor/src/views/documents/AuthoringPreviewDocument/SandboxPreview.tsx#L95-L101)
+is the precedent to copy.
+
+## Acceptance
+
+All closed on a live drive, 2026-08-08. The corpus had **no component with typed inputs at all**, so
+the drive needed a fixture: `Components/BenchProbe` in *Puppy test 3*, authored through MCP, one
+input per control kind, each wired so `getPorts` derives a real type.
+
+- [x] Spec: the rail renders one control per declared input, of the mapped kind, grouped and ordered.
+      21 specs on the rules; the rendering itself was **driven** — all six rows, and every one of the
+      six derived the right type and got the right control:
+      `Title string→field · Accent color→select · Align enum→select · Big boolean→toggle ·
+      Start number→field · Ping signal→button`.
+- [x] Spec: an underived (`'*'`) input renders the raw field and is labelled untyped.
+      ⚠️ Spec only, and the drive is why it stayed spec-only: a port wired to *anything* inherits
+      that port's type **and its default**, because the editor's `getParameter` falls back to the
+      port definition. Only a port wired to nothing is untyped, and one of those renders nothing to
+      look at.
+- [x] Spec: nothing in the form path calls `setMetaData` or marks the project dirty.
+      **Measured, not read:** mtimes of all 44 files in the project before and after setting an
+      input through the rail — the component re-rendered and **not one file changed**.
+- [x] **Live:** typing a value changes the rendered DOM **without the preview reloading**.
+      `(no title)` → `Hello bench` in the bench document, with a `window` global planted beforehand
+      still holding the same value afterwards. A window global cannot survive a reload. The same
+      marker then survived a toggle, an enum pick, a colour pick, three signal pulses and a rejected
+      number — every edit in the session.
+- [x] **Live (option 1):** the app preview client does not receive the bench's parameter update.
+      Proven two-sided with a **third relay client** (a spy registering as a `viewer` with the launch
+      token): typing in the bench produced **zero** messages at the spy, and an ordinary project edit
+      immediately produced `modelUpdate | target: (none) | parameterChanged | /Pages/Landing`.
+      Broadcasts still broadcast; the bench's update reached nobody else.
+- [x] **Live:** a signal input's button visibly does something in the component.
+      Three clicks, counter `0 → 1 → 2 → 3`. This also settles **B12**: the falling edge really is
+      needed, and it really does rearm.
+
+Two more, both measured because the mechanism is not the consequence:
+
+- [x] **Live:** a colour input emits `var(--token)` and the token *resolves*. Inline style
+      `var(--primary)`, computed `rgb(24, 24, 27)` = the project's `#18181b`. Not a hex, and not the
+      phase-55 `NaNpx` class of silently-deleted property.
+- [x] **Live:** junk in a number field is refused rather than sent. `768320px oops` → the row shows
+      *"768320px oops" is not a number*, the spy saw nothing, and the component kept its value.
+
+## Risks
+
+| Risk | Mitigation |
+|---|---|
+| Client targeting on `modelUpdate` changes behaviour for existing clients | Default to broadcast when no clientId is present; add a spec pinning that the app preview still receives ordinary edits |
+| A value type the runtime coerces (the `NaNpx` class of defect) | Phase 55 already found a `var()` token on a coercing port becoming `"NaNpx"` and the property being **deleted**. Measure the DOM after setting a token-valued input, do not trust the parameter |
+| The form makes the untyped case look authoritative | Label it. A guess presented as a type is how the bench starts lying |

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c4d7e2a1-6b3f-4e8d-9c1a-000000000082",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "inputs",
+      "type": "Component Inputs",
+      "ports": [
+        {
+          "name": "Do",
+          "plug": "output",
+          "type": "signal",
+          "index": 0
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string",
+          "index": 1
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "outputs",
+      "type": "Component Outputs",
+      "ports": [
+        {
+          "name": "Success",
+          "plug": "input",
+          "type": "signal",
+          "index": 0
+        },
+        {
+          "name": "Failure",
+          "plug": "input",
+          "type": "signal",
+          "index": 1
+        }
+      ],
+      "x": 700,
+      "y": 40
+    },
+    {
+      "id": "notify",
+      "type": "CloudFunction2",
+      "label": "Notify guest",
+      "parameters": {
+        "function": "notify"
+      },
+      "dynamicports": [
+        {
+          "name": "in-name",
+          "displayName": "name",
+          "plug": "input",
+          "type": "*",
+          "group": "Parameters",
+          "index": 10
+        }
+      ],
+      "x": 360,
+      "y": 40
+    },
+    {
+      "id": "setLast",
+      "type": "Set Variable",
+      "label": "Remember guest",
+      "parameters": {
+        "name": "lastSent"
+      },
+      "x": 700,
+      "y": 200
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "21bf3933-aa84-5c4b-8b68-48257431a6d2",
+  "name": "Footer",
+  "path": "/Members/Footer",
+  "type": "visual",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

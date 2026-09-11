@@ -1,0 +1,151 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "bc820954-03cc-4e61-9cce-dfc8fdc91214",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "userCheck",
+      "fromProperty": "authenticated",
+      "toId": "authGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "authGate",
+      "fromProperty": "onfalse",
+      "toId": "navigateNotAuth",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "logoutBtn",
+      "fromProperty": "onClick",
+      "toId": "logout",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "logout",
+      "fromProperty": "done",
+      "toId": "navigateLogout",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "query",
+      "fromProperty": "items",
+      "toId": "formatList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "formatList",
+      "fromProperty": "text",
+      "toId": "listText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "nameInput-2",
+      "fromProperty": "onTextChanged",
+      "toId": "createRecord",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "photoInput",
+      "fromProperty": "onTextChanged",
+      "toId": "createRecord",
+      "toProperty": "prop-photo"
+    },
+    {
+      "fromId": "breedInput",
+      "fromProperty": "onTextChanged",
+      "toId": "createRecord",
+      "toProperty": "prop-breed"
+    },
+    {
+      "fromId": "ageInput",
+      "fromProperty": "onTextChanged",
+      "toId": "createRecord",
+      "toProperty": "prop-age"
+    },
+    {
+      "fromId": "descInput",
+      "fromProperty": "onTextChanged",
+      "toId": "createRecord",
+      "toProperty": "prop-description"
+    },
+    {
+      "fromId": "addBtn",
+      "fromProperty": "onClick",
+      "toId": "createRecord",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "createRecord",
+      "fromProperty": "error",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "idInput",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "nameInput-2",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "photoInput",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "prop-photo"
+    },
+    {
+      "fromId": "breedInput",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "prop-breed"
+    },
+    {
+      "fromId": "ageInput",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "prop-age"
+    },
+    {
+      "fromId": "descInput",
+      "fromProperty": "onTextChanged",
+      "toId": "updateRecord",
+      "toProperty": "prop-description"
+    },
+    {
+      "fromId": "updateBtn",
+      "fromProperty": "onClick",
+      "toId": "updateRecord",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "updateRecord",
+      "fromProperty": "error",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "idInput",
+      "fromProperty": "onTextChanged",
+      "toId": "deleteRecord",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "deleteBtn",
+      "fromProperty": "onClick",
+      "toId": "deleteRecord",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "deleteRecord",
+      "fromProperty": "error",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

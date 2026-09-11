@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "a34a5cb3-6f39-52ea-8ae3-5de0b743db8e",
+  "name": "ClosingCta",
+  "path": "/Sections/ClosingCta",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

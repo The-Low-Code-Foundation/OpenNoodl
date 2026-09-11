@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d4e0-5a3c-4d9f-8b2e-000000000091",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-05T15:30:00.000Z",
+  "description": "EXP-011 §64 fixture: a Server-Sent Events node (`stream`, URL http://localhost:8582/stream, Text Path choices.0.delta.content) driven by Connect / Stop buttons; its Text feeds a Text Accumulator's Chunk and its On Message pulses the Add — the streaming-LLM shape. Connection State, Connected, Message Count and Last Error each shown in a Text; On Open / On Close / Failure write a `status` Variable through three String-fed Set Variables."
+}

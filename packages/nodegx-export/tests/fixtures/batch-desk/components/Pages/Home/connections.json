@@ -1,0 +1,79 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c4d7e2a1-6b3f-4e8d-9c1a-000000000081",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "namesConst",
+      "fromProperty": "savedValue",
+      "toId": "toGuests",
+      "toProperty": "in-names"
+    },
+    {
+      "fromId": "toGuests",
+      "fromProperty": "out-guests",
+      "toId": "sendAll",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "runBtn",
+      "fromProperty": "onClick",
+      "toId": "sendAll",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "abortBtn",
+      "fromProperty": "onClick",
+      "toId": "sendAll",
+      "toProperty": "abort"
+    },
+    {
+      "fromId": "sendAll",
+      "fromProperty": "done",
+      "toId": "setDone",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "sendAll",
+      "fromProperty": "failure",
+      "toId": "setFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "sendAll",
+      "fromProperty": "aborted",
+      "toId": "setStopped",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "doneStr",
+      "fromProperty": "savedValue",
+      "toId": "setDone",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "failedStr",
+      "fromProperty": "savedValue",
+      "toId": "setFailed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "stoppedStr",
+      "fromProperty": "savedValue",
+      "toId": "setStopped",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lastVar",
+      "fromProperty": "value",
+      "toId": "lastText",
+      "toProperty": "text"
+    }
+  ]
+}

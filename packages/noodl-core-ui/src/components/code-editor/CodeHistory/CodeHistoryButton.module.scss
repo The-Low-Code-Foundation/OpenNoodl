@@ -6,13 +6,20 @@
   position: relative;
 }
 
+/* Phase 75's border sweep (`BORDER-CONTROL-SWEEP.md`). This edge was
+   `--theme-color-border-default`, a DIVIDER tone. 🔴 It is load-bearing here in a
+   way it is not on most of the sweep: this button's fill is `bg-2` and it sits in
+   `JavaScriptEditor .Toolbar`, which is ALSO `bg-2` — the fill step is literally
+   1.00:1, so the border is the only thing that identifies the control at all.
+   POL-016's `--theme-color-border-control` measures 3.57:1 dark / 3.37:1 light,
+   the same on both sides because both sides are the same surface. */
 .Button {
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
   background: var(--theme-color-bg-2);
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: 4px;
   color: var(--theme-color-fg-default);
   font-size: 13px;
@@ -20,9 +27,15 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
+  /* 🔴 `border-highlight` is an ALIAS of `border-strong` — another NAT-003 divider
+     tone (1.28:1 on this hover fill). Raising the resting edge and leaving this
+     behind would have DROPPED the boundary 3.57 -> 1.28 exactly while the pointer
+     is on it. `primary` is 4.13 / 3.74 on `bg-3` and 4.80 / 4.14 on the toolbar,
+     and it is what `JavaScriptEditor .FormatButton:hover` in this same family
+     already used — this rule is now consistent with its neighbour rather than new. */
   &:hover {
     background: var(--theme-color-bg-3);
-    border-color: var(--theme-color-border-highlight);
+    border-color: var(--theme-color-primary);
     color: var(--theme-color-fg-highlight);
   }
 

@@ -46,7 +46,15 @@
     "runtimeVersion": {
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$",
-      "description": "noodl-runtime version this entry was authored/verified against."
+      "description": "noodl-runtime version this entry was authored/verified against. DESCRIPTIVE PROVENANCE, NOT A REQUIREMENT, and deliberately ungated: unlike minEditorVersion there is no comparand — the editor has no runtime version to check it against (measured 2026-08-18: no constant, no generated file, no dependency edge from noodl-editor to noodl-runtime). CN-016 item 3 considered a minRuntimeVersion floor and did not add one, because a schema field nothing can evaluate is worse than an absent one: library:check would accept it while every consumer ignored it in silence. It becomes worth adding the day the editor knows its runtime version."
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Other library entries this one does not work without, each written \"<type-dir>/<slug>\" — e.g. \"modules/custom-html\", \"prefabs/avatar\". Installing this entry installs these first, in this order, in the same click. UNLIKE runtimeVersion THIS FIELD HAS A CONSUMER, and it is a two-stage one, so both stages must exist for the field to mean anything: (1) `scripts/library/build.js` resolves each string against the other entries on disk — failing the build on an unknown slug or a cycle — flattens the transitive closure into dependency-first order, and emits it into index.json as resolved install descriptors ({key,label,type,project,version,minEditorVersion}); (2) the editor's `ModuleLibraryModel._installWithDependencies` walks that resolved list and installs each descriptor through the same `_install` a user's click uses, before installing this entry. The authored form is slugs and the published form is descriptors on purpose: resolving at build time means the editor never has to derive a slug back out of a zip URL, never has to have fetched the OTHER tab's index to install across the prefab/module boundary, and never has to walk a graph at install time. An editor older than the field ignores it and installs only this entry — the same behaviour as before the field existed, which is why an entry with dependencies should still SAY so in its README.",
+      "items": {
+        "type": "string",
+        "pattern": "^(prefabs|modules)/[A-Za-z0-9][A-Za-z0-9._-]*$"
+      }
     },
     "provenance": {
       "type": "object",

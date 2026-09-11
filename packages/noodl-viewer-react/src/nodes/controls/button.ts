@@ -80,7 +80,20 @@ NodeSharedPortDefinitions.addLabelInputs(ButtonNode, {
 });
 NodeSharedPortDefinitions.addIconInputs(ButtonNode, {
   enableIconPlacement: true,
-  defaults: { useIcon: false }
+  /**
+   * 🔴 **The one node with NO icon colour default — it inherits the label's.**
+   *
+   * Every other node takes the shared `#000000`. A Button cannot: its default `primary` variant
+   * paints a filled `--primary` ground with `--primary-foreground` text, where black is invisible;
+   * `outline` and `ghost` are transparent with `--foreground` text, where white is invisible. No
+   * constant is right for both, and the white this used to carry was simply the first of the two
+   * wrong answers.
+   *
+   * Leaving it unset makes the icon inherit the button's own resolved text colour — see the note
+   * in `Button.tsx`'s `_renderIcon`. Ruled by Richard, 2026-09-04: *"Same as label colour I'd
+   * imagine."* It is also the only answer that stays correct for a variant nobody has written yet.
+   */
+  defaults: { useIcon: false, iconColor: undefined }
 });
 NodeSharedPortDefinitions.addSharedVisualInputs(ButtonNode);
 NodeSharedPortDefinitions.addBorderInputs(ButtonNode);

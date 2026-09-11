@@ -1,0 +1,288 @@
+#!/usr/bin/env node
+/**
+ * COM-002 — generate the Bubble phrasebook page from `rows.js`.
+ *
+ * `docs-site/docs/coming-from-bubble.md` is generated output: edit `rows.js`
+ * and re-run, never the page. That is the same contract
+ * `scripts/generate-node-docs.js` holds over `docs-site/docs/nodes/`.
+ *
+ * 🔴 This script REFUSES to write a page whose code has not been executed. The
+ * checker runs first, every time, and a failing cell aborts the build — so the
+ * published page cannot drift into carrying code that does not work, which is
+ * the exact state the corpus it replaces was in.
+ *
+ * It also resolves every node this page names against the generated node
+ * reference and fails on one it cannot find. A phrasebook whose answer is "use
+ * the Frobnicate node" is worse than a blank row, and the names DO drift: the
+ * node whose type is `Filter Collection` is called **Array Filter** in the
+ * editor, and `For Each` is **Repeater**. Both were written the wrong way round
+ * here first, and this check is what said so.
+ *
+ * Usage:
+ *   node scripts/bubble-phrasebook/build.js            write the page
+ *   node scripts/bubble-phrasebook/build.js --check    fail if the committed page is stale
+ *
+ * Exit codes: 0 = written/current, 1 = stale or a check failed, 2 = IO error.
+ *
+ * @module scripts/bubble-phrasebook/build
+ */
+const fs = require('fs');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const DOCS_ROOT = path.join(REPO_ROOT, 'docs-site/docs');
+const OUT = path.join(DOCS_ROOT, 'coming-from-bubble.md');
+
+const { rows } = require('./rows');
+
+/** Display title → path relative to `docs-site/docs`, read from the generated node reference. */
+function nodeDocIndex() {
+  const index = new Map();
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.md')) {
+        const m = fs.readFileSync(full, 'utf8').slice(0, 400).match(/^title:\s*"?(.*?)"?\s*$/m);
+        if (m) index.set(m[1], path.relative(DOCS_ROOT, full));
+      }
+    }
+  };
+  walk(path.join(DOCS_ROOT, 'nodes'));
+  return index;
+}
+
+/** A stable anchor for a Bubble operator, so every row is linkable. */
+function anchorFor(row) {
+  const slug = row.bubble
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `${slug || 'op'}-${row.id}`;
+}
+
+function nodeLink(name, index) {
+  const target = index.get(name);
+  if (!target) return null;
+  return `[${name}](./${target})`;
+}
+
+const TYPE_ORDER = ['Any', 'String', 'Integer', 'Integer range', 'Date', 'Date Range', 'List'];
+
+const TYPE_BLURB = {
+  Any: 'Operators Bubble allows on any value.',
+  String: 'Text. Most of these are one Expression; two of them NodeGX deliberately does not have.',
+  Integer: 'Numbers. Expression pre-defines `min`, `max`, `round`, `floor`, `ceil`, `abs`, `sqrt`, `pow`, `log`, `exp`, `pi`, `random`, `sin`, `cos` and `tan`, so you write `floor(x)` rather than `Math.floor(x)`.',
+  'Integer range': 'A pair of numbers. 🔴 Bubble has a range TYPE and NodeGX does not — a range here is a two-element array you build yourself, which is why every row in this group is a short expression over `[start, end]`.',
+  Date: 'Dates have real nodes rather than code: **Now**, **Date Add**, **Date Compare**, **Date Difference**, **Date Parts** and **Date To String**. Reach for those before an Expression.',
+  'Date Range': 'Two dates. The same missing type as Integer range — 🔴 and all twelve of these rows were blank in the community table for that reason.',
+  List: 'Arrays. Bubble counts list items from 1 and JavaScript indexes from 0, which is the single most common migration bug in this table.'
+};
+
+function render(index, unresolved) {
+  const out = [];
+  const counts = {
+    total: rows.length,
+    refused: rows.filter((r) => r.answer.kind === 'none').length,
+    bugs: rows.filter((r) => r.corpusBug).length,
+    bugsCode: rows.filter((r) => r.corpusBugKind === 'code').length,
+    bugsResult: rows.filter((r) => r.corpusBugKind === 'result').length,
+    bugsMissing: rows.filter((r) => r.corpusBugKind === 'missing').length,
+    cells: rows.filter((r) => r.answer.kind === 'expression' || r.answer.kind === 'function').length
+  };
+
+  out.push('---');
+  out.push('title: Coming from Bubble');
+  out.push('sidebar_position: 6');
+  out.push('description: Every Bubble operator, and what it is in NodeGX — written in Bubble\'s vocabulary.');
+  out.push('toc_max_heading_level: 2');
+  out.push('---');
+  out.push('');
+  // ⚠️ An HTML comment, not `{/* … */}`: docusaurus.config.js sets markdown
+  // format 'detect', so a `.md` file is parsed as plain CommonMark and an MDX
+  // comment would render to the reader as literal text at the top of the page.
+  out.push('<!-- Generated by scripts/bubble-phrasebook/build.js from scripts/bubble-phrasebook/rows.js. Do not edit this file. -->');
+  out.push('');
+  out.push('*Describes NodeGX 0.1.0.*');
+  out.push('');
+  out.push(
+    `If you have built in Bubble, you already know what you want to do — you just do not know what it ` +
+      `is called here. This page is a phrasebook: **${counts.total} Bubble operators**, written the way Bubble ` +
+      `writes them, each with the NodeGX answer beside it. Search this page for the thing you would have ` +
+      `typed in Bubble.`
+  );
+  out.push('');
+  out.push('## What this is not {#what-this-is-not}');
+  out.push('');
+  out.push(
+    '🔴 **It is not a migration tool.** Nothing here reads a Bubble app, converts a workflow, or imports ' +
+      'data. If you arrived looking for an importer, there is not one, and knowing that now is better than ' +
+      'finding out after a weekend. What this is good for is the other problem: you are evaluating NodeGX, ' +
+      'you know exactly what you want, and you cannot work out how to say it.'
+  );
+  out.push('');
+  out.push(
+    `It is also honest about the gaps. **${counts.refused} of the ${counts.total} operators have no NodeGX ` +
+      'equivalent**, and those rows say so in plain words and suggest what to do instead, rather than being ' +
+      'quietly left out — a missing row and an unanswerable one look identical to a reader, and only one of ' +
+      'them is fair.'
+  );
+  out.push('');
+  out.push('## Where this came from {#where-this-came-from}');
+  out.push('');
+  out.push(
+    'The operator list is not ours. It is a translation table the Noodl community built up over years, ' +
+      'row by row, in Bubble\'s own vocabulary — which is the whole reason it is worth publishing: ' +
+      '`:ranked by` and `<-range->` are not phrases we would ever have invented, and they are what a ' +
+      'person actually searches for.'
+  );
+  out.push('');
+  out.push(
+    `⚠️ **The code in it had never been run.** Running all of it found **${counts.bugs} rows that are ` +
+      `demonstrably wrong**, in three different ways: **${counts.bugsCode} whose code produces the wrong ` +
+      'answer when executed** — an output quoted twice, three naming the wrong variable, a date helper ' +
+      'that mutates its input and shifts it by six units at once, two that assign no output at all and ' +
+      `one that does not compile; **${counts.bugsResult} whose stated ANSWER is wrong** while the code is ` +
+      `fine; and **${counts.bugsMissing} that claim an answer they never shipped** — one whose code cell ` +
+      'is the literal text "See above", one that names a node and leaves the code empty.'
+  );
+  out.push('');
+  out.push(
+    'Those are corrected here, and every correction quotes what the original actually did, under ' +
+      '**What the community table got wrong** — the corrections are not taken on trust either: the ' +
+      'checker re-runs the original code too, and a row accusing the table of being broken fails the ' +
+      'build if the old code turns out to work. Two rows were demoted from "broken" to "right answer, ' +
+      `wrong reason" exactly that way. Every one of the **${counts.cells} code cells on this page is ` +
+      'executed** by `npm run docs:bubble:check`, against a fixture built from Bubble\'s own worked ' +
+      'examples. None of it is here because it looked right.'
+  );
+  out.push('');
+
+  out.push('## One thing to know before you paste anything {#expression-comments}');
+  out.push('');
+  out.push(
+    '🔴 **An Expression that ends in a `//` comment does not compile.** The node wraps what you type ' +
+      'as `return ( your text );` on a single line, so a trailing line comment swallows the closing ' +
+      '`);` and the whole expression fails with `Unexpected token \'}\'` — which names nothing you ' +
+      'wrote and does not mention comments. Three rows in the community table are written this way and ' +
+      'none of them can ever have been run. Put the comment on its own line **above** the expression, ' +
+      'or use `/* … */`, or leave it out.'
+  );
+  out.push('');
+
+  for (const type of TYPE_ORDER) {
+    const group = rows.filter((r) => r.type === type);
+    if (!group.length) continue;
+    out.push(`## ${type} {#${type.toLowerCase().replace(/\s+/g, '-')}}`);
+    out.push('');
+    if (TYPE_BLURB[type]) {
+      out.push(TYPE_BLURB[type]);
+      out.push('');
+    }
+    for (const row of group) {
+      out.push(`### \`${row.bubble}\` {#${anchorFor(row)}}`);
+      out.push('');
+      out.push(`> **Bubble:** \`${row.example}\` → \`${row.bubbleResult}\``);
+      out.push('');
+
+      const { answer } = row;
+      if (answer.kind === 'none') {
+        out.push(`**NodeGX: no equivalent.**`);
+        out.push('');
+        out.push(answer.prose);
+        out.push('');
+      } else if (answer.kind === 'node') {
+        const link = nodeLink(answer.node, index) || `**${answer.node}**`;
+        if (!nodeLink(answer.node, index)) unresolved.push(`${row.id}: ${answer.node}`);
+        out.push(`**NodeGX:** ${link}`);
+        out.push('');
+        out.push(answer.prose);
+        out.push('');
+      } else {
+        const link = nodeLink(answer.node, index) || `**${answer.node}**`;
+        if (!nodeLink(answer.node, index)) unresolved.push(`${row.id}: ${answer.node}`);
+        out.push(`**NodeGX:** ${link}`);
+        out.push('');
+        out.push('```js');
+        out.push(answer.code);
+        out.push('```');
+        out.push('');
+      }
+
+      if (row.answer_alt) {
+        const alt = nodeLink(row.answer_alt, index);
+        if (!alt) unresolved.push(`${row.id}: ${row.answer_alt}`);
+        out.push(`**Without code:** ${alt || `**${row.answer_alt}**`}`);
+        out.push('');
+      }
+      if (row.corpusBug) {
+        out.push(`:::caution What the community table got wrong`);
+        out.push(row.corpusBug);
+        out.push(':::');
+        out.push('');
+      }
+      if (row.note_corpus) {
+        out.push(`:::note What the community table did here`);
+        out.push(row.note_corpus);
+        out.push(':::');
+        out.push('');
+      }
+      if (row.note) {
+        out.push(row.note);
+        out.push('');
+      }
+      if (row.example_link) {
+        out.push(`*Worked example: \`${row.example_link}\` — in \`docs/node-catalog/examples/\`, and served to an assistant building for you.*`);
+        out.push('');
+      }
+    }
+  }
+
+  return out.join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
+}
+
+function main() {
+  const check = process.argv.includes('--check');
+
+  // 🔴 Never publish code nobody ran. The checker is the gate, not a companion.
+  try {
+    execFileSync(process.execPath, [path.join(__dirname, 'check.js')], { stdio: 'inherit' });
+  } catch {
+    console.error('Refusing to build: a code cell on the phrasebook does not do what its row says.');
+    process.exit(1);
+  }
+
+  const missingAnswer = rows.filter((r) => !r.answer || !r.answer.kind);
+  if (missingAnswer.length) {
+    console.error(`COM-002 AC2: ${missingAnswer.length} row(s) have no answer at all: ${missingAnswer.map((r) => r.id).join(', ')}`);
+    process.exit(1);
+  }
+
+  const index = nodeDocIndex();
+  const unresolved = [];
+  const page = render(index, unresolved);
+
+  if (unresolved.length) {
+    console.error('These rows name a node with no page in the node reference:');
+    for (const u of unresolved) console.error(`  ${u}`);
+    console.error('Either the name is wrong, or the node is not in the picker. Fix rows.js.');
+    process.exit(1);
+  }
+
+  if (check) {
+    const committed = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
+    if (committed !== page) {
+      console.error('docs-site/docs/coming-from-bubble.md is not what the generator writes today.');
+      console.error('Run `npm run docs:bubble` and commit the result.');
+      process.exit(1);
+    }
+    console.log(`Phrasebook is up to date — ${rows.length} rows.`);
+    return;
+  }
+
+  fs.writeFileSync(OUT, page);
+  console.log(`Wrote ${path.relative(REPO_ROOT, OUT)} — ${rows.length} rows, ${page.length} bytes.`);
+}
+
+main();

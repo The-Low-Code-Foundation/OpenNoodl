@@ -1,0 +1,348 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "1cec27ac-96bc-5896-867b-a159c4d7da07",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "svCard",
+      "type": "Group",
+      "label": "One service",
+      "children": [
+        "svHead",
+        "svDetail"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "cssClassName": "card-lift"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "svHead",
+      "type": "Group",
+      "label": "What it is, and the chevron",
+      "parent": "svCard",
+      "children": [
+        "svBadge",
+        "svWords",
+        "svChevron"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "alignItems": "flex-start",
+        "columnGap": "var(--space-4)",
+        "cssClassName": "disclosure"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "svBadge",
+      "type": "Group",
+      "label": "The badge",
+      "parent": "svHead",
+      "children": [
+        "svGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "svGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The glyph",
+      "parent": "svBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "svWords",
+      "type": "Group",
+      "label": "The words",
+      "parent": "svHead",
+      "children": [
+        "svTitle",
+        "svPrice",
+        "svLine"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "svTitle",
+      "type": "Text",
+      "label": "What it is",
+      "parent": "svWords",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h3"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "svPrice",
+      "type": "Text",
+      "label": "What it costs",
+      "parent": "svWords",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "svLine",
+      "type": "Text",
+      "label": "What it means for them",
+      "parent": "svWords",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "svChevron",
+      "type": "net.noodl.visual.icon",
+      "label": "Open or closed",
+      "parent": "svHead",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-chevron-down",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 20,
+          "unit": "px"
+        },
+        "iconColor": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "svDetail",
+      "type": "Group",
+      "label": "The rest of it",
+      "parent": "svCard",
+      "children": [
+        "svDetailText",
+        "svGetLabel",
+        "svGet"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border-subtle)",
+        "mounted": false
+      },
+      "x": 100,
+      "y": 1120
+    },
+    {
+      "id": "svDetailText",
+      "type": "Text",
+      "label": "How it works",
+      "parent": "svDetail",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "svGetLabel",
+      "type": "Text",
+      "label": "What you get",
+      "parent": "svDetail",
+      "parameters": {
+        "text": "What you get",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "svGet",
+      "type": "Text",
+      "label": "What they end up with",
+      "parent": "svDetail",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 1480
+    },
+    {
+      "id": "svStates",
+      "type": "States",
+      "label": "Closed / open",
+      "parameters": {
+        "states": "closed,open",
+        "values": "chevron",
+        "type-chevron": "number",
+        "value-closed-chevron": 0,
+        "value-open-chevron": 180,
+        "useTransitions": true
+      },
+      "x": 470,
+      "y": 1120
+    },
+    {
+      "id": "svInputs",
+      "type": "Component Inputs",
+      "label": "The service",
+      "ports": [
+        {
+          "name": "icon",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "price",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "line",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "detail",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "deliverable",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 470,
+      "y": 640
+    },
+    {
+      "id": "svSource",
+      "type": "JavaScriptFunction",
+      "label": "The glyph, from its name",
+      "parameters": {
+        "functionScript": "Outputs.source = { class: 'lucide', code: 'icon-' + (Inputs.icon || 'sparkles'), codeAsClass: true };"
+      },
+      "x": 470,
+      "y": 400,
+      "ports": [
+        {
+          "name": "in-icon",
+          "displayName": "icon",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-source",
+          "displayName": "source",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "svCard"
+  ]
+}

@@ -1,0 +1,393 @@
+{
+  "id": "ui-testimonial-row",
+  "title": "Testimonial row: three quote cards from one component over a Static Data array",
+  "description": "Three quotes, one card component, no hand-written copies — the same rule as the stat tile row and the footer, and the reason it matters here is that three testimonials are the most tempting place to paste a subtree three times. Each card is a real designed object rather than a paragraph in a column: a --surface fill, a hairline border, a radius, and a soft shadow so it sits ABOVE the band rather than in it. Two details do most of the work. The quote glyph is set in --border, not --muted-foreground, so it reads as ornament rather than as a word. The author row is an Image and two lines of text with a columnGap and alignItems center — a portrait pressed against its own name is the single commonest spacing tell in generated pages, and a gap is what fixes it. Wire `items` from Query Records to make it live; the Static Data node is the shape of the row, and it is worth keeping as the empty-state seed.",
+  "demonstrates": [
+    "Static Data",
+    "For Each",
+    "net.noodl.visual.columns",
+    "Group",
+    "Image",
+    "Text",
+    "Component Inputs"
+  ],
+  "components": [
+    {
+      "name": "/Components/TestimonialRow",
+      "nodes": [
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Testimonial band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundGradient": "var(--gradient-surface)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "head",
+            "cols"
+          ]
+        },
+        {
+          "id": "head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "shell",
+          "children": [
+            "eyebrow",
+            "heading"
+          ]
+        },
+        {
+          "id": "eyebrow",
+          "type": "Text",
+          "label": "Eyebrow",
+          "parameters": {
+            "text": "What they said after a week",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)"
+          },
+          "parent": "head"
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Section heading",
+          "parameters": {
+            "text": "Nobody had to leave the editor.",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "head"
+        },
+        {
+          "id": "cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Three up, folding to one",
+          "parameters": {
+            "layoutString": "1 1 1",
+            "marginX": {
+              "value": 24,
+              "unit": "px"
+            },
+            "marginY": {
+              "value": 24,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1 1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "shell",
+          "children": [
+            "quotes"
+          ]
+        },
+        {
+          "id": "quotes",
+          "type": "For Each",
+          "label": "One card per quote",
+          "parameters": {
+            "template": "/Components/QuoteCard"
+          },
+          "parent": "cols"
+        },
+        {
+          "id": "rows",
+          "type": "Static Data",
+          "label": "The quotes",
+          "parameters": {
+            "type": "json",
+            "json": "[{\"id\":\"q1\",\"quote\":\"I stopped opening a browser to check what the page looked like. That is the whole review.\",\"name\":\"Priya Raman\",\"role\":\"Design lead, Kiln & Co.\",\"portrait\":\"noodl_modules/starter-imagery/avatar-3.webp\"},{\"id\":\"q2\",\"quote\":\"The first project already had a typeface, an icon set and six pictures in it. I built the page, not the scaffolding.\",\"name\":\"Tom Aldiss\",\"role\":\"Founder, two-person studio\",\"portrait\":\"noodl_modules/starter-imagery/avatar-1.webp\"},{\"id\":\"q3\",\"quote\":\"We ran the whole workshop on a train with no signal and nothing degraded.\",\"name\":\"Marguerite Osei\",\"role\":\"Training, NHS trust\",\"portrait\":\"noodl_modules/starter-imagery/avatar-2.webp\"}]"
+          },
+          "x": 520,
+          "y": 40
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "rows",
+          "fromProperty": "items",
+          "toId": "quotes",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/QuoteCard",
+      "nodes": [
+        {
+          "id": "card",
+          "type": "Group",
+          "label": "Quote card",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "boxShadowEnabled": true,
+            "boxShadowOffsetY": {
+              "value": 1,
+              "unit": "px"
+            },
+            "boxShadowBlurRadius": {
+              "value": 3,
+              "unit": "px"
+            },
+            "boxShadowColor": "var(--border)",
+            "paddingTop": "var(--space-6)",
+            "paddingBottom": "var(--space-6)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "children": [
+            "mark",
+            "quote",
+            "author"
+          ]
+        },
+        {
+          "id": "mark",
+          "type": "net.noodl.visual.icon",
+          "label": "Quote mark",
+          "parameters": {
+            "iconIconSource": {
+              "class": "lucide",
+              "code": "icon-quote",
+              "codeAsClass": true
+            },
+            "iconSize": {
+              "value": 24,
+              "unit": "px"
+            },
+            "iconColor": "var(--border)"
+          },
+          "parent": "card"
+        },
+        {
+          "id": "quote",
+          "type": "Text",
+          "label": "Quote",
+          "parameters": {
+            "text": "One sentence somebody actually said.",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "fontSize": "var(--text-base)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--foreground)"
+          },
+          "parent": "card"
+        },
+        {
+          "id": "author",
+          "type": "Group",
+          "label": "Author row",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-3)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "paddingTop": "var(--space-4)"
+          },
+          "parent": "card",
+          "children": [
+            "portrait",
+            "who"
+          ]
+        },
+        {
+          "id": "portrait",
+          "type": "Image",
+          "label": "Portrait",
+          "parameters": {
+            "src": "noodl_modules/starter-imagery/avatar-5.webp",
+            "alt": "",
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 40,
+              "unit": "px"
+            },
+            "height": {
+              "value": 40,
+              "unit": "px"
+            },
+            "borderRadius": "var(--radius-full)"
+          },
+          "parent": "author"
+        },
+        {
+          "id": "who",
+          "type": "Group",
+          "label": "Name and role",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-1)"
+          },
+          "parent": "author",
+          "children": [
+            "name",
+            "role"
+          ]
+        },
+        {
+          "id": "name",
+          "type": "Text",
+          "label": "Name",
+          "parameters": {
+            "text": "Name",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--foreground)"
+          },
+          "parent": "who"
+        },
+        {
+          "id": "role",
+          "type": "Text",
+          "label": "Role",
+          "parameters": {
+            "text": "Role",
+            "fontSize": "var(--text-xs)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "who"
+        },
+        {
+          "id": "card_inputs",
+          "type": "Component Inputs",
+          "label": "What varies per quote",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "quote",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "name",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "role",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "portrait",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "quote",
+          "toId": "quote",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "name",
+          "toId": "name",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "role",
+          "toId": "role",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "portrait",
+          "toId": "portrait",
+          "toProperty": "src"
+        }
+      ]
+    }
+  ]
+}

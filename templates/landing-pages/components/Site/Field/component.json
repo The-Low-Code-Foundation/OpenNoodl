@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "194d44fb-f5a9-5dfd-82db-554a86de636f",
+  "name": "Field",
+  "path": "/Site/Field",
+  "type": "visual",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

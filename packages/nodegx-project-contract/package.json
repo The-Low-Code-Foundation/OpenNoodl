@@ -1,0 +1,12 @@
+{
+  "name": "@nodegx/project-contract",
+  "version": "0.1.0",
+  "description": "What the editor, the runtime and the exporter must agree on about a NodeGX project file: the default token vocabulary, and the port set a Logic Builder program declares.",
+  "private": true,
+  "license": "GPL-3.0",
+  "main": "index.ts",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  }
+}

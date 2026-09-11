@@ -105,7 +105,13 @@ describe('AIX-011 — update mode is judged against its own base', () => {
     // Without a baseline this is exactly the pressure that produced the retype.
     const unbaselined = validateCandidateComponent(GRAPH, legacyName, files);
     expect(unbaselined.ok).toBe(false);
-    expect(unbaselined.errors.every((d) => d.code === 'unknown-node-type')).toBe(true);
+    // DSG-004 promoted `inert-dimension` to a blocking warning and this fixture
+    // carries one, so "every error here is an unknown type" became false — a
+    // statement about the fixture, not about the contract. The contract is the
+    // three lines below: whatever this component was already carrying, all of it
+    // is pre-existing and all of it is forgiven. `preExisting.length` equalling
+    // `errors.length` is the stronger claim and it is what the exemption means.
+    expect(unbaselined.errors.some((d) => d.code === 'unknown-node-type')).toBe(true);
 
     const baselined = validateCandidateComponent(GRAPH, legacyName, files, { baseline: base });
     expect(baselined.ok).toBe(true);

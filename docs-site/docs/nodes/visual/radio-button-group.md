@@ -27,6 +27,7 @@ Always wrap radio buttons in one — it is the single point logic should read. N
 |---|---|---|---|
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `flexDirection` | Enum (`column`, `row`) | `column` | Stacks the radio buttons inside this group vertically or lays them out in a row |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |

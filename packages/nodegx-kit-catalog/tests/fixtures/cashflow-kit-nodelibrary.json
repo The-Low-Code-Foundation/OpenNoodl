@@ -1,0 +1,1193 @@
+{
+  "nodetypes": [
+    {
+      "name": "nodegx.cashflow.Lane",
+      "displayNodeName": "Cashflow Lane",
+      "module": "Cashflow Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "allowChildrenWithCategory": [
+        "Visual"
+      ],
+      "docs": "A one-row day track. Measures itself and outputs the pixel width of a single day.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "days",
+          "type": "number",
+          "plug": "input",
+          "group": "Track",
+          "displayName": "Days",
+          "default": 31
+        },
+        {
+          "name": "laneHeight",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Lane Height",
+          "default": 30
+        },
+        {
+          "name": "laneRadius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Corner Radius",
+          "default": 4
+        },
+        {
+          "name": "laneColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Lane Color",
+          "default": "#F1F1F4"
+        },
+        {
+          "name": "gridLineColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Grid Line Color",
+          "default": "rgba(0,0,0,0.06)"
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "childrenCount",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Children Count",
+          "description": "How many child elements are currently mounted inside this one"
+        },
+        {
+          "name": "dayWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Geometry",
+          "displayName": "Day Width",
+          "description": "Pixel width of one day column after layout — feed this to every pill on this lane"
+        },
+        {
+          "name": "laneWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Geometry",
+          "displayName": "Lane Width"
+        }
+      ]
+    },
+    {
+      "name": "nodegx.cashflow.Pill",
+      "displayNodeName": "Money Pill",
+      "module": "Cashflow Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "A draggable money pill that snaps to whole days and reports the day it lands on.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Label"
+        },
+        {
+          "name": "amount",
+          "type": "number",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Amount",
+          "default": 0
+        },
+        {
+          "name": "day",
+          "type": "number",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Day",
+          "default": 1
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Currency Symbol",
+          "default": "£"
+        },
+        {
+          "name": "showAmount",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Show Amount",
+          "default": true
+        },
+        {
+          "name": "showDecimals",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Show Decimals",
+          "default": false
+        },
+        {
+          "name": "dayWidth",
+          "type": "number",
+          "plug": "input",
+          "group": "Track",
+          "displayName": "Day Width",
+          "default": 0
+        },
+        {
+          "name": "days",
+          "type": "number",
+          "plug": "input",
+          "group": "Track",
+          "displayName": "Days",
+          "default": 31
+        },
+        {
+          "name": "snapStep",
+          "type": "number",
+          "plug": "input",
+          "group": "Track",
+          "displayName": "Snap Step (days)",
+          "default": 1
+        },
+        {
+          "name": "locked",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Track",
+          "displayName": "Locked",
+          "default": false
+        },
+        {
+          "name": "positiveColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Positive Color",
+          "default": "#1F8A4C"
+        },
+        {
+          "name": "negativeColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Negative Color",
+          "default": "#B3261E"
+        },
+        {
+          "name": "textColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Text Color",
+          "default": "#FFFFFF"
+        },
+        {
+          "name": "pillHeight",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Pill Height",
+          "default": 24
+        },
+        {
+          "name": "pillRadius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Pill Radius",
+          "default": 12
+        },
+        {
+          "name": "pillPaddingX",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Pill Padding X",
+          "default": 8
+        },
+        {
+          "name": "offsetY",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Offset Y",
+          "default": 2
+        },
+        {
+          "name": "fontSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Size",
+          "default": 11
+        },
+        {
+          "name": "fontWeight",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Weight",
+          "default": 600
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "liveDay",
+          "type": "number",
+          "plug": "output",
+          "group": "Values",
+          "displayName": "Day (live)",
+          "description": "The day under the pointer, updated while dragging"
+        },
+        {
+          "name": "committedDay",
+          "type": "number",
+          "plug": "output",
+          "group": "Values",
+          "displayName": "Day (dropped)",
+          "description": "The day the pill was released on"
+        },
+        {
+          "name": "dragStarted",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Drag Started"
+        },
+        {
+          "name": "dragEnded",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Drag Ended"
+        },
+        {
+          "name": "dropped",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Dropped"
+        },
+        {
+          "name": "onClick",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Click"
+        }
+      ]
+    },
+    {
+      "name": "nodegx.cashflow.BalanceStrip",
+      "displayNodeName": "Balance Strip",
+      "module": "Cashflow Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "A cumulative balance bar: one cell per day, banded ok / warn / danger.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "balances",
+          "type": "array",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Balances"
+        },
+        {
+          "name": "warnBelow",
+          "type": "number",
+          "plug": "input",
+          "group": "Bands",
+          "displayName": "Warn Below",
+          "default": 0
+        },
+        {
+          "name": "dangerBelow",
+          "type": "number",
+          "plug": "input",
+          "group": "Bands",
+          "displayName": "Danger Below",
+          "default": -1500
+        },
+        {
+          "name": "okColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Bands",
+          "displayName": "OK Color",
+          "default": "#1F8A4C"
+        },
+        {
+          "name": "warnColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Bands",
+          "displayName": "Warn Color",
+          "default": "#C58A00"
+        },
+        {
+          "name": "dangerColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Bands",
+          "displayName": "Danger Color",
+          "default": "#B3261E"
+        },
+        {
+          "name": "cellHeight",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Cell Height",
+          "default": 26
+        },
+        {
+          "name": "cellGap",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Cell Gap",
+          "default": 2
+        },
+        {
+          "name": "cellRadius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Cell Radius",
+          "default": 3
+        },
+        {
+          "name": "showValues",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Show Values",
+          "default": false
+        },
+        {
+          "name": "valueFontSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Value Font Size",
+          "default": 8
+        },
+        {
+          "name": "valueColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Value Color",
+          "default": "rgba(255,255,255,0.9)"
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "clickedDay",
+          "type": "number",
+          "plug": "output",
+          "group": "Values",
+          "displayName": "Clicked Day"
+        },
+        {
+          "name": "dayClicked",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Day Clicked"
+        }
+      ]
+    },
+    {
+      "name": "nodegx.cashflow.DayAxis",
+      "displayNodeName": "Day Axis",
+      "module": "Cashflow Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "Date labels across the day columns, with weekends picked out.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "startDate",
+          "type": "string",
+          "plug": "input",
+          "group": "Dates",
+          "displayName": "Start Date",
+          "default": "2026-08-01"
+        },
+        {
+          "name": "days",
+          "type": "number",
+          "plug": "input",
+          "group": "Dates",
+          "displayName": "Days",
+          "default": 31
+        },
+        {
+          "name": "dateFormat",
+          "type": {
+            "name": "enum",
+            "enums": [
+              "D",
+              "DD",
+              "DD/MM",
+              "ddd",
+              "ddd D"
+            ]
+          },
+          "plug": "input",
+          "group": "Dates",
+          "displayName": "Date Format",
+          "default": "D"
+        },
+        {
+          "name": "labelEvery",
+          "type": "number",
+          "plug": "input",
+          "group": "Dates",
+          "displayName": "Label Every N Days",
+          "default": 1
+        },
+        {
+          "name": "labelColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Label Color",
+          "default": "#666666"
+        },
+        {
+          "name": "weekendColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Weekend Color",
+          "default": "#B3261E"
+        },
+        {
+          "name": "fontSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Size",
+          "default": 9
+        },
+        {
+          "name": "cellGap",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Cell Gap",
+          "default": 2
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        }
+      ]
+    },
+    {
+      "name": "nodegx.cashflow.DangerBanner",
+      "displayNodeName": "Danger Banner",
+      "module": "Cashflow Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "States the first day the balance goes unaffordable, as a date, in words you control.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here"
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "dangerDay",
+          "type": "number",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Danger Day",
+          "default": 0
+        },
+        {
+          "name": "shortfall",
+          "type": "number",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Shortfall",
+          "default": 0
+        },
+        {
+          "name": "startDate",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Start Date",
+          "default": "2026-08-01"
+        },
+        {
+          "name": "currency",
+          "type": "string",
+          "plug": "input",
+          "group": "Data",
+          "displayName": "Currency Symbol",
+          "default": "£"
+        },
+        {
+          "name": "safeText",
+          "type": "string",
+          "plug": "input",
+          "group": "Messages",
+          "displayName": "Safe Message",
+          "default": "No danger days this month."
+        },
+        {
+          "name": "dangerText",
+          "type": "string",
+          "plug": "input",
+          "group": "Messages",
+          "displayName": "Danger Message",
+          "default": "Short by {shortfall} on {date} — move something."
+        },
+        {
+          "name": "dateFormat",
+          "type": {
+            "name": "enum",
+            "enums": [
+              "D",
+              "DD",
+              "DD/MM",
+              "ddd",
+              "ddd D"
+            ]
+          },
+          "plug": "input",
+          "group": "Messages",
+          "displayName": "Date Format",
+          "default": "ddd D"
+        },
+        {
+          "name": "safeColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Safe Background",
+          "default": "#E8F5EC"
+        },
+        {
+          "name": "dangerColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Danger Background",
+          "default": "#FDECEA"
+        },
+        {
+          "name": "safeTextColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Safe Text Color",
+          "default": "#1F8A4C"
+        },
+        {
+          "name": "dangerTextColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Danger Text Color",
+          "default": "#B3261E"
+        },
+        {
+          "name": "fontSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Size",
+          "default": 13
+        },
+        {
+          "name": "fontWeight",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Weight",
+          "default": 600
+        },
+        {
+          "name": "padding",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Padding",
+          "default": 10
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Corner Radius",
+          "default": 6
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0"
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value"
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge"
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge"
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels"
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured"
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists"
+        },
+        {
+          "name": "onClick",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Click"
+        }
+      ]
+    }
+  ]
+}

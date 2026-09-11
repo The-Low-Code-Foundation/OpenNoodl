@@ -1,4 +1,82 @@
 # Module audit & triage — LIB-003
+> **2026-09-05 (later) — LBR-007: `pdf-viewer` was broken, and the fix is a dependency mechanism.**
+> `modules/pdf-viewer` failed at runtime with `Can't find component model for module.inlineHtml` —
+> it instantiates a node type only `modules/custom-html` registers, and **nothing installed it**.
+> Fixed at the mechanism rather than the entry: `library.json` now takes a `dependencies` array,
+> resolved at build time by `build.js::resolveDependencies` (which **fails the build** on an unknown
+> slug, a self-reference or a cycle, and flattens the transitive closure dependency-first) and
+> consumed by `ModuleLibraryModel._installWithDependencies` → `_installDependency`, which installs
+> each dependency through the same `_install` a click uses. `pdf-viewer` is **1.2.0** and now
+> installs Custom HTML in the same click.
+>
+> **Re-bundling `custom-html` into `pdf-viewer` was rejected**, and the reason is not the
+> duplication: a bundled copy and the standalone module both land in
+> `noodl_modules/custom-html-module/` in the installing project, and **whichever installs second
+> wins with nothing saying which version you ended up with**. That is why LBR-006 removed the
+> bundled copy in the first place, and it does not generalise — the next entry that wants to share
+> an avatar or an icon set would hit the same silent overwrite.
+>
+> One design fix fell out: `_install` used to take `onBeforePopup`/`onAfterPopup` and hold the node
+> picker blocked across its own body. A dependency chain reopens that gap one level up, so the hooks
+> moved to `_installWithDependencies` and `_install` no longer accepts them. `installModule` /
+> `installPrefab` keep their signatures, so no caller changed.
+>
+> ⚠️ **The render gate was blind to all of this.** `render-check.js` builds its scratch project from
+> the entry's own `project/` only, so it rendered `pdf-viewer` as nobody will ever have it — and an
+> instance of a type the dependency registers does not draw nothing, it **throws**
+> (`noderegister.ts`: "Unknown node type with name …"). A gate blind to the mechanism it exists to
+> protect is a hole shaped like the defect. `checkEntry` now resolves declared dependencies
+> transitively, merges their components (they never become the showcase — the entry is what is being
+> measured) and copies their `noodl_modules` **after** the starter set and **before** the entry's
+> own, so an entry shipping its own copy still wins. Measured after the change: `pdf-viewer` renders
+> with `dependencies: ["modules/custom-html"]` and **zero console errors**, where it previously
+> failed to find the component model.
+>
+> ⚠️ **Load-bearing, do not tidy:** `check.ts` derives `providesNodes` from
+> `fs.existsSync(project/noodl_modules)`, which is why `pdf-viewer` keeps an otherwise-empty
+> `noodl_modules/` holding only a README. The honest rule is now "provides nodes **or** declares
+> dependencies"; until someone changes it, that placeholder directory must stay. Related:
+> `verify-dist.ts` stubs every import of `modulelibrarymodel.ts` except `moduleCompatibility`, so if
+> it ever grows a dependency check it must stub `moduleDependencies` too or pass vacuously.
+>
+> **New this session:** `keyboard-shortcuts` 1.0.0 — a `mod+k`-style shortcut node on the
+> first-class `nodes:` kit path (CN-012), not the minified SDK shim the older kits carry. It
+> unregisters on unmount via the runtime's own `addDeleteListener` (the leak NDA-012 found in
+> `Screen Resolution`), matches modifiers exactly so `cmd+k` does not fire on Cmd+Shift+K, and by
+> default suppresses shortcuts inside text fields **except** Escape and any Cmd/Ctrl/Alt chord —
+> pulsing `blockedInTextField` instead, so the suppression is observable rather than silent.
+
+
+> **2026-09-05 — LBR-003/004 ran. The shelf was rendered for the first time.**
+> `npm run library:render` builds a page for every entry, seeds it with the Inter + Lucide modules
+> a real new project ships, and measures what reaches the DOM. Two findings landed here:
+>
+> - **avatar is RETIRED and re-authored as `prefabs/avatar` 2.0.0.** Its 2018 prebuilt bundle
+>   reaches into React's `__SECRET_INTERNALS…ReactCurrentDispatcher`, removed in React 19, so the
+>   kit failed to load and *every* `Avatar` node rendered nothing —
+>   `Kit "noodl-avatar" failed to load` in the console, `Can't find component model for Avatar`
+>   after it. There was no source in the repo, only a 91KB bundle. The replacement is core nodes
+>   only (clipped round Group + Image or initials + an overlapping Avatar Group with a `+N` badge),
+>   so there is no bundle to go stale against the next React release, and it takes 9.6MB with it.
+> - **pdf-viewer still fails on `module.inlineHtml`** — it depends on the standalone `custom-html`
+>   module by README convention, and nothing installs it for you. `Can't find component model for
+>   module.inlineHtml`, then `Unknown node id`. This is phase-65 follow-up #3 (no dependency
+>   mechanism exists) with a measurement attached now.
+>
+> Everything else in `modules/` rendered or has no visual surface. See `library/prefabs/AUDIT.md`
+> for the icon finding, which was the large one.
+
+> **2026-08-22 — phase-65 blitz supersedes parts of this record.** The module set is now **30
+> entries**. RETIRED (Richard's ruling, no-integration-library policy): google-sheets,
+> google-analytics, parse-cloud-function. RE-TYPED to prefabs (register zero nodes): image-cropper,
+> panning-and-zooming-control, shake-detector. RE-AUTHORED: mapbox → **maplibre** 1.0.0 (BSD-3
+> maplibre-gl 4.7.1 vendored, zero-config demo style — the proprietary-redistribution question is
+> gone). UNBUNDLED: avatar 1.1.0 (embedded 1865-glyph material-icons removed — the picker fight is
+> over; repeated-sibling-subtree fixed), pdf-viewer 1.1.0 (embedded custom-html removed; depends on
+> the standalone module via README convention). LICENCE SWEEP: 22 LICENSE texts placed across 14
+> entries; **no GPL/proprietary code found anywhere**. NEW wave-1 modules: clipboard, file-download,
+> intl-format, virtual-list, drag-to-reorder, rich-text-editor (TipTap 3.30.2 vendored offline). The
+> run-them-all residual (LBR-004) still stands. See `dev-docs/tasks/phase-65-the-library/TASKS.md`.
 
 **Created:** 2026-07-25 (LIB-003 plumbing+inventory run)
 **Source:** live module index

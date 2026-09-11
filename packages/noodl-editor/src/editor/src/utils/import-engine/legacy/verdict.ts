@@ -145,3 +145,21 @@ export function computeVerdict({ counts, constructsAssessed, nodeCount }: Verdic
     } did not convert, out of ${constructsAssessed}. Repairing is the right call here — the rest of the project came across intact. Each unconverted construct is still on the canvas, marked as an error, with its original type and parameters, so nothing has to be recovered from the source project.`
   };
 }
+
+/**
+ * LBR-0xx: whether the report earns its two files in the target project.
+ *
+ * ONE predicate for both audiences. `ResultStage` shows its legacy-salvage
+ * banner only when the verdict is not `proceed`; the apply stage used to write
+ * `import-report.json` + `IMPORT-REPORT.md` unconditionally, so a clean
+ * first-party prefab install left two files in a fresh project claiming it was
+ * legacy salvage while the UI (correctly) said nothing. The files follow the
+ * same intent as the banner: a proceed verdict — nothing left unconverted —
+ * writes no report; repair and rebuild verdicts keep theirs.
+ *
+ * If the gate ever needs to widen (say, proceed-with-rewrites imports keeping a
+ * record), change it HERE so the banner and the files move together.
+ */
+export function shouldWriteImportReport(report: { verdict: Pick<RebuildVerdict, 'recommendation'> }): boolean {
+  return report.verdict.recommendation !== 'proceed';
+}

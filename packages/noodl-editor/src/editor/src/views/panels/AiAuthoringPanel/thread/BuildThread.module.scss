@@ -1,0 +1,430 @@
+/*
+ * BLD-001 — the thread's layout.
+ *
+ * Three rows: a header that does not scroll, a turn list that does, and a
+ * composer that does not. That grid is the structural half of README
+ * correction 2 — the run headline is currently INSIDE the scroll area, so
+ * within thirty seconds of a seven-operation run the one element answering
+ * "where am I" is off screen. BLD-005 pins the run header into the header row
+ * this creates; it could not, before, because there was no row to pin it to.
+ *
+ * ⚠️ Almost no colour tokens are reached for here, deliberately, and BLD-002 did
+ * not change that. The panel's legibility complaint is NOT a contrast problem —
+ * measured live on the surfaces the thread actually paints, the worst text role
+ * was 5.57:1 dark and 5.06:1 light *before* the type scale existed. It is that
+ * nothing had a size. Brightening anything would have destroyed the last of the
+ * hierarchy; the one colour BLD-002 moved is the user's own message, which was
+ * drawn as a quote and should be the strongest thing in the turn.
+ */
+
+.Thread {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.Header {
+  flex: 0 0 auto;
+}
+
+.Body {
+  flex: 1 1 auto;
+  min-height: 0;
+
+  /*
+   * ⚠️ `hidden`, not `auto` — the POL-007 call, for the same reason and with
+   * the same evidence. `ScrollArea` sets `overflow-y: auto` and leaves
+   * `overflow-x` at `visible`, which CSS computes to `auto`; a component path
+   * or an endpoint has no spaces to break at, so its min-content is the whole
+   * string and the excess scrolled the entire panel sideways.
+   */
+  overflow-x: hidden;
+
+  p {
+    overflow-wrap: anywhere;
+  }
+}
+
+.Turns {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 12px;
+}
+
+/*
+ * One turn: the request, what the agent did, and what it produced.
+ *
+ * The gap inside a turn is deliberately smaller than the gap between turns
+ * (`.Turns`) — that ratio is the only hierarchy this task adds, and it is
+ * structural rather than chromatic, so BLD-002 can build the type scale on top
+ * of it without undoing anything.
+ */
+.Turn {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/*
+ * BLD-002 — the type scale.
+ *
+ * ## Why the sizes are set here and not on `Text`
+ *
+ * `Text` has three sizes — 12px, 11px, 10px — and no `line-height` rule at all,
+ * so leading is whatever the panel inherits. Measured live before this change,
+ * every single row in the thread was `12px / normal / 400`: one size, one
+ * weight, one leading, for the request, the prose, the tool events and the
+ * outcome alike. That is the wall D4 describes, and it is a *type* problem —
+ * measured contrast on the same surfaces was 5.57–9.2 dark and 5.06–7.1 light,
+ * so there was nothing to fix by brightening anything.
+ *
+ * Adding 13px and 11.5px to `Text` would be a design-system change reaching
+ * every surface in the editor. These rules set size and leading on the thread's
+ * own containers instead and let the `<p>` inside inherit — the same local
+ * override `.Body p { overflow-wrap }` above already relies on, and the same
+ * reason: one panel's problem does not get to move the whole scale.
+ *
+ * ⚠️ Colour is deliberately touched in exactly one place — the user's own
+ * message, which D4 item 3 says should be the strongest element and was drawn as
+ * a *quote*. Everything else keeps the token it had. `fg-muted` in particular is
+ * NOT used for the activity strip despite the task table proposing it: it
+ * measures 3.93:1 dark and 3.66:1 on bg-2, which is below AA at 11.5px, and
+ * POL-017 already moved `Text`'s Shy role off it for that reason.
+ */
+
+/*
+ * ⚠️ BLD-017 — the token map for everything below, and the one rule that makes
+ * copying the approved mockup safe.
+ *
+ * The mockup draws its panels in **NodeGX's own dark tokens, verbatim** — it
+ * says so in its own stylesheet — so nothing here is a new visual language. Its
+ * raw hexes and the tokens they stand for:
+ *
+ *   mockup            token                        dark      light
+ *   --gx-bg-1         --theme-color-bg-1           #12161b   #ffffff
+ *   --gx-bg-2         --theme-color-bg-2           #181d24   #f7f9fb
+ *   --gx-bg-3         --theme-color-bg-3           #222933   #ecf0f4
+ *   --gx-fg-hi        --theme-color-fg-highlight   #eef2f6   #18212b
+ *   --gx-shy          --theme-color-fg-default-shy #8b95a1   #616c79
+ *   --gx-success      --theme-color-success        #3ccb7f   #12915b
+ *   #232a33 (rules)   --theme-color-border-default #232a33   #e0e5eb  ← exact
+ *
+ * **Copy the intent; name the token. Never copy the hex.** The mockup is
+ * dark-only, so a copied `#232a33` hairline is a near-black rule on a *white*
+ * panel in light mode. Every value below resolves in both themes.
+ *
+ * ⚠️ **`#2c3540` has no single answer, and this file and `InterviewCard` give
+ * it two on purpose.** The mockup uses it for every 1px edge that is not a
+ * divider, and it falls exactly between our two border tokens —
+ * `border-default` (#232a33) below it, `border-strong` (#37404c) above. It is
+ * also `bg-4`'s exact value, which is the clue: in the mockup it is not one
+ * colour with one meaning, it is *the next step of the elevation ladder*, and
+ * which of our tokens is right depends on which way the edge is going.
+ *
+ *   - `.User` here is a bubble **raised** off the panel ground, so its edge is
+ *     the brighter `border-strong` — a lift.
+ *   - `InterviewCard`'s `.Guess` is a well **recessed** into its card, so its
+ *     edge is the dimmer `border-default` — a groove.
+ *
+ * A single mapping would have made one of the two read inside-out. Recorded
+ * here rather than left as two silent disagreements between neighbouring files.
+ *
+ * ⚠️ **Two of the mockup's own colour choices are NOT copied, because they fail
+ * AA.** `.acts` and `.runbar-line2` are `--gx-muted`, which is
+ * `--theme-color-fg-muted` — and measured on the surface this task moves them
+ * onto it is **3.66:1 dark / 3.43:1 on bg-2 light**, under the 4.5:1 that binds
+ * at 11.5px. That is the same figure POL-017 moved `Text`'s Shy role off, and
+ * the same one BLD-002 cited when it refused `fg-muted` for this exact strip.
+ * `fg-default-shy` is used instead: **5.57:1 dark / 5.06:1 light on bg-2**,
+ * still a step below `fg-default`, so the hierarchy the mockup drew survives at
+ * a colour a person can read. A mockup is not a contrast measurement.
+ */
+
+/*
+ * The user's own words. A bubble, aligned to the writer, on the panel's lightest
+ * surface — not a left-bordered quote on bg-2, which is the visual language of
+ * something being cited *at* you. It is the thing you scroll to find.
+ */
+/*
+ * BLD-011 — the record of what a turn carried, directly under its request.
+ *
+ * Aligned to the writer like `.User` above it, and for the same reason: the
+ * attachments were part of the user's message, not a reply to it. Left-aligned
+ * they would read as the agent's first act, which is the alignment mistake the
+ * `.User` bubble exists to make impossible.
+ */
+.TurnRefs {
+  align-self: flex-end;
+  max-width: 88%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.User {
+  align-self: flex-end;
+
+  /*
+   * BLD-017 F6. The mockup's `.m-you`: 88% rather than 85%, a little more
+   * padding, a tighter corner radius, and — the part that actually changes how
+   * it reads — an edge. On `bg-3` a borderless bubble is a 1.07:1 step off the
+   * panel ground, which at small sizes is a slightly different grey rather than
+   * a shape; the border is what makes it an object.
+   */
+  max-width: 88%;
+  padding: 9px 11px;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 8px 8px 2px 8px;
+
+  /*
+   * ⚠️ Required, not tidiness. Nothing in this repo sets a global `box-sizing`
+   * (the mockup gets it from `.panel * { box-sizing: border-box }`, which has no
+   * counterpart here), so the 2px of new border would otherwise be added
+   * *outside* the 88% measure.
+   */
+  box-sizing: border-box;
+
+  p {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+/*
+ * Prose. The one place leading matters most, and the one place it was inherited
+ * — a 13px paragraph taking a 12px panel's leading is how a wall of text
+ * happens even when every colour is correct.
+ */
+/*
+ * FIX-003, two changes here:
+ *
+ *  - `white-space: pre-wrap` is gone. The row renders `AiMarkdown` now, and
+ *    the HTML a markdown renderer emits carries literal newlines between
+ *    blocks that pre-wrap would paint as phantom blank lines. Newlines
+ *    *inside* a paragraph survive via the renderer's `breaks: true`.
+ *  - `div.Assistant p`, not `.Assistant p`. The shared Markdown stylesheet
+ *    has its own `.Root p { font-size: 12px }` at equal specificity, which
+ *    would make the winner a question of bundle order; one element token
+ *    makes this row's scale win deterministically. Same below for the other
+ *    rows that host `AiMarkdown`.
+ */
+div.Assistant {
+  overflow-wrap: anywhere;
+
+  p {
+    font-size: 13px;
+    line-height: 1.58;
+  }
+}
+
+/* Who is speaking, once per turn. Small, quiet, and not repeated per paragraph. */
+.Speaker {
+  font-family: var(--font-family-code);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default-shy);
+  margin-bottom: 2px;
+}
+
+div.Event {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * BLD-017 F3 — the mockup's `.receipt`: what an accepted card collapses to.
+ *
+ * A success-coloured left rule, so the two outcomes that actually reached the
+ * project are findable by shape when you scroll back through a long thread. It
+ * is the settled counterpart of `.Question`'s accent rule one block down, and
+ * deliberately the same device at a different hue: a rule in the left gutter is
+ * this thread's mark for *"this exchange concluded"*.
+ *
+ * ⚠️ **The check glyph stays**, though the mockup's receipt has none. Colour is
+ * the only thing separating this rule from `.Question`'s, and phase-41's rule is
+ * that colour may not be the sole carrier of a state. The mockup was drawn to
+ * show a treatment, not to pass an a11y audit; keeping the icon costs 14px of a
+ * 400px row and makes the outcome legible without hue.
+ */
+div.Receipt {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 3px 0 3px 11px;
+  border-left: 2px solid var(--theme-color-success);
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * A collapsed run of activity. One line standing for a span of context reads and
+ * passing validations — see `thread/messages.ts` for what may never be inside
+ * one.
+ *
+ * BLD-017 F1 — the mockup's `.acts`, and the change its own notes call *"the
+ * single biggest legibility win"*. It was a bare text row on the panel ground:
+ * one of five things in a turn with no surface of its own, so a twenty-minute
+ * build read as an undifferentiated column. As a filled chip it is one object
+ * that can be counted at a glance and clicked without aiming.
+ */
+.Run {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+
+  /* ⚠️ See `.User` — there is no global `box-sizing`, and `width: 100%` beside
+     18px of padding and 2px of border overflows the turn without it. */
+  box-sizing: border-box;
+  color: inherit;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+
+  /* bg-3 is the ladder's hover step, and it keeps the text legible: Shy on bg-3
+     is 4.82:1 dark / 4.67:1 light, both still over AA. */
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:hover p {
+    color: var(--theme-color-fg-default);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+/*
+ * The duration, pushed to the right edge — the mockup's `.acts .grow`.
+ *
+ * `tabular-nums` because this number changes between runs and a proportional
+ * "1" is narrower than a "4": without it a column of chips has its durations
+ * ending at a different x each row, which is the thing right-aligning them was
+ * for. `flex: 0 0 auto` so the counts wrap before the clock is squeezed.
+ */
+.RunDuration {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.RunCaret {
+  flex: 0 0 auto;
+  transition: transform var(--transition-fast, 120ms) ease;
+
+  &.is-expanded {
+    transform: rotate(90deg);
+  }
+}
+
+/* The expanded contents sit under the strip, indented to read as its detail. */
+.RunItems {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 14px;
+}
+
+/*
+ * BLD-008's question, **once it has been answered**.
+ *
+ * ⚠️ This was reserved as "the loudest thing in the thread, because it is the
+ * only activity that *blocks*" — right about a question, written when a question
+ * was assumed to be one line of text. The approved mockup draws the live one as
+ * a card (eyebrow, question, reason, the agent's guess in an inset box, three
+ * answers), and a card is not an activity. BLD-008 therefore renders the open
+ * question in `InterviewCard` and leaves this to the **transcript**: the
+ * exchanges already settled, which a person scrolls back through weeks later to
+ * find out why a document says what it says.
+ *
+ * A settled question does not block, so it does not shout. Seven of them stacked
+ * with an accent ring each would be noise — the left rule marks the exchange and
+ * keeps the accent, at a weight that reads as history rather than as a demand.
+ *
+ * FIX-003: this row renders `AiMarkdown` now, so `pre-wrap` is gone — the
+ * question/answer line break survives as a `<br>` via the renderer's
+ * `breaks: true`, and pre-wrap over rendered HTML would paint the renderer's
+ * own inter-block newlines as phantom blank lines. `div.Question` for the same
+ * specificity reason as `div.Assistant` above.
+ */
+div.Question {
+  padding: 2px 0 2px 11px;
+  border-left: 2px solid var(--theme-color-primary);
+
+  p {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--theme-color-fg-default);
+  }
+}
+
+.Composer {
+  flex: 0 0 auto;
+  padding: 12px;
+  border-top: 1px solid var(--theme-color-bg-3);
+}
+
+/*
+ * BLD-013 — the composer while a file is being dragged over it.
+ *
+ * ⚠️ Written as `.Composer.is-dragging`, not `.is-dragging`, for the reason
+ * `ReferenceChips` documents at length: a bare CSS-module class loses to any
+ * descendant selector reaching in from the panel, and the failure mode is a
+ * state that silently stops painting — BLD-004's 1.16:1 collision, and BLD-005's
+ * undefined class, were both this shape.
+ *
+ * ⚠️ The border **replaces** the existing 1px top border rather than adding to
+ * it: an outline or an extra border would change the box's height mid-drag and
+ * shift the whole thread up, which reads as the panel rejecting the drop.
+ */
+.Composer.is-dragging {
+  border-top-color: var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+}
+
+/*
+ * The expanded host (BLD-009) is a document, not a 400px rail: a thread line
+ * that runs the full width of a 1400px window is unreadable for the same reason
+ * a newspaper has columns. The measure is capped and centred; nothing else
+ * about the component changes, which is the point of the variant existing at
+ * all.
+ */
+.is-expanded {
+  .Turns,
+  .Composer {
+    max-width: 780px;
+    margin-left: auto;
+    margin-right: auto;
+    width: 100%;
+  }
+}
+
+.is-panel {
+  /* No overrides — the panel is the design's native width. Named anyway so the
+     variant is a real choice at the call site rather than "expanded or not". */
+}

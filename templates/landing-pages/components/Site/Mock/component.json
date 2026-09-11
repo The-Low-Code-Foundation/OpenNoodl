@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "ed5b46fb-eeee-53b0-8d01-8515359bb31b",
+  "name": "Mock",
+  "path": "/Site/Mock",
+  "type": "visual",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

@@ -1,0 +1,68 @@
+# success turns=47 costUsd=0.71 durS=430
+ToolSearch
+ToolSearch
+ToolSearch
+ToolSearch
+ToolSearch
+mcp__nodegx__get_project_info
+mcp__nodegx__get_style_vocabulary
+mcp__nodegx__create_plan
+mcp__nodegx__create_plan
+mcp__nodegx__create_plan
+mcp__nodegx__list_node_types
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__get_node_type
+Read
+Bash
+Bash
+Read
+Bash
+Bash
+Read
+Bash
+Bash
+Bash
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__apply_plan
+mcp__nodegx__render_report
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+
+# --- rejections: 9 of 46 calls (2 carried a LAS-007 recipe) ---
+8	mcp__nodegx__stage_plan_operation
+1	mcp__nodegx__create_plan
+
+# --- diagnostic codes seen by the model ---
+21	inactive-conditional-parameter
+13	unknown-parameter
+5	repeated-sibling-subtree
+2	raw-color-literal
+
+# --- what each rejection actually said ---
+[mcp__nodegx__create_plan] invalid-argument · The plan is not executable — nothing was created. · 1 diag: Operation op-10 creates "Pages/Home", but that component already exists — use an update.
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/ProductCard" rejected — nothing was staged. · 13 diag: WARN [unknown-parameter] /Components/ProductCard › node root "Card root" (Group) › input "overflow": Group has no input port "overflow", so this param
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/ProductCard" rejected — nothing was staged. · 1 diag: WARN [unknown-parameter] /Components/ProductCard › node root "Card root" (Group) › input "cursor": Group has no input port "cursor", so this parameter
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/FeatureItem" rejected — nothing was staged. · 1 diag: WARN [unknown-parameter] /Components/FeatureItem › node root-3 "Feature item" (Group) › input "textAlign": Group has no input port "textAlign", so thi
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/Header" rejected — nothing was staged. · 1 diag: ERROR [connection-only-parameter] /Components/Header › node search "Search box" (net.noodl.controls.textinput) › input "variant": "variant" on net.noo
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/Hero" rejected — nothing was staged. · 3 diag: WARN [unknown-parameter] /Components/Hero › node heroBg "Hero background" (Group) › input "backgroundImage": Group has no input port "backgroundImage"
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/FeaturesStrip" rejected — nothing was staged. · 3 diag: ERROR [unknown-node-type] /Components/FeaturesStrip › node f1 "Free Delivery" (Components/FeatureItem): Unknown node type "Components/FeatureItem" — n
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/Footer" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Components/Footer › node shopCol "Link columns" (Group): 3 sibling subtrees here are structurally identical (5 nodes  · +1 recipe(s)
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/Footer" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Components/Footer › node col1 "Links section" (Group): 3 sibling subtrees here are structurally identical (5 nodes ea · +1 recipe(s)

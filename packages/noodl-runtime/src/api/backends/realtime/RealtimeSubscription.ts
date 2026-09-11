@@ -36,6 +36,8 @@
  */
 
 import type { BackendHandle } from '@noodl/backend-contract';
+
+import { isParseWireType } from '../resolveBackend.pure';
 import {
   REALTIME_FAILURE_KINDS,
   REALTIME_TIMING,
@@ -87,6 +89,16 @@ export interface RealtimeSubscriptionOptions extends RealtimeSubscribeOptions {
 const DEFAULT_TIMING: RealtimeTiming = REALTIME_TIMING;
 
 /**
+ * The host identity of every caller that named no {@link RealtimeDeps} of its own.
+ *
+ * Read by {@link RealtimeSubscription.hostKey}, and it exists so that "the browser" is one
+ * host rather than one per subscription — which is what lets `SseConnectionPool` put two
+ * production subscriptions on the same stream while keeping two tests with their own
+ * doubles apart. See that module's docblock.
+ */
+const DEFAULT_HOST: object = {};
+
+/**
  * One subscription, and the state machine it runs.
  *
  * Subclasses implement two methods — open a connection, close it — and report what
@@ -105,6 +117,7 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
   protected readonly primaryKey: string;
   protected readonly timing: RealtimeTiming;
   private readonly _deps: RealtimeDeps;
+  private readonly _hostKey: object;
 
   private readonly _onEvent?: (change: RealtimeChange) => void;
   private readonly _onStatus?: (status: RealtimeStatus) => void;
@@ -133,6 +146,9 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
     this.primaryKey = options.primaryKey || 'id';
     this.timing = options.timing || DEFAULT_TIMING;
     this._deps = options.deps || {};
+    // ⚠️ The object the caller passed, not `this._deps` — the `|| {}` above mints a fresh
+    // one per subscription, which as a key would mean nothing ever shares anything.
+    this._hostKey = options.deps || DEFAULT_HOST;
     this._onEvent = options.onEvent;
     this._onStatus = options.onStatus;
     this._onError = options.onError;
@@ -336,6 +352,17 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
   // An explicit `null` means "this host has none", which is a case tests need and which
   // `undefined` cannot express — hence `'X' in deps` rather than `deps.X ?? global`.
 
+  /**
+   * Which host this subscription runs in — the identity a shared connection is keyed on.
+   *
+   * The `RealtimeDeps` object itself, because that IS the environment: two subscriptions
+   * given different `EventSource` and `fetch` implementations are not on the same wire
+   * whatever their URL says, and two given none are both in the one browser.
+   */
+  protected get hostKey(): object {
+    return this._hostKey;
+  }
+
   protected resolveWebSocket(): (new (url: string) => RealtimeSocketLike) | null {
     if ('WebSocketImpl' in this._deps) return this._deps.WebSocketImpl || null;
     return typeof WebSocket !== 'undefined' ? (WebSocket as unknown as new (url: string) => RealtimeSocketLike) : null;
@@ -365,8 +392,38 @@ export abstract class RealtimeSubscription implements RealtimeLifecycle, Realtim
 
   // ── internals ────────────────────────────────────────────────────────────
 
-  /** The token a subscription carries: the session's if signed in, else the public one. */
+  /**
+   * The token a subscription carries: the session's if signed in, else the
+   * public one — **except on a Parse-wire backend, where there is no public one.**
+   *
+   * 🔴 **SBR-011. `publicToken` does not hold a token on `nodegx`/`parse`; it
+   * holds the Parse APPLICATION ID**, and that is deliberate on the query side —
+   * `ParseWireAdapter` sends it as `X-Parse-Application-Id`
+   * (`ParseWireAdapter.ts:207,233`) and `endpointBackendEntry` fills it from
+   * `cloudservices.appId`. An application id is identity, not authorisation, and
+   * the fallback below handed it to a transport that puts it in `?token=` —
+   * which `HttpServer.resolveSSEPrincipal` reads as an
+   * `x-parse-session-token`.
+   *
+   * Measured: `GET /realtime` with no token is **200 `connected`**; the same URL
+   * with the app id is **400 `Invalid session token`, code 209**. So every
+   * subscription from a project bound through its `cloudservices` endpoint was
+   * refused before it opened — the built-in backend, which is the zero-config
+   * path both `Subscribe To Changes` and Query Records' realtime checkbox are
+   * built around — and refused **silently**, because the failure goes to the
+   * error bus rather than to the page. The site-builder template's first live
+   * consumer is what found it.
+   *
+   * ⚠️ The empty string is the correct token here, not a bug being tolerated:
+   * an anonymous subscriber IS anonymous, the hub accepts it, and delivery is
+   * gated per-event on the row ACL — so a public site stays live and a draft
+   * still cannot leak. The BYOB backends are untouched: on Directus, PocketBase
+   * and Supabase `publicToken` genuinely is an auth token (`byob-utils.ts:113`
+   * uses it as one), which is why this narrows by type rather than dropping the
+   * fallback.
+   */
   protected get token(): string {
+    if (isParseWireType(this.handle.type)) return this.handle.sessionToken || '';
     return this.handle.sessionToken || this.handle.publicToken || '';
   }
 

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "afd5320d-3b47-5d25-8c3d-8ddd687c140b",
+  "name": "Deprecated",
+  "path": "/Pages/Deprecated",
+  "type": "visual",
+  "created": "2026-09-10T00:00:00.000Z",
+  "modified": "2026-09-10T00:00:00.000Z",
+  "modifiedBy": "fld-012"
+}

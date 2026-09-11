@@ -1,0 +1,7 @@
+{
+  "label": "Tiny Kit",
+  "description": "The smallest installable module: one Chip node.",
+  "type": "module",
+  "tags": ["UI"],
+  "version": "1.0.0"
+}

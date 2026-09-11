@@ -1,0 +1,273 @@
+{
+  "id": "comp-controlled-quantity-stepper",
+  "title": "The controlled value: the same name goes in, comes out, and says when it moved",
+  "description": "The most common shape on the shelf, and the one an authored component usually forgets. `value` arrives on `Component Inputs`, the same name leaves on `Component Outputs`, and a `valueChanged` signal leaves beside it — a parent that can only set a value and never read it back has to keep its own copy and hope. `Counter` holds the number: `startValue` seeds it from the instance, `increase`/`decrease` are signals from the two buttons, and `limitsEnabled` with `limitsMin`/`limitsMax` means the clamp lives in one node instead of in two Function nodes that will disagree. 🔴 The `disabled` flag is wired through an `Inverter` into BOTH buttons' `enabled`, not just onto the label's colour: a flag that changes how a component looks but not what it accepts is a component that can be told one thing and do another. ⚠️ `logic-quantity-stepper` builds the same buttons around the same `Counter` and is about the value-shaping nodes between the count and the screen — `String Format`, `String Mapper`, `Number Remapper`; it has no interface at all, and the two are worth reading together. The page here shows the other half of the contract — it reads `value` back into a readout and acts on `valueChanged` — which is what makes this different from a component that merely renders a number.",
+  "demonstrates": ["Counter", "Component Inputs", "Component Outputs", "Inverter", "net.noodl.controls.button"],
+  "components": [
+    {
+      "name": "/Components/QuantityStepper",
+      "nodes": [
+        {
+          "id": "stepper_root",
+          "type": "Group",
+          "label": "Stepper",
+          "parameters": {
+            "sizeMode": "contentSize",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)",
+            "backgroundColor": "var(--surface)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-1)",
+            "paddingRight": "var(--space-1)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)"
+          },
+          "children": ["minus_button", "count_text", "plus_button"],
+          "x": 40,
+          "y": 220
+        },
+        {
+          "id": "minus_button",
+          "type": "net.noodl.controls.button",
+          "label": "One fewer",
+          "parameters": {
+            "label": "−",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--muted)",
+            "color": "var(--foreground)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)",
+            "fontSize": "var(--text-base)"
+          },
+          "parent": "stepper_root"
+        },
+        {
+          "id": "count_text",
+          "type": "Text",
+          "label": "The number itself",
+          "parameters": {
+            "text": "1",
+            "fontSize": "var(--text-base)",
+            "fontWeight": "var(--font-medium)",
+            "color": "var(--foreground)",
+            "textAlignX": "center",
+            "width": { "value": 32, "unit": "px" }
+          },
+          "parent": "stepper_root"
+        },
+        {
+          "id": "plus_button",
+          "type": "net.noodl.controls.button",
+          "label": "One more",
+          "parameters": {
+            "label": "+",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--muted)",
+            "color": "var(--foreground)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)",
+            "fontSize": "var(--text-base)"
+          },
+          "parent": "stepper_root"
+        },
+        {
+          "id": "stepper_inputs",
+          "type": "Component Inputs",
+          "label": "Stepper interface in — plugged \"output\"",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            { "name": "value", "plug": "output", "type": "number" },
+            { "name": "min", "plug": "output", "type": "number" },
+            { "name": "max", "plug": "output", "type": "number" },
+            { "name": "disabled", "plug": "output", "type": "boolean" }
+          ]
+        },
+        {
+          "id": "quantity",
+          "type": "Counter",
+          "label": "The number, clamped in one place",
+          "parameters": { "limitsEnabled": true },
+          "x": 480,
+          "y": 60
+        },
+        {
+          "id": "not_disabled",
+          "type": "Inverter",
+          "label": "Disabled means the buttons stop accepting clicks",
+          "x": 480,
+          "y": 300
+        },
+        {
+          "id": "stepper_outputs",
+          "type": "Component Outputs",
+          "label": "Stepper interface out — plugged \"input\"",
+          "x": 900,
+          "y": 60,
+          "ports": [
+            { "name": "value", "plug": "input", "type": "number" },
+            { "name": "valueChanged", "plug": "input", "type": "signal" }
+          ]
+        }
+      ],
+      "connections": [
+        { "fromId": "stepper_inputs", "fromProperty": "value", "toId": "quantity", "toProperty": "startValue" },
+        { "fromId": "stepper_inputs", "fromProperty": "min", "toId": "quantity", "toProperty": "limitsMin" },
+        { "fromId": "stepper_inputs", "fromProperty": "max", "toId": "quantity", "toProperty": "limitsMax" },
+        { "fromId": "stepper_inputs", "fromProperty": "disabled", "toId": "not_disabled", "toProperty": "value" },
+        { "fromId": "not_disabled", "fromProperty": "result", "toId": "minus_button", "toProperty": "enabled" },
+        { "fromId": "not_disabled", "fromProperty": "result", "toId": "plus_button", "toProperty": "enabled" },
+        { "fromId": "minus_button", "fromProperty": "onClick", "toId": "quantity", "toProperty": "decrease" },
+        { "fromId": "plus_button", "fromProperty": "onClick", "toId": "quantity", "toProperty": "increase" },
+        { "fromId": "quantity", "fromProperty": "currentCount", "toId": "count_text", "toProperty": "text" },
+        { "fromId": "quantity", "fromProperty": "currentCount", "toId": "stepper_outputs", "toProperty": "value" },
+        { "fromId": "quantity", "fromProperty": "countChanged", "toId": "stepper_outputs", "toProperty": "valueChanged" }
+      ]
+    },
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": { "title": "Basket", "urlPath": "basket" },
+          "children": ["shell"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-4)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)",
+            "backgroundColor": "var(--background)"
+          },
+          "parent": "page",
+          "children": ["heading", "line_one", "line_two", "readout"]
+        },
+        {
+          "id": "heading",
+          "type": "Text",
+          "label": "Page heading",
+          "parameters": {
+            "text": "Your basket",
+            "fontSize": "var(--text-2xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "line_one",
+          "type": "Group",
+          "label": "Basket line — sourdough",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "columnGap": "var(--space-4)"
+          },
+          "parent": "shell",
+          "children": ["line_one_name", "qty_one"]
+        },
+        {
+          "id": "line_one_name",
+          "type": "Text",
+          "label": "Line name",
+          "parameters": {
+            "text": "Sourdough, large",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "line_one"
+        },
+        {
+          "id": "qty_one",
+          "type": "/Components/QuantityStepper",
+          "label": "Quantity — the page reads this one back",
+          "parameters": { "value": 2, "min": 1, "max": 8, "disabled": false },
+          "parent": "line_one"
+        },
+        {
+          "id": "line_two",
+          "type": "Group",
+          "label": "Basket line — a thing that is out of stock",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "columnGap": "var(--space-4)"
+          },
+          "parent": "shell",
+          "children": ["line_two_name", "qty_two"]
+        },
+        {
+          "id": "line_two_name",
+          "type": "Text",
+          "label": "Line name",
+          "parameters": {
+            "text": "Cinnamon buns (back Thursday)",
+            "fontSize": "var(--text-base)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "line_two"
+        },
+        {
+          "id": "qty_two",
+          "type": "/Components/QuantityStepper",
+          "label": "Same component, disabled at the instance — not a second component",
+          "parameters": { "value": 1, "min": 0, "max": 4, "disabled": true },
+          "parent": "line_two"
+        },
+        {
+          "id": "readout",
+          "type": "Text",
+          "label": "What the page learned from the component",
+          "parameters": {
+            "text": "2 loaves",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "shell"
+        },
+        {
+          "id": "describe_basket",
+          "type": "JavaScriptFunction",
+          "label": "Say the basket back to the customer",
+          "parameters": {
+            "functionScript": "const n = Number(Inputs.loaves) || 0;\nOutputs.line = n === 1 ? '1 loaf' : n + ' loaves';"
+          },
+          "x": 720,
+          "y": 420
+        }
+      ],
+      "connections": [
+        { "fromId": "qty_one", "fromProperty": "value", "toId": "describe_basket", "toProperty": "in-loaves" },
+        { "fromId": "qty_one", "fromProperty": "valueChanged", "toId": "describe_basket", "toProperty": "run" },
+        { "fromId": "describe_basket", "fromProperty": "out-line", "toId": "readout", "toProperty": "text" }
+      ]
+    }
+  ]
+}

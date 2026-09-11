@@ -291,7 +291,12 @@ const Javascript: NodeDefinitionOptions = {
       type: {
         name: 'string',
         allowEditOnly: true,
-        codeeditor: 'javascript'
+        codeeditor: 'javascript',
+        // FUN-009. This node declares its ports through `define({ inputs, outputs })`
+        // and its handlers receive `(inputs, outputs)` — neither the Function node's
+        // `Inputs.Name` nor the Expression node's bare identifiers. Declared rather
+        // than derived: the port is named `code`, which carries no signal at all.
+        codenotation: 'script'
       },
       default: defaultCode,
       set: function (this: JavascriptInstance, value: string) {

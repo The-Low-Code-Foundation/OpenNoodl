@@ -15,6 +15,10 @@
 
 export {
   assertInsideDocs,
+  DEFAULT_DOC_CAP,
+  describeDoc,
+  docBody,
+  docCap,
   DocPathError,
   DOCS_DIR,
   DOC_ARCHITECTURE,
@@ -25,12 +29,24 @@ export {
   isKnownDocPath,
   KNOWN_DOCS,
   normalizeDocPath,
+  parseDocFrontMatter,
   renderDocForPrompt,
+  resolveInjection,
   truncateDoc
 } from './docsText';
-export type { KnownDoc, KnownDocKind, ProjectDocsContent, TruncatedDoc } from './docsText';
+export type {
+  DiscoveredDoc,
+  DocDescriptor,
+  DocFrontMatter,
+  DocInjection,
+  KnownDoc,
+  KnownDocKind,
+  ParsedDoc,
+  ProjectDocsContent,
+  TruncatedDoc
+} from './docsText';
 
-export { DOC_TEMPLATES } from './templates';
+export { DOC_TEMPLATES, newDocTemplate } from './templates';
 
 export { DOCS_CHANGED, DocsConflictError, ProjectDocsModel } from './ProjectDocsModel';
 export type { DocEntry } from './ProjectDocsModel';

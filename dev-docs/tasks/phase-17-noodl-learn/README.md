@@ -3,7 +3,7 @@
 **Phase:** 17
 **Track:** E — Pedagogy as a product line
 **Source:** [NOODL-REVIVAL-ROADMAP.md](../../reviews/NOODL-REVIVAL-ROADMAP.md) Horizon 2, Track E
-**Status:** Not started (created 2026-07-22)
+**Status:** In progress (created 2026-07-22) — engine revived; **curriculum design reviewed and accepted 2026-08-09**
 
 ## Why this phase exists
 
@@ -25,6 +25,26 @@ This phase treats pedagogy as a product line with its own team, its own users, a
 | [LEARN-004](./LEARN-004-WEB-EDITOR-SPIKE.md) | Web editor feasibility spike → go/no-go | 🟡 Medium | 4 wks (time-boxed) | LEARN-003 | 🔵 Fable 5 |
 | [LEARN-005](./LEARN-005-CLASSROOM-MODE.md) | Classroom mode | 🟡 Medium | 6–8 wks | LEARN-002, AIX-001 (local models) | 🟠 Opus 4.8 |
 | [LEARN-006](./LEARN-006-PILOTS.md) | Two instrumented real-world pilots | 🔴 Critical | Ongoing | LEARN-002 minimum | 🔵 Fable 5 |
+
+### The generated-lessons arc (LEARN-007…010)
+
+Specced 2026-08-02, arc doc: **[EXPERIMENT-GENERATED-LESSONS.md](./EXPERIMENT-GENERATED-LESSONS.md)**.
+A hard 4-week time-box on the LEARN-004 precedent whose deliverable is *a number and a decision*,
+not a product surface. It exists because authoring twelve lessons around one fixed app may be the
+wrong shape — see the arc doc §1. Strictly sequential; nothing here changes the engine, the format
+or the editor.
+
+| ID | Title | Priority | Prerequisites | Deliverable |
+|---|---|---|---|---|
+| [LEARN-007](./LEARN-007-PATTERN-KIT.md) | The pattern kit | 🟡 Medium | — | 3 graph patterns: starter, solution, pre-written conditions, declared bindings |
+| [LEARN-008](./LEARN-008-LESSON-GENERATOR.md) | The generator | 🟡 Medium | LEARN-007 | (concept, pattern, goal) → `LessonManifest` + data |
+| [LEARN-009](./LEARN-009-SCORING-HARNESS.md) | The scoring harness | 🟠 High | LEARN-008 | F1–F4 automated, regenerable — **survives a no-go verdict** |
+| [LEARN-010](./LEARN-010-THE-RUN-AND-VERDICT.md) | The run and the verdict | 🟡 Medium | LEARN-009 | 12 goals × 1 concept, scored, plus go/no-go |
+| [LEARN-011](./LEARN-011-THE-FREE-LESSON-ENDPOINT.md) | The free lesson endpoint | ⚪ Deferred | LEARN-010 go | 🟠 **Stub, not specced.** How generation reaches a learner with no API key |
+
+**Decided 2026-08-09:** the arc runs **and** the spine is authored regardless — they answer
+different questions ([EXPERIMENT §8.4](./EXPERIMENT-GENERATED-LESSONS.md)). A no-go on generation
+costs the delivery mechanism, not the curriculum.
 
 ## Sequencing notes
 

@@ -291,7 +291,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
       description: 'Why the last query failed; empty until one does',
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: DbCollectionNodeInstance) {
         return this._internal.error;
       }

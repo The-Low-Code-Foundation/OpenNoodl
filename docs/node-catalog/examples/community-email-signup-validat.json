@@ -1,0 +1,242 @@
+{
+ "id": "community-email-signup-validat",
+ "title": "Check an email is well-formed and not already taken",
+ "description": "Sign-up validation as a chain of small truths rather than one function: an `Expression` says the field is non-empty, a `JavaScriptFunction` says it looks like an address, and a `DbCollection2` query says nobody has it yet \u2014 and an `And` node combines them into the one boolean the button enables on. The `Timer` in front of the query is the detail worth copying: it debounces, so the database is asked once the typing stops instead of once per keystroke. \u26a0\ufe0f The two `Inverter` nodes read as clutter until you notice what they buy \u2014 'no user came back' is the success case here, and inverting it keeps every input to the `And` meaning 'this is fine', which is what makes the combination readable at all.",
+ "demonstrates": [
+  "And",
+  "DbCollection2",
+  "Expression",
+  "Group",
+  "Inverter",
+  "JavaScriptFunction",
+  "Text",
+  "Timer",
+  "net.noodl.controls.button",
+  "net.noodl.controls.textinput"
+ ],
+ "components": [
+  {
+   "name": "Email signup validat",
+   "nodes": [
+    {
+     "id": "group",
+     "type": "Group",
+     "parameters": {
+      "paddingLeft": "var(--space-4)",
+      "paddingRight": "var(--space-4)",
+      "paddingTop": "var(--space-6)",
+      "paddingBottom": "var(--space-6)",
+      "rowGap": "var(--space-4)"
+     },
+     "children": [
+      "email-input",
+      "text",
+      "text-2",
+      "button"
+     ]
+    },
+    {
+     "id": "email-input",
+     "type": "net.noodl.controls.textinput",
+     "label": "Email Input",
+     "parent": "group",
+     "parameters": {
+      "type": "email"
+     }
+    },
+    {
+     "id": "text",
+     "type": "Text",
+     "parent": "group",
+     "parameters": {
+      "text": "\u26a0\ufe0f Please enter a valid email",
+      "textStyle": "Body Small",
+      "mounted": false
+     }
+    },
+    {
+     "id": "text-2",
+     "type": "Text",
+     "parent": "group",
+     "parameters": {
+      "text": "\u26a0\ufe0f An account with this email already exists",
+      "textStyle": "Body Small",
+      "mounted": false
+     }
+    },
+    {
+     "id": "button",
+     "type": "net.noodl.controls.button",
+     "parent": "group",
+     "parameters": {
+      "label": "Validate"
+     }
+    },
+    {
+     "id": "email-input-not-empty",
+     "type": "Expression",
+     "label": "Email input not empty",
+     "parameters": {
+      "expression": "emailInput != \"\" && emailInput != null"
+     }
+    },
+    {
+     "id": "check-email-is-valid",
+     "type": "JavaScriptFunction",
+     "label": "Check email is valid",
+     "parameters": {
+      "functionScript": "\nconst email = Inputs.email || '';\nconst regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (regex.test(email)) {\n  Outputs.invalidEmail = false;\n  Outputs.ValidEmail();\n} else {\n  Outputs.invalidEmail = true;\n  Outputs.InvalidEmail();\n}\n"
+     }
+    },
+    {
+     "id": "timer",
+     "type": "Timer",
+     "parameters": {
+      "duration": 1000
+     }
+    },
+    {
+     "id": "check-if-user-exists",
+     "type": "DbCollection2",
+     "label": "Check if user exists",
+     "parameters": {
+      "collectionName": "_User",
+      "visualFilter": {
+       "combinator": "or",
+       "rules": [
+        {
+         "combinator": "and",
+         "rules": [
+          {
+           "property": "username",
+           "operator": "equal to",
+           "input": "email"
+          }
+         ]
+        }
+       ]
+      },
+      "storageEnableLimit": true,
+      "storageLimit": 1,
+      "storageEnableCount": true
+     }
+    },
+    {
+     "id": "user-already-exists",
+     "type": "Expression",
+     "label": "User already exists?",
+     "parameters": {
+      "expression": "userCount > 0"
+     }
+    },
+    {
+     "id": "unique-user-and-valid-email",
+     "type": "And",
+     "label": "Unique user and valid email"
+    },
+    {
+     "id": "email-is-valid",
+     "type": "Inverter",
+     "label": "Email is valid"
+    },
+    {
+     "id": "user-doesn-t-exist",
+     "type": "Inverter",
+     "label": "User doesn't exist"
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "email-input",
+     "fromProperty": "onTextChanged",
+     "toId": "email-input-not-empty",
+     "toProperty": "emailInput"
+    },
+    {
+     "fromId": "email-input",
+     "fromProperty": "textChanged",
+     "toId": "timer",
+     "toProperty": "restart"
+    },
+    {
+     "fromId": "timer",
+     "fromProperty": "timerFinished",
+     "toId": "email-input-not-empty",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "email-input-not-empty",
+     "fromProperty": "isTrueEv",
+     "toId": "check-email-is-valid",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "email-input",
+     "fromProperty": "onTextChanged",
+     "toId": "check-email-is-valid",
+     "toProperty": "in-email"
+    },
+    {
+     "fromId": "check-email-is-valid",
+     "fromProperty": "out-ValidEmail",
+     "toId": "check-if-user-exists",
+     "toProperty": "storageFetch"
+    },
+    {
+     "fromId": "check-email-is-valid",
+     "fromProperty": "out-invalidEmail",
+     "toId": "text",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "check-if-user-exists",
+     "fromProperty": "storageTotalCount",
+     "toId": "user-already-exists",
+     "toProperty": "userCount"
+    },
+    {
+     "fromId": "user-already-exists",
+     "fromProperty": "result",
+     "toId": "text-2",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "email-input",
+     "fromProperty": "onTextChanged",
+     "toId": "check-if-user-exists",
+     "toProperty": "qp-email"
+    },
+    {
+     "fromId": "check-email-is-valid",
+     "fromProperty": "out-invalidEmail",
+     "toId": "email-is-valid",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "email-is-valid",
+     "fromProperty": "result",
+     "toId": "unique-user-and-valid-email",
+     "toProperty": "input 0"
+    },
+    {
+     "fromId": "user-already-exists",
+     "fromProperty": "result",
+     "toId": "user-doesn-t-exist",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "user-doesn-t-exist",
+     "fromProperty": "result",
+     "toId": "unique-user-and-valid-email",
+     "toProperty": "input 1"
+    },
+    {
+     "fromId": "unique-user-and-valid-email",
+     "fromProperty": "result",
+     "toId": "button",
+     "toProperty": "enabled"
+    }
+   ]
+  }
+ ]
+}

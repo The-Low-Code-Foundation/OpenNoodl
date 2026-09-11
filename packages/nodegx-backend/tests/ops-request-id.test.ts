@@ -140,7 +140,9 @@ describe('BAK-009 request ids', () => {
     expect(id).toBeTruthy();
 
     // 1. the access log carries it
-    const logged = requestLines().find((l) => l.route === 'functions/:name');
+    // ⚠️ `functions/*name` since DEF-045 — the low-cardinality label follows the route pattern,
+    // and the pattern changed when a nested function's raw address was made routable.
+    const logged = requestLines().find((l) => l.route === 'functions/*name');
     expect(logged).toBeTruthy();
     expect(logged!.requestId).toBe(id);
 

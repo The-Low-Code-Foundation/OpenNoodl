@@ -47,6 +47,7 @@ const StringFormatDefinition: NodeDefinitionOptions = {
   },
   inputs: {
     format: {
+      group: 'Values',
       type: { name: 'string', multiline: true },
       displayName: 'Format',
       description: 'Template text; each {placeholder} becomes an input port, and a placeholder used twice fills only the first time',
@@ -61,6 +62,7 @@ const StringFormatDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     formatted: {
+      group: 'Values',
       type: 'string',
       displayName: 'Formatted',
       description: 'Format with every placeholder substituted, and an unset placeholder replaced by nothing',

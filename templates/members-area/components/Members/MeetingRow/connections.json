@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5e4970aa-ec79-566e-81d0-a0013f158429",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "inputs-3",
+      "fromProperty": "title",
+      "toId": "rowTitle-2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-3",
+      "fromProperty": "when",
+      "toId": "whenLabel",
+      "toProperty": "in-when"
+    },
+    {
+      "fromId": "inputs-3",
+      "fromProperty": "place",
+      "toId": "whenLabel",
+      "toProperty": "in-place"
+    },
+    {
+      "fromId": "whenLabel",
+      "fromProperty": "out-label",
+      "toId": "rowWhen",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "inputs-3",
+      "fromProperty": "id",
+      "toId": "goDetail-2",
+      "toProperty": "pm-meetingId"
+    },
+    {
+      "fromId": "detailButton",
+      "fromProperty": "onClick",
+      "toId": "goDetail-2",
+      "toProperty": "navigate"
+    }
+  ]
+}

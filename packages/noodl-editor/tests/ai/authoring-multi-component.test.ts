@@ -49,6 +49,7 @@
  * leave a corrupt project, so it is asserted here too.
  */
 
+import { asText } from '../../src/editor/src/models/AiAssistant/client/content';
 import { PlanRun } from '../../src/editor/src/models/AiAssistant/authoring/PlanRun';
 import type { AuthoringPlan } from '../../src/editor/src/models/AiAssistant/authoring/plan';
 import { applyAuthoredPlan } from '../../src/editor/src/models/AiAssistant/authoring/planStaging';
@@ -114,7 +115,7 @@ const TOKENS = { '--primary': '#1d4ed8', '--surface': '#0b1020' };
 /** The scripted reply, routed by the component named in the opening message. */
 function scriptedChat(log: string[]) {
   return async (request: AiChatRequest): Promise<AiChatResponse> => {
-    const opening = request.messages.find((m) => m.role === 'user')?.content ?? '';
+    const opening = asText(request.messages.find((m) => m.role === 'user')?.content ?? '');
     if (opening.includes('"Sections/Summary"')) {
       log.push('Sections/Summary');
       return toolResponse('submit_component', sectionSubmission('Summary'));

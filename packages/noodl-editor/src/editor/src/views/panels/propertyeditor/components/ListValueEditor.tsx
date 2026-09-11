@@ -6,8 +6,10 @@ import { JSONEditor } from '@noodl-core-ui/components/json-editor';
 import {
   decodeForEditor,
   encodeFromEditor,
+  optionsListJsonForMode,
   type ListPortType
 } from '@noodl-core-ui/components/json-editor/utils/listValueCodec';
+import type { EditorMode } from '@noodl-core-ui/components/json-editor/utils/types';
 
 import css from './ListValueEditor.module.scss';
 
@@ -16,7 +18,8 @@ import css from './ListValueEditor.module.scss';
  *
  * `JSONEditor` (visual tree + code, already in core-ui) was used in exactly one
  * place before this: the app-level Variables section. This is the host that
- * makes it the property panel's list editor too, for all four port types.
+ * makes it the property panel's list editor too, for `array`, `object` and — since §3,
+ * 2026-09-04 — `optionslist`. (`stringlist` and `proplist` keep their own row types.)
  *
  * Everything type-specific lives in `listValueCodec`; this file only knows how
  * to put the editor on screen and when it is allowed to write.
@@ -56,7 +59,9 @@ export function ListValueEditor({
   const hint = decoded.unparseable
     ? `This value could not be read as JSON, so it is shown exactly as stored and the visual builder is unavailable. Nothing has been changed.`
     : decoded.recovered
-      ? `This was stored as a JavaScript literal. It is shown as JSON; saving will store the JSON form.`
+      ? portType === 'optionslist'
+        ? `This list was stored in the older format. It is shown as options; saving will store the new form.`
+        : `This was stored as a JavaScript literal. It is shown as JSON; saving will store the JSON form.`
       : undefined;
 
   function commit(): boolean {
@@ -95,6 +100,13 @@ export function ListValueEditor({
         // it would render as empty and one click would replace the original.
         mode={decoded.unparseable ? 'advanced' : undefined}
         defaultMode="easy"
+        // 🔴 Easy mode hides a Value that only mirrors its Label; Advanced mode must still show
+        // it, or an author who needs "Large" to send `l` has nothing to edit. Richard,
+        // 2026-09-06 — see `optionsListJsonForMode`. Only `optionslist` spells itself two ways;
+        // every other list port shows one text in both modes, so it passes nothing.
+        transformForMode={
+          portType === 'optionslist' ? (json: string, mode: EditorMode) => optionsListJsonForMode(json, mode) : undefined
+        }
         expectedType={decoded.expectedType}
         disabled={disabled}
         height={340}

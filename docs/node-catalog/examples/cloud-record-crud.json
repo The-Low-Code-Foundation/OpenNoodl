@@ -1,7 +1,7 @@
 {
   "id": "cloud-record-crud",
   "title": "Records on a REST backend: query, create, update, delete",
-  "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `done` (or `failure`) followed by `completed`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else.",
+  "description": "One Record family serves every backend. Query Records fetches on demand into `items` (re-trigger `storageFetch` to refresh — a query with realtime off does not re-query itself), Create/Update/Delete Record each act on a `store` signal and answer `done` (or `failure`) followed by `completed`, and Update and Delete take the record's `modelId`. After any write the query's `storageFetch` is re-triggered to refresh the list. No node here names a backend, so all five resolve the project's selected one; set the `Backend` input to point a single node somewhere else. Rename and Delete live on the row, not on the page, because the row is the only thing that knows which record it is: it publishes them as `signal` ports on its `Component Outputs`, and the Repeater re-publishes each one as `itemOutputSignal-rename` / `itemOutputSignal-delete` alongside `itemActionItemId`, the id of the row that fired, and the edited title as `itemOutput-title`. The value and the trigger leave the SAME node, so they always describe the same row. Wiring the signal is what makes both arrive \u2014 the Repeater only tracks an item output that something is connected to.",
   "demonstrates": [
     "DbCollection2",
     "NewDbModelProperties",
@@ -21,8 +21,6 @@
           },
           "children": [
             "add_btn",
-            "rename_btn",
-            "delete_btn",
             "notes_repeater"
           ]
         },
@@ -33,24 +31,6 @@
           "parent": "root",
           "parameters": {
             "label": "New note"
-          }
-        },
-        {
-          "id": "rename_btn",
-          "type": "net.noodl.controls.button",
-          "label": "Rename",
-          "parent": "root",
-          "parameters": {
-            "label": "Rename selected"
-          }
-        },
-        {
-          "id": "delete_btn",
-          "type": "net.noodl.controls.button",
-          "label": "Delete",
-          "parent": "root",
-          "parameters": {
-            "label": "Delete selected"
           }
         },
         {
@@ -111,14 +91,32 @@
           "toProperty": "store"
         },
         {
-          "fromId": "rename_btn",
-          "fromProperty": "onClick",
+          "fromId": "notes_repeater",
+          "fromProperty": "itemActionItemId",
+          "toId": "update_note",
+          "toProperty": "modelId"
+        },
+        {
+          "fromId": "notes_repeater",
+          "fromProperty": "itemOutput-title",
+          "toId": "update_note",
+          "toProperty": "title"
+        },
+        {
+          "fromId": "notes_repeater",
+          "fromProperty": "itemOutputSignal-rename",
           "toId": "update_note",
           "toProperty": "store"
         },
         {
-          "fromId": "delete_btn",
-          "fromProperty": "onClick",
+          "fromId": "notes_repeater",
+          "fromProperty": "itemActionItemId",
+          "toId": "delete_note",
+          "toProperty": "modelId"
+        },
+        {
+          "fromId": "notes_repeater",
+          "fromProperty": "itemOutputSignal-delete",
           "toId": "delete_note",
           "toProperty": "store"
         },
@@ -150,30 +148,81 @@
           "type": "Group",
           "label": "Row",
           "parameters": {
-            "flexDirection": "row"
+            "flexDirection": "row",
+            "alignItems": "center",
+            "columnGap": "var(--space-2)"
           },
           "children": [
-            "title_text"
+            "title_field",
+            "rename_btn",
+            "delete_btn"
           ]
         },
         {
-          "id": "title_text",
-          "type": "Text",
-          "label": "Title",
+          "id": "title_field",
+          "type": "net.noodl.controls.textinput",
+          "label": "Title field",
           "parent": "row"
+        },
+        {
+          "id": "rename_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Rename",
+          "parent": "row",
+          "parameters": {
+            "label": "Rename"
+          }
+        },
+        {
+          "id": "delete_btn",
+          "type": "net.noodl.controls.button",
+          "label": "Delete",
+          "parent": "row",
+          "parameters": {
+            "label": "Delete"
+          }
         },
         {
           "id": "row_inputs",
           "type": "Component Inputs",
-          "label": "Record in"
+          "label": "Record in",
+          "ports": [{ "name": "title", "plug": "output", "type": "*" }]
+        },
+        {
+          "id": "row_outputs",
+          "type": "Component Outputs",
+          "label": "Row interface out \u2014 plugged \"input\"",
+          "ports": [
+            { "name": "title", "plug": "input", "type": "string" },
+            { "name": "rename", "plug": "input", "type": "signal" },
+            { "name": "delete", "plug": "input", "type": "signal" }
+          ]
         }
       ],
       "connections": [
         {
           "fromId": "row_inputs",
           "fromProperty": "title",
-          "toId": "title_text",
-          "toProperty": "text"
+          "toId": "title_field",
+          "toProperty": "startValue"
+        },
+        {
+          "fromId": "title_field",
+          "fromProperty": "onTextChanged",
+          "toId": "row_outputs",
+          "toProperty": "title"
+        },
+        {
+          "fromId": "rename_btn",
+          "fromProperty": "onClick",
+          "toId": "row_outputs",
+          "toProperty": "rename"
+        },
+        {
+          "fromId": "delete_btn",
+          "fromProperty": "onClick",
+          "toId": "row_outputs",
+          "toProperty": "delete"
         }
       ]
     }

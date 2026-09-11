@@ -16,6 +16,7 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { Model } from '@noodl-utils/model';
 
+import { catalogGeneration } from '../../../validation/catalog';
 import { SemanticValidator } from '../../../validation/SemanticValidator';
 import { fromLegacyProject, LegacyProjectLike } from '../../../validation/normalize';
 import { ValidationReport } from '../../../validation/diagnostics';
@@ -53,7 +54,16 @@ export class ProjectValidationService extends Model<ProjectValidationEvent> {
     return ProjectValidationService._instance;
   }
 
-  private readonly validator = new SemanticValidator();
+  /**
+   * CN-003: rebuilt when the project catalog overlay changes, never held across
+   * one. A `SemanticValidator` captures its `CatalogIndex` at construction, and
+   * this service is a singleton that outlives every project opened in the
+   * session — so a validator built before the open project's kits were known
+   * would keep reporting them as unknown types and keep skipping their checks,
+   * which is indistinguishable from there being nothing to check.
+   */
+  private validator = new SemanticValidator();
+  private validatorGeneration = catalogGeneration();
   private readonly group = {};
   private _report: ValidationReport | null = null;
   private _options: ValidatorOptions = {};
@@ -117,6 +127,10 @@ export class ProjectValidationService extends Model<ProjectValidationEvent> {
     if (!project) return null;
     try {
       const json = project.toJSON() as unknown as LegacyProjectLike;
+      if (this.validatorGeneration !== catalogGeneration()) {
+        this.validator = new SemanticValidator();
+        this.validatorGeneration = catalogGeneration();
+      }
       return this.validator.validate(fromLegacyProject(json), this._options);
     } catch {
       // A malformed in-flight model shouldn't crash the panel; report "unknown".

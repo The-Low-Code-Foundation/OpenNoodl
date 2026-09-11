@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "devOpen": false,
+  "defaults": {
+    "permissions": {
+      "find": "nobody",
+      "get": "nobody",
+      "create": "nobody",
+      "update": "nobody",
+      "delete": "nobody"
+    },
+    "creatorOwns": false
+  },
+  "collections": {
+    "Association": {
+      "permissions": {
+        "find": "public",
+        "get": "public",
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "Announcement": {
+      "permissions": {
+        "find": ["role:member", "role:admin"],
+        "get": ["role:member", "role:admin"],
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "Meeting": {
+      "permissions": {
+        "find": ["role:member", "role:admin"],
+        "get": ["role:member", "role:admin"],
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "MemberRequest": {
+      "permissions": {
+        "find": "role:admin",
+        "get": "role:admin",
+        "create": "nobody",
+        "update": "nobody",
+        "delete": "nobody"
+      }
+    },
+    "Member": {
+      "permissions": {
+        "find": "role:admin",
+        "get": "role:admin",
+        "create": "nobody",
+        "update": "nobody",
+        "delete": "nobody"
+      }
+    }
+  },
+  "functions": {
+    "claimAssociation": {
+      "call": "public",
+      "rateLimit": { "ratePerMinute": 5, "burst": 5 }
+    },
+    "requestAccess": {
+      "call": "public",
+      "rateLimit": { "ratePerMinute": 5, "burst": 10 }
+    },
+    "myStanding": {
+      "call": "public"
+    },
+    "decideMembership": {
+      "call": "role:admin"
+    },
+    "myNotifySetting": {
+      "call": ["role:member", "role:admin"]
+    },
+    "setNotifySetting": {
+      "call": ["role:member", "role:admin"]
+    },
+    "unsubscribe": {
+      "call": "public",
+      "rateLimit": { "ratePerMinute": 10, "burst": 10 }
+    },
+    "notifyMembers": {
+      "call": "role:admin"
+    }
+  },
+  "files": {
+    "upload": "role:admin",
+    "read": "public",
+    "delete": "nobody"
+  },
+  "signup": "nobody"
+}

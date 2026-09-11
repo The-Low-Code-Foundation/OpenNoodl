@@ -17,6 +17,12 @@ export class BasicNodeType extends Model {
   listeners: TSFixme[];
   listenersOnce: TSFixme[];
   public name: string;
+  /**
+   * CN-006b — the kit that registered this type, when one did. Copied in by the
+   * `for (const i in args)` loop below like everything else; declared here so the
+   * property panel's provenance row can read it without a cast.
+   */
+  public module?: string;
   ports: TSFixme[];
   public runtimeTypes: RuntimeType[];
   shortDocs: string;

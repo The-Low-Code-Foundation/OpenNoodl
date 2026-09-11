@@ -1,0 +1,363 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 4269,
+    "contentBottom": 4269,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 63,
+      "onScreen": 17,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 33,
+        "600": 24,
+        "700": 6
+      },
+      "fontSizes": {
+        "20px": 1,
+        "13.3333px": 4,
+        "18px": 10,
+        "12px": 8,
+        "48px": 4,
+        "16px": 2,
+        "30px": 5,
+        "14px": 26,
+        "24px": 3
+      },
+      "distinctFontSizes": 9,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 29,
+      "byText": {
+        "Text": 29
+      },
+      "samples": [
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 5,
+      "onScreen": 1,
+      "unreachable": 0,
+      "broken": 5,
+      "brokenSources": [
+        "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=600&fit=crop",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 1248,
+        "itemHeight": 450,
+        "parentWidth": 1248,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1248,
+        "itemHeight": 261,
+        "parentWidth": 1248,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1168,
+        "itemHeight": 56,
+        "parentWidth": 1232,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1168,
+        "itemHeight": 56,
+        "parentWidth": 1232,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1168,
+        "itemHeight": 56,
+        "parentWidth": 1232,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 411,
+        "itemHeight": 68,
+        "parentWidth": 1280,
+        "tag": "DIV",
+        "cls": ""
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 368,
+        "itemHeight": 143,
+        "parentWidth": 1280,
+        "tag": "DIV",
+        "cls": ""
+      }
+    ],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [],
+    "layoutWidth": 768,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 768,
+    "pageHeight": 4530,
+    "contentBottom": 4530,
+    "overflowing": [
+      {
+        "tag": "IMG",
+        "cls": "",
+        "width": 500
+      }
+    ],
+    "overflowingCount": 1,
+    "text": {
+      "elements": 63,
+      "onScreen": 9,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 33,
+        "600": 24,
+        "700": 6
+      },
+      "fontSizes": {
+        "20px": 1,
+        "13.3333px": 4,
+        "18px": 10,
+        "12px": 8,
+        "48px": 4,
+        "16px": 2,
+        "30px": 5,
+        "14px": 26,
+        "24px": 3
+      },
+      "distinctFontSizes": 9,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 29,
+      "byText": {
+        "Text": 29
+      },
+      "samples": [
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Text",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 5,
+      "onScreen": 1,
+      "unreachable": 0,
+      "broken": 5,
+      "brokenSources": [
+        "https://images.unsplash.com/photo-1578500494198-246f612d03b3?w=600&h=600&fit=crop",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 358,
+        "itemHeight": 450,
+        "parentWidth": 358,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 358,
+        "itemHeight": 261,
+        "parentWidth": 358,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 278,
+        "itemHeight": 56,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 278,
+        "itemHeight": 56,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 278,
+        "itemHeight": 56,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 3,
+        "rows": 2,
+        "itemWidth": 114,
+        "itemHeight": 85,
+        "parentWidth": 390,
+        "tag": "DIV",
+        "cls": ""
+      }
+    ],
+    "consoleErrors": []
+  }
+}

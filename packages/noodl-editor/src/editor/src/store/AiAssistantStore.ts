@@ -13,6 +13,7 @@
  */
 
 import { getDefaultModel } from '@noodl-models/AiAssistant/client/models';
+import { AiRole, AiRoleSelection } from '@noodl-models/AiAssistant/client/roles';
 import { AI_PROVIDER_IDS, AiProviderId } from '@noodl-models/AiAssistant/client/types';
 import { EditorSettings } from '@noodl-utils/editorsettings';
 
@@ -22,6 +23,12 @@ export type AiProviderSelection = AiProviderId | 'disabled';
 
 const PROVIDER_KEY = 'ai.provider';
 const MODEL_KEY = (provider: AiProviderId) => `ai.model.${provider}`;
+// LAS-009: two flat keys per role rather than one `ai.role.<role>` object.
+// `EditorSettings.set` deep-merges objects into what is already stored, so
+// clearing a field by writing `{ provider: undefined }` would leave the old
+// value in place — a role you thought you had cleared would keep routing.
+const ROLE_PROVIDER_KEY = (role: AiRole) => `ai.role.${role}.provider`;
+const ROLE_MODEL_KEY = (role: AiRole) => `ai.role.${role}.model`;
 const ENDPOINT_KEY = (provider: AiProviderId) => `ai.endpoint.${provider}`;
 const HAS_KEY_KEY = (provider: AiProviderId) => `ai.hasKey.${provider}`;
 const VERIFIED_KEY = (provider: AiProviderId) => `ai.verified.${provider}`;
@@ -154,21 +161,50 @@ export const AiConfigStore = {
   },
 
   /**
-   * Whether the active provider has everything it needs to make a request.
-   * Ollama and private compatible endpoints legitimately have no key.
+   * Whether a provider has everything it needs to make a request, defaulting
+   * to the active one. Ollama and private compatible endpoints legitimately
+   * have no key.
+   *
+   * LAS-009 added the argument: a per-role provider override has to be checked
+   * before it is honoured, and it is by definition not the active provider.
+   * Called bare this behaves exactly as it did before.
    */
-  isConfigured(): boolean {
-    const provider = this.getActiveProvider();
-    if (!provider) return false;
+  isConfigured(provider?: AiProviderId): boolean {
+    const target = provider || this.getActiveProvider();
+    if (!target) return false;
 
-    switch (provider) {
+    switch (target) {
       case 'ollama':
         return true;
       case 'openai-compatible':
-        return Boolean(this.getEndpoint(provider));
+        return Boolean(this.getEndpoint(target));
       default:
-        return this.hasApiKey(provider);
+        return this.hasApiKey(target);
     }
+  },
+
+  /**
+   * LAS-009 — what the design / plan / act roles are set to. An empty object
+   * means "inherit the global provider and model", which is what every role
+   * ships as and what the vast majority of users will keep.
+   */
+  getRole(role: AiRole): AiRoleSelection {
+    const provider = EditorSettings.instance.get(ROLE_PROVIDER_KEY(role));
+    const model = EditorSettings.instance.get(ROLE_MODEL_KEY(role));
+    return {
+      ...(isProviderId(provider) ? { provider } : {}),
+      ...(typeof model === 'string' && model ? { model } : {})
+    };
+  },
+
+  /**
+   * Write a role's selection. Passing an empty object clears the role back to
+   * "same as the main model" — both keys are always written, so clearing one
+   * field never leaves the other behind to route requests on its own.
+   */
+  setRole(role: AiRole, selection: AiRoleSelection): void {
+    EditorSettings.instance.set(ROLE_PROVIDER_KEY(role), selection.provider ?? undefined);
+    EditorSettings.instance.set(ROLE_MODEL_KEY(role), selection.model ?? undefined);
   },
 
   /**

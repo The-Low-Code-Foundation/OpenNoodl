@@ -1339,3 +1339,418 @@ describe('Subscribe To Changes (FH-021)', () => {
     probe.node._onNodeDeleted();
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SBR-011 — which token a subscription puts on the wire
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔴 **The hole this closes was exactly the shape of the defect it hides.**
+ *
+ * `publicToken` means two different things depending on the backend, and only
+ * one of them is a token. On Directus / PocketBase / Supabase it is a genuine
+ * public auth token (`byob-utils.ts:113` uses it as one). On `nodegx` / `parse`
+ * it carries the Parse **Application Id** — `endpointBackendEntry` fills it from
+ * `cloudservices.appId` and `ParseWireAdapter` sends it as
+ * `X-Parse-Application-Id`.
+ *
+ * `RealtimeSubscription.token` fell back to it for both, so a Parse-wire
+ * subscription put an application id in `?token=`, which our own hub reads as an
+ * `x-parse-session-token`. Measured against a real `BackendService`:
+ * `GET /realtime` with no token is **200 `connected`**, and the same URL with an
+ * app id is **400 `Invalid session token` (code 209)**. Realtime therefore never
+ * connected for the built-in backend — the zero-configuration path — and failed
+ * **silently**, onto the error bus.
+ *
+ * Every one of the 357 arms in this file was green through all of that, because
+ * the fixtures carry either a `sessionToken` or no auth at all and none of them
+ * asserts what ends up in the URL. So these read the URL.
+ */
+describe('SBR-011 — the token a Parse-wire subscription carries', () => {
+  const streamsFor = (handle: BackendHandle): string => {
+    const clock = new FakeClock();
+    const before = streams.length;
+    const sub = createRealtimeSubscription(handle, {
+      collection: 'Page',
+      deps: {
+        EventSourceImpl: FakeEventSource as never,
+        fetchImpl: (() => new Promise(() => undefined)) as never,
+        setTimeoutImpl: clock.setTimeout,
+        clearTimeoutImpl: clock.clearTimeout
+      }
+    });
+    const opened = streams.slice(before).map((s) => s.url);
+    sub.dispose();
+    expect(opened.length).toBe(1);
+    return opened[0];
+  };
+
+  it('sends NO token when a nodegx handle carries only an app id', () => {
+    // The endpoint entry a site-builder project gets: an app id in `publicToken`
+    // and no session, because the visitor is anonymous.
+    const url = streamsFor({ ...NODEGX, publicToken: 'myapp' });
+    expect(url).toBe('http://nodegx.test:8593/realtime');
+    // Stated as its own claim: the app id must not appear anywhere in the URL,
+    // under any parameter name.
+    expect(url).not.toContain('myapp');
+  });
+
+  it('sends the SESSION token when there is one', () => {
+    // 🔴 The known-firing twin. Without it the arm above passes just as well on a
+    // transport that had stopped sending tokens at all, and the signed-in owner
+    // would silently lose every row their session is the only key to.
+    const url = streamsFor({ ...NODEGX, publicToken: 'myapp', sessionToken: 'r:sess123' });
+    expect(url).toBe('http://nodegx.test:8593/realtime?token=r%3Asess123');
+  });
+
+  it('CONTROL: a BYOB backend still sends its public token, because there it IS one', () => {
+    // The half that must NOT change: on PocketBase `publicToken` is a real auth
+    // token, which is why the fix narrows by type instead of dropping the
+    // fallback.
+    //
+    // ⚠️ Read off the subscribe POST, not the URL — and that correction is worth
+    // keeping. The first version of this arm asserted the token was IN the
+    // stream URL and went red, because PocketBase's dialect deliberately puts no
+    // token there (*"PocketBase does not read one"*) and sends it as an
+    // `authorization` header on the POST instead. A control has to be pointed at
+    // the surface the value actually travels on, or it grades the dialect rather
+    // than the change.
+    const clock = new FakeClock();
+    const calls: Array<Record<string, string>> = [];
+    const sub = createRealtimeSubscription(
+      { ...PB, publicToken: 'pb-public-token' },
+      {
+        collection: 'Page',
+        deps: {
+          EventSourceImpl: FakeEventSource as never,
+          fetchImpl: ((_url: string, init: { headers?: Record<string, string> }) => {
+            calls.push(init?.headers || {});
+            return new Promise(() => undefined);
+          }) as never,
+          setTimeoutImpl: clock.setTimeout,
+          clearTimeoutImpl: clock.clearTimeout
+        }
+      }
+    );
+    // The POST only happens once the stream has said hello, so the dialect's own
+    // hello frame is what releases it.
+    streams[streams.length - 1].emit('PB_CONNECT', { clientId: 'pb-client-1' });
+    sub.dispose();
+
+    expect(calls.length).toBeGreaterThan(0);
+    expect(Object.values(calls[0])).toContain('pb-public-token');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// D46 — the shared SSE connection
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * 🔴 **The defect these grade is not visible from any subscription on its own**, which is
+ * why 77 arms above were green through all of it. Every one of them opens exactly one
+ * subscription, and one subscription costs one stream either way.
+ *
+ * What was measured on SBR-011's drive is a property of the *sixth*: a browser holds six
+ * connections per origin, an SSE stream never ends, and at six open streams an ordinary
+ * same-origin request is **never sent** — it sits in the queue reading
+ * `queued 15007ms, waited 5ms`. The app's queries, its writes, and the registration POSTs
+ * the streams themselves are waiting for all stop. The site-builder template reached it
+ * with three, because the page's own boot traffic occupies the rest of the pool.
+ *
+ * ⚠️ So these arms count **streams**, and the counting is the point. `deps` is one object
+ * shared by every subscription in a case, because `RealtimeDeps` is the host and two
+ * subscriptions in one browser are in one host — see `SseConnectionPool`.
+ */
+describe('D46 — one stream per backend, shared', () => {
+  const OTHER: BackendHandle = { id: 'n2', type: 'nodegx', name: 'Other', url: 'http://other.test:8593' };
+
+  /** One host — one `EventSource`, one `fetch`, one clock — and N subscriptions on it. */
+  function host(replies: { status?: number; body?: unknown }[], dialect = NODEGX_SSE) {
+    const clock = new FakeClock();
+    const f = fakeFetch(replies);
+    const deps = {
+      EventSourceImpl: FakeEventSource as never,
+      fetchImpl: f.impl as never,
+      setTimeoutImpl: clock.setTimeout,
+      clearTimeoutImpl: clock.clearTimeout
+    };
+    const opened: SseTransport[] = [];
+    function subscribe(collection: string, options: any = {}) {
+      const w = watch();
+      const sub = new SseTransport(
+        options.handle || NODEGX,
+        { collection, primaryKey: 'objectId', deps, ...w.callbacks, ...options },
+        dialect
+      );
+      opened.push(sub);
+      sub.connect();
+      return { sub, ...w };
+    }
+    return {
+      subscribe,
+      clock,
+      fetchCalls: f.calls,
+      /** Every subscription this case opened, disposed. */
+      end: () => opened.forEach((s) => s.dispose())
+    };
+  }
+
+  /** The bodies of the subscription POSTs, in order. */
+  const posted = (calls: { url: string; init: any }[]) => calls.map((c) => JSON.parse(c.init.body));
+
+  it('🔴 two subscriptions on one backend open ONE stream, and register in ONE POST', async () => {
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'Page' }, { collection: 'Post' }] } }]);
+    const page = t.subscribe('Page');
+    const post = t.subscribe('Post');
+
+    expect(streams).toHaveLength(1);
+
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(t.fetchCalls).toHaveLength(1);
+    expect(posted(t.fetchCalls)[0]).toEqual({
+      clientId: 'c1',
+      subscriptions: [{ collection: 'Page' }, { collection: 'Post' }]
+    });
+    expect(page.sub.status).toBe('subscribed');
+    expect(post.sub.status).toBe('subscribed');
+    t.end();
+  });
+
+  it('CONTROL: two subscriptions on DIFFERENT backends still open two streams', () => {
+    // ⚠️ The known-firing twin. Without it the arm above passes just as well on a
+    // transport that had stopped opening streams at all.
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'Page' }] } }]);
+    t.subscribe('Page');
+    t.subscribe('Page', { handle: OTHER });
+
+    expect(streams).toHaveLength(2);
+    expect(streams.map((s) => s.url)).toEqual([
+      'http://nodegx.test:8593/realtime',
+      'http://other.test:8593/realtime'
+    ]);
+    t.end();
+  });
+
+  it('🔴 SIX subscriptions hold ONE of the browser\'s six connections, not all six', () => {
+    // The number in D46's row, stated as the number. At six streams the measured browser
+    // sent nothing else to that origin at all.
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'A' }] } }]);
+    for (const collection of ['A', 'B', 'C', 'D', 'E', 'F']) t.subscribe(collection);
+    expect(streams).toHaveLength(1);
+    t.end();
+  });
+
+  it('one joining a stream that is already live re-POSTs the union, on the same stream', async () => {
+    const t = host([
+      { status: 200, body: { accepted: [{ collection: 'Page' }] } },
+      { status: 200, body: { accepted: [{ collection: 'Page' }, { collection: 'Post' }] } }
+    ]);
+    const page = t.subscribe('Page');
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+    expect(page.sub.status).toBe('subscribed');
+
+    const post = t.subscribe('Post');
+    await flush();
+
+    expect(streams).toHaveLength(1);
+    expect(t.fetchCalls).toHaveLength(2);
+    expect(posted(t.fetchCalls)[1]).toEqual({
+      clientId: 'c1',
+      subscriptions: [{ collection: 'Page' }, { collection: 'Post' }]
+    });
+    expect(post.sub.status).toBe('subscribed');
+    t.end();
+  });
+
+  it('a change frame reaches the collection it names, and only that one', async () => {
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'Page' }, { collection: 'Post' }] } }]);
+    const page = t.subscribe('Page');
+    const post = t.subscribe('Post');
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+
+    streams[0].emit('change', { action: 'create', collection: 'Post', record: { objectId: 'p1' } });
+
+    expect(post.changes).toEqual([
+      { type: 'create', collection: 'Post', ids: ['p1'], records: [{ objectId: 'p1' }], recordsComplete: true }
+    ]);
+    // 🔴 Exactly once, and not at all for the neighbour: the NodeGX dialect registers one
+    // `change` listener per collection on a shared stream, so a payload that reached the
+    // wrong member — or the right one twice — is the failure this counts.
+    expect(page.changes).toEqual([]);
+    t.end();
+  });
+
+  it('🔴 one member rejected leaves the other SUBSCRIBED, on a stream that stays open', async () => {
+    // `RealtimeHub.setSubscriptions` gates each entry on that collection's own `find` CLP,
+    // so a union POST is answered with some accepted and some rejected. Reading the
+    // response as one verdict would take down whichever subscriptions happened to share.
+    const t = host([
+      {
+        status: 200,
+        body: {
+          accepted: [{ collection: 'Page' }],
+          rejected: [{ collection: 'Draft', reason: 'find is not allowed for this user' }]
+        }
+      },
+      { status: 200, body: { accepted: [{ collection: 'Page' }] } }
+    ]);
+    const page = t.subscribe('Page');
+    const draft = t.subscribe('Draft');
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(page.sub.status).toBe('subscribed');
+    expect(draft.errors[0]).toMatchObject({ code: 'SUBSCRIPTION_REJECTED', kind: 'retryable' });
+    expect(draft.errors[0].message).toContain('find is not allowed for this user');
+    expect(draft.sub.status).not.toBe('subscribed');
+    expect(streams).toHaveLength(1);
+    expect(streams[0].closed).toBe(false);
+    t.end();
+  });
+
+  it('a member leaving re-POSTs the union without it; the last one out closes the stream', async () => {
+    const t = host([
+      { status: 200, body: { accepted: [{ collection: 'Page' }, { collection: 'Post' }] } },
+      { status: 200, body: { accepted: [{ collection: 'Post' }] } }
+    ]);
+    const page = t.subscribe('Page');
+    const post = t.subscribe('Post');
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+
+    page.sub.dispose();
+    await flush();
+
+    // ⚠️ The POST *replaces* the set, so a member leaving is a re-registration, not a
+    // no-op: without it the server keeps pushing a collection nobody is listening to.
+    expect(posted(t.fetchCalls)[1]).toEqual({ clientId: 'c1', subscriptions: [{ collection: 'Post' }] });
+    expect(streams[0].closed).toBe(false);
+    expect(post.sub.status).toBe('subscribed');
+
+    post.sub.dispose();
+    expect(streams[0].closed).toBe(true);
+  });
+
+  it('🔴 a POST in flight is not raced: what joined meanwhile goes in ONE follow-up', async () => {
+    // Both servers' POST replaces the set for a clientId. Two in flight would land in an
+    // order neither end controls and the loser would silently unsubscribe the winner's
+    // registrations — "the other node stopped receiving", with nothing in any log.
+    const gate: Array<(v: unknown) => void> = [];
+    const calls: { url: string; init: any }[] = [];
+    const clock = new FakeClock();
+    const deps = {
+      EventSourceImpl: FakeEventSource as never,
+      fetchImpl: ((url: string, init?: unknown) => {
+        calls.push({ url, init });
+        return new Promise((resolve) => gate.push(resolve));
+      }) as never,
+      setTimeoutImpl: clock.setTimeout,
+      clearTimeoutImpl: clock.clearTimeout
+    };
+    const make = (collection: string) => {
+      const w = watch();
+      const sub = new SseTransport(NODEGX, { collection, primaryKey: 'objectId', deps, ...w.callbacks }, NODEGX_SSE);
+      sub.connect();
+      return { sub, ...w };
+    };
+
+    const page = make('Page');
+    streams[0].emit('connected', { clientId: 'c1' });
+    expect(calls).toHaveLength(1);
+
+    const post = make('Post');
+    const note = make('Note');
+    // Still one: nothing may be sent until the first answer is in.
+    expect(calls).toHaveLength(1);
+
+    gate[0]({ status: 200, json: () => Promise.resolve({ accepted: [{ collection: 'Page' }] }) });
+    await flush();
+
+    expect(calls).toHaveLength(2);
+    expect(JSON.parse(calls[1].init.body)).toEqual({
+      clientId: 'c1',
+      subscriptions: [{ collection: 'Page' }, { collection: 'Post' }, { collection: 'Note' }]
+    });
+    // 🔴 And the two that were not in the first POST were not judged by its answer: an
+    // `accepted[]` naming only Page says nothing about a subscription the server has not
+    // been told about yet.
+    expect(post.errors).toEqual([]);
+    expect(note.errors).toEqual([]);
+
+    gate[1]({
+      status: 200,
+      json: () =>
+        Promise.resolve({ accepted: [{ collection: 'Page' }, { collection: 'Post' }, { collection: 'Note' }] })
+    });
+    await flush();
+    expect([page.sub.status, post.sub.status, note.sub.status]).toEqual(['subscribed', 'subscribed', 'subscribed']);
+    page.sub.dispose();
+    post.sub.dispose();
+    note.sub.dispose();
+  });
+
+  it('⚠️ a FILTERED subscription gets its own stream, because a shared one would over-deliver', () => {
+    // The boundary, drawn where correctness is free. A consumer here filters only by
+    // collection name, so a filtered subscriber sharing with an unfiltered one would
+    // silently receive rows it asked not to see. Recorded rather than papered over: an app
+    // with six differently-filtered subscriptions still reaches the ceiling.
+    //
+    // ⚠️ Three subscriptions, not two, and that is the whole design of the arm: two would
+    // read `2` on a transport that shares nothing at all, which is the state this row
+    // exists to have left. The two unfiltered ones must collapse and the filtered one must
+    // not join them — `3` is the un-shared code and `1` is over-delivery.
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'Page' }] } }]);
+    t.subscribe('Page');
+    t.subscribe('Page');
+    t.subscribe('Page', { where: { published: { $eq: true } } });
+    expect(streams).toHaveLength(2);
+    t.end();
+  });
+
+  it('two subscriptions with the SAME filter do share — the union is one entry', async () => {
+    const t = host([{ status: 200, body: { accepted: [{ collection: 'Page' }] } }]);
+    const a = t.subscribe('Page', { where: { published: { $eq: true } } });
+    const b = t.subscribe('Page', { where: { published: { $eq: true } } });
+    expect(streams).toHaveLength(1);
+
+    streams[0].emit('connected', { clientId: 'c1' });
+    await flush();
+
+    expect(posted(t.fetchCalls)[0]).toEqual({
+      clientId: 'c1',
+      subscriptions: [{ collection: 'Page', filter: { published: { $eq: true } } }]
+    });
+    expect([a.sub.status, b.sub.status]).toEqual(['subscribed', 'subscribed']);
+    t.end();
+  });
+
+  it('⚠️ PocketBase: a collection joining a live stream gets its OWN listener, or it hears nothing', async () => {
+    // The dialect's one surprise, and the trap a shared stream adds to it: the SSE event
+    // name is the collection's own name, so a member joining an `EventSource` that is
+    // already open needs a listener added right then. A registry that only re-POSTs would
+    // register the subscription server-side and never hear a frame of it.
+    const t = host([{ status: 204 }, { status: 204 }], POCKETBASE_SSE);
+    const posts = t.subscribe('posts', { handle: PB });
+    streams[0].emit('PB_CONNECT', { clientId: 'pb1' });
+    await flush();
+    expect(posts.sub.status).toBe('subscribed');
+    expect(streams[0].listenerNames).not.toContain('comments');
+
+    const comments = t.subscribe('comments', { handle: PB });
+    await flush();
+
+    expect(streams).toHaveLength(1);
+    expect(streams[0].listenerNames).toContain('comments');
+    expect(JSON.parse(t.fetchCalls[1].init.body)).toEqual({ clientId: 'pb1', subscriptions: ['posts', 'comments'] });
+
+    streams[0].emit('comments', { action: 'update', record: { id: 'c9' } });
+    expect(comments.changes).toHaveLength(1);
+    expect(posts.changes).toEqual([]);
+    t.end();
+  });
+});

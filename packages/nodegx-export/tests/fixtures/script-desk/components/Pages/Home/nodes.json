@@ -1,0 +1,374 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000071",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Script Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "startBtn",
+        "stopBtn",
+        "clock",
+        "greetBtn",
+        "greetingText",
+        "greetedText",
+        "doubleText",
+        "bumpBtn",
+        "labelText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Script Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "startBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Start",
+      "parent": "shell",
+      "parameters": {
+        "label": "Start"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "stopBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Stop",
+      "parent": "shell",
+      "parameters": {
+        "label": "Stop"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "clock",
+      "type": "Text",
+      "label": "Clock",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 540
+    },
+    {
+      "id": "greetBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Greet",
+      "parent": "shell",
+      "parameters": {
+        "label": "Greet"
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "greetingText",
+      "type": "Text",
+      "label": "Greeting",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 720
+    },
+    {
+      "id": "greetedText",
+      "type": "Text",
+      "label": "Greeted",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 800
+    },
+    {
+      "id": "doubleText",
+      "type": "Text",
+      "label": "Double",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 900
+    },
+    {
+      "id": "bumpBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Bump",
+      "parent": "shell",
+      "parameters": {
+        "label": "Bump"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "labelText",
+      "type": "Text",
+      "label": "Label",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1080
+    },
+    {
+      "id": "ticker",
+      "type": "Javascript2",
+      "label": "Ticker",
+      "parameters": {
+        "code": "let timerId;\nlet seconds = 0;\n\nfunction format() {\n  let minutes = Math.floor(seconds / 60);\n  let remainingSeconds = seconds % 60;\n  let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n  return `${minutes}:${formattedSeconds}`;\n}\n\nScript.Signals.Start = async function () {\n  if (timerId) {\n    return;\n  }\n\n  seconds = 0; // Reset the seconds\n  Script.Outputs.Seconds = \"0:00\";\n\n  timerId = setInterval(() => {\n    seconds++;\n    Script.Outputs.Seconds = format();\n  }, 1000);\n}\n\nScript.Signals.Stop = async function () {\n  if (timerId) {\n    clearInterval(timerId);\n    timerId = null;\n    Script.Outputs.Seconds = format();\n  }\n}\n"
+      },
+      "dynamicports": [
+        {
+          "name": "Start",
+          "plug": "input",
+          "type": {
+            "name": "signal"
+          },
+          "group": "Inputs",
+          "index": 5
+        },
+        {
+          "name": "Stop",
+          "plug": "input",
+          "type": {
+            "name": "signal"
+          },
+          "group": "Inputs",
+          "index": 6
+        },
+        {
+          "name": "Seconds",
+          "displayName": "Seconds",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs",
+          "index": 7
+        }
+      ],
+      "x": 500,
+      "y": 380
+    },
+    {
+      "id": "greeter",
+      "type": "Javascript2",
+      "label": "Greeter",
+      "parameters": {
+        "code": "Script.Inputs = {\n    Name: 'string'\n};\n\nScript.Outputs = {\n    Greeting: 'string',\n    Greeted: 'signal'\n};\n\nScript.Signals.Greet = function () {\n    const name = Script.Inputs.Name || 'stranger';\n    Script.Outputs.Greeting = 'Hello, ' + name + '!';\n    Script.Outputs.Greeted();\n};\n"
+      },
+      "dynamicports": [
+        {
+          "name": "Name",
+          "plug": "input",
+          "type": {
+            "name": "string"
+          },
+          "group": "Inputs",
+          "index": 5
+        },
+        {
+          "name": "Greet",
+          "plug": "input",
+          "type": {
+            "name": "signal"
+          },
+          "group": "Inputs",
+          "index": 6
+        },
+        {
+          "name": "Greeting",
+          "displayName": "Greeting",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "group": "Outputs",
+          "index": 7
+        },
+        {
+          "name": "Greeted",
+          "displayName": "Greeted",
+          "plug": "output",
+          "type": "signal",
+          "group": "Outputs",
+          "index": 8
+        }
+      ],
+      "x": 500,
+      "y": 640
+    },
+    {
+      "id": "doubler",
+      "type": "Javascript2",
+      "label": "Doubler",
+      "parameters": {
+        "code": "define({\n  inputs: {\n    Base: 'number'\n  },\n  outputs: {\n    Double: 'number'\n  },\n  change: function (inputs, outputs) {\n    outputs.Double = (inputs.Base || 0) * 2;\n  }\n})\n"
+      },
+      "dynamicports": [
+        {
+          "name": "Base",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "group": "Inputs",
+          "index": 5
+        },
+        {
+          "name": "Double",
+          "displayName": "Double",
+          "plug": "output",
+          "type": {
+            "name": "number"
+          },
+          "group": "Outputs",
+          "index": 6
+        }
+      ],
+      "x": 500,
+      "y": 900
+    },
+    {
+      "id": "bumper",
+      "type": "Javascript2",
+      "label": "Bumper",
+      "parameters": {
+        "code": "script({\n  inputs: {\n    Count: 'number'\n  },\n  outputs: {\n    Label: 'string'\n  },\n  signals: {\n    Bump: function () {\n      this.setOutputs({ Label: 'bumped ' + this.inputs.Count });\n    }\n  },\n  changed: {\n    Count: function (value, oldValue) {\n      this.setOutputs({ Label: 'count ' + value });\n    }\n  }\n})\n"
+      },
+      "dynamicports": [
+        {
+          "name": "Count",
+          "plug": "input",
+          "type": {
+            "name": "number"
+          },
+          "group": "Inputs",
+          "index": 5
+        },
+        {
+          "name": "Bump",
+          "plug": "input",
+          "type": {
+            "name": "signal"
+          },
+          "group": "Inputs",
+          "index": 6
+        },
+        {
+          "name": "Label",
+          "displayName": "Label",
+          "plug": "output",
+          "type": {
+            "name": "string"
+          },
+          "group": "Outputs",
+          "index": 7
+        }
+      ],
+      "x": 500,
+      "y": 1000
+    },
+    {
+      "id": "nameConst",
+      "type": "String",
+      "label": "Name",
+      "parameters": {
+        "value": "Ada"
+      },
+      "x": 800,
+      "y": 640
+    },
+    {
+      "id": "baseConst",
+      "type": "Number",
+      "label": "Base",
+      "parameters": {
+        "value": 21
+      },
+      "x": 800,
+      "y": 900
+    },
+    {
+      "id": "greetedVar",
+      "type": "Variable2",
+      "label": "Greeted",
+      "parameters": {
+        "name": "greeted"
+      },
+      "x": 800,
+      "y": 800
+    },
+    {
+      "id": "setGreeted",
+      "type": "Set Variable",
+      "label": "Mark greeted",
+      "parameters": {
+        "name": "greeted"
+      },
+      "x": 800,
+      "y": 720
+    },
+    {
+      "id": "yesConst",
+      "type": "String",
+      "label": "Yes",
+      "parameters": {
+        "value": "yes"
+      },
+      "x": 1000,
+      "y": 720
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

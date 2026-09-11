@@ -1,0 +1,67 @@
+# max-turns turns=30 costUsd=2.43 durS=368
+get_project_info
+list_project_docs
+get_project_doc
+get_project_doc
+get_project_doc
+get_project_doc
+get_component
+list_components
+get_style_vocabulary
+list_backends
+get_component
+get_node_type
+get_node_type
+get_node_type
+get_node_type
+search_project
+list_node_types
+list_node_types
+get_node_type
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+get_node_type
+list_node_types
+get_example
+list_node_types
+get_node_type
+get_component
+provision_backend
+set_collection_permissions
+create_plan
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+get_node_type
+get_example
+stage_plan_operation
+discard_plan
+create_plan
+stage_plan_operation
+
+# --- rejections: 6 of 48 calls (1 carried a LAS-007 recipe) ---
+5	stage_plan_operation
+1	get_node_type
+
+# --- diagnostic codes seen by the model ---
+2	unknown-parameter
+2	inactive-conditional-parameter
+2	invalid-parameter-value
+1	repeated-sibling-subtree
+
+# --- what each rejection actually said ---
+[get_node_type] MCP error -32602: Input validation error: Invalid arguments for tool get_node_type: [ { "code": "too_big", "maximum": 8, "type": "array", "inclusive": true, "exact": false, "message": "Array must contain at most 8 elemen
+[stage_plan_operation] MCP error -32602: Input validation error: Invalid arguments for tool stage_plan_operation: [ { "code": "invalid_type", "expected": "array", "received": "string", "path": [ "nodes" ], "message": "Expected array, received 
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/StockItemRow" rejected — nothing was staged. · 11 diag: ERROR [nonexistent-port] /Components/StockItemRow › node count-num "Current count" (Number) › output "value": Number has no output named "value". → av
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/LoginScreen" rejected — nothing was staged. · 2 diag: ERROR [invalid-parameter-value] /Components/LoginScreen › node login-card "Login card" (Group) › input "maxWidth": parameter "maxWidth" (number) a val
+[stage_plan_operation] validation-failed · stage_plan_operation "Pages/Home" rejected — nothing was staged. · 1 diag: ERROR [repeater-without-template] /Pages/Home › node repeater "Item repeater" (For Each) › input "template": This Repeater has no template, so it inst · +2 recipe(s)
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/StockItemRow" rejected — nothing was staged. · 1 diag: Operation op-1 planned Components/StockItemRow with inputs "name", "count", "supplier", "itemId", but it exposes "name", "count", "supplier", "id". Mi

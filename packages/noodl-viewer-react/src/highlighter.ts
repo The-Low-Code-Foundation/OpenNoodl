@@ -1,4 +1,13 @@
+import {
+  BoxModelOverlay,
+  clipsAtRadius,
+  overlayRadii,
+  radiiToCss,
+  readCornerRadii,
+  type RectLike
+} from './box-model-overlay';
 import type { ReactNodeInstance } from './react-component-node';
+import { TransformOriginCrosshair } from './transform-origin-crosshair';
 
 /** The slice of `NoodlRuntime` the highlighter reaches for. */
 interface HighlighterRuntime {
@@ -28,6 +37,33 @@ export class Highlighter {
   isUpdatingHighlights: boolean;
   highlightRootDiv: HTMLDivElement;
   windowBorderDiv: HTMLDivElement;
+  /**
+   * FB-016 — the box model, drawn for one element at a time.
+   *
+   * Owned here rather than created per highlighted node: two chips saying the same thing cover
+   * the content the author is trying to read, and the hovered node and the selected node are
+   * usually the same element anyway.
+   */
+  boxOverlay: BoxModelOverlay;
+  /**
+   * 🔴 **The box model draws in design mode only, and this flag is the whole of that gate.**
+   * `NoodlEditorHighlightAPI.selectNode` is called whenever the editor's selection changes —
+   * in preview mode too — so without it, clicking a node in the graph would drop a chip of CSS
+   * facts over a running app nobody asked to inspect.
+   */
+  designMode: boolean;
+  /**
+   * FB-016 scope 4 — the transform-origin crosshair, drawn while the editor's transform-origin
+   * field has focus.
+   *
+   * ⚠️ **Deliberately *not* behind `designMode`, unlike the box model.** That gate exists because
+   * selection is pushed across the bridge in preview mode too, so a chip would appear over a
+   * running app nobody asked to inspect. This one cannot: it is on only while an author is holding
+   * focus in one specific property field, which is an explicit ask in either mode — and the teal
+   * selection outline, whose trigger is the same kind of deliberate act, is not gated either.
+   */
+  originCrosshair: TransformOriginCrosshair;
+  transformOriginFocused: boolean;
 
   constructor(noodlRuntime: HighlighterRuntime) {
     this.highlightedNodes = new Map();
@@ -35,6 +71,8 @@ export class Highlighter {
     this.noodlRuntime = noodlRuntime;
 
     this.isUpdatingHighlights = false;
+    this.designMode = false;
+    this.transformOriginFocused = false;
 
     //create the div that holds the highlight and selection UI
     const div = document.createElement('div');
@@ -48,6 +86,9 @@ export class Highlighter {
     div.style.pointerEvents = 'none';
     document.body.appendChild(div);
     this.highlightRootDiv = div;
+
+    this.boxOverlay = new BoxModelOverlay(div);
+    this.originCrosshair = new TransformOriginCrosshair(div);
 
     this.windowBorderDiv = this.createHighlightDiv();
     this.windowBorderDiv.style.position = 'absolute';
@@ -84,8 +125,48 @@ export class Highlighter {
     }*/
   }
 
+  /**
+   * Follows `NoodlEditorInspectorAPI.setEnabled`, which is design mode itself (DES-001).
+   */
+  setDesignMode(enabled: boolean): void {
+    this.designMode = enabled;
+    if (!enabled) {
+      this.boxOverlay.clear();
+    }
+  }
+
+  /**
+   * FB-016 scope 4 — follows focus on the editor's transform-origin field.
+   *
+   * The rAF loop is kicked here rather than waited for: an author who selects a node and goes
+   * straight to the properties panel leaves the pointer behind, and the loop may well already
+   * have settled by the time the field takes focus.
+   */
+  setTransformOriginFocus(enabled: boolean): void {
+    this.transformOriginFocused = enabled;
+
+    if (!enabled) {
+      this.originCrosshair.clear();
+      return;
+    }
+
+    if ((this.selectedNodes.size > 0 || this.highlightedNodes.size > 0) && !this.isUpdatingHighlights) {
+      this.updateHighlights();
+    }
+  }
+
   updateHighlights(): void {
     const items = Array.from(this.highlightedNodes.entries()).concat(Array.from(this.selectedNodes.entries()));
+
+    let focus: { element: HTMLElement; computed: CSSStyleDeclaration; rect: RectLike } | null = null;
+    let focusIsHovered = false;
+    /**
+     * The crosshair's subject, which is the **selected** node and not the hovered one — the
+     * opposite preference to the box model's, for the opposite reason. The properties panel edits
+     * the selection, so the field that turns the crosshair on is describing that node; and the
+     * pointer is over the panel at the time, so whatever it happens to be hovering is incidental.
+     */
+    let selectedFocus: { element: HTMLElement; computed: CSSStyleDeclaration; rect: RectLike } | null = null;
 
     for (const item of items) {
       const domNode = item[0].getDOMElement && item[0].getDOMElement();
@@ -108,6 +189,51 @@ export class Highlighter {
       highlight.style.transform = `translateX(${rect.x}px) translateY(${rect.y}px)`;
       highlight.style.width = rect.width + 'px';
       highlight.style.height = rect.height + 'px';
+
+      // FB-016 scope 5 — a rectangle drawn over a rounded element is what one test user read as
+      // *"corner radius rendered as a box outline — possible render bug"*. `outline` follows
+      // `border-radius`, so rounding the div rounds the teal line with it.
+      const computed = window.getComputedStyle(domNode);
+      highlight.style.borderRadius = radiiToCss(
+        overlayRadii({
+          radii: readCornerRadii(computed),
+          borderRect: rect,
+          clips: clipsAtRadius(domNode.tagName, computed),
+          childRects: childRects(domNode)
+        })
+      );
+
+      // The hovered node wins the box model; a selection keeps it once the pointer has left for
+      // the properties panel, which is exactly when an author is changing the numbers it explains.
+      const hovered = this.highlightedNodes.has(item[0]);
+      if (!focus || (hovered && !focusIsHovered)) {
+        focus = { element: domNode, computed, rect };
+        focusIsHovered = hovered;
+      }
+
+      if (!selectedFocus && this.selectedNodes.has(item[0])) {
+        selectedFocus = { element: domNode, computed, rect };
+      }
+    }
+
+    if (this.designMode && focus) {
+      this.boxOverlay.update(focus.element, focus.computed, focus.rect);
+    } else {
+      this.boxOverlay.clear();
+    }
+
+    const originSubject = selectedFocus || focus;
+    if (this.transformOriginFocused && originSubject) {
+      // The box chip is placed first (just above), so its rect is this frame's — the crosshair's
+      // label is moved clear of it rather than drawn on top, which is what the first drive showed.
+      this.originCrosshair.update(
+        originSubject.element,
+        originSubject.computed,
+        originSubject.rect,
+        this.boxOverlay.chipRect()
+      );
+    } else {
+      this.originCrosshair.clear();
     }
 
     this.isUpdatingHighlights = this.highlightedNodes.size > 0 || this.selectedNodes.size > 0;
@@ -191,6 +317,17 @@ export class Highlighter {
     }
     this.selectedNodes.clear();
   }
+}
+
+/** Only element children can paint over a corner, and only the first few are worth asking. */
+function childRects(element: HTMLElement): RectLike[] {
+  const rects: RectLike[] = [];
+  const children = element.children;
+  const count = Math.min(children.length, 40);
+  for (let i = 0; i < count; i++) {
+    rects.push(children[i].getBoundingClientRect());
+  }
+  return rects;
 }
 
 function getNodes(noodlRuntime: HighlighterRuntime, nodeId: string): ReactNodeInstance[] {

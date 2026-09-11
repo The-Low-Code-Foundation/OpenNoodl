@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
+  "version": 1,
+  "components": {
+    "App": { "path": "App", "type": "root" },
+    "Pages/Home": { "path": "Pages/Home", "type": "visual" },
+    "Pages/Middle": { "path": "Pages/Middle", "type": "visual" },
+    "Pages/Deep": { "path": "Pages/Deep", "type": "visual" }
+  }
+}

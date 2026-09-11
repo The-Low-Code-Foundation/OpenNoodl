@@ -4,7 +4,10 @@
   "title": "OpenNoodl Component Connections",
   "description": "Connection (wire) definitions for a single component (connections.json) in the v2 format",
   "type": "object",
-  "required": ["componentId", "connections"],
+  "required": [
+    "componentId",
+    "connections"
+  ],
   "additionalProperties": false,
   "properties": {
     "$schema": {
@@ -12,7 +15,7 @@
     },
     "componentId": {
       "type": "string",
-      "description": "ID of the parent component — must match component.json id"
+      "description": "ID of the parent component \u2014 must match component.json id"
     },
     "version": {
       "type": "integer",
@@ -22,13 +25,20 @@
     "connections": {
       "type": "array",
       "description": "All connections (wires) in this component's graph",
-      "items": { "$ref": "#/definitions/connection" }
+      "items": {
+        "$ref": "#/definitions/connection"
+      }
     }
   },
   "definitions": {
     "connection": {
       "type": "object",
-      "required": ["fromId", "fromProperty", "toId", "toProperty"],
+      "required": [
+        "fromId",
+        "fromProperty",
+        "toId",
+        "toProperty"
+      ],
       "additionalProperties": true,
       "properties": {
         "fromId": {
@@ -61,8 +71,36 @@
         },
         "annotation": {
           "type": "string",
-          "enum": ["Deleted", "Changed", "Created"],
+          "enum": [
+            "Deleted",
+            "Changed",
+            "Created"
+          ],
           "description": "Diff annotation (set by project differ)"
+        },
+        "route": {
+          "type": "object",
+          "description": "How a square wire is routed (SIG-007) \u2014 the positions of its runs. `xs[i]` is a fraction of the horizontal gap between the two ports; `ys[j]` is an offset in graph px from the source port's row. Runs alternate xs[0], ys[0], xs[1] \u2026 and `xs.length === ys.length + 1`, because the first and last runs belong to the ports. Absent when the wire has never been routed.",
+          "required": [
+            "xs",
+            "ys"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "xs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "number"
+              }
+            },
+            "ys": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          }
         }
       }
     }

@@ -1,0 +1,14 @@
+{
+  "label": "Avatar",
+  "description": "A round avatar that shows a photo when it has one and the person's initials when it does not \u2014 sized by a single Size input, and ringed so a stack of them stays legible against any background. Avatar Group overlaps them the way you expect and collapses the tail into a \"+3\" badge once Max is set. Out of the box the group renders five sample people from a Static Data node; connect your own array (Name/Image per item) to Items and it wins over the samples.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Data"
+  ],
+  "version": "2.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png",
+  "docsPath": "/library/prefabs/avatar/"
+}

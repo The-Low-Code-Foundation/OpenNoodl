@@ -101,6 +101,7 @@ function addOutputProps(definition: ReactNodeDefinition, values: Record<string, 
 function addControlEventsAndStates(definition: ReactNodeDefinition): void {
   addInputProps(definition, {
     blockTouch: {
+      group: 'Pointer Events',
       index: 450,
       displayName: 'Block Pointer Events',
       type: 'boolean'
@@ -109,6 +110,7 @@ function addControlEventsAndStates(definition: ReactNodeDefinition): void {
     // the new click-bubbling default reaches them whether they declare the port or not. They
     // get it too, or a project still using them would have no way back to the old behaviour.
     clickBubbling: {
+      group: 'Pointer Events',
       index: 451,
       displayName: 'Click Bubbling',
       type: {

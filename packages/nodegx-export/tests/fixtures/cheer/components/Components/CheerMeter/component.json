@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "db6659b4-274f-408c-b6d5-7d5b90b538a0",
+  "name": "CheerMeter",
+  "path": "/Components/CheerMeter",
+  "type": "visual",
+  "created": "2026-08-27T17:32:10.676Z",
+  "modified": "2026-08-27T17:32:10.676Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "EXP-002 controlled-state fixture: a controlled draft field synced from the visitorName variable, a Switch latch toggling details (mounted) and a live badge (visible), and a lifted draft value output."
+}

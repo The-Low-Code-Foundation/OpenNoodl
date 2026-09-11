@@ -1,0 +1,21 @@
+{
+  "name": "@nodegx/module-inject",
+  "version": "1.0.0",
+  "description": "The noodl_modules scan and the HTML injection it feeds — the pure half of the editor's single module scanner (LIB-003), in a package a plain-JS devtool can require. No build step.",
+  "license": "GPL-3.0",
+  "private": true,
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "jest --config jest.config.js"
+  },
+  "dependencies": {
+    "ajv": "^8.18.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

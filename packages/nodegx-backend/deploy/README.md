@@ -48,6 +48,22 @@ greet the operator with a hard error about a file they have never heard of.
 Writing the locked policy first makes the interlock a backstop instead of the
 onboarding experience. An existing `security.json` is never modified.
 
+🔴 **`security.production.json` is not a finished policy, and SB-016 makes the
+backend say so.** It is the shipped default with `devOpen: false` — which means
+`collections: {}` and `functions: {}` — and that combination is exactly the arm
+SB-015's drive measured as *the public site serves the public nothing, and a
+stranger who signs up calls the admin endpoints*. The collection half fails
+shut; the function half falls back to each graph's own `Allow Unauthenticated`
+port, with no `defaults` tier to lower it and the call running as system.
+
+So a project **with cloud functions** deployed onto this file now gets
+`UNDECLARED_FUNCTION_ON_PUBLIC_BIND` at first start, naming every endpoint and
+printing the `functions` block to paste. That is the interlock working, not a
+regression — the alternative is the silent version, which is what SB-015 found.
+A project with no functions is unaffected. **Collection permissions are still
+yours to write**: nothing refuses a deploy over `collections: {}`, because an
+undeclared collection fails shut and a wrong-but-closed door is not a breach.
+
 ## Verification
 
 `npm test` in `packages/nodegx-backend` covers the assets statically

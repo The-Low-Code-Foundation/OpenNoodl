@@ -1,0 +1,13 @@
+{
+  "label": "Form Fields",
+  "description": "Labelled field components for writing one form by hand: Labelled Text Input, Labelled Select, Labelled Checkbox, Labelled Textarea and Labelled Date. Every field has Label, Helper Text, Error (error text shows and the border turns destructive when it is non-empty), Required (asterisk marker) and Disabled inputs, plus Value/Checked and Changed outputs. Consistent 40px control height, Inter typography, design-token colours and a visible focus ring. A Form Fields demo component shows all five stacked.",
+  "type": "prefab",
+  "tags": [
+    "UI",
+    "Form"
+  ],
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

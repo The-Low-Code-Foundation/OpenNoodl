@@ -1,0 +1,540 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000050",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Glow",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Glow Desk",
+        "urlPath": "glow"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "panelBox",
+        "stateText",
+        "atText",
+        "changesText",
+        "outcomeText",
+        "reachedText",
+        "followText",
+        "ferrorText",
+        "fadeText",
+        "arrivedText",
+        "fadeBox",
+        "toggleBtn",
+        "brightBtn",
+        "dimBtn",
+        "wantOnBtn",
+        "wantBadBtn",
+        "levelHighBtn",
+        "levelLowBtn"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Glow Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      }
+    },
+    {
+      "id": "panelBox",
+      "type": "Group",
+      "label": "Panel box",
+      "parent": "shell",
+      "children": [
+        "panelLabel"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 240,
+          "unit": "px"
+        },
+        "height": {
+          "value": 80,
+          "unit": "px"
+        },
+        "backgroundColor": "#000000",
+        "opacity": 1,
+        "alignItems": "center",
+        "justifyContent": "center"
+      }
+    },
+    {
+      "id": "panelLabel",
+      "type": "Text",
+      "label": "Panel label",
+      "parent": "panelBox",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "#ffffff"
+      }
+    },
+    {
+      "id": "stateText",
+      "type": "Text",
+      "label": "State",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "atText",
+      "type": "Text",
+      "label": "At bright",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "changesText",
+      "type": "Text",
+      "label": "Changes",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "outcomeText",
+      "type": "Text",
+      "label": "Outcome",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "reachedText",
+      "type": "Text",
+      "label": "Reached",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "followText",
+      "type": "Text",
+      "label": "Follow level",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "ferrorText",
+      "type": "Text",
+      "label": "Follow error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--destructive)"
+      }
+    },
+    {
+      "id": "fadeText",
+      "type": "Text",
+      "label": "Fade",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "arrivedText",
+      "type": "Text",
+      "label": "Arrived",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      }
+    },
+    {
+      "id": "fadeBox",
+      "type": "Group",
+      "label": "Fade box",
+      "parent": "shell",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 120,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "backgroundColor": "#008000",
+        "opacity": 1
+      }
+    },
+    {
+      "id": "toggleBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Toggle",
+      "parent": "shell",
+      "parameters": {
+        "label": "Toggle"
+      }
+    },
+    {
+      "id": "brightBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Bright",
+      "parent": "shell",
+      "parameters": {
+        "label": "Bright"
+      }
+    },
+    {
+      "id": "dimBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Dim",
+      "parent": "shell",
+      "parameters": {
+        "label": "Dim"
+      }
+    },
+    {
+      "id": "wantOnBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Want on",
+      "parent": "shell",
+      "parameters": {
+        "label": "Want on"
+      }
+    },
+    {
+      "id": "wantBadBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Want bad",
+      "parent": "shell",
+      "parameters": {
+        "label": "Want bad"
+      }
+    },
+    {
+      "id": "levelHighBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Level high",
+      "parent": "shell",
+      "parameters": {
+        "label": "Level high"
+      }
+    },
+    {
+      "id": "levelLowBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Level low",
+      "parent": "shell",
+      "parameters": {
+        "label": "Level low"
+      }
+    },
+    {
+      "id": "panel",
+      "type": "States",
+      "label": "Panel",
+      "parameters": {
+        "states": "dim,bright",
+        "values": "opacity,tint,label",
+        "currentState": "dim",
+        "useTransitions": true,
+        "type-opacity": "number",
+        "type-tint": "color",
+        "type-label": "string",
+        "value-dim-opacity": 0.2,
+        "value-bright-opacity": 1,
+        "value-dim-tint": "#334455",
+        "value-bright-tint": "#ffcc00",
+        "value-dim-label": "Dim",
+        "value-bright-label": "Bright",
+        "transitiondef-dim": {
+          "curve": [
+            0,
+            0,
+            0.58,
+            1
+          ],
+          "dur": 600,
+          "delay": 0
+        },
+        "transitiondef-bright": {
+          "curve": [
+            0,
+            0,
+            0.58,
+            1
+          ],
+          "dur": 600,
+          "delay": 0
+        },
+        "transition-bright-opacity": {
+          "curve": [
+            0,
+            0,
+            0.58,
+            1
+          ],
+          "dur": 400,
+          "delay": 200
+        }
+      }
+    },
+    {
+      "id": "changes",
+      "type": "Counter",
+      "label": "Changes",
+      "parameters": {}
+    },
+    {
+      "id": "setOutcomeDone",
+      "type": "Set Variable",
+      "label": "Outcome done",
+      "parameters": {
+        "name": "outcome"
+      }
+    },
+    {
+      "id": "doneStr",
+      "type": "String",
+      "label": "Done text",
+      "parameters": {
+        "value": "done"
+      }
+    },
+    {
+      "id": "setOutcomeUnchanged",
+      "type": "Set Variable",
+      "label": "Outcome unchanged",
+      "parameters": {
+        "name": "outcome"
+      }
+    },
+    {
+      "id": "unchangedStr",
+      "type": "String",
+      "label": "Unchanged text",
+      "parameters": {
+        "value": "unchanged"
+      }
+    },
+    {
+      "id": "outcomeVar",
+      "type": "Variable2",
+      "label": "Outcome",
+      "parameters": {
+        "name": "outcome"
+      }
+    },
+    {
+      "id": "setReachedBright",
+      "type": "Set Variable",
+      "label": "Reached bright",
+      "parameters": {
+        "name": "reached"
+      }
+    },
+    {
+      "id": "reachedBrightStr",
+      "type": "String",
+      "label": "Reached bright text",
+      "parameters": {
+        "value": "bright reached"
+      }
+    },
+    {
+      "id": "setReachedDim",
+      "type": "Set Variable",
+      "label": "Reached dim",
+      "parameters": {
+        "name": "reached"
+      }
+    },
+    {
+      "id": "reachedDimStr",
+      "type": "String",
+      "label": "Reached dim text",
+      "parameters": {
+        "value": "dim reached"
+      }
+    },
+    {
+      "id": "reachedVar",
+      "type": "Variable2",
+      "label": "Reached",
+      "parameters": {
+        "name": "reached"
+      }
+    },
+    {
+      "id": "follower",
+      "type": "States",
+      "label": "Follower",
+      "parameters": {
+        "states": "off,on",
+        "values": "level",
+        "useTransitions": false,
+        "type-level": "number",
+        "value-off-level": 0,
+        "value-on-level": 1
+      }
+    },
+    {
+      "id": "wantedVar",
+      "type": "Variable2",
+      "label": "Wanted",
+      "parameters": {
+        "name": "wanted"
+      }
+    },
+    {
+      "id": "setWantOn",
+      "type": "Set Variable",
+      "label": "Want on",
+      "parameters": {
+        "name": "wanted"
+      }
+    },
+    {
+      "id": "onStr",
+      "type": "String",
+      "label": "On text",
+      "parameters": {
+        "value": "on"
+      }
+    },
+    {
+      "id": "setWantBad",
+      "type": "Set Variable",
+      "label": "Want bad",
+      "parameters": {
+        "name": "wanted"
+      }
+    },
+    {
+      "id": "badStr",
+      "type": "String",
+      "label": "Bad text",
+      "parameters": {
+        "value": "nope"
+      }
+    },
+    {
+      "id": "fade",
+      "type": "net.noodl.animatetovalue",
+      "label": "Fade",
+      "parameters": {
+        "duration": 500,
+        "delay": 0,
+        "easingCurve": "easeOut"
+      }
+    },
+    {
+      "id": "levelVar",
+      "type": "Variable2",
+      "label": "Level",
+      "parameters": {
+        "name": "level"
+      }
+    },
+    {
+      "id": "setLevelHigh",
+      "type": "Set Variable",
+      "label": "Level high",
+      "parameters": {
+        "name": "level"
+      }
+    },
+    {
+      "id": "oneNum",
+      "type": "Number",
+      "label": "One",
+      "parameters": {
+        "value": 1
+      }
+    },
+    {
+      "id": "setLevelLow",
+      "type": "Set Variable",
+      "label": "Level low",
+      "parameters": {
+        "name": "level"
+      }
+    },
+    {
+      "id": "zeroNum",
+      "type": "Number",
+      "label": "Zero",
+      "parameters": {
+        "value": 0
+      }
+    },
+    {
+      "id": "setArrived",
+      "type": "Set Variable",
+      "label": "Arrived",
+      "parameters": {
+        "name": "arrived"
+      }
+    },
+    {
+      "id": "arrivedStr",
+      "type": "String",
+      "label": "Arrived text",
+      "parameters": {
+        "value": "arrived"
+      }
+    },
+    {
+      "id": "arrivedVar",
+      "type": "Variable2",
+      "label": "Arrived",
+      "parameters": {
+        "name": "arrived"
+      }
+    }
+  ]
+}

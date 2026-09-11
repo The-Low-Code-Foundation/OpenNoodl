@@ -24,12 +24,39 @@ const EDITOR_ADAPTER_TYPES = {
 };
 
 const NOTES = {
+  /**
+   * FB-026 — the one node here whose runtime-discovered ports are its *own* ports, re-typed.
+   *
+   * Without this entry the generic sentence applies — *"the static port list below is incomplete
+   * for such instances"* — and it is false: `updatePorts` republishes `startValue` and
+   * `onTextChanged`, both of which are declared above, and changes nothing but their `type`. The
+   * matching claim on `parameterEncoding` is checked rather than believed; see
+   * `RETYPES_DECLARED_PORTS` in `derive-encoding.js`.
+   */
+  'net.noodl.controls.textinput':
+    'The port list above is complete — this node mints no ports. It republishes its own two value ' +
+    'ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the ' +
+    '`type` parameter is `number`, `string` for every other Type. They are declared `*` statically ' +
+    'because nothing outside a connected editor can narrow them.',
+  /**
+   * The second node of that shape, and the same correction. Dropdown republishes `value` — one of
+   * its own declared inputs — as an `enum` over the options in its `items` parameter, so an author
+   * picks the Value port's setting from the list they typed instead of retyping a string that has
+   * to match one (Richard, 2026-09-06). It mints nothing, and the generic sentence would tell a
+   * reader the port list cannot be trusted when it is exactly right.
+   */
+  'net.noodl.controls.options':
+    'The port list above is complete — this node mints no ports. It republishes its own `value` ' +
+    'input per instance as an `enum` built from this node\'s `items`: one choice per option, ' +
+    'labelled with the option\'s `Label` and carrying its `Value`, plus the currently stored ' +
+    'value when that matches no option. It is declared `string` statically because nothing ' +
+    'outside a connected editor can know the instance\'s options.',
   Expression:
     'Input ports are created for each free variable referenced in the "expression" parameter (e.g. the expression "a + b" yields number inputs named "a" and "b"). The "result" output and its type follow the expression.',
   JavaScriptFunction:
-    'This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter: reading "Inputs.xyz" creates input port "xyz", assigning "Outputs.xyz" creates output port "xyz". Signal outputs are created by calling "Outputs.xyz()".',
+    'This is the Function node. Input and output ports are discovered from the user script in the "functionScript" parameter, and the connectable port NAME carries a prefix the script does not: reading "Inputs.xyz" creates the input port "in-xyz", assigning "Outputs.xyz" creates the output port "out-xyz", and calling "Outputs.xyz()" creates the signal output "out-xyz". The property panel and the port list show the unprefixed display name ("xyz"), so connect to "in-xyz"/"out-xyz" — a connection written to the bare script name silently targets a port that does not exist. The node\'s own static ports ("run", "done", "success", "failure", "completed", "unchanged", "error") are never prefixed, so "Outputs.done()" is the separate port "out-done". The Script node ("Javascript2") does NOT prefix; that convention belongs to this node alone.',
   Javascript2:
-    'This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines.',
+    'This is the Script node. Ports are declared by the user script in the "code" parameter via "node.addInputProps"/"setOutputs" style APIs; the port set is whatever the script defines. Port names are exactly as declared — unlike the Function node ("JavaScriptFunction"), the Script node adds no "in-"/"out-" prefix.',
   'Logic Builder':
     'Ports are generated from the visual logic program stored in the node parameters; each program variable/event becomes a port.',
   'Component Inputs':
@@ -40,8 +67,21 @@ const NOTES = {
     'Payload input ports are defined by the "ports" parameter (the payload schema of the channel being sent on).',
   'Event Receiver':
     'Payload output ports mirror the payload schema of the channel selected via the "channelName" parameter (as defined by matching Event Sender nodes).',
+  /**
+   * CMP-001 AC1 — the enum input. `currentState` is TWO ports sharing one name: the declared
+   * string output (`states.ts:331`) and a generated enum INPUT (`:1026`) that appears once
+   * `states` is set. Documenting only the output makes the one-wire variant selector —
+   * `Component Inputs.<enum> -> States.currentState`, used four times in `library/prefabs` —
+   * unreachable from the catalog, so a model builds a signal port per state and a Condition
+   * chain instead. The old text also promised a "left" output this node has never had.
+   */
   States:
-    'Ports are generated from the "states" and "values" parameters: each value gets per-state value inputs and a current-value output, each state gets an activation signal input and reached/left signal outputs.',
+    'Ports are generated from the "states" and "values" parameters: each value gets one input per ' +
+    'state (`value-<state>-<value>`) and a current-value output; each state gets an activation ' +
+    'signal input (`to-<state>`), a boolean output (`at-<state>`) and a signal output ' +
+    '(`reached-<state>`). Once "states" is set the node also mints a single enum INPUT named ' +
+    '`currentState` — the same name as the declared string output — which selects a state by ' +
+    'name in one wire, without a signal port per state.',
   'For Each':
     'The "Template Type"/template component determines dynamic input ports: inputs of the item template component are exposed so static values can be fed to each created item.',
   REST2: 'Input and output ports are parsed from the request/response scripts in the node parameters (custom headers, query parameters and response mappings become ports).',

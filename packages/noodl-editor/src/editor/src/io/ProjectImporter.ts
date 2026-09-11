@@ -186,12 +186,42 @@ export function reconstructLegacyComponent(
   registryPath: string,
   componentFile: ComponentV2File,
   nodesFile: NodesV2File,
-  connectionsFile: ConnectionsV2File
+  connectionsFile: ConnectionsV2File,
+  onWarning?: (message: string) => void
 ): LegacyComponent {
   const legacyName = toLegacyName(componentFile, registryPath);
   const roots = unflattenNodes(nodesFile.nodes ?? []);
 
-  const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c) => {
+  const connections: LegacyConnection[] = (connectionsFile.connections ?? []).map((c, index) => {
+    /**
+     * DEF-039 (phase 80) — **a connection we cannot read is carried through untouched, not
+     * rebuilt out of the fields it does not have.**
+     *
+     * Picking four fields off an object that does not carry them produced
+     * `{fromId: undefined, …}`, which is `{}` once stringified — and because the exporter
+     * faithfully saves what the model holds, **opening such a project wrote the author's wires
+     * back to disk as empty objects.** Measured: a hand-authored file using
+     * `sourceId`/`sourcePort` came back as `[{},{}]` from load, before anything was written.
+     *
+     * The v2 loader is the door a project written by something else comes through — which is
+     * exactly the argument the `route` guard below already makes. Refusing the component is not
+     * available as a rescue: a component missing from the project lands in `ComponentSaver`'s
+     * `removed` set and its directory is deleted. So the wire is preserved verbatim, reported,
+     * and left for `getConnectionHealth` to call unhealthy (DEF-039 guards both its callers).
+     */
+    const readable =
+      typeof c.fromId === 'string' && typeof c.fromProperty === 'string' &&
+      typeof c.toId === 'string' && typeof c.toProperty === 'string';
+
+    if (!readable) {
+      const keys = Object.keys(c).length > 0 ? Object.keys(c).join(', ') : '(no fields)';
+      onWarning?.(
+        `${legacyName}: connection ${index} is missing fromId/fromProperty/toId/toProperty — ` +
+          `it carries ${keys}. The wire has been left exactly as written and will not work until it is corrected.`
+      );
+      return { ...(c as unknown as LegacyConnection) };
+    }
+
     const conn: LegacyConnection = {
       fromId: c.fromId,
       fromProperty: c.fromProperty,
@@ -202,6 +232,18 @@ export function reconstructLegacyComponent(
     // would still lose every wire label on the round trip (CAN-002/CAN-001).
     if (typeof c.label === 'string') conn.label = c.label;
     if (typeof c.labelT === 'number') conn.labelT = c.labelT;
+    // SIG-007's half of the same carry. ⚠️ Shape-checked here rather than
+    // trusted: this is the door a project written by something else comes
+    // through, and a `NaN` in a route kills the rest of the canvas frame. The
+    // invariant is `xs.length === ys.length + 1` — the first and last runs
+    // belong to the ports — and a route that breaks it is dropped whole.
+    const route = c.route as { xs?: unknown; ys?: unknown } | undefined;
+    if (route && Array.isArray(route.xs) && Array.isArray(route.ys)) {
+      const finite = (v: unknown) => typeof v === 'number' && isFinite(v);
+      if (route.xs.length === route.ys.length + 1 && route.xs.every(finite) && route.ys.every(finite)) {
+        conn.route = { xs: route.xs as number[], ys: route.ys as number[] };
+      }
+    }
     if (c.annotation) conn.annotation = c.annotation;
     return conn;
   });
@@ -224,6 +266,21 @@ export function reconstructLegacyComponent(
   // Many real/imported components are id-less — do not fabricate an id key.
   if (componentFile.id !== undefined) {
     component.id = componentFile.id;
+  }
+
+  // LEG-006 — the other half of the exporter's carry, and the half that is
+  // invisible in the obvious spec. An exporter that writes `description` while
+  // the importer discards it looks identical from outside on a single save:
+  // the file is right, and the *next* save deletes it again. The sequence that
+  // catches it is author → save → load → save, which is what BEN-005 performed.
+  if (typeof componentFile.description === 'string' && componentFile.description.length > 0) {
+    component.description = componentFile.description;
+  }
+  if (typeof componentFile.created === 'string' && componentFile.created.length > 0) {
+    component.created = componentFile.created;
+  }
+  if (typeof componentFile.modifiedBy === 'string' && componentFile.modifiedBy.length > 0) {
+    component.modifiedBy = componentFile.modifiedBy;
   }
 
   if (componentFile.metadata && Object.keys(componentFile.metadata).length > 0) {
@@ -285,7 +342,11 @@ export class ProjectImporter {
           registryPath,
           componentFiles.component,
           componentFiles.nodes,
-          componentFiles.connections
+          componentFiles.connections,
+          // DEF-039: an unreadable wire is reported through the channel that already exists,
+          // rather than thrown — throwing here drops the component, and a dropped component is
+          // deleted from disk by the next save.
+          (message) => warnings.push(message)
         );
         components.push(legacyComponent);
       } catch (err) {
@@ -413,8 +474,9 @@ export class ProjectImporter {
     registryPath: string,
     componentFile: ComponentV2File,
     nodesFile: NodesV2File,
-    connectionsFile: ConnectionsV2File
+    connectionsFile: ConnectionsV2File,
+    onWarning?: (message: string) => void
   ): LegacyComponent {
-    return reconstructLegacyComponent(registryPath, componentFile, nodesFile, connectionsFile);
+    return reconstructLegacyComponent(registryPath, componentFile, nodesFile, connectionsFile, onWarning);
   }
 }

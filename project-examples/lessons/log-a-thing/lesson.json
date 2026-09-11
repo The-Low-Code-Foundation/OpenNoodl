@@ -1,0 +1,182 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "Log a thing",
+  "description": "Build a one-page app that saves what you type and lists it back — and learn the one rule that explains where every database call goes. The Visual Function computes; the canvas does the waiting; the signal wire is the await.",
+  "completionBadge": "Composer",
+  "authoredBy": "ai",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "What you are about to build",
+      "body": "## Log a thing\n\nA text field, a **Log it** button, and a list that fills up. Nothing you have not seen. What makes it worth twenty minutes is where the work is divided.\n\nThe page already has its furniture: the field, the button, a status line and an empty card. You are going to add the four nodes that make it do something, and a collection to put the entries in.\n\n### The one rule\n\nYou will reach for a **Visual Function** to check what was typed. Then you will want it to save the record too — and there is no block for that, in this or any other Visual Function.\n\nThat is deliberate, and it is the whole point of this lesson:\n\n**The Visual Function computes. The canvas does the waiting. The signal wire is the await.**\n\nA block program runs start to finish in one go. It cannot pause halfway through for a database. So it does the thinking, and then it sends a signal — and the node on the other end of that wire does the part that takes time."
+    },
+    {
+      "title": "Make somewhere to put them",
+      "body": "Open the **Backend Services** panel. This lesson already has its own database — it was made when you opened the lesson, and it belongs to this project and to nothing else on your machine.\nOn its card, open **Schema** and create a collection called `LogEntries` with one text column called `title`.\nSpell both exactly as written — the rest of the lesson wires to those two names, and a typo here shows up three steps later as a node with no port to connect.",
+      "completeWhen": [
+        {
+          "collection": "LogEntries",
+          "collectionExists": true
+        },
+        {
+          "collection": "LogEntries",
+          "hasColumns": [
+            "title"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Add the Visual Function",
+      "body": "Add a **Visual Function** node to the canvas and rename it to `Check the entry`.\n\nOpen it, and give it one input to work with:\n\n- **Define input** named `entry`, type `string`\n\nClose the block editor. The node now has an `entry` port on its left. Drag from the **Entry field**'s `Text` output into it.\n\nThat wire is the only way the typed text reaches the program. A block program cannot read the canvas; it reads its own inputs.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Check the entry",
+          "hasType": "Logic Builder"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Entry field",
+            "fromPort": "onTextChanged",
+            "to": "/Pages/Home:#Check the entry",
+            "toPort": "entry"
+          }
+        }
+      ],
+      "suggestedNodes": [
+        "Logic Builder"
+      ],
+      "actions": [
+        {
+          "selectComponent": "/Pages/Home"
+        }
+      ]
+    },
+    {
+      "title": "Teach it to decide",
+      "body": "Back inside `Check the entry`, build the program. Declare what it will produce:\n\n- **Define output** `title`, type `string`\n- **Define output** `message`, type `string`\n- **Define signal output** `ok`\n- **Define signal output** `bad`\n\nThen one **if / else**, on **not** `get input entry`:\n\n- **if** there is no entry: set output `message` to `Type something first, then press Log it.`, then **send signal** `bad`\n- **else**: **set variable** `lastEntryTitle` to `get input entry`, set output `title` from **get variable** `lastEntryTitle`, set output `message` to nothing, then **send signal** `ok`\n\nTwo signal outputs from one program is the fan-out this lesson is about. Each one is a separate wire, and the canvas decides what happens on each.\n\nNow wire the outside: the **Log it button**'s `Click` into the function's `Run`, and the function's `message` into the **Status line**'s `Text`.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Log it button",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Check the entry",
+            "toPort": "run"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Check the entry",
+            "fromPort": "message",
+            "to": "/Pages/Home:#Home:#Page shell:#Status line",
+            "toPort": "text"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Do the saving on the canvas",
+      "body": "Add a **Create Record** node, rename it `Save the entry`, and set its **Class** to `LogEntries`.\n\nWire two things into it:\n\n- the function's `ok` signal into **Do**\n- the function's `title` value into the **title** property port\n\nThis is the split the rule is about. The program decided; it did not save. It sent `ok`, and the wire is what makes the saving happen after the deciding.\n\nAnd notice what crossed with it: `title` is a value the program worked out and had to hand over on a port, because the two halves are two nodes. That is the price of the split, and `lastEntryTitle` in the block program is the tool for paying it — a variable outlives one run of one program, so a second Visual Function after the save can still read it.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Save the entry",
+          "hasType": "NewDbModelProperties"
+        },
+        {
+          "node": "/Pages/Home:#Save the entry",
+          "paramsEqual": {
+            "collectionName": "LogEntries"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Check the entry",
+            "fromPort": "ok",
+            "to": "/Pages/Home:#Save the entry",
+            "toPort": "store"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Check the entry",
+            "fromPort": "title",
+            "to": "/Pages/Home:#Save the entry",
+            "toPort": "prop-title"
+          }
+        }
+      ],
+      "suggestedNodes": [
+        "NewDbModelProperties"
+      ]
+    },
+    {
+      "title": "Read them back",
+      "body": "Two nodes, and the list works.\n\nAdd a **Query Records** node, rename it `Read the entries`, set its **Class** to `LogEntries`. Then add a **Repeater** inside the **Saved entries** card, rename it `One row per entry`, and set its **Template** to `/Components/LogRow` — a row component the project already carries, because a Repeater's template is always a component and never a node.\n\nWire three things:\n\n- the query's `Items` into the repeater's `Items`\n- the page's `Did Mount` into the query's `Do`, so the list is there when the page opens\n- **Save the entry**'s `Done` into the query's `Do`, so it refreshes after each save\n\nThat last wire is worth a second look. The Visual Function's finishing signal is called **Success**; Create Record's is called **Done**. Both are on this canvas, two nodes apart, and both are right — a Visual Function reports that its program succeeded, and a record node reports that its request came back. Read the port, not the word you expected.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Read the entries",
+          "hasType": "DbCollection2"
+        },
+        {
+          "node": "/Pages/Home:#Read the entries",
+          "paramsEqual": {
+            "collectionName": "LogEntries"
+          }
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Saved entries:#One row per entry",
+          "hasType": "For Each"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Saved entries:#One row per entry",
+          "paramsEqual": {
+            "template": "/Components/LogRow"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Read the entries",
+            "fromPort": "items",
+            "to": "/Pages/Home:#Home:#Page shell:#Saved entries:#One row per entry",
+            "toPort": "items"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Save the entry",
+            "fromPort": "done",
+            "to": "/Pages/Home:#Read the entries",
+            "toPort": "storageFetch"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home",
+            "fromPort": "didMount",
+            "to": "/Pages/Home:#Read the entries",
+            "toPort": "storageFetch"
+          }
+        }
+      ],
+      "suggestedNodes": [
+        "DbCollection2",
+        "For Each"
+      ]
+    },
+    {
+      "title": "Log something",
+      "body": "Open the preview, type a line and press **Log it**. It should appear in the card below.\n\nThen press **Log it** on an empty field. Nothing is saved, and the status line tells you why — that is the `bad` branch, and it never touched the database at all.\n\nThis step is not complete until there is at least one record in `LogEntries`. A graph that looks right and saves nothing is the failure this check exists to catch.",
+      "completeWhen": [
+        {
+          "collection": "LogEntries",
+          "rowCountAtLeast": 1
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "## The rule, now that you have used it\n\n**The Visual Function computes. The canvas does the waiting. The signal wire is the await.**\n\nThere is no `create record` block, no `fetch` block, no `navigate` block. There is a **Create Record** node, a **REST** node and a **Navigate** node — one sentence instead of five exceptions.\n\nAnd the runtime makes the handoff safe: a Visual Function flags every output it wrote **before** it fires its finishing signal. So a graph sequenced on that signal reads values that are already up to date. That guarantee is what lets a wire stand in for an `await`.\n\n### The cost, stated plainly\n\nSplitting a program at every data call means state has to be re-threaded through ports across the split. You felt it when `title` had to cross on a wire. **Set variable** and **get variable** are how you carry a value further than one run of one program — that is what `lastEntryTitle` was for, and it is why they are in the block set.\n\nIf you ever find yourself splitting one job across **three or more** Visual Functions just to thread state, that is worth reporting. It is the one thing that would make us revisit this."
+    }
+  ]
+}

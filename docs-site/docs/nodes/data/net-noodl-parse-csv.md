@@ -62,6 +62,12 @@ A CSV arriving from anywhere at runtime: a request body, an upload, an HTTP resp
 - Splitting on commas with a String node instead. That breaks on the first quoted cell containing a comma, which is the first real file you will meet.
 - Posting a CSV larger than 10 MB to a cloud function. The body limit rejects it with a 413 before the graph runs.
 
+## Examples
+
+**Let someone paste a CSV and read it into records**
+
+Parse CSV is the node for CSV that ARRIVES at runtime — pasted, uploaded or fetched — as opposed to Static Data, which is for CSV you type into the graph while building. With Has Header ticked the first row names the properties and Items is an array of records; untick it and Items is an array of rows, each an array of cells. The one thing to plan for is that every cell comes out a STRING: there is no type inference, so a column that looks numeric gives you "42" and not 42, and a comparison against a number will be false everywhere until you convert. That is a deliberate choice rather than an omission — guessing types is how a column of postcodes loses its leading zeros. Two more behaviours that save a support ticket each: a leading byte-order mark, which is exactly what Excel writes when it saves UTF-8, is stripped so the first column keeps its name rather than becoming a field nothing matches; and Delimiter needs changing to `;` for many European exports, where a comma is the decimal separator. Failure leaves Items and Count holding what they held before, which is why the error is logged rather than ignored — without that wire, a paste that fails to parse looks exactly like a paste that did nothing, and the person tries again with the same file.
+
 ## Related nodes
 
 [To CSV](./net-noodl-to-csv.md), [Static Array](./static-data.md), [Array Filter](./filter-collection.md), [Array Map](./map-collection.md)

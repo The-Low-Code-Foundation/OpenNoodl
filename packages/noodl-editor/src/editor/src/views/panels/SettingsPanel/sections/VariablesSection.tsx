@@ -396,7 +396,10 @@ export function VariablesSection({ variables, onChange }: VariablesSectionProps)
   });
 
   return (
-    <CollapsableSection title="Custom Variables" hasGutter hasVisibleOverflow hasTopDivider>
+    // FIX-005 — "App Config", matching the Logic Builder toolbox category that reads these and
+    // the route `appConfig.APP_CONFIG_SETTINGS_PATH` sends builders down. Was "Custom Variables",
+    // which was the third vocabulary for the second of two bags.
+    <CollapsableSection title="App Config" hasGutter hasVisibleOverflow hasTopDivider>
       <div
         style={{
           fontSize: '11px',

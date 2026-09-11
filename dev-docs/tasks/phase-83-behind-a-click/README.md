@@ -1,0 +1,203 @@
+# Phase 83 — Everything That Ships It Is Behind A Click
+
+**Scoped:** 2026-09-09, from two community issues and a scoping sweep against `cline-dev` HEAD.
+**Status: OPEN — §6's end condition is MET (HLS-011, s13); ALL 15 TASKS ARE BUILT (s15), 54 acceptance criteria closed. R4 is RULED (s14, yes). Every remaining item in this phase is Richard's — the HLS-012 replies, PR #20, and R1 — see the handoff §2 and §3.**
+
+**HLS-001 (s2), HLS-002 (s3), HLS-003 (s4), HLS-004 (s5), HLS-005 (s6), HLS-006 (s7) and HLS-013 (s8) built, all 2026-09-09 — see each task's `-WHAT-WAS-BUILT.md`. `nodegx export` exists, both front doors are proved byte-identical, the export reads the graph the author saw, **the exported app now builds**, and **the report no longer says "nothing left over" when something was**, and **the preview server no longer listens on every interface with no credential** — the rule that decided whether a binding was emitted is named, and every binding no builder took is now refused loudly. **HLS-013 (s8) closes the lifecycle's hard blocker: cloud functions now deploy with no editor running, and a deployed function was called over HTTP to prove it answers.** **HLS-010 (s9) answered the deploy spike and produced HLS-015. HLS-009 (s10) closes the other end: an agent asks the running editor to open a project, over the token-gated relay HLS-006 built.** **HLS-008 (s11) and HLS-007 (s12) added `export_react` over MCP and `nodegx render`; **HLS-011 (s13) drove the whole chain end to end on a box with no display server, and the viewer and the built React app say character-for-character the same thing.** 13 of 15 built, 45 acceptance criteria closed and 2 half-closed (HLS-006's two person halves need a second machine — a container's network namespace is not one). HLS-012's replies are drafted and await Richard.** **HLS-015 (s14) added `nodegx deploy`, and HLS-014 (s15) made the SECOND one an update — and found that HLS-015's blank-site refusal had, from deploy two onward, been reading the previous deploy's export (C80). ⚠️ This paragraph is the sessions-1-13 narrative; the status line above is the current board, and `ls`-ing for `*-WHAT-WAS-BUILT.md` is cheaper than believing either.** **Prefix: `HLS`.** **Release: ⬜ NOT RULED** (see §2; R2–R5 are now ruled).
+
+Everything that *makes* an app in NodeGX is already headless and, by the reporter's own account,
+better than in tools designed for it: create, author, validate, render, preview. Everything that
+*ships* it is behind a click. That is the whole phase.
+
+> "Score: 5 of 9 for my use case. And the gap is not architectural." — @dishant-kumar-thakur,
+> [#36](https://github.com/The-Low-Code-Foundation/NodeGX/issues/36), 2026-09-08
+
+> "I was looking for a cli for continuous deployment… I tried to look into the library code I found
+> but there is nowhere an implementation of the build command. Am I just blind or is this feature
+> missing in the open sourced code?" — @dominikstohl,
+> [#11](https://github.com/The-Low-Code-Foundation/NodeGX/issues/11), **2025-04-16**
+
+He was not blind. It is missing, and **nobody has answered him in seventeen months.** That is
+HLS-012, and it is the first thing this phase does.
+
+## 1. The person sentence for the whole phase
+
+**A person who has never opened the editor ships a NodeGX app from a GitHub Action: the workflow
+runs `nodegx export`, then `npm install && npm run build`, and the built site is what the author sees on
+the canvas.**
+
+Every acceptance criterion in this phase is checked against that sentence. Note what it contains
+that the issues do not: **`npm run build` succeeding** (it does not today — #24), and **the export
+matching the canvas** (unmeasured — §4 finding 5).
+
+## 1b. What this is actually for — the lifecycle, as a thought experiment
+
+🧭 **Raised by Richard, 2026-09-09, explicitly as a thought experiment:** an agent manages the whole
+life of an app through the MCP server — build, deploy, updates, cloud functions — and the person
+never opens the editor at all.
+
+**It is worth stating here, because it reorders this phase without adding much to it.** Most of the
+lifecycle is already the phase's spine: author (exists), export (HLS-002), ship (HLS-008), serve
+(HLS-006), look (HLS-007), and it appears in the editor when a human wants it (HLS-009). The thought
+experiment mostly gives those a reason to be one thing rather than six.
+
+But it changes two judgements, and it found one hole:
+
+- 🔴 **It moves `deploy` from optional to load-bearing, which raises R4's stakes.** A phase that ships
+  `export` and no `deploy` still leaves the person opening the editor once — to press Deploy. Under
+  this framing that single click is the whole failure. HLS-010 stops being "spike a legacy command"
+  and becomes **the gate on whether the lifecycle is possible at all**.
+- 🔴 **Cloud functions have no headless door anywhere, and nobody had noticed.** Measured 2026-09-09:
+  the only deploy is `WorkflowDocument.deployFunctions()`
+  (`models/workflow/WorkflowDocument.ts:465`), reached from exactly two places — a property-editor
+  action (`WorkflowTypes.ts:568`) and a button on the component trail
+  (`CloudFunctionTrailStatus.tsx:127`). **Both are UI.** Meanwhile the MCP server already provisions
+  a backend (`provision_backend`). So an agent can create the backend and cannot put a function on
+  it. **Any app with a backend — which is every app worth deploying — cannot be shipped headlessly
+  today, and no task in the original scope touched it.** That is HLS-013.
+- ⚠️ **"Updates" is a second deploy, and nothing here covers deploy number two.** Every task above
+  describes the first one. Redeploying over a running app is an idempotency and diffing question
+  with its own failure modes, and an agent doing it unattended is the case with nobody watching.
+  That is HLS-014.
+
+🔴 **What this section deliberately does NOT do is promise the lifecycle.** The end condition in §6
+stays exactly as written. HLS-013 is in scope because it is a measured hole on the critical path;
+HLS-014 is scoped and **gated on R4 and HLS-010's verdict**, and does not start before them. If the
+lifecycle wants more than that it is the next phase, named as such. Phase 77 is what happens when a
+good reframing is allowed to grow the board it arrived at.
+
+## 2. Rulings — taken 2026-09-09 (session 2), except R1
+
+| # | question | ruling | what it settles |
+|---|---|---|---|
+| R1 | Which release does this ship with? | ✅ **0.2.3 — ruled by Richard 2026-09-10 (session 16).** | **A release number, not a date.** The constraint that nothing public may name a *date* still stands and every posted reply honours it. This unblocked HLS-012: the six replies posted in s16 all name 0.2.3 as the release and all say plainly that nothing is on `main` or npm today. |
+| R2 | Published to npm publicly, or private with the `bin` inside the app? | ✅ **Public on npm** | HLS-001 built it that way: `engines: node >= 22`, `files`, `exports`, `publishConfig.access: public`. Pulls in [#12](https://github.com/The-Low-Code-Foundation/NodeGX/issues/12), and makes the package boundary a compatibility promise from here on. |
+| R3 | Binary name | ✅ **`nodegx`** | HLS-002 ships `nodegx export`. Consistent with the `nodegx-backend` and `nodegx-observe` bins already in the repo. |
+| R4 | Does the legacy `deploy` get a CLI at all? | ✅ **YES — ruled by Richard 2026-09-10 (session 14), and BUILT the same session.** [HLS-015](HLS-015-WHAT-WAS-BUILT.md) ships `nodegx deploy`, 5/5 ACs. The spike's own words below are what he ruled on. ✅ HLS-014 built s15, 4/4 ACs. ~~🧭 Spike answered s9 — the ruling is still Richard's.~~ [HLS-010's verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9): `deployToFolder` **runs headlessly**, no Electron, and produces a servable static site. The spike **recommends building it** and scoped [HLS-015](HLS-015-NODEGX-DEPLOY.md) | HLS-014 stays gated until R4 is taken. The deploy is a **different artefact** from `nodegx export` — a ready-to-host site running the interpreter, versus React source you build yourself — so #36's table is right that they sit side by side and wrong that they are one shape. |
+| R5 | Is [PR #20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20) merged before or alongside this? | ✅ **Merge it first** | 🧭 **A Richard action, not an agent one.** The exporter this phase publishes does not exist on `origin/main` at all — see §4 finding 12. |
+
+🔴 **DO NOT SCOPE BY TIME** — standing rule from phase 77. Dependency order only. No estimates.
+
+## 3. What the scoping sweep corrected in the issues
+
+The issues were a proposal. This is what challenging them against the code found.
+
+- ✅ **"It is a packaging and entry-point task, not new logic" is TRUE for `export`, and better than
+  #36 knew.** [`scripts/emit-app.ts`](../../../packages/nodegx-export/scripts/emit-app.ts) *is
+  already the CLI* — `emit-app.ts <projectDir> <outDir>`, plus a `--preflight` mode that prints the
+  pre-flight and is specced to touch the filesystem not at all. And
+  [`writeExport.ts`](../../../packages/noodl-editor/src/editor/src/utils/codeExport/writeExport.ts)
+  takes `fs` as an argument **specifically so a plain-Node runner can call it** — its header says so.
+  The packaging pattern also exists: `@noodl/preview` and `noodl-mcp` both ship `bin` entries and
+  `@nodegx/core` already builds and declares `publishConfig.access: public`.
+- 🔴 **…and FALSE for `deploy`, which #36's table puts in the same column.**
+  [`deployToFolder`](../../../packages/noodl-editor/src/editor/src/utils/compilation/build/deployer.ts)
+  needs a live `ProjectModel` — 1,927 lines dragging in `UndoQueue`, `WarningsModel`, `NodeLibrary`,
+  `EventDispatcher`, the project file watcher and the migrator — plus `Exporter.exportToJSON`. That
+  is the editor's live *document* model, not a parser. **Two rows in one table that look alike and
+  are not the same order of work.** HLS-010 spikes it; nothing in this phase promises a `deploy`
+  command until that verdict exists.
+- 🔴 **"It worked first time" is a statement about the runner, not about the output.** #36 ran
+  `parseProject → emitApp → summarizePreflight → writeExport` headlessly and got an export. Nothing
+  compared that export to what the editor's own command produces, and nothing compared either to the
+  graph on the canvas. See finding 5 — **the exporter reads a project the editor never showed the
+  author.** This is the load-bearing task (HLS-003) and it is in neither issue.
+- 🔴 **`@nodegx/export` cannot be published as it stands, and #36 could not see this from a
+  sourcemap.** It is `"private": true` with `main: "src/index.ts"` and no build, and two files reach
+  *out* of the package by deep relative path (finding 2). "Publish the pure parts as a Node ≥22
+  package" is three jobs.
+- ⚠️ **A front door raises the price of the export's own defects.** [#24](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24)
+  (a freshly exported project fails `npm run build`) and [#23](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23)
+  (7 of 25 component inputs silently dropped, five of them in components the report files under
+  *"Translated with nothing left over"*) are annoyances behind a GUI. **In a CI pipeline they are the
+  pipeline failing, or worse, not failing.** The phase's person sentence is false while #24 stands,
+  so they are in scope — HLS-004 and HLS-005.
+- ✅ **`serve` is already filed as a security defect, from the other end.**
+  [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) reports `*:8574` and `*:8575`
+  listening on every interface with no auth, confirmed from another machine on the LAN. #36 asks for
+  `nodegx serve --host --token`. **That is the same task**: loopback by default, sharing as a
+  decision that prints a URL and a token. One task, two issues (HLS-006).
+- ⚠️ **The "open the project afterwards" row (#38) is a third front door, not part of the CLI** — but
+  it is what closes the agent/human loop: the agent authors on disk and the project *appears* in the
+  editor the person already has open. Kept, as HLS-009, and severable.
+
+## 4. The measured findings (2026-09-09, `cline-dev` HEAD, all re-measured — not read from a task file)
+
+| # | finding | measured at | task |
+|---|---|---|---|
+| 1 | `@nodegx/export` is `"private": true`, `main: "src/index.ts"`, no build script, no `bin` — it cannot be installed by anything | `packages/nodegx-export/package.json` | HLS-001 |
+| 2 | 🔴 Two deep relative imports reach OUT of the package: `parse/parseProject.ts:16` → the **editor's** `StyleTokensModel/DefaultTokens`; `analyze/logicbuilder.ts:33` → **`noodl-runtime`**'s `logic-builder-io`. 42 source files, otherwise clean (`fs`, `path`, `vm`, and `react`/`vite` only inside emitted strings) | `grep '\.\./\.\./\.\./'` | HLS-001 |
+| 3 | The CLI exists as a hand-run script: `emit-app.ts <projectDir> <outDir>`, and `--preflight` | `packages/nodegx-export/scripts/emit-app.ts` | HLS-002 |
+| 4 | `writeExport(projectDir, outDir, app, fs)` injects `fs` on purpose, for a plain-Node runner | `codeExport/writeExport.ts:1-20` | HLS-002 |
+| 5 | 🔴 **The exporter is on the `does-not-apply` side of the DEF-007 project-load seam** — registered in `NON_FROMJSON_READERS` as *"Reads the project files directly."* `parseProject` never calls `applyPatches`, so the export sees **the file as written**, not the graph the editor rewrote on open. Measured at 56 stored parameters on the site-builder template at `cdd842fc`; driven to 0 there, and 🔴 **a zero is one template, not a closed seam** — the module says so itself | `models/ProjectPatches/projectLoadSeam.ts`, `def007-project-load-seam.test.ts` | **HLS-003** — ✅ **ANSWERED 2026-09-09.** The exporter now `applies`. 🔴 And the finding was *understated*: the editor's own File → Export React reaches `parseProject` too, so both doors were on the wrong side (C49). Two readers remain open and are now asserted by name |
+| 6 | A freshly exported project does not build: `TS18048: 'k' is possibly 'undefined'` from the exporter's own `Expression` wrapper, under the exporter's own emitted `tsconfig.json` | [#24](https://github.com/The-Low-Code-Foundation/NodeGX/issues/24) | ✅ HLS-004, closed s5 |
+| 7 | 7 of 25 component inputs emitted as declared-and-never-read props; 5 in components the report calls *"Translated with nothing left over"*; one input reached three sinks and two survived | [#23](https://github.com/The-Low-Code-Foundation/NodeGX/issues/23) | ✅ **HLS-005, closed s6.** And the corpus had carried it all along, uncounted: **9** unread props in 4 of 21 components, **3 silent**, **1** of them filed under *"nothing left over"*. The rule was that `styleAttrs` iterates its own three-port table while `contentAttrs` skips any port with no role — so a sink in neither fell through both in silence. 🔴 `style.ts` already **said** these were *"refused by name"*; they never were |
+| 8 | `*:8574` and `*:8575` listen on every interface, no auth, confirmed cross-host on a LAN | [#31](https://github.com/The-Low-Code-Foundation/NodeGX/issues/31) | ✅ HLS-006 s7 — **re-measured and wider than the finding**: no address was passed to either `listen`, and the HTTP port disclosed the relay token. A third listener (`noodl-preview --host`) had the same defect and no report could name it |
+| 9 | 🔴 ~~`deployToFolder` requires a live `ProjectModel` … a singleton with no `fromDirectory`~~ — **re-measured s9 by running it, and the inference was wrong.** Every clause is factually true and none of it was the obstacle: `ProjectModel.fromJSON` + `ProjectImporter` loads a v2 directory in plain Node, which `nodegx serve` has shipped since s7. The real gap is `getExternalFolderPath()` resolving against `process.cwd()` (C68). 🔴 **The import list looked fatal and was not** — exactly the trap the task file's §5 warned about | `build/deployer.ts`, `models/projectmodel.ts` | HLS-010 ✅ answered |
+| 10 | No non-GUI route into the editor: no `--project`, no registered `nodegx://` handler, and the MCP server never touches the launcher's recent-projects store | [#38](https://github.com/The-Low-Code-Foundation/NodeGX/issues/38) | HLS-009 |
+| 10b | 🔴 **Row 10 was re-measured in s10 and two thirds of it was wrong.** The `nodegx://` scheme **is** registered (`main.js:241`) and every URI is then dropped — **C71**. The MCP server **does** read the recent-projects store (`list_projects`) and documents why it must never write it — which is what made HLS-009 AC3 a gate over an existing invariant rather than a mechanism to build. Only "no `--project`" survived | measured 2026-09-09 | HLS-009 ✅ |
+| 11 | `@noodl/preview` (`bin/noodl-preview.js`) and `noodl-mcp` (`bin/noodl-mcp.js`) already ship bins; `@nodegx/core` already builds to `dist/` with `publishConfig.access: public`. **The pattern to copy is in the repo** | package manifests | HLS-001, HLS-006 |
+| 12 | 🔴 **The exporter does not exist on `origin/main`.** `packages/nodegx-export` and `packages/nodegx-core` are both **absent** there — 15 packages on `origin/main` against 22 on `cline-dev`. So the collaborator who reconstructed 45 TypeScript files from the shipped sourcemap could not have read them in the repo however hard they looked. `origin/main` is `d569d2bd` (2026-08-07), editor version **0.1.0**, **1,837** commits behind. ⚠️ **[#20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20) is an open, non-draft, MERGEABLE pull request** (cline-dev → main, 6,239 files, by @richardosborne14) — a merge waiting on a decision, not an unactioned report | `git ls-tree origin/main packages/`, `git rev-list --count origin/main..origin/cline-dev`, `gh pr view 20` | ruling **R5** |
+
+> 🔴 **Corrected 2026-09-09, same day, by a peer session — and the correction is a lesson worth more
+> than the row.** The first version of this row said *"3,428 commits behind, `main` HEAD `360cdc46`,
+> 2025-09-09"* and called #20 an issue. Both were wrong: **3,428 and that HEAD came from a `main` ref
+> that had never been fetched** — the local ref was itself 1,592 commits stale — and `gh issue view`
+> silently answers for a pull request, so nothing in the reading announced it was a PR.
+> ⚠️ **`git log main` measures your last fetch, not the remote.** Fetch before quoting a divergence.
+> The finding survived only because re-measuring it found a stronger fact underneath.
+| 13 | There are already **three** independent headless project readers — `@nodegx/export`'s `parseProject`, `noodl-mcp`'s `ProjectStore`, and template generation — and all three are `does-not-apply`. A fourth is not the answer to anything | `projectLoadSeam.ts` `GRAPH_READER_SITES` | HLS-003 — ✅ **ANSWERED.** Template generation was already closed (DEF-038, see C51); the exporter now applies; `noodl-preview` and MCP's `ProjectStore` remain, asserted by name in an enforced scan |
+
+## 5. Tasks
+
+| id | task | depends on |
+|---|---|---|
+| HLS-012 | **The thread gets an answer** — #11 is answered with the real answer, and #11/#36 are kept current as the phase lands | — (do this first; it is a reply, not a build) |
+| HLS-001 | **`@nodegx/export` is a package you can install** — cut the two outbound deep imports, add a build, decide public/private (R2), publishable manifest | — |
+| HLS-002 | **`nodegx export`, and the proof it is the same export** — the `bin`, `--dry-run` = the existing pre-flight verbatim, and a spec that runs both front doors over one project and asserts the outputs are identical | HLS-001 |
+| HLS-003 🟢 **BUILT 5/5** | 🔴 **The graph the CLI exports is the graph the author saw** — the DEF-007 seam from the export side, with the existing instrument (`writes` quoted beside `familyNodes`, because a zero with no family nodes is a broken instrument) | HLS-001 |
+| HLS-004 | ✅ **BUILT s5, 4/4 ACs** — [HLS-004-WHAT-WAS-BUILT.md](HLS-004-WHAT-WAS-BUILT.md). 🔴 The `tsc` gate this row asked for **already existed and was green**; what was missing was a corpus fixture with the shape. The fix is wider than #24 read it — every JS-node input, not one expression | HLS-002 (the gate is the point, not the one fix) |
+| HLS-005 | **The report does not say "nothing left over" when something was** — #23: the dropped bindings, and the report's silence about them ⚠️ **Its `WIRED_STYLE_SINKS` table (`emit/style.ts:270-274`) is now phase 84 FLD-015's to edit** — resolved 2026-09-11 by Richard on register **P9**; phase 83 is closed, so the table goes with the open task. Nothing to do here | — |
+| HLS-006 | ✅ **BUILT s7, 2 of 4 ACs fully / 2 half** — [HLS-006-WHAT-WAS-BUILT.md](HLS-006-WHAT-WAS-BUILT.md). #31 understated it: neither socket passed an address **at all**, so `::` was a default nobody chose — and the open HTTP port also handed out the relay token OBS-004's gate checks, one `curl` away from making that gate decorative. One policy module (`@nodegx/export/serve/access`), four consumers, and an enrolment gate for the fifth. 🔴 **AC1 and AC4 keep their person halves: nothing here was measured from a second machine** | — |
+| HLS-007 | ✅ **BUILT + DRIVEN s12, 3/3 ACs** — [HLS-007-WHAT-WAS-BUILT.md](HLS-007-WHAT-WAS-BUILT.md). 🔴 **Not the thin wrapper the row assumed**: the check its own scope asked for found #40 had not landed, and `renderReport` measured every routed page while photographing **only the start page** — 5 measured, 2 written. Half of C40 closed here. Exit **7** names a page that rendered nothing; exit **8** is the honest refusal a published install gets, driven from the built bundle with no `packages/` above it. 🔴 A drive found `/#admin` and `/#admin-login` byte-identical and a control proved it was the app's auth redirect, not the sweep — **C74** | HLS-001 |
+| HLS-008 | **`export_react` over MCP** — with `dry_run` returning the pre-flight verbatim; the agent half of the same core | HLS-002 |
+| HLS-009 | ✅ **BUILT s10, 4/4 ACs** — `open_in_editor` over MCP, on HLS-006's token-gated relay. [what was built](HLS-009-WHAT-WAS-BUILT.md). #28 closed. **Driven, with a reverted arm: with the flush the leaving project keeps an edit released 4ms into the save debounce; without it, same `disposition: "switch"`, same success note, edit gone** | — |
+| HLS-010 | ✅ **BUILT s9, 3/3 ACs** — [the verdict](HLS-010-THE-DEPLOY-SPIKE.md#6--the-verdict--2026-09-09-session-9). `deployToFolder` ran to completion in plain Node: **no Electron, no window**, one missing piece and it is a **path** (C68). 🔴 The control found what nobody was looking for: an export with an empty node library ships a **blank app and reports success**, and a connection count reads **93/93 in both arms** and cannot see it (C67) | — |
+| HLS-015 | ✅ **BUILT + DRIVEN s14, 5/5 ACs** — [HLS-015-WHAT-WAS-BUILT.md](HLS-015-WHAT-WAS-BUILT.md). `nodegx deploy <project> <out>`, run from a third directory, writes a folder that draws **1,881 characters across 151 elements** in a real Chrome. 🔴 **C67 was finally put in a browser**: the same folder with every `roots` array emptied draws **0**, so the claim that empty roots means a blank page stopped being a derivation from source. The refusal is exit **9**, graded with the reverted arm (`93 of 93 connections in both arms`, roots 21 → 0) and the restore proved byte-identical. C68 closed and its own wording corrected (**C79**) | HLS-010's verdict |
+| HLS-013 | 🔴 **Cloud functions deploy without a window** — the only door is `WorkflowDocument.deployFunctions()`, reachable from two UI call sites. An agent can provision a backend over MCP and cannot put a function on it | — (independent of HLS-010) |
+| HLS-014 | ✅ **BUILT s15, 4/4 ACs** — [HLS-014-WHAT-WAS-BUILT.md](HLS-014-WHAT-WAS-BUILT.md). A redeploy is an **update**: the previous deploy's stale files are removed, an identical redeploy is reported as identical, a killed deploy leaves a state the next one recovers from and names, and `nodegx live <url>` reads what is being served from the **server**. 🔴 It found that HLS-015's blank-site refusal had been reading the **previous** deploy's export from the second deploy onward (C80). ⚠️ `environment` is still always `undefined` and `--base-url` is still never driven end to end | HLS-010's verdict, HLS-015 |
+| HLS-011 | ✅ **BUILT + DRIVEN s13, 4/4 ACs** — [HLS-011-WHAT-WAS-BUILT.md](HLS-011-WHAT-WAS-BUILT.md). A linux container with no display server and no browser created, authored, exported, built, served and read back an app, and the **viewer and the built React app say character-for-character the same thing**. 🔴 The one divergence is a component input wired to a `width`: the viewer applies `120%`/`200%`/`64%`, the export applies none and **says so** — `--dry-run` exits **4** before a file is written (**C75**). 🔴 **`npm ci` fails on a fresh export** — no lockfile — so the phase's own recipe has a red first command (**C76**). The mutant is HLS-004's `scopeCast` removed, which brings #24's `TS18048` back | everything |
+
+**Build order:** HLS-012 now · HLS-001 → HLS-002 → {HLS-003, HLS-004, HLS-007, HLS-008} ·
+HLS-005 whenever · HLS-006 whenever · HLS-009 whenever · **HLS-013 whenever — it is independent of
+everything and it is the lifecycle's hard blocker** · HLS-010 early, because it gates both a
+`deploy` task and HLS-014 · HLS-015 after R4 (**taken 2026-09-10**) · HLS-014 after HLS-015 (**built 2026-09-10, s15**) ·
+HLS-011 last.
+
+🔴 **Defects this phase finds live in [DEFECTS-THE-FRONT-DOOR-FOUND.md](DEFECTS-THE-FRONT-DOOR-FOUND.md)**,
+with an owner or the literal word `NONE` on every row. Per
+[PHASE-EXECUTION.md](../../guidelines/PHASE-EXECUTION.md): a defect becomes the next session's first
+job **only** if it blocks an acceptance criterion.
+
+## 6. The end condition
+
+The phase closes when HLS-011 is driven: **on a machine with no display server, a shell creates a
+project, authors it over MCP, exports it with `nodegx export`, runs `npm install && npm run build`
+successfully, serves it, and the served pages are what the editor renders for the same project.**
+
+Not "the commands exist". The last clause is HLS-003, and it is the one that could still be false
+with every command shipped.
+
+## 7. The one thing not to lose
+
+Two things, and they are the same thing.
+
+**Correct and usable were never the same criterion** — the fourth repeat of this. A `nodegx export`
+that runs cleanly and emits a project failing `npm run build` has met every criterion anyone would
+naturally write for a CLI, and has shipped nothing. That is why #24 and #23 are tasks here and not
+in someone's backlog.
+
+And: **a CI command has nobody watching it.** Behind the GUI, the author sees a canvas and might
+notice the export disagrees with it. In a GitHub Action there is no one — the disagreement ships.
+Everything this phase adds removes a human from the loop, so every silent-wrongness defect the
+product already carries gets more expensive on the day the CLI lands, not less.

@@ -1,3 +1,20 @@
+// LEG-004 — `diff=noodl`, and it has to be the first statement in the file.
+//
+// Git invokes textconv once per blob per revision, so `installMergeDriver`
+// configures it as `ELECTRON_RUN_AS_NODE=1 <exe> <this bundle> --textconv`:
+// plain Node, no Chromium, tens of milliseconds instead of a full app boot.
+// Two consequences, both of which put the dispatch here rather than beside the
+// `--merge` check at the bottom of this file:
+//
+//  1. Under ELECTRON_RUN_AS_NODE the guard immediately below would exit 1, and
+//     git reports a non-zero textconv as an error on an ordinary `git log`.
+//  2. Every require after this line assumes a real Electron main process.
+//
+// `handleTextconv` always exits, so nothing below runs on this path.
+if (process.argv.indexOf('--textconv') !== -1) {
+  require('./src/textconv-driver').handleTextconv(process.argv);
+}
+
 const electron = require('electron');
 const { app, dialog } = electron;
 const fs = require('fs');
@@ -88,6 +105,13 @@ try {
 //fixes problem with reloading the viewer when it's
 //running in a separate browser window (file:// cross origin warning)
 app.commandLine.appendSwitch('disable-site-isolation-trials');
+
+// A Wayland session with no Xwayland has no $DISPLAY and Chromium defaults to
+// the X11 ozone backend, so the app dies at startup with "Unable to open X
+// display" (#29, FLD-016 (c)). The decision lives in its own module so it can
+// be graded without launching Electron — see src/linux-display.js for why the
+// switch is `ozone-platform-hint` and not `ozone-platform`.
+require('./src/linux-display').applyLinuxDisplayHint(app);
 
 var args = process.argv || [];
 
@@ -349,6 +373,12 @@ function launchApp() {
   }
 
   process.env.exePath = app.getPath('exe');
+  // LEG-004 — the merge driver only needs the binary, but the textconv driver
+  // has to name a script for it to run (`ELECTRON_RUN_AS_NODE` makes the binary
+  // a plain `node`, which has no app to boot). Set here, beside exePath, so the
+  // renderer inherits it in its environment and `installMergeDriver` can build
+  // the command without reaching for an Electron API from @noodl/git.
+  process.env.appPath = app.getAppPath();
   let reopenWindow = false;
 
   // Windows and Linux draw the window and taskbar icon from BrowserWindow; with no
@@ -424,6 +454,19 @@ function launchApp() {
     win.webContents.setWindowOpenHandler(({ url }) => {
       shell.openExternal(url);
       return { action: 'deny' }; //deny a new electron window
+    });
+
+    // A plain <a href> — no target — is a SAME-WINDOW navigation, which the
+    // handler above never sees. Nothing stopped one from replacing the running
+    // editor with a web page, taking the renderer and any unsaved state with it,
+    // with no way back but relaunching. Found when the update dialog started
+    // rendering release notes as markdown, which is exactly that kind of anchor.
+    //
+    // The editor's own file:// document is the only thing allowed to load here.
+    win.webContents.on('will-navigate', (event, url) => {
+      if (url.startsWith('file://')) return;
+      event.preventDefault();
+      if (/^https?:\/\//i.test(url)) shell.openExternal(url);
     });
 
     win.once('ready-to-show', () => {
@@ -779,9 +822,134 @@ function launchApp() {
       { label: 'Alpha Terms', click: () => openLegalWindow('terms', resolveStartupTheme().resolved) }
     );
 
+    // HLS-006: the share action. In the Application menu rather than behind a canvas control
+    // because it is a decision about the machine, not about the project — and because it has to
+    // be reachable to *turn off* even when the project that prompted it has been closed.
+    template.push({
+      label: 'Preview',
+      submenu: [{ label: 'Share preview on this network\u2026', click: () => showPreviewSharing() }]
+    });
+
     template.push({ label: 'Help', submenu: helpSubmenu });
 
     Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
+
+  /**
+   * HLS-006 — the share action, and the screen that #31 says never existed.
+   *
+   * 🔴 **The sentence this exists to make true:** opening a project does not put the app you are
+   * building on the office network, and when someone does want it there, they choose it and get a
+   * URL and a token to hand over.
+   *
+   * Two things about the wording are deliberate:
+   *
+   *  - It says what a *reader of the link* can do, not what the feature is called. "Anyone on this
+   *    network who opens the link can see and interact with the app you are building" is the fact
+   *    somebody needs before deciding, and it is not recoverable from the phrase "share preview".
+   *  - It says the link **is** the credential. A token in a URL is only as private as the URL, and
+   *    a person who does not know that will paste it into a channel with three hundred people in
+   *    it. That is not a caveat in a tooltip; it is the second line of the dialog.
+   */
+  function showPreviewSharing() {
+    const status = startServer.getAccessStatus();
+    if (!status) {
+      dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Preview sharing',
+        message: 'The preview server has not started yet.',
+        detail: 'Try again in a moment.'
+      });
+      return;
+    }
+
+    if (!status.shared) {
+      dialog
+        .showMessageBox(win, {
+          type: 'question',
+          title: 'Share preview on this network',
+          message: 'Put the preview of this project on your local network?',
+          detail:
+            'Right now the preview is only reachable from this computer.\n\n' +
+            'Sharing makes it reachable from other devices on the same network \u2014 a phone, a ' +
+            'tablet, a colleague\u2019s laptop. Anyone on this network who opens the link can see ' +
+            'and interact with the app you are building, and can see changes as you make them.\n\n' +
+            'The link contains a token, so the link is the credential: anyone you send it to can ' +
+            'open it, and anyone they forward it to can too. It stops working when you stop ' +
+            'sharing or quit NodeGX.\n\n' +
+            'The preview will reload once while it switches over.',
+          buttons: ['Share on this network', 'Cancel'],
+          defaultId: 1,
+          cancelId: 1,
+          noLink: true
+        })
+        .then(({ response }) => {
+          if (response !== 0) return;
+          return startServer.setSharing(true).then((shared) => showPreviewShareLink(shared));
+        })
+        .catch((error) => {
+          dialog.showMessageBox(win, {
+            type: 'error',
+            title: 'Share preview on this network',
+            message: 'The preview could not be shared.',
+            detail: String(error && error.message ? error.message : error)
+          });
+        });
+      return;
+    }
+
+    showPreviewShareLink(status);
+  }
+
+  /** The link, the token, and the way to stop. Shown after sharing starts and whenever asked. */
+  function showPreviewShareLink(status) {
+    if (!status.lanAddress) {
+      // Bound to every interface and there is no non-internal IPv4 to name. Saying so is better
+      // than printing `0.0.0.0`, which is not an address anybody can type.
+      dialog.showMessageBox(win, {
+        type: 'warning',
+        title: 'Preview sharing',
+        message: 'The preview is shared, but this computer has no network address to hand out.',
+        detail: 'It looks like there is no network connection. Connect to a network and open this again.',
+        buttons: ['Stop sharing', 'Close'],
+        defaultId: 1,
+        cancelId: 1,
+        noLink: true
+      }).then(({ response }) => {
+        if (response === 0) startServer.setSharing(false);
+      });
+      return;
+    }
+
+    dialog
+      .showMessageBox(win, {
+        type: 'info',
+        title: 'Preview sharing',
+        message: 'The preview is shared on this network.',
+        detail:
+          `${status.url}\n\n` +
+          'Send the whole link \u2014 the part after `?t=` is the token, and without it the ' +
+          'address answers nothing.\n\n' +
+          'Anyone on this network who has the link can open the app. Sharing stops when you ' +
+          'choose Stop sharing below, or when you quit NodeGX.',
+        buttons: ['Copy link', 'Stop sharing', 'Close'],
+        defaultId: 0,
+        cancelId: 2,
+        noLink: true
+      })
+      .then(({ response }) => {
+        if (response === 0) electron.clipboard.writeText(status.url);
+        if (response === 1) {
+          startServer.setSharing(false).then(() => {
+            dialog.showMessageBox(win, {
+              type: 'info',
+              title: 'Preview sharing',
+              message: 'Sharing stopped.',
+              detail: 'The preview is reachable from this computer only. The link no longer works.'
+            });
+          });
+        }
+      });
   }
 
   /**
@@ -902,7 +1070,10 @@ function launchApp() {
       'viewer-detach',
       'viewer-navigation-state',
       'viewer-capture-thumb-reply',
-      'viewer-inspect-node'
+      'viewer-inspect-node',
+      // DES-001: "Preview" on the detached preview's design-mode banner. The
+      // editor window owns the mode, so the request has to travel back to it.
+      'viewer-request-preview-mode'
     ]);
 
     //events to forward from main window to viewer
@@ -919,6 +1090,8 @@ function launchApp() {
       'viewer-set-viewport-size',
       'viewer-set-inspect-mode',
       'viewer-select-node',
+      'viewer-transform-origin-focus',
+      'viewer-design-selection',
       'viewer-capture-thumb',
       'viewer-show-inspect-menu',
       'editor-api-response'
@@ -990,6 +1163,11 @@ function launchApp() {
     // filesystem and `app.getAppPath()`, so they cannot be worked out in the
     // renderer that renders them.
     require('./src/mcp/mcpFrontDoor').setupMcpIPC(electron.ipcMain);
+
+    // BLD-014: the CDP half of "look at it". A hidden BrowserWindow driven
+    // through `webContents.debugger` — only the main process can open one, and
+    // only the main process can attach a debugger to it.
+    require('./src/render-capture').setupRenderCaptureIPC(electron.ipcMain);
 
     // WF-004: executions now happen inside nodegx-backend child processes,
     // each with its own store — the panel's IPC merges them with the local one.
@@ -1241,6 +1419,19 @@ function launchApp() {
     ipcMain.on('main-window-resize', function (event, options) {
       resizeMainWindow(options);
     });
+
+    // HLS-009 — an agent opened a project; put the window where the person can see it.
+    //
+    // ⚠️ `focus()` alone is not enough on any of the three platforms: a minimised window stays
+    // minimised and a hidden one stays hidden, and in both cases the renderer has already routed
+    // to the project, so the tool would report success against a window nobody can see. That is
+    // the same class of lie as HLS-013's `res.ok` — a true statement about the wrong thing.
+    ipcMain.on('main-window-focus', function () {
+      if (!win) return;
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+    });
   }
 }
 
@@ -1252,6 +1443,43 @@ function startUDPMulticast() {
 
   server.bind();
 
+  /**
+   * FLD-017 — advertise this editor while it has something to preview, not for
+   * the life of the process.
+   *
+   * The 2-second timer used to start the moment the socket bound and never
+   * stop, so an editor sitting on the welcome screen broadcast
+   * `projectName: 'No Project Open'` to `225.0.0.100` every two seconds,
+   * forever, on every network it was attached to. The viewer app discovers an
+   * editor in order to preview a project; there is nothing to discover until
+   * one is open.
+   *
+   * ⚠️ **Both conditions, because the order is not fixed.** `project-opened`
+   * comes from the renderer and `listening` from the socket, and either can
+   * arrive first — sending before the bind completes throws. `syncBroadcast`
+   * is the one place that decides, so a timer can never be started twice or
+   * left running.
+   *
+   * ⚠️ This is NOT a CPU fix and was not built as one. Measured on the packaged
+   * build, welcome screen: the main process burns **0.03–0.06% of a core** at
+   * idle with the timer running. What it removes is a LAN multicast packet
+   * every two seconds from an editor that has nothing to offer.
+   */
+  let socketReady = false;
+  let projectIsOpen = false;
+  let broadcastTimer = null;
+
+  function syncBroadcast() {
+    const shouldBroadcast = socketReady && projectIsOpen;
+    if (shouldBroadcast && !broadcastTimer) {
+      broadcastNew();
+      broadcastTimer = setInterval(broadcastNew, 2000);
+    } else if (!shouldBroadcast && broadcastTimer) {
+      clearInterval(broadcastTimer);
+      broadcastTimer = null;
+    }
+  }
+
   server.on('listening', function () {
     server.setBroadcast(true);
     server.setMulticastTTL(128);
@@ -1260,17 +1488,26 @@ function startUDPMulticast() {
     } catch (e) {
       //this can happen when running without a connection to a router, just ignore for now
     }
-    setInterval(broadcastNew, 2000);
+    socketReady = true;
+    syncBroadcast();
   });
 
   let projectName = 'No Project Open';
   ipcMain.on('project-opened', (e, newProjectName) => {
     projectName = newProjectName;
-    broadcastNew();
+    projectIsOpen = true;
+    syncBroadcast();
     DesignToolImportServer.setProjectName(newProjectName);
   });
   ipcMain.on('project-closed', () => {
     projectName = 'No Project Open';
+    projectIsOpen = false;
+    // Say so once, for the reason the quit handler below says so once: a client
+    // that is told drops us immediately instead of waiting out a timeout. Under
+    // the old code the 2s timer kept running and kept saying 'No Project Open',
+    // so this is the same information, sent once instead of forever.
+    broadcastClosed();
+    syncBroadcast();
     DesignToolImportServer.setProjectName(null);
   });
 
@@ -1285,18 +1522,34 @@ function startUDPMulticast() {
     return buf;
   }
 
-  app.on('quit', () => {
-    //broadcast a message when shutting down so clients can
-    //remove the editor as fast as possible, without having to wait
-    //for a timeout
+  /**
+   * Tell listeners this editor has nothing to preview, so they drop it now
+   * rather than waiting out a timeout.
+   *
+   * Sent on quit — which is what it was written for — and, since FLD-017, when
+   * the last project closes, because that is now the moment the periodic
+   * broadcast stops.
+   *
+   * ⚠️ Guarded on the bind. `server.send` before `listening` throws, and both
+   * callers can fire on a launch where the socket never came up (no route, a
+   * port already held). Failing to say goodbye is not worth an exception on the
+   * quit path.
+   */
+  function broadcastClosed() {
+    if (!socketReady) return;
     const hostname = os.hostname();
+    if (!hostname) return;
 
-    if (hostname) {
-      const message = Buffer.from(
-        jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, status: 'closed' })
-      );
+    const message = Buffer.from(jsToArrayBuffer({ https: process.env.ssl ? true : false, hostname, status: 'closed' }));
+    try {
       server.send(message, 0, message.length, 8575, '225.0.0.100');
+    } catch (e) {
+      //the socket can be gone by the time we quit; nothing to do about it here
     }
+  }
+
+  app.on('quit', () => {
+    broadcastClosed();
   });
 
   function broadcastNew() {

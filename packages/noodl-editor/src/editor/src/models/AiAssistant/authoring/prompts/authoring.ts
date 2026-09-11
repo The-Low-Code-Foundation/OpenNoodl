@@ -20,6 +20,10 @@
  */
 
 import { DECOMPOSITION_AUTHORING } from './decomposition';
+import { DESIGN_AUTHORING } from './design';
+// FIX-006 — the same three blocks the MCP clients get through `get_project_info`'s traps, so the
+// in-editor loop and an external agent are told the same thing about node choice and code style.
+import { CODE_STYLE, NODES_BEFORE_CODE, THREE_WAYS_TO_COMPUTE } from './traps';
 import type { AuthoringMode, AuthoringRequest } from '../types';
 
 const FRAMING: Record<AuthoringMode, string> = {
@@ -43,6 +47,13 @@ THE AUTHORING CONTRACT
   an existing component's name such as "/Pages/Home" to instantiate that component), an optional "label"
   saying what it is for, "x"/"y" canvas coordinates, and "parent" (a node id) when it sits inside a visual
   container. Child order = the order nodes appear in your list. Do not send children arrays.
+- "comment" is the other sentence a node can carry, and it answers a different question: the label says
+  what this node is FOR, the comment says WHY it is the way it is. Write one where a reader would
+  otherwise change something and break it — a decision that had an alternative ("deliberately not a
+  Repeater; the three cards differ in more than data"), a rule from outside the app the graph cannot
+  state, or a trap ("sizeMode must stay explicit or objectFit is ignored"). Omit it everywhere else: a
+  comment that restates the type, restates the label, or narrates what the wire already shows is noise,
+  and most nodes need none.
 - "parameters" sets static input values, keyed by EXACT port names. Only set what the task needs; defaults
   are already right.
 - Connections: { fromId, fromProperty, toId, toProperty } — fromProperty is an output port on the source
@@ -54,7 +65,10 @@ THE AUTHORING CONTRACT
   wires — a component that takes nothing and emits nothing needs neither node.
 - A visual component or page needs one visual root container (usually a Group); pass its id in
   visual_roots.
-- Lay nodes out readably: flow left-to-right or top-to-bottom, roughly 150–300 units apart.
+- Layout is TWO COLUMNS, by node family. The visual tree flows DOWN a left column in tree order,
+  indenting x by ~60 per hierarchy depth, ~120 apart vertically. Logic nodes go in a second column well to
+  the RIGHT of the deepest visual x (leave a ~250 gutter), each at roughly the y of the visual node it
+  feeds. Never give two nodes the same x/y; nodes you leave without x/y are auto-placed by this same rule.
 
 HOW TO WORK — READ LITTLE, THEN BUILD
 You are given a project overview (every component, its size and interface) and a catalog listing (every
@@ -158,7 +172,15 @@ WHAT NOT TO DO
 - Do not add nodes the task does not need. A node that is wired to nothing and changes nothing is
   dead weight — but do not read this as "keep the graph flat": see COMPOSITION.
 
-${DECOMPOSITION_AUTHORING}`;
+${NODES_BEFORE_CODE}
+
+${THREE_WAYS_TO_COMPUTE}
+
+${CODE_STYLE}
+
+${DECOMPOSITION_AUTHORING}
+
+${DESIGN_AUTHORING}`;
 
 export function systemPrompt(mode: AuthoringMode = 'create'): string {
   return systemPromptFor(mode);
@@ -212,6 +234,12 @@ export interface PromptProjectDocs {
   conventions?: string;
   /** Rendered docs/BRIEF.md, already capped and charged. */
   brief?: string;
+  /**
+   * BLD-007 — the project's own documents that declared `inject: always`,
+   * already capped and charged. Empty for every project that has not opted in,
+   * which is what keeps the note above true for everyone else.
+   */
+  always?: Array<{ path: string; title: string; text: string }>;
 }
 
 function docBlocks(docs?: PromptProjectDocs): string[] {
@@ -228,7 +256,42 @@ function docBlocks(docs?: PromptProjectDocs): string[] {
       '--- END PROJECT CONVENTIONS ---'
     );
   }
+  // Last of the doc blocks, and last for the same reason the whole group is
+  // last: a project that adds one invalidates only the tail of its prefix.
+  for (const doc of docs?.always ?? []) {
+    lines.push('', `--- ${doc.title.toUpperCase()} (${doc.path}) ---`, doc.text, `--- END ${doc.title.toUpperCase()} ---`);
+  }
   return lines;
+}
+
+/**
+ * FIX-021 slice B — who you are building for, when they have said.
+ *
+ * The one block here that is about the *person* rather than the project. It is
+ * stable per user, so it belongs in the cache-stable half with the other
+ * reference material, and it is **last** for the same reason the doc blocks are
+ * last: a user who writes their first preference invalidates only the tail of
+ * the prefix, and a user who never writes one produces turns byte-identical to
+ * before this existed. `undefined` when the file says nothing — the
+ * absent-means-omitted convention every optional block here keeps.
+ *
+ * ⚠️ Being last is a **caching** argument and not a priority one, which is
+ * exactly why the precedence has to be said out loud rather than implied by
+ * position: recency would otherwise read as "this outranks the project", and it
+ * does not. Global preferences rank *below* the project's own conventions and
+ * *above* the model's defaults — the ladder FIX-021 slice B specified.
+ */
+function globalPreferencesBlock(globalPreferences?: string): string[] {
+  if (!globalPreferences) return [];
+  return [
+    '',
+    '--- ABOUT THE PERSON YOU ARE BUILDING FOR ---',
+    'Standing preferences this user wrote about themselves. They hold in every project, and they',
+    "outrank your own habits and defaults. This project's own conventions outrank them in turn: where",
+    'the two disagree, follow the project and say that you did.',
+    globalPreferences,
+    '--- END ABOUT THE PERSON YOU ARE BUILDING FOR ---'
+  ];
 }
 
 /**
@@ -243,7 +306,9 @@ function referenceBlocks(
   docs?: PromptProjectDocs,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): string[] {
   return [
     'Reference material for this project. Your task is at the END of this message — read these first,',
@@ -256,12 +321,36 @@ function referenceBlocks(
     '--- NODE CATALOG ---',
     catalogOverview,
     '--- END NODE CATALOG ---',
+    ...nodeKitBlock(nodeKitOverview),
     ...backendSchemaBlock(backendSchema),
     ...styleBlock(styleVocabulary),
     ...libraryBlock(libraryOverview),
     ...importReportBlock(importReport),
-    ...docBlocks(docs)
+    ...docBlocks(docs),
+    ...globalPreferencesBlock(globalPreferences)
   ];
+}
+
+/**
+ * CN-008: the project's own kit node types, or nothing when it has none — the
+ * same absent-means-omitted convention as every block around it, so a project
+ * without kits pays zero prompt bytes and sends a byte-identical turn.
+ *
+ * **Immediately after the catalog, and that placement is the point.** The kit
+ * types are already *in* the catalog block — that was measured before this was
+ * built — but there they are indistinguishable from built-ins, sunk in an
+ * alphabetical run of names on the `- Visual:` line. This block is the one that
+ * says which of those names the user wrote, what they are for, and that they
+ * are worth reaching for; putting it anywhere else separates it from the list
+ * it is annotating.
+ *
+ * In the STABLE half with the other reference blocks: a project's kits describe
+ * the project, are byte-identical across every component authored against it,
+ * and change only when a kit is installed or scaffolded.
+ */
+function nodeKitBlock(nodeKitOverview?: string): string[] {
+  if (!nodeKitOverview) return [];
+  return ['', "--- THIS PROJECT'S NODE KITS ---", nodeKitOverview, "--- END THIS PROJECT'S NODE KITS ---"];
 }
 
 /**
@@ -313,6 +402,26 @@ function planContextBlock(planContext?: string): string[] {
   return ['--- THE PLAN ---', planContext, '--- END PLAN ---', ''];
 }
 
+/**
+ * BLD-011 — what the user attached to this message.
+ *
+ * ⚠️ **In the VARIABLE half, and that placement IS Rule 6.** An attachment is
+ * per-turn content by definition — a different component each time, a
+ * screenshot that is true for one turn — so putting it anywhere above
+ * `cacheBoundary` would invalidate the AIX-007 prefix on every send that
+ * carried one, which is the most expensive mistake available in this file. It
+ * sits beside `planContextBlock` for exactly that reason, and a turn with no
+ * references produces bytes identical to one built before this task existed
+ * (pinned in `tests-unit/bld-011/cacheSafety.test.ts`).
+ *
+ * Before `YOUR TASK` rather than after: the task keeps the recency the whole
+ * ordering exists to give it, and the attachment reads as material for it.
+ */
+function attachedReferenceBlock(references?: string): string[] {
+  if (!references) return [];
+  return [references, ''];
+}
+
 /** The opening user turn: the overview blocks, then the task. */
 export function initialUserMessage(
   request: AuthoringRequest,
@@ -323,7 +432,10 @@ export function initialUserMessage(
   planContext?: string,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  references?: string,
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -333,10 +445,13 @@ export function initialUserMessage(
       docs,
       libraryOverview,
       importReport,
-      backendSchema
+      backendSchema,
+      nodeKitOverview,
+      globalPreferences
     ),
     [
       ...planContextBlock(planContext),
+      ...attachedReferenceBlock(references),
       '--- YOUR TASK ---',
       `Build a new component at "${request.componentPath}"${
         request.componentType ? ` (type: ${request.componentType})` : ''
@@ -373,7 +488,10 @@ export function updateUserMessage(
   planContext?: string,
   libraryOverview?: string,
   importReport?: string,
-  backendSchema?: string
+  backendSchema?: string,
+  references?: string,
+  nodeKitOverview?: string,
+  globalPreferences?: string
 ): OpeningTurn {
   return openingTurn(
     referenceBlocks(
@@ -383,10 +501,13 @@ export function updateUserMessage(
       docs,
       libraryOverview,
       importReport,
-      backendSchema
+      backendSchema,
+      nodeKitOverview,
+      globalPreferences
     ),
     [
       ...planContextBlock(planContext),
+      ...attachedReferenceBlock(references),
       '--- YOUR TASK ---',
       `Revise the existing component "${request.componentPath}".`,
       '',

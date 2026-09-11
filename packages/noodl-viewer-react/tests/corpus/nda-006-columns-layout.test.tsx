@@ -148,24 +148,29 @@ describe('NDA-006 §3: responsive layout', () => {
     smallLayout: '1'
   } as unknown as Parameters<typeof pickBreakpointLayout>[1];
 
+  // FLD-002 changed the return shape from the bare string to the string *and* the name of the
+  // step that chose it, so that the reported band and the rendered layout cannot come from two
+  // derivations. Every case below therefore asserts both halves of the one answer.
   test('C1: a wide container gets the base layout', () => {
-    expect(pickBreakpointLayout('1 2 1', breaks, 1400)).toBe('1 2 1');
+    expect(pickBreakpointLayout('1 2 1', breaks, 1400)).toEqual({ breakpoint: 'Default', layoutString: '1 2 1' });
   });
 
   test('C2: below the medium breakpoint the medium layout applies', () => {
-    expect(pickBreakpointLayout('1 2 1', breaks, 800)).toBe('1 1');
+    expect(pickBreakpointLayout('1 2 1', breaks, 800)).toEqual({ breakpoint: 'Medium', layoutString: '1 1' });
   });
 
   test('C3: below the small breakpoint the small layout wins over the medium one', () => {
     // 500 is below both, and the narrower answer has to win — checking them in the other
     // order returns '1 1' for a phone.
-    expect(pickBreakpointLayout('1 2 1', breaks, 500)).toBe('1');
+    expect(pickBreakpointLayout('1 2 1', breaks, 500)).toEqual({ breakpoint: 'Small', layoutString: '1' });
   });
 
   test('C4: a breakpoint with no layout beside it is inert, not half-applied', () => {
     const halfSet = { mediumBreakpoint: '1024px', mediumLayout: '', smallBreakpoint: '', smallLayout: '1' } as never;
 
-    expect(pickBreakpointLayout('1 2 1', halfSet, 800)).toBe('1 2 1');
+    // FLD-002: inert reports `Default`, not `Medium` — the band a reader is told about is the
+    // one whose string is on screen, and the medium string is not.
+    expect(pickBreakpointLayout('1 2 1', halfSet, 800)).toEqual({ breakpoint: 'Default', layoutString: '1 2 1' });
   });
 
   test('C5: Auto Fit takes as many columns as will hold their minimum', () => {

@@ -32,18 +32,26 @@ import { z } from 'zod';
 
 import type {
   AuthoringPlan,
-  PlanOperation
+  PlanOperation,
+  PlanPortDeclaration,
+  PlanRepeatSpec
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import {
   orderPlanOperations,
+  planAdvisories,
   planExcludedWith,
+  planInterfaceContract,
   planOperationRequires,
+  PLAN_REPEAT_SOURCES,
+  PLAN_STRUCTURE_DESCRIPTIONS,
   validatePlan
 } from '../../../noodl-editor/src/editor/src/models/AiAssistant/authoring/plan';
 import type { Diagnostic, NormProject } from '../editor-deps';
 import {
   assertInsideDocs,
   buildComponentRefs,
+  componentInterfaces,
+  dedupeDiagnostics,
   diagnosticKey,
   DocPathError,
   formatDiagnosticLine,
@@ -54,23 +62,81 @@ import {
   SemanticValidator
 } from '../editor-deps';
 import type { ConnectionV2 } from '../editor-deps';
-import { catalogIndex } from '../catalog';
+import { catalogGeneration, catalogIndex } from '../catalog';
 import { ToolError } from '../errors';
+import { automaticRenderDisabled, runRenderReport } from '../render';
+import type { RenderLedger, RenderVerdict } from '../renderVerdict';
+import { drawsSomething } from '../visualRoots';
+import { completionPayload } from './completion';
 import type { ComponentFiles } from '../graph';
 import { reconcileHierarchy } from '../graph';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
 import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
 import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { authoredProjectViews, preconditionDiagnostics } from '../validate';
+import type { WriteValidation } from '../validate';
+import type { WriteValidationSummary } from './responses';
 import type { NodeInput } from './author';
-import { assembleCreateFiles, assembleSetFiles, ensureIds } from './author';
+import { assembleCreateFiles, assembleSetFiles, nodeIdsOf, normalizeAuthoredNodes, projectVisualPredicate } from './author';
+// LAS-012 §4 — the skeleton's own writer owns the predicate for "untouched".
+import { isUntouchedSkeletonPage } from './createProject';
 // AAQ-005: one authoring vocabulary — the same node/connection shapes
 // `create_component` takes, rendered from the shared table rather than from a
 // second hand-written copy.
 import { connectionSchema, nodeSchema } from '../vocabulary';
 import { writeProjectDocFile } from './docsTools';
+import type { ExampleBudget } from './attachments';
+import { examplesBlock } from './attachments';
+import type { ToolDisclosure } from './disclosure';
+import { backendRevealPayload } from './disclosure';
 import { guarded, jsonResult } from './util';
+
+// ─── LAS-006: the structured operation fields, in this client's dialect ───────
+//
+// The words come from the shared plan model (`PLAN_STRUCTURE_DESCRIPTIONS`); the
+// editor renders the same ones into `submit_plan`'s JSON Schema. Two tool
+// protocols, one set of descriptions — the `decomposition.ts` rule applied to a
+// schema instead of a doctrine.
+
+const D = PLAN_STRUCTURE_DESCRIPTIONS;
+
+const planPortSchema = z.object({
+  name: z.string().describe(D.portName),
+  type: z.string().optional().describe(D.portType),
+  description: z.string().optional().describe(D.portDescription)
+});
+
+const planStructureShape = {
+  inputs: z.array(planPortSchema).optional().describe(D.inputs),
+  outputs: z.array(planPortSchema).optional().describe(D.outputs),
+  repeats: z
+    .object({
+      source: z.enum(PLAN_REPEAT_SOURCES).describe(D.repeatSource),
+      rowFields: z.array(z.string()).describe(D.repeatRowFields)
+    })
+    .optional()
+    .describe(D.repeats),
+  instantiates: z.array(z.string()).optional().describe(D.instantiates)
+};
+
+/** The structured half of one incoming operation, as the plan model holds it. */
+interface PlanStructureInput {
+  inputs?: PlanPortDeclaration[];
+  outputs?: PlanPortDeclaration[];
+  repeats?: PlanRepeatSpec;
+  instantiates?: string[];
+}
+
+function structureOf(op: PlanStructureInput): PlanStructureInput {
+  return {
+    ...(op.inputs?.length ? { inputs: op.inputs } : {}),
+    ...(op.outputs?.length ? { outputs: op.outputs } : {}),
+    ...(op.repeats ? { repeats: op.repeats } : {}),
+    ...(op.instantiates?.length ? { instantiates: op.instantiates } : {})
+  };
+}
 
 // ─── In-memory plan registry (per server process) ─────────────────────────────
 
@@ -84,6 +150,33 @@ interface ServerPlan {
 }
 
 /**
+ * LAS-006 §4 — the plans of one server, as much of them as another tool group
+ * may ask about.
+ *
+ * `create_component` of a page wants to say "there is a plan door and you did
+ * not use it", and must not say it to someone who *did* — an agent applying a
+ * plan and then refining one page has already heard the advice. That is one bit
+ * of state, and it belongs to whoever owns the plans.
+ *
+ * Created by `createServer` and handed to both registrations rather than held at
+ * module scope: the specs stand up several servers in one process, and a
+ * module-level map would leak one test's plans into the next.
+ */
+export interface PlanRegistry {
+  hasPlans(): boolean;
+}
+
+interface PlanRegistryInternal extends PlanRegistry {
+  plans: Map<string, ServerPlan>;
+}
+
+export function createPlanRegistry(): PlanRegistry {
+  const plans = new Map<string, ServerPlan>();
+  const registry: PlanRegistryInternal = { plans, hasPlans: () => plans.size > 0 };
+  return registry;
+}
+
+/**
  * A staged doc operation's write, through the same containment and atomic-write
  * path as `write_project_doc`. Not a seam any more: AIX-009 shipped, and a
  * second write path would be a doc-path check spelled twice.
@@ -93,8 +186,15 @@ function applyDocOperation(store: ProjectStore, op: PlanOperation, content: stri
 }
 
 let semanticValidator: SemanticValidator | undefined;
+let validatorGeneration = -1;
 function validator(): SemanticValidator {
-  if (!semanticValidator) semanticValidator = new SemanticValidator(catalogIndex());
+  // 🔴 CN-003 — see the twin in `validate.ts`: memoised against the catalog's
+  // generation, not forever, because the project overlay is installed after this
+  // module loads and a validator that predates it silently knows no kit types.
+  if (!semanticValidator || validatorGeneration !== catalogGeneration()) {
+    semanticValidator = new SemanticValidator(catalogIndex());
+    validatorGeneration = catalogGeneration();
+  }
   return semanticValidator;
 }
 
@@ -140,7 +240,39 @@ function overlayProject(store: ProjectStore, plan: ServerPlan, extra?: { opId: s
   ];
   const refNames = new Set<string>(components.map((c) => c.name));
   for (const name of stagedByName.keys()) refNames.add(name.replace(/^\//, ''));
+  // DEF-013 — the plan's own DECLARED creates, staged or not. Without this a
+  // true cycle (D places E, E places D) cannot be authored in one plan by any
+  // order, because whichever is staged first names a sibling that exists only
+  // as an intent. SB-012's table recorded node `type` as resolving against an
+  // unapplied sibling; the re-drive found that was only ever true of a sibling
+  // already STAGED — the sequential case — and the cycle failed here too.
+  //
+  // Safe against a partial apply because apply_plan re-validates every
+  // operation against `applyPlanView`, whose `operations` list has the skipped
+  // ones removed: a component left pointing at a skipped sibling is refused
+  // then, with nothing written.
+  for (const name of plannedComponentNames(plan)) refNames.add(name.replace(/^\//, ''));
   return { components, componentRefs: buildComponentRefs([...refNames]) };
+}
+
+/**
+ * DEF-013 — every component name this plan commits to producing.
+ *
+ * A plan is a promise that all of its operations land together, so a reference
+ * to a declared sibling is correct at stage time whatever order the fan out
+ * runs in. `update` targets are included for completeness; they already exist
+ * on disk and so change nothing.
+ *
+ * Deliberately NOT fed in as component *views*: a planned component has no
+ * nodes yet, and a view with an empty node list would turn "this interface is
+ * unknown, do not check" into "this interface is empty", which is how an
+ * instance of a planned sibling would start being told its perfectly good
+ * parameters are not ports.
+ */
+function plannedComponentNames(plan: ServerPlan): string[] {
+  return plan.plan.operations
+    .filter((op) => op.kind !== 'doc')
+    .map((op) => pathToLegacyName(op.target));
 }
 
 /**
@@ -166,6 +298,114 @@ function stagedOverlay(plan: ServerPlan, extra?: { opId: string; files: Componen
 }
 
 /**
+ * LAS-002 — what one staged candidate's validation yields. `warnings` is the
+ * pre-LAS-002 count, kept because it is public API; `diagnostics` is what a
+ * caller can actually act on.
+ */
+interface StagedValidation {
+  ok: boolean;
+  errors: string[];
+  warnings: number;
+  /** Non-error diagnostics: warnings and infos, as objects. */
+  diagnostics: Diagnostic[];
+  /**
+   * LAS-007 — the diagnostics that caused the refusal, as objects. `errors` is
+   * the same set already formatted into lines, which is what a human reads and
+   * what the example table cannot match on.
+   */
+  blocking: Diagnostic[];
+  summary: WriteValidation['summary'];
+}
+
+const EMPTY_SUMMARY: WriteValidation['summary'] = { errors: 0, warnings: 0, infos: 0 };
+
+function summarize(diagnostics: readonly Diagnostic[]): WriteValidation['summary'] {
+  return {
+    errors: diagnostics.filter((d) => d.severity === 'error').length,
+    warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+    infos: diagnostics.filter((d) => d.severity === 'info').length
+  };
+}
+
+/**
+ * The `validation` block, in the one shape every authoring door speaks — the
+ * same `WriteValidationSummary` `create_component` and `update_component`
+ * return, so LAS-007 can key its example attachments on `code` without caring
+ * which door produced the diagnostic. Omitted entirely when there is nothing to
+ * say: a door that always speaks is a door nobody reads.
+ */
+function validationBlock(
+  diagnostics: readonly Diagnostic[],
+  summary: WriteValidation['summary']
+): WriteValidationSummary | Record<string, never> {
+  if (diagnostics.length === 0) return {};
+  return { validation: { summary, diagnostics: [...diagnostics] } };
+}
+
+/**
+ * Did this operation put anything on a screen?
+ *
+ * The question decides whether `apply_plan` renders by default, so it errs
+ * toward yes: a component that declares visual roots, holds a node the catalog
+ * calls visual, or instantiates another project component (whose visual-ness
+ * this cannot see from here) counts. A plan that only writes logic or cloud
+ * functions renders nothing worth eight seconds.
+ */
+function wroteSomethingVisual(plan: ServerPlan, operation: PlanOperation): boolean {
+  const files = plan.staged.get(operation.id);
+  return files ? drawsSomething(files) : false;
+}
+
+/**
+ * The numeric half of a render report, or a note saying why there is none.
+ *
+ * A failure here is never a failure of the apply — the plan is already on disk
+ * and discarded by the time this runs. So the environment problems that make
+ * `render_report` throw (no viewer bundle, no Chrome) come back as a sentence
+ * inside the response instead, naming the fix. Anything else is swallowed to a
+ * short note for the same reason: "your write succeeded but the optional
+ * screenshot tool crashed" must not read like "your write failed".
+ */
+async function renderSummaryFor(
+  store: ProjectStore,
+  ledger: RenderLedger
+): Promise<{ summary: Record<string, unknown>; verdict?: RenderVerdict }> {
+  try {
+    const { report } = await runRenderReport(store.projectDir, { screenshot: 'none' });
+    // VIB-007 M1 — recorded before the numbers are shaped, so the verdict is
+    // about the render that just ran rather than about the subset of it this
+    // response happens to quote.
+    const verdict = ledger.record(store.projectDir, report);
+    const summary = {
+      summary: report.summary,
+      findings: report.findings,
+      viewports: Object.fromEntries(
+        Object.entries(report.viewports).map(([name, v]) => [
+          name,
+          {
+            layoutWidth: v.layoutWidth,
+            pageHeight: v.pageHeight,
+            texts: v.text.elements,
+            images: v.images.total,
+            brokenImages: v.images.broken,
+            placeholderTexts: v.placeholders.count
+          }
+        ])
+      ),
+      note: 'Numbers only. Call render_report for the screenshots — a picture that loads is not a picture of the right thing.'
+    };
+    return { summary, verdict };
+  } catch (err) {
+    return {
+      summary: {
+        skipped: err instanceof ToolError ? err.message : `The render did not run: ${(err as Error).message}`,
+        note: 'The plan was applied. Only the render check was skipped; call render_report to retry it.'
+      }
+    };
+  }
+}
+
+/**
  * Validate one staged candidate against the overlay. Same policy as the
  * write-gate — which since AAQ-005 means the *shared* policy: structural first,
  * semantic strict, then the four precondition checks, gated on errors plus the
@@ -177,6 +417,13 @@ function stagedOverlay(plan: ServerPlan, extra?: { opId: string; files: Componen
  * and `src/validate.ts`, each with its own copy of `diagnosticKey` — the exact
  * three-twins shape BCN-003 taught us to look for, inside the task written to
  * prevent it. It now composes the same pieces the other two do.
+ *
+ * LAS-002: it also returns the surviving diagnostics as OBJECTS. It used to
+ * return `warnings` as a count, and that count was the whole of what
+ * `stage_plan_operation` could say — so `repeated-sibling-subtree`, the only
+ * architecture gate in the system, reached three separate measured builds as
+ * the integer `1`, at the one moment the agent could still have acted on it.
+ * The count stays for anything already parsing it; the objects are the point.
  */
 function validateStaged(
   store: ProjectStore,
@@ -184,9 +431,13 @@ function validateStaged(
   operation: PlanOperation,
   candidate: ComponentFiles,
   options: { allowUnknownTypes?: boolean }
-): { ok: boolean; errors: string[]; warnings: number } {
+): StagedValidation {
   const structural = structuralErrors(candidate);
-  if (structural.length > 0) return { ok: false, errors: structural, warnings: 0 };
+  if (structural.length > 0) {
+    // A schema failure means the semantic pass never ran, so there is nothing
+    // non-blocking to report — not "no warnings", but "not asked yet".
+    return { ok: false, errors: structural, warnings: 0, diagnostics: [], blocking: [], summary: EMPTY_SUMMARY };
+  }
 
   const legacyName = pathToLegacyName(operation.target);
   const project = overlayProject(store, plan, { opId: operation.id, files: candidate });
@@ -194,8 +445,27 @@ function validateStaged(
   const report = validator().validateComponent(project, legacyName, validatorOptions);
 
   const views = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: candidate }));
-  const diagnostics = [...report.diagnostics, ...preconditionDiagnostics(legacyName, candidate, views)];
+  // Deduped for the reason `dedupeDiagnostics` records: since D13 the validator
+  // report and the precondition set both run `checkParameterValues`, so this
+  // join doubled every parameter-value finding. The baseline path below collapses
+  // into a Set already, so only this list needed it.
+  const diagnostics = dedupeDiagnostics([
+    ...report.diagnostics,
+    // DEF-013 — the plan's declared siblings resolve as names. See
+    // `plannedComponentNames`.
+    ...preconditionDiagnostics(store, legacyName, candidate, views, plannedComponentNames(plan))
+  ]);
   let errors = diagnostics.filter(isBlockingForAuthoredOutput);
+
+  // LAS-006 §3 — the plan as a contract. LAS-001's index does the reading: what
+  // a component's inputs *are* is one derivation, in `componentInterface.ts`,
+  // and this compares its answer to what the operation promised. Deliberately
+  // outside the baseline exemption below: an update that declared an interface
+  // is judged on the interface it produced, not on the one it inherited.
+  const contract = planInterfaceContract(
+    operation,
+    componentInterfaces([{ name: legacyName, nodes: candidate.nodes.nodes }]).get(legacyName)?.inputs ?? []
+  );
 
   if (operation.kind === 'update' && errors.length > 0) {
     const stored = store.readComponent(operation.target);
@@ -208,16 +478,21 @@ function validateStaged(
     const baselineViews = authoredProjectViews(store, stagedOverlay(plan, { opId: operation.id, files: baseline }));
     const baselineDiagnostics = [
       ...baselineReport.diagnostics,
-      ...preconditionDiagnostics(legacyName, baseline, baselineViews)
+      ...preconditionDiagnostics(store, legacyName, baseline, baselineViews, plannedComponentNames(plan))
     ];
     const preexisting = new Set(baselineDiagnostics.filter(isBlockingForAuthoredOutput).map(diagnosticKey));
     errors = errors.filter((d) => !preexisting.has(diagnosticKey(d)));
   }
 
   return {
-    ok: errors.length === 0,
-    errors: errors.map(formatDiagnosticLine),
-    warnings: diagnostics.filter((d) => d.severity === 'warning').length
+    ok: errors.length === 0 && contract.length === 0,
+    errors: [...errors.map(formatDiagnosticLine), ...contract],
+    blocking: errors,
+    warnings: diagnostics.filter((d) => d.severity === 'warning').length,
+    // Exactly `successPayload`'s filter in author.ts — the two doors decide
+    // "what survives a successful write" the same way or they are two dialects.
+    diagnostics: diagnostics.filter((d) => d.severity !== 'error'),
+    summary: summarize(diagnostics)
   };
 }
 
@@ -240,8 +515,19 @@ function stagingProgress(plan: ServerPlan): string {
 
 // ─── Registration ─────────────────────────────────────────────────────────────
 
-export function registerPlanTools(server: McpServer, store: ProjectStore): void {
-  const plans = new Map<string, ServerPlan>();
+export function registerPlanTools(
+  server: McpServer,
+  binding: ProjectBinding,
+  registry: PlanRegistry,
+  examples: ExampleBudget,
+  // VIB-007 M1 — the session's memory of what a render said. Shared with
+  // `render_report` and `validate_project`: a look taken through one door has to
+  // count at the others, or "have you looked?" becomes a per-tool question.
+  ledger: RenderLedger,
+  // AWP-006 — see registerAuthorTools. Optional for the same reason.
+  disclosure?: ToolDisclosure
+): void {
+  const plans = (registry as PlanRegistryInternal).plans;
 
   const mustGetPlan = (planId: string): ServerPlan => {
     const plan = plans.get(planId);
@@ -281,7 +567,8 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
               // clients, and refused below with a reason — see the refusal.
               kind: z.enum(['create', 'update', 'doc', 'provision']),
               target: z.string().describe('Component path ("Pages/Checkout"); for doc, a doc path'),
-              intent: z.string().describe('One or two sentences: what this operation accomplishes')
+              intent: z.string().describe('One or two sentences: what this operation accomplishes'),
+              ...planStructureShape
             })
           )
           .min(1)
@@ -290,8 +577,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
     guarded((args: {
       request: string;
       scroll?: 'page' | 'app';
-      operations: Array<{ kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string }>;
+      operations: Array<
+        { kind: 'create' | 'update' | 'doc' | 'provision'; target: string; intent: string } & PlanStructureInput
+      >;
     }) => {
+      const store = binding.require();
       // AAQ-005 — one vocabulary, an honest capability. The editor's plan model
       // has carried `provision` since AIB-007 and this package imports that very
       // module, so silently rejecting the kind at the schema edge told an agent
@@ -323,13 +613,45 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         // Component targets are normalised to path form ("Pages/Home") so both
         // accepted identifier forms behave identically downstream.
         target: op.kind === 'doc' ? op.target.trim() : toPathForm(op.target.trim()),
-        intent: op.intent.trim()
+        intent: op.intent.trim(),
+        ...structureOf(op)
       }));
       const existing = new Set<string>();
       for (const [key, entry] of Object.entries(store.readRegistry().components)) {
         existing.add(pathToLegacyName(key));
         existing.add(pathToLegacyName(entry.path));
       }
+
+      // LAS-012 §4 / F41 — a create aimed at the untouched skeleton is an
+      // update. `create_project` mints /Pages/Home and this door then rejected
+      // the model for planning it; haiku and qwen each spent a turn on that in
+      // session 6. The create_project result does say the skeleton was made, so
+      // the knowledge was given and dropped — and "structure over gate" says
+      // the door absorbs it rather than charging for the lapse. Only a page
+      // that is still exactly Page + placeholder Text qualifies, so a plan can
+      // never quietly overwrite work someone did.
+      const absorbed: Array<{ id: string; target: string }> = [];
+      for (const op of operations) {
+        if (op.kind !== 'create') continue;
+        const row = store.resolve(op.target);
+        if (!row) continue;
+        // `resolve` answers `{ key, entry }` — NOT a row with `.path`, which is
+        // what `listComponents()` returns and what the first version of this
+        // read. It threw inside the catch below and every plan simply kept its
+        // rejection, silently. The specs in `skeletonCreate.test.ts` are what
+        // caught it; the catch stays for a registry entry whose files are
+        // genuinely unreadable, which is a real state and not this one.
+        let untouched = false;
+        try {
+          untouched = isUntouchedSkeletonPage(store.readComponent(row.entry.path).files.nodes.nodes);
+        } catch {
+          untouched = false;
+        }
+        if (!untouched) continue;
+        op.kind = 'update';
+        absorbed.push({ id: op.id, target: op.target });
+      }
+
       const plan: AuthoringPlan = {
         request: args.request,
         operations,
@@ -359,17 +681,42 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       }
 
       const ordered = orderPlanOperations(operations);
+      const orderedPlan: AuthoringPlan = { ...plan, operations: ordered };
       const id = crypto.randomUUID();
       plans.set(id, {
         id,
-        plan: { ...plan, operations: ordered },
+        plan: orderedPlan,
         staged: new Map(),
         stagedDocs: new Map()
       });
+      // LAS-006 §2 — advice on an accepted plan, at the one moment amending it
+      // is free. Not a refusal: a plan without declared interfaces is legal, and
+      // the primitive-only decision protects the two-node fix from ceremony.
+      const advisories = planAdvisories(orderedPlan);
       return jsonResult({
         planId: id,
         operations: ordered,
         ...(args.scroll ? { scroll: args.scroll } : {}),
+        // LAS-012 §4 / F41. Reported, not silent: the kind an operation ends up
+        // with is not the kind the caller asked for, and a plan that changed
+        // shape without saying so is a surprise waiting for apply_plan.
+        ...(absorbed.length > 0
+          ? {
+              absorbedCreates: absorbed,
+              absorbedNote:
+                `${absorbed.length === 1 ? 'One operation' : `${absorbed.length} operations`} asked to create a ` +
+                'page that already exists as the untouched project skeleton, so it is an update instead. ' +
+                'Stage it the same way — the placeholder content is replaced by whatever you stage.'
+            }
+          : {}),
+        ...(advisories.length > 0
+          ? {
+              advisories,
+              advisoryNote:
+                'The plan is accepted as it stands. These are cheap to fix now and expensive later — call ' +
+                'create_plan again with the amended operations if you want to, then stage against that plan.'
+            }
+          : {}),
         note:
           'Nothing is written yet. Stage every operation with stage_plan_operation (in the order given — ' +
           'creates first, so updates can instantiate them; docs last, so you write them knowing what the ' +
@@ -416,6 +763,7 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         content?: string;
         allow_unknown_types?: boolean;
       }) => {
+        const store = binding.require();
         const serverPlan = mustGetPlan(args.plan_id);
         const operation = serverPlan.plan.operations.find((op) => op.id === args.operation_id);
         if (!operation) {
@@ -447,14 +795,26 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           );
         }
 
-        const reconciled = reconcileHierarchy(ensureIds(args.nodes));
+        // DEF-025 — the baseline moves ahead of the reconcile because "is this
+        // node new?" is a question only the component's current ids can answer,
+        // and a staged UPDATE re-sends the whole graph exactly as
+        // `update_component`'s `set` door does. A create has no baseline and
+        // every node in it is new, which is why the argument is absent there
+        // rather than an empty set passed for symmetry.
+        const legacyName = pathToLegacyName(operation.target);
+        let baseline: ComponentFiles | undefined;
+        if (operation.kind !== 'create') {
+          baseline = store.readComponent(operation.target).files;
+        }
+
+        const reconciled = reconcileHierarchy(
+          normalizeAuthoredNodes(args.nodes, baseline ? nodeIdsOf(baseline) : undefined)
+        );
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
-        const legacyName = pathToLegacyName(operation.target);
         let candidate: ComponentFiles;
-        let baseline: ComponentFiles | undefined;
         if (operation.kind === 'create') {
           candidate = assembleCreateFiles({
             path: operation.target,
@@ -462,15 +822,15 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
             nodes: reconciled.nodes,
             connections: args.connections,
             visualRoots: args.visual_roots,
-            description: args.description
+            description: args.description,
+            isVisualType: projectVisualPredicate(store)
           });
         } else {
-          baseline = store.readComponent(operation.target).files;
-          candidate = assembleSetFiles(baseline, {
-            nodes: reconciled.nodes,
-            connections: args.connections,
-            visualRoots: args.visual_roots
-          });
+          candidate = assembleSetFiles(
+            baseline!,
+            { nodes: reconciled.nodes, connections: args.connections, visualRoots: args.visual_roots },
+            projectVisualPredicate(store)
+          );
         }
 
         // AAQ-011/F12 — same allocation rule as the direct doors, and it has to
@@ -493,7 +853,10 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           throw new ToolError(
             'validation-failed',
             `stage_plan_operation "${operation.target}" rejected — nothing was staged.`,
-            { readable: validation.errors }
+            // LAS-007 — the recipe travels with the refusal. This is the moment
+            // the audit measured a mid-tier model getting stuck for seven turns
+            // beside recipes it never fetched.
+            { readable: validation.errors, ...examplesBlock(examples.attach(validation.blocking)) }
           );
         }
 
@@ -502,6 +865,15 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
           staged: operation.id,
           target: operation.target,
           warnings: validation.warnings,
+          // AWP-006 — staging, not applying, is the right moment: a plan that
+          // stages a Record node has already decided the app needs a backend,
+          // and provision_backend must be called *before* apply so the plan's
+          // components are authored against a bound backend rather than
+          // retrofitted onto one.
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
+          // LAS-002 — the words, not the integer. This is the moment the agent
+          // can still act: the candidate is in memory and nothing is on disk.
+          ...validationBlock(validation.diagnostics, validation.summary),
           ...(deconflicted.remapped.length > 0
             ? { remappedNodeIds: deconflicted.remapped, remapNote: remapNote(deconflicted.remapped) }
             : {}),
@@ -527,10 +899,21 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         skip: z
           .array(z.string())
           .optional()
-          .describe('Operation ids deliberately left out — the explicit partial apply')
+          .describe('Operation ids deliberately left out — the explicit partial apply'),
+        // LAS-005 §4. Default on for anything visual: the turn that just wrote
+        // the page is the turn that can still fix it, and an agent that has to
+        // decide to look is an agent that does not.
+        render: z
+          .enum(['summary', 'off'])
+          .optional()
+          .describe(
+            'summary (forced when the plan wrote anything visual — you may not skip looking) renders and ' +
+              'returns the numbers plus a done/not-done verdict. Call render_report for the screenshots.'
+          )
       }
     },
-    guarded((args: { plan_id: string; skip?: string[] }) => {
+    guarded(async (args: { plan_id: string; skip?: string[]; render?: 'summary' | 'off' }) => {
+      const store = binding.require();
       const serverPlan = mustGetPlan(args.plan_id);
       const skip = new Set(args.skip ?? []);
 
@@ -579,6 +962,11 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
         staged: new Map([...serverPlan.staged].filter(([id]) => !skip.has(id))),
         stagedDocs: new Map([...serverPlan.stagedDocs].filter(([id]) => !skip.has(id)))
       };
+      // LAS-002 — collected across the whole applied SET, because that is what
+      // an apply writes. A caller who staged five components and reads one
+      // aggregate list still needs each entry's `location.component` to know
+      // which of the five it is about; the diagnostics carry it.
+      const surviving: Diagnostic[] = [];
       for (const op of componentOps) {
         const files = serverPlan.staged.get(op.id);
         if (!files) continue;
@@ -588,9 +976,28 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
             'validation-failed',
             `Operation ${op.id} ("${op.target}") no longer validates — the project changed since staging. ` +
               'Nothing was written.',
-            { readable: validation.errors }
+            { readable: validation.errors, ...examplesBlock(examples.attach(validation.blocking)) }
           );
         }
+        surviving.push(...validation.diagnostics);
+      }
+
+      // 🔴 VIB-007 M1 — the one thing a caller may not do is decide not to look.
+      //
+      // Refused **before any write**, and refused rather than ignored: silently
+      // rendering anyway would make the parameter a lie, and honouring it would
+      // leave the whole mechanism one keyword away from off. The environment
+      // escape (`NODEGX_RENDER_DISABLED`) is deliberately left alone — it
+      // belongs to whoever runs the server (CI, a container with no Chrome),
+      // not to the model authoring the page.
+      const visualPlan = componentOps.some((op) => wroteSomethingVisual(serverPlan, op));
+      if (args.render === 'off' && visualPlan && !automaticRenderDisabled()) {
+        throw new ToolError(
+          'invalid-argument',
+          'This plan writes something visual, so render:"off" is refused — nothing was written. A graph is a ' +
+            'claim and a render is evidence, and the turn that wrote the page is the turn that can still fix ' +
+            'it. Re-apply without render:"off" (it takes ~8s and returns the numbers).'
+        );
       }
 
       // Commit: components first, then the docs that record them. Validation
@@ -641,12 +1048,37 @@ export function registerPlanTools(server: McpServer, store: ProjectStore): void 
       }
 
       plans.delete(serverPlan.id);
+
+      // LAS-005 §4 — the loop closed where it costs nothing to close it. The
+      // agent that just applied a plan is told, in the same turn, that its grid
+      // is one column and five images are broken; without this it has to decide
+      // to go and look, and the audit measured that a mid-tier model never does.
+      // Screenshots are deliberately NOT here: they belong to `render_report`,
+      // which the caller reaches for when the numbers say something is wrong.
+      // VIB-007 M1 — the write happened, so whatever the ledger remembered is
+      // now about a project that no longer exists.
+      ledger.invalidate();
+      const wantsRender = args.render !== 'off' && !automaticRenderDisabled() && visualPlan;
+      const rendered = wantsRender ? await renderSummaryFor(store, ledger) : undefined;
+      // The verdict comes from the ledger, not from `rendered`, so the three
+      // ways of not having a verdict — the render was refused for the whole
+      // process, it threw, or it was never wanted — all arrive as the same
+      // honest "nobody has looked at this".
+      const completion = completionPayload(ledger.state(store.projectDir));
+
       return jsonResult({
         applied,
         docs: docsWritten,
         skipped: [...skip],
         ...registrationSummary(registration),
         ...(settingsWritten.length > 0 ? { settings: settingsWritten } : {}),
+        ...validationBlock(surviving, summarize(surviving)),
+        ...(rendered ? { render: rendered.summary } : {}),
+        // 🔴 Above `note`, and `note` no longer says the work is finished. The
+        // plan is applied and discarded — that is a fact about the files, and it
+        // was the last thing in the response, which is how it got read as a
+        // verdict on the page.
+        ...completion,
         note: 'Plan applied and discarded. Re-read components with get_component for fresh revisions.'
       });
     })

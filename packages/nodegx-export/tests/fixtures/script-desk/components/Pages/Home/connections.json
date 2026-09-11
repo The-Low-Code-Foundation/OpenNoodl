@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000071",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "startBtn",
+      "fromProperty": "onClick",
+      "toId": "ticker",
+      "toProperty": "Start"
+    },
+    {
+      "fromId": "stopBtn",
+      "fromProperty": "onClick",
+      "toId": "ticker",
+      "toProperty": "Stop"
+    },
+    {
+      "fromId": "ticker",
+      "fromProperty": "Seconds",
+      "toId": "clock",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "nameConst",
+      "fromProperty": "savedValue",
+      "toId": "greeter",
+      "toProperty": "Name"
+    },
+    {
+      "fromId": "greetBtn",
+      "fromProperty": "onClick",
+      "toId": "greeter",
+      "toProperty": "Greet"
+    },
+    {
+      "fromId": "greeter",
+      "fromProperty": "Greeting",
+      "toId": "greetingText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "greeter",
+      "fromProperty": "Greeted",
+      "toId": "setGreeted",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "yesConst",
+      "fromProperty": "savedValue",
+      "toId": "setGreeted",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "greetedVar",
+      "fromProperty": "value",
+      "toId": "greetedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "baseConst",
+      "fromProperty": "savedValue",
+      "toId": "doubler",
+      "toProperty": "Base"
+    },
+    {
+      "fromId": "doubler",
+      "fromProperty": "Double",
+      "toId": "doubleText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "baseConst",
+      "fromProperty": "savedValue",
+      "toId": "bumper",
+      "toProperty": "Count"
+    },
+    {
+      "fromId": "bumpBtn",
+      "fromProperty": "onClick",
+      "toId": "bumper",
+      "toProperty": "Bump"
+    },
+    {
+      "fromId": "bumper",
+      "fromProperty": "Label",
+      "toId": "labelText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "NodeGX Parts",
+  "id": "nodegx-parts-0001",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "settings": {
+    "htmlTitle": "NodeGX Parts"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2020",
+    "lib": ["ES2020"],
+    // Strict like nodegx-core, not like the root program: this package is new code with no legacy
+    // to accommodate, and the IR types are a contract other tasks build against.
+    "strict": true,
+    "noImplicitAny": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node", "jest"]
+  },
+  "include": ["src/**/*", "tests/**/*.ts"]
+}

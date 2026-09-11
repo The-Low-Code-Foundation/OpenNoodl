@@ -1,0 +1,389 @@
+{
+ "id": "community-dropzone",
+ "title": "Drag a file onto the page, or click to browse",
+ "description": "A drop target built the way the browser actually requires: a `Javascript2` node adds `dragover`/`drop` listeners to the element on `Node.Signals.DidMount` and removes them on `WillUnmount`, because a listener attached without a matching removal survives the component and fires against a node that is gone. `Component Children` means the drop zone wraps whatever you put inside it rather than dictating its own appearance, and `Open File Picker` gives the same component a click-to-browse path, so one part answers both ways a person supplies a file. \u26a0\ufe0f One wire in the original had to be re-pointed to land here: it named an `Open File Picker` output called `success`, which was real when this was written and is now called `done`.",
+ "demonstrates": [
+  "Boolean",
+  "Component Children",
+  "Component Inputs",
+  "Component Outputs",
+  "Condition",
+  "Group",
+  "Javascript2",
+  "Open File Picker",
+  "States",
+  "String"
+ ],
+ "components": [
+  {
+   "name": "Dropzone",
+   "nodes": [
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "File",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "General",
+       "index": 0
+      },
+      {
+       "name": "Path",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 1
+      },
+      {
+       "name": "Name",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 2
+      },
+      {
+       "name": "Size in bytes",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 3
+      },
+      {
+       "name": "Type",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 4
+      },
+      {
+       "name": "Success",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Events",
+       "index": 5
+      }
+     ]
+    },
+    {
+     "id": "group",
+     "type": "Group",
+     "children": [
+      "component-children"
+     ]
+    },
+    {
+     "id": "component-children",
+     "type": "Component Children",
+     "parent": "group"
+    },
+    {
+     "id": "setup-file-drop-events",
+     "type": "Javascript2",
+     "label": "Setup File Drop Events",
+     "parameters": {
+      "code": "Script.Inputs = {\r\n    element: {\r\n        type: '*',\r\n        displayName: 'Element',\r\n        group: 'Setup',\r\n    },\r\n    acceptedFileTypes: {\r\n        type: 'string',\r\n        displayName: 'Accepted file types',\r\n        group: 'Data'\r\n    }\r\n}\r\n\r\nScript.Outputs = {\r\n    File: '*',\r\n    Path: 'string',\r\n    Name: 'string',\r\n    SizeInBytes: 'string',\r\n    Type: 'string',\r\n    Success: 'signal',\r\n    // When the mouse is dragging a file over the dropzone\r\n    OnDragOver: 'signal',\r\n    OnDragLeave: 'signal',\r\n}\r\n\r\n// Cache all the acceptedFileTypes in an array as regex expressions\r\nlet acceptedFileTypesPatterns = []\r\n\r\nScript.Setters.acceptedFileTypes = function (value) {\r\n    // Clear the array of patterns,\r\n    // since we will update them now.\r\n    acceptedFileTypesPatterns = [];\r\n\r\n    // If the value is empty we exit early,\r\n    // and we already emptied the patterns array.\r\n    if (!value) {\r\n        return;\r\n    }\r\n\r\n    // We are following the same pattern as the \"Open File Picker\" node.\r\n    // https://docs.noodl.net/2.6/nodes/utilities/open-file-picker/\r\n    const patterns = value.split(\",\");\r\n    if (patterns.length > 0) {\r\n        patterns.forEach((pattern) => {\r\n            const regExp = \".*\" + pattern.replace('*', '.*') + \".*\";\r\n            acceptedFileTypesPatterns.push(new RegExp(regExp));\r\n        });\r\n    }\r\n}\r\n\r\n/**\r\n * This will be called when a file is dropped.\r\n */\r\nfunction onFileDrop(eventObject) {\r\n    // Get the dropped file\r\n    const file = eventObject.dataTransfer.items[0];\r\n    if (!file) {\r\n        throw new Error('file is empty.');\r\n    }\r\n\r\n    // Update all the outputs\r\n    const fileObject = file.getAsFile();\r\n    Script.Outputs.File = fileObject;\r\n    Script.Outputs.Path = fileObject.path;\r\n    Script.Outputs.Name = fileObject.name;\r\n    Script.Outputs.SizeInBytes = fileObject.size;\r\n    Script.Outputs.Type = fileObject.type;\r\n\r\n    Script.Outputs.Success();\r\n}\r\n\r\n/**\r\n * \"\"\"\r\n * A listener for the dragenter and dragover events are used to\r\n * indicate valid drop targets, that is,\r\n * places where dragged items may be dropped.\r\n * \r\n * Most areas of a web page or application are not valid places\r\n * to drop data. Thus, the default handling of these events\r\n * is not to allow a drop.\r\n * \"\"\"\r\n */\r\nfunction onDragOver(eventObject) {\r\n    // Check if the user is dragging any files\r\n    if (eventObject.dataTransfer.items.length === 0) {\r\n        // Early exit; the user is not dragging any files.\r\n        return;\r\n    }\r\n\r\n    // Check if we have any custom patterns\r\n    if (acceptedFileTypesPatterns.length === 0) {\r\n        // if not then exit early allowing any pattern\r\n        return eventObject.preventDefault();\r\n    }\r\n\r\n    const file = eventObject.dataTransfer.items[0];\r\n    if (file.kind !== 'file') {\r\n        // Early exit; we don't know what this file is.\r\n        return;\r\n    }\r\n\r\n    for (var i = 0; i < acceptedFileTypesPatterns.length; i++) {\r\n        const pattern = acceptedFileTypesPatterns[i];\r\n\r\n        // Check if this file matches any of the patterns\r\n        if (pattern.test(file.type)) {\r\n            // Mark that this file can be dropped\r\n            eventObject.preventDefault();\r\n\r\n            // Indicate that the mouse is dragging over.\r\n            Script.Outputs.OnDragOver();\r\n\r\n            // Early exit; since we know the file is okay.\r\n            return;\r\n        }\r\n    }\r\n}\r\n\r\nfunction onDragLeave(_eventObject) {\r\n    Script.Outputs.OnDragLeave();\r\n}\r\n\r\n/**\r\n * \r\n */\r\nNode.Signals.DidMount = function () {\r\n    const element = Script.Inputs.element;\r\n    if (!element) throw new Error(\"Element is not connected.\");\r\n\r\n    const domElement = element.getDOMElement();\r\n    domElement.addEventListener('drop', onFileDrop, false);\r\n    domElement.addEventListener('dragover', onDragOver, false);\r\n    domElement.addEventListener('dragleave', onDragLeave, false);\r\n}\r\n\r\n/**\r\n * We need to remove the event listeners on the element,\r\n * to not leave anything behind.\r\n */\r\nNode.Signals.WillUnmount = function () {\r\n    const element = Script.Inputs.element;\r\n    if (!element) throw new Error(\"Element is not connected.\");\r\n\r\n    const domElement = element.getDOMElement();\r\n    if (domElement) {\r\n        domElement.removeEventListener('drop', onFileDrop, false);\r\n        domElement.removeEventListener('dragover', onDragOver, false);\r\n        domElement.removeEventListener('dragleave', onDragLeave, false);\r\n    }\r\n}\r\n"
+     }
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "Open File Picker",
+       "plug": "output",
+       "type": "*",
+       "index": 2,
+       "group": "Actions"
+      },
+      {
+       "name": "Enable File Picker on click",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Dropzone",
+       "index": 0
+      },
+      {
+       "name": "Accepted file types",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Dropzone",
+       "index": 1
+      }
+     ]
+    },
+    {
+     "id": "condition",
+     "type": "Condition"
+    },
+    {
+     "id": "boolean",
+     "type": "Boolean",
+     "parameters": {
+      "value": true
+     }
+    },
+    {
+     "id": "open-file-picker",
+     "type": "Open File Picker"
+    },
+    {
+     "id": "string",
+     "type": "String"
+    },
+    {
+     "id": "component-outputs-2",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "File",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "General",
+       "index": 0
+      },
+      {
+       "name": "Path",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 1
+      },
+      {
+       "name": "Name",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 2
+      },
+      {
+       "name": "Size in bytes",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 3
+      },
+      {
+       "name": "Type",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Metadata",
+       "index": 4
+      },
+      {
+       "name": "Success",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "group": "Events",
+       "index": 5
+      }
+     ]
+    },
+    {
+     "id": "states",
+     "type": "States",
+     "parameters": {
+      "states": "Default,Hover",
+      "values": "Variant",
+      "type-Variant": "string",
+      "value-Default-Variant": "File Dropzone - Default",
+      "value-Hover-Variant": "File Dropzone - Hover"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "group",
+     "fromProperty": "this",
+     "toId": "setup-file-drop-events",
+     "toProperty": "element"
+    },
+    {
+     "fromId": "group",
+     "fromProperty": "didMount",
+     "toId": "setup-file-drop-events",
+     "toProperty": "DidMount"
+    },
+    {
+     "fromId": "group",
+     "fromProperty": "willUnmount",
+     "toId": "setup-file-drop-events",
+     "toProperty": "WillUnmount"
+    },
+    {
+     "fromId": "group",
+     "fromProperty": "onClick",
+     "toId": "condition",
+     "toProperty": "eval"
+    },
+    {
+     "fromId": "boolean",
+     "fromProperty": "savedValue",
+     "toId": "condition",
+     "toProperty": "condition"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Enable File Picker on click",
+     "toId": "boolean",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Open File Picker",
+     "toId": "open-file-picker",
+     "toProperty": "open"
+    },
+    {
+     "fromId": "condition",
+     "fromProperty": "ontrue",
+     "toId": "open-file-picker",
+     "toProperty": "open"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Accepted file types",
+     "toId": "string",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "string",
+     "fromProperty": "savedValue",
+     "toId": "open-file-picker",
+     "toProperty": "acceptedFileTypes"
+    },
+    {
+     "fromId": "string",
+     "fromProperty": "savedValue",
+     "toId": "setup-file-drop-events",
+     "toProperty": "acceptedFileTypes"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "path",
+     "toId": "component-outputs",
+     "toProperty": "Path"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "name",
+     "toId": "component-outputs",
+     "toProperty": "Name"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "sizeInBytes",
+     "toId": "component-outputs",
+     "toProperty": "Size in bytes"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "type",
+     "toId": "component-outputs",
+     "toProperty": "Type"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "done",
+     "toId": "component-outputs",
+     "toProperty": "Success"
+    },
+    {
+     "fromId": "open-file-picker",
+     "fromProperty": "file",
+     "toId": "component-outputs",
+     "toProperty": "File"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "File",
+     "toId": "component-outputs-2",
+     "toProperty": "File"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "Path",
+     "toId": "component-outputs-2",
+     "toProperty": "Path"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "Name",
+     "toId": "component-outputs-2",
+     "toProperty": "Name"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "SizeInBytes",
+     "toId": "component-outputs-2",
+     "toProperty": "Size in bytes"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "Type",
+     "toId": "component-outputs-2",
+     "toProperty": "Type"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "Success",
+     "toId": "component-outputs-2",
+     "toProperty": "Success"
+    },
+    {
+     "fromId": "states",
+     "fromProperty": "Variant",
+     "toId": "group",
+     "toProperty": "variant"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "OnDragOver",
+     "toId": "states",
+     "toProperty": "to-Hover"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "OnDragLeave",
+     "toId": "states",
+     "toProperty": "to-Default"
+    },
+    {
+     "fromId": "setup-file-drop-events",
+     "fromProperty": "Success",
+     "toId": "states",
+     "toProperty": "to-Default"
+    }
+   ]
+  }
+ ]
+}

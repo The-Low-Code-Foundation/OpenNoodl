@@ -10,6 +10,16 @@
  *   2. injectIntoHtml snapshot: the deploy/preview HTML injection is
  *      deterministic; unifying the two scanners must not change its output. The
  *      golden lives at tests/testfs/module-inject/expected-inject.snapshot.txt.
+ *
+ *      🔴 This golden is the ONLY cross-package check that the editor's injector
+ *      still agrees with `@nodegx/module-inject`, so do not regenerate it to make
+ *      a red run green — the diff is the finding. It went red for four hours on
+ *      2026-08-16 because CN-003 (`f7da52d1`) added the
+ *      `window.__noodl_module_name` marker to the injector and updated only that
+ *      package's own tests; three sessions then relayed a second-hand story that
+ *      it was `test:ci` contamination, and it reproduced in plain Node on
+ *      committed code every time. Re-record it only alongside the commit that
+ *      changed the injector on purpose, and say which behaviour moved.
  *   3. Loud manifest validation: a malformed manifest surfaces a warning naming
  *      the module, never a silent skip.
  *

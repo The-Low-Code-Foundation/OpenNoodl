@@ -1,0 +1,657 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "61b8f921-c382-570e-8457-d136aa219d4c",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-12",
+      "type": "Page",
+      "label": "Your account",
+      "children": [
+        "pageShell-10"
+      ],
+      "parameters": {
+        "title": "Your account",
+        "urlPath": "account"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-10",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-12",
+      "children": [
+        "pageBody-10",
+        "pageFooter-11"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-10",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-10",
+      "children": [
+        "chrome-8",
+        "pageMain-10"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-10",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-10",
+      "children": [
+        "headBand-8",
+        "ground-11"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "chrome-8",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "pageBody-10",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "headBand-8",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageMain-10",
+      "children": [
+        "headBandShell-8"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "headBandShell-8",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand-8",
+      "children": [
+        "headingHeadRow-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 340,
+      "y": 760
+    },
+    {
+      "id": "pageFooter-11",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-10",
+      "x": 160,
+      "y": 2800
+    },
+    {
+      "id": "ground-11",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-10",
+      "children": [
+        "panel",
+        "savedOn",
+        "savedOff",
+        "failed-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "headingHeadRow-6",
+      "type": "Group",
+      "label": "Heading — the head, badged",
+      "parent": "headBandShell-8",
+      "children": [
+        "headingBadge-6",
+        "headingHead-9"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "headingBadge-6",
+      "type": "Group",
+      "label": "Heading — the badge",
+      "parent": "headingHeadRow-6",
+      "children": [
+        "headingGlyph-6"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "headingGlyph-6",
+      "type": "net.noodl.visual.icon",
+      "label": "Heading — the glyph",
+      "parent": "headingBadge-6",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-mail",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 520,
+      "y": 1120
+    },
+    {
+      "id": "headingHead-9",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "headingHeadRow-6",
+      "children": [
+        "headingEyebrow-9",
+        "heading-10"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1240
+    },
+    {
+      "id": "headingEyebrow-9",
+      "type": "Text",
+      "label": "Your account",
+      "parent": "headingHead-9",
+      "parameters": {
+        "text": "Your account",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "heading-10",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-9",
+      "parameters": {
+        "text": "Emails",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h1"
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "panel",
+      "type": "Group",
+      "label": "The setting",
+      "parent": "ground-11",
+      "children": [
+        "box",
+        "note"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "box",
+      "type": "net.noodl.controls.checkbox",
+      "label": "Email me",
+      "parent": "panel",
+      "parameters": {
+        "checked": false,
+        "width": {
+          "value": 24,
+          "unit": "px"
+        },
+        "height": {
+          "value": 24,
+          "unit": "px"
+        },
+        "useLabel": true,
+        "label": "Email me when a moderator posts an announcement",
+        "labelSpacing": {
+          "value": 12,
+          "unit": "px"
+        },
+        "labelfontSize": "var(--text-base)",
+        "labelcolor": "var(--foreground)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "note",
+      "type": "Text",
+      "label": "The two things to know first",
+      "parent": "panel",
+      "parameters": {
+        "text": "Off unless you turn it on. Every email has a link that turns it off again, and you do not need to sign in to use it.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 400,
+      "y": 1960
+    },
+    {
+      "id": "savedOn",
+      "type": "Group",
+      "label": "Saved, on",
+      "parent": "ground-11",
+      "children": [
+        "savedOnText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false,
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "savedOnText",
+      "type": "Text",
+      "label": "Saved, on — the words",
+      "parent": "savedOn",
+      "parameters": {
+        "text": "Saved. We will email you when something is posted.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "savedOff",
+      "type": "Group",
+      "label": "Saved, off",
+      "parent": "ground-11",
+      "children": [
+        "savedOffText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false,
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 2320
+    },
+    {
+      "id": "savedOffText",
+      "type": "Text",
+      "label": "Saved, off — the words",
+      "parent": "savedOff",
+      "parameters": {
+        "text": "Saved. We will not email you about new announcements.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 400,
+      "y": 2440
+    },
+    {
+      "id": "failed-2",
+      "type": "Group",
+      "label": "Could not save",
+      "parent": "ground-11",
+      "children": [
+        "failedText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false,
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 2560
+    },
+    {
+      "id": "failedText",
+      "type": "Text",
+      "label": "Could not save — the words",
+      "parent": "failed-2",
+      "parameters": {
+        "text": "That could not be saved just now. Please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2680
+    },
+    {
+      "id": "read-4",
+      "type": "CloudFunction2",
+      "label": "myNotifySetting",
+      "parameters": {
+        "function": "myNotifySetting"
+      },
+      "x": 770,
+      "y": 1840
+    },
+    {
+      "id": "write",
+      "type": "CloudFunction2",
+      "label": "setNotifySetting",
+      "parameters": {
+        "function": "setNotifySetting"
+      },
+      "x": 770,
+      "y": 1960
+    },
+    {
+      "id": "which",
+      "type": "JavaScriptFunction",
+      "label": "Which confirmation to show",
+      "parameters": {
+        "runOnChange-in-notify": false,
+        "functionScript": "// The one sentence is chosen by what was SAVED, not by what was\n// clicked: an untick that the server refused must not draw \"saved\".\nif (Inputs.notify === undefined) return;\nif (Inputs.notify === true) {\n  Outputs.on();\n  return;\n}\nOutputs.off();"
+      },
+      "ports": [
+        {
+          "name": "out-on",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-off",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-notify",
+          "displayName": "notify",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        }
+      ],
+      "x": 770,
+      "y": 2800
+    },
+    {
+      "id": "onGate",
+      "type": "Condition",
+      "label": "Show \"on\"",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2080
+    },
+    {
+      "id": "offGate",
+      "type": "Condition",
+      "label": "Show \"off\"",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2320
+    },
+    {
+      "id": "failGate",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2560
+    },
+    {
+      "id": "onClear",
+      "type": "Condition",
+      "label": "Put \"on\" away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2200
+    },
+    {
+      "id": "offClear",
+      "type": "Condition",
+      "label": "Put \"off\" away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2440
+    },
+    {
+      "id": "failClear",
+      "type": "Condition",
+      "label": "Put the refusal away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2680
+    },
+    {
+      "id": "toLanding-6",
+      "type": "RouterNavigate",
+      "label": "Send a refused reader to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 770,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "page-12"
+  ]
+}

@@ -79,6 +79,18 @@
   color: var(--theme-color-fg-default-contrast);
 }
 
+/* SIG-002 §2: the same box, but carrying an answer rather than a shrug. It is
+   two sentences where the empty state is three words, so it needs the leading;
+   it does not need a colour of its own — this is information, not a warning. */
+.noPortsAnswer {
+  font-size: 12px;
+  line-height: 1.5;
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
 .listElement {
   font-size: 12px;
   padding: 5px 10px 5px 10px;
@@ -98,12 +110,20 @@
     }
   }
 
-  &.disabled {
-    color: var(--theme-color-fg-disabled);
+  /* SIG-001. What was here — `--theme-color-fg-disabled` (which resolves to
+     `fg-muted`) plus `opacity: 0.3` on the glyph — was written for a state that
+     had never rendered, because `ConnectionBar` deleted every disabled port
+     before a `PortItem` could be built from it. So it had also never been
+     measured, and it does not survive being looked at: BLD-005 swept opacity on
+     composited pixels and found no value that both reads as dimmed and clears
+     AA in light mode, which is the binding theme.
 
-    .signalIcon {
-      opacity: 0.3;
-    }
+     A row nobody can read is not a quieter row — it is the absence this task
+     exists to fix, with extra steps. The de-emphasis is therefore structural
+     (these rows sit inside `.refusedBlock`, on their own recessed surface,
+     behind a caret) and the text itself stays legible. */
+  &.disabled {
+    color: var(--theme-color-fg-default-contrast);
   }
 
   &.selected {
@@ -127,6 +147,108 @@
 
   .signalIcon {
     opacity: 0.75;
+  }
+
+  /* ⚠️ The row opacity above compounds with anything set on the text colour, so
+     a refused row dimmed *twice* (0.7 here, `fg-disabled` there) was never going
+     to be readable. Refused rows opt out of both: they are already set apart by
+     the surface they sit on. */
+  &.disabled {
+    opacity: 1;
+
+    .signalIcon {
+      opacity: 1;
+    }
+  }
+
+  /* A refused row that has somewhere to send you is a control. One that does not
+     is a statement, and must not offer a pointer it cannot honour. */
+  &.redirects {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+      color: var(--theme-color-fg-highlight);
+    }
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   SIG-001 — the refused ports.
+
+   The whole block sits on `--theme-color-bg-2` rather than on the node's own
+   colour, which is what the enabled rows above paint on. That is deliberate and
+   it is the reason the contrast here is arguable at all: the node base colour is
+   a saturated per-category value that changes with the node under the pointer,
+   so text on it can only be measured node by node. `bg-2` is a token pair, it is
+   what `.docsPopup` in this same file already pairs with `fg-highlight`, and it
+   reads as *recessed* in both themes — which is the de-emphasis, done with a
+   surface instead of with opacity.
+   ----------------------------------------------------------------------------- */
+.refusedBlock {
+  background-color: var(--theme-color-bg-2);
+  border-left: 2px solid var(--theme-color-border-default);
+}
+
+/* The whole summary is the toggle, so there is one hit target and one meaning.
+   A `<button>` rather than a `<div>` because it is a control: it is reachable by
+   keyboard and it announces its own expanded state, which a div with an onClick
+   does neither of. ⚠️ It needs `width: 100%` and a reset — a UA button is
+   centred, has a border and does not inherit the font. */
+.refusedSummary {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 5px 10px 5px 6px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  color: var(--theme-color-fg-default-contrast);
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+.refusedCaret {
+  margin-right: 4px;
+}
+
+.refusedSummaryText {
+  flex-grow: 1;
+}
+
+/* SIG-001 §3+§5: the reason and the offer, on the popup's face, above the list.
+   A beginner who does not know a tooltip is there will not rest on a greyed row
+   for a second to find out why it is grey — which is the entire failure this
+   task is fixing, because the sentence that would have explained it has been
+   computed all along.
+
+   It sits on `bg-2` for the same reason `.refusedBlock` does: the node's own
+   base colour is a per-category value that changes under the pointer, and text
+   on it can only be measured node by node. */
+.refusedOffer {
+  padding: 8px 10px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &.actionable {
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--theme-color-bg-3);
+    }
   }
 }
 
@@ -157,6 +279,14 @@
 .docsPopup {
   position: fixed;
   width: 300px;
+  /* ⚠️ `DocsPopup.tsx` says this box never takes the mouse, and relies on it: it
+     is drawn in the pointer's path, and taking the mouse would fire `mouseout`
+     on the port row and close the box the author is reading. It got that for
+     free from `.popup-layer { pointer-events: none }` — but `.popup-layer
+     .has-popouts` re-enables them, and the connection popup is *always* a
+     popout, so the one surface this explainer is used on is the one where the
+     assumption does not hold. Said here, where the box is. */
+  pointer-events: none;
   overflow-y: auto;
   background-color: var(--theme-color-bg-2);
   border: 1px solid var(--theme-color-border-default);
@@ -177,6 +307,102 @@
 
 .docsBody {
   color: var(--theme-color-fg-default-contrast);
+}
+
+/* SIG-004 — the type sentence, above the port's own words.
+   Separated from them by a rule and a hair of space, ⚠️ not by opacity: it is
+   the *more* load-bearing of the two for a beginner (the port's prose assumes
+   you already know what a signal is) and dimming it would invert that. */
+.docsTypeSentence {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+/* The rule is a separator, not a bottom edge: with no port prose under it there
+   is nothing to separate from. */
+.docsTypeSentence:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* FB-019 scope (3) — the wire *shape*, between what a wire is and what the port
+   means. Same rule-and-spacing treatment as `.docsTypeSentence` because it sits
+   in the same band of the popup; the `<strong>` lead is the shape itself, which
+   is the part a reader is scanning for. */
+.docsWireShape {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-family: var(--font-family-code);
+  }
+}
+
+.docsWireShape:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* SIG-001 §4: why the port refused, in the builder's terms — the line that was
+   written, styled around, and never rendered until `ConnectionBar` began deriving
+   it. It leads the pair, so it takes the rule and the larger size; the sentence
+   below it is the footnote, not this.
+
+   ⚠️ Colours are `.docsTypeSentence`'s, deliberately reused rather than chosen.
+   That pairing already ships in this popup, on this surface, measured in both
+   themes — and `tokens:css` would pass a token that merely *exists*, so picking a
+   new one here would be an unmeasured claim. Same reason it is not red: phase 23
+   keeps red for danger, and a refused connection is a category being explained,
+   not a mistake the builder made. */
+.docsRefusalHeadline {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--theme-color-border-default);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--theme-color-fg-default-contrast);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+/* SIG-001 §4: `getConnectionStatus`'s own sentence, which names both port types.
+   It is the *detail* — last, and set smaller — because it is written for someone
+   already debugging port types, and it was the only thing the editor was
+   prepared to say to a beginner. ⚠️ Not red: phase 23 keeps red for danger, and
+   a refused connection is a category the editor is explaining, not a mistake the
+   builder made. */
+.docsRefusal {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--theme-color-border-default);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--theme-color-fg-default-contrast);
+}
+
+/* The headline already drew the rule for both. Two borders 6px apart would read
+   as two unrelated notes rather than one answer with its detail under it. */
+.docsRefusalHeadline + .docsRefusal {
+  margin-top: 2px;
+  padding-top: 0;
+  border-top: none;
 }
 
 .docsEnumValue {
@@ -203,4 +429,15 @@
 
 .searchIcon {
   opacity: 0.6;
+}
+
+/* SIG-001: the heading inside the folded refused block. The ports there come
+   from many groups and their own headings are gone, so this is the only thing
+   that says where a port lives. Quieter than a real group header because it is
+   inside a collapsed block, not a peer of one. */
+.refusedGroupLabel {
+  padding: 4px 10px 2px 12px;
+  font-size: 11px;
+  color: var(--theme-color-fg-default-contrast);
+  opacity: 1;
 }

@@ -35,16 +35,22 @@ import type { ProjectBackendFacts } from '../../../validation';
 import type { SchemaCollectionInfo } from './backendSchema';
 import { formatDiagnosticLine } from '../../../validation';
 import { currentProjectDocs } from '../../ProjectDocs/currentDocs';
+import { currentUserProfile } from '../../UserProfile/currentProfile';
 import type { ProjectDocsContent } from '../../ProjectDocs/docsText';
 import type { StyleVocabulary } from '../../StyleTokensModel/StyleVocabulary';
 import type { StyleTokenRecord } from '../../StyleTokensModel/TokenCategories';
 import { AiClient } from '../client';
-import { withTurnDeadline } from '../client/turnDeadline';
+import { asText } from '../client/content';
+import type { AiContentBlock } from '../client/content';
+import { openingTurnWithMedia } from '../thread/references';
+import type { AiRoleRequestFields } from '../client/roles';
+import { TURN_STALL_MS, withTurnDeadline } from '../client/turnDeadline';
 import type {
   AiChatRequest,
   AiChatResponse,
   AiEffort,
   AiMessage,
+  AiRole,
   AiStreamCallbacks,
   AiToolCall,
   AiToolDefinition
@@ -62,7 +68,8 @@ import {
   styleAdvisoryMessage,
   systemPrompt,
   updateUserMessage,
-  type OpeningTurn
+  type OpeningTurn,
+  type PromptProjectDocs
 } from './prompts/authoring';
 import { styleLintCandidate } from './styleLint';
 import {
@@ -119,12 +126,26 @@ export interface AuthoringSessionOptions {
    */
   effort?: AiEffort;
   /**
+   * LAS-009: which per-role model selection this session runs under. Defaults
+   * to the `act` role — authoring *is* acting. Pass `'global'` to opt out and
+   * follow the main model, which is what the measurement harness wants when it
+   * is sweeping one variable at a time.
+   */
+  role?: AiRole | 'global';
+  /**
    * AIX-009: the project's `docs/` bodies. Defaults to whatever the editor's
    * installed docs provider holds for the open project, so the panel needs no
    * wiring; pass `{}` explicitly to author as if the project had no docs (the
    * A/B control arm, and every headless spec that does not care).
    */
   projectDocs?: ProjectDocsContent;
+  /**
+   * FIX-021 slice B: the raw text of `<userData>/PREFERENCES.md`. Defaults to
+   * whatever the editor's installed profile provider holds, so the panel needs
+   * no wiring; pass `''` explicitly to author as if the user had written
+   * nothing (the A/B control arm, and every headless spec that does not care).
+   */
+  userProfile?: string;
   /**
    * ERG-002 §2: libraries registered via the Libraries settings section
    * (Settings → Libraries → `registerLibrary`), handed to the agent so "use
@@ -143,6 +164,26 @@ export interface AuthoringSessionOptions {
    * for standalone sessions, whose behaviour is unchanged byte for byte.
    */
   planContext?: string;
+  /**
+   * BLD-011: the composer's attachments, rendered by `renderReferenceBlock`.
+   *
+   * Rides the same route as `planContext` and lands in the same half of the
+   * opening turn, which is what keeps Rule 6 true by construction rather than
+   * by review: an attachment can never reach the cache-stable prefix, because
+   * the only function that places it puts it after every stable byte. Absent
+   * for a turn that carried none, whose bytes are unchanged.
+   */
+  references?: string;
+  /**
+   * BLD-013/014: the attachments that must stay blocks — a dropped PDF, a
+   * pasted mock, a capture of the running app.
+   *
+   * 🔴 Placed by {@link openingTurnWithMedia}, **after** the cache-stable half,
+   * never before it. Read that function before changing anything here: media
+   * ahead of the breakpoint re-bills the whole AIX-007 prefix on every send and
+   * says nothing on screen about having done so.
+   */
+  referenceMedia?: AiContentBlock[];
   /**
    * AAQ-001: component names the plan in flight is going to create, which do
    * not exist yet.
@@ -188,7 +229,22 @@ export interface AuthoringSessionOptions {
    * script an unresponsive provider set it to a few milliseconds.
    */
   stallMs?: number;
+  /**
+   * BLD-004: the clock the activity stamps and the heartbeat are read from.
+   * Injected for the same reason `PlanRun` injects one — a spec that pins "this
+   * run took 14s" must not depend on how fast the machine running it is.
+   */
+  now?: () => number;
 }
+
+/**
+ * BLD-004 — the fastest the heartbeat pushes a render, in milliseconds.
+ *
+ * Half a second, against a pulse keyed on two: the published timestamp can be at
+ * most this stale, which is well inside the window the UI compares it against,
+ * and a streaming turn re-renders twice a second instead of once per token.
+ */
+const HEARTBEAT_PUBLISH_MS = 500;
 
 const DEFAULT_MAX_TURNS = 12;
 const DEFAULT_MAX_SUBMITS = 4;
@@ -228,16 +284,66 @@ export class AuthoringStateError extends Error {
 
 // ── Published state ───────────────────────────────────────────────────────────
 
+/**
+ * When an entry was recorded, as `Date.now()` on the session's clock.
+ *
+ * BLD-004 / BLD-002 C8. Optional, and that is the whole design: an activity a
+ * producer did not stamp yields **no duration** rather than a fabricated one,
+ * so the failure mode of forgetting to stamp is a summary that says less, never
+ * one that says something untrue. `turns.ts` synthesises activities for the
+ * plan run and the docs pass out of state that has no per-entry clock, and
+ * inventing timestamps there to satisfy a required field is precisely the lie
+ * this exists to avoid.
+ */
+interface Stamped {
+  at?: number;
+}
+
 /** One entry in the feed the panel renders. */
 export type AuthoringActivity =
   /** The user's request or refinement instruction, verbatim. */
-  | { kind: 'user'; text: string }
+  | ({ kind: 'user'; text: string } & Stamped)
   /** Assistant prose; `text` grows while `streaming` is set. */
-  | { kind: 'assistant'; text: string; streaming?: boolean }
+  | ({ kind: 'assistant'; text: string; streaming?: boolean } & Stamped)
+  /**
+   * BLD-004 — the model's own reasoning, on its own channel.
+   *
+   * ⚠️ **Never merged into `assistant`.** The authoring loop parses the
+   * assistant text with XML templates, so reasoning reaching that string
+   * corrupts authoring output rather than just a panel — see the adapter note
+   * in `providers/anthropic.ts`. A separate kind is what makes the two paths
+   * impossible to confuse at the type level as well as at the call site.
+   */
+  | ({
+      kind: 'reasoning';
+      text: string;
+      streaming?: boolean;
+      /**
+       * When the most recent reasoning delta landed.
+       *
+       * ⚠️ **Found by driving, not by reasoning about it.** With only `at`, the
+       * strip counted from the first delta to *now* for as long as the turn was
+       * open — so a provider that thought for one second and then hung showed
+       * "Thinking… 3m 2s", a clock outliving the thing it measures, which is the
+       * exact failure this task exists to remove reappearing inside the fix for
+       * it. `streaming` cannot stand in: a hung turn is neither finished nor
+       * cancelled, so nothing clears it until the deadline fires three minutes
+       * later.
+       */
+      lastAt?: number;
+    } & Stamped)
   /** A context read, as a one-line event. */
-  | { kind: 'tool'; label: string }
+  | ({ kind: 'tool'; label: string } & Stamped)
   /** A submission and the gate's verdict. */
-  | { kind: 'submit'; ok: boolean; errorLines: string[] };
+  | ({ kind: 'submit'; ok: boolean; errorLines: string[] } & Stamped)
+  /**
+   * BLD-002 reserves the shape; **BLD-008 is what produces one.** Nothing pushes
+   * a `question` yet, and that is deliberate — the treatment (the loudest thing
+   * in the thread) and the collapse rule (a question can never be absorbed into
+   * a run) are decided here so that BLD-008 adds an author, not a fifth opinion
+   * about how a question should look.
+   */
+  | ({ kind: 'question'; text: string } & Stamped);
 
 export type AuthoringPhase = 'idle' | 'working' | 'staged' | 'exhausted' | 'error' | 'cancelled';
 
@@ -279,6 +385,23 @@ export interface AuthoringSessionState {
    * so a refinement re-renders and a re-render does not.
    */
   stagedRevision: number;
+  /**
+   * BLD-004 — when the last event arrived from the provider's stream, including
+   * the pings and keepalives that carry nothing a user would see.
+   *
+   * This is the *only* signal that separates a model thinking hard from a
+   * provider that has stopped answering, and `busy` is not it: `busy` stays true
+   * for the whole stall window. Undefined while a turn is open means nothing has
+   * been heard yet, which is a real answer and not a missing one — see
+   * `thread/liveness.ts`, which is the only thing allowed to interpret it.
+   */
+  lastActivityAt?: number;
+  /**
+   * The silence window this session's turns are bounded by, republished so the
+   * panel can say how long is left before one ends itself. Undefined when the
+   * caller disabled the deadline.
+   */
+  stallMs?: number;
   error?: string;
 }
 
@@ -286,7 +409,10 @@ type Listener = (state: AuthoringSessionState) => void;
 
 function readToolLabel(call: AiToolCall): string {
   if (call.name === GET_PROJECT_DOC) {
-    return projectDocToolLabel();
+    // BLD-007: the label names the doc that was actually asked for — with more
+    // than one fetchable doc, "Read project doc docs/ARCHITECTURE.md" on every
+    // row would be a feed that lies.
+    return projectDocToolLabel(call);
   }
   if (call.name === GET_NODE_TYPES) {
     const names = Array.isArray(call.arguments.typeNames) ? call.arguments.typeNames.map(String) : [];
@@ -314,8 +440,14 @@ export class AuthoringSession {
   private readonly maxTurns: number;
   private readonly maxSubmits: number;
   private readonly effort: AiEffort;
+  /** LAS-009: the resolved role's request fields, decided once at session start. */
+  private readonly roleFields: AiRoleRequestFields;
   /** AIX-011: rendered sibling-intent block when part of a plan, else undefined. */
   private readonly planContext?: string;
+  /** BLD-011 — the attachment block, or undefined for a turn that carried none. */
+  private readonly references?: string;
+  /** BLD-013/014 — see `AuthoringSessionOptions.referenceMedia`. */
+  private readonly referenceMedia?: AiContentBlock[];
   /** AAQ-001: components the plan will create, so a link to one is not "unresolved". */
   private readonly plannedComponents?: readonly string[];
   /** AIB-007: what the project can offer a Cloud Data or User node. Undefined ⇒ do not check. */
@@ -357,6 +489,23 @@ export class AuthoringSession {
   private lastError?: string;
   private currentAbort?: AbortController;
 
+  // BLD-004 — the heartbeat.
+  private readonly now: () => number;
+  /** The silence window, republished on state so the panel can name the deadline. */
+  private readonly stallMs?: number;
+  private lastActivityAt?: number;
+  /**
+   * When the heartbeat last pushed a render.
+   *
+   * ⚠️ `onActivity` fires **per stream event**, which on a streaming provider is
+   * per token — publishing on each would re-render the whole thread hundreds of
+   * times a turn to move one number the UI only reads once a second anyway. The
+   * timestamp itself is always current; only the notification is throttled, so
+   * the worst a reader sees is a value {@link HEARTBEAT_PUBLISH_MS} stale, which
+   * is an order of magnitude inside the two seconds the pulse is keyed on.
+   */
+  private lastHeartbeatPublish = 0;
+
   private constructor(
     private readonly graph: ExplainGraph,
     private readonly request: AuthoringRequest,
@@ -370,15 +519,28 @@ export class AuthoringSession {
     this.chat = withTurnDeadline(options.chat ?? ((req, callbacks) => AiClient.chatStream(req, callbacks ?? {})), {
       stallMs: options.stallMs
     });
+    this.now = options.now ?? (() => Date.now());
+    // `TURN_STALL_MS` is the wrapper's own default, and the panel needs the same
+    // number to say when a silent turn ends. Resolved here rather than left
+    // undefined so the sentence cannot disagree with the deadline that produces
+    // it — BLD-007's one-fact-two-sources trap, at a smaller size.
+    this.stallMs = options.stallMs ?? TURN_STALL_MS;
     this.maxTurns = options.maxTurns ?? DEFAULT_MAX_TURNS;
     this.maxSubmits = options.maxSubmits ?? DEFAULT_MAX_SUBMITS;
     this.effort = options.effort ?? AUTHORING_EFFORT;
+    // LAS-009: resolved once, here, and carried for the life of the session.
+    this.roleFields = AiClient.roleRequestFields(options.role ?? 'act');
     this.planContext = options.planContext;
+    this.references = options.references;
+    this.referenceMedia = options.referenceMedia?.length ? options.referenceMedia : undefined;
     this.plannedComponents = options.plannedComponents;
     this.backend = options.backend;
     this.styleGuidance = options.styleGuidance ?? true;
     this.styleTokenRecords = options.styleTokenRecords;
     const projectDocs = options.projectDocs ?? currentProjectDocs();
+    // FIX-021 slice B: same seam as the docs above — resolved once, here, so a
+    // session constructed in the headless harness simply has no profile.
+    const userProfile = options.userProfile ?? currentUserProfile();
     // `null` means "deliberately without"; `undefined` means "use the project's".
     const importReport = options.importReport === null ? undefined : options.importReport ?? currentImportReport();
     this.context = new AuthoringContextBuilder(
@@ -389,8 +551,16 @@ export class AuthoringSession {
       projectDocs,
       options.libraries,
       importReport,
-      options.collections
+      options.collections,
+      userProfile
     );
+    // BLD-007: one docs snapshot, taken once and held for the session — the
+    // context keeps it as `context.docs`, which is what `dispatchProjectDocTool`
+    // resolves against. The tool list below is part of the cached prefix, so the
+    // set the dispatcher answers from must be the set this definition
+    // advertised; sharing the one snapshot is what makes that true by
+    // construction rather than by two call sites agreeing. A doc added
+    // mid-session is picked up by the next one, deliberately.
     this.docTools = projectDocTools(projectDocs);
     this.legacyName = pathToLegacyName(request.componentPath);
   }
@@ -486,6 +656,8 @@ export class AuthoringSession {
           }
         : undefined,
       stagedRevision: this.stagedRevision,
+      lastActivityAt: this.lastActivityAt,
+      stallMs: this.stallMs,
       error: this.lastError
     };
   }
@@ -501,16 +673,49 @@ export class AuthoringSession {
   }
 
   /**
+   * BLD-004 — append an activity, stamped.
+   *
+   * Every `activities.push` in this class goes through here, which is the only
+   * reason the stamps are reliable: `at` is optional on the type (a producer
+   * without a clock must be able to omit it), so a push that bypassed this would
+   * compile, render, and silently cost the run its duration. One door.
+   */
+  private record<T extends AuthoringActivity>(activity: T): T {
+    activity.at = this.now();
+    this.activities.push(activity);
+    return activity;
+  }
+
+  /**
+   * BLD-004 — the provider's stream said something. See `lastHeartbeatPublish`
+   * for why this does not publish every time.
+   */
+  private touchActivity(): void {
+    const at = this.now();
+    this.lastActivityAt = at;
+    if (at - this.lastHeartbeatPublish < HEARTBEAT_PUBLISH_MS) return;
+    this.lastHeartbeatPublish = at;
+    this.publish();
+  }
+
+  /**
    * AIX-009: the two default-injected docs, charged through the context builder
    * so their cost lands in the same log as every other handout. Called once, at
    * the opening turn — these blocks live in the cache-stable half of the prompt
    * and must not vary within a session.
    */
-  private promptDocs(): { conventions?: string; brief?: string } | undefined {
+  private promptDocs(): PromptProjectDocs | undefined {
     const conventions = this.context.projectConventions();
     const brief = this.context.projectBrief();
-    if (!conventions && !brief) return undefined;
-    return { ...(conventions ? { conventions } : {}), ...(brief ? { brief } : {}) };
+    // BLD-007: docs the user declared `inject: always` on. A project that
+    // declared none gets an empty list and the pre-BLD-007 bytes.
+    const always = this.context.projectAlwaysDocs();
+    if (!conventions && !brief && always.length === 0) return undefined;
+    return {
+      ...(conventions ? { conventions } : {}),
+      ...(brief ? { brief } : {}),
+      ...(always.length > 0 ? { always } : {})
+    };
   }
 
   /** Abort the in-flight round. A previously staged candidate survives. */
@@ -556,7 +761,10 @@ export class AuthoringSession {
         planBlock,
         this.context.libraryOverview(),
         this.context.importReport(),
-        this.context.backendSchema()
+        this.context.backendSchema(),
+        this.references,
+        this.context.nodeKitOverview(),
+        this.context.globalPreferences()
       );
     } else {
       opening = initialUserMessage(
@@ -568,16 +776,26 @@ export class AuthoringSession {
         planBlock,
         this.context.libraryOverview(),
         this.context.importReport(),
-        this.context.backendSchema()
+        this.context.backendSchema(),
+        this.references,
+        this.context.nodeKitOverview(),
+        this.context.globalPreferences()
       );
     }
     this.messages.push(
       { role: 'system', content: systemPrompt(this.mode) },
       // The boundary rides along so a caching provider can put a breakpoint at
       // the end of the reference blocks. Nothing else reads it.
-      { role: 'user', content: opening.content, cacheBoundary: opening.cacheBoundary }
+      //
+      // BLD-013/014 — a turn carrying media cannot use a character offset at
+      // all (`assertCacheBoundary` throws on the pairing, deliberately), so it
+      // expresses the same boundary as a marked block. A turn with no media is
+      // byte-identical to before either task existed.
+      this.referenceMedia
+        ? { role: 'user' as const, content: openingTurnWithMedia(opening.content, opening.cacheBoundary, this.referenceMedia) }
+        : { role: 'user' as const, content: opening.content, cacheBoundary: opening.cacheBoundary }
     );
-    this.activities.push({ kind: 'user', text: this.request.description });
+    this.record({ kind: 'user', text: this.request.description });
     return this.round(options);
   }
 
@@ -593,7 +811,7 @@ export class AuthoringSession {
       throw new AuthoringStateError('The refinement has no instruction — nothing to change.');
     }
     this.messages.push({ role: 'user', content: refineMessage(instruction) });
-    this.activities.push({ kind: 'user', text: instruction });
+    this.record({ kind: 'user', text: instruction });
     return this.round(options);
   }
 
@@ -631,12 +849,25 @@ export class AuthoringSession {
 
       // The assistant's prose for this turn, streamed into the feed as it arrives.
       const prose: AuthoringActivity = { kind: 'assistant', text: '', streaming: true };
-      this.activities.push(prose);
+      this.record(prose);
       this.publish();
 
       // Submissions streaming this turn, scanned for complete nodes as the
       // arguments arrive so the preview canvas can render the forming graph.
       const scanners = new Map<number, PartialPayloadScanner>();
+
+      /**
+       * BLD-004 — this turn's reasoning, created on the first delta and not
+       * before.
+       *
+       * Lazy, unlike `prose`, because most turns have none: only some models
+       * think, and a `reasoning` entry pushed eagerly would put an empty strip
+       * above every turn of every Ollama run. It is spliced in *ahead* of the
+       * prose, because that is the order the two actually happened in —
+       * reasoning precedes the answer it produced, and appending it would show
+       * the thinking below the sentence it led to.
+       */
+      let reasoning: AuthoringActivity | undefined;
 
       let response: AiChatResponse;
       try {
@@ -650,11 +881,27 @@ export class AuthoringSession {
             tools: this.docTools.length > 0 ? [...AUTHORING_TOOLS, ...this.docTools] : AUTHORING_TOOLS,
             toolChoice: 'auto',
             effort: this.effort,
+            ...this.roleFields,
             abortController
           },
           {
             onText: (fullText) => {
               prose.text = fullText;
+              this.publish();
+            },
+            // BLD-004. The heartbeat: fires for every event on the wire,
+            // including the pings that carry nothing. Throttled inside.
+            onActivity: () => this.touchActivity(),
+            onReasoning: (fullReasoning) => {
+              if (!reasoning) reasoning = this.insertReasoningBefore(prose);
+              // ⚠️ `reasoning.text`, and the narrowing is what keeps it honest:
+              // assigning to `prose.text` here compiles and would feed the
+              // model's private thinking to the XML templates.
+              if (reasoning.kind === 'reasoning') {
+                reasoning.text = fullReasoning;
+                // The clock's upper bound, moved by the deltas themselves.
+                reasoning.lastAt = this.now();
+              }
               this.publish();
             },
             onToolCallPartial: (partial) => {
@@ -688,6 +935,11 @@ export class AuthoringSession {
         // A cancelled turn keeps whatever prose arrived; an empty bubble helps no one.
         prose.streaming = false;
         if (!prose.text.trim()) this.dropActivity(prose);
+        // BLD-004: the same rule for the reasoning strip, and it matters more
+        // here — a strip left `streaming` on a turn that died keeps a clock
+        // running against a stream that has stopped, which is the exact lie
+        // this task exists to remove.
+        this.settleReasoning(reasoning);
         if (abortController.signal.aborted) return this.finish('cancelled');
         // AIB-009 F11: a stalled turn reaches here, and `signal.aborted` is
         // deliberately false — `withTurnDeadline` aborts its own inner
@@ -724,6 +976,7 @@ export class AuthoringSession {
       prose.text = response.text ?? prose.text;
       prose.streaming = false;
       if (!prose.text.trim()) this.dropActivity(prose);
+      this.settleReasoning(reasoning);
 
       // A cancelled turn is not a model that declined to act. Providers that
       // swallow the abort and resolve with a partial response (the Anthropic
@@ -755,7 +1008,7 @@ export class AuthoringSession {
           scanners.clear();
           roundSubmits++;
           this.rounds.push({ attempt: this.rounds.length + 1, ok: result.ok, errorLines: result.errorLines });
-          this.activities.push({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
+          this.record({ kind: 'submit', ok: result.ok, errorLines: result.errorLines });
           if (result.ok) {
             // The candidate passed the gate — keep it staged no matter what
             // happens next, so a failed style-improvement pass never loses it.
@@ -793,7 +1046,7 @@ export class AuthoringSession {
             return this.finish('exhausted');
           }
         } else {
-          this.activities.push({ kind: 'tool', label: readToolLabel(call) });
+          this.record({ kind: 'tool', label: readToolLabel(call) });
           this.messages.push({
             role: 'tool',
             toolCallId: call.id,
@@ -812,6 +1065,35 @@ export class AuthoringSession {
   private dropActivity(activity: AuthoringActivity): void {
     const index = this.activities.indexOf(activity);
     if (index !== -1) this.activities.splice(index, 1);
+  }
+
+  /**
+   * BLD-004 — put this turn's reasoning strip immediately before its prose.
+   *
+   * Stamped like everything else, but spliced rather than appended (see the
+   * declaration of `reasoning` in the loop for why the position matters). Falls
+   * back to appending if the anchor has already been dropped — a cancelled turn
+   * removes its empty prose, and losing the reasoning to that race would delete
+   * the only record of what the model was doing when it was cancelled.
+   */
+  /**
+   * BLD-004 — the turn is over, so the reasoning strip stops claiming to be
+   * live, and an empty one is removed rather than shown as a thing that thought
+   * about nothing.
+   */
+  private settleReasoning(reasoning: AuthoringActivity | undefined): void {
+    if (!reasoning || reasoning.kind !== 'reasoning') return;
+    reasoning.streaming = false;
+    if (!reasoning.text.trim()) this.dropActivity(reasoning);
+  }
+
+  private insertReasoningBefore(anchor: AuthoringActivity): AuthoringActivity {
+    const at = this.now();
+    const entry: AuthoringActivity = { kind: 'reasoning', text: '', streaming: true, at, lastAt: at };
+    const index = this.activities.indexOf(anchor);
+    if (index === -1) this.activities.push(entry);
+    else this.activities.splice(index, 0, entry);
+    return entry;
   }
 
   /**
@@ -834,7 +1116,12 @@ export class AuthoringSession {
   private finish(status: AuthoringStatus, files?: ComponentFiles, error?: string): AuthoringOutcome {
     this.lastStatus = status;
     this.lastError = error;
-    const transcriptChars = this.messages.reduce((sum, m) => sum + m.content.length, 0);
+    // BLD-012: `.length` on the widened content type is the block *count* when
+    // a turn carries blocks, not its character count — and both branches
+    // typecheck, so nothing but this comment stops it silently under-reporting
+    // a multimodal transcript by three orders of magnitude. `asText` measures
+    // what actually went on the wire, image twins included.
+    const transcriptChars = this.messages.reduce((sum, m) => sum + asText(m.content).length, 0);
     const metrics: AuthoringMetrics = {
       turns: this.turns,
       usageByTurn: [...this.usageByTurn],
@@ -872,7 +1159,11 @@ export class AuthoringSession {
     // authoring run to a `TypeError` costs the user every turn paid for so far.
     let candidate;
     try {
-      candidate = buildCandidate(this.request, payload, undefined, this.baseFiles);
+      // FIX-014: the fifth argument feeds the layout pass — gaps filled,
+      // collisions separated, model-positioned nodes never moved.
+      candidate = buildCandidate(this.request, payload, undefined, this.baseFiles, (t) =>
+        this.context.isVisualType(t)
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {

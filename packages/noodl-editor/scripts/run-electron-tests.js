@@ -13,8 +13,70 @@
 const path = require('path');
 const child_process = require('child_process');
 
+const fs = require('fs');
+
 const EDITOR_ROOT = path.join(__dirname, '..');
 const args = process.argv.slice(2);
+
+// GAT-001: tests/test-results.json is the readout, and a stale copy from an
+// earlier run reads exactly like a fresh one (a session has already been fooled
+// by that once). Delete it before the run so absent is unambiguous, and record
+// when we started so "fresh" is checkable afterwards.
+const RESULTS_PATH = path.join(EDITOR_ROOT, 'tests', 'test-results.json');
+const RUN_STARTED_AT = Date.now();
+try {
+  fs.rmSync(RESULTS_PATH, { force: true });
+} catch (err) {
+  console.error(`[test-runner] Could not delete stale ${RESULTS_PATH}: ${err.message}`);
+  process.exit(1);
+}
+
+/**
+ * The trust boundary (GAT-001). On 2026-08-12 an Electron test run graded 2,620
+ * of 2,702 specs, wrote no summary and no JSON, and exited 0 — through a path
+ * nobody has identified. test.js now carries an in-process guard, but only this
+ * side can cover mechanisms that kill or skip the guard itself: exit 0 is
+ * believed if and only if a results file written AFTER this run started exists.
+ */
+function verifyAndExit(code) {
+  let stat = null;
+  try {
+    stat = fs.statSync(RESULTS_PATH);
+  } catch (_absent) {
+    // stat stays null.
+  }
+  const fresh = stat && stat.mtimeMs >= RUN_STARTED_AT;
+
+  if (fresh) {
+    try {
+      const results = JSON.parse(fs.readFileSync(RESULTS_PATH, 'utf-8'));
+      console.log(
+        `[test-runner] ${results.totalCount} specs, ${results.failedCount} failures` +
+          (results.seed != null ? `, seed ${results.seed}` : '') +
+          (results.gitHead ? `, HEAD ${String(results.gitHead).slice(0, 8)}` : '')
+      );
+      console.log(`[test-runner] Readout: ${RESULTS_PATH}`);
+    } catch (err) {
+      console.error(`[test-runner] Results file exists but is unreadable: ${err.message}`);
+      process.exit(1);
+    }
+    process.exit(code);
+  }
+
+  // No fresh results: whatever the exit code claims, nothing was measured.
+  if (stat) {
+    console.error('[test-runner] BUG: a stale test-results.json survived the pre-run delete.');
+  }
+  if (code === 0) {
+    console.error('[test-runner] Electron exited 0 but wrote no fresh test-results.json.');
+    console.error('[test-runner] A run that grades nothing must not pass. This is the silent-zero-exit');
+    console.error('[test-runner] defect (GAT-001) — investigate the log tail, do not re-run and hope.');
+    process.exit(1);
+  }
+  console.error('[test-runner] No results were reported (see the harness message above for which kind');
+  console.error('[test-runner] of nothing happened: timeout, renderer crash, closed window, or unknown).');
+  process.exit(code);
+}
 
 const env = { ...process.env };
 // The whole point of this launcher — see header.
@@ -97,5 +159,5 @@ child.on('close', (code, signal) => {
     console.error(`[test-runner] Electron terminated with signal ${signal}`);
     process.exit(1);
   }
-  process.exit(code === null ? 1 : code);
+  verifyAndExit(code === null ? 1 : code);
 });

@@ -1,0 +1,317 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f8ca965b-332b-453f-9f0c-51d0cd65c832",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "homePage",
+      "type": "Page",
+      "label": "Reading Shelf",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Reading Shelf",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "homePage",
+      "children": [
+        "heading",
+        "titleInput",
+        "addButton",
+        "shelfList",
+        "clearButton",
+        "statusText",
+        "wishButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Reading Shelf",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "titleInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Title",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Book title",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "addButton",
+      "type": "net.noodl.controls.button",
+      "label": "Add book",
+      "parent": "shell",
+      "parameters": {
+        "label": "Add book",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "shelfList",
+      "type": "For Each",
+      "label": "One row per favourite",
+      "parent": "shell",
+      "parameters": {
+        "template": "/Components/BookRow"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "clearButton",
+      "type": "net.noodl.controls.button",
+      "label": "Clear shelf",
+      "parent": "shell",
+      "parameters": {
+        "label": "Clear the shelf",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "titleVar",
+      "type": "Variable2",
+      "label": "bookTitle variable",
+      "parameters": {
+        "name": "bookTitle"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "makeBook",
+      "type": "NewModel",
+      "label": "Make book",
+      "parameters": {
+        "properties": "title,shelf",
+        "prop-shelf": "favourite",
+        "type-title": "string",
+        "type-shelf": "string"
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "insertBook",
+      "type": "CollectionInsert",
+      "label": "Insert book",
+      "parameters": {
+        "collectionId": "books"
+      },
+      "x": 410,
+      "y": 1000
+    },
+    {
+      "id": "booksArray",
+      "type": "Collection2",
+      "label": "Books array",
+      "parameters": {
+        "collectionId": "books"
+      },
+      "x": 410,
+      "y": 1120
+    },
+    {
+      "id": "favouritesOnly",
+      "type": "Filter Collection",
+      "label": "Favourites only",
+      "parameters": {
+        "filterFilter": "shelf",
+        "filterFilterOp-shelf": "eq",
+        "filterFilterValue-shelf": "favourite",
+        "filterSort": "title",
+        "filterSort-title": "ascending"
+      },
+      "x": 410,
+      "y": 1240
+    },
+    {
+      "id": "toRow",
+      "type": "Map Collection",
+      "label": "To row",
+      "parameters": {
+        "mapScript": "map({\n  title: 'title',\n  badge: 'shelf'\n})\n"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "clearShelf",
+      "type": "CollectionClear",
+      "label": "Clear shelf",
+      "parameters": {
+        "collectionId": "books"
+      },
+      "x": 410,
+      "y": 760
+    },
+    {
+      "id": "clearedVar",
+      "type": "Set Variable",
+      "label": "Say it emptied",
+      "parameters": {
+        "name": "lastAction"
+      },
+      "x": 410,
+      "y": 1360
+    },
+    {
+      "id": "emptyVar",
+      "type": "Set Variable",
+      "label": "Say it was empty",
+      "parameters": {
+        "name": "lastAction"
+      },
+      "x": 410,
+      "y": 1480
+    },
+    {
+      "id": "clearedText",
+      "type": "Variable2",
+      "label": "lastAction variable",
+      "parameters": {
+        "name": "lastAction"
+      },
+      "x": 410,
+      "y": 880
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "clearedLabel",
+      "type": "String",
+      "label": "Emptied wording",
+      "parameters": {
+        "value": "Emptied the shelf."
+      },
+      "x": 410,
+      "y": 1600
+    },
+    {
+      "id": "emptyLabel",
+      "type": "String",
+      "label": "Already-empty wording",
+      "parameters": {
+        "value": "The shelf was already empty."
+      },
+      "x": 410,
+      "y": 1720
+    },
+    {
+      "id": "wishButton",
+      "type": "net.noodl.controls.button",
+      "label": "Add to wishlist",
+      "parent": "shell",
+      "parameters": {
+        "label": "Add to wishlist",
+        "backgroundColor": "var(--muted)",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "makeWish",
+      "type": "NewModel",
+      "label": "Make wishlist book",
+      "parameters": {
+        "properties": "title,shelf",
+        "prop-shelf": "wishlist",
+        "type-title": "string",
+        "type-shelf": "string"
+      },
+      "x": 410,
+      "y": 1840
+    },
+    {
+      "id": "insertWish",
+      "type": "CollectionInsert",
+      "label": "Insert wishlist book",
+      "parameters": {
+        "collectionId": "books"
+      },
+      "x": 410,
+      "y": 1960
+    }
+  ],
+  "visualRoots": [
+    "homePage"
+  ]
+}

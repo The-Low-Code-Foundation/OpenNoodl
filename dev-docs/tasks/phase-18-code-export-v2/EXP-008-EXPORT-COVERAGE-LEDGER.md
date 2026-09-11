@@ -1,0 +1,131 @@
+# EXP-008 — The export coverage ledger and its gate
+
+**Status:** Built (2026-08-27, session 8) · **picker ratchet added 2026-08-28, session 32**
+**Artifacts:** `packages/nodegx-export/coverage-ledger.json` · `scripts/export-ledger/check.js`
+(`export-ledger:check`) · `scripts/export-ledger/picker-coverage.js` (`export-ledger:picker`) —
+both in the PR workflow's `node-catalog` job
+
+---
+
+## 🔴 Read this first: the gate was not enough, and the audit below is not the metric
+
+This task shipped a gate that forces every catalog node to be **classified**. It works, and it has
+never let an unclassified node through. But `deferred` + a one-sentence exemption is a valid
+classification, so the gate permits unlimited drift as long as each step is written down — and
+that is exactly what happened. **101 of 175 types are `deferred`, and 96 of them carry the same
+auto-generated sentence: *"pre-gate backlog — classified by the 2026-08-27 coverage audit"*.**
+A gate whose escape hatch is used 96 times is recording drift, not preventing it.
+
+Worse, the audit in §"The audit that sized it" below is a **corpus instance-coverage** number, and
+sessions 20–31 used it to choose what to build. It is not fit for that (README §*What went
+wrong*): it is weighted by ~40 old drive fixtures, 83% of its remaining complaints are one
+unplaced third-party Noodl prefab, and it cannot see a node those projects never used.
+
+**The metric is now picker coverage**, ratcheted:
+
+```
+npm run export-ledger:picker      # CI: fails on a fall, and on a rise that does not raise the floor
+node scripts/export-ledger/picker-coverage.js
+```
+
+> **51 of 127 placeable nodes export (40.2%)** — 2026-08-28
+
+`pickerCoverageFloor` in the ledger is the ratchet. The corpus audit stays as a **regression
+detector** and is genuinely good at that; the historical numbers below are kept as a record of
+what was measured when, not as a target.
+
+## What this is
+
+Every node type in the catalog carries a classification for code export, and CI refuses a
+catalog that contains an unclassified type. The point is contributor-facing: the catalog is
+already CI-enforced (`catalog:check` regenerates it from the live node registries), so **a new
+frontend node cannot reach the editor's picker without either a deterministic translation in
+`packages/nodegx-export` or an explicit exemption sentence in the ledger** — and the exemption
+lands in the PR diff, in front of review. Silent export gaps are the one thing the gate forbids.
+
+Statuses:
+
+| status | meaning | requires |
+|---|---|---|
+| `translated` | `packages/nodegx-export` emits real code for it | `note` saying what it becomes |
+| `stubbed` | emitted as a typed stub by design (the backend seam) | `exemption` |
+| `deferred` | no translation yet | `exemption` — one sentence saying why shipping without one is acceptable |
+| `backend-only` | catalog `availableIn` is exactly `['cloud']` | nothing; enforced both directions |
+
+The check also fails on: a ledger entry naming no catalog type (renames/removals), duplicate
+entries, a browser-capable node filed `backend-only`, and a `catalogFormatVersion` mismatch.
+The gate was verified the way phase-67 taught (`build-the-caller`): known-good passes, and four
+hand-made mutants — new unclassified browser node, deleted exemption, misfiled backend-only,
+removed catalog node — each fail with the intended message.
+
+## The audit that sized it (2026-08-27)
+
+Method: run `parseProject` + `planProject` over the real project corpus (42 projects on this
+machine, 29 distinct graphs after deduping drive-copies, 2,826 nodes) and tally dispositions
+per node type. Script preserved in the session scratchpad (`coverage-audit.ts`).
+
+**66% of nodes translated at the session-8 audit.** Range 43%–100%; Puppy test 3 83%, ecommerce
+example 93%, the Cheer fixture 100%. Catalog-level then: 28 types translated, 1 stubbed
+(DbCollection2), 15 backend-only, 131 deferred. Roughly half of all deferred *nodes* were
+collateral — ordinary Text/Group/Button inside a component that failed to plan for one of the
+reasons below.
+
+**Re-measured 2026-08-27 (session 9), after the visual-generator wave
+(EXP-002-VISUALS-TARGET-OUTPUT.md): 82% of nodes translate — 2,194 of 2,689 across 28 distinct
+graphs.** Columns and Icon leave the gap list entirely (they were #1 with their collateral);
+the icon/columns-heavy UIs that read 43% now read 64–65%, the ecommerce example 98%, Puppy
+test 3 83%→83% (its gap is Component Outputs). Catalog-level now: 41 translated, 118 deferred.
+The residual control deferrals are wire-fed state (`checked`/`value` over wires — 15 nodes),
+which is the component-state slice's territory, not a visual gap.
+
+The ranked gap list (deferred node counts from the corpus, direct + collateral where large):
+
+1. ~~**Missing visual generators**~~ — **done, session 9**: `net.noodl.visual.columns`,
+   `net.noodl.visual.icon`, `net.noodl.controls.range`, `net.noodl.controls.checkbox`,
+   `Options`, `Radio Button` (+ Group), `Video`, `Circle` all translate;
+   see EXP-002-VISUALS-TARGET-OUTPUT.md for what defers (wire-fed structure, masonry,
+   inline icons, custom marks).
+2. **Component Outputs** (69, plus ~60 deferred component instances downstream) — the other
+   half of the component interface.
+3. **Popups** — `NavigationShowPopup`/`ClosePopup` (64 + collateral). Needs a design decision
+   on paper first (modal state), like Switch.
+4. **The JS-code nodes** — `JavaScriptFunction` (68), `Javascript2` (11), `Expression` (10):
+   EXP-003's territory (AI translation + trace harness), in phase scope.
+5. **Individual logic slices** — `RouterNavigate` from logic-signal triggers (32),
+   `net.noodl.ComponentObject` (28), `Model2` (27, the named next slice), `Logic Builder` (14
+   — its program is structured JSON, generable headlessly (P73), so a *deterministic*
+   translation is feasible; it should not wait for EXP-003), `Static Data` (14), `Counter`
+   (7), `Switch` (5, designed-on-paper slice), Condition-on-change (6), the `String`/`Color`
+   variable nodes (6).
+6. **The backend seam — by design, not a gap**: DbCollection2 → typed stub already;
+   record CRUD, `net.noodl.user.*` session nodes → same stub treatment when they get entries.
+
+Projection: items 1–3 plus the already-planned slices put the corpus around **90–95% of nodes
+fully translated**, the remainder being backend-seam stubs the EXP-004 report will present as
+the designed boundary.
+
+## Scope rulings this file records
+
+- **Backend export is deployment, not codegen** (phase README "Out of Scope", reaffirmed
+  2026-08-27): the self-hostable backend is the Node + SQLite (`node:sqlite`) service in
+  `packages/nodegx-backend`, running cloud-function graphs on the bundled interpreter. The
+  Parse backend is **retired**; backends are `nodegx` (inbuilt) or `external` (Directus-style
+  HTTP APIs). The frontend export talks to either over the same seam nodes.
+- **Cloud function components never enter the frontend export**: `parseProject` skips
+  `components/__cloud__/` and the skip surfaces as one report note
+  (`tests/cloud-components.test.ts`; before session 8 they were walked as browser components).
+- **Kit/prefab nodes are outside the gate**: the ledger covers the core catalog. An unknown
+  kit type defers at plan time with a visible note — that is the designed behaviour, not a
+  gate failure.
+
+## Contributor workflow ("I added a node, CI is red")
+
+1. `npm run catalog:check` failed first? Regenerate: `npm run catalog:generate`.
+2. `export-ledger:check` now names your type. Add one entry to
+   `packages/nodegx-export/coverage-ledger.json`:
+   - Best: write the translation in `packages/nodegx-export` (with tests), mark `translated`
+     with a `note` saying what it becomes.
+   - Acceptable with review: `deferred` + an honest `exemption` sentence. Reviewers should
+     treat a new *visual or interaction* node arriving as `deferred` as a smell — the
+     announcement this phase is building toward is only as true as this file.
+3. Backend-only node (`availableIn: ['cloud']`)? Mark `backend-only` and you're done.

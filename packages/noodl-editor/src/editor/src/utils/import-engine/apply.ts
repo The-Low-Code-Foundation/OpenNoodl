@@ -17,13 +17,18 @@
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { projectFromDirectory } from '@noodl-models/projectmodel.editor';
+import { buildEffectiveTokens, readStoredTokens } from '@noodl-models/StyleTokensModel/ProjectTokenCss';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 
+import { recordKitProvenance } from '../../../../shared/utils/projectmodules';
 import FileSystem from '../filesystem';
 import { applyModelChanges, ImportSource, ImportTarget, PreparedComponent } from './applyModel';
 import { assessImport, writeImportReport } from './legacy/importAssessment';
 import { applyLegacyTransforms } from './legacy/transforms';
 import type { ImportReport } from './legacy/types';
+import { shouldWriteImportReport } from './legacy/verdict';
+import { copyPlannedModules } from './moduleGate';
+import { tokenWarningsFor, type SourceProjectJson } from './tokenGap';
 import type { ImportPlan, ImportResult, ItemPolicy } from './types';
 
 /** The subset of a project component the apply adapters touch. */
@@ -190,13 +195,47 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
           );
         }
 
+        /*
+         * ── ✅ CMP-008: the tokens this project cannot resolve ───────────────
+         *
+         * 🔴 **Here, and before anything is detached.** `applyModelChanges`
+         * removes each imported component from the source model on its way into
+         * the target, so a scan taken after this point would read a project that
+         * has been emptied of the very components it is being asked about.
+         * Same ordering constraint LIB-006's assessment documents above, and for
+         * the same reason.
+         *
+         * 🔴 **In the engine, not in an installer** — the argument CN-017 AC2
+         * makes twenty lines below, applied to a second fact. A one-click prefab
+         * install does NOT open the import flow (`ModuleLibraryModel._install`
+         * returns early when nothing collides), so a warning hosted in
+         * `ImportFlow` would be present in the code and absent on the most
+         * common install. Every route reaches this line.
+         *
+         * ⚠️ **Unconditional, and that is load-bearing.** Export staging IS
+         * exempt — it stages into a throwaway project that defines no tokens,
+         * so every token would read unresolved — but the exemption lives inside
+         * `tokenWarningsFor`, not in an `if` here. A control arm showed why: a
+         * guard at this call site can be switched off with `if (false && …)`
+         * while the import, the call and the spread all still read as present.
+         * One unconditional statement is a property the caller gate can assert.
+         *
+         * It reports; it never refuses. A part whose tokens do not all resolve
+         * still installs, and the result is still a success.
+         */
+        const tokenWarnings = tokenWarningsFor(
+          plan,
+          importProject.toJSON() as SourceProjectJson,
+          new Set(buildEffectiveTokens(readStoredTokens(targetProject)).keys())
+        );
+
         // ── Model changes in one undo group ────────────────────────────────
         const undoGroup = new UndoActionGroup({ label: 'Import' });
         const modelResult = applyModelChanges(plan, makeSource(source), makeTarget(target, undoGroup));
         if (!undoGroup.isEmpty()) UndoQueue.instance.push(undoGroup);
 
         // ── Disk work (NOT undoable — reported separately) ─────────────────
-        const warnings = [...modelResult.warnings, ...assessmentWarnings];
+        const warnings = [...modelResult.warnings, ...assessmentWarnings, ...tokenWarnings];
         const filesCopied: string[] = [];
         const modulesCopied: string[] = [];
 
@@ -207,24 +246,60 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
           else warnings.push(`Failed to copy file "${r.name}".`);
         }
 
+        /*
+         * ── ✅ CN-017 AC2: the one line every import converges on ───────────
+         *
+         * 🔴 **The gate is here, not in the installers.** A module install, a
+         * project import from a downloaded archive and a project import from a
+         * local folder all reach this loop (and so does an export, staging into a
+         * throwaway project); the two URL-sourced ones would each have had to
+         * remember to call a checker, and a fourth route added later would have
+         * been unprotected by default. `plan.origin` is required, so a route that
+         * has not said what it is cannot reach this line at all.
+         *
+         * ⚠️ **Fails closed and says so.** An executable module from a
+         * downloaded origin with no consent record is NOT copied, and the reason
+         * names the module. Silence here would be the CN-015 failure again — a
+         * kit that is simply absent, with nothing anywhere saying why.
+         */
         const modules = plan.modules.filter((m) => active(m.policy));
-        for (const m of modules) {
-          try {
+        const moduleCopy = await copyPlannedModules({
+          // 🔴 The SAME directory the copy reads from, not `plan.sourceDir` —
+          // `projectFromDirectory` may resolve a nested project root, and grading
+          // one folder while copying another would gate the wrong manifests.
+          sourceDir: source._retainedProjectDirectory,
+          moduleNames: modules.map((m) => m.name),
+          origin: plan.origin,
+          at: new Date().toISOString(),
+          copy: (name) =>
             FileSystem.instance.copyRecursiveSync(
-              source._retainedProjectDirectory + '/noodl_modules/' + m.name,
-              target._retainedProjectDirectory + '/noodl_modules/' + m.name
-            );
-            modulesCopied.push(m.name);
-          } catch (err) {
-            warnings.push(`Failed to copy module "${m.name}": ${err instanceof Error ? err.message : String(err)}`);
-          }
+              source._retainedProjectDirectory + '/noodl_modules/' + name,
+              target._retainedProjectDirectory + '/noodl_modules/' + name
+            )
+        });
+        modulesCopied.push(...moduleCopy.copied);
+        warnings.push(...moduleCopy.warnings);
+
+        /*
+         * ⚠️ **After the copies, and only for what actually landed.** Best-effort
+         * for the same reason `writeImportReport` is: the modules are already on
+         * disk and correct, and a failed record must not fail the import.
+         */
+        if (moduleCopy.provenance.length > 0) {
+          const recorded = await recordKitProvenance(target._retainedProjectDirectory, moduleCopy.provenance);
+          if (!recorded.ok) warnings.push(`Could not record where the imported modules came from: ${recorded.message}`);
         }
 
         // ── LIB-006: the report goes into the TARGET project, last ─────────
         // After the disk copies, so a report written into a project whose
         // resources failed to arrive still describes what actually landed.
+        //
+        // LBR-0xx: gated on the SAME predicate as ResultStage's banner. A
+        // proceed verdict (a clean first-party prefab install) writes NO
+        // legacy-salvage files; the report object still travels in the result
+        // for the UI. Repair/rebuild verdicts write both files as before.
         let reportFilesWritten: string[] | undefined;
-        if (legacyReport) {
+        if (legacyReport && shouldWriteImportReport(legacyReport)) {
           const write = await writeImportReport(legacyReport, targetProject);
           reportFilesWritten = write.written;
           warnings.push(...write.warnings);

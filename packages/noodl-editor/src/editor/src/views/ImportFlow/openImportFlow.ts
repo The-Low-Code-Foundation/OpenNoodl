@@ -23,7 +23,7 @@ import { createRoot, Root } from 'react-dom/client';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { apply as applyPlan } from '@noodl-utils/import-engine';
-import type { ImportPlan, ImportResult } from '@noodl-utils/import-engine';
+import type { ImportOrigin, ImportPlan, ImportResult } from '@noodl-utils/import-engine';
 
 import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import { ViewerConnection } from '../../ViewerConnection';
@@ -107,6 +107,12 @@ export interface OpenImportFlowOptions {
   title: string;
   subtitle?: string;
   sourceDir: string;
+  /**
+   * ✅ **CN-017: required.** Where `sourceDir` came from. Threaded onto every
+   * plan the flow builds and read by `apply()`'s module copy loop — an entry
+   * point that has not decided what it is will not compile.
+   */
+  origin: ImportOrigin;
   /** Defaults to the open project. */
   targetProject?: ProjectModel;
   initialSelection?: ImportFlowProps['initialSelection'];
@@ -128,6 +134,7 @@ export async function openImportFlow(options: OpenImportFlowOptions): Promise<Im
       title: options.title,
       subtitle: options.subtitle,
       sourceDir: options.sourceDir,
+      origin: options.origin,
       targetName: target.name || 'your project',
       target: snapshot,
       initialSelection: options.initialSelection,
@@ -163,6 +170,10 @@ export function openExportFlow(options: OpenExportFlowOptions): Promise<ImportRe
     title: options.title,
     subtitle: options.subtitle,
     sourceDir: options.sourceDir,
+    // An export reads the OPEN project and writes a staging copy that becomes a
+    // zip. No download to consent to — and nothing to record, because the record
+    // would ship inside somebody else's archive. See `ImportOrigin`.
+    origin: { kind: 'export-staging' },
     targetName: 'the export',
     target: emptyTargetProject(),
     onApply: options.onExport

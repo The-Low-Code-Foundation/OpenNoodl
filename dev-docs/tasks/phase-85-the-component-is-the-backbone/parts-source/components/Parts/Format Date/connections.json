@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f825325f-c851-4a0c-a197-b5293ac3acee",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "fdIn",
+      "fromProperty": "style",
+      "toId": "fdPick",
+      "toProperty": "in-style"
+    },
+    {
+      "fromId": "fdIn",
+      "fromProperty": "format",
+      "toId": "fdPick",
+      "toProperty": "in-format"
+    },
+    {
+      "fromId": "fdPick",
+      "fromProperty": "out-format",
+      "toId": "fdFormat",
+      "toProperty": "formatString"
+    },
+    {
+      "fromId": "fdIn",
+      "fromProperty": "date",
+      "toId": "fdFormat",
+      "toProperty": "input"
+    },
+    {
+      "fromId": "fdIn",
+      "fromProperty": "locale",
+      "toId": "fdFormat",
+      "toProperty": "locale"
+    },
+    {
+      "fromId": "fdFormat",
+      "fromProperty": "currentValue",
+      "toId": "fdOut",
+      "toProperty": "text"
+    }
+  ]
+}

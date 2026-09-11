@@ -92,6 +92,11 @@
       window.__noodl_modules = [];
       window.Noodl = {
         defineModule: function (m) {
+          // CN-003: adopt the manifest name the injector set just before this
+          // kit's script. Must happen HERE, not in `registerModule` — by the
+          // time the runtime iterates this array the global holds the *last*
+          // kit's name. See @nodegx/module-inject's `buildInjectionTags`.
+          if (m && !m.name && window.__noodl_module_name) m.name = window.__noodl_module_name;
           window.__noodl_modules.push(m);
         },
         deployed: false,

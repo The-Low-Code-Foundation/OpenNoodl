@@ -11,6 +11,7 @@ import { Icon, IconName, IconSize } from '@noodl-core-ui/components/common/Icon'
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { showContextMenuInPopup } from '../../../ShowContextMenuInPopup';
+import { requestBenchMount } from '../../../VisualCanvas/benchRequest';
 import { iconForKind, labelForKind } from '../componentKind';
 import css from '../ComponentsPanel.module.scss';
 import { buildCreateMenuItems, createMenuTitle } from '../createMenu';
@@ -204,6 +205,36 @@ export function ComponentItem({
         label: 'Open',
         onClick: () => onOpen?.(node)
       });
+
+      /**
+       * BEN-004 §6 — the entry the component bench will actually be used
+       * through. It switches the *existing* preview surface to bench mode on
+       * this component; it does not open a panel, because R1 is that there is
+       * one preview surface with a mode and never two of them.
+       *
+       * Not offered for a cloud function: `/#__cloud__/…` executes in the cloud
+       * runtime (WFA-001), and the bench is a browser viewer — mounting one
+       * would fail and read as the component's fault.
+       */
+      if (!component.isCloudFunction) {
+        items.push({
+          /**
+           * FIX-019 14(a) — "in isolation" described the *mechanism*; a user
+           * looking for the surface is looking for the place they work on one
+           * component, and the report's own word for that is the workbench.
+           *
+           * ⚠️ Scoped to this menu item on purpose. Whether "the workbench"
+           * becomes the product word *everywhere* — the surface's own caption,
+           * the docstrings — is a ruling still owed, and sweeping it here would
+           * pre-empt it. The `data-test` ids are untouched either way: live
+           * drive scripts reference them.
+           */
+          label: 'Show in workbench',
+          icon: IconName.PlayCircle,
+          onClick: () => requestBenchMount(component.name)
+        });
+      }
+
       items.push('divider');
 
       // Only show "Make Home" for pages or visual components (not logic/cloud functions)

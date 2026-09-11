@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_kitwidget",
+  "version": 1,
+  "nodes": [
+    { "id": "widget_badge", "type": "demo.kit.Badge", "label": "Standalone Badge", "parameters": { "label": "Hi" } }
+  ]
+}

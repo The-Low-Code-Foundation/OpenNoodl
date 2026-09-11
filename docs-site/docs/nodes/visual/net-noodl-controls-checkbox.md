@@ -56,12 +56,13 @@ Boolean choices the user flips directly: settings, consent, done flags. For one-
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `checked` | Boolean | `false` | Sets whether the box is ticked; setting it from the graph does not fire Changed |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `enabled` | Boolean | `true` | Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing |
 | `height` | Number | `32` | Height of the box |
-| `iconColor` | Color | `#FFFFFF` | Colour of the icon |
+| `iconColor` | Color | `#000000` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
 | `iconImageSource` | Image | — | Image file to show instead of an icon-set glyph |
 | `iconSize` | Number | `16` | Height of the icon |
@@ -71,6 +72,9 @@ Boolean choices the user flips directly: settings, consent, done flags. For one-
 | `labelcolor` | Color | — | Colour of the text itself, not of the element behind it |
 | `labelfontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `labelfontSize` | Number | — | Height of the text, in pixels |
+| `labelfontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `labelfontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `labelfontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `labelletterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `labellineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
 | `labeltextStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -154,7 +158,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | useIcon = true OR useIcon NOT SET | `iconSourceType`, `iconSize` | — |
 | #js (params.useIcon===true \|\| params.useIcon===undefined) && params.iconSourceType === 'image' | `iconImageSource` | — |
 | #js (params.useIcon===true \|\| params.useIcon===undefined) && params.iconSourceType === 'icon' | `iconIconSource`, `iconColor` | — |
-| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
+| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelfontWeight`, `labelfontStyle`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelfontVariantNumeric`, `labelSpacing` | — |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderTopWidth`, `borderTopColor` | — |
@@ -174,7 +178,7 @@ Declared-port-groups: label ports appear when the label is enabled, and each vis
 
 **Repeater item writes back to its own record object**
 
-Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to.
+Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to. The title rides the checkbox's own `label` port (`useLabel` on) rather than a sibling Text, so the words are a real click target that toggles the box.
 
 **Settings form: the standard input controls bound to values**
 

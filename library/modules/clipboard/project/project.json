@@ -1,0 +1,228 @@
+{
+    "name": "Clipboard Module",
+    "components": [
+        {
+            "name": "/Clipboard Demo",
+            "id": "7f2a91c4-33b8-4e1d-9a6f-ab12cd340001",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "b1c0ffee-0002-4bde-8c1a-ab12cd340002",
+                        "fromProperty": "onClick",
+                        "toId": "c11fb0a5-0005-4bde-8c1a-ab12cd340005",
+                        "toProperty": "Copy"
+                    },
+                    {
+                        "fromId": "c11fb0a5-0005-4bde-8c1a-ab12cd340005",
+                        "fromProperty": "Success",
+                        "toId": "57a7e5d0-0006-4bde-8c1a-ab12cd340006",
+                        "toProperty": "to-Copied"
+                    },
+                    {
+                        "fromId": "c11fb0a5-0005-4bde-8c1a-ab12cd340005",
+                        "fromProperty": "Failure",
+                        "toId": "57a7e5d0-0006-4bde-8c1a-ab12cd340006",
+                        "toProperty": "to-Failed"
+                    },
+                    {
+                        "fromId": "57a7e5d0-0006-4bde-8c1a-ab12cd340006",
+                        "fromProperty": "currentState",
+                        "toId": "7e575a75-0003-4bde-8c1a-ab12cd340003",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "c11fb0a5-0005-4bde-8c1a-ab12cd340005",
+                        "fromProperty": "Error",
+                        "toId": "7e6f6f70-0004-4bde-8c1a-ab12cd340004",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "9a0b1c2d-0001-4bde-8c1a-ab12cd340000",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                            "sizeMode": "contentHeight",
+                            "paddingTop": 16,
+                            "paddingBottom": 16,
+                            "paddingLeft": 16,
+                            "paddingRight": 16
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "7e0d0d0d-0000-4bde-8c1a-ab12cd340007",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 60,
+                                "parameters": {
+                                    "text": "Hello from the NodeGX Clipboard module!",
+                                    "color": "var(--foreground)"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "b1c0ffee-0002-4bde-8c1a-ab12cd340002",
+                                "type": "net.noodl.controls.button",
+                                "x": 20,
+                                "y": 130,
+                                "parameters": {
+                                    "label": "Copy to clipboard",
+                                    "backgroundColor": "var(--primary)",
+                                    "color": "var(--primary-foreground)",
+                                    "marginTop": 12
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "7e575a75-0003-4bde-8c1a-ab12cd340003",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 200,
+                                "parameters": {
+                                    "text": "Ready",
+                                    "color": "var(--muted-foreground)",
+                                    "marginTop": 8
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "7e6f6f70-0004-4bde-8c1a-ab12cd340004",
+                                "type": "Text",
+                                "x": 20,
+                                "y": 260,
+                                "parameters": {
+                                    "text": "",
+                                    "color": "var(--destructive)",
+                                    "marginTop": 4
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "c11fb0a5-0005-4bde-8c1a-ab12cd340005",
+                        "type": "nodegx.clipboard",
+                        "x": 420,
+                        "y": 60,
+                        "parameters": {
+                            "Text": "Hello from the NodeGX Clipboard module!"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "57a7e5d0-0006-4bde-8c1a-ab12cd340006",
+                        "type": "States",
+                        "x": 620,
+                        "y": 60,
+                        "parameters": {
+                            "states": "Ready,Copied,Failed",
+                            "currentState": "Ready"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Ready",
+                                "name": "to-Ready",
+                                "group": "Go to state",
+                                "index": 6
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Ready",
+                                "name": "at-Ready",
+                                "group": "Current state",
+                                "index": 7
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Ready",
+                                "name": "reached-Ready",
+                                "group": "Current state",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Copied",
+                                "name": "to-Copied",
+                                "group": "Go to state",
+                                "index": 9
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Copied",
+                                "name": "at-Copied",
+                                "group": "Current state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Copied",
+                                "name": "reached-Copied",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To Failed",
+                                "name": "to-Failed",
+                                "group": "Go to state",
+                                "index": 12
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At Failed",
+                                "name": "at-Failed",
+                                "group": "Current state",
+                                "index": 13
+                            },
+                            {
+                                "plug": "output",
+                                "type": "signal",
+                                "displayName": "Has Reached Failed",
+                                "name": "reached-Failed",
+                                "group": "Current state",
+                                "index": 14
+                            }
+                        ],
+                        "children": []
+                    }
+                ]
+            }
+        }
+    ],
+    "settings": {},
+    "version": "1",
+    "metadata": {}
+}

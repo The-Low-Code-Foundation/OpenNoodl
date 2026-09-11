@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { GitStore } from '@noodl-store/GitStore';
 import Store from 'electron-store';
 import { isEqual } from 'underscore';
@@ -13,10 +12,11 @@ import Model from '../../../shared/model';
 import { detectRuntimeVersion } from '../models/migration/ProjectScanner';
 import { RuntimeVersionInfo } from '../models/migration/types';
 import { projectFromDirectory, unzipIntoDirectory } from '../models/projectmodel.editor';
+import { backfillProjectAgentConfig, installProjectAgentConfig } from '../models/template/installAgentConfig';
+import { createProjectFromTemplate } from '../models/template/createFromTemplate';
 import { installStarterAssets } from '../models/template/starterAssets';
 import { GitHubOAuthService } from '../services/GitHubOAuthService';
 import { isV2FormatEnabled } from '../services/ProjectStructure/featureFlags';
-import FileSystem from './filesystem';
 import { tracker } from './tracker';
 import { guid } from './utils';
 
@@ -133,6 +133,13 @@ export class LocalProjectsModel extends Model {
 
   // Bind to a loaded project, update model when renamed of when the thumbnail is updated
   bindProject(project: ProjectModel) {
+    // FIX-008 B — the one seam every open route crosses. `loadProject` (the launcher rows, the
+    // recents list, a freshly cloned repo) and `_addProject` (a new project, an unzipped one, a
+    // folder opened from disk) both land here, and so does EditorPage's reload — which is why the
+    // backfill sits on this method rather than on any of them. Deliberately not awaited: opening a
+    // project must not wait on a filesystem write it does not need.
+    void this.backfillAgentConfigFor(project);
+
     project
       .off(this)
       .on(
@@ -219,11 +226,85 @@ export class LocalProjectsModel extends Model {
     );
   }
 
+  /**
+   * BST-005 — the two files that tell the *next* agent what this folder is.
+   *
+   * ⚠️ **After the template and never overwriting**, exactly like
+   * `installStarterAssets` beside it: a downloaded template that ships its own
+   * `CLAUDE.md` keeps it, and a template's `.gitignore` is appended to rather
+   * than replaced. Called from both branches because a project made from a
+   * template and one made from the embedded default must carry the same files —
+   * otherwise "why doesn't my agent know about this project?" answers "depends
+   * how you made it", which the user can neither check nor fix.
+   *
+   * Never fatal: it reports instead of throwing. The user asked for a project,
+   * and a project whose agent configuration could not be written is still one.
+   */
+  private async writeAgentConfigFor(projectDirectory: string, projectName: string) {
+    const report = await installProjectAgentConfig({ projectDirectory, projectName });
+    for (const file of report.files) {
+      if (file.outcome === 'skipped') console.warn(`Agent configuration: ${file.path} — ${file.reason}`);
+    }
+  }
+
+  /**
+   * FIX-008 B — give a project that already existed the same two files a new one gets.
+   *
+   * 🔴 **This writes into a folder the user merely opened**, which reverses BST-005's deliberate
+   * create-only posture (ruled 2026-08-14). The case for it is the measurement: 43 of 44 projects on
+   * the reporter's disk had no `.mcp.json`, so every one of them opened in Claude Code showing only
+   * the user-scope servers — including one hard-wired to somebody else's project, which is the
+   * "bound to a different project" half of report 5. Both files are machine-local and git-ignored,
+   * and neither is ever overwritten.
+   *
+   * ⚠️ **It can modify a tracked `.gitignore`.** Writing `.mcp.json` adds an ignore line for it,
+   * because a committed `.mcp.json` points a teammate's agent at absolute paths on *this* machine.
+   * That is a real diff appearing in a repo the user did not edit — accepted knowingly: the
+   * alternative is a machine-specific file that gets committed.
+   *
+   * Never awaited and never fatal. A project whose agent configuration could not be written is
+   * still a project, so this reports to the console and gets out of the way.
+   */
+  private async backfillAgentConfigFor(project: ProjectModel) {
+    try {
+      const projectDirectory = project._retainedProjectDirectory;
+      if (!projectDirectory) return;
+
+      const report = await backfillProjectAgentConfig({
+        projectDirectory,
+        projectName: project.name || 'Untitled'
+      });
+
+      // Only the write is worth a line. A `kept-existing` on every open would be noise, and a
+      // `skipped` for a legacy project is the expected answer rather than a problem.
+      if (report.written.length) {
+        console.log(`Agent configuration written for this project: ${report.written.join(', ')}`);
+      }
+    } catch (err) {
+      console.warn('Could not backfill the project’s agent configuration', err);
+    }
+  }
+
+  /**
+   * Create a new project on disk from a template and load it.
+   *
+   * 🔴 **Every new project comes from a template** — there is no "blank project" path and
+   * never was. Until FB-005 T1 this method had two branches that both claimed to be one:
+   * an `if (projectTemplate)` branch that went through `templateRegistry`, and an `else`
+   * that constructed `new EmbeddedTemplateProvider()` directly and bypassed it. The one
+   * caller passes `projectTemplate: ''`, so the registry branch never executed — which is
+   * why four registered template providers were green, typechecked, and reached by nobody.
+   * `resolveTemplateUrl` now turns "unspecified" into the default and there is one branch.
+   *
+   * `fn` is called with the project, or with nothing if it could not be created. It is
+   * called on **every** path: the caller does not await this method, so a rejection used
+   * to leave its "Creating new project" toast spinning over a creation that had stopped.
+   */
   async newProject(
     fn,
     options: {
       name?: string;
-      projectTemplate: string;
+      projectTemplate?: string;
       path?: string;
     }
   ) {
@@ -232,86 +313,56 @@ export class LocalProjectsModel extends Model {
     const name = options?.name || 'Untitled';
     const dirEntry = options?.path || filesystem.makeUniquePath(platform.getDocumentsPath() + name);
 
-    await filesystem.makeDirectory(dirEntry);
+    const outcome = await createProjectFromTemplate(
+      { templateUrl: options?.projectTemplate, destination: dirEntry, projectName: name },
+      {
+        makeDirectory: (directory) => filesystem.makeDirectory(directory),
+        installTemplate: (templateUrl, destination) => templateRegistry.install(templateUrl, destination),
+        installStarterAssets: (destination) => installStarterAssets(destination),
+        writeAgentConfig: (destination, projectName) => this.writeAgentConfigFor(destination, projectName),
+        // FB-005 T3 / AC2. The one caller passes a `makeUniquePath`, so this pair only ever
+        // removes a directory that did not exist a moment ago — and it now matters, because a
+        // community template is a whole project and a half-written one is what would be left.
+        directoryExists: (directory) => filesystem.exists(directory),
+        removeDirectory: (directory) => filesystem.removeDirRecursive(directory)
+      }
+    );
 
-    const projectTemplate = options?.projectTemplate;
-    if (projectTemplate) {
-      const templatePath = await templateRegistry.download({ templateUrl: projectTemplate });
-
-      // Copy unzipped project template
-      FileSystem.instance.copyRecursiveSync(templatePath, dirEntry, {
-        filter(src) {
-          //ignore all files in .git/
-          return !src.includes(path.sep + '.git' + path.sep);
-        }
-      });
-
-      // POL-006. After the template, so a template that ships its own font or icon set keeps it —
-      // `installStarterAssets` never overwrites — and before the load, so the module scanner sees
-      // them on its first scan rather than one nobody triggers.
-      await installStarterAssets(dirEntry);
-
-      // Project extracted successfully, load it
-      projectFromDirectory(dirEntry, (project) => {
-        if (!project) {
-          fn();
-          return;
-        }
-
-        project.name = name; //update the name from the template
-        project.runtimeVersion = 'react19'; // NEW projects default to React 19
-
-        // Store the project, this will make it a unique project by
-        // forcing it to generate a project id
-        this._addProject(project);
-        project.toDirectory(project._retainedProjectDirectory, (res) => {
-          if (res.result !== 'success') {
-            fn();
-            return;
-          }
-          this._adoptV2Format(project).then(() => fn(project));
-        });
-      });
-    } else {
-      // No template specified - use default embedded Hello World template
-      // This uses the template system implemented in TASK-009
-      const defaultTemplate = 'embedded://hello-world';
-
-      // For embedded templates, write directly to the project directory
-      // (no need for temporary folder + copy)
-      const { EmbeddedTemplateProvider } = await import('../models/template/EmbeddedTemplateProvider');
-      const embeddedProvider = new EmbeddedTemplateProvider();
-
-      await embeddedProvider.download(defaultTemplate, dirEntry);
-
-      // POL-006 — see the note in the template branch above. Both branches are covered because both
-      // the manual wizard and the AI scoping wizard reach the project through this one method.
-      await installStarterAssets(dirEntry);
-
-      // Load the newly created project
-      projectFromDirectory(dirEntry, (project) => {
-        if (!project) {
-          console.error('Failed to create project from template');
-          fn();
-          return;
-        }
-
-        project.name = name;
-        project.runtimeVersion = 'react19'; // NEW projects default to React 19
-        this._addProject(project);
-        project.toDirectory(project._retainedProjectDirectory, (res) => {
-          if (res.result !== 'success') {
-            console.error('Failed to save project to directory');
-            fn();
-            return;
-          }
-          this._adoptV2Format(project).then(() => {
-            console.log('Project created successfully:', name);
-            fn(project);
-          });
-        });
-      });
+    if (outcome.status === 'refused') {
+      const tidied = outcome.removed ? '' : ' (the project folder was left in place)';
+      console.error(
+        `Could not create a project from template '${outcome.templateUrl}': ${outcome.reason}${tidied}`
+      );
+      fn();
+      return;
     }
+
+    // Load the newly created project
+    projectFromDirectory(dirEntry, (project) => {
+      if (!project) {
+        console.error('Failed to create project from template');
+        fn();
+        return;
+      }
+
+      project.name = name; //update the name from the template
+      project.runtimeVersion = 'react19'; // NEW projects default to React 19
+
+      // Store the project, this will make it a unique project by
+      // forcing it to generate a project id
+      this._addProject(project);
+      project.toDirectory(project._retainedProjectDirectory, (res) => {
+        if (res.result !== 'success') {
+          console.error('Failed to save project to directory');
+          fn();
+          return;
+        }
+        this._adoptV2Format(project).then(() => {
+          console.log('Project created successfully:', name);
+          fn(project);
+        });
+      });
+    });
   }
 
   /**

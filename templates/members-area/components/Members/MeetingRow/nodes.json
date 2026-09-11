@@ -1,0 +1,183 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5e4970aa-ec79-566e-81d0-a0013f158429",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row-4",
+      "type": "Group",
+      "label": "One meeting",
+      "children": [
+        "rowLines-2",
+        "detailButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "columnGap": "var(--space-4)",
+        "justifyContent": "space-between"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowLines-2",
+      "type": "Group",
+      "label": "What it is, when and where",
+      "parent": "row-4",
+      "children": [
+        "rowTitle-2",
+        "rowWhen"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowTitle-2",
+      "type": "Text",
+      "label": "Title",
+      "parent": "rowLines-2",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "rowWhen",
+      "type": "Text",
+      "label": "When and where",
+      "parent": "rowLines-2",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "detailButton",
+      "type": "net.noodl.controls.button",
+      "label": "Details",
+      "parent": "row-4",
+      "parameters": {
+        "label": "Details",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "inputs-3",
+      "type": "Component Inputs",
+      "label": "The meeting",
+      "ports": [
+        {
+          "name": "id",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "when",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "place",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 280
+    },
+    {
+      "id": "whenLabel",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nvar said = day === '' ? String(Inputs.when || '') : day;\nvar where = Inputs.place === undefined || Inputs.place === null ? '' : String(Inputs.place);\nOutputs.label = where === '' ? said : said + ' · ' + where;"
+      },
+      "x": 410,
+      "y": 400,
+      "ports": [
+        {
+          "name": "in-when",
+          "displayName": "when",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-place",
+          "displayName": "place",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-label",
+          "displayName": "label",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "goDetail-2",
+      "type": "RouterNavigate",
+      "label": "Open the meeting",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meeting"
+      },
+      "x": 410,
+      "y": 520
+    }
+  ],
+  "visualRoots": [
+    "row-4"
+  ]
+}

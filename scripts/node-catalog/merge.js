@@ -31,6 +31,8 @@ const ENRICHMENT_DIR = path.join(REPO_ROOT, 'docs/node-catalog/enrichment');
 const EXAMPLES_DIR = path.join(REPO_ROOT, 'docs/node-catalog/examples');
 const COMPATIBILITY_JSON = path.join(REPO_ROOT, 'docs/node-catalog/compatibility.json');
 
+const { resolveModuleNodeTypes } = require('./moduleNodeTypes');
+
 const errors = [];
 const warnings = [];
 
@@ -158,11 +160,19 @@ function checkExample(example, file, catalogByType) {
       }
     }
   }
+  // COM-003 AC3 — a module-provided type is real but absent from the catalog, which is built from
+  // built-in types only. A VERIFIED `requiresModules` declaration accounts for it; an unverifiable
+  // one is an error of its own, louder than the "unknown type" it was trying to explain. The
+  // resolution is shared with `catalog:examples`, which refused the identical three examples for
+  // the identical reason from a different file — see moduleNodeTypes.js.
+  const { declaredTypes, problems } = resolveModuleNodeTypes(example);
+  for (const problem of problems) errors.push(`${rel}: ${problem}`);
+
   if (!Array.isArray(example.demonstrates) || example.demonstrates.length === 0) {
     errors.push(`${rel}: "demonstrates" must list at least one node type`);
   } else {
     for (const typeName of example.demonstrates) {
-      if (!catalogByType.has(typeName)) {
+      if (!catalogByType.has(typeName) && !declaredTypes.has(typeName)) {
         errors.push(`${rel}: demonstrates unknown type "${typeName}"`);
       } else if (!typesInGraph.has(typeName)) {
         errors.push(`${rel}: demonstrates "${typeName}" but the graph never uses it`);

@@ -8,6 +8,6 @@
     "url": "The file's public URL as a string.",
     "name": "The stored file's name."
   },
-  "examples": ["cloud-create-record-with-upload"],
+  "examples": ["cloud-create-record-with-upload", "community-tinymce-text-editor"],
   "relatedNodes": ["Upload File", "Image", "net.noodl.externallink"]
 }

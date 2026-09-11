@@ -1,0 +1,23 @@
+{
+  "componentId": "c2",
+  "connections": [
+    {
+      "fromId": "data",
+      "fromProperty": "items",
+      "toId": "list",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "data",
+      "fromProperty": "items",
+      "toId": "narrowed",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "narrowed",
+      "fromProperty": "items",
+      "toId": "filtered",
+      "toProperty": "items"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Demo Iconset",
+  "type": "iconset",
+  "iconClass": "demo",
+  "codeAsClass": true,
+  "browser": {
+    "stylesheets": ["noodl_modules/demo-iconset/styles.css"]
+  },
+  "icons": ["icon-demo"]
+}

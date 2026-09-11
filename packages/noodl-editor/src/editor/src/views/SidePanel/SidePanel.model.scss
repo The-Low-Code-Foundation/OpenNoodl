@@ -105,6 +105,9 @@
   height: 16px;
   cursor: nwse-resize;
   z-index: 1;
+  // FIX-003 opt-out: the float-resize gesture starts here; it must not anchor
+  // a selection.
+  user-select: none;
 
   &::after {
     content: '';

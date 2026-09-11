@@ -292,9 +292,21 @@
   box-shadow: -4px 4px 16px var(--base-color-black-transparent-30);
 }
 
+/*
+ * FIX-025 §12 (found by driving it, 2026-08-25). `display: flex` here BLOCKIFIES every
+ * inline child, because a flex container has no inline formatting context: each `<strong>`
+ * and each bare text run becomes its own flex item on its own line. So a health message
+ * written as `a <strong>string</strong> to a <strong>number</strong> port` rendered as five
+ * stacked lines — one word per line — for `con-type-mismatch` as well as for the new
+ * `con-type-unconverted`.
+ *
+ * `block` is the fix rather than `flex-direction: row`, and it costs nothing: every
+ * structured tooltip this container is given is already block-level markup — `<h3>`, `<p>`
+ * and `.popup-layer-image-row`, all built by `noodl-viewer-react/src/tooltips.ts` — so they
+ * go on stacking exactly as before, and inline markup now flows as prose.
+ */
 .popup-layer-tooltip-content {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 
 /* These classes are sent in HTML from the viewer */
@@ -448,6 +460,25 @@
   transition: opacity 500ms;
   font-size: 15px;
   z-index: 90;
+  /*
+   * FLD-017 — `opacity: 0` is not "not rendered", and this box holds three
+   * `bouncedelay 1.4s infinite` spinner dots.
+   *
+   * Measured on the packaged build, welcome screen, nothing open:
+   * `document.getAnimations()` returned **three running animations**, all of
+   * them these, and idle CPU over 180 s was **2.42% of a core** (gpu 0.92%,
+   * renderer 1.42%). Setting this one declaration in the live renderer took
+   * `getAnimations()` to 0 and the same window to **0.06%** — gpu 0.01%,
+   * renderer 0.01%. Same process, one variable changed.
+   *
+   * An invisible element still animates: only `display: none` stops a CSS
+   * animation — `opacity: 0` and `visibility: hidden` do not — and this layer
+   * is built once in `popuplayer.ts`'s constructor and never taken out of the
+   * tree, so the dots composited for the life of the app, on every screen,
+   * behind every project. `showActivity` sets `display: block`, `hideActivity`
+   * puts it back once the fade above has run.
+   */
+  display: none;
 }
 
 .popup-layer-activity-spinner {

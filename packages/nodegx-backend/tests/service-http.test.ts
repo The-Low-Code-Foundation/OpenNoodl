@@ -512,7 +512,9 @@ describe('nodegx-backend HTTP surface', () => {
   it('admin workflow status reports the loaded function', async () => {
     const status = await req<WorkflowRunnerStatus>('GET', '/admin/workflows');
     expect(status.json.initialized).toBe(true);
-    expect(status.json.functions).toEqual([{ name: 'hello', workflow: 'hello' }]);
+    // DEF-009 AC4: the listing now also carries whether the graph writes
+    // records, because that is half of what decides the endpoint's budget.
+    expect(status.json.functions).toEqual([{ name: 'hello', workflow: 'hello', writesRecords: false }]);
   });
 });
 

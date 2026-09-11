@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "61be71fb-e306-4be7-94f3-a03b4275eb94",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "isi-inputs",
+      "fromProperty": "icon",
+      "toId": "isi-icon",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "isi-inputs",
+      "fromProperty": "title",
+      "toId": "isi-title",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "isi-inputs",
+      "fromProperty": "description",
+      "toId": "isi-desc",
+      "toProperty": "text"
+    }
+  ]
+}

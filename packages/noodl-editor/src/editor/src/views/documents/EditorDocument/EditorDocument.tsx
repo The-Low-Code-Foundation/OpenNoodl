@@ -17,13 +17,20 @@ import { FrameDivider, FrameDividerOwner } from '@noodl-core-ui/components/layou
 import { MenuDialogWidth } from '@noodl-core-ui/components/popups/MenuDialog';
 
 import { EventDispatcher } from '../../../../../shared/utils/EventDispatcher';
+import { resizeBlocklyWorkspaces } from '../../BlocklyEditor/blocklyResize';
 import { Frame } from '../../common/Frame';
 import { EditorTopbar } from '../../EditorTopbar';
 import { HelpCenter } from '../../HelpCenter';
 import { NodeGraphEditor } from '../../nodegrapheditor';
+import { remeasureNodeGraphCanvas } from '../../nodegrapheditor/CanvasDOMBindings';
 import { panelHoldsCanvasSelection } from '../../nodegrapheditor/EditorEventBindings';
 import { ScopePlanStrip } from '../../panels/AiAuthoringPanel/ScopePlanStrip';
+import {
+  TRANSFORM_ORIGIN_FOCUS_EVENT,
+  transformOriginFocus
+} from '../../panels/propertyeditor/transformOriginFocus';
 import { showContextMenuInPopup } from '../../ShowContextMenuInPopup';
+import { BENCH_MOUNT_EVENT } from '../../VisualCanvas/benchRequest';
 import { useCanvasView } from './hooks/UseCanvasView';
 import { useCaptureThumbnails } from './hooks/UseCaptureThumbnails';
 import { useImportNodeset } from './hooks/UseImportNodeset';
@@ -76,6 +83,27 @@ function EditorDocument() {
   ]);
 
   useImportNodeset(nodeGraph);
+
+  /**
+   * DES-001 — "Preview" on the preview's own design-mode banner.
+   *
+   * Two sources for one action: the bus when the preview is docked in this
+   * renderer, ipc when it is its own window. Both land on the same setter, so
+   * the top bar's segmented control and the banner can never disagree about
+   * which mode the app is in.
+   */
+  useEffect(() => {
+    const eventGroup = {};
+    const exitDesignMode = () => setPreviewMode(true);
+
+    EventDispatcher.instance.on('request-preview-mode', exitDesignMode, eventGroup);
+    ipcRenderer.on('viewer-request-preview-mode', exitDesignMode);
+
+    return () => {
+      EventDispatcher.instance.off(eventGroup);
+      ipcRenderer.off('viewer-request-preview-mode', exitDesignMode);
+    };
+  }, []);
 
   //close detached viewer when EditorDocmument unmounts
   useEffect(() => {
@@ -160,6 +188,12 @@ function EditorDocument() {
       canvasView?.setNodeSelected(selectedNodeId);
       ipcRenderer.send('viewer-select-node', selectedNodeId);
     }
+
+    // FB-016 scope 4 — a new selection rebuilds the properties panel, which is exactly the case
+    // where a focused input is unmounted without ever firing `blur`. The rows hand their focus
+    // back on dispose; this is the belt to that pair of braces, and it is also simply correct:
+    // the crosshair described the node that is no longer selected.
+    transformOriginFocus.reset();
   }, [selectedNodeId, canvasView, previewMode]);
 
   const onRouteChanged = useCallback(
@@ -221,6 +255,43 @@ function EditorDocument() {
 
     EventDispatcher.instance.on('viewer-refresh', () => canvasView?.refresh(), eventGroup);
 
+    /**
+     * FB-016 scope 4 — relay focus on the transform-origin fields to whichever preview is showing.
+     *
+     * Both destinations are written for the same reason `onExitDesignMode` writes both: the docked
+     * preview is a `CanvasView` in this renderer, the detached one is a `CanvasView` in another,
+     * and this effect does not know which exists. `setTransformOriginFocus` is idempotent at the
+     * far end, so sending to a preview that is not there costs nothing.
+     */
+    EventDispatcher.instance.on(
+      TRANSFORM_ORIGIN_FOCUS_EVENT,
+      (enabled: boolean) => {
+        canvasView?.setTransformOriginFocus(enabled);
+        ipcRenderer.send('viewer-transform-origin-focus', enabled);
+      },
+      eventGroup
+    );
+
+    /**
+     * BEN-004 — the bench is a mode of the *docked* preview surface (R1), so
+     * "Preview in isolation" cannot be honoured while the preview is its own
+     * window: `VisualCanvas` is not rendered at all, and the request would land
+     * nowhere and read as a dead menu item.
+     *
+     * Re-attaching is intrusive, and it is still the only way to show what was
+     * asked for. `benchRequest` parks the target so the surface picks it up
+     * when it mounts, which is after this state change rather than during it.
+     */
+    EventDispatcher.instance.on(
+      BENCH_MOUNT_EVENT,
+      () => {
+        if (documentLayout === 'detachedPreview') {
+          setDocumentLayout(previousDocumentLayout === 'vertical' ? 'vertical' : 'horizontal');
+        }
+      },
+      eventGroup
+    );
+
     //refresh viewer when cloud services are changed
     ProjectModel.instance.on(
       'cloudServicesChanged',
@@ -242,6 +313,25 @@ function EditorDocument() {
           if (node && node.owner && node.owner.owner) {
             const component = node.owner.owner;
             nodeGraph.switchToComponent(component, { node: node, pushHistory: true });
+
+            /**
+             * DES-001 — say what was selected, in the preview.
+             *
+             * Resolved here because this is the process that owns
+             * `ProjectModel`; the preview only renders the string. Gated on
+             * design mode: in preview mode this same handler runs for lessons,
+             * and a toast about design mode there would be a lie.
+             */
+            if (!previewMode) {
+              // `label` falls back to the type's own label for the node, so it
+              // is only empty for a node with no type at all.
+              const label = node.label || 'this element';
+              if (documentLayout === 'detachedPreview') {
+                ipcRenderer.send('viewer-design-selection', label);
+              } else {
+                canvasView?.showDesignSelection(label);
+              }
+            }
           }
         } else {
           const nodes = args.nodeIds.map((id) => ProjectModel.instance.findNodeWithId(id)).filter((node) => !!node);
@@ -432,6 +522,36 @@ function ViewComponent({
 }: TSFixme) {
   const [frameBounds, setFrameBounds] = useState(undefined);
 
+  /**
+   * LGC-008: the only route by which this splitter reaches Blockly.
+   *
+   * The node graph pane hosts the Logic Builder's Blockly workspace, and Blockly re-measures
+   * itself on a **window** resize only — never on a container resize (verified in
+   * `blockly_compressed.js`; the reasoning is written out in `blocklyResize.ts`). So before
+   * this, dragging this divider with a Logic Builder open left the workspace at its injected
+   * size: blocks fell outside the visible SVG or a strip of dead space appeared beside them,
+   * and it corrected itself only if you happened to resize the whole window afterwards.
+   *
+   * ⚠️ It hangs off `onDrag` — which `FrameDivider` calls synchronously from its `mousemove`,
+   * after it has already written the new container widths as CSS variables — and deliberately
+   * **not** off `onResize`, which is fed by a `ResizeObserver`. An occluded Electron renderer
+   * fires zero `ResizeObserver` callbacks and clamps timers ~1000×, so an observer-based or
+   * `requestAnimationFrame`-deferred version works whenever the window is focused and fails
+   * exactly where it is needed. Stable identity: `FrameDivider` lists `onDrag` in two
+   * dependency arrays.
+   */
+  /**
+   * ⚠️ The node graph canvas has the same problem and needs the same answer (LGC-008 F3).
+   * The only thing that re-measured it on a drag was `Frame`'s `onResize`, which
+   * `useTrackBounds` feeds from a `ResizeObserver` — zero callbacks in an occluded renderer.
+   * `remeasureNodeGraphCanvas` is a no-op when the canvas did not actually change size, which
+   * is what makes it safe to call at `mousemove` frequency beside a full relayout and repaint.
+   */
+  const onDividerDrag = useCallback(() => {
+    remeasureNodeGraphCanvas(nodeGraphEditorInstance);
+    resizeBlocklyWorkspaces();
+  }, [nodeGraphEditorInstance]);
+
   const horizontal = documentLayout === 'horizontal';
   const totalSize = frameBounds ? (horizontal ? frameBounds.height : frameBounds.width) : undefined;
 
@@ -450,8 +570,14 @@ function ViewComponent({
         sizeMin={100}
         sizeMax={totalSize ? totalSize - 100 : undefined}
         size={frameDividerSize}
+        onDrag={onDividerDrag}
         onSizeChanged={(size) => {
           onSizeUpdated(size);
+          // The drag has ended and the containers have settled; one last measurement so a
+          // workspace or a canvas that was mid-flight during the last mousemove lands on the
+          // final size.
+          remeasureNodeGraphCanvas(nodeGraphEditorInstance);
+          resizeBlocklyWorkspaces();
         }}
         onBoundsChanged={setFrameBounds}
       />

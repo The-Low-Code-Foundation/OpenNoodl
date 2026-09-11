@@ -1,659 +1,656 @@
 {
-    "name": "Export",
-    "components": [
-        {
-            "name": "/Toggle Switch",
-            "id": "5f11ef49-a962-ed56-a3bb-744a112c95e6",
-            "graph": {
-                "connections": [
-                    {
-                        "fromId": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
-                        "fromProperty": "pos",
-                        "toId": "d61dad12-0abc-cc8b-e18b-f5f2501924fc",
-                        "toProperty": "transformX"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Label",
-                        "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "toProperty": "label"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Show Label",
-                        "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "toProperty": "useLabel"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "State",
-                        "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "toProperty": "checked"
-                    },
-                    {
-                        "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "fromProperty": "checked",
-                        "toId": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
-                        "toProperty": "State"
-                    },
-                    {
-                        "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "fromProperty": "onChange",
-                        "toId": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
-                        "toProperty": "State Changed"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Margin Top",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "marginTop"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Margin Bottom",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "marginBottom"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Margin Left",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "marginLeft"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Margin Right",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "marginRight"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Position",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "position"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Align X",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "alignX"
-                    },
-                    {
-                        "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "fromProperty": "Align Y",
-                        "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "toProperty": "alignY"
-                    },
-                    {
-                        "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                        "fromProperty": "checked",
-                        "toId": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
-                        "toProperty": "value"
-                    },
-                    {
-                        "fromId": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
-                        "fromProperty": "savedValue",
-                        "toId": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
-                        "toProperty": "currentState"
-                    }
+  "name": "Export",
+  "components": [
+    {
+      "name": "/Toggle Switch",
+      "id": "5f11ef49-a962-ed56-a3bb-744a112c95e6",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
+            "fromProperty": "pos",
+            "toId": "d61dad12-0abc-cc8b-e18b-f5f2501924fc",
+            "toProperty": "transformX"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Label",
+            "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Show Label",
+            "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "toProperty": "useLabel"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "State",
+            "toId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "toProperty": "checked"
+          },
+          {
+            "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "fromProperty": "checked",
+            "toId": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
+            "toProperty": "State"
+          },
+          {
+            "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "fromProperty": "onChange",
+            "toId": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
+            "toProperty": "State Changed"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Margin Top",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "marginTop"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Margin Bottom",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "marginBottom"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Margin Left",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "marginLeft"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Margin Right",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "marginRight"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Position",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "position"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Align X",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "alignX"
+          },
+          {
+            "fromId": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "fromProperty": "Align Y",
+            "toId": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "toProperty": "alignY"
+          },
+          {
+            "fromId": "86513e2a-720e-04c6-b03f-3cf967d49736",
+            "fromProperty": "checked",
+            "toId": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
+            "fromProperty": "savedValue",
+            "toId": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
+            "toProperty": "currentState"
+          }
+        ],
+        "roots": [
+          {
+            "id": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
+            "type": "States",
+            "label": "States",
+            "x": -295,
+            "y": 334.1784564570152,
+            "parameters": {
+              "states": "true,false",
+              "values": "pos",
+              "currentState": "on",
+              "transitiondef-off": {
+                "curve": [
+                  0,
+                  0,
+                  0.58,
+                  1
                 ],
-                "roots": [
+                "dur": 200,
+                "delay": 0
+              },
+              "type-bg color": "color",
+              "type-border color": "color",
+              "transitiondef-on": {
+                "curve": [
+                  0,
+                  0,
+                  0.58,
+                  1
+                ],
+                "dur": 200,
+                "delay": 0
+              },
+              "value-true-pos": 100,
+              "value-true-bg color": "Primary",
+              "value-true-border color": "Primary",
+              "value-false-bg color": "Grey - 200",
+              "value-false-border color": "Grey - 700",
+              "type-pos": "number",
+              "value-false-pos": 0,
+              "transitiondef-true": {
+                "curve": [
+                  0,
+                  0,
+                  0.58,
+                  1
+                ],
+                "dur": 150,
+                "delay": 0
+              },
+              "transitiondef-false": {
+                "curve": [
+                  0,
+                  0,
+                  0.58,
+                  1
+                ],
+                "dur": 150,
+                "delay": 0
+              }
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "number",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "output",
+                "group": "Values",
+                "name": "pos",
+                "index": 6
+              },
+              {
+                "type": {
+                  "name": "enum",
+                  "enums": [
                     {
-                        "id": "8ff029ae-b91f-d219-65c4-aa5487f3f1bd",
-                        "type": "States",
-                        "label": "States",
-                        "x": -295,
-                        "y": 334.1784564570152,
-                        "parameters": {
-                            "states": "true,false",
-                            "values": "pos",
-                            "currentState": "on",
-                            "transitiondef-off": {
-                                "curve": [
-                                    0,
-                                    0,
-                                    0.58,
-                                    1
-                                ],
-                                "dur": 200,
-                                "delay": 0
-                            },
-                            "type-bg color": "color",
-                            "type-border color": "color",
-                            "transitiondef-on": {
-                                "curve": [
-                                    0,
-                                    0,
-                                    0.58,
-                                    1
-                                ],
-                                "dur": 200,
-                                "delay": 0
-                            },
-                            "value-true-pos": 100,
-                            "value-true-bg color": "Primary",
-                            "value-true-border color": "Primary",
-                            "value-false-bg color": "Grey - 200",
-                            "value-false-border color": "Grey - 700",
-                            "type-pos": "number",
-                            "value-false-pos": 0,
-                            "transitiondef-true": {
-                                "curve": [
-                                    0,
-                                    0,
-                                    0.58,
-                                    1
-                                ],
-                                "dur": 150,
-                                "delay": 0
-                            },
-                            "transitiondef-false": {
-                                "curve": [
-                                    0,
-                                    0,
-                                    0.58,
-                                    1
-                                ],
-                                "dur": 150,
-                                "delay": 0
-                            }
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "number",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "output",
-                                "group": "Values",
-                                "name": "pos",
-                                "index": 6
-                            },
-                            {
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "label": "Number",
-                                            "value": "number"
-                                        },
-                                        {
-                                            "label": "String",
-                                            "value": "string"
-                                        },
-                                        {
-                                            "label": "Boolean",
-                                            "value": "boolean"
-                                        },
-                                        {
-                                            "label": "Color",
-                                            "value": "color"
-                                        },
-                                        {
-                                            "label": "Text Style",
-                                            "value": "textStyle"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "default": "number",
-                                "plug": "input",
-                                "group": "Types",
-                                "displayName": "pos",
-                                "name": "type-pos",
-                                "index": 7
-                            },
-                            {
-                                "plug": "input",
-                                "type": "number",
-                                "group": "true Values",
-                                "name": "value-true-pos",
-                                "displayName": "pos",
-                                "editorName": "true|pos",
-                                "index": 8
-                            },
-                            {
-                                "plug": "input",
-                                "type": "curve",
-                                "displayName": "Default",
-                                "default": {
-                                    "curve": [
-                                        0,
-                                        0,
-                                        0.58,
-                                        1
-                                    ],
-                                    "dur": 300,
-                                    "delay": 0
-                                },
-                                "group": "true Transitions",
-                                "name": "transitiondef-true",
-                                "index": 9
-                            },
-                            {
-                                "plug": "input",
-                                "type": {
-                                    "name": "curve"
-                                },
-                                "default": {
-                                    "curve": [
-                                        0,
-                                        0,
-                                        0.58,
-                                        1
-                                    ],
-                                    "dur": 150,
-                                    "delay": 0
-                                },
-                                "group": "true Transitions",
-                                "name": "transition-true-pos",
-                                "displayName": "pos",
-                                "editorName": "Transition true|pos",
-                                "index": 10
-                            },
-                            {
-                                "plug": "input",
-                                "type": {
-                                    "name": "signal",
-                                    "allowConnectionsOnly": true
-                                },
-                                "displayName": "To true",
-                                "name": "to-true",
-                                "group": "Go to state",
-                                "index": 11
-                            },
-                            {
-                                "plug": "output",
-                                "type": "boolean",
-                                "displayName": "At true",
-                                "name": "at-true",
-                                "group": "Current state",
-                                "index": 12
-                            },
-                            {
-                                "plug": "output",
-                                "type": "signal",
-                                "displayName": "Has Reached true",
-                                "name": "reached-true",
-                                "group": "Current state",
-                                "index": 13
-                            },
-                            {
-                                "plug": "input",
-                                "type": "number",
-                                "group": "false Values",
-                                "name": "value-false-pos",
-                                "displayName": "pos",
-                                "editorName": "false|pos",
-                                "index": 14
-                            },
-                            {
-                                "plug": "input",
-                                "type": "curve",
-                                "displayName": "Default",
-                                "default": {
-                                    "curve": [
-                                        0,
-                                        0,
-                                        0.58,
-                                        1
-                                    ],
-                                    "dur": 300,
-                                    "delay": 0
-                                },
-                                "group": "false Transitions",
-                                "name": "transitiondef-false",
-                                "index": 15
-                            },
-                            {
-                                "plug": "input",
-                                "type": {
-                                    "name": "curve"
-                                },
-                                "default": {
-                                    "curve": [
-                                        0,
-                                        0,
-                                        0.58,
-                                        1
-                                    ],
-                                    "dur": 150,
-                                    "delay": 0
-                                },
-                                "group": "false Transitions",
-                                "name": "transition-false-pos",
-                                "displayName": "pos",
-                                "editorName": "Transition false|pos",
-                                "index": 16
-                            },
-                            {
-                                "plug": "input",
-                                "type": {
-                                    "name": "signal",
-                                    "allowConnectionsOnly": true
-                                },
-                                "displayName": "To false",
-                                "name": "to-false",
-                                "group": "Go to state",
-                                "index": 17
-                            },
-                            {
-                                "plug": "output",
-                                "type": "boolean",
-                                "displayName": "At false",
-                                "name": "at-false",
-                                "group": "Current state",
-                                "index": 18
-                            },
-                            {
-                                "plug": "output",
-                                "type": "signal",
-                                "displayName": "Has Reached false",
-                                "name": "reached-false",
-                                "group": "Current state",
-                                "index": 19
-                            },
-                            {
-                                "plug": "input",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        "true",
-                                        "false"
-                                    ]
-                                },
-                                "group": "States",
-                                "displayName": "State",
-                                "name": "currentState",
-                                "default": "true",
-                                "index": 20
-                            }
-                        ],
-                        "children": []
+                      "label": "Number",
+                      "value": "number"
                     },
                     {
-                        "id": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
-                        "type": "Group",
-                        "x": 151.1303518180543,
-                        "y": -18.940469248447698,
-                        "parameters": {
-                            "height": {
-                                "value": 20,
-                                "unit": "px"
-                            },
-                            "sizeMode": "contentSize"
-                        },
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": [
-                            {
-                                "id": "86513e2a-720e-04c6-b03f-3cf967d49736",
-                                "type": "net.noodl.controls.checkbox",
-                                "label": "Checkbox",
-                                "parameters": {
-                                    "width": {
-                                        "value": 40,
-                                        "unit": "px"
-                                    },
-                                    "borderRadius": {
-                                        "value": 100,
-                                        "unit": "px"
-                                    },
-                                    "useIcon": true,
-                                    "iconColor": "#FFFFFF00",
-                                    "backgroundColor": "Grey - 400",
-                                    "height": {
-                                        "value": 22,
-                                        "unit": "px"
-                                    },
-                                    "borderStyle": "none",
-                                    "enabled": true
-                                },
-                                "stateParameters": {
-                                    "hover": {},
-                                    "checked": {
-                                        "backgroundColor": "Primary"
-                                    },
-                                    "disabled": {}
-                                },
-                                "defaultStateTransitions": {
-                                    "checked": {
-                                        "curve": [
-                                            0,
-                                            0,
-                                            0.58,
-                                            1
-                                        ],
-                                        "dur": 150,
-                                        "delay": 0
-                                    },
-                                    "neutral": {
-                                        "curve": [
-                                            0,
-                                            0,
-                                            0.58,
-                                            1
-                                        ],
-                                        "dur": 150,
-                                        "delay": 0
-                                    },
-                                    "hover": {
-                                        "curve": [
-                                            0,
-                                            0,
-                                            0.58,
-                                            1
-                                        ],
-                                        "dur": 0,
-                                        "delay": 0
-                                    }
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": []
-                            },
-                            {
-                                "id": "d61dad12-0abc-cc8b-e18b-f5f2501924fc",
-                                "type": "Group",
-                                "label": "Circle",
-                                "parameters": {
-                                    "width": {
-                                        "value": 18,
-                                        "unit": "px"
-                                    },
-                                    "height": {
-                                        "value": 18,
-                                        "unit": "px"
-                                    },
-                                    "backgroundColor": "White",
-                                    "borderRadius": {
-                                        "value": 100,
-                                        "unit": "px"
-                                    },
-                                    "position": "absolute",
-                                    "borderWidth": {
-                                        "value": 1,
-                                        "unit": "px"
-                                    },
-                                    "pointerEventsMode": "explicit",
-                                    "pointerEventsEnabled": false,
-                                    "transformX": {
-                                        "value": 0,
-                                        "unit": "%"
-                                    },
-                                    "alignY": "center",
-                                    "marginLeft": {
-                                        "value": 2,
-                                        "unit": "px"
-                                    },
-                                    "marginRight": {
-                                        "value": 2,
-                                        "unit": "px"
-                                    }
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": []
-                            }
-                        ]
+                      "label": "String",
+                      "value": "string"
                     },
                     {
-                        "id": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
-                        "type": "Component Inputs",
-                        "x": 153.6400714220042,
-                        "y": -300.5178100857186,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Label",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 7,
-                                "group": "General"
-                            },
-                            {
-                                "name": "Show Label",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 8,
-                                "group": "General"
-                            },
-                            {
-                                "name": "State",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 9,
-                                "group": "General"
-                            },
-                            {
-                                "name": "Position",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Layout",
-                                "index": 6
-                            },
-                            {
-                                "name": "Margin Left",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margin",
-                                "index": 2
-                            },
-                            {
-                                "name": "Margin Right",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margin",
-                                "index": 3
-                            },
-                            {
-                                "name": "Margin Top",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margin",
-                                "index": 0
-                            },
-                            {
-                                "name": "Margin Bottom",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margin",
-                                "index": 1
-                            },
-                            {
-                                "name": "Align X",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 4
-                            },
-                            {
-                                "name": "Align Y",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 5
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
+                      "label": "Boolean",
+                      "value": "boolean"
                     },
                     {
-                        "id": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
-                        "type": "Component Outputs",
-                        "x": 473.667448905121,
-                        "y": 77.95278595566532,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "State",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            },
-                            {
-                                "name": "State Changed",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 2
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
+                      "label": "Color",
+                      "value": "color"
                     },
                     {
-                        "id": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
-                        "type": "String",
-                        "label": "Convert Boolean to String",
-                        "x": -290.19694826542855,
-                        "y": 150.14531547695168,
-                        "parameters": {},
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": []
+                      "label": "Text Style",
+                      "value": "textStyle"
                     }
-                ]
-            }
-        }
-    ],
-    "settings": {},
-    "version": "4",
-    "metadata": {
-        "styles": {
-            "text": {},
-            "colors": {
-                "Grey - 200": "#F4F4F4",
-                "Grey - 400": "#CECECE",
-                "Grey - 700": "#4C4C4C",
-                "Primary": "#5836F5",
-                "White": "#FFFFFF"
-            }
-        }
-    },
-    "variants": []
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "number",
+                "plug": "input",
+                "group": "Types",
+                "displayName": "pos",
+                "name": "type-pos",
+                "index": 7
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "true Values",
+                "name": "value-true-pos",
+                "displayName": "pos",
+                "editorName": "true|pos",
+                "index": 8
+              },
+              {
+                "plug": "input",
+                "type": "curve",
+                "displayName": "Default",
+                "default": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 300,
+                  "delay": 0
+                },
+                "group": "true Transitions",
+                "name": "transitiondef-true",
+                "index": 9
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "curve"
+                },
+                "default": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 150,
+                  "delay": 0
+                },
+                "group": "true Transitions",
+                "name": "transition-true-pos",
+                "displayName": "pos",
+                "editorName": "Transition true|pos",
+                "index": 10
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To true",
+                "name": "to-true",
+                "group": "Go to state",
+                "index": 11
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At true",
+                "name": "at-true",
+                "group": "Current state",
+                "index": 12
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached true",
+                "name": "reached-true",
+                "group": "Current state",
+                "index": 13
+              },
+              {
+                "plug": "input",
+                "type": "number",
+                "group": "false Values",
+                "name": "value-false-pos",
+                "displayName": "pos",
+                "editorName": "false|pos",
+                "index": 14
+              },
+              {
+                "plug": "input",
+                "type": "curve",
+                "displayName": "Default",
+                "default": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 300,
+                  "delay": 0
+                },
+                "group": "false Transitions",
+                "name": "transitiondef-false",
+                "index": 15
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "curve"
+                },
+                "default": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 150,
+                  "delay": 0
+                },
+                "group": "false Transitions",
+                "name": "transition-false-pos",
+                "displayName": "pos",
+                "editorName": "Transition false|pos",
+                "index": 16
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To false",
+                "name": "to-false",
+                "group": "Go to state",
+                "index": 17
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At false",
+                "name": "at-false",
+                "group": "Current state",
+                "index": 18
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached false",
+                "name": "reached-false",
+                "group": "Current state",
+                "index": 19
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    "true",
+                    "false"
+                  ]
+                },
+                "group": "States",
+                "displayName": "State",
+                "name": "currentState",
+                "default": "true",
+                "index": 20
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "d9eaf0fd-10ff-270c-a91f-64a5e06b2a67",
+            "type": "Group",
+            "x": 151.1303518180543,
+            "y": -18.940469248447698,
+            "parameters": {
+              "sizeMode": "contentSize"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "86513e2a-720e-04c6-b03f-3cf967d49736",
+                "type": "net.noodl.controls.checkbox",
+                "label": "Checkbox",
+                "parameters": {
+                  "width": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "borderRadius": {
+                    "value": 100,
+                    "unit": "px"
+                  },
+                  "useIcon": true,
+                  "iconColor": "#FFFFFF00",
+                  "backgroundColor": "Grey - 400",
+                  "height": {
+                    "value": 22,
+                    "unit": "px"
+                  },
+                  "borderStyle": "none",
+                  "enabled": true
+                },
+                "stateParameters": {
+                  "hover": {},
+                  "checked": {
+                    "backgroundColor": "Primary"
+                  },
+                  "disabled": {}
+                },
+                "defaultStateTransitions": {
+                  "checked": {
+                    "curve": [
+                      0,
+                      0,
+                      0.58,
+                      1
+                    ],
+                    "dur": 150,
+                    "delay": 0
+                  },
+                  "neutral": {
+                    "curve": [
+                      0,
+                      0,
+                      0.58,
+                      1
+                    ],
+                    "dur": 150,
+                    "delay": 0
+                  },
+                  "hover": {
+                    "curve": [
+                      0,
+                      0,
+                      0.58,
+                      1
+                    ],
+                    "dur": 0,
+                    "delay": 0
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "d61dad12-0abc-cc8b-e18b-f5f2501924fc",
+                "type": "Group",
+                "label": "Circle",
+                "parameters": {
+                  "width": {
+                    "value": 18,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 18,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "White",
+                  "borderRadius": {
+                    "value": 100,
+                    "unit": "px"
+                  },
+                  "position": "absolute",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "pointerEventsMode": "explicit",
+                  "pointerEventsEnabled": false,
+                  "transformX": {
+                    "value": 0,
+                    "unit": "%"
+                  },
+                  "alignY": "center",
+                  "marginLeft": {
+                    "value": 2,
+                    "unit": "px"
+                  },
+                  "marginRight": {
+                    "value": 2,
+                    "unit": "px"
+                  },
+                  "borderStyle": "solid"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "eceeda5d-af31-fe0b-04cb-eac4253f621c",
+            "type": "Component Inputs",
+            "x": 153.6400714220042,
+            "y": -300.5178100857186,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 7,
+                "group": "General"
+              },
+              {
+                "name": "Show Label",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 8,
+                "group": "General"
+              },
+              {
+                "name": "State",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 9,
+                "group": "General"
+              },
+              {
+                "name": "Position",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Layout",
+                "index": 6
+              },
+              {
+                "name": "Margin Left",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margin",
+                "index": 2
+              },
+              {
+                "name": "Margin Right",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margin",
+                "index": 3
+              },
+              {
+                "name": "Margin Top",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margin",
+                "index": 0
+              },
+              {
+                "name": "Margin Bottom",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margin",
+                "index": 1
+              },
+              {
+                "name": "Align X",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 4
+              },
+              {
+                "name": "Align Y",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 5
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f7990bd2-aaa9-9da0-cc67-80ea5e3820b1",
+            "type": "Component Outputs",
+            "x": 473.667448905121,
+            "y": 77.95278595566532,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "State",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "State Changed",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "a25ccb42-9d1b-50a4-b3c2-97c9a6d8c9b3",
+            "type": "String",
+            "label": "Convert Boolean to String",
+            "x": -290.19694826542855,
+            "y": 150.14531547695168,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {
+        "Grey - 200": "#F4F4F4",
+        "Grey - 400": "#CECECE",
+        "Grey - 700": "#4C4C4C",
+        "Primary": "#5836F5",
+        "White": "#FFFFFF"
+      }
+    }
+  },
+  "variants": []
 }

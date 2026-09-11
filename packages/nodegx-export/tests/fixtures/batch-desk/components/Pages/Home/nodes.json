@@ -1,0 +1,253 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c4d7e2a1-6b3f-4e8d-9c1a-000000000081",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Batch Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "runBtn",
+        "abortBtn",
+        "statusText",
+        "lastText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Batch Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "runBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Send all",
+      "parent": "shell",
+      "parameters": {
+        "label": "Send all"
+      },
+      "x": 100,
+      "y": 380
+    },
+    {
+      "id": "abortBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Stop",
+      "parent": "shell",
+      "parameters": {
+        "label": "Stop"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 540
+    },
+    {
+      "id": "lastText",
+      "type": "Text",
+      "label": "Last sent",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 620
+    },
+    {
+      "id": "namesConst",
+      "type": "String",
+      "label": "Names",
+      "parameters": {
+        "value": "Ada,Grace,Linus"
+      },
+      "x": 400,
+      "y": 300
+    },
+    {
+      "id": "toGuests",
+      "type": "JavaScriptFunction",
+      "label": "To guests",
+      "parameters": {
+        "functionScript": "Outputs.guests = String(Inputs.names || '').split(',').map((name) => ({ name: name.trim() }));"
+      },
+      "dynamicports": [
+        {
+          "name": "in-names",
+          "displayName": "names",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs",
+          "index": 10
+        },
+        {
+          "name": "out-guests",
+          "displayName": "guests",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs",
+          "index": 11
+        },
+        {
+          "name": "runOnChange-in-names",
+          "displayName": "names",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 12
+        }
+      ],
+      "metadata": {
+        "merge": {
+          "soureCodePorts": [
+            "functionScript"
+          ]
+        }
+      },
+      "x": 600,
+      "y": 300
+    },
+    {
+      "id": "sendAll",
+      "type": "RunTasks",
+      "label": "Send all",
+      "parameters": {
+        "taskTemplate": "/Notify",
+        "maxRunningTasks": 2,
+        "stopOnFailure": true
+      },
+      "x": 800,
+      "y": 380
+    },
+    {
+      "id": "setDone",
+      "type": "Set Variable",
+      "label": "Mark all sent",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 1100,
+      "y": 300
+    },
+    {
+      "id": "setFailed",
+      "type": "Set Variable",
+      "label": "Mark some failed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 1100,
+      "y": 420
+    },
+    {
+      "id": "setStopped",
+      "type": "Set Variable",
+      "label": "Mark stopped",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 1100,
+      "y": 540
+    },
+    {
+      "id": "doneStr",
+      "type": "String",
+      "label": "all sent",
+      "parameters": {
+        "value": "all sent"
+      },
+      "x": 900,
+      "y": 300
+    },
+    {
+      "id": "failedStr",
+      "type": "String",
+      "label": "some failed",
+      "parameters": {
+        "value": "some failed"
+      },
+      "x": 900,
+      "y": 420
+    },
+    {
+      "id": "stoppedStr",
+      "type": "String",
+      "label": "stopped",
+      "parameters": {
+        "value": "stopped"
+      },
+      "x": 900,
+      "y": 540
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "Status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 400,
+      "y": 540
+    },
+    {
+      "id": "lastVar",
+      "type": "Variable2",
+      "label": "Last sent",
+      "parameters": {
+        "name": "lastSent"
+      },
+      "x": 400,
+      "y": 620
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

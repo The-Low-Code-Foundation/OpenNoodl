@@ -1,0 +1,69 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1f6ffe0-26a0-5ed5-80e1-2e4c7cb547c8",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "column",
+      "type": "Group",
+      "label": "Column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "children": [
+        "heading",
+        "link_repeater"
+      ]
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Section title",
+      "parameters": {
+        "text": "Section",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "column"
+    },
+    {
+      "id": "link_repeater",
+      "type": "For Each",
+      "label": "One row per link",
+      "parameters": {
+        "template": "/Components/FooterLink"
+      },
+      "parent": "column"
+    },
+    {
+      "id": "column_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per column",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "links",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "column"
+  ]
+}

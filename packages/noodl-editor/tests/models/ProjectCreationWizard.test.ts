@@ -67,6 +67,17 @@ describe('WizardContext: step sequences', () => {
     expect(getStepSequence('ai')).toEqual(['basics', 'preset', 'scoping', 'review']);
   });
 
+  // FB-005 T3. The picker sits between basics and review, and there is deliberately no preset
+  // step: a template ships its own look, and a second screen deciding the same thing would
+  // silently override it.
+  it('template mode visits basics, template, review — and never preset', () => {
+    expect(getStepSequence('template')).toEqual(['basics', 'template', 'review']);
+  });
+
+  it('template mode never visits the preset step', () => {
+    expect(getStepSequence('template')).not.toContain('preset');
+  });
+
   it('ai mode collects everything creation needs BEFORE the conversation', () => {
     // This is what makes "exitable at any point" unconditional rather than a
     // promise: from the first word of scoping onward, name, folder and preset
@@ -85,7 +96,8 @@ describe('WizardContext: validation', () => {
     projectName: '',
     description: '',
     location: '',
-    selectedPresetId: 'modern'
+    selectedPresetId: 'modern',
+    selectedTemplateUrl: ''
   };
 
   it('entry step is always valid', () => {
@@ -121,6 +133,23 @@ describe('WizardContext: validation', () => {
   it('preset step passes with a preset id', () => {
     expect(isStepValid('preset', { ...baseState, selectedPresetId: 'minimal' })).toBe(true);
   });
+
+  // FB-005 T3. 🔴 The default is `''` and there is no pre-selected row on purpose — a picker
+  // that pre-selected one would send somebody to Review with a template they never looked at.
+  it('template step refuses an unchosen template', () => {
+    expect(isStepValid('template', { ...baseState, mode: 'template', currentStep: 'template' })).toBe(false);
+  });
+
+  it('template step passes once a template url is chosen', () => {
+    expect(
+      isStepValid('template', {
+        ...baseState,
+        mode: 'template',
+        currentStep: 'template',
+        selectedTemplateUrl: 'embedded://hello-world'
+      })
+    ).toBe(true);
+  });
 });
 
 describe('WizardContext: goNext navigation', () => {
@@ -130,7 +159,8 @@ describe('WizardContext: goNext navigation', () => {
     projectName: 'Test',
     description: '',
     location: '/tmp',
-    selectedPresetId: 'modern'
+    selectedPresetId: 'modern',
+    selectedTemplateUrl: ''
   };
 
   it('quick: entry advances to basics', () => {
@@ -156,6 +186,14 @@ describe('WizardContext: goNext navigation', () => {
   it('guided: review stays (is the last step)', () => {
     expect(goNext({ ...baseState, mode: 'guided', currentStep: 'review' })).toBe('review');
   });
+
+  it('template: basics advances to the picker, not to preset', () => {
+    expect(goNext({ ...baseState, mode: 'template', currentStep: 'basics' })).toBe('template');
+  });
+
+  it('template: the picker advances to review', () => {
+    expect(goNext({ ...baseState, mode: 'template', currentStep: 'template' })).toBe('review');
+  });
 });
 
 describe('WizardContext: goBack navigation', () => {
@@ -165,7 +203,8 @@ describe('WizardContext: goBack navigation', () => {
     projectName: 'Test',
     description: '',
     location: '/tmp',
-    selectedPresetId: 'modern'
+    selectedPresetId: 'modern',
+    selectedTemplateUrl: ''
   };
 
   it('entry stays on entry when going back', () => {
@@ -208,5 +247,10 @@ describe('isLastStep: determines when to show Create Project button', () => {
 
   it('guided mode: preset is not the last step', () => {
     expect(isLastStep('guided', 'preset')).toBe(false);
+  });
+
+  it('template mode: review is the last step, so the picker still says Next', () => {
+    expect(isLastStep('template', 'review')).toBe(true);
+    expect(isLastStep('template', 'template')).toBe(false);
   });
 });

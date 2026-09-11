@@ -62,8 +62,14 @@ import type {
   ProjectV2File,
   RegistryV2File
 } from '../editor-deps';
+import type { AgentConfigReport } from '../editor-deps';
 import { SCHEMA_IDS, SchemaValidator, formatValidationErrors } from '../editor-deps';
 import { ToolError } from '../errors';
+import { projectInstructions } from '../instructions';
+import { installProjectOverlay } from '../kitOverlay';
+import { writeAgentConfig } from '../project/agentConfig';
+import type { ProjectBinding } from '../project/ProjectBinding';
+import type { ToolDisclosure } from './disclosure';
 import { guarded, jsonResult } from './util';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -71,6 +77,49 @@ const PKG_VERSION: string = require('../../package.json').version;
 
 /** Legacy names the skeleton ships with. `planFromScope` needs these to know create from update. */
 export const SKELETON_COMPONENTS: ReadonlySet<string> = new Set(['/App', '/Pages/Home']);
+
+/**
+ * LAS-012 §4 / F41 — the sentence that marks a page nobody has built yet.
+ *
+ * `create_project` mints `/Pages/Home`; `create_plan` then rejected a plan
+ * containing an operation creating `Pages/Home` — *"that component already
+ * exists — use an update"*. Haiku and qwen each burned a turn on it in session
+ * 6 (sonnet did not). The `create_project` result **does** say a Home skeleton
+ * was made, so this is knowledge given and dropped rather than withheld; but
+ * "structure over gate" says the door absorbs it, and a create aimed at an
+ * untouched skeleton is an update by any reading that matters.
+ *
+ * The marker lives next to the writer that emits it so a reworded placeholder
+ * changes both in one edit, which is the only thing keeping
+ * {@link isUntouchedSkeletonPage} from going quietly stale.
+ */
+export const SKELETON_PLACEHOLDER_MARKER =
+  ' — nothing built yet. Review the plan in docs/ and start when you are ready.';
+
+/** As much of a stored node as {@link isUntouchedSkeletonPage} reads. */
+interface SkeletonNodeLike {
+  type: string;
+  parameters?: Record<string, unknown> | null;
+}
+
+/**
+ * Whether a component is the `Page` + placeholder `Text` this file writes, with
+ * nothing added.
+ *
+ * Deliberately exact rather than heuristic: two nodes, one `Page`, one `Text`
+ * carrying the marker sentence. A page an author has touched — even to delete
+ * the placeholder — is a page whose content a coerced update would silently
+ * replace, and "the plan overwrote my work because it said create" is a much
+ * worse turn than the one this saves.
+ */
+export function isUntouchedSkeletonPage(nodes: readonly SkeletonNodeLike[]): boolean {
+  if (nodes.length !== 2) return false;
+  const page = nodes.find((n) => n.type === 'Page');
+  const text = nodes.find((n) => n.type === 'Text');
+  if (!page || !text) return false;
+  const value = text.parameters?.['text'];
+  return typeof value === 'string' && value.endsWith(SKELETON_PLACEHOLDER_MARKER);
+}
 
 function newId(): string {
   return crypto.randomUUID();
@@ -127,7 +176,27 @@ export function writeProjectSkeleton(projectDir: string, name: string): Skeleton
     runtimeVersion: 'react19',
     created: now,
     modified: now,
-    settings: { htmlTitle: name, navigationPathType: 'path' },
+    // REL-002a — `bodyScroll: true` is written for every NEW project, deliberately.
+    //
+    // 🔴 It is not a preference, it is whether the app can be used. With `bodyScroll` falsy
+    // the viewer wraps the whole app in a `width/height: 100%` div at `overflow: clip`
+    // (`noodl-viewer-react/src/viewer.jsx`, the else-branch of `render`) — its own comment says
+    // "this div is pinned to the viewport and routinely holds taller content". Nothing below the
+    // fold is reachable: `clip` creates no scroll container, so there is nothing for the user or
+    // the browser to scroll. Measured on `templates/members-area` at 988x313, the editor
+    // preview's own default size: `/setup` clips **539px** and puts six of its seven fields and
+    // its submit button out of reach; `/join` clips 393px and takes "Send my request" with it.
+    //
+    // 🔴 And no node parameter substitutes for it. Measured, one variable at a time, on the
+    // product's own host CSS: `scrollEnabled: true` on the page's root Group changes nothing
+    // (the Group grows to its content, so it has nothing to scroll, and the clip is two
+    // ancestors above it); neither does `sizeMode`, nor `clip`. The setting is the only door.
+    //
+    // ⚠️ Existing projects are untouched — this is what a new one starts with, not a change to
+    // the runtime default, so an app deliberately built as a fixed viewport keeps its `false`.
+    // A dashboard that wants the old behaviour turns it off; a form that needs to be filled in
+    // no longer ships unusable.
+    settings: { htmlTitle: name, navigationPathType: 'path', bodyScroll: true },
     structure: { componentsDir: 'components', assetsDir: 'assets' },
     // The Router node, not a component id. See the module header.
     rootNodeId: routerId
@@ -194,7 +263,7 @@ export function writeProjectSkeleton(projectDir: string, name: string): Skeleton
         type: 'Text',
         label: 'Placeholder',
         parent: pageId,
-        parameters: { text: `${name} — nothing built yet. Review the plan in docs/ and start when you are ready.` }
+        parameters: { text: `${name}${SKELETON_PLACEHOLDER_MARKER}` }
       }
     ],
     visualRoots: [pageId]
@@ -341,6 +410,35 @@ export interface CreateProjectResponse {
   rootNodeId: string;
   plan: AuthoringPlan;
   note: string;
+  /**
+   * BST-005 — what was written so the *next* session in this folder is not as
+   * cold as this one. Reported rather than assumed: "already there" and "we
+   * wrote it" look identical from outside, and a `skipped` row is the only
+   * place a failed write is visible at all.
+   */
+  agentConfig: AgentConfigReport;
+  /**
+   * BST-002 — what happened to *this* server, when it was the one with no
+   * project.
+   *
+   * Absent on a server that was already pointed at a project: nothing bound,
+   * and a field saying so on every ordinary call is noise. Present, it is the
+   * difference between "a project exists somewhere" and "you can build it now".
+   */
+  bound?: BindResult;
+}
+
+export interface BindResult {
+  /** Whether this call bound the server. `false` means a project was already bound. */
+  bound: boolean;
+  /** The directory this server is now serving — which on a refusal is **not** the new one. */
+  projectDir: string;
+  /** Tools that became advertised. Empty when nothing changed. */
+  toolsRevealed: string[];
+  /** What to do next, and — on a bind — the briefing `initialize` could not carry. */
+  note: string;
+  /** ⚠️ The bound briefing, verbatim from `instructions.ts`. Only on an actual bind. */
+  guidance?: string;
 }
 
 /**
@@ -368,7 +466,148 @@ function prepareDirectory(directory: string): string {
   return target;
 }
 
-export function registerCreateProjectTools(server: McpServer): void {
+/**
+ * BST-002 — what a mid-session bind has to say, because `initialize` already
+ * happened.
+ *
+ * 🔴 **`instructions` is fixed at `initialize` and MCP has no notification that
+ * revises it.** A server launched with no project has already spent its one
+ * briefing on the bootstrap text, so everything a bound server normally says up
+ * front — the plan-first order, `Static Data` and `Component Inputs`, the Router
+ * paragraph, `provision_backend` first, `render_report` as evidence — is missing
+ * at exactly the moment it becomes relevant. Every one of those paragraphs is in
+ * that string because a measured model got it wrong without it, so an agent that
+ * binds mid-session and never reads them reproduces those failures, and the
+ * failure looks like a model problem rather than a plumbing one.
+ *
+ * ⚠️ **This is the defect most likely to ship from this task and it is invisible
+ * to every gate.** The tools appear, the calls succeed, the project builds, and
+ * the pages are unreachable because nobody mentioned the Router.
+ *
+ * So the bind result carries the briefing — **the same string**, from
+ * `instructions.ts`, never a paraphrase of it. `tests/bindOnCreate.test.ts`
+ * asserts the constructor's instructions and this field come from one source.
+ */
+function bindGuidance(projectDir: string, deferTools: boolean): string {
+  return projectInstructions({ projectDir, allowWrites: true, deferTools });
+}
+
+/**
+ * Bind the live server to the project just created — or say, precisely, why not.
+ *
+ * ⚠️ **The refusal is as important as the bind.** A second `create_project`
+ * creates the second project and leaves this server pointed where it was, and
+ * the result has to *say* so: an agent that assumes the rebind will describe its
+ * next twenty tool calls as being about the new project when every one of them
+ * is about the old one.
+ */
+function bindTo(bind: CreateProjectBinding, projectDir: string): BindResult {
+  let didBind: boolean;
+  try {
+    didBind = bind.binding.bind(projectDir);
+  } catch (err) {
+    // ⚠️ **The project is already on disk by the time we get here**, so a bind
+    // failure must not become the tool's failure. If it did, the agent would be
+    // told `create_project` errored, retry into the directory it just filled,
+    // and be refused with "not empty" — losing a real project to a plumbing
+    // fault. `ProjectStore` should accept a directory this module just wrote
+    // and validated; if it ever does not, that is worth saying out loud rather
+    // than converting into a lie about the creation.
+    return {
+      bound: false,
+      projectDir,
+      toolsRevealed: [],
+      note:
+        `The project was created at ${projectDir}, but this server could not bind to it: ` +
+        `${(err as Error).message} — the project is on disk and intact. Start a server with that ` +
+        'directory as its argument and --allow-writes to build in it.'
+    };
+  }
+
+  if (!didBind) {
+    const servingDir = bind.binding.projectDir ?? projectDir;
+    return {
+      bound: false,
+      projectDir: servingDir,
+      toolsRevealed: [],
+      note:
+        `The project was created at ${projectDir}, but this server stays bound to ${servingDir} — a server ` +
+        'binds once, so every tool you call here still reads and writes the project it was already serving. ' +
+        'To build the new one, start a server with that directory as its argument and --allow-writes. Its ' +
+        '.mcp.json is already written, so an agent opened in that folder is offered it.'
+    };
+  }
+
+  return completeBind(bind, projectDir);
+}
+
+/**
+ * FIX-008 D — everything a *successful* mid-session bind does, in one place.
+ *
+ * 🔴 **There are now two doors into this state** — `create_project`, which binds
+ * a project it just wrote, and `open_project`, which binds one that was already
+ * there — and the thing that must not drift between them is not the wording but
+ * the *side effects*: the catalog overlay, the disclosure flip, and the briefing
+ * `initialize` could not send. A second spelling of this block would produce a
+ * server that is bound by one door and only three-quarters bound by the other,
+ * and every symptom of that lands somewhere else entirely (a kit's node types
+ * missing, `find_tools` still advertising the bootstrap copy, an agent authoring
+ * without the Router paragraph). None of those looks like a bind bug.
+ *
+ * So the two callers own their *refusals* — which genuinely differ, because
+ * `create_project` has already written a project it must not disown and
+ * `open_project` has written nothing — and share this.
+ */
+export function completeBind(bind: CreateProjectBinding, projectDir: string): BindResult {
+  // CN-003 — a bind is a bind: the catalog gets this project's overlay the same
+  // way `createServer` gives it one for a directory passed on the command line.
+  // A just-created project has no `noodl_modules`, so this is an `existsSync`
+  // and no child process; wiring it anyway is what stops the two bind paths
+  // from drifting the day a template ships with a kit in it.
+  //
+  // 🔴 FIX-008 D — and an *opened* project is exactly the case that comment was
+  // written against: a project on disk since 2024 may well have a kit in it, so
+  // here the call is load-bearing rather than defensive.
+  installProjectOverlay(projectDir);
+
+  const toolsRevealed = bind.disclosure.bindProject();
+
+  return {
+    bound: true,
+    projectDir,
+    toolsRevealed,
+    note:
+      `This server is now bound to ${projectDir} and ${toolsRevealed.length} more tools are advertised — ` +
+      'you can build in it from this same conversation, with no second registration and no restart. ' +
+      // ⚠️ Named, because a client that ignores `list_changed` would otherwise
+      // see a note promising tools it cannot call. Measured 2026-08-11: Claude
+      // Code re-lists 3ms after the notification.
+      'They arrive in your next tool list; if your client does not refresh on notifications/tools/' +
+      'list_changed, restart the server with the project directory as its argument. ' +
+      // 🔴 §3 — the briefing `initialize` already spent, and the reason this
+      // field exists at all.
+      'Read `guidance` below before authoring: it is what a server started with this project would have ' +
+      'told you at the start of the session, and it could not be sent then because there was no project. ' +
+      // 🔴 HLS-009 / #28 — "a project created through the MCP server never appears in Recent
+      // projects". It appears the moment the editor opens it, and `open_in_editor` is how that is
+      // asked for; before this task there was no way to ask, which is why #28 read as a missing
+      // launcher entry rather than as a missing door. Said here, in a per-call payload, because
+      // the resident surface has seven tokens of headroom (C65) and this sentence is only useful
+      // in the one turn where a project has just been bound.
+      'When the user should see it, call open_in_editor with this directory — find_tools({query:' +
+      ' "editor"}) reveals it — and the running editor will open it and list it under Recent projects.',
+    guidance: bindGuidance(projectDir, bind.deferTools)
+  };
+}
+
+export interface CreateProjectBinding {
+  binding: ProjectBinding;
+  disclosure: ToolDisclosure;
+  /** AWP-006 — whether the backend group stays behind `find_tools` after the bind. */
+  deferTools: boolean;
+}
+
+export function registerCreateProjectTools(server: McpServer, bind?: CreateProjectBinding): void {
   server.registerTool(
     'create_project',
     {
@@ -384,7 +623,7 @@ export function registerCreateProjectTools(server: McpServer): void {
         'directory to build against it.',
       inputSchema: scopeSchema
     },
-    guarded((args: CreateProjectArgs) => {
+    guarded(async (args: CreateProjectArgs) => {
       const target = prepareDirectory(args.directory);
       const name = args.name?.trim();
       if (!name) throw new ToolError('invalid-argument', 'A project name is required.');
@@ -427,6 +666,24 @@ export function registerCreateProjectTools(server: McpServer): void {
         writeTextAtomic(abs, doc.content);
       }
 
+      // BST-005 — last, after the documents, because `CLAUDE.md` points at them
+      // and a pointer written before its target is a pointer that can be wrong.
+      // Never throws: a project without a CLAUDE.md is still a project, and the
+      // report is where a failure becomes visible instead of vanishing.
+      const agentConfig = await writeAgentConfig({
+        projectDir: target,
+        projectName: name,
+        summary: scope.summary,
+        hasDocs: documents.length > 0
+      });
+
+      // ── BST-002: bind ────────────────────────────────────────────────────
+      // ⚠️ Here — after the files are written and validated, before the result
+      // is returned. Earlier, a failed write leaves a server bound to a
+      // half-made project; later, the result describes a session the agent
+      // cannot act on. Both halves in one place: the store, and the surface.
+      const bound = bind ? bindTo(bind, target) : undefined;
+
       const payload: CreateProjectResponse = {
         ok: true,
         projectDir: target,
@@ -438,7 +695,9 @@ export function registerCreateProjectTools(server: McpServer): void {
           `Project created with an empty App + Home skeleton and ${plan.operations.length} planned operation(s) ` +
           `that have NOT been run. The plan is also recorded in ${DOC_INITIAL_SCOPE}. To build it, start a ` +
           'server against this directory with --allow-writes and use create_plan / stage_plan_operation / ' +
-          'apply_plan — reviewing each page against docs/CONVENTIONS.md as you go.'
+          'apply_plan — reviewing each page against docs/CONVENTIONS.md as you go.',
+        agentConfig,
+        ...(bound ? { bound } : {})
       };
       return jsonResult(payload);
     })

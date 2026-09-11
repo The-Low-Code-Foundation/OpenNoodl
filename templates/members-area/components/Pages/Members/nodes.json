@@ -1,0 +1,611 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "131f4366-b550-56fe-870b-331bfb8843f2",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-3",
+      "type": "Page",
+      "label": "Members",
+      "children": [
+        "pageShell-2"
+      ],
+      "parameters": {
+        "title": "Members",
+        "urlPath": "members"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-2",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-3",
+      "children": [
+        "pageBody-2",
+        "pageFooter-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-2",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-2",
+      "children": [
+        "chrome",
+        "pageMain-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-2",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-2",
+      "children": [
+        "headBand",
+        "ground-2"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "chrome",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "pageBody-2",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "headBand",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageMain-2",
+      "children": [
+        "headBandShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "headBandShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand",
+      "children": [
+        "headingHeadRow"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 340,
+      "y": 760
+    },
+    {
+      "id": "pageFooter-2",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-2",
+      "x": 160,
+      "y": 3040
+    },
+    {
+      "id": "ground-2",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-2",
+      "children": [
+        "pendingNotice",
+        "unknownNotice",
+        "memberArea",
+        "moderatorTools"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "headingHeadRow",
+      "type": "Group",
+      "label": "Heading — the head, badged",
+      "parent": "headBandShell",
+      "children": [
+        "headingBadge",
+        "headingHead-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "headingBadge",
+      "type": "Group",
+      "label": "Heading — the badge",
+      "parent": "headingHeadRow",
+      "children": [
+        "headingGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "headingGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "Heading — the glyph",
+      "parent": "headingBadge",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-newspaper",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 520,
+      "y": 1120
+    },
+    {
+      "id": "headingHead-2",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "headingHeadRow",
+      "children": [
+        "headingEyebrow-2",
+        "heading-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1240
+    },
+    {
+      "id": "headingEyebrow-2",
+      "type": "Text",
+      "label": "For members",
+      "parent": "headingHead-2",
+      "parameters": {
+        "text": "For members",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "heading-3",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-2",
+      "parameters": {
+        "text": "Announcements",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h1"
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "pendingNotice",
+      "type": "Group",
+      "label": "Waiting to be approved",
+      "parent": "ground-2",
+      "children": [
+        "pendingNoticeText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "pendingNoticeText",
+      "type": "Text",
+      "label": "Waiting to be approved — the words",
+      "parent": "pendingNotice",
+      "parameters": {
+        "text": "Your request to join is with the moderators. You will be able to see announcements and meetings once it has been approved.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "unknownNotice",
+      "type": "Group",
+      "label": "Membership could not be checked",
+      "parent": "ground-2",
+      "children": [
+        "unknownNoticeText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "unknownNoticeText",
+      "type": "Text",
+      "label": "Membership could not be checked — the words",
+      "parent": "unknownNotice",
+      "parameters": {
+        "text": "We could not check your membership just now. Please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2080
+    },
+    {
+      "id": "memberArea",
+      "type": "Group",
+      "label": "What a member sees",
+      "parent": "ground-2",
+      "children": [
+        "list",
+        "emptyState"
+      ],
+      "parameters": {
+        "as": "section",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2200
+    },
+    {
+      "id": "list",
+      "type": "For Each",
+      "label": "One row per announcement",
+      "parent": "memberArea",
+      "parameters": {
+        "templateType": "explicit",
+        "template": "/Members/AnnouncementRow"
+      },
+      "x": 400,
+      "y": 2320
+    },
+    {
+      "id": "emptyState",
+      "type": "Group",
+      "label": "Nothing posted yet",
+      "parent": "memberArea",
+      "children": [
+        "emptyStateText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 2440
+    },
+    {
+      "id": "emptyStateText",
+      "type": "Text",
+      "label": "Nothing posted yet — the words",
+      "parent": "emptyState",
+      "parameters": {
+        "text": "Nothing has been posted yet. When a moderator posts an announcement it will appear here.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 460,
+      "y": 2560
+    },
+    {
+      "id": "moderatorTools",
+      "type": "Group",
+      "label": "What only a moderator sees",
+      "parent": "ground-2",
+      "children": [
+        "moderatorEyebrow",
+        "postButton"
+      ],
+      "parameters": {
+        "as": "section",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "moderatorEyebrow",
+      "type": "Text",
+      "label": "For moderators",
+      "parent": "moderatorTools",
+      "parameters": {
+        "text": "For moderators",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "postButton",
+      "type": "net.noodl.controls.button",
+      "label": "Post something",
+      "parent": "moderatorTools",
+      "parameters": {
+        "label": "Post something",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 2920
+    },
+    {
+      "id": "announcements",
+      "type": "DbCollection2",
+      "label": "The announcements",
+      "parameters": {
+        "runOnChange-records": true,
+        "runOnChange-search": true,
+        "collectionName": "Announcement",
+        "runOnChange-collectionName": false,
+        "runOnChange-querySettings": false,
+        "visualSort": [
+          {
+            "property": "postedAt",
+            "order": "descending"
+          }
+        ]
+      },
+      "x": 770,
+      "y": 2320
+    },
+    {
+      "id": "emptyGate",
+      "type": "JavaScriptFunction",
+      "label": "Is the noticeboard really empty?",
+      "parameters": {
+        "runOnChange-in-count": true,
+        "functionScript": "Outputs.empty = (Inputs.count || 0) === 0;"
+      },
+      "x": 770,
+      "y": 2440,
+      "ports": [
+        {
+          "name": "in-count",
+          "displayName": "count",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-empty",
+          "displayName": "empty",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "toLanding",
+      "type": "RouterNavigate",
+      "label": "Send a refused reader to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 770,
+      "y": 400
+    },
+    {
+      "id": "toPost",
+      "type": "RouterNavigate",
+      "label": "To the posting form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Post"
+      },
+      "x": 770,
+      "y": 2920
+    }
+  ],
+  "visualRoots": [
+    "page-3"
+  ]
+}

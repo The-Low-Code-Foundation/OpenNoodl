@@ -59,6 +59,47 @@
   }
 }
 
+/*
+ * BLD-007's injection line: a path that may shrink, and a cost that may not.
+ *
+ * One element cannot be both. F20's ellipsis above is right about a path and
+ * wrong about the number appended after it — see `injectionDetail` in
+ * DocsPanel.tsx for the measurement. Splitting the two is what lets the row
+ * still collapse to the 240px floor without the cost ever being the casualty.
+ */
+.Injection {
+  display: flex;
+  align-items: baseline;
+  /* Wraps rather than clips: at the 240px floor the cost alone is wider than the
+     row, so without this the split above would merely move which end got cut. */
+  flex-wrap: wrap;
+  gap: 0 4px;
+  min-width: 0;
+}
+
+.InjectionPath {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * ⚠️ Wraps; it does not merely refuse to shrink.
+ *
+ * `flex: none; white-space: nowrap` was the first attempt and it is wrong below
+ * the default width: measured across the panel's range, the cost needs 286px and
+ * the label box is 111px at the 240px floor, so the sentence simply overflowed a
+ * container the toolbar clips — a hard cut with no ellipsis, which is worse than
+ * the truncation being fixed. Reflowing onto a second and third line is the only
+ * behaviour that keeps the number readable at every width the panel can take.
+ */
+.InjectionDetail {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
 .Notice {
   padding: 6px 8px;
   border-left: 2px solid var(--theme-color-notice);

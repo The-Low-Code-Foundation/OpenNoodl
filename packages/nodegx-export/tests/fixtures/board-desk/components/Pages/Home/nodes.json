@@ -1,0 +1,300 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000100",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Board Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "board",
+        "xText",
+        "yText",
+        "dxText",
+        "dyText",
+        "statusText",
+        "targetInput",
+        "snapBtn"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Board Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "board",
+      "type": "Group",
+      "label": "Board",
+      "parent": "shell",
+      "children": [
+        "drag"
+      ],
+      "parameters": {
+        "width": {
+          "value": 320,
+          "unit": "px"
+        },
+        "height": {
+          "value": 200,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--color-surface-2)"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "drag",
+      "type": "Drag",
+      "label": "Card",
+      "parent": "board",
+      "children": [
+        "card"
+      ],
+      "parameters": {
+        "axis": "both",
+        "inputPositionX": 20,
+        "inputPositionY": 20,
+        "snapToPositionX.duration": 200,
+        "snapToPositionY.value": 0
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "card",
+      "type": "Group",
+      "label": "Card Face",
+      "parent": "drag",
+      "children": [
+        "cardText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 80,
+          "unit": "px"
+        },
+        "height": {
+          "value": 80,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--color-primary)",
+        "alignItems": "center",
+        "justifyContent": "center"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "cardText",
+      "type": "Text",
+      "label": "Card Text",
+      "parent": "card",
+      "parameters": {
+        "text": "Card",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 600
+    },
+    {
+      "id": "xText",
+      "type": "Text",
+      "label": "Drag X",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "yText",
+      "type": "Text",
+      "label": "Drag Y",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "dxText",
+      "type": "Text",
+      "label": "Delta X",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 840
+    },
+    {
+      "id": "dyText",
+      "type": "Text",
+      "label": "Delta Y",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "targetInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Snap target",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Snap target X"
+      },
+      "x": 100,
+      "y": 1080
+    },
+    {
+      "id": "snapBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Snap home",
+      "parent": "shell",
+      "parameters": {
+        "label": "Snap home"
+      },
+      "x": 100,
+      "y": 1160
+    },
+    {
+      "id": "status",
+      "type": "Variable2",
+      "label": "status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 500,
+      "y": 160
+    },
+    {
+      "id": "setDragging",
+      "type": "Set Variable",
+      "label": "status = dragging",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 500,
+      "y": 240
+    },
+    {
+      "id": "setReleased",
+      "type": "Set Variable",
+      "label": "status = released",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 500,
+      "y": 320
+    },
+    {
+      "id": "setSnapped",
+      "type": "Set Variable",
+      "label": "status = snapped",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 500,
+      "y": 400
+    },
+    {
+      "id": "homeX",
+      "type": "Variable2",
+      "label": "homeX",
+      "parameters": {
+        "name": "homeX"
+      },
+      "x": 500,
+      "y": 480
+    },
+    {
+      "id": "draggingLabel",
+      "type": "String",
+      "label": "dragging wording",
+      "parameters": {
+        "value": "dragging"
+      },
+      "x": 700,
+      "y": 560
+    },
+    {
+      "id": "releasedLabel",
+      "type": "String",
+      "label": "released wording",
+      "parameters": {
+        "value": "released"
+      },
+      "x": 700,
+      "y": 640
+    },
+    {
+      "id": "snappedLabel",
+      "type": "String",
+      "label": "snapped wording",
+      "parameters": {
+        "value": "snapped"
+      },
+      "x": 700,
+      "y": 720
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

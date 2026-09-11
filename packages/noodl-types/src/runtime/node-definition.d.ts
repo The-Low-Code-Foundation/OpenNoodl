@@ -164,6 +164,24 @@ export interface NodeInstance {
   shouldRunOnValueChange(inputName: string): boolean;
 
   /**
+   * DEF-046 — the same question from a setter that knows the value it is replacing.
+   *
+   * `true` only when the author has left the box ticked AND the value actually changed.
+   * Until this existed, a setter handed the value it already held re-ran the node anyway —
+   * a code node given `title: 'Pricing'` twice ran twice and wrote a row each time, and it
+   * contradicted the run-on-value-change contract's own justification for keeping `Run`
+   * (*"an async re-fetch that returns an identical value fires no change"*).
+   *
+   * ⚠️ Comparison is **primitives only**: an array mutated in place is the same reference,
+   * so a non-primitive on either side always counts as changed. ⚠️ A call site with no
+   * previous value — an event rather than a setter — keeps using
+   * {@link NodeInstance.shouldRunOnValueChange}.
+   *
+   * @see `packages/noodl-runtime/src/run-on-value-change.ts`
+   */
+  shouldRunOnValueChanged(inputName: string, previous: unknown, next: unknown): boolean;
+
+  /**
    * Mint the checkbox port for an input this node discovered at runtime.
    *
    * Declared inputs get theirs from {@link NodeDefinitionOptions.runOnValueChange}; only the
@@ -266,8 +284,13 @@ export interface NodeInstance {
    * The token — not the node — carries "has this invocation reported yet", which is the only
    * shape that survives an action whose result arrives several frames later, and the reason
    * `Close Popup`'s latched-first-result class (FINDINGS **NV-iii**) cannot recur here.
+   *
+   * @param inputData DEF-004 — optional context recorded against this invocation's execution
+   *                  step where a host is recording (a cloud function). Pass what an author would
+   *                  need to tell two invocations of this node apart, and nothing a node cannot
+   *                  afford to have written down; the host redacts, but only what it can name.
    */
-  beginOutcome(): OutcomeToken;
+  beginOutcome(inputData?: Record<string, unknown>): OutcomeToken;
 
   /**
    * End an invocation with exactly one of `Done` / `Unchanged` / `Failure`, then `Completed`.
@@ -290,6 +313,12 @@ export type NodeOutcome = 'done' | 'unchanged' | 'failure';
 /** Opaque per-invocation token from {@link NodeInstance.beginOutcome}. */
 export interface OutcomeToken {
   reported: NodeOutcome | undefined;
+  /**
+   * DEF-004 — the host's handle for the execution step this invocation opened, or absent where
+   * no host is recording (every browser runtime). Opaque: only `reportOutcome` reads it, and only
+   * to hand it straight back.
+   */
+  step?: unknown;
 }
 
 /** The reason half of a `'failure'` outcome, raised on the NDA-004 channel. */
@@ -886,6 +915,15 @@ export interface InputPortDefinition {
   popout?: unknown;
   index?: number;
   tooltip?: PortTooltip;
+  /**
+   * FB-015 — a shape hint shown in the property-panel field while it is empty, for a port whose
+   * value has a *syntax* rather than just a value. `Image.srcSet` is the case that motivated it:
+   * a raw HTML `srcset` list, with no picker and nothing on screen saying what one looks like.
+   *
+   * Not a default and not a description: it is never committed, and it disappears as soon as the
+   * author types. Copied to the editor by `nodelibraryexport.formatPort`.
+   */
+  placeholder?: string;
   /** Defaults to `true`. Set `false` to keep the port out of the editor entirely. */
   exportToEditor?: boolean;
   /** Higher priority inputs are applied first within one update. Defaults to `0`. */
@@ -1172,8 +1210,16 @@ export interface NodeDefinitionOptions {
   displayNodeName?: string;
   /** Fallback for {@link displayNodeName}. */
   displayName?: string;
-  /** URL of the node's documentation page. */
+  /** Prose or URL depending on provenance; see {@link docsUrl}. */
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node. Two fields, two meanings, no sniffing.
+   */
+  docsUrl?: string;
   /** Extra terms the node picker matches on. */
   searchTags?: string[];
   color?: NodeColorName;
@@ -1193,6 +1239,18 @@ export interface NodeDefinitionOptions {
   exportDynamicPorts?: boolean;
   /** The node instantiates a component, so its ports come from that component. */
   haveComponentPorts?: boolean;
+
+  /**
+   * P77 SBR-008 §9 — ports under this prefix are declared by the author's WIRES, not only by
+   * the node's own port set (`prop-` on the Record family).
+   *
+   * Such a port may not exist yet: the runtime mints it from the node's wires, and on a fresh
+   * site that is the only declaration there is, because the column the schema would name it
+   * from does not exist until something writes it. The editor reads this to stop calling such
+   * a wire broken in the meantime — without which it is a deadlock rather than a delay, since
+   * `exportComponent` drops the very wire the runtime would need to mint the port.
+   */
+  wireDeclaredPortPrefix?: string;
 
   /**
    * NDA-017 §2 — declare this node a member of the control-signal class.
@@ -1271,6 +1329,11 @@ export interface InputPortMetadata {
   exportToEditor: boolean;
   inputPriority: number;
   tooltip?: PortTooltip;
+  /**
+   * FB-015 — copied verbatim from the authored port. Input-only: an output port renders no
+   * editable field, so `OutputPortMetadata` deliberately has no counterpart.
+   */
+  placeholder?: string;
   /** Copied verbatim from the authored port. See {@link PortTab}. */
   tab?: PortTab;
   popout?: unknown;
@@ -1308,6 +1371,8 @@ export interface NodeMetadata {
 
   displayNodeName?: string;
   docs?: string;
+  /** D10: a kit's separate documentation URL. See `NodeDefinitionOptions.docsUrl`. */
+  docsUrl?: string;
   searchTags?: string[];
   color?: NodeColorName;
   module?: string;
@@ -1319,6 +1384,8 @@ export interface NodeMetadata {
   dynamicports?: DynamicPortEntry[];
   exportDynamicPorts?: boolean;
   haveComponentPorts?: boolean;
+  /** P77 SBR-008 §9 — see {@link NodeDefinitionOptions.wireDeclaredPortPrefix}. */
+  wireDeclaredPortPrefix?: string;
 
   singleton?: boolean;
   allowChildren?: boolean;
@@ -1456,6 +1523,19 @@ export interface ComponentModelLike extends EventSenderLike {
   getNodeWithId(id: string): GraphNodeModel | undefined;
   getAllNodes(): GraphNodeModel[];
   getNodesWithType(type: string): GraphNodeModel[];
+  /**
+   * The component's wires, filtered by one end. `componentmodel.ts` filters
+   * {@link connections} on each call and returns a fresh array, so the result is safe to
+   * hold — unlike {@link getRoots}.
+   *
+   * Named here because two dynamic-port families derive their ports from what the author
+   * wired rather than from what a schema declares: numbered inputs
+   * (`nodedefinition.ts:588`) and the Record family's `prop-*` (P77 SBR-008). A node's own
+   * `inputs`/`outputs` arrays are **not** the alternative — `nodemodel.ts` initialises both
+   * to `[]` and nothing in the runtime ever pushes to them.
+   */
+  getConnectionsTo(nodeId: string): { sourceId: string; sourcePort: string; targetId: string; targetPort: string }[];
+  getConnectionsFrom(nodeId: string): { sourceId: string; sourcePort: string; targetId: string; targetPort: string }[];
   /**
    * The same array as {@link roots} — `componentmodel.js` returns it directly rather
    * than a copy, so callers must not mutate the result. Paired with the `rootAdded`

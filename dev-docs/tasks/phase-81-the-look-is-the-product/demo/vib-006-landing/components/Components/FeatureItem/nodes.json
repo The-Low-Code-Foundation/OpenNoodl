@@ -1,0 +1,114 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "9f3615c0-7acb-5506-823f-ebd7032818ba",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fi_root",
+      "type": "Group",
+      "label": "Item",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "flex-start"
+      },
+      "children": [
+        "fi_icon",
+        "fi_copy"
+      ]
+    },
+    {
+      "id": "fi_icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Glyph",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sprout",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "parent": "fi_root"
+    },
+    {
+      "id": "fi_copy",
+      "type": "Group",
+      "label": "Copy",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "parent": "fi_root",
+      "children": [
+        "fi_t",
+        "fi_b"
+      ]
+    },
+    {
+      "id": "fi_t",
+      "type": "Text",
+      "label": "t",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "text": "Title"
+      },
+      "parent": "fi_copy"
+    },
+    {
+      "id": "fi_b",
+      "type": "Text",
+      "label": "b",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "lineHeight": "var(--leading-normal)",
+        "color": "var(--muted-foreground)",
+        "text": "Body"
+      },
+      "parent": "fi_copy"
+    },
+    {
+      "id": "fi_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per instance",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "body",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "icon",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "fi_root"
+  ]
+}

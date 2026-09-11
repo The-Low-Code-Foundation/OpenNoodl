@@ -1,0 +1,186 @@
+{
+ "desktop": {
+  "requested": {
+   "width": 1280,
+   "height": 900
+  },
+  "lists": [],
+  "layoutWidth": 1280,
+  "clientWidth": 1280,
+  "clientHeight": 900,
+  "scrollWidth": 1280,
+  "pageHeight": 900,
+  "contentBottom": 706,
+  "overflowing": [],
+  "overflowingCount": 0,
+  "text": {
+   "elements": 9,
+   "onScreen": 9,
+   "unreachable": 0,
+   "fontWeights": {
+    "400": 5,
+    "600": 4
+   },
+   "fontSizes": {
+    "12px": 1,
+    "30px": 1,
+    "16px": 4,
+    "14px": 3
+   },
+   "distinctFontSizes": 4,
+   "largestFontSize": 30,
+   "bodyFontFamily": "\"Source Sans Pro\", \"Segoe UI\", ui-sans-serif, sans-serif"
+  },
+  "placeholders": {
+   "count": 0,
+   "byText": {},
+   "samples": []
+  },
+  "images": {
+   "total": 0,
+   "icons": 0,
+   "onScreen": 0,
+   "unreachable": 0,
+   "broken": 0,
+   "brokenSources": []
+  },
+  "emptyDecoratedBoxes": {
+   "count": 0,
+   "samples": []
+  },
+  "colors": {
+   "distinctAccents": 1,
+   "accents": [
+    {
+     "color": "rgb(31, 95, 69)",
+     "area": 10220,
+     "share": 0.009
+    }
+   ],
+   "distinctNeutrals": 2,
+   "viewportArea": 1152000
+  },
+  "grounds": {
+   "distinct": 0,
+   "values": []
+  },
+  "rhythm": {
+   "bands": 1,
+   "distinctSpacings": 0,
+   "spacings": []
+  },
+  "repeatedGroups": [
+   {
+    "kind": "siblings",
+    "count": 4,
+    "columns": 1,
+    "rows": 4,
+    "itemWidth": 670,
+    "itemHeight": 66,
+    "parentWidth": 712,
+    "tag": "DIV",
+    "cls": ""
+   }
+  ],
+  "consoleErrors": []
+ },
+ "phone": {
+  "requested": {
+   "width": 390,
+   "height": 844
+  },
+  "lists": [],
+  "layoutWidth": 390,
+  "clientWidth": 390,
+  "clientHeight": 844,
+  "scrollWidth": 390,
+  "pageHeight": 844,
+  "contentBottom": 706,
+  "overflowing": [],
+  "overflowingCount": 0,
+  "text": {
+   "elements": 9,
+   "onScreen": 9,
+   "unreachable": 0,
+   "fontWeights": {
+    "400": 5,
+    "600": 4
+   },
+   "fontSizes": {
+    "12px": 1,
+    "30px": 1,
+    "16px": 4,
+    "14px": 3
+   },
+   "distinctFontSizes": 4,
+   "largestFontSize": 30,
+   "bodyFontFamily": "\"Source Sans Pro\", \"Segoe UI\", ui-sans-serif, sans-serif"
+  },
+  "placeholders": {
+   "count": 0,
+   "byText": {},
+   "samples": []
+  },
+  "images": {
+   "total": 0,
+   "icons": 0,
+   "onScreen": 0,
+   "unreachable": 0,
+   "broken": 0,
+   "brokenSources": []
+  },
+  "emptyDecoratedBoxes": {
+   "count": 0,
+   "samples": []
+  },
+  "colors": {
+   "distinctAccents": 1,
+   "accents": [
+    {
+     "color": "rgb(31, 95, 69)",
+     "area": 10220,
+     "share": 0.031
+    }
+   ],
+   "distinctNeutrals": 2,
+   "viewportArea": 329160
+  },
+  "grounds": {
+   "distinct": 2,
+   "values": [
+    {
+     "ground": "rgb(252, 252, 251)",
+     "count": 4
+    },
+    {
+     "ground": "rgb(244, 246, 244)",
+     "count": 1
+    }
+   ]
+  },
+  "rhythm": {
+   "bands": 4,
+   "distinctSpacings": 1,
+   "spacings": [
+    {
+     "px": 16,
+     "count": 3
+    }
+   ]
+  },
+  "repeatedGroups": [
+   {
+    "kind": "siblings",
+    "count": 4,
+    "columns": 1,
+    "rows": 4,
+    "itemWidth": 300,
+    "itemHeight": 66,
+    "parentWidth": 342,
+    "tag": "DIV",
+    "cls": ""
+   }
+  ],
+  "consoleErrors": []
+ }
+}

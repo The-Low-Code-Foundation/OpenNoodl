@@ -1,5 +1,18 @@
 @use '../../../styles/scss-utils/placeholder.scss' as *;
 
+/**
+ * FB-006 — the variant rules below hang off the variant class ALONE, not off
+ * `.Root.is-variant-x`.
+ *
+ * `TabStrip` can be rendered without `Tabs`' root (the launcher's community tab
+ * owns its own chrome and holds the active tab itself), and a selector that
+ * needed BOTH classes on one ancestor would have forced that caller to apply
+ * `.Root` — whose `height: 100%; overflow: hidden` is a layout it does not want.
+ * ⚠️ Loosening a selector cannot un-match anything: the variant class is only
+ * ever put on a root or a strip, and the two never disagree about which variant
+ * they are.
+ */
+
 $_gutter: 2px;
 $_text-variant-top-padding: 15px;
 
@@ -21,7 +34,7 @@ $_text-variant-top-padding: 15px;
 
   // Consumers that own the surrounding chrome (the node picker's head) set the
   // row's inset without needing to reach into these class names.
-  .Root.is-variant-segmented & {
+  .is-variant-segmented & {
     padding: var(--tabs-row-padding, 0);
   }
 }
@@ -35,12 +48,12 @@ $_text-variant-top-padding: 15px;
 .Buttons {
   display: flex;
 
-  .Root.is-variant-default & {
+  .is-variant-default & {
     margin-left: -$_gutter;
     padding: 2px;
   }
 
-  .Root.is-variant-text & {
+  .is-variant-text & {
     padding: $_text-variant-top-padding 15px 13px;
   }
 
@@ -52,14 +65,14 @@ $_text-variant-top-padding: 15px;
      overflowed its box to the right while the shorter one had room to spare.
      That is exactly what Richard saw: "less spacing at the right than the
      left". With the row full-width the buttons split the panel instead. */
-  .Root.is-variant-sidebar & {
+  .is-variant-sidebar & {
     margin-left: -$_gutter;
     flex: 1;
     min-width: 0;
   }
 
   // UIX-013: the pill-in-a-track segmented control.
-  .Root.is-variant-segmented & {
+  .is-variant-segmented & {
     gap: 2px;
     padding: 2px;
     border: 1px solid var(--theme-color-border-default);
@@ -72,7 +85,7 @@ $_text-variant-top-padding: 15px;
   cursor: pointer;
   user-select: none;
 
-  .Root.is-variant-default & {
+  .is-variant-default & {
     background-color: var(--theme-color-bg-3);
     flex-grow: 1;
     flex-shrink: 0;
@@ -100,7 +113,7 @@ $_text-variant-top-padding: 15px;
     }
   }
 
-  .Root.is-variant-text & {
+  .is-variant-text & {
     @extend %reset-styles;
     font-weight: var(--font-weight-semibold);
     background-color: transparent;
@@ -134,7 +147,7 @@ $_text-variant-top-padding: 15px;
     }
   }
 
-  .Root.is-variant-segmented & {
+  .is-variant-segmented & {
     @extend %reset-styles;
     padding: 6px 14px;
     border: 0;
@@ -163,7 +176,7 @@ $_text-variant-top-padding: 15px;
     }
   }
 
-  .Root.is-variant-sidebar & {
+  .is-variant-sidebar & {
     background-color: var(--theme-color-bg-3);
     /* SPR-003 §2: `flex-basis: 1` is not valid CSS — a unitless non-zero length
        is dropped, leaving `auto`, so the inline percentage width was doing all
@@ -214,7 +227,7 @@ $_text-variant-top-padding: 15px;
 
   // Segmented tabs host full-height surfaces that scroll their own panes, so
   // the content area stretches its tab rather than scrolling it.
-  .Root.is-variant-segmented & {
+  .is-variant-segmented & {
     display: flex;
     flex-direction: column;
     min-height: 0;

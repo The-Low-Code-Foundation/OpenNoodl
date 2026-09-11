@@ -29,6 +29,7 @@ Do not add Page from the node picker or use it outside a Router page component �
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `description` | String | — | Summary search engines show under the page title in results, usually kept under about 160 characters |
 | `og:description` | String | — | Summary shown beneath the title when this page is shared |
@@ -36,7 +37,7 @@ Do not add Page from the node picker or use it outside a Router page component �
 | `og:image:height` | String | — | Height of the share image in pixels |
 | `og:image:width` | String | — | Width of the share image in pixels, which lets a preview reserve space before the image loads |
 | `og:title` | String | — | Title shown when this page is shared on Facebook, LinkedIn and most chat apps; falls back to the page title |
-| `og:type` | String | — | What kind of thing this page is, e.g. website or article, which changes how the preview is laid out |
+| `og:type` | Enum (`website`, `article`, `book`, `profile`, `video.movie`, `video.episode`, `video.tv_show`, `video.other`, `music.song`, `music.album`, `music.playlist`, `music.radio_station`) | — | What kind of thing this page is, which changes how the preview is laid out. The legal values are fixed by the Open Graph protocol, so this is a closed list rather than free text. |
 | `og:url` | String | — | Canonical address of this page, so shares of different URLs are counted as the same page |
 | `paddingBottom` | Number | `0` | Space inside the element's bottom edge, between it and its content |
 | `paddingLeft` | Number | `0` | Space inside the element's left edge, between it and its content |
@@ -47,10 +48,12 @@ Do not add Page from the node picker or use it outside a Router page component �
 | `sitemapIncluded` | Boolean | `true` | Lists this page in the generated sitemap |
 | `sitemapPriority` | Number | `0.5` | This page's importance relative to the rest of the site, from 0 to 1, in the sitemap |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
-| `twitter:card` | String | — | Shape of the preview on X/Twitter, e.g. summary or summary_large_image |
+| `title` | String | — | The page's title, used as the document title while this page is showing; defaults to the component name |
+| `twitter:card` | Enum (`summary`, `summary_large_image`, `app`, `player`) | — | Shape of the preview on X/Twitter. A closed list: anything else is ignored and the card falls back to a small summary. |
 | `twitter:description` | String | — | Summary shown when this page is shared on X/Twitter |
 | `twitter:image` | String | — | Image shown in the X/Twitter preview; it must be an absolute URL |
 | `twitter:title` | String | — | Title shown when this page is shared on X/Twitter; falls back to the Open Graph title |
+| `urlPath` | String | — | The URL pattern that routes to this page, e.g. "product/{productId}" — placeholders become path parameters a Page Inputs node reads |
 
 ### Signals
 
@@ -89,7 +92,17 @@ Some ports are discovered at runtime from user code, parameters or connected com
 
 ## Ports at runtime
 
-Runtime-determined inputs (runtime-discovered): `title` and `urlPath` are registered per instance by the editor connection, with defaults derived from the component name. The static catalog lists only the meta-tag, sitemap and padding inputs.
+Runtime-determined inputs (runtime-discovered): an editor connection re-sends `title` and `urlPath` per instance so the property panel can offer defaults derived from the component name. Both are ordinary declared inputs and are settable as parameters with no editor attached: the exporter reads them off the node into the router index, so a headlessly authored page carries its own title and URL. Nothing else on this node is runtime-determined.
+
+## Examples
+
+**Page spine: full-bleed bands, a centred max-width shell, an announced section**
+
+The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems "center" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.
+
+**Card grid: Query Records into a Repeater, in a Columns node that reflows on its own**
+
+The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing "autoFit" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.
 
 ## Related nodes
 

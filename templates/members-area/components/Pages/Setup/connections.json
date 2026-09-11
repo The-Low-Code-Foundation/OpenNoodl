@@ -1,0 +1,145 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "568b05ff-bd29-5171-80c3-3933e9bf9272",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-associationName"
+    },
+    {
+      "fromId": "taglineField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-tagline"
+    },
+    {
+      "fromId": "aboutField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-blurb"
+    },
+    {
+      "fromId": "yourNameField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-moderatorName"
+    },
+    {
+      "fromId": "emailField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "passwordField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "tokenField",
+      "fromProperty": "onTextChanged",
+      "toId": "claim",
+      "toProperty": "in-setupToken"
+    },
+    {
+      "fromId": "claimButton",
+      "fromProperty": "onClick",
+      "toId": "check",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "nameField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-associationName"
+    },
+    {
+      "fromId": "yourNameField",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-moderatorName"
+    },
+    {
+      "fromId": "emailField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "passwordField-2",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "tokenField",
+      "fromProperty": "onTextChanged",
+      "toId": "check",
+      "toProperty": "in-setupToken"
+    },
+    {
+      "fromId": "check",
+      "fromProperty": "out-ready",
+      "toId": "claim",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "check",
+      "fromProperty": "out-problem",
+      "toId": "missingText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "check",
+      "fromProperty": "out-blocked",
+      "toId": "missingGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "missingGate",
+      "fromProperty": "result",
+      "toId": "missing",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "check",
+      "fromProperty": "out-ready",
+      "toId": "missingClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "missingClear",
+      "fromProperty": "result",
+      "toId": "missing",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "claim",
+      "fromProperty": "done",
+      "toId": "toSignIn-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "prompt-4",
+      "fromProperty": "clicked",
+      "toId": "toSignIn-2",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "claim",
+      "fromProperty": "failure",
+      "toId": "refusalGate-4",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate-4",
+      "fromProperty": "result",
+      "toId": "refusal-4",
+      "toProperty": "mounted"
+    }
+  ]
+}

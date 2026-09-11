@@ -606,7 +606,7 @@
                         "x": -305.17329481891244,
                         "y": -6.997327050872002,
                         "parameters": {
-                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"material-icons\",\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\""
+                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"lucide\", \"codeAsClass\": true,\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\""
                         },
                         "ports": [],
                         "dynamicports": [
@@ -951,10 +951,7 @@
                                 "id": "2adef468-4888-cb3c-d7d3-792e31d3462b",
                                 "type": "net.noodl.visual.icon",
                                 "parameters": {
-                                    "iconIconSource": {
-                                        "class": "material-icons",
-                                        "code": "account_circle"
-                                    },
+                                    "iconIconSource": { "class": "lucide", "code": "icon-user-circle-2", "codeAsClass": true },
                                     "iconColor": "Grey - 900",
                                     "iconSize": {
                                         "value": 24,

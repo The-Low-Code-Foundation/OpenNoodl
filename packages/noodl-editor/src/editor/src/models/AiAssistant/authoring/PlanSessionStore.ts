@@ -100,6 +100,19 @@ export interface PlanSessionNote {
 export interface PlanSession {
   /** The Plan-it box. A half-typed request is work too. */
   description: string;
+  /**
+   * BLD-011 — the composer's attachments for this request, already rendered and
+   * capped, handed to every operation the plan authors.
+   *
+   * ⚠️ **In memory only, and deliberately absent from `snapshotSession`.** This
+   * is up to 24k characters per attached component; persisting it would put a
+   * second, silently diverging copy of the project's own source into
+   * `.nodegx/`, and a restored plan would then author against a snapshot of a
+   * component that has since changed. A restored plan carries no attachments
+   * and says so, which is the same retention rule `TurnReference` states for
+   * thread files: record *what* rode along, never its bytes.
+   */
+  references?: string;
   plan: AuthoringPlan | null;
   note: PlanSessionNote | null;
   /** Operations the user excluded, dependency-closed. */

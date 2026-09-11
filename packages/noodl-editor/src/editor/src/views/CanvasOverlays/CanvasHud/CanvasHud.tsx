@@ -1,11 +1,10 @@
 import { useKeyboardCommands } from '@noodl-hooks/useKeyboardCommands';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 import { Keybindings } from '@noodl-constants/Keybindings';
 import { SidebarModel } from '@noodl-models/sidebar';
-import { SidebarModelEvent } from '@noodl-models/sidebar/sidebarmodel';
 
-import { AiAuthoringPanel_ID } from '../../panels/AiAuthoringPanel';
+import { AiAuthoringPanel_ID, useBuildPanelEnabled } from '../../panels/AiAuthoringPanel';
 import css from './CanvasHud.module.scss';
 
 export interface CanvasHudProps {
@@ -30,21 +29,9 @@ export interface CanvasHudProps {
  *   mouse-wheel zoom already uses; fit binds to the existing center-to-fit.
  */
 export function CanvasHud({ zoomPercent, onZoomIn, onZoomOut, onZoomToFit, showAiPill }: CanvasHudProps) {
-  const [aiPanelAvailable, setAiPanelAvailable] = useState(() =>
-    Boolean(SidebarModel.instance.getPanel(AiAuthoringPanel_ID))
-  );
-
-  useEffect(() => {
-    const group = {};
-    SidebarModel.instance.on(
-      SidebarModelEvent.itemsChanged,
-      () => setAiPanelAvailable(Boolean(SidebarModel.instance.getPanel(AiAuthoringPanel_ID))),
-      group
-    );
-    return () => {
-      SidebarModel.instance.off(group);
-    };
-  }, []);
+  // Was written out here; extracted when the Docs panel needed the same answer, so "is Build
+  // switched on" has one definition rather than two that can drift apart.
+  const aiPanelAvailable = useBuildPanelEnabled();
 
   const aiEnabled = showAiPill && aiPanelAvailable;
 

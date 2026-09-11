@@ -1,0 +1,83 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "eff755d4-c0f5-479c-8c4b-5b30a9d23afc",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "snackrow-0001",
+      "type": "Group",
+      "label": "Snack row",
+      "x": 40,
+      "y": 40,
+      "children": [
+        "snackname-0001"
+      ],
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "marginTop": "var(--space-2)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)"
+      },
+      "metadata": {
+        "comment": "Step 3. The root Group a Visual Component is born with (ComponentTemplates.ts VisualComponentTemplate), renamed. Every parameter on it is UNGRADED furniture, allowed because this lesson creates the node (rule 2 of the spine): the learner's row may be bare and the lesson still passes. sizeMode contentHeight matters most - a Group defaults to 100% x 100%, and a row that claims the whole board's height would stack three screens. Its Click output is what step 6 wires: any Group can be clicked, so a snack needs no Button inside it."
+      }
+    },
+    {
+      "id": "snackname-0001",
+      "type": "Text",
+      "label": "Name",
+      "x": 100,
+      "y": 160,
+      "parent": "snackrow-0001",
+      "metadata": {
+        "comment": "Step 3. Carries NO text parameter, deliberately, for the reason Score, Story and Mood Line do not: the word arrives on a wire from Component Inputs, so if the join between the data's header and the port ever breaks, the node falls back to the catalog default 'Text' and both F4's placeholder check and the learner's own eyes see it. A parameter here would hide exactly the defect step 5's detail tells the learner how to find."
+      }
+    },
+    {
+      "id": "snackin-0001",
+      "type": "Component Inputs",
+      "label": "Fields",
+      "x": 400,
+      "y": 160,
+      "ports": [
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "*"
+        }
+      ],
+      "metadata": {
+        "comment": "Step 4. The port is what makes an instance parameter ARRIVE: the Repeater sets an input on each instance for every item field whose name matches a Component Inputs port (foreach.tsx: for inputKey in itemNode._inputs, model.data[inputKey]). So `name` here and `name` in Pantry's header are one contract, and the lesson grades the port by name (hasPort) because that is the half the learner can get wrong silently. Type `*` is what the editor's + Port button writes; the editor derives the real type from the wire (componentmodel.ts _deriveType)."
+      }
+    },
+    {
+      "id": "snackout-0001",
+      "type": "Component Outputs",
+      "label": "Signals",
+      "x": 400,
+      "y": 40,
+      "ports": [
+        {
+          "name": "eaten",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "metadata": {
+        "comment": "Step 6. The other direction. A port on Component Outputs is an INPUT plug on this node (a value flows into it on its way out of the component). Connected from Snack row's Click it is a signal, and the Repeater then publishes it as itemOutputSignal-eaten under Item Signals, setting itemActionItemId to the row's item as it does (foreach.tsx itemOutputSignalTriggered). Type `signal` is written explicitly here; the learner's copy will say `*` and resolve to signal from the wire, which is the same port to every consumer."
+      }
+    }
+  ],
+  "visualRoots": [
+    "snackrow-0001"
+  ]
+}

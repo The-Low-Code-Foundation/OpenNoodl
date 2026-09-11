@@ -3,16 +3,18 @@ import _ from 'underscore';
 
 import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
-import { extractToComponent } from '@noodl-utils/ExtractToComponent';
+import { extractToComponent, labelForPath } from '@noodl-utils/ExtractToComponent';
 
 import { ComponentModel } from '../../models/componentmodel';
+import { homeDeletionMessage, homeInDeletion, type DeletedNodeView } from '../../models/homeprotection';
+import { peekRunningLesson, protectedByLesson, protectionMessage } from '../../models/lessonprotection';
 import { NodeGraphNodeSet } from '../../models/nodegraphmodel';
 import { ProjectModel } from '../../models/projectmodel';
+import type { NodeGraphEditor } from '../nodegrapheditor';
 import PopupLayer from '../popuplayer';
 import { ToastLayer } from '../ToastLayer/ToastLayer';
+import { ExtractToComponentPopup } from './ExtractToComponentPopup';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
-
-import type { NodeGraphEditor } from '../nodegrapheditor';
 
 /**
  * Clipboard and node-set actions for the node graph editor (PLAT-001 wave 2
@@ -102,6 +104,112 @@ export class EditorClipboard {
       return;
     }
 
+    /**
+     * 🔴 FIX-025 — in a lesson, deleting a node a step is grading asks first.
+     *
+     * Richard: *"it's easy to accidentally delete bits of the tutorial app that are needed to
+     * complete the session, and you might not remember what you deleted."* The problem is not
+     * that the delete is irreversible — undo exists — it is that nothing connects the delete to
+     * the step that stops completing several minutes later.
+     *
+     * ⚠️ **A confirm, never a refusal.** The lesson's own first step says *"Edit it freely — that
+     * IS the lesson."* See `lessonprotection.ts`.
+     *
+     * ⚠️ `peekRunningLesson()` is `null` in every ordinary project, so this whole branch is
+     * inert outside a lesson without `EditorClipboard` knowing anything about lessons.
+     */
+    /**
+     * 🔴 DEF-007 — and the ORDER of the two questions is a decision, not an accident.
+     *
+     * The home question is asked FIRST because it is the one whose consequence outlives the
+     * session: a lesson step that stops completing is recoverable by putting a Text back, and a
+     * project with no home does not open at all. Chained rather than merged so that somebody who
+     * keeps the node is never asked the second question about a deletion that is not happening —
+     * and so neither guard has to know the other exists.
+     */
+    this.askAboutHome(nodes, () => this.askAboutLesson(nodes, () => this.performDelete(nodes)));
+  }
+
+  /**
+   * 🔴 DEF-007 — deleting the project's home page asks first. Richard: *"make the app scream
+   * loudly when someone tries to delete a home page … to stop people making the accidental
+   * deletion mistake."*
+   *
+   * ⚠️ **The removal set is FLATTENED, and that is the whole reason this is not one `find`.**
+   * `NodeGraphModel.removeNode` takes the roots of the selection and lets children follow, and it
+   * notifies `nodeRemoved` only for the node it was handed — so a home node sitting inside a
+   * selected Group is removed without a single event naming it. Asking only about the selected
+   * nodes would reproduce exactly the blind spot in `projectmodel.ts`'s listener that this row is
+   * about. `model.forEach` walks the node and its descendants.
+   *
+   * ⚠️ Inert in the ordinary case by construction: `getRootNode()` is `undefined` in a project
+   * with no home, and `homeInDeletion` returns `null` before it scans anything.
+   */
+  private askAboutHome(nodes: NodeGraphEditorNode[], andThen: () => void) {
+    const rootNode = ProjectModel.instance?.getRootNode();
+
+    // ⚠️ `nodeProtectionView` REUSED rather than a second view function beside it: it already
+    // returns exactly `{ id, label, typeName }`, and a private copy here would be a second
+    // statement of the same mapping that drifts the first time either guard learns a new field.
+    const removing: DeletedNodeView[] = [];
+    for (const node of nodes) {
+      // ⚠️ `forEach` on a NodeGraphNode visits the node itself AND its children, so the node is
+      // not pushed separately — doing both would double every entry.
+      node.model?.forEach((n: Parameters<typeof nodeProtectionView>[0]) => {
+        removing.push(nodeProtectionView(n));
+      });
+    }
+
+    const message = homeDeletionMessage(homeInDeletion(removing, rootNode?.id, rootNode?.owner?.owner?.localName));
+    if (!message) {
+      andThen();
+      return;
+    }
+
+    PopupLayer.instance.showConfirmModal({
+      title: 'This is your home page',
+      message,
+      confirmLabel: 'Delete it anyway',
+      cancelLabel: 'Keep my home page',
+      onConfirm: andThen,
+      onCancel: () => undefined
+    });
+  }
+
+  /** FIX-025 — in a lesson, deleting a node a step is grading asks first. */
+  private askAboutLesson(nodes: NodeGraphEditorNode[], andThen: () => void) {
+    const editor = this.editor;
+    const lessonSteps = peekRunningLesson();
+
+    if (lessonSteps) {
+      // ⚠️ `forEachNode` STOPS on a truthy return, so this callback must return nothing —
+      // `push` returns the new length, which would abort the walk after the first node and
+      // silently make every type-only condition look like the last of its type.
+      const everyNodeInComponent: ReturnType<typeof nodeProtectionView>[] = [];
+      editor.model?.forEachNode((n: never) => {
+        everyNodeInComponent.push(nodeProtectionView(n));
+      });
+      const findings = protectedByLesson(nodes.map((n) => nodeProtectionView(n.model)), lessonSteps, everyNodeInComponent);
+      const message = protectionMessage(findings);
+      if (message) {
+        PopupLayer.instance.showConfirmModal({
+          title: 'This is part of the lesson',
+          message,
+          confirmLabel: 'Delete anyway',
+          cancelLabel: 'Keep it',
+          onConfirm: andThen,
+          onCancel: () => undefined
+        });
+        return;
+      }
+    }
+
+    andThen();
+  }
+
+  /** The delete itself, once anything that wanted to ask about it has. */
+  private performDelete(nodes: NodeGraphEditorNode[]) {
+    const editor = this.editor;
     const undo = new UndoActionGroup({ label: 'delete nodes' });
 
     if (editor.commentLayer && editor.commentLayer.hasSelection()) {
@@ -125,14 +233,30 @@ export class EditorClipboard {
       return false;
     }
 
+    const selected = this.getSelectedNodes();
     const nodeset = this.copySelected();
     if (nodeset === undefined) return;
 
-    const undoCut = new UndoActionGroup({ label: 'cut' });
-    this.editor.model.removeNodeSet(nodeset, { undo: undoCut });
-    UndoQueue.instance.push(undoCut);
+    /**
+     * 🔴 DEF-007 — **a cut is a delete, and this path had no guard of any kind.**
+     *
+     * Cutting the home node removes it from the graph exactly as Delete does, and the clipboard
+     * is not a rescue: a paste mints new ids, so `ProjectModel.rootNode` cannot be restored by
+     * pasting the node back. Somebody who cuts their home page to move it into a Group ends up
+     * with a project that does not open and a paste that looks like it worked.
+     *
+     * ⚠️ **The lesson guard is still absent here** — FIX-025 only ever wired `delete()`. That is a
+     * real gap and it is registered rather than fixed in passing, because a lesson step is a
+     * different question from a home page and widening FIX-025's scope from this row would put a
+     * second surface behind a decision nobody made.
+     */
+    this.askAboutHome(selected, () => {
+      const undoCut = new UndoActionGroup({ label: 'cut' });
+      this.editor.model.removeNodeSet(nodeset, { undo: undoCut });
+      UndoQueue.instance.push(undoCut);
 
-    ToastLayer.showInteraction('Cut');
+      ToastLayer.showInteraction('Cut');
+    });
   }
 
   getNodeSetFromClipboard() {
@@ -282,10 +406,27 @@ export class EditorClipboard {
     return nodeset;
   }
 
+  /**
+   * Ask for a name and a destination, then extract.
+   *
+   * This used to be one click that created `<current component>/Extracted
+   * component` — nested under whatever component the nodes were born in, under
+   * a name nobody chose — so a project accumulated `Extracted component 4`s in
+   * places their authors could not find again. Everything below the dialog is
+   * unchanged; the dialog only decides the *name*, which is also the location.
+   */
   extractSelectionToComponent() {
     const editor = this.editor;
+    const sourceComponent = editor.model.owner;
+    if (!ProjectModel.instance || !sourceComponent) return;
+
     const nodeset = this.nodesetFromSelection();
-    const selection = editor.selector.nodes;
+    if (!nodeset) return; // a node in the selection refused to be copied
+
+    // Snapshotted before the dialog opens: `selector.nodes` is the live
+    // selection, and the extraction must act on what the user had selected when
+    // they asked for it.
+    const selection = [...editor.selector.nodes];
 
     const aabb = editor.calculateNodesAABB(selection);
 
@@ -294,10 +435,33 @@ export class EditorClipboard {
       y: aabb.minY
     };
 
-    extractToComponent(ProjectModel.instance, editor.model, nodeset, selection, pos);
+    const popup = new ExtractToComponentPopup({
+      projectModel: ProjectModel.instance,
+      sourceComponent,
+      onConfirm: (componentName: string) => {
+        extractToComponent(ProjectModel.instance, editor.model, nodeset, selection, pos, componentName);
 
-    editor.clearSelection();
-    editor.relayout();
-    editor.repaint();
+        editor.clearSelection();
+        editor.relayout();
+        editor.repaint();
+
+        ToastLayer.showSuccess(`Extracted to ${labelForPath(componentName)}`);
+      }
+    });
+    popup.render();
+
+    PopupLayer.instance.showPopup({
+      content: popup,
+      position: 'screen-center',
+      isBackgroundDimmed: true,
+      // The shell pins itself to the content's measured height otherwise, and a
+      // wrapped validation message would paint outside its own background.
+      hasDynamicHeight: true
+    });
   }
+}
+
+/** A node model as `lessonprotection` needs to see it. Kept here so that module stays editor-free. */
+function nodeProtectionView(model: { id: string; label?: string; type?: { name?: string } }) {
+  return { id: model.id, label: model.label, typeName: model.type?.name };
 }

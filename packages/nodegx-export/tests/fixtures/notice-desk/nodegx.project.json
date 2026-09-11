@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "Notice Desk",
+  "id": "9b3d2e51-1c4f-4a76-8d2b-6f7a8b9c0d58",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-05T09:00:00.000Z",
+  "modified": "2026-09-05T09:00:00.000Z",
+  "settings": {
+    "htmlTitle": "Notice Desk",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "n0t1ce00-r0ut-4b3e-9f2a-1a2b3c4d7e00"
+}

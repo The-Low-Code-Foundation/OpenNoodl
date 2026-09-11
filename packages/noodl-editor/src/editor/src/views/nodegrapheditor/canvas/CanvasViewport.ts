@@ -34,6 +34,13 @@ export class CanvasViewport {
   static readonly MaxScale = 1;
   static readonly ScalePadding = 200;
   static readonly ClampPadding = 100;
+  /**
+   * FLD-006: the margin `fitTo` leaves around the graph, in CSS pixels of the
+   * *canvas* — not graph units. The two are only the same number at scale 1,
+   * and a fit is the one operation that is never at scale 1, so the unit is
+   * named in the signature rather than left to the reader.
+   */
+  static readonly FitPadding = 40;
 
   static emptyAABB(): AABB {
     return {
@@ -118,6 +125,11 @@ export class CanvasViewport {
   /**
    * Pan that puts the average center of the given rects in the middle of the
    * canvas, at scale 1.
+   *
+   * ⚠️ This is a *centre*, not a fit, and the docstring has always said so —
+   * `scale: 1` is a literal, never a computed value. It is the camera a
+   * project opens with (`ViewportActions.getPanAndScale`). "Fit view" wants
+   * `fitTo`.
    */
   centerOn(rects: readonly Rect[]): PanAndScale {
     let centerX = 0;
@@ -138,6 +150,88 @@ export class CanvasViewport {
   }
 
   /**
+   * The zoom floor: small enough to see the whole graph plus `ScalePadding` on
+   * each side, but never above `MinScale` so some zoom-out is always possible.
+   *
+   * FLD-006 extracted this from `zoomAtPoint` so that `fitTo` and the +/-
+   * buttons read the *same* number. They used to be unrelated formulas, and a
+   * fit computed below this floor is a zoom the next zoom-out step snaps away
+   * from. The arithmetic is unchanged, including for an unset (inverted)
+   * `graphAABB`, where it returns a negative number and therefore imposes no
+   * floor at all — `hasGraphBounds` is how a caller asks whether it is real.
+   */
+  minScale(): number {
+    const graphAABB = this.graphAABB;
+    const padding = CanvasViewport.ScalePadding;
+
+    const minXScale = this.cssWidth / (graphAABB.maxX - graphAABB.minX + 2 * padding);
+    const minYScale = this.cssHeight / (graphAABB.maxY - graphAABB.minY + 2 * padding);
+    return Math.min(minXScale, minYScale, CanvasViewport.MinScale);
+  }
+
+  /** Whether `graphAABB` has been filled in by a layout (it starts inverted). */
+  hasGraphBounds(): boolean {
+    return this.graphAABB.maxX >= this.graphAABB.minX && this.graphAABB.maxY >= this.graphAABB.minY;
+  }
+
+  /**
+   * FLD-006 (#33): pan and scale that put the *bounding box* of `rects` fully
+   * inside the canvas with `screenPadding` CSS pixels of margin on every side.
+   *
+   * This is what "fit view" means, and it is not what `centerOn` does:
+   * `centerOn` averages rect centres and returns a literal `scale: 1`, so on a
+   * graph wider than the pane it lands on the centroid of whatever cluster
+   * holds the most nodes and leaves the rest offscreen. Both faults are here:
+   * the box centre rather than the centroid, and a computed scale.
+   *
+   * Pan is in graph space and the canvas transform is `scale(s) translate(x,y)`
+   * (`CanvasPainter.paint`), i.e. `canvas = (graph + pan) * s` — which is why
+   * the pan terms divide by the scale. At scale 1 the formula collapses to the
+   * same shape as `centerOn`.
+   *
+   * The result is never below `minScale()`: a fit the zoom buttons would
+   * immediately snap away from is worse than a slightly tighter margin, and
+   * that floor still fits the graph (it is itself a fit, with `ScalePadding`
+   * graph units of margin). It is only applied once a layout has filled in
+   * `graphAABB`.
+   *
+   * An empty rect list returns the identity camera rather than dividing by
+   * zero the way `centerOn` does — an empty component has no bounding box, and
+   * there is nothing to centre on.
+   */
+  fitTo(rects: readonly Rect[], screenPadding: number = CanvasViewport.FitPadding): PanAndScale {
+    if (rects.length === 0) {
+      return { x: 0, y: 0, scale: 1 };
+    }
+
+    const aabb = CanvasViewport.rectsAABB(rects);
+    const width = aabb.maxX - aabb.minX;
+    const height = aabb.maxY - aabb.minY;
+
+    const availableWidth = Math.max(1, this.cssWidth - 2 * screenPadding);
+    const availableHeight = Math.max(1, this.cssHeight - 2 * screenPadding);
+
+    let scale = Math.min(
+      width > 0 ? availableWidth / width : CanvasViewport.MaxScale,
+      height > 0 ? availableHeight / height : CanvasViewport.MaxScale,
+      CanvasViewport.MaxScale
+    );
+
+    if (this.hasGraphBounds()) {
+      scale = Math.max(scale, this.minScale());
+    }
+
+    const centerX = (aabb.minX + aabb.maxX) / 2;
+    const centerY = (aabb.minY + aabb.maxY) / 2;
+
+    return {
+      x: this.cssWidth / (2 * scale) - centerX,
+      y: this.cssHeight / (2 * scale) - centerY,
+      scale
+    };
+  }
+
+  /**
    * Zoom by `deltaZ` steps keeping the graph point under the canvas position
    * (x, y) stationary. Returns the new pan and scale, unclamped — the caller
    * clamps, because clamping is guarded on the model being non-empty and that
@@ -152,13 +246,7 @@ export class CanvasViewport {
 
     // Restrict scaling to max 1, and minimum so you can see the entire
     // component plus some padding OR 0.33 (to always allow some zoom)
-    const graphAABB = this.graphAABB;
-    const padding = CanvasViewport.ScalePadding;
-
-    const minXScale = this.cssWidth / (graphAABB.maxX - graphAABB.minX + 2 * padding);
-    const minYScale = this.cssHeight / (graphAABB.maxY - graphAABB.minY + 2 * padding);
-    const minScale = Math.min(minXScale, minYScale, CanvasViewport.MinScale);
-    scale = Math.max(minScale, Math.min(CanvasViewport.MaxScale, scale));
+    scale = Math.max(this.minScale(), Math.min(CanvasViewport.MaxScale, scale));
 
     return {
       scale: scale,

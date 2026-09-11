@@ -1,0 +1,378 @@
+{
+  "task": "vib-001",
+  "subject": "site-builder",
+  "state": "door",
+  "headSha": "d96a7cb49b0bf5be879decc72e29478ef632fc2f",
+  "artefactMd5": "dcd128b43c3779d4c79322d8b903864c",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door",
+  "shots": [
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "public-home",
+      "url": "/",
+      "as": "the public site, before anything is written",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-preview-full.png",
+      "contentBottom": 313,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 4,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "public-home",
+      "url": "/",
+      "as": "the public site, before anything is written",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-desktop-full.png",
+      "contentBottom": 900,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 4,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "public-home",
+      "url": "/",
+      "as": "the public site, before anything is written",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-wide-full.png",
+      "contentBottom": 1080,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 4,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "public-home",
+      "url": "/",
+      "as": "the public site, before anything is written",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/public-home-phone-full.png",
+      "contentBottom": 844,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 4,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)",
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-setup",
+      "url": "/admin/setup",
+      "as": "the owner, first run",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-preview-full.png",
+      "contentBottom": 293,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 231,
+      "headings": [],
+      "errors": [
+        "[noodl] CloudFunction2 (/Pages/Setup): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-setup",
+      "url": "/admin/setup",
+      "as": "the owner, first run",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-desktop-full.png",
+      "contentBottom": 293,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 231,
+      "headings": [],
+      "errors": [
+        "[noodl] CloudFunction2 (/Pages/Setup): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-setup",
+      "url": "/admin/setup",
+      "as": "the owner, first run",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-wide-full.png",
+      "contentBottom": 293,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 231,
+      "headings": [],
+      "errors": [
+        "[noodl] CloudFunction2 (/Pages/Setup): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-setup",
+      "url": "/admin/setup",
+      "as": "the owner, first run",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-setup-phone-full.png",
+      "contentBottom": 311,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 231,
+      "headings": [],
+      "errors": [
+        "[noodl] CloudFunction2 (/Pages/Setup): No cloud services defined in this project. [cloud-function/call-failed] Object"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-signin",
+      "url": "/admin/signin",
+      "as": "the owner coming back",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-preview-full.png",
+      "contentBottom": 321,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 133,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-signin",
+      "url": "/admin/signin",
+      "as": "the owner coming back",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-desktop-full.png",
+      "contentBottom": 321,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 133,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-signin",
+      "url": "/admin/signin",
+      "as": "the owner coming back",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-wide-full.png",
+      "contentBottom": 321,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 133,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-signin",
+      "url": "/admin/signin",
+      "as": "the owner coming back",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-signin-phone-full.png",
+      "contentBottom": 339,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 133,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel, unauthenticated",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-preview-full.png",
+      "contentBottom": 216,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 119,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel, unauthenticated",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-desktop-full.png",
+      "contentBottom": 216,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 119,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel, unauthenticated",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-wide-full.png",
+      "contentBottom": 216,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 119,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    },
+    {
+      "task": "vib-001",
+      "subject": "site-builder",
+      "state": "door",
+      "page": "admin-pages",
+      "url": "/admin/pages",
+      "as": "the panel, unauthenticated",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-001/2026-08-31/site-builder-door/admin-pages-phone-full.png",
+      "contentBottom": 216,
+      "canScroll": false,
+      "unreachablePx": 0,
+      "textChars": 119,
+      "headings": [],
+      "errors": [
+        "TypeError: Cannot read properties of undefined (reading 'results')\n    at Object.success (http://127.0.0.1:64231/noodl.viewer.js:54000:61)\n    at xhr.onreadystatechange (http://127.0.0.1:64231/noodl.viewer.js:53875:33)"
+      ]
+    }
+  ]
+}

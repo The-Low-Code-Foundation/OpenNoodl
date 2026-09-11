@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1a7c3d9-4f2b-4c8e-9a1d-000000000065",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "panel-root",
+      "type": "Group",
+      "label": "Panel",
+      "children": [
+        "panel-title",
+        "panel-slot",
+        "panel-footer"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingTop": "var(--space-4)",
+        "paddingLeft": "var(--space-4)"
+      },
+      "x": 100,
+      "y": 100
+    },
+    {
+      "id": "panel-title",
+      "type": "Text",
+      "label": "Title",
+      "parent": "panel-root",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "panel-slot",
+      "type": "Component Children",
+      "label": "Children",
+      "parent": "panel-root",
+      "x": 100,
+      "y": 320
+    },
+    {
+      "id": "panel-footer",
+      "type": "Text",
+      "label": "Footer",
+      "parent": "panel-root",
+      "parameters": {
+        "text": "— end of panel —",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 420
+    },
+    {
+      "id": "panel-inputs",
+      "type": "Component Inputs",
+      "ports": [
+        {
+          "name": "Title",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 400,
+      "y": 220
+    }
+  ],
+  "visualRoots": [
+    "panel-root"
+  ]
+}

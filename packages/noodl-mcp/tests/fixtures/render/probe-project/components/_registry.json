@@ -1,0 +1,10 @@
+{
+  "components": {
+    "Home": {
+      "path": "Home"
+    },
+    "Sonnetish": {
+      "path": "Sonnetish"
+    }
+  }
+}

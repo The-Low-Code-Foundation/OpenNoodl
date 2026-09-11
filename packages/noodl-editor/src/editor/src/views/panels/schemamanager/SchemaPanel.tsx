@@ -28,6 +28,33 @@ export interface SchemaPanelProps {
   backendName: string;
   /** Whether backend is running */
   isRunning: boolean;
+  /**
+   * DEF-036 AC4 — the table to open on, for a caller that already knows which one.
+   *
+   * 🔴 The front door is not good enough, and that is the whole of AC4: an author who pressed
+   * **Add a field** on a `Create Record` node pointed at `Puppy` asked about `Puppy`, and
+   * landing them on a list of eleven tables to find it in again is the dead end the button was
+   * added to remove.
+   *
+   * 🔴 **Not read once.** That was the first version and the drive found it wrong. A surface
+   * that is already mounted is *reused*: `openBackendSurface` re-announces the panel and the
+   * new props do arrive — the header changes to the new backend's name — but `useState`'s
+   * initial value has already been latched, so the second **Add a field** press, on a node
+   * pointed at a different table, landed on the first node's table. Measured 2026-08-31:
+   * opened on `Person`, re-opened for `Orders`, header updated, `Person` still the expanded
+   * row. That is the dead end AC4 exists to remove, reintroduced on the second use of the
+   * button that removes it.
+   */
+  initialTable?: string;
+  /**
+   * Changes on every press of the control that opened this panel.
+   *
+   * ⚠️ Needed because `initialTable` alone is not enough: pressing **Add a field** twice on the
+   * *same* node passes the same table, so an effect keyed on the table alone would not re-run —
+   * and if the author had collapsed that row in between, the second press would appear to do
+   * nothing. A button that does nothing is the failure mode, not a cosmetic one.
+   */
+  openToken?: string | number;
   /** Called when panel should close */
   onClose: () => void;
 }
@@ -85,11 +112,22 @@ async function invokeIPC<T>(channel: string, ...args: unknown[]): Promise<T> {
 /**
  * SchemaPanel - View and manage database schemas
  */
-export function SchemaPanel({ backendId, backendName, isRunning, onClose }: SchemaPanelProps) {
+export function SchemaPanel({
+  backendId,
+  backendName,
+  isRunning,
+  initialTable,
+  openToken,
+  onClose
+}: SchemaPanelProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schema, setSchema] = useState<SchemaData | null>(null);
-  const [expandedTable, setExpandedTable] = useState<string | null>(null);
+  // DEF-036 AC4 — opened on the table the caller named, expanded rather than in edit mode: the
+  // author asked to *add a field*, and `AddColumnForm` is inside the expanded row. Arming edit
+  // mode as well would put a rename input under every existing column of a table they have only
+  // just arrived at. The initial value covers a fresh mount; the effect below covers a reuse.
+  const [expandedTable, setExpandedTable] = useState<string | null>(initialTable ?? null);
   const [recordCounts, setRecordCounts] = useState<Record<string, number>>({});
   const [showCreateTable, setShowCreateTable] = useState(false);
   // Which table's schema is open for editing (F88). Separate from
@@ -145,6 +183,20 @@ export function SchemaPanel({ backendId, backendName, isRunning, onClose }: Sche
   useEffect(() => {
     loadSchema();
   }, [loadSchema]);
+
+  /**
+   * DEF-036 AC4 — land on the caller's table, on a reused mount as well as a fresh one.
+   *
+   * Keyed on `openToken` as well as the table, so pressing the same node's button twice works
+   * even if the author collapsed the row in between; see the props for what the drive measured.
+   *
+   * ⚠️ Deliberately does **not** touch `editingTable`. Arriving somewhere is not the same as
+   * being armed to rename every column there, and on `_User` half of them are the backend's
+   * anyway (`serverOwnedColumns.ts`).
+   */
+  useEffect(() => {
+    if (initialTable) setExpandedTable(initialTable);
+  }, [initialTable, openToken]);
 
   // Handle table expand/collapse
   const handleToggleExpand = useCallback((tableName: string) => {

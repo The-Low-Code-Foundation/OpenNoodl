@@ -3,6 +3,7 @@
  *
  *   nodegx-backend serve  --data-dir <dir> --port <p> [--host <h>] [--token <t>]
  *                         [--backend-id <id>] [--backend-name <name>] [--ephemeral]
+ *                         [--project-dir <dir>]
  *   nodegx-backend doctor --data-dir <dir> [--ephemeral]
  *
  * `serve`  starts the full HTTP service (BYOB + Parse-wire + admin) and stays up.
@@ -87,6 +88,12 @@ function parseArgs(argv: string[]): ParsedArgs {
         break;
       case '--readonly-token':
         options.readonlyToken = next();
+        break;
+      // SB-015: the project this backend was provisioned for. Read for exactly
+      // one thing — installing `nodegx.security.json` as this backend's policy
+      // on a first start that has none.
+      case '--project-dir':
+        options.projectDir = next();
         break;
       // BAK-007 command flags
       case '--dest':

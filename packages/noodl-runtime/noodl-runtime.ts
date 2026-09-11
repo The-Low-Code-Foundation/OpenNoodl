@@ -54,6 +54,23 @@ interface NoodlModule {
   setup?(this: NoodlModule): void;
 }
 
+/**
+ * CN-015 — one kit that never made it into the register, as the page recorded it.
+ *
+ * Produced by `@nodegx/module-inject`'s capture preamble, which is the only
+ * place the fact exists: `registerModule` is never called for a kit whose
+ * script threw, so no amount of inspecting this runtime afterwards can tell
+ * *"that kit is broken"* from *"that kit was never installed"*.
+ */
+interface ModuleLoadFailure {
+  /** The manifest name, from the `__noodl_module_name` marker CN-003 emits. */
+  module: string;
+  /** `threw` — an exception or a parse error; `script-not-loaded` — the file did not fetch. */
+  reason: string;
+  /** What the browser reported, passed through rather than summarised. */
+  message: string;
+}
+
 /** What `registerNode` accepts — the same two shapes, one at a time. */
 interface NodeRegistration {
   node?: NodeDefinitionOptions;
@@ -117,6 +134,8 @@ interface NoodlRuntime {
   editorConnection: InstanceType<typeof EditorConnection>;
   context: InstanceType<typeof NodeContext>;
   projectSettings?: HostProjectSettings;
+  /** CN-015 — set by the host viewer; absent on a runtime with no page to capture from. */
+  moduleFailures?: ModuleLoadFailure[];
   lastSentNodeLibrary?: string;
   /** SSR re-loads the graph data; this stops the second load duplicating every node. */
   _disableLoad?: boolean;
@@ -134,6 +153,7 @@ interface NoodlRuntime {
   scheduleUpdate(): void;
   _doUpdate(): void;
   setProjectSettings(settings: HostProjectSettings): void;
+  setModuleFailures(failures: ModuleLoadFailure[] | undefined): void;
   getNodeLibrary(): string;
   sendNodeLibrary(): void;
   connectToEditor(address: string): void;
@@ -510,12 +530,94 @@ NoodlRuntime.prototype.setTraceEnabled = function (enabled: boolean) {
 
 NoodlRuntime.prototype.registerModule = function (module: NoodlModule) {
   if (module.nodes) {
-    for (const entry of module.nodes) {
+    const moduleName = module.name || 'Unknown Module';
+
+    /**
+     * ✅ **D20** — every register this module has performed, newest last, with what it displaced.
+     *
+     * ⚠️ **Reverse order on the way out matters.** A kit may register the same name twice; undoing
+     * newest-first walks back through its own overwrites to whatever was there before the kit ran.
+     *
+     * ⚠️ **What this does NOT undo, stated rather than implied:** `setup` and
+     * `setupNumberedInputDynamicPorts` run under the same loop and may have attached graph-model
+     * listeners or dynamic-port rules. Those are left behind, inert — they key off node types that
+     * are no longer registered, so nothing can instantiate one. The nodes are the thing a kit is
+     * judged by and the nodes all go.
+     */
+    const displaced: { name: string; previous: ReturnType<typeof this.context.nodeRegister.peek> }[] = [];
+    const rollBack = () => {
+      for (let j = displaced.length - 1; j >= 0; j--) {
+        this.context.nodeRegister.restore(displaced[j].name, displaced[j].previous);
+      }
+    };
+
+    for (let i = 0; i < module.nodes.length; i++) {
+      const entry = module.nodes[i];
       // A module may list bare definitions or `{ node }` wrappers; both are accepted.
       const wrapped: NodeRegistration =
         'node' in entry && entry.node ? (entry as { node: NodeDefinitionOptions }) : { node: entry as NodeDefinitionOptions };
-      wrapped.node.module = module.name || 'Unknown Module';
-      this.registerNode(wrapped);
+      wrapped.node.module = moduleName;
+
+      // ✅ D20 — what this node is about to displace, so a kit that throws later
+      // can put every one of them back. Recorded BEFORE the register, and only
+      // for a definition that has a name to register under.
+      const typeName = wrapped.node && typeof wrapped.node.name === 'string' ? wrapped.node.name : undefined;
+      if (typeName !== undefined) {
+        displaced.push({ name: typeName, previous: this.context.nodeRegister.peek(typeName) });
+      }
+
+      /*
+       * 🔴 CN-015 — the kit's name, on the way out of *any* registration throw.
+       *
+       * `defineNode` names the kit itself now, but it is not the only thing that
+       * can throw in here: `nodeRegister.register`, a definition's `setup`, and
+       * `setupNumberedInputDynamicPorts` all run under this loop, and a throw
+       * from any of them is unattributed the way the `category` throw was.
+       *
+       * ✅ **D20 — still thrown, but the module is atomic now.** The nodes this
+       * kit had already registered are rolled back first, so a caller sees
+       * either the whole kit or none of it. Half a kit was the state CN-015
+       * named as the alarming one: the nodes before the bad definition live, the
+       * ones after are gone, and the kit looks partly fine.
+       *
+       * 🔴 **The throw stays because two callers depend on it to report at all**
+       * — `noodl-viewer-cloud/src/kitModules.ts` and `noodl-mcp`'s kit
+       * extractor both wrap this in a `try` and push a failure from the `catch`.
+       * Swallowing here would leave those two `catch` blocks dead and both
+       * surfaces would call a broken kit healthy. The blast radius moves at the
+       * *call sites* — `viewer.jsx` catches per module and records the failure
+       * on the CN-015 channel — not by making this function silent.
+       *
+       * ⚠️ The index is the module's own `nodes` array position, which is what
+       * an author scrolls to in their `index.js`. `nodeAt` degrades to the index
+       * alone when the entry has no usable name — the failing definition is
+       * precisely the one whose name may be missing.
+       */
+      try {
+        this.registerNode(wrapped);
+      } catch (e) {
+        rollBack();
+        const message = e && (e as Error).message ? (e as Error).message : String(e);
+        const nodeAt = wrapped.node && wrapped.node.name ? `"${wrapped.node.name}"` : `at index ${i}`;
+
+        // Not re-prefixed when `defineNode` already said which kit — the two
+        // must not stack into "in kit X … in kit X" on the common path.
+        if (message.indexOf(`kit "${moduleName}"`) !== -1) {
+          if (wrapped.node && wrapped.node.name) throw e;
+
+          // ⚠️ Except when the definition has no name: the kit is named but the
+          // node cannot be, and the position is then the only locator there is.
+          // Caught by a test that expected the index and got a bare kit name.
+          const located = new Error(`${message} It is the definition at index ${i} in the kit's \`nodes\` list.`);
+          (located as Error & { cause?: unknown }).cause = e;
+          throw located;
+        }
+
+        const error = new Error(`Kit "${moduleName}" failed to register its node ${nodeAt}: ${message}`);
+        // Keep the original for anything reading a stack rather than a message.
+        (error as Error & { cause?: unknown }).cause = e;
+        throw error;
+      }
     }
   }
 
@@ -650,6 +752,26 @@ NoodlRuntime.prototype.setProjectSettings = function (settings: HostProjectSetti
   this.projectSettings = settings;
 };
 
+/**
+ * CN-015 — the kit load failures the page captured, on their way to the editor.
+ *
+ * A kit whose `index.js` throws, fails to parse or 404s never reaches this
+ * runtime at all: `registerModule` is simply never called for it, so **there is
+ * nothing here that can be inspected after the fact.** The only record is the
+ * one `@nodegx/module-inject`'s capture preamble made while the page was
+ * loading, and this is the hand-off from that record into the payload the
+ * editor already receives (✅ **D3** — the editor extracts nothing; it reads
+ * what the viewer sent).
+ *
+ * ⚠️ The host supplies these, exactly as it does `setProjectSettings`. This
+ * package is platform-neutral and must not reach for `window` — the browser
+ * viewer reads the global and calls this; an SSR or cloud runtime, which has no
+ * such capture, calls nothing and the field is absent rather than empty.
+ */
+NoodlRuntime.prototype.setModuleFailures = function (failures: ModuleLoadFailure[] | undefined) {
+  this.moduleFailures = Array.isArray(failures) ? failures : undefined;
+};
+
 NoodlRuntime.prototype.getNodeLibrary = function () {
   var projectSettings = ProjectSettings.generateProjectSettings(this.graphModel.getSettings(), this.noodlModules);
 
@@ -665,8 +787,22 @@ NoodlRuntime.prototype.getNodeLibrary = function () {
     runtimeType: this.type
   }) as ReturnType<typeof generateNodeLibrary> & {
     projectsettings?: unknown;
+    modulefailures?: ModuleLoadFailure[];
   };
   nodeLibrary.projectsettings = projectSettings;
+
+  // CN-015: stamped here for the same reason `projectsettings` is — the
+  // exporter knows the node register and nothing else, and a kit that failed to
+  // load is by definition *not* in the register.
+  //
+  // ⚠️ Omitted entirely when there are none, rather than sent as `[]`. The
+  // payload for a healthy project is then byte-identical to what it was before
+  // this task, which keeps `sendNodeLibrary`'s "don't send the same export
+  // twice" comparison and every recorded-payload fixture unperturbed.
+  if (this.moduleFailures && this.moduleFailures.length) {
+    nodeLibrary.modulefailures = this.moduleFailures;
+  }
+
   return JSON.stringify(nodeLibrary, null, 3);
 };
 

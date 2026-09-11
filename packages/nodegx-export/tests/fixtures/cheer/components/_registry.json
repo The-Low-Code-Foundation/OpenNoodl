@@ -1,0 +1,100 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
+  "version": 1,
+  "lastUpdated": "2026-08-27T17:32:20.462Z",
+  "components": {
+    "App": {
+      "path": "App",
+      "type": "root",
+      "nodeCount": 1,
+      "connectionCount": 0,
+      "modified": "2026-08-27T09:38:52.379Z",
+      "created": "2026-08-27T08:28:56.551Z"
+    },
+    "Pages/Home": {
+      "path": "Pages/Home",
+      "type": "page",
+      "nodeCount": 22,
+      "connectionCount": 14,
+      "modified": "2026-08-27T17:32:20.462Z",
+      "created": "2026-08-27T08:28:56.551Z"
+    },
+    "Components/GreetingBadge": {
+      "path": "Components/GreetingBadge",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 1,
+      "modified": "2026-08-27T08:29:53.455Z",
+      "created": "2026-08-27T08:29:53.455Z"
+    },
+    "Components/CheerBanner": {
+      "path": "Components/CheerBanner",
+      "type": "visual",
+      "nodeCount": 5,
+      "connectionCount": 3,
+      "modified": "2026-08-27T08:30:04.042Z",
+      "created": "2026-08-27T08:30:04.042Z"
+    },
+    "Pages/Mood": {
+      "path": "Pages/Mood",
+      "type": "page",
+      "nodeCount": 17,
+      "connectionCount": 13,
+      "modified": "2026-08-27T10:48:16.849Z",
+      "created": "2026-08-27T09:06:23.323Z"
+    },
+    "Components/NoteRow": {
+      "path": "Components/NoteRow",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 2,
+      "modified": "2026-08-27T09:38:52.375Z",
+      "created": "2026-08-27T09:38:52.375Z"
+    },
+    "Pages/Notes": {
+      "path": "Pages/Notes",
+      "type": "page",
+      "nodeCount": 13,
+      "connectionCount": 10,
+      "modified": "2026-08-27T10:48:22.407Z",
+      "created": "2026-08-27T09:38:52.376Z"
+    },
+    "Components/FarewellCard": {
+      "path": "Components/FarewellCard",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 1,
+      "modified": "2026-08-27T12:49:11.008Z",
+      "created": "2026-08-27T12:49:11.008Z"
+    },
+    "Components/AboutDialog": {
+      "path": "Components/AboutDialog",
+      "type": "visual",
+      "nodeCount": 6,
+      "connectionCount": 2,
+      "modified": "2026-08-27T13:57:38.470Z",
+      "created": "2026-08-27T13:57:38.470Z"
+    },
+    "Components/GreetingCard": {
+      "path": "Components/GreetingCard",
+      "type": "visual",
+      "nodeCount": 5,
+      "connectionCount": 3,
+      "modified": "2026-08-27T14:30:53.402Z",
+      "created": "2026-08-27T14:30:53.402Z"
+    },
+    "Components/CheerMeter": {
+      "path": "Components/CheerMeter",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 7,
+      "modified": "2026-08-27T17:32:10.730Z",
+      "created": "2026-08-27T17:32:10.730Z"
+    }
+  },
+  "stats": {
+    "totalComponents": 11,
+    "totalNodes": 90,
+    "totalConnections": 56
+  }
+}

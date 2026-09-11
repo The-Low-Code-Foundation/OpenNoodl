@@ -25,7 +25,7 @@ Use it for simple positional trims: a short prefix of an id, truncating a previe
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `end` | Number | `0` | Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing |
+| `end` | Number | `-1` | Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result |
 | `start` | Number | `0` | Position of the first character to keep, counting from zero; a negative value counts back from the end |
 | `string` | String | `` | Text to take the substring from; it must not be cleared to null, which raises an error rather than yielding an empty result |
 

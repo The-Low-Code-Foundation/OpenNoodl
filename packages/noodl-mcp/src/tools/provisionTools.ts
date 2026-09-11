@@ -32,9 +32,13 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { provisionBackend, stopBackend } from '../backend/provision';
+import { requireBackend } from '../backend/client';
+import { ensureProjectId } from '../backend/projectIdentity';
+import { censusBackends, listBackendConfigs, provisionBackend, stopBackend } from '../backend/provision';
 import { reapOrphanedBackends } from '../backend/reaper';
+import { deployProjectCloudFunctions } from '../cloud/deploy';
 import { listRuntimeRecords, ownerIsLive } from '../backend/runtimeRecord';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -56,7 +60,7 @@ const collectionSchema = z.object({
     )
 });
 
-export function registerProvisionTools(server: McpServer, store: ProjectStore): void {
+export function registerProvisionTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'provision_backend',
     {
@@ -82,6 +86,7 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
       }
     },
     guarded(async (args: { name: string; collections?: { name: string; columns: { name: string; type: string }[] }[]; force?: boolean }) => {
+      const store = binding.require();
       // Refuse BEFORE spawning anything: a provision that creates a process and
       // then fails to bind it has left durable machine state for nothing.
       const current = store.readCloudServices();
@@ -95,12 +100,23 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
         });
       }
 
+      // ⭐ DSG-007 / F2 — establish the project's identity BEFORE provisioning.
+      //
+      // `findReusableBackend` matches on name plus ownership, and ownership is
+      // this id appearing in the backend's `projectIds`. Read straight off the
+      // file, it was `undefined` for every project the editor had ever saved —
+      // so the match short-circuited, a second backend was created, and it was
+      // stamped `projectIds: []`, unreusable by anyone forever. The backfill is
+      // idempotent and adds nothing but `id`, so a project that already has one
+      // is not written at all.
+      const identity = ensureProjectId(store.projectDir);
       const projectFile = store.readProjectFile();
       const result = await provisionBackend({
         name: args.name,
         collections: args.collections ?? [],
-        projectId: projectFile?.id,
-        projectDir: store.projectDir
+        projectId: identity.id ?? projectFile?.id,
+        projectDir: store.projectDir,
+        identity: { reason: identity.reason, minted: identity.outcome === 'minted' }
       });
 
       store.writeCloudServices(
@@ -124,11 +140,61 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
         adopted: result.adopted,
         collections: result.collections,
         warnings: result.warnings,
+        // DSG-007 — the identity this backend is owned by, and whether this call
+        // had to mint it. A caller that sees `minted` is looking at a project
+        // that could never have reused a backend before now.
+        projectId: identity.id,
+        projectIdentity: identity.outcome,
+        reuseVerdict: result.reuseVerdict,
+        ...(result.reuseNote ? { reuseNote: result.reuseNote } : {}),
         boundTo: 'nodegx.project.json → metadata.cloudservices',
         note:
           'The project is bound. Record/User nodes will now resolve prop-* ports from this backend, and the ' +
           'backend tools (permissions, roles, keys, workflows) target it without a backendId. It stops when ' +
           'this MCP server stops; if this server is killed, the next one reaps it.'
+      });
+    })
+  );
+
+  server.registerTool(
+    'deploy_cloud_functions',
+    {
+      title: 'Deploy this project\'s cloud functions',
+      description:
+        "Push this project's cloud functions to a running backend — the one thing an app with a backend " +
+        'needed a person for. Builds the bundle exactly as the editor\'s own Deploy button does (same code, ' +
+        'not a second implementation), pushes it, and answers with EVERY cloud function named and its ' +
+        'outcome: `deployed`, `unchanged` (the backend already served this exact bundle), or `failed` with ' +
+        'the reason. ' +
+        '⚠️ A function that DEPLOYED and a function that ANSWERS are two different claims — call it over ' +
+        "HTTP to check the second. Deploying twice is safe: the second run reports `changed: false` rather " +
+        'than a fresh success.',
+      inputSchema: {
+        backendId: z
+          .string()
+          .optional()
+          .describe('Which backend (omit if exactly one is running). From provision_backend or list_backends.'),
+        force: z
+          .boolean()
+          .optional()
+          .describe('Push even when the backend already serves this exact bundle. Off by default.')
+      }
+    },
+    guarded(async (args: { backendId?: string; force?: boolean }) => {
+      const store = binding.require();
+      const client = await requireBackend(args.backendId);
+      const result = await deployProjectCloudFunctions(store.projectDir, client, { force: args.force });
+
+      return jsonResult({
+        ...result,
+        backendId: client.descriptor.id,
+        backendName: client.descriptor.name,
+        endpoint: `http://127.0.0.1:${client.descriptor.port}`,
+        // 🔴 Deploying is not answering. The task this closes says so explicitly,
+        // and an agent that stops at `ok: true` has verified the weaker claim.
+        next: result.ok
+          ? 'Call one of these functions over HTTP to confirm it answers — deploying and answering are two claims.'
+          : 'Read `functions` for the ones that failed and why; the named function is the thing to fix.'
       });
     })
   );
@@ -156,7 +222,10 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
       description:
         'What is actually running, from the durable spawn records: which backend, which pid and port, which ' +
         'spawner owns it (this server or the editor), and whether that owner is still alive. Pass ' +
-        '`reap: true` to also stop the ones no live owner claims — the same sweep that runs at startup.',
+        '`reap: true` to also stop the ones no live owner claims — the same sweep that runs at startup. ' +
+        'Also returns a census of every backend DIRECTORY and which project owns it, flagging the ones no ' +
+        'project claims — those can never be reused by any provision. It reports them; it deletes nothing, ' +
+        'because a backend directory is a database.',
       inputSchema: {
         reap: z.boolean().optional().describe('Also kill backends whose owner is gone. Off by default.')
       }
@@ -164,6 +233,10 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
     guarded(async ({ reap }: { reap?: boolean }) => {
       const swept = reap ? await reapOrphanedBackends() : [];
       const records = listRuntimeRecords();
+      // DSG-007 §4.4. Directories, not processes — an unowned backend is
+      // usually not running, which is exactly why nobody notices it.
+      const census = censusBackends(listBackendConfigs());
+      const unowned = census.filter((c) => c.verdict === 'unowned');
       return jsonResult({
         running: records.map((r) => ({
           backendId: r.backendId,
@@ -177,6 +250,16 @@ export function registerProvisionTools(server: McpServer, store: ProjectStore): 
           ownedByThisServer: r.owner?.pid === process.pid,
           startedAt: r.startedAt
         })),
+        directories: census,
+        ...(unowned.length > 0
+          ? {
+              unownedNote:
+                `${unowned.length} backend director(ies) are claimed by no project (${unowned
+                  .map((c) => `${c.name} @ ${c.port}`)
+                  .join(', ')}). No provision can ever reuse them. Adopt one by adding a project id to its ` +
+                'config.json → projectIds, or delete the directory if its data is not wanted.'
+            }
+          : {}),
         ...(reap ? { swept } : {})
       });
     })

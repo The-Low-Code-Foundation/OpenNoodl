@@ -1,0 +1,13 @@
+{
+  "label": "Clipboard",
+  "description": "Copy any text to the user's clipboard. Ships a Copy To Clipboard node — set Text, fire Copy, and get Success/Failure signals plus an Error string. Uses navigator.clipboard.writeText in secure contexts (https/localhost) with an automatic document.execCommand('copy') fallback for plain-http and older browsers. No dependencies, no network.",
+  "type": "module",
+  "tags": [
+    "Utility"
+  ],
+  "docsPath": "/library/modules/clipboard/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

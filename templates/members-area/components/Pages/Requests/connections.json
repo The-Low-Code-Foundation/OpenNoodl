@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "3b77a55e-f29a-5549-8930-5fd45029ec5f",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "chrome-6",
+      "fromProperty": "isModerator",
+      "toId": "queue",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-6",
+      "fromProperty": "isModerator",
+      "toId": "notModerator-2",
+      "toProperty": "in-isModerator"
+    },
+    {
+      "fromId": "notModerator-2",
+      "fromProperty": "out-no",
+      "toId": "notAllowed-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-6",
+      "fromProperty": "Moderator",
+      "toId": "requests",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "chrome-6",
+      "fromProperty": "Denied",
+      "toId": "toLanding-4",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "items",
+      "toId": "list-3",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "count",
+      "toId": "emptyGate-3",
+      "toProperty": "in-count"
+    },
+    {
+      "fromId": "requests",
+      "fromProperty": "fetched",
+      "toId": "emptyGate-3",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "emptyGate-3",
+      "fromProperty": "out-empty",
+      "toId": "emptyState-3",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "list-3",
+      "fromProperty": "itemOutputSignal-Changed",
+      "toId": "requests",
+      "toProperty": "storageFetch"
+    }
+  ]
+}

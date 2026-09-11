@@ -1,0 +1,67 @@
+// EXP-013 AC1 — the "Not exportable yet" mark.
+//
+// Warning tone, not error: the node works in the running app, it is the export that leaves it
+// out — the same reading BCN-010's capability mark makes (`NodePickerCard.module.scss`,
+// `.is-unavailable`). Mixed against the control border so the mark holds an edge on both themes.
+.Root {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  white-space: nowrap;
+  border-radius: var(--radius-default);
+  padding: 2px 6px;
+  color: var(--theme-color-warning);
+  background-color: color-mix(in srgb, var(--theme-color-warning) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--theme-color-warning) 45%, var(--theme-color-border-control));
+
+  &::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background-color: currentColor;
+  }
+}
+
+// On a card the mark sits in the meta line, one line tall; keep it from stretching the row.
+.Root--card {
+  margin-left: 6px;
+  padding: 1px 5px;
+}
+
+// In the property header it sits beside the type chip, on the chip's baseline and scale.
+.Root--header {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2.5px 7px;
+  margin-left: 6px;
+}
+
+// The picker card's right-hand slot: the words would be clipped by the name's ellipsis on a
+// ~150px card, so the mark is the dot alone, sized like the ⏎ hint it replaces; the words ride
+// on `title` / `aria-label` and the preview pane prints them.
+.Root--dot {
+  padding: 0;
+  width: 14px;
+  height: 14px;
+  justify-content: center;
+  border-radius: 50%;
+  margin-left: 0;
+
+  &::before {
+    width: 6px;
+    height: 6px;
+  }
+}
+
+// A decision reads a shade heavier than a schedule: nothing is coming for it.
+.Root--out-of-scope {
+  background-color: color-mix(in srgb, var(--theme-color-warning) 20%, transparent);
+}

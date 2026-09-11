@@ -1,0 +1,127 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000093",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "connectBtn",
+      "fromProperty": "onClick",
+      "toId": "socket",
+      "toProperty": "connect"
+    },
+    {
+      "fromId": "stopBtn",
+      "fromProperty": "onClick",
+      "toId": "socket",
+      "toProperty": "disconnect"
+    },
+    {
+      "fromId": "sendBtn",
+      "fromProperty": "onClick",
+      "toId": "socket",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "msgInput",
+      "fromProperty": "onTextChanged",
+      "toId": "messageVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "messageVar",
+      "fromProperty": "value",
+      "toId": "socket",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "onOpen",
+      "toId": "setOpen",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "openStr",
+      "fromProperty": "savedValue",
+      "toId": "setOpen",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "onClose",
+      "toId": "setClosed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "closedStr",
+      "fromProperty": "savedValue",
+      "toId": "setClosed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "onReconnect",
+      "toId": "setReconnected",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "reconnectedStr",
+      "fromProperty": "savedValue",
+      "toId": "setReconnected",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "failure",
+      "toId": "setFailed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "failedStr",
+      "fromProperty": "savedValue",
+      "toId": "setFailed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "connectionState",
+      "toId": "stateText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "connected",
+      "toId": "connectedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "queueSize",
+      "toId": "queueText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "received",
+      "toId": "receivedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "receivedRaw",
+      "toId": "rawText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "socket",
+      "fromProperty": "lastError",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

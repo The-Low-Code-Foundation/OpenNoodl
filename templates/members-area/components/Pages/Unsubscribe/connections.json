@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e190644a-d3a1-513f-859a-fcd41ea4cd7c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageInputs-3",
+      "fromProperty": "pm-token",
+      "toId": "hold-5",
+      "toProperty": "in-token"
+    },
+    {
+      "fromId": "page-13",
+      "fromProperty": "didMount",
+      "toId": "hold-5",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold-5",
+      "fromProperty": "out-token",
+      "toId": "call-2",
+      "toProperty": "in-token"
+    },
+    {
+      "fromId": "hold-5",
+      "fromProperty": "out-ready",
+      "toId": "call-2",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "call-2",
+      "fromProperty": "done",
+      "toId": "doneGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "doneGate",
+      "fromProperty": "result",
+      "toId": "done",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "call-2",
+      "fromProperty": "failure",
+      "toId": "failGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "hold-5",
+      "fromProperty": "out-missing",
+      "toId": "failGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "hold-5",
+      "fromProperty": "failure",
+      "toId": "failGate-2",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "failGate-2",
+      "fromProperty": "result",
+      "toId": "failed-3",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "backButton",
+      "fromProperty": "onClick",
+      "toId": "toSignIn-3",
+      "toProperty": "navigate"
+    }
+  ]
+}

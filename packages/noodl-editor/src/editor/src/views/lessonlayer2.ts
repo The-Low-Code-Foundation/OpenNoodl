@@ -2,13 +2,63 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { App } from '@noodl-models/app';
+import { EditorSettings } from '@noodl-utils/editorsettings';
 import { KeyCode, KeyMod } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler, { KeyboardCommand } from '@noodl-utils/keyboardhandler';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
-import evalConditions from './lessons/lessonevalconditions';
+import { isResetOffered, LearningFolderModel } from '../models/learningfolder';
+import { checkMyWork, liveCheckMyWorkDeps, summariseSubmission } from '../models/lessoncheck';
+import { applyDetailPreference } from '../models/lessonhandholding';
+import { ProjectModel } from '../models/projectmodel';
+import { liveLessonDatabaseSnapshot } from '../models/lessondatabase.live';
+import { liveLessonEvalContext } from './lessons/lessonevalconditions.live';
+import { databaseRefusal, evalConditionsWithContext, isCollectionCondition } from './lessons/lessonevalconditions';
+import type { LessonDatabaseSnapshot } from './lessons/lessonevalconditions';
 import LessonLayerView from './lessons/LessonLayerView';
+import { isLessonFinished, stepFlowAction } from './lessons/lessonstepflow';
 import PopupLayer from './popuplayer';
+import { publishRunningLesson } from '../models/lessonprotection';
+import { stashLessonReset } from '@noodl-utils/launcher/launcherHandoff';
+import { leaveForLauncher } from '@noodl-utils/launcher/leaveForLauncher';
+import { ToastLayer } from './ToastLayer/ToastLayer';
+
+/**
+ * UNI-007 slice 4 — what the "check my work" control is showing.
+ *
+ * ⚠️ `unavailable` is a **third** state beside pass and fail, and it is the one
+ * that matters most to get right: a learner on a machine with no browser to
+ * render in has not failed the lesson, and a control that cannot tell "we could
+ * not check" from "you are not there yet" will tell them they have.
+ */
+interface ILessonCheckState {
+  busy: boolean;
+  summary?: string;
+  unavailable?: boolean;
+  complete?: boolean;
+}
+
+/**
+ * FIX-027 §19/§20 — what the bottom bar shows once the lesson is over.
+ *
+ * ⚠️ `reset` is present whenever the lesson is one this editor could in principle start again —
+ * i.e. it is installed in the Learning folder. Whether it can *actually* run is `available`, and
+ * a refusal carries the register's own sentence rather than a second wording of it. A **hosted**
+ * lesson has no register entry at all and gets no control, which is the same rule "check my
+ * work" follows: absent when the concept does not apply, disabled-with-a-reason when it applies
+ * and cannot run.
+ */
+interface ILessonCompletion {
+  /** The lesson's title, when there is a register entry to read one from. */
+  title?: string;
+  reset?: {
+    available: boolean;
+    /** Why not. Only set when `available` is false. */
+    reason?: string;
+    onReset: () => void;
+  };
+  onExit: () => void;
+}
 
 interface ILessonStep {
   isComplete: boolean;
@@ -22,7 +72,20 @@ interface ILessonStep {
   hasNextButton?: boolean;
 }
 
+/**
+ * How often a data step re-reads the built-in database while it is on screen.
+ *
+ * Four seconds is a compromise with one number on each side: a learner who has just created a
+ * record should not have to wonder whether the tick is broken, and a localhost round trip per
+ * collection several times a minute is the most this may cost. Nothing else in the editor polls,
+ * and this one stops the moment the active step no longer grades the database.
+ */
+const DATABASE_POLL_MS = 4000;
+
 export class LessonLayer {
+  /** FIX-025 — withdraws this lesson's steps from the delete guard. */
+  private unpublishLesson?: () => void;
+
   keyboardCommands: KeyboardCommand[];
   model: TSFixme;
   nextButton: HTMLDivElement;
@@ -31,6 +94,23 @@ export class LessonLayer {
   el: TSFixme;
   refreshTimeout: NodeJS.Timeout;
   root: Root | null = null;
+  /** The Learning-folder entry id of the open lesson, or undefined for a hosted one. */
+  learningLessonId: string | undefined;
+  checkState: ILessonCheckState = { busy: false };
+  /**
+   * TUT-002 — the built-in database as of the last read, for the three collection verbs.
+   *
+   * 🔴 Held here rather than read inside `refresh()` because `refresh()` is **synchronous and
+   * runs on every `Model.*` event** — reading a database from it is impossible and polling one
+   * from it would be an HTTP request per keystroke. Absent means nobody has looked yet, which
+   * every collection verb treats as unproven; it is never confused with an empty database.
+   */
+  database: LessonDatabaseSnapshot | undefined;
+  /** The poll that keeps {@link database} fresh, running only while a data step is active. */
+  databaseTimer: NodeJS.Timeout | undefined;
+  /** FIX-027 §19 — whether this run of the lesson has already reached its completion moment. */
+  private completionAnnounced = false;
+  databaseReading = false;
 
   constructor() {
     this.keyboardCommands = [
@@ -57,6 +137,10 @@ export class LessonLayer {
     }
 
     this.model = model;
+    this.learningLessonId = learningLessonId();
+    // A layer instance is reused across lessons; a flag left set would swallow the popout-close
+    // on the next lesson's completion moment.
+    this.completionAnnounced = false;
 
     this.model.on(
       'instructionsChanged',
@@ -112,15 +196,83 @@ export class LessonLayer {
     const props = {
       steps: this.steps,
       currentStepIndex: this.model.index,
+      // FIX-027 §19/§20 — absent until the lesson is over, so the bar is unchanged until then.
+      completion: this.steps ? this._completion() : undefined,
       onMoveToNextStep: () => {
         this.model.next();
-      }
+      },
+      // Absent for a hosted lesson, which has no register entry to grade
+      // against and nowhere to record a grade — the control is not disabled
+      // there, it does not exist.
+      check: this.learningLessonId
+        ? {
+            busy: this.checkState.busy,
+            summary: this.checkState.summary,
+            unavailable: this.checkState.unavailable,
+            complete: this.checkState.complete,
+            onCheck: () => this.runCheck()
+          }
+        : undefined
     };
 
     if (!this.root) {
       this.root = createRoot(this.div);
     }
     this.root.render(React.createElement(LessonLayerView, props));
+  }
+
+  /**
+   * Run the grading runner over this lesson and show what it said.
+   *
+   * 🔴 This is the runner's first caller anywhere. Until it existed,
+   * `models/lessongrading.ts` was not in the renderer bundle at all — no editor
+   * module imported it — so both engines, their tests and engine 2's adapter
+   * were shipped code that nothing could reach.
+   */
+  async runCheck() {
+    if (this.checkState.busy || !this.learningLessonId) return;
+
+    this.checkState = { busy: true };
+    this._renderReact();
+
+    let next: ILessonCheckState;
+    try {
+      const outcome = await checkMyWork(this.learningLessonId, liveCheckMyWorkDeps());
+      if (outcome.result === 'graded') {
+        /*
+         * 🔴 UNI-006 — the hand-in sentence is APPENDED to the grade's, never substituted for
+         * it. A learner whose school could not be reached has still been graded, by two local
+         * engines, on the project in front of them: replacing that with a network message
+         * would throw away the answer they asked for. And the reverse is the more dangerous
+         * one — a lesson that graded cleanly while the submit was refused must not read as
+         * "all done", because a pupil who believes they handed in stops trying.
+         *
+         * ⚠️ Only the summary carries it. `recordGrade` already stored the grading sentence
+         * as the card's feedback, and a card still reading "could not reach your school" six
+         * weeks later would be describing a moment rather than the work.
+         */
+        const handIn = summariseSubmission(outcome.submission);
+        next = {
+          busy: false,
+          summary: handIn ? `${outcome.summary} ${handIn}` : outcome.summary,
+          complete: outcome.evidence.complete
+        };
+      } else {
+        next = { busy: false, summary: outcome.reason, unavailable: true };
+      }
+    } catch (e) {
+      // `checkMyWork` does not throw; building its live ports can (no store, no
+      // project). Either way the learner pressed a button and is owed a
+      // sentence — and it must not read as a verdict on their work.
+      console.error('lesson check failed', e);
+      next = { busy: false, unavailable: true, summary: 'The check could not run. See the developer console.' };
+    }
+
+    this.checkState = next;
+    // The layer may have been disposed while the render was running — engine 2
+    // takes seconds, and closing the project mid-check is an ordinary thing to
+    // do.
+    if (this.div && this.root) this._renderReact();
   }
 
   _render() {
@@ -148,6 +300,14 @@ export class LessonLayer {
     //   this.nextButton.parentElement.removeChild(this.nextButton);
     // }
 
+    // TUT-002 — a step that grades the database keeps a poll alive while it is the active one,
+    // and stops it the moment it is not. Decided here rather than inside the loop so that moving
+    // *off* a data step stops the poll even when the next step carries no conditions at all.
+    // 🔴 A learner adding a row in the Data Browser raises no editor model event, so without
+    // this the step would tick only when something else happened to change.
+    const active = this.steps[this.model.index];
+    this._watchDatabase(!!active?.conditions?.some(isCollectionCondition));
+
     this.steps.forEach((step, stepIndex) => {
       if (stepIndex < this.model.index) {
         step.isComplete = true;
@@ -158,7 +318,19 @@ export class LessonLayer {
       } else if (stepIndex === this.model.index) {
         if (step.conditions && step.conditions.length) {
           try {
-            step.isComplete = evalConditions(step.conditions);
+            // TUT-002 — one context, asked twice: whether these conditions could be graded at
+            // all, and then whether they hold. A refusal is neither a pass nor a "not yet", and
+            // saying so is the difference between a learner who starts their backend and one who
+            // stares at a step that can never tick.
+            const ctx = liveLessonEvalContext(this.database);
+            const refusal = databaseRefusal(step.conditions, ctx);
+            if (refusal) {
+              step.isComplete = false;
+              step.error = refusal;
+            } else {
+              step.error = undefined;
+              step.isComplete = evalConditionsWithContext(step.conditions, ctx);
+            }
           } catch (e) {
             console.error('error in lesson condition', step.conditions, e.message);
             step.error = `Step ${stepIndex}: ${e.message}. Invalid condition: ${JSON.stringify(step.conditions)}.`;
@@ -180,13 +352,187 @@ export class LessonLayer {
 
     const currentStep = this.steps[this.model.index];
 
-    if (currentStep && currentStep.conditions && currentStep.isComplete) {
+    /**
+     * 🔴 FIX-025 — COMPLETING THE LAST STEP USED TO BLANK THE LESSON BAR FOR GOOD.
+     *
+     * The choice is `stepFlowAction`'s, in `lessons/lessonstepflow.ts`, because the rule that
+     * was wrong is arithmetic and nothing in this file is reachable from the jest runner. The
+     * short version: `LessonModel.next()` does nothing on the final step, and advancing is the
+     * branch that does not render, so the layer sat in it forever showing an empty div. Read
+     * that module before changing this — including why the count comes from the model rather
+     * than from `this.steps`.
+     */
+    const action = stepFlowAction(this._flowInput());
+
+    if (action === 'advance') {
       //jump to the next step if all conditions are completed.
       //This will tigger the "instrcuctionsChanged" event on the model wich re-renders the lessons
       this.model.next();
     } else {
+      this._clearTheWayForCompletion();
       this.div && this._renderReact();
     }
+  }
+
+  /**
+   * FIX-027 §19 — get the finished step's own instructions out of the way, **once**.
+   *
+   * 🔴 **Found by driving, and it is not a cosmetic overlap.** An open popout puts
+   * `PopupLayer`'s full-screen blocker over the editor (`popup-layer.has-popouts.dim`, z-index
+   * 10). Measured on *State on a page*: with the last step's instructions open,
+   * `document.elementFromPoint` at the middle of the completion banner returned
+   * `popup-layer-blocker` — so the banner was **dimmed and its two buttons were behind a
+   * blocker**, on the very screen §20 exists to make actionable. §17's edge rule opens those
+   * instructions when the learner enters the step, so this is the ordinary path to the end of a
+   * graded lesson, not a corner.
+   *
+   * ✅ The instructions are also simply *stale*: they say what to do on a step that is done.
+   * `hidePopouts(true)` runs each popout's `onClose`, which is what `LessonItem` uses to record
+   * a dismissal — so the step stays dismissed rather than reopening on the next render.
+   *
+   * ⚠️ **On the EDGE into completion, never on every refresh.** `refresh()` runs on every
+   * `Model.*` event; closing popouts from all of them would shut instructions the learner had
+   * deliberately re-opened to re-read, over and over. That is §17's own lesson pointed the other
+   * way, and it is the failure a naive `if (finished) hidePopouts()` produces. The flag re-arms
+   * when the lesson is no longer finished, so undoing work and finishing again works.
+   */
+  private _clearTheWayForCompletion(): void {
+    const finished = isLessonFinished(this._flowInput());
+    if (!finished) {
+      this.completionAnnounced = false;
+      return;
+    }
+    if (this.completionAnnounced) return;
+    this.completionAnnounced = true;
+    PopupLayer.instance.hidePopouts(true);
+  }
+
+  /**
+   * The three facts both end-of-lesson answers are built from.
+   *
+   * 🔴 **One statement, two readers.** `stepFlowAction` decides whether to advance and
+   * {@link isLessonFinished} decides whether to say "you have finished"; if they could disagree
+   * about which step is last, the bar could advance past a step it had just congratulated the
+   * learner for — or congratulate them on a step it was about to leave. The count comes from the
+   * *model*, not from `this.steps`, for the reason `lessonstepflow.ts` records.
+   */
+  private _flowInput() {
+    const currentStep = this.steps?.[this.model.index];
+    return {
+      hasCurrentStep: !!currentStep,
+      hasConditions: !!(currentStep && currentStep.conditions && currentStep.conditions.length),
+      isComplete: !!(currentStep && currentStep.isComplete),
+      index: this.model.index,
+      stepCount: this.model.numberOfLessons ?? 0
+    };
+  }
+
+  /**
+   * FIX-027 §19/§20 — the completion moment, or `undefined` while there is still lesson left.
+   *
+   * ⚠️ **Availability is read here, on every render, rather than cached when the lesson opened.**
+   * A learner can finish a lesson an hour after starting it, and the `/tmp` bundle
+   * *State on a page* was installed from can vanish inside that hour (FIX-026). A control drawn
+   * from a stale answer is exactly the failure §20 exists to prevent.
+   */
+  private _completion(): ILessonCompletion | undefined {
+    if (!isLessonFinished(this._flowInput())) return undefined;
+
+    const onExit = () => {
+      PopupLayer.instance.hideModal();
+      PopupLayer.instance.hidePopouts(true);
+      App.instance.exitProject();
+    };
+
+    const id = this.learningLessonId;
+    // A hosted lesson has no register entry, so there is nothing to reset and no control —
+    // the same rule "check my work" follows. It still gets a completion moment and a way out.
+    const entry = id ? LearningFolderModel.instance.get(id) : undefined;
+    if (!id || !entry) return { onExit };
+
+    const availability = LearningFolderModel.instance.canReset(id);
+
+    return {
+      title: entry.title,
+      reset: {
+        // FIX-027 §20 — `isResetOffered`, never `=== 'available'`. A platform lesson answers
+        // `'needs-network'`, which is a yes the launcher can act on; testing for the literal
+        // would switch this button off for every lesson installed from Community.
+        available: isResetOffered(availability),
+        // ⚠️ Only the refusing arm carries a sentence. `'needs-network'` deliberately does not:
+        // there is nothing to apologise for until something has actually tried the network.
+        reason: availability.result === 'unavailable' ? availability.reason : undefined,
+        onReset: () => this._onStartAgain(id, entry.title)
+      },
+      onExit
+    };
+  }
+
+  /**
+   * The lesson *Start again* would restart, or `undefined` when there is nothing to offer.
+   *
+   * ⚠️ Used by the popup path, which must decide at parse time whether to draw a button at all.
+   * The banner keeps its own live read instead, because it re-renders on every refresh and can
+   * therefore afford the more honest answer; both go through {@link _onStartAgain}, which
+   * re-asks before acting.
+   */
+  private _startAgainTarget(): { id: string; title: string } | undefined {
+    const id = this.learningLessonId;
+    if (!id) return undefined;
+    const entry = LearningFolderModel.instance.get(id);
+    if (!entry) return undefined;
+    if (!isResetOffered(LearningFolderModel.instance.canReset(id))) return undefined;
+    return { id, title: entry.title };
+  }
+
+  /**
+   * *Start again*: throw this copy of the lesson away and come back to a fresh one.
+   *
+   * 🔴 **It closes the project, and it says so before it acts.** The reset cannot run while the
+   * lesson is open — `Learning/<slug>/` *is* the open project — so the gesture is stash, leave,
+   * and reset at the launcher. `launcherHandoff.ts` carries the argument. The obligation to say
+   * "this closes the project" is `leaveForLauncher`'s and is discharged in this sentence.
+   *
+   * ⚠️ **Availability is re-asked here even though the button is only enabled when it holds.**
+   * The bundle can go between the render and the press, and the learner would then be moved to
+   * the launcher for a reset that refuses — a refusal delivered after the cost of it has already
+   * been paid. This one is delivered before, in the lesson, with nothing changed.
+   */
+  private _onStartAgain(lessonId: string, title: string): void {
+    const availability = LearningFolderModel.instance.canReset(lessonId);
+    if (availability.result === 'unavailable') {
+      ToastLayer.showError(availability.reason);
+      return;
+    }
+
+    /*
+     * ⚠️ FIX-027 §20 — the one refusal that CANNOT be delivered before the learner leaves.
+     *
+     * Everything else this method guards against is answerable on disk, so the paragraph above
+     * refuses in the lesson with nothing changed. Whether the platform is reachable is not: the
+     * only way to find out is to ask it, and asking belongs to the launcher, after the project
+     * is closed. So a platform lesson says *download* here rather than implying the fresh copy
+     * is already on the machine — and if the fetch then fails, `resetLessonFromPlatform`
+     * guarantees nothing was deleted, the learner lands on an intact lesson, and the card's own
+     * Reset is one press away. That is a worse moment than refusing early and a much better one
+     * than a half-reset lesson.
+     */
+    const needsDownload = availability.result === 'needs-network';
+
+    if (
+      !confirm(
+        `Start "${title}" again?\n\nThis closes the lesson and replaces your copy of it with a fresh one` +
+          (needsDownload ? ', downloaded from NodeGX Community' : '') +
+          `. Anything you built inside it is lost.`
+      )
+    ) {
+      return;
+    }
+
+    stashLessonReset(lessonId);
+    PopupLayer.instance.hideModal();
+    PopupLayer.instance.hidePopouts(true);
+    leaveForLauncher('learning');
   }
 
   _onNextClick() {
@@ -196,6 +542,17 @@ export class LessonLayer {
   }
 
   loadSteps() {
+    /*
+     * FIX-027 §20 — whether the last step's popup should carry a *Start again* beside its exit.
+     * Absent for a hosted lesson (no register entry to reset) and for one this editor cannot
+     * re-pull, which is the same absent-vs-disabled rule the banner follows.
+     */
+    const startAgain = this._startAgainTarget();
+
+    // SYL-001 slice B — every step's displayed popup, so the hand-holding preference can be
+    // applied across the lesson rather than one step at a time. See below the map.
+    const popupRoots: HTMLDivElement[] = [];
+
     const steps = this.model.lessons.map((instructionsHTML, stepIndex) => {
       const stepElement = document.createElement('div');
       stepElement.innerHTML = instructionsHTML;
@@ -287,6 +644,27 @@ export class LessonLayer {
           //this is a step with only a popup. Add a next button.
           const buttonContainer = root.querySelector('.popup-content-wrapper');
 
+          /*
+           * 🔴 FIX-027 §20 — `EXIT LESSON` USED TO BE THE ONLY THING OFFERED HERE.
+           *
+           * A lesson ending on a narrative step — *Log a thing* does — shows that step as a
+           * screen-centre **modal**, so the completion banner in the bar below is behind its
+           * dimmer. Measured while driving: `document.elementFromPoint` over the banner's
+           * *Start again* returned `popup-layer dim`, and the modal's own buttons were exactly
+           * `['EXIT LESSON']`. So the moment a learner has just finished offered them one door
+           * and it led out of the lesson. The banner covers §19's shape, where there is no
+           * popup at all; this covers §20's, where the popup **is** the completion moment.
+           *
+           * ⚠️ Availability is read here, at parse time, only to decide whether to draw the
+           * control — `_onStartAgain` re-asks before it acts, because `loadSteps` runs on
+           * `instructionsFetched` and a bundle can go in between.
+           */
+          if (isLastStep && startAgain) {
+            buttonContainer.appendChild(
+              createPopupButton('START AGAIN', () => this._onStartAgain(startAgain.id, startAgain.title))
+            );
+          }
+
           const buttonToAppend = !isLastStep
             ? createPopupButton('NEXT', () => {
                 this._onNextClick();
@@ -299,6 +677,17 @@ export class LessonLayer {
           step.hasNextButton = !isLastStep;
         }
 
+        /*
+         * SYL-001 slice B — collected, not applied here. The preference is applied to the whole
+         * lesson once the steps exist, below: every step is parsed in this one pass, so a learner
+         * collapsing the hand-holding on step 3 has to reach step 4's already-built popup too.
+         *
+         * 🔴 `root` — the element actually displayed — and not the parsed `stepElement` above:
+         * the popup's content is copied through `innerHTML` on the way here, so a listener bound
+         * before that copy would be bound to a node that is then discarded.
+         */
+        popupRoots.push(root);
+
         step.popupContent = root;
       }
 
@@ -306,6 +695,33 @@ export class LessonLayer {
     });
 
     this.steps = steps.filter((step) => step.itemContent || step.popupContent); //remove any steps with incorrect HTML
+
+    /*
+     * SYL-001 slice B — the learner's hand-holding preference, applied to every step of this
+     * lesson at once and re-applied to all of them whenever any one disclosure is toggled.
+     *
+     * 🔴 Per step was not enough, and only a drive said so: the whole lesson is parsed in the one
+     * pass above, so a preference applied per step at parse time leaves a learner who collapses on
+     * step 3 still meeting step 4 expanded, until they reopen the lesson.
+     */
+    applyDetailPreference(popupRoots, EditorSettings.instance);
+
+    /**
+     * FIX-025 — publish what this lesson is grading, so the delete path can ask before a
+     * learner removes a node a step needs. Re-published on every parse because the steps are
+     * rebuilt whenever the lesson reloads, and a stale list would protect the wrong nodes.
+     * See `models/lessonprotection.ts` for why this is a registry rather than an import.
+     */
+    this.unpublishLesson?.();
+    this.unpublishLesson = publishRunningLesson(
+      this.steps.map((step) => ({
+        // The step's own heading, which is what the learner sees on the card. `ILessonStep`
+        // carries the compiled HTML rather than the authored fields, so this reads it back out
+        // — the alternative is a dialog that says "Step 4", which names nothing they recognise.
+        title: step.itemContent?.querySelector('h3')?.textContent?.trim() || undefined,
+        conditions: step.conditions
+      }))
+    );
   }
 
   reload() {
@@ -318,8 +734,58 @@ export class LessonLayer {
     this.model.start();
   }
 
+  /**
+   * TUT-002 — keep the database snapshot fresh while a data step is on screen, and only then.
+   *
+   * 🔴 **The poll exists because nothing else fires.** Every other condition verb observes the
+   * editor's own model, which raises `Model.*` when it changes; a row the learner adds in the
+   * Data Browser, or from their own running app, changes nothing this layer is listening to. So
+   * a data step either polls or never ticks until the learner happens to move a node.
+   *
+   * It is deliberately narrow: it runs only while the *active* step names a collection verb,
+   * every {@link DATABASE_POLL_MS}, one read at a time (`databaseReading` guards a slow backend
+   * from stacking requests), and it re-renders **only when the snapshot actually changed** —
+   * otherwise the poll would repaint the timeline several times a minute for no reason.
+   */
+  _watchDatabase(wanted: boolean) {
+    if (!wanted) {
+      if (this.databaseTimer) {
+        clearInterval(this.databaseTimer);
+        this.databaseTimer = undefined;
+      }
+      return;
+    }
+    if (this.databaseTimer) return;
+
+    void this._readDatabase();
+    this.databaseTimer = setInterval(() => void this._readDatabase(), DATABASE_POLL_MS);
+  }
+
+  async _readDatabase() {
+    if (this.databaseReading) return;
+    this.databaseReading = true;
+    try {
+      const snapshot = await liveLessonDatabaseSnapshot();
+      const changed = JSON.stringify(snapshot) !== JSON.stringify(this.database);
+      this.database = snapshot;
+      if (changed) this.refresh();
+    } catch (e) {
+      // `liveLessonDatabaseSnapshot` does not throw, so this is belt and braces — and it still
+      // must not leave the last snapshot in place, which would grade against a database that may
+      // be long gone. "Could not read" is the honest answer and ticks nothing.
+      this.database = { status: 'unavailable', reason: e instanceof Error ? e.message : String(e) };
+    } finally {
+      this.databaseReading = false;
+    }
+  }
+
   dispose() {
     clearTimeout(this.refreshTimeout);
+    // 🔴 Withdraw first: a lesson layer that is going away must stop the delete guard firing in
+    // whatever project is opened next. See `models/lessonprotection.ts`.
+    this.unpublishLesson?.();
+    this.unpublishLesson = undefined;
+    this._watchDatabase(false);
     KeyboardHandler.instance.deregisterCommands(this.keyboardCommands);
 
     this.model.off(this);
@@ -354,6 +820,27 @@ export class LessonLayer {
 
       loadSrcAsset(video, this.model.baseURL + url, 'video/*', renderContainer);
     });
+  }
+}
+
+/**
+ * The Learning-folder id of the open project, when it is one.
+ *
+ * ⚠️ Read from the **register**, not from a flag on the project. `project.id` is
+ * set to the entry id by the launcher's open path, so this is a lookup rather
+ * than a claim: a project asserting it is a lesson proves nothing, and the
+ * register is the thing that has to have an entry for `recordGrade` to write to
+ * anyway.
+ */
+function learningLessonId(): string | undefined {
+  try {
+    const id = ProjectModel.instance?.id;
+    return id && LearningFolderModel.instance.get(id) ? id : undefined;
+  } catch (e) {
+    // The register reaches electron-store; a failure there must not take the
+    // lesson layer down with it — a hosted lesson does not need it at all.
+    console.error('could not read the Learning register', e);
+    return undefined;
   }
 }
 

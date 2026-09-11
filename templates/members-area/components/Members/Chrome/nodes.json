@@ -1,0 +1,671 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cd133680-a154-5770-8e2f-5eb39e610782",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "bar",
+      "type": "Group",
+      "label": "The band",
+      "children": [
+        "inner"
+      ],
+      "parameters": {
+        "as": "header",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "inner",
+      "type": "Group",
+      "label": "The capped column",
+      "parent": "bar",
+      "children": [
+        "topRow",
+        "navWrap"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "alignX": "center",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "navWrap",
+      "type": "Group",
+      "label": "Where the band can take you",
+      "parent": "inner",
+      "children": [
+        "nav"
+      ],
+      "parameters": {
+        "as": "nav",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "topRow",
+      "type": "Group",
+      "label": "Who this is, and the way out",
+      "parent": "inner",
+      "children": [
+        "identity",
+        "actions"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-4)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "actions",
+      "type": "Group",
+      "label": "The controls at the end of the band",
+      "parent": "topRow",
+      "children": [
+        "menuButton",
+        "signOutButton"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)"
+      },
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "menuButton",
+      "type": "net.noodl.controls.button",
+      "label": "Menu",
+      "parent": "actions",
+      "parameters": {
+        "label": "Menu",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "mounted": false
+      },
+      "x": 280,
+      "y": 880
+    },
+    {
+      "id": "identity",
+      "type": "Group",
+      "label": "Whose members’ area this is",
+      "parent": "topRow",
+      "children": [
+        "eyebrow",
+        "name"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "eyebrow",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "identity",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "name",
+      "type": "Text",
+      "label": "The association",
+      "parent": "identity",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "span"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "signOutButton",
+      "type": "net.noodl.controls.button",
+      "label": "Sign out",
+      "parent": "actions",
+      "parameters": {
+        "label": "Sign out",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 1000
+    },
+    {
+      "id": "nav",
+      "type": "net.noodl.visual.columns",
+      "label": "The five ways on",
+      "parent": "navWrap",
+      "children": [
+        "navAnnouncements",
+        "navMeetings",
+        "navPost",
+        "navRequests",
+        "navDirectory",
+        "navAccount"
+      ],
+      "parameters": {
+        "sizing": "autoFit",
+        "minWidth": {
+          "value": 132,
+          "unit": "px"
+        },
+        "marginX": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "x": 220,
+      "y": 1240
+    },
+    {
+      "id": "navAnnouncements",
+      "type": "net.noodl.controls.button",
+      "label": "Announcements",
+      "parent": "nav",
+      "parameters": {
+        "label": "Announcements",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 280,
+      "y": 1360
+    },
+    {
+      "id": "navMeetings",
+      "type": "net.noodl.controls.button",
+      "label": "Meetings",
+      "parent": "nav",
+      "parameters": {
+        "label": "Meetings",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 280,
+      "y": 1480
+    },
+    {
+      "id": "navPost",
+      "type": "net.noodl.controls.button",
+      "label": "Post",
+      "parent": "nav",
+      "parameters": {
+        "label": "Post",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "mounted": false
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "navRequests",
+      "type": "net.noodl.controls.button",
+      "label": "Requests",
+      "parent": "nav",
+      "parameters": {
+        "label": "Requests",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "mounted": false
+      },
+      "x": 280,
+      "y": 1720
+    },
+    {
+      "id": "navDirectory",
+      "type": "net.noodl.controls.button",
+      "label": "Who belongs",
+      "parent": "nav",
+      "parameters": {
+        "label": "Who belongs",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "mounted": false
+      },
+      "x": 280,
+      "y": 1840
+    },
+    {
+      "id": "navAccount",
+      "type": "net.noodl.controls.button",
+      "label": "Your account",
+      "parent": "nav",
+      "parameters": {
+        "label": "Your account",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "x": 280,
+      "y": 1960
+    },
+    {
+      "id": "toAnnouncements",
+      "type": "RouterNavigate",
+      "label": "To announcements",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 530,
+      "y": 1360
+    },
+    {
+      "id": "toMeetingsNav",
+      "type": "RouterNavigate",
+      "label": "To meetings",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meetings"
+      },
+      "x": 530,
+      "y": 1480
+    },
+    {
+      "id": "toPostNav",
+      "type": "RouterNavigate",
+      "label": "To post",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Post"
+      },
+      "x": 530,
+      "y": 1600
+    },
+    {
+      "id": "toRequestsNav",
+      "type": "RouterNavigate",
+      "label": "To requests",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Requests"
+      },
+      "x": 530,
+      "y": 1840
+    },
+    {
+      "id": "toDirectoryNav",
+      "type": "RouterNavigate",
+      "label": "To who belongs",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Directory"
+      },
+      "x": 530,
+      "y": 1960
+    },
+    {
+      "id": "toAccountNav",
+      "type": "RouterNavigate",
+      "label": "To your account",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Account"
+      },
+      "x": 530,
+      "y": 2080
+    },
+    {
+      "id": "viewport",
+      "type": "Screen Resolution",
+      "label": "How wide is the window",
+      "x": 530,
+      "y": 2200
+    },
+    {
+      "id": "menuState",
+      "type": "States",
+      "label": "Is the band’s menu open?",
+      "parameters": {
+        "states": "Closed,Open",
+        "values": "navOpen",
+        "type-navOpen": "boolean",
+        "value-Closed-navOpen": false,
+        "value-Open-navOpen": true
+      },
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "bandShape",
+      "type": "JavaScriptFunction",
+      "label": "Is there room for the six ways on, or do they go behind a menu?",
+      "parameters": {
+        "runOnChange-in-width": true,
+        "runOnChange-in-signedIn": true,
+        "runOnChange-in-open": true,
+        "functionScript": "const narrow = Inputs.width !== undefined && Inputs.width < 700;\nconst signedIn = Inputs.signedIn === true;\nOutputs.menuMounted = signedIn && narrow;\nOutputs.navMounted = signedIn && (!narrow || Inputs.open === true);"
+      },
+      "x": 530,
+      "y": 1120,
+      "ports": [
+        {
+          "name": "in-width",
+          "displayName": "width",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-signedIn",
+          "displayName": "signedIn",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-open",
+          "displayName": "open",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-menuMounted",
+          "displayName": "menuMounted",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-navMounted",
+          "displayName": "navMounted",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "association",
+      "type": "DbCollection2",
+      "label": "The association",
+      "parameters": {
+        "collectionName": "Association"
+      },
+      "x": 530,
+      "y": 2320
+    },
+    {
+      "id": "read-2",
+      "type": "JavaScriptFunction",
+      "label": "Its name, once there is one",
+      "parameters": {
+        "runOnChange-in-rows": true,
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nOutputs.name = rows.length > 0 ? (rows[0].name || '') : '';"
+      },
+      "x": 530,
+      "y": 640,
+      "ports": [
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "standing",
+      "type": "/Members/Standing",
+      "label": "Who is this?",
+      "x": 530,
+      "y": 1720
+    },
+    {
+      "id": "outputs-4",
+      "type": "Component Outputs",
+      "label": "Who the band knows this person to be",
+      "ports": [
+        {
+          "name": "isMember",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isModerator",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isPending",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "isUnknown",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "Member",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Moderator",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Visitor",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "Denied",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 530,
+      "y": 2440
+    },
+    {
+      "id": "logout",
+      "type": "net.noodl.user.LogOut",
+      "label": "Log out",
+      "x": 530,
+      "y": 1000
+    },
+    {
+      "id": "toLanding-7",
+      "type": "RouterNavigate",
+      "label": "Back to the public page",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Landing"
+      },
+      "x": 530,
+      "y": 2560
+    }
+  ],
+  "visualRoots": [
+    "bar"
+  ]
+}

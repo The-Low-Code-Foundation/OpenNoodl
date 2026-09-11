@@ -1,0 +1,187 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "687a5547-5a65-5d25-825e-6816e222ade6",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "req-2",
+      "fromProperty": "pm-name",
+      "toId": "prep",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "req-2",
+      "fromProperty": "pm-email",
+      "toId": "prep",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "req-2",
+      "fromProperty": "pm-password",
+      "toId": "prep",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "req-2",
+      "fromProperty": "pm-message",
+      "toId": "prep",
+      "toProperty": "in-message"
+    },
+    {
+      "fromId": "req-2",
+      "fromProperty": "receive",
+      "toId": "prep",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-username",
+      "toId": "create-2",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-email",
+      "toId": "create-2",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-password",
+      "toId": "create-2",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-ready",
+      "toId": "create-2",
+      "toProperty": "create"
+    },
+    {
+      "fromId": "create-2",
+      "fromProperty": "userId",
+      "toId": "stamp",
+      "toProperty": "in-userId"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-email",
+      "toId": "stamp",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-name",
+      "toId": "stamp",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-message",
+      "toId": "stamp",
+      "toProperty": "in-message"
+    },
+    {
+      "fromId": "create-2",
+      "fromProperty": "done",
+      "toId": "stamp",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-userId",
+      "toId": "file",
+      "toProperty": "prop-userId"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-email",
+      "toId": "file",
+      "toProperty": "prop-email"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-name",
+      "toId": "file",
+      "toProperty": "prop-name"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-message",
+      "toId": "file",
+      "toProperty": "prop-message"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-requestedAt",
+      "toId": "file",
+      "toProperty": "prop-requestedAt"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "out-file",
+      "toId": "file",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "file",
+      "fromProperty": "done",
+      "toId": "received",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "create-2",
+      "fromProperty": "unchanged",
+      "toId": "received",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "received",
+      "fromProperty": "out-received",
+      "toId": "res-2",
+      "toProperty": "pm-received"
+    },
+    {
+      "fromId": "received",
+      "fromProperty": "out-answer",
+      "toId": "res-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "out-refuse",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "create-2",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "file",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "prep",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "stamp",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "received",
+      "fromProperty": "failure",
+      "toId": "deny-2",
+      "toProperty": "send"
+    }
+  ]
+}

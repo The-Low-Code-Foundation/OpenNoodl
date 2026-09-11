@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e26567be-b809-5c11-89ec-afc12211b0ad",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ecInputs",
+      "type": "Component Inputs",
+      "label": "The address",
+      "ports": [
+        {
+          "name": "email",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ecFn",
+      "type": "JavaScriptFunction",
+      "label": "Check the address",
+      "parameters": {
+        "functionScript": "var typed = String(Inputs.email || '').trim();\n\nif (typed.length === 0) {\n  Outputs.isValid = false;\n  Outputs.message = '';\n  return;\n}\n\nvar at = typed.indexOf('@');\nvar lastDot = typed.lastIndexOf('.');\nvar valid =\n  at > 0 &&\n  lastDot > at + 1 &&\n  lastDot < typed.length - 2 &&\n  typed.indexOf(' ') === -1 &&\n  typed.indexOf('@', at + 1) === -1;\n\nOutputs.isValid = valid;\nOutputs.message = valid ? '' : 'That is not an address we could reply to — check it over.';"
+      },
+      "x": 40,
+      "y": 160,
+      "ports": [
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-isValid",
+          "displayName": "isValid",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-message",
+          "displayName": "message",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "ecOutputs",
+      "type": "Component Outputs",
+      "label": "The verdict",
+      "ports": [
+        {
+          "name": "isValid",
+          "plug": "input",
+          "type": "boolean"
+        },
+        {
+          "name": "message",
+          "plug": "input",
+          "type": "string"
+        }
+      ],
+      "x": 40,
+      "y": 280
+    }
+  ]
+}

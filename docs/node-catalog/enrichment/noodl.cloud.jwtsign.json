@@ -14,7 +14,7 @@
     "failure": "Fires when the token could not be signed — no Key, or claims that will not serialise.",
     "error": "Why no token was produced."
   },
-  "examples": [],
+  "examples": ["cloud-sign-a-token-with-a-stored-secret"],
   "patterns": [
     "Secret Done → JWT Sign Do, then Token into a URL or a response: the whole shape of a signed link."
   ],

@@ -22,9 +22,15 @@
  *   node scripts/devtools/cdp.js wait "<selector>" [timeoutMs]
  *   node scripts/devtools/cdp.js click "<selector>"
  *   node scripts/devtools/cdp.js type "<selector>" "text"
+ *   node scripts/devtools/cdp.js dropfile "<selector|x,y>" <file>[,<file>...]
  *   node scripts/devtools/cdp.js reload
- *   node scripts/devtools/cdp.js network <offline|online>
- *   node scripts/devtools/cdp.js blockurl "<url-pattern>"
+ *   node scripts/devtools/cdp.js network <offline|online> [--eval="<expr>"] [--hold=<seconds>]
+ *   node scripts/devtools/cdp.js blockurl "<url-pattern>" [--eval="<expr>"] [--hold=<seconds>]
+ *       ⚠️ Network emulation is scoped to the CDP SESSION that set it and is torn
+ *       down the moment this command exits (P79 K2). `network offline` in one
+ *       command and a fetch in the next measures the ONLINE app. Measure inside
+ *       the same session with --eval, or keep it open with --hold while other
+ *       cdp.js commands run.
  *   node scripts/devtools/cdp.js unblockurl
  *
  * Options (any position):
@@ -141,7 +147,14 @@ async function appTarget(name = TARGET) {
     const open = pages.map((p) => p.url).join('\n    ') || '(none)';
     throw new Error(
       `No '${name}' page target found. Open pages:\n    ${open}\n` +
-        (name === 'viewer' ? 'The viewer window only exists while a project preview is running.' : '')
+        // Do NOT restore "only exists while a project preview is running" — it
+        // contradicts this module's own doc above and sends a caller who has a
+        // project open away from a target that is very often there. `viewer`
+        // matches the detached preview window *or* the editor's embedded
+        // preview `webview`, and the embedded one has been seen attached with
+        // no preview started. What is reliably true is the precondition below.
+        (name === 'viewer' ? 'No viewer target: `viewer` matches the detached preview window or the\n' +
+          "    editor's embedded preview webview, and neither exists before a project is open." : '')
     );
   }
   return match;
@@ -228,6 +241,151 @@ async function dispatchClick(client, { x, y }) {
   await client.send('Input.dispatchMouseEvent', { ...base, type: 'mouseMoved', button: 'none', buttons: 0 });
   await client.send('Input.dispatchMouseEvent', { ...base, type: 'mousePressed', button: 'left', buttons: 1 });
   await client.send('Input.dispatchMouseEvent', { ...base, type: 'mouseReleased', button: 'left', buttons: 0 });
+}
+
+/**
+ * A real press-move-release drag through the input pipeline.
+ *
+ * ⚠️ **The intermediate moves are not padding.** HTML5 drag sources, Blockly's own
+ * gesture handler and every pointer-drag implementation in this editor start a drag
+ * only after the pointer has travelled a few pixels while held. A press followed
+ * straight by a release at the destination is a *click at the origin*, which is a
+ * different gesture and frequently a passing-looking no-op — so this walks the
+ * pointer across in steps and lets each one be processed.
+ *
+ * `Input.dispatchMouseEvent` is also how a real drag arrives, so `dragstart`,
+ * `dragover` and `drop` fire for HTML5 sources and Blockly sees genuine
+ * `pointermove`s. Synthesising the events from `eval` does neither.
+ */
+async function dispatchDrag(client, from, to, steps = 12) {
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mouseMoved',
+    x: from.x,
+    y: from.y,
+    button: 'none',
+    buttons: 0
+  });
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mousePressed',
+    x: from.x,
+    y: from.y,
+    button: 'left',
+    buttons: 1,
+    clickCount: 1,
+    pointerType: 'mouse'
+  });
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    await client.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: from.x + (to.x - from.x) * t,
+      y: from.y + (to.y - from.y) * t,
+      button: 'left',
+      buttons: 1,
+      pointerType: 'mouse'
+    });
+    // Let the renderer process each move; a burst of moves in one task can be
+    // coalesced into a single jump and miss the drag threshold entirely.
+    await new Promise((r) => setTimeout(r, 16));
+  }
+
+  await client.send('Input.dispatchMouseEvent', {
+    type: 'mouseReleased',
+    x: to.x,
+    y: to.y,
+    button: 'left',
+    buttons: 0,
+    clickCount: 1,
+    pointerType: 'mouse'
+  });
+}
+
+/**
+ * Resolve a drag endpoint: either a selector, or literal `x,y` viewport coordinates.
+ * Coordinates matter because half the interesting drop targets — empty canvas, a
+ * point past the last row, somewhere outside the window — have no element to name.
+ */
+async function dragPoint(client, spec) {
+  const m = /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)$/.exec(String(spec).trim());
+  if (m) return { x: Number(m[1]), y: Number(m[2]) };
+  return elementCentre(client, spec);
+}
+
+/**
+ * A file drag from the desktop, which `dispatchDrag` above cannot produce.
+ *
+ * ⚠️ **These are two different gestures and only one of them carries files.**
+ * `Input.dispatchMouseEvent` starts an *in-page* HTML5 drag — a `draggable`
+ * element the pointer pressed on. A file drag has no mousedown inside the page
+ * at all: it originates in the OS, and the renderer is handed a `DataTransfer`
+ * already populated with `files`. Nothing built out of mouse events can put a
+ * real `File` into `dataTransfer.files`, so a drop handler that reads files is
+ * unreachable through `drag`.
+ *
+ * `Input.dispatchDragEvent` is the one that does. `data.files` is a list of
+ * absolute paths the *browser process* opens and turns into real `File`
+ * objects, so the page sees exactly what a desktop drop delivers — name, MIME
+ * type and size all filled in by Chromium rather than by us.
+ *
+ * 🔴 **Why this is not a synthetic DOM event.** Dispatching `new DragEvent(...)`
+ * from `eval` skips the browser's own drop machinery, which means the
+ * `preventDefault()`-on-`dragover` contract is never exercised: a synthetic
+ * `drop` arrives whether or not the page opted in. Half of what a drop-zone
+ * implementation has to get right is *becoming* droppable, and only a real
+ * drag event can tell a page that did it from one that did not.
+ */
+async function dispatchFileDrop(client, { x, y }, files, { steps = 3, probe = null, drop = true, leaveTo = null } = {}) {
+  const data = {
+    // `files` is what populates `dataTransfer.files`. `items` is what populates
+    // `dataTransfer.types`/`items` — a drop zone that checks for 'Files' before
+    // acting (the right thing to do, so a dragged text selection does not light
+    // it up) reads that list, so a payload without it looks like a non-file drag.
+    items: files.map((file) => ({
+      mimeType: 'application/octet-stream',
+      data: file,
+      title: path.basename(file)
+    })),
+    files,
+    dragOperationsMask: 1 // copy
+  };
+
+  await client.send('Input.dispatchDragEvent', { type: 'dragEnter', x, y, data });
+  for (let i = 0; i < steps; i++) {
+    await client.send('Input.dispatchDragEvent', { type: 'dragOver', x, y, data });
+    // Same reason the mouse drag paces itself: let the renderer run its handler
+    // before the next event, or the state the drop depends on is not there yet.
+    await new Promise((r) => setTimeout(r, 32));
+  }
+
+  // Read the page *while the drag is still hovering*. This has to happen on the
+  // same connection and inside the same sequence — a second `cdp eval` would
+  // arrive after the drag had ended, and "is the pointer over me" is precisely
+  // the state that does not survive that.
+  let hover;
+  if (probe) hover = await evaluate(client, probe);
+
+  // Walk the drag OUT of the element before ending it. `dragCancel` is not a
+  // substitute: it ends the drag session without the pointer ever crossing the
+  // element's edge, so the page gets no `dragleave` at all. Only a move to a
+  // point outside makes the browser fire one, which is the event any hover
+  // state has to be released by.
+  if (leaveTo) {
+    for (let i = 0; i < 3; i++) {
+      await client.send('Input.dispatchDragEvent', { type: 'dragOver', x: leaveTo.x, y: leaveTo.y, data });
+      await new Promise((r) => setTimeout(r, 32));
+    }
+  }
+
+  if (drop) {
+    await client.send('Input.dispatchDragEvent', { type: 'drop', x, y, data });
+  } else {
+    // The leave/cancel arm: proves the hover state is released, not just set.
+    await client.send('Input.dispatchDragEvent', { type: 'dragCancel', x, y, data });
+  }
+  // The drop handler is async in any implementation that reads the file.
+  await new Promise((r) => setTimeout(r, 250));
+  return hover;
 }
 
 function describeArg(a) {
@@ -399,6 +557,75 @@ const commands = {
   },
 
   /**
+   * Drag from one point to another. Either endpoint may be a CSS selector or
+   * literal viewport `x,y` coordinates:
+   *
+   *   cdp drag ".RailRow" "700,400"        # rail row onto the canvas
+   *   cdp drag ".RailRow" ".BlocklyToolbox"  # onto a cancel target
+   *
+   * Needed because the canvas and the Blockly workspace are not DOM — there is
+   * often no element to name on the drop side. See `dispatchDrag` for why the
+   * intermediate moves are load-bearing rather than cosmetic.
+   */
+  async drag(from, to, steps) {
+    if (!from || !to) throw new Error('usage: cdp.js drag "<selector|x,y>" "<selector|x,y>" [steps]');
+    const client = await connect(await appTarget());
+    const a = await dragPoint(client, from);
+    const b = await dragPoint(client, to);
+    await dispatchDrag(client, a, b, steps ? Number(steps) : 12);
+    console.log(`dragged ${Math.round(a.x)},${Math.round(a.y)} -> ${Math.round(b.x)},${Math.round(b.y)}`);
+    client.close();
+  },
+
+  /**
+   * Drop real files from the desktop onto a point in the page.
+   *
+   *   cdp dropfile ".DropZone" /abs/photo.png
+   *   cdp dropfile "640,400" /abs/a.png,/abs/b.pdf --target=viewer
+   *   cdp dropfile ".DropZone" /abs/photo.png --probe="Noodl.x" --no-drop
+   *
+   * `--probe=<expr>` is evaluated while the drag is still hovering and printed
+   * as `hover:` — the only way to observe drag-over state, which is gone by the
+   * time a separate `cdp eval` could run. `--no-drop` ends with `dragCancel`
+   * instead of `drop`, which is how you show hover state is *released* rather
+   * than merely set.
+   *
+   * See `dispatchFileDrop` for why `drag` cannot do this: a mouse drag carries
+   * no files, and a synthetic DOM event skips the opt-in this is testing.
+   */
+  async dropfile(target, fileList) {
+    if (!target || !fileList) {
+      throw new Error('usage: cdp.js dropfile "<selector|x,y>" <file>[,<file>...] [--probe=<expr>] [--no-drop]');
+    }
+    const probeArg = argv.find((a) => a.startsWith('--probe='));
+    const probe = probeArg ? probeArg.slice('--probe='.length) : null;
+    const drop = !argv.includes('--no-drop');
+    const leaveArg = argv.find((a) => a.startsWith('--leave-to='));
+
+    const files = String(fileList)
+      .split(',')
+      .map((f) => path.resolve(f.trim()))
+      .filter(Boolean);
+    // A path the browser process cannot open yields an empty `files` list in the
+    // page, which reads exactly like a drop zone that ignored the drag. Fail here
+    // instead, so that reading can never be produced by a typo.
+    for (const f of files) {
+      if (!fs.existsSync(f)) throw new Error(`no such file: ${f}`);
+    }
+
+    const client = await connect(await appTarget());
+    const point = await dragPoint(client, target);
+    const leaveTo = leaveArg ? await dragPoint(client, leaveArg.slice('--leave-to='.length)) : null;
+    const hover = await dispatchFileDrop(client, point, files, { probe, drop, leaveTo });
+    if (probe) console.log('hover: ' + JSON.stringify(hover));
+    console.log(
+      `${drop ? 'dropped' : 'cancelled'} ${files.length} file(s) at ` +
+        `${Math.round(point.x)},${Math.round(point.y)}: ${files.map((f) => path.basename(f)).join(', ')}`
+    );
+    client.close();
+  },
+
+  /**
    * Focus the element with a real click, then insert text through the input
    * pipeline so React's onChange fires. `Input.insertText` produces genuine
    * beforeinput/input events; setting `.value` from JS does not.
@@ -462,7 +689,7 @@ const commands = {
    * does not expect a network call to fail. Prefer `blockurl`/`unblockurl` to
    * fail a specific host instead of the whole renderer's network.
    */
-  async network(mode) {
+  async network(mode, ...rest) {
     if (mode !== 'offline' && mode !== 'online') throw new Error('usage: cdp.js network <offline|online>');
     const client = await connect(await appTarget());
     await client.send('Network.enable');
@@ -473,7 +700,7 @@ const commands = {
       uploadThroughput: mode === 'offline' ? 0 : -1
     });
     console.log(`network: ${mode}`);
-    client.close();
+    await holdEmulation(client, `network ${mode}`, rest, mode === 'online');
   },
 
   /**
@@ -482,13 +709,13 @@ const commands = {
    * renderer offline. Safer than `network offline` for exercising one
    * subsystem's fetch-failure path without disturbing unrelated app logic.
    */
-  async blockurl(pattern) {
+  async blockurl(pattern, ...rest) {
     if (!pattern) throw new Error('usage: cdp.js blockurl "<url-pattern>"');
     const client = await connect(await appTarget());
     await client.send('Network.enable');
     await client.send('Network.setBlockedURLs', { urls: [pattern] });
     console.log(`blocked: ${pattern}`);
-    client.close();
+    await holdEmulation(client, `blockurl ${pattern}`, rest, false);
   },
 
   async unblockurl() {
@@ -499,6 +726,43 @@ const commands = {
     client.close();
   }
 };
+
+/**
+ * P79 K2 — an emulation that reads as armed and is not.
+ *
+ * `Network.emulateNetworkConditions` and `Network.setBlockedURLs` are scoped to
+ * the CDP session that set them; `client.close()` tears them down. Measured:
+ * `network offline` then `eval "fetch(...)"` as two commands came back
+ * `REACHED THE NETWORK`, so any offline claim written the obvious way measured
+ * the ONLINE app and passed. There is nothing to set that outlives the
+ * connection, so the fix keeps the session open: `--eval=<expr>` measures inside
+ * it and prints the value; `--hold=<seconds>` keeps it open while other cdp.js
+ * commands (their own sessions, same renderer) run against the emulated state.
+ * With neither, the command says so on stderr rather than printing a line that
+ * looks like a lasting change. `online`/`unblockurl` are resets and need no hold.
+ */
+async function holdEmulation(client, label, rest, isReset) {
+  const evalArg = rest.find((a) => typeof a === 'string' && a.startsWith('--eval='));
+  const holdArg = rest.find((a) => typeof a === 'string' && a.startsWith('--hold='));
+  const expression = evalArg ? evalArg.slice('--eval='.length) : null;
+  const holdMs = holdArg ? Number(holdArg.slice('--hold='.length)) * 1000 : 0;
+
+  if (expression) {
+    const value = await evaluate(client, expression);
+    console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
+  }
+  if (holdMs > 0) {
+    console.log(`holding ${label} for ${holdMs / 1000}s — run other cdp.js commands now; Ctrl-C ends it early`);
+    await new Promise((resolve) => setTimeout(resolve, holdMs));
+  }
+  if (!expression && !(holdMs > 0) && !isReset) {
+    console.error(
+      `note: ${label} lasts only while this command's CDP session is open, and it is closing now. ` +
+        'Pass --eval="<expr>" to measure inside it, or --hold=<seconds> to keep it armed.'
+    );
+  }
+  client.close();
+}
 
 /**
  * Everything above is also a library. Scripts that drive the editor for longer

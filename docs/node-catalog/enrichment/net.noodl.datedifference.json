@@ -12,7 +12,7 @@
     "changed": "Fires after Difference has been recomputed.",
     "failure": "Invalid Date — fires when a date arrived that could not be read."
   },
-  "examples": [],
+  "examples": ["bubble-how-many-days-until"],
   "patterns": [
     "Record date → From, Now Date → To, unit Days: how old this record is."
   ],

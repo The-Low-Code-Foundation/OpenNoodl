@@ -11,6 +11,7 @@
     "failure": "Signal; the request could not be made. Show `error`.",
     "error": "String value with the reason the request failed."
   },
+  "examples": ["auth-sign-in-without-a-password"],
   "patterns": [
     "Text Input `text` → `email`, Button `onClick` → `send`, `done` → a neutral confirmation message.",
     "Put a Sign In With node on the landing page named by `redirect` so the app can react to the click's outcome."

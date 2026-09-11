@@ -17,14 +17,91 @@
 .lesson-bottombar {
 }
 
+/* UNI-007 slice 4 — the steps and the "check my work" control sit side by side.
+   `min-width: 0` on the steps is load-bearing: without it a flex child refuses
+   to shrink below its content, so the scrolling step strip would push the
+   control off the bar instead of scrolling. */
+.lesson-steps-row {
+  display: flex;
+  align-items: stretch;
+}
+
 .lesson-steps {
   height: 80px;
   display: flex;
   overflow-x: auto;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .lesson-steps::-webkit-scrollbar {
   display: none;
+}
+
+/* The check control. Deliberately quiet: it is not the lesson, it is the
+   button you press when you think you have finished a step. */
+.lesson-check {
+  box-sizing: border-box;
+  flex: 0 0 280px;
+  height: 80px;
+  padding: 8px 16px;
+  border-left: 1px solid var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-3);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lesson-check-button {
+  flex-shrink: 0;
+  align-self: flex-start;
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+  border: none;
+  height: 24px;
+  padding: 0 12px;
+  font-weight: var(--font-weight-bold);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lesson-check-button:hover:not(:disabled) {
+  background-color: var(--theme-color-primary-highlight);
+}
+
+.lesson-check-button:disabled {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-muted);
+  cursor: default;
+}
+
+/* FIX-025 — what the button will look for, shown before the first run. Same metrics as the
+   summary it is replaced by, so the control does not change height when a check completes. */
+.lesson-check-looking {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--theme-color-fg-muted);
+  overflow-y: auto;
+}
+
+.lesson-check-summary {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--theme-color-fg-muted);
+  overflow-y: auto;
+}
+
+.lesson-check-summary.complete {
+  color: var(--theme-color-primary);
+}
+
+/* 🔴 "The check could not run" is styled as neither a pass nor a failure, on
+   purpose. A learner whose machine has no browser to render in has not failed
+   the lesson, and colouring this like an error would tell them they had. */
+.lesson-check-summary.unavailable {
+  font-style: italic;
 }
 
 .lesson-item {
@@ -75,18 +152,39 @@
   color: var(--theme-color-fg-muted);
 }
 
+/* 🔴 FIX-025 — THIS RULE USED TO SET `display: block` AND THAT DREW BOTH GLYPHS.
+
+   Richard: *"the current step has two check icons on it which doesn't make sense."* It is a
+   specificity defect, not a markup one. `lessonformat.ts` emits both glyphs in one span and
+   CSS picks which is shown — but `.lesson-item .lesson-checkmark svg` is (0,2,1) and the rule
+   hiding the completed glyph, `.lesson-item .lesson-checkmark-complete`, is only (0,2,0). The
+   sizing rule won, `display: none` never applied, and every INCOMPLETE step drew the outline
+   ring *and* the filled tick on top of each other. A COMPLETED step looked right, because
+   `.lesson-item.completed .lesson-checkmark-incomplete` is (0,3,0) and did beat it — which is
+   why this survived: the state everyone checks was the one state that rendered correctly.
+
+   So `display` is off this rule entirely, and the two state rules below own it at matching
+   specificity. Sizing and visibility are no longer decided by the same declaration. */
 .lesson-item .lesson-checkmark svg {
-  display: block;
   width: 100%;
   height: 100%;
 }
 
-.lesson-item .lesson-checkmark-complete,
-.lesson-item.completed .lesson-checkmark-incomplete {
+/* Not completed: the ring only. Completed: the tick only. Equal specificity, so the pair below
+   decides, and adding a third state means adding a rule rather than out-weighing one. */
+.lesson-item .lesson-checkmark .lesson-checkmark-incomplete {
+  display: block;
+}
+
+.lesson-item .lesson-checkmark .lesson-checkmark-complete {
   display: none;
 }
 
-.lesson-item.completed .lesson-checkmark-complete {
+.lesson-item.completed .lesson-checkmark .lesson-checkmark-incomplete {
+  display: none;
+}
+
+.lesson-item.completed .lesson-checkmark .lesson-checkmark-complete {
   display: block;
 }
 
@@ -198,6 +296,24 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/*
+ * P79 J1 — lesson prose may use a blockquote, and until the renderer learned the
+ * construct there was nothing here to style. Five of the eight shipped lessons put
+ * the sentence the lesson exists to teach in one, so it is given the emphasis that
+ * intent implies: a rule down the side rather than the browser's bare indent.
+ */
+.lesson-item-popup blockquote,
+.lesson-item blockquote {
+  margin: 16px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--theme-color-primary);
+}
+
+.lesson-item-popup blockquote p:last-child,
+.lesson-item blockquote p:last-child {
+  margin-bottom: 0;
+}
+
 .lesson-item-popup p i {
   font-style: italic;
 }
@@ -220,8 +336,28 @@
   background-color: var(--theme-color-primary-highlight);
 }
 
+/* 🔴 FIX-025 — A LONG STEP DESCRIPTION USED TO OVERFLOW THE SCREEN WITH NO WAY BACK.
+
+   Richard: *"Clicking a step that has a short description, you see the popup and it's easy to
+   read. When the step has a very long description, the width being restricted means it
+   overflows Y top and bottom, and you can't scroll to read it all, or close it."*
+
+   Two separate causes, and fixing either alone leaves the popup unusable:
+
+   1. **Nothing bounded the height.** The popout is positioned above its step, so a tall card
+      grows off the top of the window — taking the close affordance with it. `max-height`
+      against the viewport is what keeps it on screen at all.
+   2. **Nothing could scroll.** With the height bounded, the overflow has to go somewhere, and
+      the scroll must be on the popup rather than the page — the popout is in `PopupLayer`,
+      outside the document flow, so the window has nothing to scroll.
+
+   ⚠️ The width is raised too, because a fixed 300px content column is what turned a paragraph
+   into a tall ribbon in the first place. `min()` so a narrow editor window still fits. */
 .lesson-item-popup {
   width: auto;
+  max-height: 80vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .lesson-item-popup [data-template='popup'] {
@@ -234,8 +370,163 @@
 }
 
 .lesson-item-popup .popup-content-wrapper {
-  width: 300px;
+  /* Was a flat `300px`. See the note on `.lesson-item-popup` — this column is the reason a
+     long body became taller than the screen. */
+  width: min(460px, 60vw);
+  min-width: 300px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+}
+
+/* FIX-027 §19/§20 — the completion moment, above the step strip.
+
+   🔴 **THIS WAS `--theme-color-secondary-dim` AND IT FAILED AA BY A LOT.** Picked by its name,
+   on the reasoning that the one moment a lesson congratulates the learner should not look like
+   the eight steps before it. Measured in the running editor, that token is `rgb(139,149,161)` —
+   a *light* grey, not a dimmed dark one — so the headline came out at **3.04:1** and the refusal
+   sentence at **1.91:1**. The sentence explaining why *Start again* is switched off was the
+   least readable thing on the bar.
+
+   ✅ So the surface is `--theme-color-bg-3`, the tone `--theme-color-fg-highlight` and
+   `--theme-color-fg-muted` are designed against — the same pairing `.lesson-check` uses — and
+   the "something changed" signal moved to a primary rule along the top, which carries it
+   without touching the text contrast. A token name is not a colour; only a measurement is. */
+.lesson-complete {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 2px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-3);
+}
+
+/* `min-width: 0` for the same reason `.lesson-steps` needs it — the refusal sentence is a whole
+   sentence, and without this it would push the buttons off the bar rather than wrap. */
+.lesson-complete-said {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lesson-complete-headline {
+  font-size: 13px;
+  line-height: 17px;
+  font-weight: var(--font-weight-bold);
+  color: var(--theme-color-fg-highlight);
+}
+
+/* Why *Start again* is switched off. Quiet, but present — see `LessonLayerView.jsx` for why
+   this is text rather than a `title` on the disabled button. */
+.lesson-complete-reason {
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--theme-color-fg-muted);
+}
+
+.lesson-complete-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+}
+
+/* Same metrics as `.lesson-check-button`, deliberately: these are the same kind of control on
+   the same bar, and two button sizes in one strip is the sort of drift a shared class avoids
+   but a copied one does not. Kept separate only because the default here is the QUIET one —
+   `START AGAIN` is destructive and must not be the brightest thing on the bar. */
+.lesson-complete-button {
+  flex-shrink: 0;
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-highlight);
+  border: none;
+  height: 24px;
+  padding: 0 12px;
+  font-weight: var(--font-weight-bold);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lesson-complete-button:hover:not(:disabled) {
+  background-color: var(--theme-color-bg-3);
+}
+
+.lesson-complete-button.primary {
+  background-color: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+}
+
+.lesson-complete-button.primary:hover:not(:disabled) {
+  background-color: var(--theme-color-primary-highlight);
+}
+
+.lesson-complete-button:disabled {
+  background-color: var(--theme-color-bg-4);
+  color: var(--theme-color-fg-muted);
+  cursor: default;
+}
+
+/* ── SYL-001: the hand-holding half ──────────────────────────────────────────
+   A step's `detail` — where the button is, as opposed to what to do — compiles
+   to a native <details>, open by default. No script and no runner state: the
+   disclosure works on its own, and the learner's `experience` answer will only
+   ever change which way it starts. See `lessonformat.renderDetail`.
+
+   The default marker is replaced rather than kept, because the popup's prose is
+   the only other thing in this panel and a UA triangle sits at a different
+   optical weight from everything around it. */
+.lesson-item-popup .lesson-detail {
+  margin: 16px 24px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--theme-color-bg-4);
+}
+
+.lesson-item-popup .lesson-detail > summary {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  font-weight: var(--font-weight-semibold);
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.lesson-item-popup .lesson-detail > summary::-webkit-details-marker {
+  display: none;
+}
+
+.lesson-item-popup .lesson-detail > summary::before {
+  content: '▸ ';
+}
+
+.lesson-item-popup .lesson-detail[open] > summary::before {
+  content: '▾ ';
+}
+
+.lesson-item-popup .lesson-detail > summary:hover {
+  color: var(--theme-color-fg-highlight);
+}
+
+/* The gutter is on the <details>, so the prose inside must not take it a second
+   time — `.lesson-item-popup p` sets it for every paragraph in the panel. */
+.lesson-item-popup .lesson-detail h2,
+.lesson-item-popup .lesson-detail h3,
+.lesson-item-popup .lesson-detail p {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.lesson-item-popup .lesson-detail p {
+  font-size: 13px;
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.lesson-item-popup .lesson-detail ul,
+.lesson-item-popup .lesson-detail ol {
+  font-weight: var(--font-weight-light);
+  color: var(--theme-color-fg-highlight);
+  font-size: 13px;
+  line-height: 20px;
+  margin: 8px 0 0;
+  padding-left: 20px;
 }

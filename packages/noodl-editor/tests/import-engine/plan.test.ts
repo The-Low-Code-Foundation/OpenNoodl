@@ -14,7 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { buildInventory, catalogPortType } from '../../src/editor/src/utils/import-engine/inventory';
-import { plan, TargetProject } from '../../src/editor/src/utils/import-engine/plan';
+import { plan, PlanOptions, TargetProject } from '../../src/editor/src/utils/import-engine/plan';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 
 function load(name: string) {
@@ -41,11 +41,14 @@ function targetFrom(project: {
   };
 }
 
+/** CN-017: `PlanOptions.origin` is required, so every plan states where it came from. */
+const LOCAL: PlanOptions = { origin: { kind: 'local-project' } };
+
 describe('LIB-004 import engine — plan', () => {
   it('resolves the dependency closure of a selection', () => {
     const source = load('import_proj1');
     const inv = inventoryOf(source);
-    const p = plan(inv, source, { components: [{ name: '/Main' }] }, targetFrom(load('import_proj2')));
+    const p = plan(inv, source, { components: [{ name: '/Main' }] }, targetFrom(load('import_proj2')), LOCAL);
 
     const names = p.components.map((c) => c.name).sort();
     expect(names).toEqual(['/Main', '/comp1']); // /comp1 pulled in as a dependency
@@ -61,7 +64,7 @@ describe('LIB-004 import engine — plan', () => {
   it('detects a collision and produces a SUB-007 diff naming the nodes that would change', () => {
     const source = load('import_proj1');
     const inv = inventoryOf(source);
-    const p = plan(inv, source, { components: [{ name: '/Main' }] }, targetFrom(load('import_proj2')));
+    const p = plan(inv, source, { components: [{ name: '/Main' }] }, targetFrom(load('import_proj2')), LOCAL);
 
     const main = p.components.find((c) => c.name === '/Main')!;
     expect(main.collides).toBe(true);
@@ -76,7 +79,7 @@ describe('LIB-004 import engine — plan', () => {
     const inv = inventoryOf(source);
     // Empty target ⇒ nothing collides.
     const empty = targetFrom({ components: [] });
-    const p = plan(inv, source, { components: [{ name: '/comp1' }] }, empty);
+    const p = plan(inv, source, { components: [{ name: '/comp1' }] }, empty, LOCAL);
     const comp1 = p.components.find((c) => c.name === '/comp1')!;
     expect(comp1.collides).toBe(false);
     expect(comp1.policy.action).toBe('add');
@@ -90,6 +93,7 @@ describe('LIB-004 import engine — plan', () => {
     // Target has /comp1, so without a rename it would collide.
     const target = targetFrom({ components: [{ name: '/comp1' }] });
     const p = plan(inv, source, { components: [{ name: '/comp1' }] }, target, {
+      ...LOCAL,
       renames: { '/comp1': '/comp1_imported' }
     });
     const comp1 = p.components.find((c) => c.name === '/comp1')!;
@@ -103,6 +107,7 @@ describe('LIB-004 import engine — plan', () => {
     const source = load('import_proj1');
     const inv = inventoryOf(source);
     const p = plan(inv, source, { components: [{ name: '/Main' }] }, targetFrom(load('import_proj2')), {
+      ...LOCAL,
       skip: { components: ['/comp1'] }
     });
     const comp1 = p.components.find((c) => c.name === '/comp1')!;

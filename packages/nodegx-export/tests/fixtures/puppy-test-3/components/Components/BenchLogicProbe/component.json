@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f835f776-e04c-4e0d-8f47-59f805bc3f41",
+  "name": "BenchLogicProbe",
+  "path": "/Components/BenchLogicProbe",
+  "type": "visual",
+  "created": "2026-08-08T20:16:35.579Z",
+  "modified": "2026-08-09T06:56:46.355Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A BEN-003 live-drive fixture with NO visual root: inputs feed a counter and the counter's value and change-signal are the component's outputs. Nothing about it can be seen on a canvas — it exists to prove a logic-only component mounts on the bench and reports what it emits."
+}

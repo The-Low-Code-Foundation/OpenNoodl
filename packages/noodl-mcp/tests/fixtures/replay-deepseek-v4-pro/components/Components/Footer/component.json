@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "68b6cbd3-e3df-475d-b162-c36df44e87b3",
+  "name": "Footer",
+  "path": "/Components/Footer",
+  "type": "visual",
+  "created": "2026-08-08T20:29:18.591Z",
+  "modified": "2026-08-08T20:29:18.591Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Site footer with three link columns and a copyright line."
+}

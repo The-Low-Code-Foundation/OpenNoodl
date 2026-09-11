@@ -391,7 +391,7 @@ const ForEachDefinition: NodeDefinitionOptions = {
   outputs: {
     itemActionItemId: {
       type: 'string',
-      group: 'Actions',
+      group: 'Values',
       displayName: 'Item Id',
       description: 'Id of the item whose Repeater Item node last raised an action',
       getter: function (this: ForEachInstance) {

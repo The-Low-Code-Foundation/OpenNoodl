@@ -1,0 +1,549 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [
+      {
+        "component": "/Components/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Stoneware Pour-Over Set",
+          "Dripper and carafe in our oat glaze; brews two proper cups.",
+          "Stoneware pour-over dripper and carafe in a pale oat glaze",
+          "Best seller",
+          "4.9 · 41 reviews",
+          "Espresso Cups, Pair"
+        ],
+        "found": 5,
+        "missing": [
+          "Stoneware pour-over dripper and carafe in a pale oat glaze"
+        ]
+      },
+      {
+        "component": "/Components/CategorySection",
+        "nodeId": "repeater-2",
+        "label": "One tile per category",
+        "rows": 3,
+        "source": "Static Data \"Categories\"",
+        "strings": [
+          "46 pieces",
+          "Mugs, bowls, pour-overs and plates from the current firing.",
+          "Shelves of hand-thrown ceramics in the Kiln & Co. workshop",
+          "8 roasts",
+          "Small lots, roasted on Thursdays and posted the same day.",
+          "Freshly roasted coffee beans"
+        ],
+        "found": 4,
+        "missing": [
+          "Shelves of hand-thrown ceramics in the Kiln & Co. workshop",
+          "Freshly roasted coffee beans"
+        ]
+      }
+    ],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 900,
+    "contentBottom": 5292,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 83,
+      "onScreen": 13,
+      "unreachable": 70,
+      "fontWeights": {
+        "400": 41,
+        "500": 4,
+        "600": 28,
+        "700": 10
+      },
+      "fontSizes": {
+        "20px": 12,
+        "14px": 41,
+        "12px": 17,
+        "48px": 1,
+        "18px": 9,
+        "30px": 2,
+        "16px": 1
+      },
+      "distinctFontSizes": 7,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 3,
+      "byText": {
+        "Title": 1,
+        "Body": 1,
+        "Got it": 1
+      },
+      "samples": [
+        {
+          "text": "Title",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Body",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Got it",
+          "tag": "BUTTON",
+          "cls": "ndl-controls-button"
+        }
+      ]
+    },
+    "images": {
+      "total": 10,
+      "onScreen": 1,
+      "unreachable": 9,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 6,
+        "columns": 2,
+        "rows": 3,
+        "itemWidth": 362,
+        "itemHeight": 530,
+        "parentWidth": 724,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 2,
+        "rows": 2,
+        "itemWidth": 378,
+        "itemHeight": 169,
+        "parentWidth": 756,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 252,
+        "itemHeight": 100,
+        "parentWidth": 756,
+        "tag": "DIV",
+        "cls": "column-item"
+      }
+    ],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [
+      {
+        "component": "/Components/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Featured products\"",
+        "strings": [
+          "Stoneware Pour-Over Set",
+          "Dripper and carafe in our oat glaze; brews two proper cups.",
+          "Stoneware pour-over dripper and carafe in a pale oat glaze",
+          "Best seller",
+          "4.9 · 41 reviews",
+          "Espresso Cups, Pair"
+        ],
+        "found": 5,
+        "missing": [
+          "Stoneware pour-over dripper and carafe in a pale oat glaze"
+        ]
+      },
+      {
+        "component": "/Components/CategorySection",
+        "nodeId": "repeater-2",
+        "label": "One tile per category",
+        "rows": 3,
+        "source": "Static Data \"Categories\"",
+        "strings": [
+          "46 pieces",
+          "Mugs, bowls, pour-overs and plates from the current firing.",
+          "Shelves of hand-thrown ceramics in the Kiln & Co. workshop",
+          "8 roasts",
+          "Small lots, roasted on Thursdays and posted the same day.",
+          "Freshly roasted coffee beans"
+        ],
+        "found": 4,
+        "missing": [
+          "Shelves of hand-thrown ceramics in the Kiln & Co. workshop",
+          "Freshly roasted coffee beans"
+        ]
+      }
+    ],
+    "layoutWidth": 390,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 390,
+    "pageHeight": 844,
+    "contentBottom": 5236,
+    "overflowing": [
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "HEADER",
+        "cls": "",
+        "width": 756
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 708
+      },
+      {
+        "tag": "DIV",
+        "cls": "",
+        "width": 756
+      }
+    ],
+    "overflowingCount": 43,
+    "text": {
+      "elements": 83,
+      "onScreen": 9,
+      "unreachable": 70,
+      "fontWeights": {
+        "400": 41,
+        "500": 4,
+        "600": 28,
+        "700": 10
+      },
+      "fontSizes": {
+        "20px": 12,
+        "14px": 41,
+        "12px": 17,
+        "48px": 1,
+        "18px": 9,
+        "30px": 2,
+        "16px": 1
+      },
+      "distinctFontSizes": 7,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 3,
+      "byText": {
+        "Title": 1,
+        "Body": 1,
+        "Got it": 1
+      },
+      "samples": [
+        {
+          "text": "Title",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Body",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Got it",
+          "tag": "BUTTON",
+          "cls": "ndl-controls-button"
+        }
+      ]
+    },
+    "images": {
+      "total": 10,
+      "onScreen": 1,
+      "unreachable": 9,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 6,
+        "columns": 2,
+        "rows": 3,
+        "itemWidth": 362,
+        "itemHeight": 530,
+        "parentWidth": 724,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 708,
+        "itemHeight": 15,
+        "parentWidth": 708,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 2,
+        "rows": 2,
+        "itemWidth": 378,
+        "itemHeight": 169,
+        "parentWidth": 756,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 304,
+        "itemHeight": 25,
+        "parentWidth": 344,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 252,
+        "itemHeight": 100,
+        "parentWidth": 756,
+        "tag": "DIV",
+        "cls": "column-item"
+      }
+    ],
+    "consoleErrors": []
+  }
+}

@@ -220,7 +220,11 @@ export function LocalBackendCard({
         { label: 'Triggers', icon: IconName.Lightning, onClick: () => openSurface('triggers') },
         { label: 'Email', icon: IconName.Chat, onClick: () => openSurface('email') },
         { label: 'Search', icon: IconName.Search, onClick: () => openSurface('search') },
-        { label: 'Sign-in providers', icon: IconName.User, onClick: () => openSurface('auth') }
+        { label: 'Sign-in providers', icon: IconName.User, onClick: () => openSurface('auth') },
+        // SB-015 §6.4a: the credentials a cloud function's Secret node reads.
+        // Until this entry existed, the only way to provision one was to
+        // hand-edit a mode-0600 secrets.json the editor never shows you.
+        { label: 'Secrets', icon: IconName.Setting, onClick: () => openSurface('secrets') }
       );
 
       if (onExport) {
@@ -492,7 +496,7 @@ export function LocalBackendCard({
         </div>
       </div>
 
-      {/* PNL-009: the seven full-screen surfaces used to be rendered from here
+      {/* PNL-009: the eight full-screen surfaces used to be rendered from here
           through `createPortal(…, document.body)` into a `position: fixed`
           overlay with a hardcoded 85%-black scrim. They are registered panels
           now and open in full mode — see `openSurface` above and

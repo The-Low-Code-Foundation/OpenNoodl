@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "devOpen": false,
+  "defaults": {
+    "permissions": {
+      "find": "authenticated",
+      "get": "authenticated",
+      "create": "authenticated",
+      "update": "authenticated",
+      "delete": "authenticated"
+    },
+    "creatorOwns": false
+  },
+  "collections": {
+    "Page": {
+      "permissions": {
+        "find": "public",
+        "get": "public",
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "Section": {
+      "permissions": {
+        "find": "public",
+        "get": "public",
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "Theme": {
+      "permissions": {
+        "find": "public",
+        "get": "public",
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "SiteSettings": {
+      "permissions": {
+        "find": "public",
+        "get": "public",
+        "create": "role:admin",
+        "update": "role:admin",
+        "delete": "role:admin"
+      }
+    },
+    "ContactMessage": {
+      "permissions": {
+        "find": "role:admin",
+        "get": "role:admin",
+        "create": "nobody",
+        "update": "role:admin",
+        "delete": "nobody"
+      }
+    }
+  },
+  "functions": {
+    "publishPage": {
+      "call": "role:admin"
+    },
+    "duplicatePage": {
+      "call": "role:admin"
+    },
+    "reorderSection": {
+      "call": "role:admin"
+    },
+    "submitContactForm": {
+      "call": "public",
+      "rateLimit": { "ratePerMinute": 10, "burst": 10 }
+    },
+    "claimSite": {
+      "call": "authenticated"
+    }
+  },
+  "files": {
+    "upload": "authenticated",
+    "read": "public",
+    "delete": "nobody"
+  },
+  "signup": "public"
+}

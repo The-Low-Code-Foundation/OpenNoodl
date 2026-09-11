@@ -7,6 +7,7 @@ import { EventDispatcher } from '../../../../shared/utils/EventDispatcher';
 import View from '../../../../shared/ListenableView';
 import { PreviewTokenInjector } from '../../services/PreviewTokenInjector';
 import { VisualCanvas } from './VisualCanvas';
+import { previewRoutePath } from './previewRoutePath';
 
 export class CanvasView extends View {
   webview: Electron.WebviewTag;
@@ -26,7 +27,13 @@ export class CanvasView extends View {
     deviceName?: string;
     zoom?: number;
     onWebView: (webview: Electron.WebviewTag) => void;
+    designMode?: boolean;
+    onExitDesignMode?: () => void;
+    designSelection?: { label: string; seq: number };
   };
+
+  /** Bumped per selection so the toast re-fires when the same node is clicked twice. */
+  private designSelectionSeq = 0;
 
   _onEditorApiResponse: (event: any, args: any) => void;
 
@@ -49,7 +56,7 @@ export class CanvasView extends View {
 
     this.onNavigationStateChanged = (state) => {
       onNavigationStateChanged(state);
-      window.noodlEditorPreviewRoute = state.route.substring(0, state.route.indexOf('?'));
+      window.noodlEditorPreviewRoute = previewRoutePath(state.route);
       EventDispatcher.instance.emit('viewer-navigated', state.route);
     };
 
@@ -63,6 +70,22 @@ export class CanvasView extends View {
           this.webviewDomReady = false;
           this.webview = null;
         }
+      },
+      designMode: false,
+      /**
+       * DES-001 — the preview's own way out of design mode.
+       *
+       * Both signals are sent because this view renders in two windows and does
+       * not know which one it is in: the docked preview is in the editor
+       * renderer, where the bus reaches `EditorDocument` directly, and the
+       * detached preview is a separate renderer, where only main can carry it.
+       * The docked case therefore delivers it twice; `setPreviewMode(true)` is
+       * idempotent, and one path that always works beats a window check that
+       * can be wrong.
+       */
+      onExitDesignMode: () => {
+        EventDispatcher.instance.emit('request-preview-mode');
+        ipcRenderer.send('viewer-request-preview-mode');
       }
     };
   }
@@ -158,6 +181,13 @@ export class CanvasView extends View {
     return this.el;
   }
   renderReact() {
+    // Props can be set before `render()` has made an element (the editor's
+    // mode effects run on mount, ahead of the panel that hosts this view).
+    // They are kept on `this.props` and picked up by the first real render.
+    if (!this.el) {
+      return;
+    }
+
     if (!this.root) {
       this.root = createRoot(this.el as HTMLElement);
     }
@@ -168,7 +198,9 @@ export class CanvasView extends View {
     const port = process.env.NOODLPORT || 8574;
 
     this.webview.src = protocol + 'localhost:' + port + route;
-    window.noodlEditorPreviewRoute = route;
+    // FLD-007: the same normalisation `load-commit` applies, so this global means one thing
+    // whichever of the two writers ran last.
+    window.noodlEditorPreviewRoute = previewRoutePath(route);
     EventDispatcher.instance.emit('viewer-navigated', route);
   }
   dispose() {
@@ -273,9 +305,51 @@ export class CanvasView extends View {
 
   setInspectMode(enabled: boolean) {
     this.inspectMode = enabled;
+
+    // DES-001: inspect mode *is* design mode, so the chrome that says so is
+    // driven from the same call rather than from a second piece of state that
+    // could disagree with it.
+    this.props.designMode = enabled;
+    if (!enabled) {
+      this.props.designSelection = undefined;
+    }
+    this.renderReact();
+
     this.tryWebviewCall(() => {
       this.webview.executeJavaScript(`NoodlEditorInspectorAPI.setEnabled(${enabled})`);
       this.webview.executeJavaScript(`NoodlEditorHighlightAPI.selectNode(null)`);
+    });
+  }
+
+  /**
+   * DES-001 — answer a design-mode click *in the preview*, where the click was.
+   *
+   * The properties panel already updates, but it is across the window from the
+   * pointer, so a click on a button in design mode looks from here like nothing
+   * happened at all — which is exactly the "the button doesn't work" report
+   * this came from. The label is resolved by the editor, which owns the project
+   * model; this view only shows it.
+   */
+  showDesignSelection(label: string) {
+    if (!this.inspectMode) {
+      return;
+    }
+
+    this.designSelectionSeq += 1;
+    this.props.designSelection = { label, seq: this.designSelectionSeq };
+    this.renderReact();
+  }
+
+  /**
+   * FB-016 scope 4 — tell the running app that the author is editing a transform origin.
+   *
+   * This is the only part of the overlay the viewer cannot infer for itself: everything else it
+   * says is read off the DOM it is already drawing over, but focus lives here, in the properties
+   * panel, in another process.
+   */
+  setTransformOriginFocus(enabled: boolean) {
+    this.tryWebviewCall(() => {
+      this.webview.executeJavaScript(`NoodlEditorHighlightAPI.setTransformOriginFocus(${enabled})`);
     });
   }
 

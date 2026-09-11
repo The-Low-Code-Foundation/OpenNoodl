@@ -91,7 +91,12 @@ describe('AIX-004 context assembly — bounds', () => {
     }
   });
 
-  it('does not include the interior of a component instance, only the instance itself', () => {
+  // FIX-001 §1c changed what happens *next* — the interior is now read into
+  // `context.nested` — but not this: `context.nodes` is the slice of one
+  // component, and the runtime port set, the warning filter and the node budget
+  // all take their meaning from that. The interior arriving anywhere else would
+  // silently redefine all three. See explain-nested.test.ts for what it does do.
+  it('keeps the interior of a component instance out of the component slice', () => {
     const context = assembleContext(graph, {
       scope: 'node',
       componentName: COMPONENT,
@@ -101,7 +106,7 @@ describe('AIX-004 context assembly — bounds', () => {
     const instance = context.nodes.find((n) => n.id === IDS.graphQlInstance)!;
     expect(instance.isComponentInstance).toBe(true);
 
-    // The referenced component has its own nodes; none of them may appear.
+    // The referenced component has its own nodes; none of them may appear here.
     const referenced = graph.components.find((c) => c.name === '/Logic Components/Contentful GraphQL')!;
     expect(referenced.nodes.length).toBeGreaterThan(0);
     const contextIds = new Set(context.nodes.map((n) => n.id));

@@ -1,0 +1,189 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "092e42a5-2782-595d-8201-2de134239a49",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "story_band",
+      "type": "Group",
+      "label": "How it works",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "story_shell"
+      ]
+    },
+    {
+      "id": "story_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "story_band",
+      "children": [
+        "story_cols"
+      ]
+    },
+    {
+      "id": "story_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Two up",
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "story_shell",
+      "children": [
+        "story_copy",
+        "story_media"
+      ]
+    },
+    {
+      "id": "story_copy",
+      "type": "Group",
+      "label": "Copy",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)"
+      },
+      "parent": "story_cols",
+      "children": [
+        "story_eyebrow",
+        "story_head",
+        "story_p1",
+        "story_p2"
+      ]
+    },
+    {
+      "id": "story_eyebrow",
+      "type": "Text",
+      "label": "story_eyebrow",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "text": "How it works"
+      },
+      "parent": "story_copy"
+    },
+    {
+      "id": "story_head",
+      "type": "Text",
+      "label": "story_head",
+      "parameters": {
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "text": "You get what came out of the ground that week."
+      },
+      "parent": "story_copy"
+    },
+    {
+      "id": "story_p1",
+      "type": "Text",
+      "label": "story_p1",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--foreground)",
+        "text": "There is no choosing. In February that means celeriac, leeks and enough kale to bore you. In July it means we are apologising for the courgettes. Both are the same promise kept."
+      },
+      "parent": "story_copy"
+    },
+    {
+      "id": "story_p2",
+      "type": "Text",
+      "label": "story_p2",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "text": "Every box carries a card saying what is in it, what to do with the awkward one, and what we got wrong that week."
+      },
+      "parent": "story_copy"
+    },
+    {
+      "id": "story_media",
+      "type": "Group",
+      "label": "Media",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "parent": "story_cols",
+      "children": [
+        "story_photo"
+      ]
+    },
+    {
+      "id": "story_photo",
+      "type": "Image",
+      "label": "Photograph",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 360,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-2xl)",
+        "src": "noodl_modules/starter-imagery/people-market.webp",
+        "alt": "A grower weighing produce on a market stall"
+      },
+      "parent": "story_media"
+    }
+  ],
+  "visualRoots": [
+    "story_band"
+  ]
+}

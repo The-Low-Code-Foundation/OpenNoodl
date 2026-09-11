@@ -1,0 +1,212 @@
+{
+  "id": "ui-stat-tile-row",
+  "title": "Stat tile row: one tile component, four instances, collapsing to two then one",
+  "description": "The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.",
+  "demonstrates": [
+    "net.noodl.visual.columns",
+    "Group",
+    "Text",
+    "Component Inputs"
+  ],
+  "components": [
+    {
+      "name": "/Components/StatRow",
+      "nodes": [
+        {
+          "id": "cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Four up, folding",
+          "parameters": {
+            "layoutString": "1 1 1 1",
+            "marginX": {
+              "value": 20,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1 1",
+            "smallBreakpoint": {
+              "value": 560,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "children": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ]
+        },
+        {
+          "id": "t1",
+          "type": "/Components/StatTile",
+          "label": "Revenue",
+          "parameters": {
+            "label": "Revenue, 30 days",
+            "value": "£548",
+            "delta": "+12% on last month"
+          },
+          "parent": "cols"
+        },
+        {
+          "id": "t2",
+          "type": "/Components/StatTile",
+          "label": "Orders",
+          "parameters": {
+            "label": "Orders",
+            "value": "6",
+            "delta": "2 awaiting packing"
+          },
+          "parent": "cols"
+        },
+        {
+          "id": "t3",
+          "type": "/Components/StatTile",
+          "label": "Live",
+          "parameters": {
+            "label": "Products live",
+            "value": "9",
+            "delta": "Across 3 categories"
+          },
+          "parent": "cols"
+        },
+        {
+          "id": "t4",
+          "type": "/Components/StatTile",
+          "label": "Low stock",
+          "parameters": {
+            "label": "Low stock",
+            "value": "2",
+            "delta": "Kettle, Ora vase"
+          },
+          "parent": "cols"
+        }
+      ],
+      "connections": []
+    },
+    {
+      "name": "/Components/StatTile",
+      "nodes": [
+        {
+          "id": "tile",
+          "type": "Group",
+          "label": "Tile",
+          "parameters": {
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "clip": true,
+            "flexDirection": "column",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "rowGap": "var(--space-2)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)"
+          },
+          "children": [
+            "l",
+            "v",
+            "d"
+          ]
+        },
+        {
+          "id": "l",
+          "type": "Text",
+          "label": "Label",
+          "parameters": {
+            "text": "Label",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "v",
+          "type": "Text",
+          "label": "Value",
+          "parameters": {
+            "text": "0",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "d",
+          "type": "Text",
+          "label": "Delta",
+          "parameters": {
+            "text": "",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "tile"
+        },
+        {
+          "id": "inputs",
+          "type": "Component Inputs",
+          "label": "What varies per tile",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "label",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "value",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "delta",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "inputs",
+          "fromProperty": "label",
+          "toId": "l",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "value",
+          "toId": "v",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "delta",
+          "toId": "d",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "inputs",
+          "fromProperty": "delta",
+          "toId": "d",
+          "toProperty": "visible"
+        }
+      ]
+    }
+  ]
+}

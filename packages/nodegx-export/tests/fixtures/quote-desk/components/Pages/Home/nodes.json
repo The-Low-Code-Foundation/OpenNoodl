@@ -1,0 +1,273 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "648c34f8-bb4c-4832-b398-6dd482362993",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fd4e2a48-ebc5-409a-9b08-073e60528cf0",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Quote Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "fd4e2a48-ebc5-409a-9b08-073e60528cf0",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "topicInput",
+        "getBtn",
+        "quoteText",
+        "authorText",
+        "echoText",
+        "statusText",
+        "cancelText",
+        "postBtn",
+        "savedText",
+        "postErrText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Quote Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "topicInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Topic",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "a topic"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "getBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Get quote",
+      "parent": "shell",
+      "parameters": {
+        "label": "Get quote"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "quoteText",
+      "type": "Text",
+      "label": "The quote",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "authorText",
+      "type": "Text",
+      "label": "The author",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "echoText",
+      "type": "Text",
+      "label": "What the request carried",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status line",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "cancelText",
+      "type": "Text",
+      "label": "Never shown",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "postBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Save note",
+      "parent": "shell",
+      "parameters": {
+        "label": "Save note"
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "savedText",
+      "type": "Text",
+      "label": "Saved id",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 160,
+      "y": 1360
+    },
+    {
+      "id": "postErrText",
+      "type": "Text",
+      "label": "Post failure",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 1480
+    },
+    {
+      "id": "topicVar",
+      "type": "Variable2",
+      "label": "topic variable",
+      "parameters": {
+        "name": "topic"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "getQuote",
+      "type": "net.noodl.HTTP",
+      "label": "Quote",
+      "parameters": {
+        "url": "http://127.0.0.1:5210/quotes/{topic}",
+        "method": "GET",
+        "timeout": 4000,
+        "queryParams": "format",
+        "query-format": "short",
+        "headers": "X-Client",
+        "header-X-Client": "quote-desk",
+        "responseMapping": "text,author,echo",
+        "mapping-path-text": "$.quote.text",
+        "mapping-path-author": "$.quote.author",
+        "mapping-path-echo": "$.received"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "postNote",
+      "type": "net.noodl.HTTP",
+      "label": "Post note",
+      "parameters": {
+        "url": "http://127.0.0.1:5210/notes",
+        "method": "POST",
+        "bodyType": "json",
+        "bodyFields": "text",
+        "responseMapping": "id",
+        "mapping-path-id": "$.id"
+      },
+      "x": 410,
+      "y": 1360
+    },
+    {
+      "id": "cancelWord",
+      "type": "String",
+      "label": "Cancelled word",
+      "parameters": {
+        "value": "A REQUEST WAS CANCELLED"
+      },
+      "x": 410,
+      "y": 1600
+    },
+    {
+      "id": "cancelSet",
+      "type": "Set Variable",
+      "label": "Note the cancel",
+      "parameters": {
+        "name": "cancelFlag"
+      },
+      "x": 410,
+      "y": 1720
+    },
+    {
+      "id": "cancelRead",
+      "type": "Variable2",
+      "label": "cancelFlag read",
+      "parameters": {
+        "name": "cancelFlag"
+      },
+      "x": 410,
+      "y": 1120
+    },
+    {
+      "id": "postErrSet",
+      "type": "Set Variable",
+      "label": "Note the post failure",
+      "parameters": {
+        "name": "postError"
+      },
+      "x": 410,
+      "y": 1840
+    },
+    {
+      "id": "postErrRead",
+      "type": "Variable2",
+      "label": "postError read",
+      "parameters": {
+        "name": "postError"
+      },
+      "x": 410,
+      "y": 1480
+    }
+  ],
+  "visualRoots": [
+    "fd4e2a48-ebc5-409a-9b08-073e60528cf0"
+  ]
+}

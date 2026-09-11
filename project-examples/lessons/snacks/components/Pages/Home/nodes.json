@@ -1,0 +1,440 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "61f9e398-9cc7-4b18-ba3b-94424ea4d54d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "7799a2e4-7eda-4df1-aba5-4c90c43eeb44",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell-0001"
+      ],
+      "parameters": {
+        "title": "Home",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell-0001",
+      "type": "Group",
+      "label": "Page shell",
+      "parent": "7799a2e4-7eda-4df1-aba5-4c90c43eeb44",
+      "children": [
+        "card-0001",
+        "board-0001"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-20)"
+      },
+      "metadata": {
+        "comment": "Ungraded furniture, already in the starter. justifyContent:center does not resolve here because the Page root gives no definite height, so the top spacing is padding rather than centring — deliberate, and the reason height:100% is left in place is that it costs nothing and is what a learner would write."
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "card-0001",
+      "type": "Group",
+      "label": "Card",
+      "parent": "shell-0001",
+      "children": [
+        "creature-0001",
+        "name-0001",
+        "reaction-0001",
+        "score-0001",
+        "story-0001",
+        "moodline-0001",
+        "nag-0001"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-4)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "paddingLeft": "var(--space-8)",
+        "paddingRight": "var(--space-8)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "metadata": {
+        "comment": "The coloured frame. sizeMode contentSize is graded on purpose: a Group is 100% x 100% by default, and a card that swallows the screen is the first wall a beginner hits."
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "creature-0001",
+      "type": "Circle",
+      "label": "Creature",
+      "parent": "card-0001",
+      "parameters": {
+        "size": 96,
+        "fillColor": "var(--primary)"
+      },
+      "metadata": {
+        "comment": "The creature itself. One Circle, deliberately: nothing ships an image, and eyes would need absolute positioning, which is lesson 2's subject."
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "name-0001",
+      "type": "Text",
+      "label": "Name",
+      "parent": "card-0001",
+      "parameters": {
+        "text": "Nibbles",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "board-0001",
+      "type": "Group",
+      "label": "Board",
+      "x": 160,
+      "y": 640,
+      "parent": "shell-0001",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        },
+        "marginTop": "var(--space-6)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)"
+      },
+      "metadata": {
+        "comment": "Step 2's node. sizeMode contentHeight + maxWidth is the responsive sizing idea in one node: take the width you are given, stop at 560, be as tall as your contents. The horizontal padding is NOT decoration — a Columns node draws its gutters with negative margins, so at full width its container is marginX wider than its parent and gets clipped. Padding is what gives the gutter somewhere to go. Graded with hasParams rather than paramsEqual because the amount genuinely does not matter."
+      },
+      "children": [
+        "care-0001",
+        "poke-0001",
+        "rest-0001"
+      ]
+    },
+    {
+      "id": "care-0001",
+      "type": "net.noodl.visual.columns",
+      "label": "Care",
+      "x": 220,
+      "y": 760,
+      "parent": "board-0001",
+      "parameters": {
+        "layoutString": "1 1 1",
+        "smallBreakpoint": {
+          "value": 480,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "metadata": {
+        "comment": "Steps 3 and 5. 🔴 smallBreakpoint measures THIS NODE'S CONTAINER, not the viewport (Columns.tsx:205, NDA-006 §3). Inside a 560-wide Board with 32px of padding the strip is 528 on a laptop and 358 on a phone, so 480 is the number that separates them. A viewport-shaped number like 600 folds the columns at every width, which is what the first draft of this lesson did."
+      },
+      "children": [
+        "feed-0001",
+        "play-0001",
+        "sleep-0001"
+      ]
+    },
+    {
+      "id": "feed-0001",
+      "type": "Text",
+      "label": "Feed",
+      "x": 280,
+      "y": 880,
+      "parent": "care-0001",
+      "parameters": {
+        "text": "Feed"
+      },
+      "metadata": {
+        "comment": "Step 4. Deliberately unstyled: every parameter this node has is one a step asks for, so the learner's result matches the answer."
+      }
+    },
+    {
+      "id": "play-0001",
+      "type": "Text",
+      "label": "Play",
+      "x": 280,
+      "y": 960,
+      "parent": "care-0001",
+      "parameters": {
+        "text": "Play"
+      }
+    },
+    {
+      "id": "sleep-0001",
+      "type": "Text",
+      "label": "Sleep",
+      "x": 280,
+      "y": 1040,
+      "parent": "care-0001",
+      "parameters": {
+        "text": "Sleep"
+      }
+    },
+    {
+      "id": "poke-0001",
+      "type": "net.noodl.controls.button",
+      "label": "Poke",
+      "x": 220,
+      "y": 1120,
+      "parent": "board-0001",
+      "parameters": {
+        "label": "Poke",
+        "marginTop": "var(--space-6)"
+      },
+      "metadata": {
+        "comment": "Step 2. Its ONLY graded parameter is the caption; marginTop is ungraded and is allowed here only because this lesson creates the node (a spine lesson's ungraded parameters survive derive_starter into the NEXT lesson's starter, so on an inherited node they would appear as work the learner never did)."
+      }
+    },
+    {
+      "id": "reaction-0001",
+      "type": "Text",
+      "label": "Reaction",
+      "x": 220,
+      "y": 580,
+      "parent": "card-0001",
+      "parameters": {
+        "text": "Ouch!"
+      },
+      "metadata": {
+        "comment": "Step 3. Deliberately unstyled — every parameter it carries is one a step asks for, so the learner's card matches the answer. Its Opacity is not a parameter at all: it arrives down a wire in step 6, which is the whole point of the lesson."
+      }
+    },
+    {
+      "id": "poked-0001",
+      "type": "Switch",
+      "label": "Poked",
+      "x": 560,
+      "y": 1120,
+      "metadata": {
+        "comment": "Step 4. The pulse-to-value converter, and the reason this lesson needs three logic nodes rather than one: NO visual node in the catalog has a signal INPUT, so a Click cannot reach the screen without something that holds a value. Flip (not On/Off) is deliberate — it makes the second poke undo the first, which is exactly the 'nothing accumulates' that lesson 4 opens by complaining about. Labelled without a '?' on purpose: a node label is a path segment in this lesson's own completeWhen conditions."
+      }
+    },
+    {
+      "id": "ease-0001",
+      "type": "net.noodl.animatetovalue",
+      "label": "Ease the poke",
+      "x": 560,
+      "y": 1240,
+      "parameters": {
+        "duration": 200
+      },
+      "metadata": {
+        "comment": "Step 5. Boolean in, number out: targetValue casts true/false to 1/0 (animate-to-value.ts:96-99), so the Switch's Current State needs no conversion node. The FIRST value to arrive is adopted outright rather than animated to, so at load currentValue is 0 and the reaction is invisible without any parameter saying so."
+      }
+    },
+    {
+      "id": "score-0001",
+      "type": "Text",
+      "label": "Score",
+      "x": 220,
+      "y": 620,
+      "parent": "card-0001",
+      "metadata": {
+        "comment": "Step 4. It carries NO text parameter at all, deliberately: the number arrives on a wire, and leaving the port unset means that if the wire ever stops delivering, the node falls back to the catalog default 'Text' and F4's placeholder check sees it. A parameter here would hide that."
+      }
+    },
+    {
+      "id": "rest-0001",
+      "type": "net.noodl.controls.button",
+      "label": "Rest",
+      "x": 220,
+      "y": 1200,
+      "parent": "board-0001",
+      "parameters": {
+        "label": "Rest",
+        "marginTop": "var(--space-2)"
+      },
+      "metadata": {
+        "comment": "Step 5. A SECOND event acting on the SAME remembered value — that is the half of 'state' a counter alone does not show. Unstyled apart from its caption; its black is the product's default (E1 in the lesson 3 register)."
+      }
+    },
+    {
+      "id": "pokes-0001",
+      "type": "Counter",
+      "label": "Pokes",
+      "x": 560,
+      "y": 1360,
+      "metadata": {
+        "comment": "Step 2. startValue is left at its default 0 and is NOT graded — a step that set it would teach a knob rather than the idea. Counter already emits countChanged, so the curriculum's paired 'Value Changed' node has no job in this graph (see SYL-007)."
+      }
+    },
+    {
+      "id": "story-0001",
+      "type": "Text",
+      "label": "Story",
+      "x": 220,
+      "y": 660,
+      "parent": "card-0001",
+      "metadata": {
+        "comment": "Step 3. Like Score it carries NO text parameter, and for the same reason: the whole string arrives on a wire, so if the chain ever stops delivering the node falls back to the catalog default 'Text' and F4's placeholder check sees it. A parameter here would hide the failure the gate exists to catch."
+      }
+    },
+    {
+      "id": "caption-0001",
+      "type": "String Format",
+      "label": "Caption",
+      "x": 560,
+      "y": 1480,
+      "parameters": {
+        "format": "Nibbles has been poked {count} times"
+      },
+      "metadata": {
+        "comment": "Steps 2 and 4. The {count} in the format text is what MINTS the input port called count - the port set is parsed from this parameter (stringformat.ts:80), so the format must be set before anything can be wired to it, and that ordering is the lesson's first idea. An unset placeholder is replaced by nothing rather than by 'undefined' (stringformat.ts:92), which is why step 3 shows a visible hole and step 4 fills it. A tag repeated in one format string fills only the first time, so {count} appears once."
+      }
+    },
+    {
+      "id": "excitement-0001",
+      "type": "Expression",
+      "label": "Excitement",
+      "x": 560,
+      "y": 1600,
+      "parameters": {
+        "expression": "min(96 + pokes * 8, 200)"
+      },
+      "metadata": {
+        "comment": "Steps 5 and 6. 'pokes' is the only identifier here that becomes an input port: 'min' is one of the preamble aliases in portsToIgnore (expression.ts:686-716), so it is a function and not a port. Deliberately arithmetic and NOT a ternary - branching on the count is what 'moods' teaches next with a Condition node, and doing it here in an expression would spend that lesson's idea early."
+      }
+    },
+    {
+      "id": "happy-0001",
+      "type": "Expression",
+      "label": "Is Happy",
+      "x": 560,
+      "y": 1720,
+      "parameters": {
+        "expression": "pokes > 4"
+      },
+      "metadata": {
+        "comment": "Step 2. The same node lesson 5 used to work out a size, asked a QUESTION instead: a comparison evaluates to true or false, and the answer is taken from Is True (a declared boolean output that IS flagged dirty, expression.ts:238-240) rather than from As Boolean, which is never flagged and would deliver one reading and then never update (G1 in the lesson 5 register)."
+      }
+    },
+    {
+      "id": "moodcheck-0001",
+      "type": "Condition",
+      "label": "Mood Check",
+      "x": 560,
+      "y": 1840,
+      "metadata": {
+        "comment": "Step 3. No parameters at all: its Condition input arrives on a wire and it re-tests on every change of it, because runOnValueChange lists 'condition' and Evaluate is additive rather than a silencer (condition.ts, NDA-017 section 2). Is True and Is False read the input back and answer null until the first test, so the branch signals are what this lesson wires - a value that abstains would leave the States node in no state at all."
+      }
+    },
+    {
+      "id": "mood-0001",
+      "type": "States",
+      "label": "Mood",
+      "x": 560,
+      "y": 1960,
+      "parameters": {
+        "states": "Bored,Happy",
+        "values": "word",
+        "type-word": "string",
+        "value-Bored-word": "Nibbles is dozing",
+        "value-Happy-word": "Nibbles is delighted"
+      },
+      "metadata": {
+        "comment": "Steps 4 and 5. Every port after 'states' and 'values' is minted from those two lists: 'word' becomes an OUTPUT, each state becomes a 'to-<state>' signal input, and each pair becomes a 'value-<state>-<word>' input. type-word MUST be string: an untyped value is treated as a number (states.ts:161) and a state change would try to TWEEN the sentence. The node starts in the first state in the list, which is why Bored is written first - the card reads correctly before anything has been clicked."
+      }
+    },
+    {
+      "id": "moodline-0001",
+      "type": "Text",
+      "label": "Mood Line",
+      "parent": "card-0001",
+      "x": 220,
+      "y": 700,
+      "metadata": {
+        "comment": "Step 6. Like Score and Story it carries NO text parameter: the whole sentence arrives on a wire, so if the chain ever stops delivering the node falls back to the catalog default 'Text' and F4's placeholder check sees it."
+      }
+    },
+    {
+      "id": "patience-0001",
+      "type": "Timer",
+      "label": "Patience",
+      "x": 560,
+      "y": 2080,
+      "parameters": {
+        "duration": 5000
+      },
+      "metadata": {
+        "comment": "Step 2. 🔴 Its DISPLAY NAME is 'Delay' - the curriculum entry for this lesson says 'Timer', which is the type name and not what the picker shows (row H3 in the lesson 6 register). It is a ONE-SHOT delay: no repeat, no isRunning boolean, only timerStarted and timerFinished signals. Started from the Page's Did Mount so the clock runs on a page nobody has touched, and Restart rather than Start on the Poke so every poke pushes the deadline back instead of stacking a second timer."
+      }
+    },
+    {
+      "id": "ignored-0001",
+      "type": "Switch",
+      "label": "Ignored",
+      "x": 560,
+      "y": 2200,
+      "metadata": {
+        "comment": "Step 3. The same pulse-to-value converter lesson 3 ships as Poked, and it is here for the same structural reason: timerFinished is a MOMENT and And needs a FACT. On and Off rather than Flip - two different events drive it in opposite directions, and Flip would make a second poke undo the first."
+      }
+    },
+    {
+      "id": "demanding-0001",
+      "type": "And",
+      "label": "Demanding",
+      "x": 560,
+      "y": 2320,
+      "metadata": {
+        "comment": "Step 4. Inputs are numbered and named 'input 0', 'input 1' (nodedefinition.ts:144 - the family name, a space, the index), displayed as Input 0 and Input 1. Its second input is Mood Check's Is False, which is why this lesson needs no Inverter: the Condition already publishes both polarities, and reaching for an Inverter here would teach a node the graph does not need."
+      }
+    },
+    {
+      "id": "fadenag-0001",
+      "type": "net.noodl.animatetovalue",
+      "label": "Fade the nag",
+      "x": 560,
+      "y": 2440,
+      "parameters": {
+        "duration": 400
+      },
+      "metadata": {
+        "comment": "Step 5. Boolean in, number out: targetValue casts true/false to 1/0 (animate-to-value.ts:96-99), so the And needs no conversion node. The FIRST value is adopted outright rather than animated to, so at load currentValue is 0 and the nag is invisible without any parameter saying so - the same property lesson 3 relies on for Reaction."
+      }
+    },
+    {
+      "id": "nag-0001",
+      "type": "Text",
+      "label": "Nag",
+      "parent": "card-0001",
+      "x": 220,
+      "y": 740,
+      "parameters": {
+        "text": "Feed me."
+      },
+      "metadata": {
+        "comment": "Step 6. Unlike Score, Story and Mood Line this one DOES carry its text: the words never change, only whether they are visible. Its Opacity carries no parameter - it arrives on a wire, and lesson 3's Reaction is the precedent."
+      }
+    }
+  ],
+  "visualRoots": [
+    "7799a2e4-7eda-4df1-aba5-4c90c43eeb44"
+  ]
+}

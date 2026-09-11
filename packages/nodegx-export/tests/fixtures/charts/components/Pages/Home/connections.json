@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "connections": [
+    {
+      "fromId": "revenue",
+      "fromProperty": "items",
+      "toId": "bars",
+      "toProperty": "series",
+      "label": "the authored rows drive the bars"
+    },
+    {
+      "fromId": "revenue",
+      "fromProperty": "items",
+      "toId": "spark",
+      "toProperty": "series"
+    },
+    {
+      "fromId": "revenue",
+      "fromProperty": "count",
+      "toId": "oldWayFill",
+      "toProperty": "width",
+      "label": "the old way - a data-driven width on a Group"
+    },
+    {
+      "fromId": "bars",
+      "fromProperty": "selectedLabel",
+      "toId": "readout",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bars",
+      "fromProperty": "barSelected",
+      "toId": "showPicked",
+      "toProperty": "show"
+    },
+    {
+      "fromId": "revenue",
+      "fromProperty": "count",
+      "toId": "bars",
+      "toProperty": "barCount"
+    }
+  ]
+}

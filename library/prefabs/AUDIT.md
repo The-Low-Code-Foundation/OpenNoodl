@@ -1,5 +1,123 @@
 # Prefab Audit — LIB-002
 
+> **2026-09-05 (later) — the three blank entries, and two product defects they uncovered.**
+>
+> - **`form` / `tags` / `table`** were each a `For Each` over data with **no source**, so a fresh
+>   install drew nothing at all. All three now carry the `card-grid` contract — a `Static Data` node
+>   of sample rows plus a `Choose items` Function where a connected non-empty array wins over the
+>   samples. **Measured drawing after the change** (form 10 texts / 3 controls, table 19 texts,
+>   tags 6 pills). `table` additionally *threw*: `Extract Headers` called `Inputs.Items.forEach`
+>   with nothing connected.
+> - **`form`**: `/Form/Text Input` and `/Form/Text Area` had `label` wired from the field descriptor
+>   with `useLabel` left at its default of `false`, so **every text field rendered unlabelled**. No
+>   rule covers a connected-but-inactive port — `label-not-a-click-target` and
+>   `inactive-conditional-parameter` both only look at *parameters*. Same class as the four toggles
+>   in `filters` and `multi-select` that shipped as unlabelled boxes.
+> - 🔴 **PRODUCT, worth a rule. Owner: NONE.** `net.noodl.controls.options` opts into a default
+>   `solid` / `2px` / `#000000` border (`noodl-viewer-react/src/nodes/controls/options.ts:259`) while
+>   every sibling control defaults to `borderStyle: none`, and its content is an empty `<span>` until
+>   something is selected or a placeholder is set. Under any content-driven size mode the wrapper
+>   therefore measures **zero** and the node renders as a 4px black rule across the page — a collapse
+>   that reads as a broken node, and which shipped in `form` looking exactly like a styling choice.
+>   A "dropdown with no declared height" diagnostic would have caught it.
+> - 🔴 **PRODUCT, diagnostics. Owner: NONE.** A throw inside a `Noodl.Events` listener is reported
+>   against the node that **emitted**, not the node that threw. `emit` is synchronous
+>   (`noodl-runtime/src/events.js`, `ReflectApply`), so the listener's frame unwinds into the
+>   emitting script's `try/catch` and wears its name. This cost **two measured render rounds** here:
+>   `JavaScriptFunction (/Form/Set Form Value): Cannot set properties of undefined (setting 'Name')`
+>   was thrown by `/Form`'s `Receive Value Changed`, in a different component. The message should
+>   name the script whose frame actually threw, or say "via" the emitter.
+> - 🔴 **PRODUCT, ordering. Owner: NONE.** A repeated child component mounts **before** its parent
+>   Group's `Did Mount` fires, so any state a prefab initialises on the parent's `Did Mount` is
+>   `undefined` for the first value a child publishes. `form` had exactly this (`HaveValues`) —
+>   guarded in one reader and not the other, which is the usual shape of the bug. Worth a
+>   diagnostic: state written on `Did Mount` and read by a descendant is a race. Fixed in `form`
+>   0.10.0 by creating the map lazily in the listener; **measured afterwards at zero console errors**.
+> - 🔴 **`table` — OPEN, not fixed. Owner: NONE.** A column's `Width` never reaches the cell.
+>   `Extract Headers` hands each column the string `'1%'`, and the dimension port's setter
+>   (`react-component-node.ts:627`) **deletes the prop** for any value without a `.value` — so a
+>   declared width does not merely fail to apply, it is removed, and every table lays out by content.
+>   Visible at 1280px as the first column taking most of the width. Fixing it means emitting
+>   dimension objects, which switches on a width path that **has never executed** in this prefab, on
+>   a `display: table` composition, for every column of every table. Deliberately declined without a
+>   render beside it; the workaround (`CSS Style`) is in the entry's README.
+
+> **2026-09-05 (later) — the nine "drew nothing" prefabs, ruled once so nobody re-derives them.**
+> The render sweep reported 10 entries drawing nothing. Reading each project graph against
+> `card-grid` (the shelf's self-demo standard: an unconditional root `Group` with ink, and a
+> `Static Data` node feeding the `For Each` through a `Choose items` guard so a connected input
+> wins) settles **8 as invisible-by-design and 1 as genuinely broken**:
+>
+> | Entry | Verdict | The evidence that settles it |
+> |---|---|---|
+> | `confirm-dialog` | invisible-by-design | Root `Group` "Dialog layer" is `mounted: false`, driven by a `Switch` whose `onFromStart` defaults false and whose only `on` source is the `Open` component input. The open path exists; it is closed at rest. |
+> | `media-query` | invisible-by-design | The picked showcase has **zero visual node types** — `Component Inputs`/`Outputs` and a `Javascript2` wrapping `window.matchMedia`. Its `Media Query Debugger` *would* draw. |
+> | `oauth2` | invisible-by-design | Zero visual nodes in any of its 5 components; showcase is a `CloudFunction2` plus a `Noodl.Users.become` function. |
+> | `shake-detector` | invisible-by-design | Showcase is `DeviceMotionEvent` `Javascript2` + two `String` nodes used as comments. Its `Shake Detector Example` sibling *would* draw. |
+> | `supabase` | invisible-by-design | Zero visual nodes across 12 components; showcase is one `JavaScriptFunction` calling `.from('companies').select('*')`. |
+> | `toast` | invisible-by-design | Showcase is a `NavigationShowPopup` fired only by the `Do` input. The popup chain resolves (target exists; `For Each` `templateScript` + `States` default `Normal` → `/Show Toast/Normal`, which exists) — a trigger component at rest, not a dangling target. |
+> | `totp` | invisible-by-design | Zero visual nodes across 11 components; 9 are under `/#__cloud__/`. |
+> | `xano` | invisible-by-design | Zero visual nodes across 10 components; showcase is a `JavaScriptFunction` over `Noodl.Variables.xano[...]`. |
+> | **`tags`** | **BROKEN** | Root `Group` has no `backgroundColor` or `border` (no ink of its own) and its only child is a `For Each` fed **solely** by the `Items` input — the project contains **no `Static Data` node at all**, so it repeats zero times. Fixed this session with the `card-grid` contract. |
+>
+> **And the harness was manufacturing six of those blanks.** `pickShowcase` filtered candidates on
+> `c.roots.length > 0` — which counts **nodes, not ink**. A component of pure `JavaScriptFunction` /
+> `CloudFunction2` logic has roots, so it was picked as the "showcase" and then reported as drawing
+> nothing; worse, for `media-query` and `shake-detector` it *out-ranked a sibling component that
+> would have drawn*. The variable was even named `visual`, so this was a bug against the file's own
+> stated intent. Fixed: the pick now narrows to components containing a node the runtime reports as
+> visual, read from `isVisual` in the generated `packages/noodl-types/src/node-catalog.json` rather
+> than a hand-listed set here — a second copy of "what draws" is the copy that goes stale. An
+> **unknown type counts as visual**, because module-provided node types are absent from the core
+> catalog and demoting a real visual component to `no-visual` would *hide* a broken entry, which is
+> the expensive direction to be wrong in. Entries with nothing drawable now report `no-visual` — a
+> fact about the entry — instead of `drew nothing`, which reads as a defect. `For Each` is
+> `isVisual: true`, so `tags` stays correctly reported as broken.
+
+> **2026-09-05 — LBR-003 ran, and the shelf had been drawing the wrong thing for six weeks.**
+> `npm run library:render` renders every entry into a page seeded with the Inter + Lucide modules a
+> real new project ships (`starterAssets.ts`, POL-006), then measures what reaches the DOM.
+>
+> **The finding: sixteen prefabs named an icon set no project has.** They set
+> `iconIconSource: { class: "material-icons", … }`. A project made by this editor ships **Lucide**.
+> A missing icon font does not render as nothing — the ligature falls back to its own literal name,
+> so `rating` drew the words `starstar_borderstar_borderstar_borderstar_border` in gold, `pagination`
+> drew `chevron_left` and `chevron_right` across its page numbers, and `app-shell`'s sidebar read
+> `space_dashboard / home / folder / settings`. The library was seeded (LIB-001, 2026-07-25) from
+> live Noodl content, where Material Icons *was* the default; POL-006 changed the default and
+> nothing re-measured. **44 icon parameters across 16 entries, plus four prefabs that build an icon
+> source inside a `functionScript` string** — invisible to any JSON rewrite, the same hiding place
+> FH-006 found a font family in. Fixed by `scripts/library/remap-icons.js`; measured 17 → **0**
+> ligature names on screen.
+>
+> `image-cropper` and `panning-and-zooming-control` bundled their own Material manifest, which was
+> only a `<link>` to **`fonts.googleapis.com`** — a network dependency and a request per app.
+> Removed (Richard's ruling, 2026-09-05); both now use Lucide like everything else.
+>
+> **Second finding: 16 nodes across 10 entries drew a border that could never appear.** `Group`'s
+> `borderStyle` defaults to `none` and gates width and colour, so the Tab Bar's active-tab
+> underline, the Table's cell and header rules, the Multi Select dropdown outline and the Date
+> Picker field outline were all set, all visible in the property panel, and all absent on screen.
+> Fixed by `scripts/library/fix-invisible-borders.js` (catalog-driven — it refuses to write the port
+> onto module-provided node types, which was 39 of the 55 candidates).
+> `inactive-conditional-parameter` warnings: 49 → **18**.
+>
+> **New this session:** `avatar` 2.0.0 (re-authored from the dead module), `search-bar`, `accordion`,
+> `stepper` — each rendered *and driven* through a behavioural harness before being called done.
+> Still open: `form`, `tags` and `table` render blank on install because they are `For Each` over
+> data with no samples; `card-grid`'s "connected wins over samples" pattern is the fix.
+
+> **2026-08-22 — phase-65 blitz supersedes parts of this record.** The prefab set is now **35
+> entries**, and every consolidation proposal below has been EXECUTED: multi-choice +
+> multi-choice-with-pills + selection-pills → **multi-select** 1.0.0; pagination + pages-and-rows →
+> **pagination** 2.0.0; popup-modal → **confirm-dialog** 1.0.0 (ERG-001 outcome contract);
+> loading-spinner → absorbed into **states-kit** 1.0.0. **supabase** is 2.0.0 connector-only (the
+> 25-component example app deleted, Richard's ruling). Moved IN from modules/ (re-typed, they
+> register no nodes): image-cropper 1.6.0, panning-and-zooming-control 1.2.0, shake-detector 1.1.0.
+> NEW wave-1 entries: auth-pages, app-shell, crud-screen, form-fields, page-header, card-grid (all
+> 1.0.0, token-clean, README'd, monogram placeholder icons). The live-drive residual (LBR-003) still
+> stands for everything, old and new. See `dev-docs/tasks/phase-65-the-library/TASKS.md`.
+
 Static audit of all 29 prefabs under `library/prefabs/<slug>/`, produced by reading each
 `library.json` + `project/project.json` headlessly (no live editor). It is the plan-of-record
 for the live repair/restyle pass that must follow, and it records what was already done here.

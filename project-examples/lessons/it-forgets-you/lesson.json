@@ -1,0 +1,89 @@
+{
+  "title": "It forgets you",
+  "description": "Poke it twice and you are back where you started. State is a value the app keeps between events — one node holds it, and any number of events are allowed to change it.",
+  "format": "noodl-lesson@1",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "Poke it twice",
+      "body": "## It forgets you\n\nGo back to your app and poke the creature twice.\n\nIt fades in. It fades out. You are exactly where you started, and the app has no idea you were ever there — poke it a hundred times and the hundredth is indistinguishable from the first.\n\nThat is not a bug in the wiring you built. It is the wiring working as designed: a **Switch** holds one bit, and one bit is enough to answer *are we poked right now* and nothing else. Nothing in that graph is keeping a **running total**, because nothing was asked to.\n\nIn this lesson you will add the node that does keep one, and the idea underneath it is the one every app is built on:\n\n> **State is a value the app keeps between events. Events do not carry it — they change it.**\n\nBy the end, two different buttons will be acting on the same remembered number, which is the part that makes it *state* rather than just another wire."
+    },
+    {
+      "title": "Give it somewhere to count",
+      "body": "Add a **Counter** node on the empty canvas beside your other logic nodes, and rename it `Pokes`.\n\nA Counter is one number that survives between events. It starts at zero and it stays wherever it was last put — that is its entire job, and it is the whole difference between an app that reacts and an app that remembers. It has signal inputs for stepping it up, stepping it down and putting it back, and one output that is simply the number it is holding right now.\n\nNothing has changed on screen. It is holding a zero that nothing is feeding and nothing is reading.",
+      "detail": "**Where to find it.** The Counter is under **Math** in the picker, not under Variables — which is worth knowing, because the Variables group holds a different kind of node that this lesson does not need.\n\n**Do not touch Start Value.** It is a real port and it opens on `0`, which is what this lesson wants. It is left alone on purpose.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Pokes",
+          "hasType": "Counter"
+        }
+      ]
+    },
+    {
+      "title": "Make the poke count",
+      "body": "Drag a wire from `Poke`'s **Click** output to `Pokes`' **Increase** input.\n\nThis is the same **Click** you already wired to the Switch last lesson, and it is now going to two places at once — one output can feed as many inputs as you like, and each of them hears the same pulse. The Switch will keep flipping the reaction on and off exactly as before, and the Counter will step up by one every time, independently.\n\nYou still cannot see it. The number is real, it is climbing, and nothing on the page is reading it — which is the next step.",
+      "detail": "**A second wire from the same port is not a replacement.** Dragging from **Click** again adds a connection; it does not move the one you already made. If the reaction stops fading when you test it, you have moved the first wire rather than added a second.\n\n**Increase, not Start Value.** **Increase** is a signal input — an arrow. **Start Value** is a number you type. The pulse has to go to the arrow.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Poke",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Pokes",
+            "toPort": "increase"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Put the number on the card",
+      "body": "Add a **Text** node inside `Card`, underneath `Reaction`, and rename it `Score`. Then wire `Pokes`' **Current Count** output into that Text's **Text** input.\n\nDo not type anything into its **Text** property. The whole point is that the number is not written anywhere — it lives in the Counter, and the Text is a window onto it. Run the preview and poke: the number goes up, every time, and it stays up.\n\nYour app now remembers something.",
+      "detail": "**Current Count is a number and Text wants a string.** The wire is still allowed, and the number is converted for you. That is not true of every pair of ports, but number-into-text is the common case and the editor handles it.\n\n**It will read `0` the moment you connect it**, before you have poked anything. That is the Counter reporting what it is holding, which is exactly what you asked it for.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Card:#Score",
+          "hasType": "Text"
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Pokes",
+            "fromPort": "currentCount",
+            "to": "/Pages/Home:#Home:#Page shell:#Card:#Score",
+            "toPort": "text"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Let it rest",
+      "body": "Add a second **Button** inside `Board`, underneath `Poke`, rename it `Rest` and set its **Label** to `Rest`. Then wire its **Click** into `Pokes`' **Reset** input.\n\nThis is the step that makes the idea land. There is now one remembered number and **two** buttons with opinions about it — one that steps it up and one that puts it back to zero. Neither button holds the number. Neither button knows the other exists. They both send a pulse at the same node, and that node is the only thing in your app that knows how many times the creature has been poked.\n\nThat arrangement — one value, many events — is what people mean by state.",
+      "detail": "**Reset does not mean delete.** It puts the Counter back to its **Start Value**, which is `0` because you left it there. Set Start Value to `5` and Reset would go to five.\n\n**The reaction is not reset.** Press **Rest** and the number returns to zero while the `Ouch!` stays exactly as it was — the Switch is a separate piece of state and nothing told it anything. That is worth noticing rather than fixing.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Rest",
+          "hasType": "net.noodl.controls.button"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Rest",
+          "paramsEqual": {
+            "label": "Rest"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Rest",
+            "fromPort": "onClick",
+            "to": "/Pages/Home:#Pokes",
+            "toPort": "reset"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "Your creature now keeps score, and two different buttons are arguing over the same number.\n\nThree ideas did that:\n\n- **State is a value that outlives the event that changed it.** The pulse from **Click** is gone in the same instant it happened. The number it left behind is still there a minute later, and that gap between the two is the whole idea.\n- **One output feeds as many inputs as you like.** `Poke`'s **Click** now runs both the reaction and the count, and neither knows about the other. You never had to choose.\n- **The value lives in one place, and everything else is a window onto it.** `Score` holds no number — it displays one. That is why **Rest** works without `Score` being wired to it, and it is why an app with its state in one place is easier to change than one with copies of it everywhere.\n\nNow look at what your card actually says. It says `3`.\n\nNot *\"Nibbles has been poked 3 times\"*, and not *\"Nibbles is getting annoyed\"* — just a bare digit sitting under a name, telling the person using your app almost nothing. The number is stored correctly and the screen is still saying nothing useful. That is the next lesson."
+    }
+  ],
+  "authoredBy": "ai",
+  "completionBadge": "It Remembers"
+}

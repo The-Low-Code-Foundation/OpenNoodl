@@ -23,6 +23,7 @@ const ValueChangedNode: NodeDefinitionOptions = {
   },
   inputs: {
     value: {
+      group: 'Values',
       type: '*',
       displayName: 'Input',
       description:
@@ -40,6 +41,7 @@ const ValueChangedNode: NodeDefinitionOptions = {
   },
   outputs: {
     valueChanged: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Value Changed',
       description: 'Fires when Input becomes a different value, including the first time it arrives'

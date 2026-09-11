@@ -1,0 +1,357 @@
+/**
+ * LearningSection — D5's launcher section.
+ *
+ * Deliberately quieter than the project grid beside it: a lesson is something
+ * you are part-way through, not a thing you are shipping, and a section that
+ * shouted would make the launcher's own subject look secondary. Same tokens,
+ * same 3-up grid rhythm as Projects.module.scss, one elevation step down.
+ */
+
+.Root {
+  margin-bottom: 28px;
+}
+
+.HeadRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.Title {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+}
+
+.Count {
+  font-size: 12px;
+  color: var(--theme-color-fg-muted);
+}
+
+.Spacer {
+  flex: 1;
+}
+
+.Empty {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--theme-color-fg-muted);
+  margin: 0;
+  padding: 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+
+  code {
+    font-family: var(--font-family-code);
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: var(--theme-color-bg-3);
+  }
+}
+
+.Grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  // FIX-003 opt-out, matching the projects grid below: these cards are click
+  // targets, and opening a lesson must not select its title.
+  //
+  // ⚠️ Per grid, in the grid's own module — deliberately NOT hoisted to
+  // `Projects.module.scss`'s `.Main`, which would cover both grids and any
+  // future section but would also swallow the welcome copy and the no-results
+  // message. A container-level opt-out is the right instrument for a surface
+  // that is drag all the way down (the canvas); a page region that merely
+  // contains cards is not that. A new card section opts its own grid out.
+  user-select: none;
+}
+
+.Card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* No global box-sizing in this repo — state it here or the border pushes the
+     card past its grid column. */
+  box-sizing: border-box;
+  padding: 14px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-7);
+}
+
+.CardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.CardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--theme-color-fg-highlight);
+  margin: 0;
+  min-width: 0;
+}
+
+.Provenance {
+  flex: none;
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 2px 7px;
+  border-radius: var(--radius-7);
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-muted);
+  white-space: nowrap;
+}
+
+.CardBody {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+  margin: 0;
+}
+
+.ProgressTrack {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--theme-color-bg-3);
+  overflow: hidden;
+}
+
+.ProgressFill {
+  height: 100%;
+  background: var(--theme-color-primary);
+  transition: width 0.2s;
+}
+
+.MetaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+}
+
+.State {
+  text-transform: none;
+}
+
+.Percent {
+  font-variant-numeric: tabular-nums;
+}
+
+.Score {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  margin: 0;
+}
+
+.Feedback {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--theme-color-bg-2);
+  border-radius: var(--radius-7);
+}
+
+/* Not-run is not failure. Muted, never the danger colour. */
+.Muted {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-muted);
+  margin: 0;
+}
+
+.Warning {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+  margin: 0;
+}
+
+.CardActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.Primary,
+.Ghost {
+  font-family: var(--font-family);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  border-radius: var(--radius-7);
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.Primary {
+  background: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-primary-highlight);
+  }
+}
+
+.Ghost {
+  background: none;
+  color: var(--theme-color-fg-default);
+
+  &:hover:not(:disabled) {
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+  }
+}
+
+/* ── 2026-09-06 — the spine number, the filters, and "next up" ───────────────────────────── */
+
+/* The same 22px disc `LearnerPathSection` draws its positions in: one shape for one fact. */
+.Position {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-muted);
+  margin-right: 8px;
+
+  /* Three children in a space-between head float the title to the middle; the title takes the
+     slack instead, so the number sits at its left and the badge at its right. */
+  + .CardTitle {
+    flex: 1;
+  }
+}
+
+.ChapterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.Chapter {
+  font-size: 11px;
+  color: var(--theme-color-fg-muted);
+  letter-spacing: 0.01em;
+}
+
+.NextUpChip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-7);
+  background: var(--theme-color-primary);
+  color: var(--theme-color-on-primary);
+}
+
+/* The one card with an answer to "why this one": the next spine lesson, named above the grid. */
+.NextUp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-left: 3px solid var(--theme-color-primary);
+  border-radius: var(--radius-7);
+}
+
+.NextUpEyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+}
+
+.NextUpTitle {
+  font-family: var(--font-family-display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--theme-color-fg-highlight);
+}
+
+.NextUpBody {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--theme-color-fg-default);
+  max-width: 70ch;
+  margin-bottom: 4px;
+}
+
+.Filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+/* The same pill `LearnerPathSection`'s intake options use, so the two tabs share a control. */
+.Filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  padding: 5px 10px;
+  border-radius: var(--radius-7);
+  border: 1px solid var(--theme-color-border-control);
+  background: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--theme-color-bg-3);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--theme-color-primary);
+    background: var(--theme-color-bg-3);
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 2px;
+  }
+}
+
+.FilterCount {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--theme-color-fg-muted);
+  font-variant-numeric: tabular-nums;
+}

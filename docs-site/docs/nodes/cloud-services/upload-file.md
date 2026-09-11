@@ -96,6 +96,14 @@ The create-with-attachment flow: Open File Picker hands the picked browser file 
 
 Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on the picker's `done` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `done`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.
 
+**Record audio in the browser and upload it as a cloud file**
+
+The whole round trip in built-in nodes: **Record Media** captures from the microphone, **Upload File** stores the result, and a **Video** node plays it back. The wiring worth copying is the three-way split on the outcome — `Started` and `Stopped` drive a `States` node that owns the status text, `Recording` drives the Stop button's `enabled` so the two buttons can never both be live, and `Permission Denied` / `Device Busy` land on their own states because a refused prompt and a microphone another tab is holding need different words. ⚠️ `Blob URL` is a string and `Mounted` is a boolean, so the playback surface is gated through an `Expression` rather than wired straight across — a URL is not a truth value. The `File` output is a real `File`, which is exactly what `Upload File` expects, so nothing here converts the recording to text and back on the way.
+
+**Show a camera preview and record the stream you are already showing**
+
+Two nodes that look like they overlap and do not. **Web Camera** opens a stream and hands it to a **Video** node's `Source Object`, which is the live preview; **Record Media** takes that same stream on its `Media Stream` input and writes it to a file. Because the stream is passed rather than re-requested, the browser asks for permission once — a recorder that calls `getUserMedia` again would prompt a second time and open a second camera handle. The ownership rule falls out of the same wire: the recorder did not open this stream, so it never stops its tracks, and `Stop` ends the recording while the preview keeps running. Stopping the camera stays the job of the node that started it, which is why `Stop Stream` is wired from its own button.
+
 ## Related nodes
 
 [Open File Picker](../utilities/open-file-picker.md), [Cloud File](./cloud-file.md), [Sign File URL](./sign-file-url.md), [Create Record](../data/new-db-model-properties.md), [Update Record](../data/set-db-model-properties.md)

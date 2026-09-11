@@ -109,6 +109,81 @@
 }
 
 /*
+ * BLD-005 — the run map's five roles.
+ *
+ * The complaint this answers: a seven-operation run rendered as a column of
+ * identical wand glyphs, so "which component is it building" cost a read of
+ * every row. The statuses always differed; nothing said so.
+ *
+ * ⚠️ **Weight and colour, and deliberately no motion on `current`.** Pulsing it
+ * while the run is busy is the obvious move and it is wrong for the reason
+ * BLD-004 exists: `busy` stays true when the provider has hung, so the animation
+ * would be most confident exactly when nothing is happening. Motion here has to
+ * come from `onActivity`, and that is BLD-004's to add.
+ */
+.Operation-current {
+  color: var(--theme-color-primary);
+
+  /* The target, not the whole row — the elapsed time and the detail line stay
+     shy so the name is what the eye lands on. */
+  .OperationTarget {
+    font-weight: 600;
+  }
+}
+
+/*
+ * Pending work is present but not yet news. It is listed from the first second
+ * — that is step 2, the plan as a map — and it has to read as *not yet* without
+ * becoming unreadable.
+ *
+ * ⚠️ **This was `opacity: 0.55` and that was measured, not reasoned, into the
+ * bin.** Opacity dims by blending the text toward whatever is behind it, so it
+ * changes contrast without ever appearing in a colour token. Swept on the real
+ * composited pixels, `fg-default` on this surface gives:
+ *
+ *   opacity   0.55   0.65   0.70   0.75   0.80   0.85
+ *   dark      3.27   4.03   4.46   4.92   5.41   5.93
+ *   light     2.53   3.10   3.46   3.87   4.34   4.89
+ *
+ * Every value that reads as dimmed fails AA in light mode, and the first value
+ * that passes in both (0.85) is too subtle to read as dimming at all. There is
+ * no opacity that is both — which is the muted-button trap in a new place, and
+ * the reason this is a token instead.
+ *
+ * `fg-default-shy` is a real step down in emphasis at **5.57 dark / 5.06 light**
+ * (BLD-002's measured figures), and the status icon — a caret, against a tick or
+ * a wand — carries the rest.
+ */
+.Operation-pending,
+.Operation-skipped {
+  /* Two classes deep, so it beats `Text`'s own single-class colour rule. */
+  .OperationTarget {
+    color: var(--theme-color-fg-default-shy);
+  }
+}
+
+/*
+ * `done` and `failed` carry no declarations, and are declared anyway.
+ *
+ * A CSS-module lookup for a class the stylesheet does not define returns
+ * `undefined`, so the row renders with **no class at all** — which is how, while
+ * driving this, a five-row map reported four roles the moment the first
+ * operation staged. The row was fine; it had simply become unmeasurable, and a
+ * role that vanishes from the DOM when it changes is one no spec, no drive and
+ * no future task can see.
+ *
+ * Their appearance is already carried by `statusIcon` — a success tick, a danger
+ * triangle — which is why there is nothing to add here beyond the hook itself.
+ */
+.Operation-done {
+  /* Full weight, full opacity: finished work is the run's result, not its noise. */
+}
+
+.Operation-failed {
+  /* The danger triangle says it. Dimming a failure would be the wrong instinct. */
+}
+
+/*
  * The scope tabs. They used to grow via `isGrowing`, which is `flex: 1` — basis
  * 0 — so the three shared the row in equal thirds whatever their labels said.
  * At 400px that gave "This component" (120px of label and padding) 106, and it
@@ -145,4 +220,343 @@
 .PlanRowKind {
   flex: 0 0 auto;
   min-width: 44px;
+}
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * BLD-017 F2 — the outcome card.
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * The mockup's `.card` / `.card-top` / `.card-acts`, and the row this task calls
+ * the one that makes a decision read as a decision. Shipped, a staged component
+ * was a paragraph with three buttons after it — the same treatment as the prose
+ * two elements above and the tool events two elements below, in a panel whose
+ * whole complaint is that everything looks like everything else. The three
+ * buttons were the *only* thing marking it as the point of the turn, and buttons
+ * are what a panel has most of.
+ *
+ * A bordered card with a footer band says it before anything is read: this is an
+ * object, it is finished, and the things along its bottom edge are what you may
+ * do to it.
+ *
+ * Token map is in `thread/BuildThread.module.scss`'s header — **copy the intent,
+ * name the token, never copy the hex**; the mockup is dark-only.
+ *
+ * ⚠️ **The mockup's `rgba(255, 255, 255, 0.014)` on `.card-acts` is not copied.**
+ * It is the one value in the whole stylesheet with no token behind it, and it is
+ * *white*: a lift on a dark card and a literal no-op on a light one, so copying
+ * it would import a treatment that exists in exactly one theme. The top rule
+ * carries the band alone, as it does in `InterviewCard.module.scss` — which made
+ * this same call first and is the worked example this row follows.
+ */
+.OutcomeCard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 6px;
+  background-color: var(--theme-color-bg-2);
+}
+
+.OutcomeTop {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 11px 12px;
+  min-width: 0;
+}
+
+/*
+ * The headline. 620 rather than 600 and `fg-highlight` — the mockup's
+ * `.card-title`, and the second-loudest thing in a turn after the user's own
+ * words.
+ *
+ * ⚠️ Two classes deep so it beats `Text`'s own `.is-type-*` colour rule, which
+ * is the same trick `.Operation-pending .OperationTarget` above relies on for
+ * the same reason. A single-class override here would be silently ignored.
+ */
+.OutcomeCard .OutcomeTitle {
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 620;
+  letter-spacing: -0.005em;
+  color: var(--theme-color-fg-highlight);
+}
+
+/* The shape of it, and what it has not yet cost you. `fg-default-shy` on bg-2 is
+   5.57:1 dark / 5.06:1 light — the mockup's own `--gx-shy`, and one of the two
+   roles it picked that does clear AA. */
+.OutcomeCard .OutcomeSub {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default-shy);
+}
+
+/*
+ * The footer band.
+ *
+ * `flex-wrap` because at 400px three labels — "Add to project", "See the
+ * changes", "Discard" — do not share a row, and B8's lesson from BLD-007 is that
+ * a control which wrapped is strictly better than one that was pushed out of
+ * reach. `PrimaryButton` is `flex-shrink: 0; min-width: 70px`, so without this
+ * they overflow rather than compress.
+ */
+.OutcomeActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/*
+ * The refine field, in its own band above the decisions.
+ *
+ * ⚠️ It is **not** in the footer with the buttons, and that is the one place
+ * this card departs from the mockup's structure — because the mockup never drew
+ * it. "Ask for changes…" is not a decision about the candidate; it is a way to
+ * produce a *different* candidate, so grouping it with Add / See / Discard would
+ * put a fourth option in a row of three that are mutually exclusive. Its own
+ * band, with the same rule, keeps the footer's three the answer to one question.
+ */
+.OutcomeRefine {
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/* Where the buttons went, when the preview document owns them (BLD-003 D2).
+   Same band, so the card does not change shape when the decision moves. */
+.OutcomeNote {
+  padding: 10px 12px;
+  border-top: 1px solid var(--theme-color-border-default);
+}
+
+/*
+ * BLD-013/014 — the composer's control row.
+ *
+ * 🔴 Wraps, and that is the whole point of it existing. See the call site: an
+ * `HStack` held one button in BLD-011 and could not overflow; three buttons
+ * total 299px against a panel that the width sweep takes down to 248px, and the
+ * overflow was invisible at the 400px default everyone looks at.
+ *
+ * `align-items: center` rather than `stretch` so a wrapped second line does not
+ * stretch its buttons to the taller row's height.
+ */
+.ComposerControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  /*
+   * 🔴 The positioning context for `ReferencePicker`'s list, and it lives here
+   * rather than on the picker for a measured reason.
+   *
+   * BLD-011 gave `.Picker` `position: relative; width: 100%` so its list —
+   * which is `left: 0; right: 0` — would span the composer instead of opening
+   * 113.8px wide and ellipsizing every component path it existed to show. That
+   * was right while the picker was alone in this row. With `Attach` and
+   * `Look at it` beside it, a full-width flex item claims the whole line and
+   * pushed both onto a second row at EVERY width — 67px tall at 248px and still
+   * 67px at 800px, where all three fit in 742px.
+   *
+   * Anchoring the list here keeps both properties true at once: the list still
+   * spans the full composer, and the picker shrink-wraps so its siblings share
+   * the line.
+   *
+   * ⚠️ Removing this `position` silently returns the list to the viewport as
+   * its containing block — it will span the whole window, not break visibly.
+   *
+   * ⚠️ BLD-016 hung a **second** absolutely-positioned list off this box (the
+   * `@` menu). Both are out of flow, so the row's height is unchanged whether
+   * either is open — but the rule the last three tasks kept paying for applies
+   * again: this box now has four children, and any rule written for it while it
+   * had one should be re-read before it is trusted.
+   */
+  position: relative;
+}
+
+/*
+ * BLD-016 — a mention that names nothing, refused before Send.
+ *
+ * ⚠️ Not `FeedbackType.Danger`'s own text colour on the label: the sentence
+ * contains the user's own token and has to be *read*, not just noticed, and this
+ * composer's ground is `bg-2` where the danger foreground has been measured
+ * short before. The glyph carries the alarm, `fg-default` carries the words —
+ * the same split `.Warning` uses one file over, which measured 9.20 dark /
+ * 5.14 light.
+ */
+.MentionRefusal {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--theme-color-fg-default);
+}
+
+/*
+ * The escape hatch, styled as a control rather than as prose — it does
+ * something, and a user who has just been told their message will not send has
+ * to be able to find the thing that unblocks it.
+ */
+.MentionDismiss {
+  flex: none;
+  padding: 1px 6px;
+  border: none;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+/*
+ * ─── BLD-009: the second host ───────────────────────────────────────────────
+ *
+ * ⚠️ Everything below is written as a bare module class and is reached from
+ * markup this file's panel renders — but note that two of these rules paint
+ * inside a **portal**, in the expanded document's DOM, not under any ancestor
+ * from the sidebar. That is fine for CSS modules (the class is a global name)
+ * and it is exactly why none of these may be written as descendants of a panel
+ * class: `.AiAuthoringPanel .Expanded` would match in the rail and silently
+ * match nothing in the host this task exists for.
+ */
+
+/*
+ * The expanded workspace's frame.
+ *
+ * `min-height: 0` on a flex child is the difference between a thread that
+ * scrolls and a composer pushed off the bottom of the window — see the same
+ * declaration in `ExpandedBuildDocument.module.scss`, which owns the level
+ * above this one.
+ */
+.Expanded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/*
+ * What the right-hand pane says before there is a candidate.
+ *
+ * Rule 5 — it describes what *will* appear and where, rather than apologising
+ * for an empty box. A plan run genuinely has no canvas of its own, and the
+ * second sentence says so rather than leaving the pane looking broken during
+ * the longest runs this workspace exists for.
+ */
+.ExpandedEmpty {
+  box-sizing: border-box;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  background-color: var(--theme-color-bg-2);
+
+  p {
+    max-width: 34ch;
+  }
+}
+
+/*
+ * The rail, while the thread is open in the wide workspace.
+ *
+ * BLD-003's `ON_CANVAS_NOTE` shape: a surface whose contents have moved says
+ * where they went and offers the way back. Going blank instead reads as a
+ * conversation that was lost, which is the one thing this whole phase is
+ * measured on not doing.
+ */
+.Elsewhere {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 16px 12px;
+}
+
+/*
+ * Build item 5's offer, between the thread and the composer.
+ *
+ * ⚠️ A wrapping flex row, not an `HStack`, and that is session 15's finding
+ * rather than taste: `HStack` does not wrap and forces `height: 100%` on every
+ * child, and this row carries a sentence plus two controls at a width that
+ * starts at 240px. The sentence is the only item allowed to shrink
+ * (`min-width: 0`), for the reason `PanelHeader.Title` states — a control
+ * pushed out of the row is an offer the user cannot answer.
+ *
+ * On `bg-2` with a top hairline, so it reads as chrome attached to the composer
+ * rather than as a sixth message kind. Deliberately **not** an accent wash:
+ * BLD-008's `.Tag` measured 3.85:1 in light doing exactly that, and an offer
+ * nobody asked for is the last thing that should shout.
+ */
+.ExpandOffer {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-top: 1px solid var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+
+  p {
+    min-width: 0;
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+/*
+ * Icon and sentence, as one flex item.
+ *
+ * ⚠️ `flex: 1 1 100%` rather than `1 1 auto`: the sentence is two lines at the
+ * shipped width, so this group takes the whole first line and the controls take
+ * the second — deliberately, because the alternative at 248px is a group and two
+ * buttons all competing for one 224px line. `align-items: flex-start` keeps the
+ * glyph on the sentence's first line rather than centred against both of them.
+ */
+.ExpandOfferText {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
+/* The same control treatment as `.MentionDismiss`, and for the same reason:
+   dismissing does something, and it has to be findable. */
+.ExpandOfferDismiss {
+  flex: none;
+  padding: 1px 6px;
+  border: none;
+  border-radius: 3px;
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+  color: var(--theme-color-fg-default);
+  font-size: 10px;
+  line-height: 16px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
 }

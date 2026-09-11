@@ -109,6 +109,16 @@ export function EntryModeStep({ aiAvailability }: EntryModeStepProps) {
           description="Walk through name, description, and style preset step by step."
           onSelect={handleSelect}
         />
+        {/* FB-005 T3. 🔴 Always offered, and the reason is a fact rather than optimism:
+            `EmbeddedTemplateProvider` is compiled into this editor, so the shelf has at least
+            one row with no network at all. This card is not gated the way "Start with AI" is
+            because there is nothing to gate it on. */}
+        <ModeCard
+          mode="template"
+          title="Start from a Template"
+          description="Begin with a project that is already built — a starter, a dashboard, a form — and change it from there."
+          onSelect={handleSelect}
+        />
         <ModeCard
           mode="ai"
           title="Start with AI"

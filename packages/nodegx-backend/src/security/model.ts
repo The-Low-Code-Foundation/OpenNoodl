@@ -596,6 +596,109 @@ export function effectiveFunctionRule(
   return { rule: allowNoAuth ? 'public' : 'authenticated', source: 'graph', allowNoAuth };
 }
 
+// ----------------------------------------------------------------------------
+// SB-016 — the endpoints nobody declared
+// ----------------------------------------------------------------------------
+
+/** One deployed endpoint, as far as this module needs to know about it. */
+export interface DeployedFunction {
+  name: string;
+  /** The graph's `Allow Unauthenticated` port. */
+  allowNoAuth: boolean;
+  /**
+   * DEF-009 AC4: does the graph create, change or delete records?
+   *
+   * Required, not optional, for `deployedFunctions`' reason: an absent answer
+   * and `false` mean different things — *nobody looked* versus *this endpoint
+   * writes nothing* — and the public-write default is decided on this field.
+   * A resolver that silently reads "nobody looked" as "no writes" would leave
+   * exactly the endpoints it exists to bound running unmetered.
+   */
+  writesRecords: boolean;
+}
+
+/** An endpoint whose rule comes from the graph port because no config entry names it. */
+export interface UnresolvedFunction extends DeployedFunction {
+  /** What the graph port resolves to, and therefore what a deploy would enforce. */
+  rule: RuleValue;
+}
+
+/**
+ * SB-016 — every deployed endpoint whose `call` rule resolves **only** from the
+ * graph's `Allow Unauthenticated` port.
+ *
+ * ## Why this predicate and not the narrower one
+ *
+ * SB-016 §4 left the predicate open between this — *resolves from the graph
+ * port at all* — and a narrower *resolves to `authenticated` from the port*,
+ * on the strength of a claim that the narrow one "refuses exactly the two that
+ * are wrong" on the Site Builder template. 🔴 **Measured, it does not.** Site
+ * Builder's four endpoints are `submitContactForm` (ticked → `public`, wanted
+ * `public`), `claimSite` (unticked → `authenticated`, wanted `authenticated`),
+ * and `publishPage`/`duplicatePage` (unticked → `authenticated`, wanted
+ * `role:admin`). The narrow predicate refuses **three** of the four — the two
+ * that are wrong *and* `claimSite`, which is right. No deploy-time predicate can
+ * separate them, because the thing that distinguishes `claimSite` from
+ * `publishPage` is an intention neither the port nor the config records.
+ *
+ * With discrimination off the table, the choice is between *declare every
+ * endpoint* and *declare every endpoint except the ones open to the world*, and
+ * that is not close. Ticking `Allow Unauthenticated` is an affirmative act, but
+ * it is an act performed on a canvas, possibly by somebody else, possibly a year
+ * ago — and its consequence is the only endpoints an anonymous stranger can
+ * reach at all. An interlock that waves those through is silent about precisely
+ * the surface it exists to protect.
+ *
+ * So the refusal does not say *this is wrong*. It says **you have not said**,
+ * and after it is satisfied `security.json` describes every endpoint the backend
+ * serves — which is the property the panel, the audit trail and the next
+ * deployer all read it for.
+ *
+ * ⚠️ A configured entry for a function that is NOT deployed is drift in the
+ * other direction, and is deliberately not this function's business: it grants
+ * nothing, `GET /admin/permissions/functions` already reports it, and refusing a
+ * deploy over a stale rule would punish the safe half of the same mistake.
+ */
+export function unresolvedFunctionRules(
+  config: SecurityConfig,
+  deployed: DeployedFunction[]
+): UnresolvedFunction[] {
+  const unresolved: UnresolvedFunction[] = [];
+  for (const fn of deployed) {
+    const resolved = effectiveFunctionRule(config, fn.name, fn.allowNoAuth);
+    if (resolved.source !== 'graph') continue;
+    unresolved.push({ name: fn.name, allowNoAuth: fn.allowNoAuth, writesRecords: fn.writesRecords, rule: resolved.rule });
+  }
+  return unresolved.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * The `functions` block that makes the endpoints above resolved, written out so
+ * it can be pasted into `security.json` unmodified.
+ *
+ * 🔴 **Every rule is the one the backend is enforcing right now**, so pasting it
+ * and restarting changes nothing about who can call what. That is the point: the
+ * refusal is asking for a *decision to be recorded*, not for behaviour to change,
+ * and a deployer under time pressure needs the zero-risk answer to be the one in
+ * front of them. Tightening `publishPage` to `role:admin` is the next thing they
+ * should do and the message says so, but it is a second step they take with their
+ * eyes open rather than a change this refusal smuggles in.
+ *
+ * ⚠️ It is emitted **merged with whatever `functions` entries already exist**,
+ * because a deployer with three declared endpoints and one undeclared one who
+ * pastes a one-key block over the top has just undeclared the other three.
+ */
+export function proposedFunctionsBlock(config: SecurityConfig, unresolved: UnresolvedFunction[]): string {
+  const merged: Record<string, unknown> = JSON.parse(JSON.stringify(config.functions || {}));
+  for (const fn of unresolved) {
+    const existing = (merged[fn.name] as Record<string, unknown> | undefined) || {};
+    merged[fn.name] = { ...existing, call: fn.rule };
+  }
+  const ordered: Record<string, unknown> = {};
+  for (const key of Object.keys(merged).sort()) ordered[key] = merged[key];
+  return JSON.stringify({ functions: ordered }, null, 2);
+}
+
 export interface FunctionAccessDecision extends AccessDecision {
   source: FunctionRuleSource | 'credential';
 }
@@ -637,16 +740,134 @@ export function checkFunctionCall(
 }
 
 /**
- * This function's own rate-limit budget, or undefined when it only meets the
- * shared `functions` class. A zeroed policy is normalised to undefined: the
- * limiter reads `burst <= 0` as unlimited, so keeping it would mean carrying a
- * bucket that can never refuse.
+ * DEF-009 AC4 — what a public, record-writing cloud function is limited to when
+ * nobody set a limit. **60 requests a minute, burst 30, per caller.**
+ *
+ * 🧭 **Richard's ruling, 2026-08-30**, against the recommendation put to him
+ * (which was to keep `null` and merely write the reason down). The number is a
+ * rung of the ladder the product already has rather than a new one:
+ * oauth-start 20/20 · **auth 60/30** · admin 300/100 · data 1200/400. *"A public
+ * write is not a lighter act than logging in."*
+ *
+ * A contact form submitted 30 times in a burst and then once a second sustained
+ * is far past any human use; a bot writing rows until the disk is full stops
+ * cold.
+ *
+ * 🔴 **It is a floor for a population that is not homogeneous, and the corpus
+ * says so.** The sweep behind the ruling recorded 27 unlimited public write
+ * doors "all `submitContactForm`"; re-run at HEAD
+ * (`npm run calibrate:door -- "<projects>" "<projects>" --json`, 179 projects)
+ * the count holds at 27/23 and the composition does NOT — **17** are
+ * `submitContactForm` and ten are not, among them three PROVIDER WEBHOOKS
+ * (`ses_sns_response` ×3, `stripe-webhook` ×2, `Stripe/Process payment`). An
+ * SES bounce fan-out or a Stripe retry storm is exactly the shape that
+ * legitimately bursts past 30. That is why this is a default and not a cap,
+ * why {@link functionRateLimitAnnouncement} names every endpoint it applies to
+ * at boot, and why the escape hatch below is explicit rather than implied.
  */
-export function functionRateLimit(config: SecurityConfig, functionName: string): RateLimitPolicy | undefined {
+export const PUBLIC_WRITE_DEFAULT_RATE_LIMIT: Readonly<RateLimitPolicy> = { ratePerMinute: 60, burst: 30 };
+
+/** Where a function's effective budget came from. */
+export type FunctionRateLimitSource =
+  /** `security.json` names a `rateLimit` for it — including a zeroed, deliberately unlimited one. */
+  | 'declared'
+  /** Nobody named one, and it is a public door that writes records (DEF-009 AC4). */
+  | 'public-write-default'
+  /** Nobody named one and it is not a public writer: the class bucket alone, as before. */
+  | 'none';
+
+export interface FunctionRateLimitResolution {
+  /** The budget to spend against, or undefined for "the class bucket alone". */
+  policy: RateLimitPolicy | undefined;
+  source: FunctionRateLimitSource;
+}
+
+/** What the resolver needs to know about the graph behind the name. */
+export interface FunctionPosture {
+  /** The graph's `Allow Unauthenticated` port — `effectiveFunctionRule`'s input. */
+  allowNoAuth: boolean;
+  /** Does the endpoint's own graph create, change or delete records? */
+  writesRecords: boolean;
+}
+
+/**
+ * THE per-function rate-limit resolver — the dispatcher's, the panel's and the
+ * boot announcement's, for `effectiveFunctionRule`'s reason: three copies of a
+ * fallback is how an operator ends up shown one number while another is
+ * enforced.
+ *
+ * The precedence, stated once:
+ *
+ * 1. **A declared `rateLimit` wins, whatever it says.** Including a zeroed one:
+ *    `{ ratePerMinute: 0, burst: 0 }` is the limiter's existing *unlimited*
+ *    convention (`RateLimiter.checkPolicy` allows everything on `burst <= 0`),
+ *    and it is the escape hatch for the webhook endpoints the corpus found. It
+ *    normalises to `policy: undefined` — no bucket — but the source stays
+ *    `declared`, because *"the author asked for no limit"* and *"nobody said"*
+ *    are the two answers this whole function exists to keep apart.
+ * 2. Otherwise, a **public** posture (`effectiveFunctionRule` resolves to a rule
+ *    an anonymous caller satisfies) over a graph that **writes records** gets
+ *    {@link PUBLIC_WRITE_DEFAULT_RATE_LIMIT}.
+ * 3. Otherwise nothing, exactly as before: the shared `functions` class bucket
+ *    is the only bound, and a private or read-only endpoint is untouched by
+ *    this ruling.
+ *
+ * 🔴 **A config entry with no `rateLimit` key is case 2, not case 1.** The admin
+ * PUT deletes the field when it is sent `null`, so an entry that merely sets
+ * `call` has said nothing about rate at all — reading its absence as consent
+ * would exempt every function anyone has ever configured.
+ */
+export function effectiveFunctionRateLimit(
+  config: SecurityConfig,
+  functionName: string,
+  posture: FunctionPosture
+): FunctionRateLimitResolution {
   const entry = config.functions[functionName];
-  const policy = entry && entry.rateLimit;
-  if (!policy || policy.burst <= 0 || policy.ratePerMinute <= 0) return undefined;
-  return policy;
+  const declared = entry ? entry.rateLimit : undefined;
+  if (declared !== undefined && declared !== null) {
+    const usable = declared.burst > 0 && declared.ratePerMinute > 0;
+    return { policy: usable ? declared : undefined, source: 'declared' };
+  }
+  if (!posture.writesRecords) return { policy: undefined, source: 'none' };
+  const rule = effectiveFunctionRule(config, functionName, posture.allowNoAuth).rule;
+  if (!ruleAllows(rule, { kind: 'anonymous' })) return { policy: undefined, source: 'none' };
+  return { policy: PUBLIC_WRITE_DEFAULT_RATE_LIMIT, source: 'public-write-default' };
+}
+
+/**
+ * The boot line naming every endpoint the public-write default is bounding, or
+ * null when it bounds none.
+ *
+ * 🔴 **This is the half of AC1 the operator owns.** *"Nobody can fill my
+ * database from my contact form without me having been told that was
+ * possible"* has a twin once a default exists: nobody's webhook endpoint should
+ * start refusing a provider's retries without the operator having been told
+ * that was possible either. The corpus found three such endpoints among ten
+ * doors the ruling's evidence recorded as contact forms, so this is a measured
+ * hazard rather than a hypothetical one — and it is discovered at start-up,
+ * beside the other rate-limit warnings, rather than from a provider's
+ * dashboard a week later.
+ */
+export function functionRateLimitAnnouncement(
+  config: SecurityConfig,
+  deployed: DeployedFunction[]
+): string | null {
+  const bounded = deployed
+    .filter((fn) => effectiveFunctionRateLimit(config, fn.name, fn).source === 'public-write-default')
+    .map((fn) => fn.name)
+    .sort((a, b) => a.localeCompare(b));
+  if (bounded.length === 0) return null;
+  const { ratePerMinute, burst } = PUBLIC_WRITE_DEFAULT_RATE_LIMIT;
+  return (
+    `${bounded.length} public cloud function${bounded.length === 1 ? '' : 's'} ` +
+    `write${bounded.length === 1 ? 's' : ''} records with no rateLimit of ${bounded.length === 1 ? 'its' : 'their'} own, ` +
+    `so the public-write default applies: ${ratePerMinute}/min, burst ${burst}, per caller. ` +
+    `Affected: ${bounded.join(', ')}. ` +
+    `To choose a different budget set "functions": { "<name>": { "rateLimit": { "ratePerMinute", "burst" } } } in ` +
+    `security.json, or PUT /admin/permissions/functions/<name>. ` +
+    `An endpoint a provider calls back (a payment or delivery webhook) can legitimately exceed this: declare ` +
+    `{ "ratePerMinute": 0, "burst": 0 } to opt it out explicitly.`
+  );
 }
 
 /**
@@ -668,8 +889,9 @@ export function functionTimeoutMs(config: SecurityConfig, functionName: string):
  * This function's idempotency setting, or undefined when it has none (CWF-016).
  *
  * A block with `enabled: false` normalises to undefined for the same reason
- * `functionRateLimit` normalises a zeroed policy: the dispatcher should have one
- * question to ask ("is there a policy?") rather than two.
+ * `effectiveFunctionRateLimit` normalises a zeroed policy to no bucket: the
+ * dispatcher should have one question to ask ("is there a policy?") rather than
+ * two.
  */
 export function functionIdempotency(
   config: SecurityConfig,

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5ea4c1d3-7b2e-4c8a-9d1f-000000000057",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowGroup",
+      "type": "Group",
+      "label": "Row",
+      "children": [
+        "nameText",
+        "cityText"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "center"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "nameText",
+      "type": "Text",
+      "label": "Name",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "cityText",
+      "type": "Text",
+      "label": "City",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        },
+        {
+          "name": "city",
+          "plug": "output",
+          "type": "string",
+          "index": 1
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "rowGroup"
+  ]
+}

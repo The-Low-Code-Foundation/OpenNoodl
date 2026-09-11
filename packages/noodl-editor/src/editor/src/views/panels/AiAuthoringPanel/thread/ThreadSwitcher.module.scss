@@ -1,0 +1,130 @@
+/*
+ * BLD-006 — the thread switcher.
+ *
+ * Sits in `.Thread`'s non-scrolling header row, above the run header, and it is
+ * the reason `BuildThread` kept `header` and `runHeader` as two slots: this is
+ * chrome that is always there, the run header exists only while a run does, and
+ * folding them together would mean the caller deciding on every render which
+ * half of one node is currently allowed to exist.
+ */
+
+.Switcher {
+  /*
+   * ⚠️ A plain flex row rather than `HStack`, and that is C5, not taste.
+   * `Stack` sets `height: 100%` on any row that does not declare one
+   * ([Stack.tsx:38]), and `.Header` is a *block* container — so the row would
+   * resolve 100% against the whole header rather than against its own line, and
+   * overflow it by exactly the height of whatever sits above. BLD-002 paid for
+   * that once; a new row in the same container does not get to pay for it again.
+   */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--theme-color-bg-3);
+  min-width: 0;
+}
+
+/*
+ * The current thread's name.
+ *
+ * ⚠️ `min-width: 0` plus the ellipsis below is the F20 rule, and BLD-007's B8 is
+ * why it is stated rather than assumed: a title is *the only shrinkable thing in
+ * this row*, which is what makes ellipsizing it correct here and what made
+ * ellipsizing the docs toolbar's label wrong once a cost had been appended to
+ * it. Nothing else may ever be appended to this element — put it in the row.
+ */
+.Current {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 2px 4px;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  /*
+    🔴 DSG-008. This was `color: inherit`, and the intent was right — a `<button>`
+    does not inherit `color` by default, so saying so is how chrome buttons pick
+    up their surface's tone. But **nothing up this chain sets one**, so what it
+    inherited was the document initial value: black. Measured at **1.24:1** in
+    dark mode.
+
+    Only the glyphs showed it: the thread title is a `Text` component carrying its
+    own token, so the row looked fine and the two icons beside it did not.
+    `inherit` is only ever as good as the thing above, and here there was nothing.
+  */
+  color: var(--theme-color-fg-default);
+  text-align: left;
+
+  p {
+    font-size: 11.5px;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover:not(.is-disabled) {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: 1px;
+  }
+}
+
+.Caret {
+  flex: 0 0 auto;
+}
+
+/*
+ * ⚠️ Declared even though its only rule is a cursor.
+ *
+ * BLD-005 lost a re-drive to a CSS-module lookup for a class that did not exist:
+ * `css['is-disabled']` returns `undefined` and the element renders with **no
+ * class at all**, so a drive counting states finds nothing wrong with a control
+ * that has become unmeasurable. Every state this component can be in has a
+ * class, whether or not it needs a declaration.
+ */
+.is-disabled {
+  cursor: default;
+}
+
+/* Why the switch is refused, stated where the switch is. */
+.Reason {
+  padding: 0 12px 6px;
+
+  p {
+    font-size: 10.5px;
+    line-height: 1.4;
+  }
+}
+
+/* One row of the dropdown: what it was about, and when it was last touched. */
+.ItemWhen {
+  white-space: nowrap;
+}
+
+/*
+ * ⚠️ The current row, measured at **1.16:1** before this rule existed.
+ *
+ * `MenuDialog.is-highlighted` paints `--theme-color-primary` behind the row and
+ * recolours exactly three things to `--theme-color-on-primary`: `h2`, `.Label
+ * span` and `.Icon path` ([MenuDialog.module.scss:29-42]). **`EndSlot` is not
+ * one of them** — so a consumer that puts text in the end slot keeps its dim
+ * token on a bright blue background, and the row that is *selected* is the one
+ * row whose timestamp cannot be read.
+ *
+ * That is this phase's recurring shape for the fourth time: a rule that was
+ * right about its old subject. `is-highlighted` was written when an item was a
+ * label and an icon; the end slot arrived later and nothing revisited it. Filed
+ * for a design-system pass as well as fixed here, because it is a trap at every
+ * `MenuDialog` with an `endSlot`, not a defect of this panel.
+ */
+.is-current p {
+  color: var(--theme-color-on-primary);
+}

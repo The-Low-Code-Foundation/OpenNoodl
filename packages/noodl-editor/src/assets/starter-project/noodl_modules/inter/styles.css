@@ -7,8 +7,11 @@
  * --font-bold (700). Shipping fewer would leave the browser to synthesise or substitute a weight the
  * project's own defaults ask for.
  *
- * TTF rather than woff2 (which would be roughly a third of the size) because there is no woff2
- * encoder in this repo, and a font nobody can regenerate is worse than a larger one.
+ * woff2 since EXP-017. It used to be TTF, on the argument that there was no woff2 encoder in this
+ * repo and a font nobody can regenerate is worse than a larger one — a fair rule, answered by
+ * writing the encoder rather than by arguing with it: `scripts/library/ttf-to-woff2.js`, Node and
+ * zlib, no dependency. These four faces went from 1,256,396 B to 488,132 B, and they ship inside
+ * every project this product creates and every app deployed from one.
  *
  * `font-display: swap` so text is readable while the faces load. A project's first paint should not
  * be blank.
@@ -18,7 +21,7 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('./Inter-Regular.ttf') format('truetype');
+  src: url('./Inter-Regular.woff2') format('woff2');
 }
 
 @font-face {
@@ -26,7 +29,7 @@
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('./Inter-Medium.ttf') format('truetype');
+  src: url('./Inter-Medium.woff2') format('woff2');
 }
 
 @font-face {
@@ -34,7 +37,7 @@
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('./Inter-SemiBold.ttf') format('truetype');
+  src: url('./Inter-SemiBold.woff2') format('woff2');
 }
 
 @font-face {
@@ -42,5 +45,5 @@
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('./Inter-Bold.ttf') format('truetype');
+  src: url('./Inter-Bold.woff2') format('woff2');
 }

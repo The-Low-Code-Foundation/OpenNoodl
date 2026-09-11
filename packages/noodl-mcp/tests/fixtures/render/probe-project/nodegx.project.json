@@ -1,0 +1,6 @@
+{
+  "name": "probe-project",
+  "structure": {
+    "componentsDir": "components"
+  }
+}

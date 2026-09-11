@@ -1,0 +1,146 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "194d44fb-f5a9-5dfd-82db-554a86de636f",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fdField",
+      "type": "Group",
+      "label": "The field",
+      "children": [
+        "fdLabel",
+        "fdInput",
+        "fdMessage"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "fdLabel",
+      "type": "Text",
+      "label": "The label",
+      "parent": "fdField",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "fdInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "The control",
+      "parent": "fdField",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "type": "text",
+        "backgroundColor": "var(--background)",
+        "color": "var(--foreground)",
+        "fontSize": "var(--text-base)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "placeholder": ""
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "fdMessage",
+      "type": "Text",
+      "label": "What is wrong, or what is still needed",
+      "parent": "fdField",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-snug)",
+        "mounted": false
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "fdHasMessage",
+      "type": "Expression",
+      "label": "Is there anything to say?",
+      "parameters": {
+        "expression": "(m || '').length > 0"
+      },
+      "x": 350,
+      "y": 400
+    },
+    {
+      "id": "fdInputs",
+      "type": "Component Inputs",
+      "label": "The field",
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "type",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "messageColor",
+          "plug": "output",
+          "type": "color"
+        },
+        {
+          "name": "edge",
+          "plug": "output",
+          "type": "color"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "fdOutputs",
+      "type": "Component Outputs",
+      "label": "What was typed",
+      "ports": [
+        {
+          "name": "text",
+          "plug": "input",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "fdField"
+  ]
+}

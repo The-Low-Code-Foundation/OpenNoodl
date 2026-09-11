@@ -16,6 +16,24 @@
   margin: 0;
 }
 
+/* The intro and the live-value status are one block: `.Root`'s gap is sized for
+   the distance between *sections*, and two sentences about the same thing a
+   section apart read as unrelated. */
+.Header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-1);
+}
+
+/* The one sentence that distinguishes "no preview", "node not on screen" and
+   "running, and these are the values" — three states the rows render alike. */
+.LiveStatus {
+  color: var(--theme-color-fg-default-shy);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+}
+
 .Section {
   display: flex;
   flex-direction: column;
@@ -127,6 +145,49 @@
   }
 }
 
+/* The live value. Same chip shape as `.Type` directly above it, because the two
+   are read together — but at the emphasised foreground, since the value is the
+   thing being looked up and the type is its caption. */
+.Value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--spacing-1-5);
+  /* Hugs its content: `.Row` is a column flex, so the default stretch would
+     paint a full-width bar behind `42`. */
+  align-self: flex-start;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 1px var(--spacing-1);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.ValueLabel {
+  flex: none;
+  color: var(--theme-color-fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--font-size-xs);
+}
+
+.ValueText {
+  min-width: 0;
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+  /* The runtime caps the preview at 200 characters, which is still four or five
+     lines in this column. Clamped rather than truncated on one line: the shape
+     of an object or an array is most of what the row is being read for, and the
+     `title` carries the rest. */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .Description {
   color: var(--theme-color-fg-default);
   font-size: var(--font-size-sm);
@@ -144,6 +205,31 @@
 .AcceptsLabel {
   color: var(--theme-color-fg-default-shy);
   font-weight: var(--font-weight-medium);
+}
+
+/* FB-019 scope (3) — "what shape does this port take". Same size and colour as
+   `.Accepts` on purpose: the two are the same register of annotation, and a
+   third weight in a read-only column reads as a third kind of thing. */
+.WireShape {
+  color: var(--theme-color-fg-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.WireShapeLabel {
+  color: var(--theme-color-fg-default-shy);
+  font-weight: var(--font-weight-medium);
+}
+
+.WireShapeCode {
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+}
+
+.WireShapeBody {
+  color: var(--theme-color-fg-muted);
 }
 
 .Connections {

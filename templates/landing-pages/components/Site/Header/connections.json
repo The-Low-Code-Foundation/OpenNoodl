@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "3cb4d4a9-6570-5a88-8c04-efd9c7ed803b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav1",
+      "toId": "hdLink1",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav1Target",
+      "toId": "hdGo1",
+      "toProperty": "target"
+    },
+    {
+      "fromId": "hdLink1",
+      "fromProperty": "onClick",
+      "toId": "hdGo1",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav2",
+      "toId": "hdLink2",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav2Target",
+      "toId": "hdGo2",
+      "toProperty": "target"
+    },
+    {
+      "fromId": "hdLink2",
+      "fromProperty": "onClick",
+      "toId": "hdGo2",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav3",
+      "toId": "hdLink3",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "nav3Target",
+      "toId": "hdGo3",
+      "toProperty": "target"
+    },
+    {
+      "fromId": "hdLink3",
+      "fromProperty": "onClick",
+      "toId": "hdGo3",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "hdContact",
+      "fromProperty": "onClick",
+      "toId": "hdGoContact",
+      "toProperty": "go"
+    }
+  ]
+}

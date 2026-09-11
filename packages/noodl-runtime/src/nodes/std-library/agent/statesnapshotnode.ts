@@ -196,7 +196,7 @@ const StateSnapshotNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the last save or restore failed; blank once one succeeds',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: SnapshotInstance) {
         return this._internal.error;
       }

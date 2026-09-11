@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e010c000-0000-4000-8000-000000000003",
+  "version": 1,
+  "nodes": [
+    { "id": "pressed-root", "type": "Group", "children": ["pressed-text"] },
+    { "id": "pressed-text", "type": "Text", "parent": "pressed-root", "parameters": { "text": "SIGNAL-PRESSED" } }
+  ],
+  "visualRoots": ["pressed-root"]
+}

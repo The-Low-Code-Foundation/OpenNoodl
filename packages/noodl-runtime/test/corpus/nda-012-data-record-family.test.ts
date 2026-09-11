@@ -20,6 +20,7 @@ jest.mock('../../noodl-runtime', () => ({
   instance: { getMetaData: (key: string) => metadata[key] }
 }));
 
+import { valueDidChange } from '../../src/run-on-value-change';
 import ModelImport = require('../../src/model');
 import NodeCtor = require('../../src/node');
 import NewRecordModule = require('../../src/nodes/std-library/data/newdbmodelpropertiesnode');
@@ -98,7 +99,14 @@ function makeInstance(module: any, internal: Record<string, unknown>): Probe {
     // of asking whether `Fetch` is wired. `true` is the real default (absent reads as
     // ticked), and it is also the answer that keeps D7 measuring what D7 is about: the
     // *reachable* empty-Id path, which only runs when the setter is live.
-    shouldRunOnValueChange: () => true
+    shouldRunOnValueChange: () => true,
+    // DEF-046. The same obligation one release later: `modelId`'s setter now asks the
+    // *comparing* question — ticked AND actually different — so the stub carries it too.
+    // ⚠️ Answering a flat `true` here would make D7 pass on a node that re-binds on an
+    // unchanged id, so this stub uses the real rule rather than a constant: `undefined` on
+    // either side is a change, and two comparable values are compared.
+    shouldRunOnValueChanged: (_name: string, previous: unknown, next: unknown) =>
+      valueDidChange(previous, next)
   };
 
   // ERG-001. The *real* outcome members rather than doubles: they depend only on `hasOutput`,

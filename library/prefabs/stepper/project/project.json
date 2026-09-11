@@ -1,0 +1,754 @@
+{
+  "name": "Stepper",
+  "components": [
+    {
+      "name": "/Stepper",
+      "id": "57e99000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000001",
+            "fromProperty": "Steps",
+            "toId": "57e99000-1000-4000-9000-000000000003",
+            "toProperty": "in-Items"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000002",
+            "fromProperty": "items",
+            "toId": "57e99000-1000-4000-9000-000000000003",
+            "toProperty": "in-Samples"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000004",
+            "fromProperty": "currentCount",
+            "toId": "57e99000-1000-4000-9000-000000000003",
+            "toProperty": "in-Current"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Steps",
+            "toId": "57e99000-1000-4000-9000-000000000021",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Max",
+            "toId": "57e99000-1000-4000-9000-000000000004",
+            "toProperty": "limitsMax"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Max",
+            "toId": "57e99000-1000-4000-9000-000000000005",
+            "toProperty": "in-Max"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Progress",
+            "toId": "57e99000-1000-4000-9000-000000000031",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-NextLabel",
+            "toId": "57e99000-1000-4000-9000-000000000033",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-CanBack",
+            "toId": "57e99000-1000-4000-9000-000000000032",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Current",
+            "toId": "57e99000-1000-4000-9000-000000000006",
+            "toProperty": "Current Step"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000004",
+            "fromProperty": "currentCount",
+            "toId": "57e99000-1000-4000-9000-000000000005",
+            "toProperty": "in-Count"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000032",
+            "fromProperty": "onClick",
+            "toId": "57e99000-1000-4000-9000-000000000004",
+            "toProperty": "decrease"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000033",
+            "fromProperty": "onClick",
+            "toId": "57e99000-1000-4000-9000-000000000005",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000005",
+            "fromProperty": "out-Step",
+            "toId": "57e99000-1000-4000-9000-000000000004",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000005",
+            "fromProperty": "out-Finish",
+            "toId": "57e99000-1000-4000-9000-000000000006",
+            "toProperty": "Completed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "57e99000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -820,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Steps",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Data",
+                "index": 0
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000002",
+            "type": "Static Data",
+            "label": "Sample steps",
+            "x": -820,
+            "y": 240,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Title\": \"Your details\"\n    },\n    {\n        \"Title\": \"Delivery\"\n    },\n    {\n        \"Title\": \"Payment\"\n    },\n    {\n        \"Title\": \"Confirm\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000004",
+            "type": "Counter",
+            "label": "Current step",
+            "x": -820,
+            "y": 420,
+            "parameters": {
+              "startValue": 0,
+              "limitsEnabled": true,
+              "limitsMin": 0
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Stepper model",
+            "x": -460,
+            "y": 140,
+            "parameters": {
+              "functionScript": "// One pass over the steps, so the rail, the buttons and the limits all agree.\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nconst steps = connected.length > 0 ? connected : asArray(Inputs.Samples);\nconst count = Math.max(0, Number(Inputs.Current || 0));\nconst last = Math.max(0, steps.length - 1);\nconst current = Math.min(count, last);\n\nOutputs.Steps = steps.map((step, i) => ({\n  ...step,\n  Index: i,\n  Number: String(i + 1),\n  // \"done\" is behind you, \"current\" is here, \"todo\" is ahead. The Step\n  // component paints from this and nothing else.\n  State: i < current ? 'done' : i === current ? 'current' : 'todo',\n  IsLast: i === last\n}));\n\nOutputs.Max = last;\nOutputs.Current = current;\nOutputs.CanBack = current > 0;\nOutputs.IsLast = current >= last;\nOutputs.NextLabel = current >= last ? 'Finish' : 'Next';\nOutputs.Progress = steps.length === 0 ? '' : 'Step ' + (current + 1) + ' of ' + steps.length;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Samples",
+                "displayName": "Samples",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Current",
+                "displayName": "Current",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-Steps",
+                "displayName": "Steps",
+                "plug": "output",
+                "type": "array",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-Max",
+                "displayName": "Max",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Current",
+                "displayName": "Current",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-CanBack",
+                "displayName": "CanBack",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-IsLast",
+                "displayName": "IsLast",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-NextLabel",
+                "displayName": "NextLabel",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 8
+              },
+              {
+                "name": "out-Progress",
+                "displayName": "Progress",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 9
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000005",
+            "type": "JavaScriptFunction",
+            "label": "Advance",
+            "x": -460,
+            "y": 460,
+            "parameters": {
+              "functionScript": "// Runs only when Next is pressed. Both value inputs have \"Run on value\n// change\" unticked (runOnChange-in-Count / -in-Max) \u2014 with them ticked this\n// node re-runs whenever the count moves, which is *immediately after it moved\n// it*, and the stepper runs to the end on one click.\nconst count = Number(Inputs.Count || 0);\nconst max = Number(Inputs.Max || 0);\nif (count < max) Outputs.Step();\nelse Outputs.Finish();\n",
+              "runOnChange-in-Count": false,
+              "runOnChange-in-Max": false
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Count",
+                "displayName": "Count",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Max",
+                "displayName": "Max",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "runOnChange-in-Count",
+                "displayName": "Count",
+                "group": "Run On Value Change",
+                "plug": "input",
+                "default": true,
+                "type": {
+                  "name": "boolean",
+                  "allowEditOnly": true
+                },
+                "index": 2
+              },
+              {
+                "name": "runOnChange-in-Max",
+                "displayName": "Max",
+                "group": "Run On Value Change",
+                "plug": "input",
+                "default": true,
+                "type": {
+                  "name": "boolean",
+                  "allowEditOnly": true
+                },
+                "index": 3
+              },
+              {
+                "name": "out-Step",
+                "displayName": "Step",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-Finish",
+                "displayName": "Finish",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 5
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000006",
+            "type": "Component Outputs",
+            "x": -120,
+            "y": 460,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Current Step",
+                "plug": "input",
+                "type": {
+                  "name": "number"
+                },
+                "group": "State",
+                "index": 0
+              },
+              {
+                "name": "Completed",
+                "plug": "input",
+                "type": "signal",
+                "group": "State",
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000020",
+            "type": "Group",
+            "label": "Stepper",
+            "x": 20,
+            "y": -400,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "styleCss": "gap: 16px;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "57e99000-1000-4000-9000-000000000030",
+                "type": "Group",
+                "label": "Rail",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "styleCss": "flex-wrap: wrap; row-gap: 8px;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000021",
+                    "type": "For Each",
+                    "parameters": {
+                      "template": "/Stepper/Step"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "57e99000-1000-4000-9000-000000000034",
+                "type": "Group",
+                "label": "Controls",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "paddingTop": "var(--space-3)",
+                  "borderTopStyle": "solid",
+                  "borderTopWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderTopColor": "var(--border)",
+                  "styleCss": "gap: 8px;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000031",
+                    "type": "Text",
+                    "label": "Progress",
+                    "parameters": {
+                      "text": "Step 1 of 4",
+                      "sizeMode": "contentSize",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "styleCss": "flex: 1 1 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000032",
+                    "type": "net.noodl.controls.button",
+                    "label": "Back",
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Back",
+                      "backgroundColor": "var(--secondary)",
+                      "color": "var(--secondary-foreground)",
+                      "borderRadius": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "sizeMode": "contentSize",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000033",
+                    "type": "net.noodl.controls.button",
+                    "label": "Next",
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Next",
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "borderRadius": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "sizeMode": "contentSize",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Stepper/Step",
+      "id": "57e99000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000061",
+            "fromProperty": "Number",
+            "toId": "57e99000-1000-4000-9000-000000000073",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000061",
+            "fromProperty": "Title",
+            "toId": "57e99000-1000-4000-9000-000000000075",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000061",
+            "fromProperty": "State",
+            "toId": "57e99000-1000-4000-9000-000000000062",
+            "toProperty": "in-State"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000062",
+            "fromProperty": "out-CircleColor",
+            "toId": "57e99000-1000-4000-9000-000000000072",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000062",
+            "fromProperty": "out-NumberColor",
+            "toId": "57e99000-1000-4000-9000-000000000073",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000062",
+            "fromProperty": "out-TitleColor",
+            "toId": "57e99000-1000-4000-9000-000000000075",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000062",
+            "fromProperty": "out-ShowNumber",
+            "toId": "57e99000-1000-4000-9000-000000000073",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "57e99000-1000-4000-9000-000000000062",
+            "fromProperty": "out-ShowTick",
+            "toId": "57e99000-1000-4000-9000-000000000074",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "57e99000-1000-4000-9000-000000000061",
+            "type": "Component Inputs",
+            "x": -720,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Number",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Title",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "State",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000062",
+            "type": "JavaScriptFunction",
+            "label": "Step view",
+            "x": -400,
+            "y": 40,
+            "parameters": {
+              "functionScript": "// Colour is the only thing that carries state here, so it is derived once\n// and never restated in the graph.\nconst state = String(Inputs.State || 'todo');\nconst done = state === 'done';\nconst current = state === 'current';\n\nOutputs.ShowNumber = !done;\nOutputs.ShowTick = done;\nOutputs.CircleColor = done || current ? 'var(--primary)' : 'var(--muted)';\nOutputs.NumberColor = current ? 'var(--primary-foreground)' : 'var(--muted-foreground)';\nOutputs.TitleColor = current ? 'var(--foreground)' : 'var(--muted-foreground)';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-State",
+                "displayName": "State",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "out-ShowNumber",
+                "displayName": "ShowNumber",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 1
+              },
+              {
+                "name": "out-ShowTick",
+                "displayName": "ShowTick",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 2
+              },
+              {
+                "name": "out-CircleColor",
+                "displayName": "CircleColor",
+                "plug": "output",
+                "type": "color",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-NumberColor",
+                "displayName": "NumberColor",
+                "plug": "output",
+                "type": "color",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-TitleColor",
+                "displayName": "TitleColor",
+                "plug": "output",
+                "type": "color",
+                "group": "Outputs",
+                "index": 5
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "57e99000-1000-4000-9000-000000000071",
+            "type": "Group",
+            "label": "Step",
+            "x": 20,
+            "y": -300,
+            "parameters": {
+              "flexDirection": "row",
+              "alignItems": "center",
+              "sizeMode": "contentSize",
+              "styleCss": "gap: 8px; flex: 0 0 auto;",
+              "marginRight": "var(--space-6)"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "57e99000-1000-4000-9000-000000000072",
+                "type": "Group",
+                "label": "Circle",
+                "parameters": {
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 26,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 26,
+                    "unit": "px"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "backgroundColor": "var(--muted)",
+                  "borderRadius": {
+                    "value": 9999,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 0 0 auto;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000073",
+                    "type": "Text",
+                    "label": "Number",
+                    "parameters": {
+                      "text": "1",
+                      "sizeMode": "contentSize",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600; user-select: none;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "57e99000-1000-4000-9000-000000000074",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Tick",
+                    "parameters": {
+                      "mounted": false,
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-check",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--primary-foreground)",
+                      "iconSize": {
+                        "value": 15,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "57e99000-1000-4000-9000-000000000075",
+                "type": "Text",
+                "label": "Title",
+                "parameters": {
+                  "text": "Step",
+                  "sizeMode": "contentSize",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 14,
+                    "unit": "px"
+                  },
+                  "styleCss": "white-space: nowrap;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {},
+  "variants": []
+}

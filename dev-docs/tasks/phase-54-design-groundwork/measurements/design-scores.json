@@ -1,0 +1,427 @@
+{
+  "rubric": "DSG-006 §3",
+  "scoredOn": "2026-08-11",
+  "note": "one row per criterion; no total by design. All eight criteria live as of the render-measure colour+rhythm extension. F41: `one accent` scores area SHARE of the viewport, not the accent count alone — the ceiling is 25%, a doctrine call rather than a fitted one. F40: `real-copy` now exempts a literal a connection overwrites and catches structural nouns, zero-values and the create_project skeleton sentence. F39: `empty-state` now recognises the mechanism the doctrine actually teaches — isEmpty/count wired into visible/mounted — as well as a gate node, and its gate-node list no longer contains a dead alternative.",
+  "runs": [
+    {
+      "project": "phase55-s6-haiku",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 1,
+          "value": "3 distinct",
+          "evidence": "400, 600, 700"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 0,
+          "value": "1 accent, 52.4%",
+          "evidence": "covers 52.4% of the viewport, over the 25.0% ceiling — a ground, not an accent: rgb(59, 130, 246) (603740px², 52.4%)"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 1,
+          "value": "3 spacings",
+          "evidence": "3 bands; 16px×2, 40px×2, 80px×2"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 0,
+          "value": "0 loading",
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 0,
+          "value": "+253px",
+          "evidence": "scrollWidth 643 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 1,
+          "value": "1/4 multi-column",
+          "evidence": "column-item 3×1 250/750px"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/3 lists gated",
+          "evidence": "Components/BrowseCategories (none); Components/FeaturedProducts (none); Components/Footer (none)"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 1,
+          "value": "clean",
+          "evidence": "no generic copy found"
+        }
+      ]
+    },
+    {
+      "project": "phase55-s6-qwen35-27b",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 0,
+          "value": "1 distinct",
+          "evidence": "400"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 0,
+          "value": "0 loading",
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 1,
+          "value": "fits",
+          "evidence": "scrollWidth 390 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 0,
+          "value": "0/0 multi-column",
+          "evidence": "no repeated groups"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/0 lists gated",
+          "evidence": "no For Each or Query Records in the project"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 0,
+          "value": "1 generic",
+          "evidence": "Pages/Home text=\"Kiln & Co. — nothing built yet. Review the plan in docs/ and\""
+        }
+      ]
+    },
+    {
+      "project": "phase55-s6-sonnet",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 1,
+          "value": "4 distinct",
+          "evidence": "400, 500, 600, 700"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 1,
+          "value": "1 accent, 1.3%",
+          "evidence": "rgb(59, 130, 246) (14474px², 1.3%)"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 1,
+          "value": "4 spacings",
+          "evidence": "6 bands; 32px×2, 40px×1, 64px×2, 80px×5"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 1,
+          "value": "10 loading",
+          "evidence": "10 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 1,
+          "value": "fits",
+          "evidence": "scrollWidth 390 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 1,
+          "value": "5/12 multi-column",
+          "evidence": "column-item 4×2 291/1164px; column-item 3×1 400/1200px; column-item 3×1 395/1184px; column-item 4×1 294/1176px; column-item 3×1 389/1168px"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/1 lists gated",
+          "evidence": "Components/Home/FeaturedProducts (none)"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 1,
+          "value": "clean",
+          "evidence": "no generic copy found"
+        }
+      ]
+    },
+    {
+      "project": "phase55-s8-deepseek-v4-pro",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 0,
+          "value": "0 distinct",
+          "evidence": "none"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 0,
+          "value": "0 loading",
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 1,
+          "value": "fits",
+          "evidence": "scrollWidth 390 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 0,
+          "value": "0/0 multi-column",
+          "evidence": "no repeated groups"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/1 lists gated",
+          "evidence": "Components/FooterLinkColumn (none)"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 1,
+          "value": "clean",
+          "evidence": "no generic copy found"
+        }
+      ]
+    },
+    {
+      "project": "phase55-s8-kimi-k3",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 0,
+          "value": "1 distinct",
+          "evidence": "400"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 0 neutral"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 0,
+          "value": "0 spacings",
+          "evidence": "1 bands; none"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 0,
+          "value": "0 loading",
+          "evidence": "0 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 1,
+          "value": "fits",
+          "evidence": "scrollWidth 390 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 0,
+          "value": "0/0 multi-column",
+          "evidence": "no repeated groups"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/0 lists gated",
+          "evidence": "no For Each or Query Records in the project"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 0,
+          "value": "1 generic",
+          "evidence": "Pages/Home text=\"Kiln & Co. — nothing built yet. Review the plan in docs/ and\""
+        }
+      ]
+    },
+    {
+      "project": "phase58-awp006-deepseek",
+      "projectName": "Kiln & Co.",
+      "criteria": [
+        {
+          "key": "type-hierarchy",
+          "doctrine": "§3",
+          "source": "render",
+          "score": 1,
+          "value": "4 distinct",
+          "evidence": "400, 500, 600, 700"
+        },
+        {
+          "key": "one-accent",
+          "doctrine": "§4",
+          "source": "render",
+          "score": 0,
+          "value": "0 accents",
+          "evidence": "no chromatic background; 3 neutral"
+        },
+        {
+          "key": "rhythm",
+          "doctrine": "§1,§8",
+          "source": "render",
+          "score": 1,
+          "value": "4 spacings",
+          "evidence": "6 bands; 16px×2, 40px×3, 64px×1, 80px×6"
+        },
+        {
+          "key": "imagery-present",
+          "doctrine": "§5",
+          "source": "render",
+          "score": 1,
+          "value": "8 loading",
+          "evidence": "8 <img> rendered, 0 broken (DOM, not authored Image nodes)"
+        },
+        {
+          "key": "narrow-survives",
+          "doctrine": "§7,§11",
+          "source": "render",
+          "score": 1,
+          "value": "fits",
+          "evidence": "scrollWidth 390 vs clientWidth 390, 0 overflowing"
+        },
+        {
+          "key": "grid-is-a-grid",
+          "doctrine": "§8,§11",
+          "source": "render",
+          "score": 1,
+          "value": "4/12 multi-column",
+          "evidence": "column-item 4×2 292/1168px; column-item 3×1 400/1200px; column-item 3×1 392/1176px; column-item 4×1 237/1184px"
+        },
+        {
+          "key": "empty-state",
+          "doctrine": "§9",
+          "source": "graph",
+          "score": 0,
+          "value": "0/1 lists gated",
+          "evidence": "Components/FeaturedProducts (none)"
+        },
+        {
+          "key": "real-copy",
+          "doctrine": "§10",
+          "source": "graph",
+          "score": 1,
+          "value": "clean",
+          "evidence": "no generic copy found"
+        }
+      ]
+    }
+  ]
+}

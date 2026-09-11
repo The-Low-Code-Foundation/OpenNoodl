@@ -12,7 +12,17 @@
     "onScrollPositionChanged": "Number level with the current scroll offset while scrolling is enabled."
   },
   "runtimeBehavior": "Group's port list is largely static, but several port groups are conditional on parameter values (declared-port-groups): scroll-related ports appear when scrolling is enabled, advanced-dimension ports depend on the size mode, and visual-state variants add ports per state. An authoring tool should treat the catalog's input list as the superset and expect the editor to expose subsets based on the node's current parameters.",
-  "examples": ["repeater-query-records", "validate-before-submit"],
+  "examples": [
+    "repeater-query-records",
+    "validate-before-submit",
+    "ui-page-shell-bands",
+    "ui-card-grid-repeater",
+    "ui-split-hero",
+    "ui-icon-feature-strip",
+    "ui-stat-tile-row",
+    "ui-empty-state",
+    "layout-wrap-a-row-of-content-width-items"
+  ],
   "patterns": [
     "Component root: a single Group at the top of every visual component, `flexDirection` column.",
     "Scroll list: outer Group with scrolling enabled and `clip` true, Repeater inside."
@@ -20,5 +30,11 @@
   "antiPatterns": [
     "Deeply nesting a Group per style tweak; set padding/margins on the existing Group instead."
   ],
-  "relatedNodes": ["Text", "Image", "For Each", "Component Children", "net.noodl.visual.columns"]
+  "relatedNodes": [
+    "Text",
+    "Image",
+    "For Each",
+    "Component Children",
+    "net.noodl.visual.columns"
+  ]
 }

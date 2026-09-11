@@ -1,0 +1,8 @@
+{
+  "label": "Badge Card",
+  "description": "A small card with a badge.\nSecond line that must not appear in the index row.",
+  "type": "prefab",
+  "tags": ["UI", "Feedback"],
+  "version": "1.2.0",
+  "docsPath": "/library/prefabs/badge-card/"
+}

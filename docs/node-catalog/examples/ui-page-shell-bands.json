@@ -1,0 +1,261 @@
+{
+  "id": "ui-page-shell-bands",
+  "title": "Page spine: full-bleed bands, a centred max-width shell, an announced section",
+  "description": "The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems \"center\" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.",
+  "demonstrates": [
+    "Page",
+    "Group",
+    "Text"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": {
+            "title": "Example",
+            "urlPath": "example"
+          },
+          "children": [
+            "canvas"
+          ]
+        },
+        {
+          "id": "canvas",
+          "type": "Group",
+          "label": "Page canvas",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "backgroundColor": "var(--background)",
+            "flexDirection": "column",
+            "alignItems": "center"
+          },
+          "parent": "page",
+          "children": [
+            "band_a",
+            "band_b"
+          ]
+        },
+        {
+          "id": "band_a",
+          "type": "Group",
+          "label": "Band A — on the page background",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "parent": "canvas",
+          "children": [
+            "shell_a"
+          ]
+        },
+        {
+          "id": "shell_a",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band_a",
+          "children": [
+            "a_head",
+            "a_body"
+          ]
+        },
+        {
+          "id": "a_head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "shell_a",
+          "children": [
+            "a_eyebrow",
+            "a_heading",
+            "a_sub"
+          ]
+        },
+        {
+          "id": "a_eyebrow",
+          "type": "Text",
+          "label": "Eyebrow",
+          "parameters": {
+            "text": "This month",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)"
+          },
+          "parent": "a_head"
+        },
+        {
+          "id": "a_heading",
+          "type": "Text",
+          "label": "Heading",
+          "parameters": {
+            "text": "The things we keep re-making",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "a_head"
+        },
+        {
+          "id": "a_sub",
+          "type": "Text",
+          "label": "Sub-line",
+          "parameters": {
+            "text": "One sub-line, capped so it wraps at a readable measure rather than the full shell width.",
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)",
+            "maxWidth": {
+              "value": 560,
+              "unit": "px"
+            }
+          },
+          "parent": "a_head"
+        },
+        {
+          "id": "a_body",
+          "type": "Text",
+          "label": "Section content",
+          "parameters": {
+            "text": "Section content goes here.",
+            "fontSize": "var(--text-base)",
+            "color": "var(--foreground)"
+          },
+          "parent": "shell_a"
+        },
+        {
+          "id": "band_b",
+          "type": "Group",
+          "label": "Band B — on the raised surface, with hairlines",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "backgroundColor": "var(--surface)",
+            "borderTopStyle": "solid",
+            "borderTopWidth": "var(--border-1)",
+            "borderTopColor": "var(--border)",
+            "borderBottomStyle": "solid",
+            "borderBottomWidth": "var(--border-1)",
+            "borderBottomColor": "var(--border)",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "parent": "canvas",
+          "children": [
+            "shell_b"
+          ]
+        },
+        {
+          "id": "shell_b",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band_b",
+          "children": [
+            "b_head"
+          ]
+        },
+        {
+          "id": "b_head",
+          "type": "Group",
+          "label": "Section head",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingBottom": "var(--space-10)"
+          },
+          "parent": "shell_b",
+          "children": [
+            "b_eyebrow",
+            "b_heading"
+          ]
+        },
+        {
+          "id": "b_eyebrow",
+          "type": "Text",
+          "label": "Eyebrow",
+          "parameters": {
+            "text": "Browse",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)"
+          },
+          "parent": "b_head"
+        },
+        {
+          "id": "b_heading",
+          "type": "Text",
+          "label": "Heading",
+          "parameters": {
+            "text": "The next band changes background",
+            "fontSize": "var(--text-3xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-tight)",
+            "letterSpacing": "var(--tracking-tight)",
+            "color": "var(--foreground)"
+          },
+          "parent": "b_head"
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

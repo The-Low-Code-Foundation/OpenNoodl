@@ -1,0 +1,53 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c6f2a27d-f5fc-486d-8e93-67a4556a05a0",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "nd-ci",
+      "type": "Component Inputs",
+      "x": -260,
+      "y": 0,
+      "ports": [
+        {
+          "name": "Caption",
+          "plug": "output",
+          "type": "*",
+          "index": 0
+        }
+      ]
+    },
+    {
+      "id": "nd-root",
+      "type": "Group",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": "16",
+        "paddingLeft": "16"
+      },
+      "children": [
+        "nd-text",
+        "nd-static"
+      ]
+    },
+    {
+      "id": "nd-text",
+      "type": "Text",
+      "label": "Caption lands here; no text parameter of its own",
+      "parent": "nd-root"
+    },
+    {
+      "id": "nd-static",
+      "type": "Text",
+      "parameters": {
+        "text": "static marker"
+      },
+      "parent": "nd-root"
+    }
+  ],
+  "visualRoots": [
+    "nd-root"
+  ]
+}

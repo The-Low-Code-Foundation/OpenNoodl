@@ -12,16 +12,54 @@
  */
 
 import { DECOMPOSITION_PLANNING } from './decomposition';
+import { DESIGN_PLANNING } from './design';
+import { PLAN_REPEAT_SOURCES, PLAN_STRUCTURE_DESCRIPTIONS as D } from '../plan';
 import type { AiToolDefinition } from '../../client/types';
 
 export const SUBMIT_PLAN = 'submit_plan';
+
+/**
+ * LAS-006 — the structured operation fields as JSON Schema, from the shared
+ * descriptions. The MCP client renders the same words into zod; this is the
+ * editor's dialect of one model.
+ */
+const portArray = (description: string) => ({
+  type: 'array',
+  description,
+  items: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', description: D.portName },
+      type: { type: 'string', description: D.portType },
+      description: { type: 'string', description: D.portDescription }
+    },
+    required: ['name']
+  }
+});
+
+const PLAN_STRUCTURE_SCHEMA = {
+  inputs: portArray(D.inputs),
+  outputs: portArray(D.outputs),
+  repeats: {
+    type: 'object',
+    description: D.repeats,
+    properties: {
+      source: { type: 'string', enum: [...PLAN_REPEAT_SOURCES], description: D.repeatSource },
+      rowFields: { type: 'array', items: { type: 'string' }, description: D.repeatRowFields }
+    },
+    required: ['source', 'rowFields']
+  },
+  instantiates: { type: 'array', items: { type: 'string' }, description: D.instantiates }
+};
 
 export const PLANNING_TOOLS: AiToolDefinition[] = [
   {
     name: SUBMIT_PLAN,
     description:
       'Submit the plan: an ordered list of operations, each naming ONE component (or doc) and stating its ' +
-      'intent in one or two sentences. No nodes, no connections — intent only.',
+      'intent in one or two sentences. No nodes, no connections — intent and interface only. For any component ' +
+      'another one will place, also fill `inputs` (and `repeats` where it draws a row per item): those names ' +
+      'are the contract the authoring turns build against.',
     parameters: {
       type: 'object',
       properties: {
@@ -47,7 +85,14 @@ export const PLANNING_TOOLS: AiToolDefinition[] = [
                 description:
                   'One or two sentences: what this operation should accomplish. Name shared things (routes, ' +
                   'events, component interfaces) explicitly — sibling operations build against this sentence.'
-              }
+              },
+              // LAS-006 — the fields an intent sentence could not carry. The
+              // planning doctrine has always asked for interfaces *in the
+              // intent*; a cold replay produced a correct decomposition whose
+              // intents mentioned none, and every card rendered dead. Same
+              // fields, same names, same optionality as the MCP `create_plan`
+              // schema — one plan model, two clients.
+              ...PLAN_STRUCTURE_SCHEMA
             },
             required: ['kind', 'target', 'intent']
           }
@@ -81,7 +126,20 @@ HOW TO SCOPE
   "Tight" is about relevance, not count — see COMPONENTS ARE THE UNIT OF GOOD WORK below, which is
   the other half of this rule and outranks any instinct to keep the number of operations down.
 
+DECLARE THE INTERFACE, DO NOT DESCRIBE IT
+Every operation that creates a component something else will place must fill "inputs" with the port
+names the instances will set — not mention them in the intent sentence, fill the field. The sentence is
+read by a human; the field is read by the turn that authors the component and by the gate that checks it.
+- A component with no inputs renders the same thing every time it is placed. If four cards differ, the
+  card has four inputs, and this is where they are named.
+- Where a component draws one row per item, fill "repeats": its rowFields are exactly the inputs the
+  row component must expose. Name them once here and both operations agree by construction.
+- "instantiates" lists what an operation places, so the plan states its own dependencies.
+- Pages take no inputs. A page is navigated to, never instantiated.
+
 ${DECOMPOSITION_PLANNING}
+
+${DESIGN_PLANNING}
 
 PAGES ARE REGISTERED, OR THEY DO NOT EXIST
 A page component is only reachable when a Page Router node lists it — the router's "pages" parameter
@@ -107,12 +165,23 @@ prose and do not submit a plan.`;
  * when the project has no docs, which keeps the rule's condition honest in both
  * directions.
  */
-export function planningUserMessage(request: string, projectOverview: string, docsOverview?: string): string {
+export function planningUserMessage(
+  request: string,
+  projectOverview: string,
+  docsOverview?: string,
+  references?: string
+): string {
   return [
     '--- PROJECT OVERVIEW ---',
     projectOverview,
     '--- END PROJECT OVERVIEW ---',
     ...(docsOverview ? ['', '--- PROJECT DOCUMENTS ---', docsOverview, '--- END PROJECT DOCUMENTS ---'] : []),
+    // BLD-011 — the user's attachments, before the request so the request keeps
+    // the last word. This message carries no `cacheBoundary` (nothing in a
+    // planning turn is stable enough to cache), so placement here is about
+    // recency rather than Rule 6 — but the authoring turn's is about both, and
+    // the two orderings match so that one format is learned once.
+    ...(references ? ['', references] : []),
     '',
     '--- THE REQUEST ---',
     request,
@@ -128,5 +197,26 @@ export function planRepairMessage(errors: string[]): string {
     ...errors.map((e) => `- ${e}`),
     '',
     `Fix exactly these and resubmit the full plan with ${SUBMIT_PLAN}.`
+  ].join('\n');
+}
+
+/**
+ * LAS-006 — sent ONCE for an executable plan that left its interfaces unstated.
+ *
+ * Deliberately not a repair message: the plan is valid and will be accepted
+ * whatever comes back, including the identical plan. What this buys is the one
+ * cheap turn in which "which inputs does the card need" is still a plan-level
+ * question rather than a rejected component three turns later. The session
+ * sends it at most once, so a model that stands by its plan costs one turn and
+ * never loops.
+ */
+export function planAdvisoryMessage(advisories: readonly { message: string }[]): string {
+  return [
+    `The plan is executable and will be accepted. Before it runs — ${advisories.length} thing(s) worth fixing now,`,
+    'because they are cheap here and expensive later:',
+    ...advisories.map((a) => `- ${a.message}`),
+    '',
+    `Resubmit the full plan with ${SUBMIT_PLAN} if you want to amend it. If it is right as it stands, say so in`,
+    'prose and it will be used unchanged.'
   ].join('\n');
 }

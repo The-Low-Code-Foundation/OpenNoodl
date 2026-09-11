@@ -1,0 +1,221 @@
+/* BEN-004 — the preview surface's chrome.
+   Phase 23 rule holds throughout: red means danger only. The bench is not an
+   error state, so it is coloured with accent and surface tokens, never with
+   `--theme-color-danger`. */
+
+.ScopeRoot {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ScopeChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 240px;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  /* R2's cue, restated on the control itself: the chip that names a component
+     does not look like the chip that names the app. */
+  &.is-bench {
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+}
+
+.ScopeLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ScopeMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 10;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg, 0 8px 24px rgba(0, 0, 0, 0.4));
+  overflow: hidden;
+}
+
+.ScopeSearch {
+  flex-shrink: 0;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  outline: none;
+}
+
+.ScopeList {
+  /* Bounded, because the surface it opens into is `overflow: hidden` (see
+     `.Background`) — an unbounded list as long as the corpus would be cut off at
+     the panel edge with no way to reach the end. 260px keeps the whole menu
+     inside any preview panel tall enough to be worth previewing in. */
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.ScopeItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+  }
+
+  &.is-current {
+    color: var(--theme-color-primary);
+  }
+}
+
+.ScopeItemLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ScopeItemHint {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ScopeEmpty {
+  padding: 10px;
+}
+
+.FrameRoot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.FrameChip {
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-muted);
+  font-size: 10.5px;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    color: var(--theme-color-fg-default);
+  }
+
+  &.is-active {
+    border-color: var(--theme-color-primary);
+    color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+/* FIX-011 — one rule for the pair. The height field is the width field with a
+   different meaning for "empty", so it is styled by the same declarations
+   rather than by a copy that drifts. Both class names still exist in the
+   emitted module, which is what a `css.FrameHeight` lookup needs. */
+.FrameWidth,
+.FrameHeight {
+  width: 52px;
+  height: 20px;
+  padding: 0 6px;
+  flex-shrink: 0;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-2);
+  color: var(--theme-color-fg-default);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+  outline: none;
+
+  &:focus {
+    border-color: var(--theme-color-primary);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
+
+  /* "Fill" is a real answer, not absent text, so it is legible rather than
+     ghosted — but still quieter than a typed number, which is the state it is
+     telling you apart from. */
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+    opacity: 1;
+  }
+}
+
+.FrameTimes {
+  flex-shrink: 0;
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+}
+
+/* FIX-011 — the write gesture. Icon-only: the strip is 30px and was already
+   measured clipping at 640px, so the words live in the tooltip. */
+.FrameDefault {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--theme-color-fg-default);
+    border-color: var(--theme-color-border-default);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}

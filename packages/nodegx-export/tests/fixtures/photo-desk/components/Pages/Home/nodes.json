@@ -1,0 +1,508 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "Photo Desk",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Desk",
+      "parent": "ph0t0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e05",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingTop": "var(--space-6)"
+      },
+      "children": [
+        "heading",
+        "usernameInput",
+        "passwordInput",
+        "loginBtn",
+        "loginErrorText",
+        "whoText",
+        "pickBtn",
+        "pickedNameText",
+        "pickedSizeText",
+        "pickNoteText",
+        "pickErrorText",
+        "privateCheck",
+        "uploadBtn",
+        "uploadErrorText",
+        "urlText",
+        "nameText",
+        "typeText",
+        "sizeText",
+        "lastUploadText",
+        "preview",
+        "signBtn",
+        "signedUrlText",
+        "kindText",
+        "shareText",
+        "expiresText",
+        "ttlText",
+        "signErrorText",
+        "lastSignedText"
+      ],
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "shell",
+      "parameters": {
+        "text": "Photo Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 100,
+      "y": 220
+    },
+    {
+      "id": "usernameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Username",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Username"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "passwordInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Password",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Password",
+        "type": "password"
+      },
+      "x": 100,
+      "y": 340
+    },
+    {
+      "id": "loginBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Log In",
+      "parent": "shell",
+      "parameters": {
+        "label": "Log In"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "loginErrorText",
+      "type": "Text",
+      "label": "Login error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 460
+    },
+    {
+      "id": "whoText",
+      "type": "Text",
+      "label": "Signed in as",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "pickBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Choose a photo",
+      "parent": "shell",
+      "parameters": {
+        "label": "Choose a photo"
+      },
+      "x": 100,
+      "y": 580
+    },
+    {
+      "id": "pickedNameText",
+      "type": "Text",
+      "label": "Picked name",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "pickedSizeText",
+      "type": "Text",
+      "label": "Picked size",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 700
+    },
+    {
+      "id": "pickNoteText",
+      "type": "Text",
+      "label": "Pick note",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "pickErrorText",
+      "type": "Text",
+      "label": "Pick error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 820
+    },
+    {
+      "id": "privateCheck",
+      "type": "net.noodl.controls.checkbox",
+      "label": "Private",
+      "parent": "shell",
+      "parameters": {
+        "label": "Private"
+      },
+      "x": 100,
+      "y": 880
+    },
+    {
+      "id": "uploadBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Upload",
+      "parent": "shell",
+      "parameters": {
+        "label": "Upload"
+      },
+      "x": 100,
+      "y": 940
+    },
+    {
+      "id": "uploadErrorText",
+      "type": "Text",
+      "label": "Upload error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "urlText",
+      "type": "Text",
+      "label": "Stored URL",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1060
+    },
+    {
+      "id": "nameText",
+      "type": "Text",
+      "label": "Stored name",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1120
+    },
+    {
+      "id": "typeText",
+      "type": "Text",
+      "label": "Stored type",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1180
+    },
+    {
+      "id": "sizeText",
+      "type": "Text",
+      "label": "Stored size",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1240
+    },
+    {
+      "id": "lastUploadText",
+      "type": "Text",
+      "label": "Last upload",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1300
+    },
+    {
+      "id": "preview",
+      "type": "Image",
+      "label": "Preview",
+      "parent": "shell",
+      "parameters": {
+        "width": "160px",
+        "height": "120px",
+        "objectFit": "cover"
+      },
+      "x": 100,
+      "y": 1360
+    },
+    {
+      "id": "signBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Sign the link",
+      "parent": "shell",
+      "parameters": {
+        "label": "Sign the link"
+      },
+      "x": 100,
+      "y": 1420
+    },
+    {
+      "id": "signedUrlText",
+      "type": "Text",
+      "label": "Signed URL",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1480
+    },
+    {
+      "id": "kindText",
+      "type": "Text",
+      "label": "URL kind",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1540
+    },
+    {
+      "id": "shareText",
+      "type": "Text",
+      "label": "Safe to share",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1600
+    },
+    {
+      "id": "expiresText",
+      "type": "Text",
+      "label": "Expires at",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1660
+    },
+    {
+      "id": "ttlText",
+      "type": "Text",
+      "label": "TTL",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1720
+    },
+    {
+      "id": "signErrorText",
+      "type": "Text",
+      "label": "Sign error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "color": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 1780
+    },
+    {
+      "id": "lastSignedText",
+      "type": "Text",
+      "label": "Last signed",
+      "parent": "shell",
+      "parameters": {
+        "text": ""
+      },
+      "x": 100,
+      "y": 1840
+    },
+    {
+      "id": "login",
+      "type": "net.noodl.user.LogIn",
+      "label": "Log In Action",
+      "x": 600,
+      "y": 420
+    },
+    {
+      "id": "me",
+      "type": "net.noodl.user.User",
+      "label": "Current User",
+      "x": 600,
+      "y": 480
+    },
+    {
+      "id": "picker",
+      "type": "Open File Picker",
+      "label": "Photo picker",
+      "x": 600,
+      "y": 540,
+      "parameters": {
+        "acceptedFileTypes": "image/*"
+      }
+    },
+    {
+      "id": "pickNoteSet",
+      "type": "Set Variable",
+      "label": "Remember the pick",
+      "x": 600,
+      "y": 600,
+      "parameters": {
+        "name": "pickNote"
+      }
+    },
+    {
+      "id": "pickNoteCancel",
+      "type": "Set Variable",
+      "label": "Note the cancel",
+      "x": 600,
+      "y": 660,
+      "parameters": {
+        "name": "pickNote"
+      }
+    },
+    {
+      "id": "pickNoteRead",
+      "type": "Variable2",
+      "label": "Pick note",
+      "x": 600,
+      "y": 720,
+      "parameters": {
+        "name": "pickNote"
+      }
+    },
+    {
+      "id": "upload",
+      "type": "Upload File",
+      "label": "Photo upload",
+      "x": 600,
+      "y": 780
+    },
+    {
+      "id": "cloud",
+      "type": "Cloud File",
+      "label": "Stored photo",
+      "x": 600,
+      "y": 840
+    },
+    {
+      "id": "lastUploadSet",
+      "type": "Set Variable",
+      "label": "Remember the upload",
+      "x": 600,
+      "y": 900,
+      "parameters": {
+        "name": "lastUpload"
+      }
+    },
+    {
+      "id": "lastUploadRead",
+      "type": "Variable2",
+      "label": "Last upload",
+      "x": 600,
+      "y": 960,
+      "parameters": {
+        "name": "lastUpload"
+      }
+    },
+    {
+      "id": "sign",
+      "type": "Sign File URL",
+      "label": "Photo link",
+      "x": 600,
+      "y": 1020
+    },
+    {
+      "id": "lastSignedSet",
+      "type": "Set Variable",
+      "label": "Remember the link",
+      "x": 600,
+      "y": 1080,
+      "parameters": {
+        "name": "lastSigned"
+      }
+    },
+    {
+      "id": "lastSignedRead",
+      "type": "Variable2",
+      "label": "Last signed",
+      "x": 600,
+      "y": 1140,
+      "parameters": {
+        "name": "lastSigned"
+      }
+    },
+    {
+      "id": "cancelWord",
+      "type": "String",
+      "label": "The cancel note",
+      "parameters": {
+        "value": "nothing chosen"
+      },
+      "x": 900,
+      "y": 660
+    }
+  ]
+}

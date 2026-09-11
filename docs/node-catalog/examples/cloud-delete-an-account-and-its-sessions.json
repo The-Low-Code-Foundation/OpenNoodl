@@ -1,0 +1,34 @@
+{
+  "id": "cloud-delete-an-account-and-its-sessions",
+  "title": "Delete an account, and the sessions that outlive it",
+  "description": "Deleting a user is two deletions, and the ORDER is the interesting part: the sessions go first, then the `_User` row. Reversed, there would be a window in which live session tokens resolve to a row the backend can no longer fetch — signed-in requests from an account that no longer exists. Delete User does both, in that order, with the authority of the server. `sessionsRevoked` reports how many session rows went, which is also the honest answer to 'was anybody actually signed in as them?' — a number worth returning to the caller and worth logging, because it is the difference between deleting a dormant account and cutting somebody off mid-session. `userId` is required: a blank one is a failure with a sentence saying so, and never a fallback to the caller, because the worst possible default for this node is 'delete whoever asked'. `unchanged` means the account was already gone, which is a success for a delete and is wired that way here — an offboarding job that is run twice should not fail the second time. The account id is taken from the request parameters rather than from the caller's own identity precisely so that this is an admin action on someone else; the permission rule on who may call the function is what makes that safe, and it lives on the function, not in this graph.",
+  "demonstrates": ["noodl.cloud.deleteuser", "noodl.cloud.request", "noodl.cloud.response", "net.noodl.Log"],
+  "components": [
+    {
+      "name": "/Cloud Functions/Delete Account",
+      "nodes": [
+        { "id": "fn_request", "type": "noodl.cloud.request", "label": "Request", "parameters": { "params": "userId" } },
+        { "id": "purge", "type": "noodl.cloud.deleteuser", "label": "Sessions first, then the row" },
+        {
+          "id": "audit_log",
+          "type": "net.noodl.Log",
+          "label": "How many sessions were cut",
+          "parameters": { "level": "info", "message": "Delete Account: the account was removed." }
+        },
+        { "id": "ok_response", "type": "noodl.cloud.response", "label": "How many sessions went", "parameters": { "params": "sessionsRevoked" } },
+        { "id": "fail_response", "type": "noodl.cloud.response", "label": "Failure", "parameters": { "status": "failure" } }
+      ],
+      "connections": [
+        { "fromId": "fn_request", "fromProperty": "userId", "toId": "purge", "toProperty": "userId" },
+        { "fromId": "fn_request", "fromProperty": "receive", "toId": "purge", "toProperty": "remove" },
+        { "fromId": "purge", "fromProperty": "sessionsRevoked", "toId": "audit_log", "toProperty": "value" },
+        { "fromId": "purge", "fromProperty": "done", "toId": "audit_log", "toProperty": "log" },
+        { "fromId": "purge", "fromProperty": "sessionsRevoked", "toId": "ok_response", "toProperty": "sessionsRevoked" },
+        { "fromId": "purge", "fromProperty": "done", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "purge", "fromProperty": "unchanged", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "purge", "fromProperty": "error", "toId": "fail_response", "toProperty": "errorMessage" },
+        { "fromId": "purge", "fromProperty": "failure", "toId": "fail_response", "toProperty": "send" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+# success turns=46 costUsd=2.05 durS=573
+ToolSearch
+mcp__nodegx__list_projects
+mcp__nodegx__create_project
+ToolSearch
+mcp__nodegx__get_project_info
+mcp__nodegx__get_style_vocabulary
+mcp__nodegx__get_component
+ToolSearch
+ToolSearch
+mcp__nodegx__find_tools
+ToolSearch
+mcp__nodegx__set_style_preset
+mcp__nodegx__set_project_tokens
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__list_node_types
+mcp__nodegx__get_node_type
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+mcp__nodegx__get_example
+Glob
+mcp__nodegx__get_component
+mcp__nodegx__create_plan
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__create_component
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__stage_plan_operation
+mcp__nodegx__apply_plan
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+mcp__nodegx__update_component
+mcp__nodegx__render_report
+
+# --- rejections: 2 of 45 calls (1 carried a LAS-007 recipe) ---
+2	mcp__nodegx__stage_plan_operation
+
+# --- diagnostic codes seen by the model ---
+3	repeated-sibling-subtree
+
+# --- what each rejection actually said ---
+[mcp__nodegx__stage_plan_operation] { "error": { "code": "validation-failed", "message": "stage_plan_operation \"Components/HomeHero\" rejected — nothing was staged.", "details": { "readable": [ "WARN [inert-dimension] /Components/HomeHero › node content \
+[mcp__nodegx__stage_plan_operation] validation-failed · stage_plan_operation "Components/ContactForm" rejected — nothing was staged. · 1 diag: WARN [repeated-sibling-subtree] /Components/ContactForm › node emailRow "Info card body" (Group): 4 sibling subtrees here are structurally identical ( · +1 recipe(s)

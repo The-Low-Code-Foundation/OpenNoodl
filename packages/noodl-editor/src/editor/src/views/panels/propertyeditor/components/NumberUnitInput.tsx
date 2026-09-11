@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 
 import { PropertyPanelBaseInput } from '@noodl-core-ui/components/property-panel/PropertyPanelBaseInput';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 import { PropertyPanelSelectInput } from '@noodl-core-ui/components/property-panel/PropertyPanelSelectInput';
+import { ScrubBinding, useDragToScrub } from '@noodl-core-ui/components/property-panel/scrub';
 
 export interface NumberUnitInputProps {
   label: string;
@@ -13,6 +14,10 @@ export interface NumberUnitInputProps {
 
   isChanged?: boolean;
   isConnected?: boolean;
+  /** FB-018: the source driving this port, for the binding chip. */
+  connectionLabel?: string;
+  /** FB-018: click-to-navigate to the driving node. */
+  onConnectionClick?: () => void;
   dataIdentifier?: string;
 
   /** Dimension rows show the Fixed checkbox when the unit is % */
@@ -26,6 +31,18 @@ export interface NumberUnitInputProps {
   onUnitChange: (unit: string, currentText: string) => void;
   onFixedToggle?: () => void;
   onReset?: () => void;
+  /** FB-016 scope 4 — the transform-origin crosshair is drawn while this field holds focus. */
+  onFocus?: () => void;
+  onBlur?: () => void;
+
+  /**
+   * FB-022 — drag-to-scrub on the **value half only**.
+   *
+   * 🔴 The unit stays a dropdown and a scrub never touches it. A gesture that could change
+   * `px` to `%` would be silently reinterpreting the number under a different meaning, which
+   * is the coercion question FB-019 owns and settled the other way.
+   */
+  scrub?: ScrubBinding;
 }
 
 export function NumberUnitInput({
@@ -35,6 +52,8 @@ export function NumberUnitInput({
   units,
   isChanged,
   isConnected,
+  connectionLabel,
+  onConnectionClick,
   dataIdentifier,
   showFixed,
   isFixed,
@@ -42,9 +61,16 @@ export function NumberUnitInput({
   onCommit,
   onUnitChange,
   onFixedToggle,
-  onReset
+  onReset,
+  onFocus,
+  onBlur,
+  scrub
 }: NumberUnitInputProps) {
   const [displayedValue, setDisplayedValue] = useState(value ?? '');
+  // ⚠️ A scrub does not go through `commitIfChanged`. That path goes to the view's
+  // `updateValue`, which reaches `parent.setParameter` and therefore records an undo entry
+  // every time — one per pixel, if a drag were routed through it.
+  const dragToScrub = useDragToScrub(scrub);
 
   const hasUnitChoice = (units?.length ?? 0) > 1;
   const staticUnit = unit || units?.[0] || '';
@@ -60,7 +86,17 @@ export function NumberUnitInput({
   }
 
   return (
-    <PropertyPanelRow label={label} isChanged={isChanged} onReset={onReset}>
+    // FB-018 AC1 — this is the row the test user hit. Width was a fully editable
+    // field with a 1px outline while a connection drove it, so typing a width
+    // rendered and then reverted, and nothing on screen explained why.
+    <PropertyPanelRow
+      label={label}
+      isChanged={isChanged}
+      onReset={onReset}
+      isConnected={isConnected}
+      connectionLabel={connectionLabel}
+      onConnectionClick={onConnectionClick}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
         <PropertyPanelBaseInput
           type="text"
@@ -68,9 +104,15 @@ export function NumberUnitInput({
           value={displayedValue}
           isChanged={isChanged}
           isConnected={isConnected}
+          isScrubbable={Boolean(scrub)}
           dataIdentifier={dataIdentifier}
           onChange={(text) => setDisplayedValue(String(text))}
-          onBlur={() => commitIfChanged()}
+          onMouseDown={dragToScrub.onMouseDown}
+          onFocus={() => onFocus && onFocus()}
+          onBlur={() => {
+            commitIfChanged();
+            onBlur && onBlur();
+          }}
           onKeyDown={(e) => e.key === 'Enter' && commitIfChanged()}
         />
         {/* FH-014. About half the unit-bearing ports declare exactly one unit

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "5ea4c1d3-7b2e-4c8a-9d1f-000000000058",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-04T01:00:00.000Z",
+  "description": "EXP-011 §56 fixture: the search box — a Query Records over Contact, a Filter Records (name contains the search text, VIP only, by name, five at most), one row per match and the count."
+}

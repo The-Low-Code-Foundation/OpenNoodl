@@ -1,0 +1,236 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/registry-v2.json",
+  "version": 1,
+  "lastUpdated": "2026-09-05T00:00:00.000Z",
+  "components": {
+    "App": {
+      "path": "App",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 0,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/ScrollTo": {
+      "path": "Site/ScrollTo",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 4,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Switcher": {
+      "path": "Site/Switcher",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 3,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Header": {
+      "path": "Site/Header",
+      "type": "visual",
+      "nodeCount": 16,
+      "connectionCount": 10,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Footer": {
+      "path": "Site/Footer",
+      "type": "visual",
+      "nodeCount": 7,
+      "connectionCount": 0,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Feature": {
+      "path": "Site/Feature",
+      "type": "visual",
+      "nodeCount": 8,
+      "connectionCount": 4,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/ServiceCard": {
+      "path": "Site/ServiceCard",
+      "type": "visual",
+      "nodeCount": 16,
+      "connectionCount": 10,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Step": {
+      "path": "Site/Step",
+      "type": "visual",
+      "nodeCount": 7,
+      "connectionCount": 3,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Stat": {
+      "path": "Site/Stat",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 4,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/PhotoCard": {
+      "path": "Site/PhotoCard",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 8,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/FilterPill": {
+      "path": "Site/FilterPill",
+      "type": "visual",
+      "nodeCount": 8,
+      "connectionCount": 10,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/CaseStudy": {
+      "path": "Site/CaseStudy",
+      "type": "visual",
+      "nodeCount": 21,
+      "connectionCount": 11,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/WorkCard": {
+      "path": "Site/WorkCard",
+      "type": "visual",
+      "nodeCount": 12,
+      "connectionCount": 18,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Quote": {
+      "path": "Site/Quote",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 5,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/QuoteCarousel": {
+      "path": "Site/QuoteCarousel",
+      "type": "visual",
+      "nodeCount": 15,
+      "connectionCount": 16,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/FaqRow": {
+      "path": "Site/FaqRow",
+      "type": "visual",
+      "nodeCount": 7,
+      "connectionCount": 5,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/HoursRow": {
+      "path": "Site/HoursRow",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 2,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/IsValidEmail": {
+      "path": "Site/IsValidEmail",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 3,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Field": {
+      "path": "Site/Field",
+      "type": "visual",
+      "nodeCount": 7,
+      "connectionCount": 8,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Contact": {
+      "path": "Site/Contact",
+      "type": "visual",
+      "nodeCount": 34,
+      "connectionCount": 33,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Check": {
+      "path": "Site/Check",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 2,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/MockRow": {
+      "path": "Site/MockRow",
+      "type": "visual",
+      "nodeCount": 5,
+      "connectionCount": 2,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Mock": {
+      "path": "Site/Mock",
+      "type": "visual",
+      "nodeCount": 17,
+      "connectionCount": 4,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/BigStat": {
+      "path": "Site/BigStat",
+      "type": "visual",
+      "nodeCount": 4,
+      "connectionCount": 2,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/Plan": {
+      "path": "Site/Plan",
+      "type": "visual",
+      "nodeCount": 10,
+      "connectionCount": 15,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Pages/Freelancer": {
+      "path": "Pages/Freelancer",
+      "type": "page",
+      "nodeCount": 73,
+      "connectionCount": 13,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Pages/Business": {
+      "path": "Pages/Business",
+      "type": "page",
+      "nodeCount": 71,
+      "connectionCount": 4,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Pages/Launch": {
+      "path": "Pages/Launch",
+      "type": "page",
+      "nodeCount": 105,
+      "connectionCount": 14,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    }
+  },
+  "stats": {
+    "totalComponents": 28,
+    "totalNodes": 494,
+    "totalConnections": 213
+  }
+}

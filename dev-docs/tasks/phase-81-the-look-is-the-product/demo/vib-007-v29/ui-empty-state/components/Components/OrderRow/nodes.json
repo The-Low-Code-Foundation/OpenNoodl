@@ -1,0 +1,72 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "98007a04-7282-5e9f-83ae-63cceb14de2a",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row",
+      "type": "Group",
+      "label": "Order row",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)"
+      },
+      "children": [
+        "row_reference",
+        "row_total"
+      ]
+    },
+    {
+      "id": "row_reference",
+      "type": "Text",
+      "label": "Reference",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)"
+      },
+      "parent": "row"
+    },
+    {
+      "id": "row_total",
+      "type": "Text",
+      "label": "Total",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "row"
+    },
+    {
+      "id": "row_inputs",
+      "type": "Component Inputs",
+      "label": "One record's fields",
+      "ports": [
+        {
+          "name": "reference",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "total",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "row"
+  ]
+}

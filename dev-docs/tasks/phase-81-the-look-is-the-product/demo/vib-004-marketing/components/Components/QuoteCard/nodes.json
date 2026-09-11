@@ -1,0 +1,198 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "fbe0ccc9-b377-5d03-88db-9d17b5e2dcd0",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "card",
+      "type": "Group",
+      "label": "Quote card",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-5)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "boxShadowEnabled": true,
+        "boxShadowOffsetY": {
+          "value": 1,
+          "unit": "px"
+        },
+        "boxShadowBlurRadius": {
+          "value": 3,
+          "unit": "px"
+        },
+        "boxShadowColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "mark",
+        "quote",
+        "author"
+      ]
+    },
+    {
+      "id": "mark",
+      "type": "net.noodl.visual.icon",
+      "label": "Quote mark",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-quote",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 24,
+          "unit": "px"
+        },
+        "iconColor": "var(--border)"
+      },
+      "parent": "card"
+    },
+    {
+      "id": "quote",
+      "type": "Text",
+      "label": "Quote",
+      "parameters": {
+        "text": "One sentence somebody actually said.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--foreground)"
+      },
+      "parent": "card"
+    },
+    {
+      "id": "author",
+      "type": "Group",
+      "label": "Author row",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-4)"
+      },
+      "parent": "card",
+      "children": [
+        "portrait",
+        "who"
+      ]
+    },
+    {
+      "id": "portrait",
+      "type": "Image",
+      "label": "Portrait",
+      "parameters": {
+        "src": "noodl_modules/starter-imagery/avatar-5.webp",
+        "alt": "",
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 40,
+          "unit": "px"
+        },
+        "height": {
+          "value": 40,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-full)"
+      },
+      "parent": "author"
+    },
+    {
+      "id": "who",
+      "type": "Group",
+      "label": "Name and role",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "parent": "author",
+      "children": [
+        "name",
+        "role"
+      ]
+    },
+    {
+      "id": "name",
+      "type": "Text",
+      "label": "Name",
+      "parameters": {
+        "text": "Name",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "parent": "who"
+    },
+    {
+      "id": "role",
+      "type": "Text",
+      "label": "Role",
+      "parameters": {
+        "text": "Role",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)"
+      },
+      "parent": "who"
+    },
+    {
+      "id": "card_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per quote",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "quote",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "name",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "role",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "portrait",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "card"
+  ]
+}

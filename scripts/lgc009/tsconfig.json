@@ -1,0 +1,23 @@
+{
+  // 🔴 Its own tsconfig, for one reason, and it is worth reading before copying this pattern.
+  //
+  // The repo's root tsconfig maps `@noodl/runtime/src/*` at
+  // `packages/noodl-runtime/dist-types/src/*` — **generated declarations**, not sources, because
+  // the root program compiles at `module: ES2020` and the runtime's `export =` would be TS1203
+  // there (PLAT-006). That is fine for a program that only reads the published surface, and
+  // wrong for a script that has to see a runtime change made in the same commit: `dist-types` is
+  // a build artefact, it is gitignored, and in a git worktree it is a **symlink into the primary
+  // checkout** — so regenerating it from here would write into someone else's tree.
+  //
+  // This script therefore resolves the runtime to its sources. It compiles at CommonJS, where
+  // `export =` is native, so the reason the root mapping exists does not apply.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@noodl/runtime": ["./packages/noodl-runtime/src/index.ts"],
+      "@noodl/runtime/src/*": ["./packages/noodl-runtime/src/*"]
+    }
+  },
+  "include": ["./**/*.ts"]
+}

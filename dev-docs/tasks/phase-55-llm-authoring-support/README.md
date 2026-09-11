@@ -1,0 +1,235 @@
+# Phase 55 — Any LLM can build in NodeGX (Track E: the support system)
+
+**Created:** 2026-08-08
+**Status:** ✅ **CLOSED 2026-08-08 on Richard's verdict.** LAS-001…011 all done; the acceptance
+matrix complete ([LAS-011](LAS-011-ACCEPTANCE-MATRIX.md)); the phase **did not clear its own
+success line**, and closed on the verdict rather than on the gates, exactly as specified.
+
+> *"Sonnet is the only one that clears the bar, which confirms that we should recommend Opus for
+> scoping larger creations and doing high level design, Sonnet for the creation work and basic
+> designs. We can allow open weight models via API like DeepSeek v4 or the latest Qwen, the big
+> ones, but local Ollama looks to be a waste of time."* — Richard, 2026-08-08
+
+**The claim narrows deliberately.** Not "any competent LLM" — a **recommended model per role**,
+which is the seam LAS-009 built and left unused. That recommendation now lives on the model registry
+and the settings role pickers read it (`recommendedFor`, pinned by 8 specs). Local ollama is out as
+an authoring target; open weights are in, hosted behind an API.
+
+Two successors were filed with the evidence. **[LAS-012](LAS-012-REPEATER-CONTRACT.md)** (the
+repeater contract) is ✅ **done** — session 7, three commits, and it found that F38's own
+attribution was wrong (haiku nested its item content as well as omitting `template`; see F42).
+**[LAS-013](LAS-013-SMALL-MODEL-HEADROOM.md)** (the refactor cliff and the 89-tool door) is still
+open.
+Artifact baseline: <https://claude.ai/code/artifact/af9ec57b-bfe5-4cea-af65-cac99b6adb74>.
+Judging page: <https://claude.ai/code/artifact/ca1ecdea-eb95-457f-8606-342fbc8fd9b1>.
+
+### The result in three lines
+
+- **What worked, measured:** every F2-class defect is gone from both Claude runs. Sonnet went from
+  a page of blobs and a motorcycle to a clean, responsive shop — and the gates made it **cheaper**
+  (147 turns/$7.86 → 92/$5.10, 3 rejections in 91 calls), contradicting the fear that blocking
+  gates would make models loop.
+- **What is left, narrowly:** one refactor a 27B model cannot perform (F40) and a tool surface that
+  locks out every 32k client (F37) — both LAS-013. The unchecked port (`For Each.template`, F38) is
+  now gated at both write doors, and the render report can see an empty list. Named and filed beats
+  the diffuse "AI is bad at NodeGX" the phase opened with.
+- **What is honest:** on the wording below, *"if only a strong model produces a beautiful page, it
+  did not [succeed]"* — only the strong model did.
+
+**Earlier status, kept for the record:** Audit DONE ([AUDIT-SESSION-1.md](AUDIT-SESSION-1.md), two
+cold replays measured); tasks specced as **[TASKS.md](TASKS.md)** (LAS-001…011). The audit partially
+overturned the premise below: cold models with the doctrine + `create_plan` decompose correctly —
+the dominant failures were the missing interface gate (LAS-001) and the unreachable render loop
+(LAS-005), not ordering.
+**Origin:** Richard, after reviewing the phase-54 storefront. It was the first AI-authored NodeGX page
+anyone thought was pretty, and it was still architected wrongly — one 66-node page with its sections
+inlined and its repeated rows hand-duplicated.
+
+## The admission this phase starts from
+
+> *"We have to stop assuming any AI will just be able to understand our wonderful node library and
+> descriptions and just magically apply standard design and development good practices and magically
+> build a site worthy of a Claude artifact in a system it's never seen before and is, by all intents
+> and purposes, using for the first time each time it starts a new project."*
+
+**AI is bad at NodeGX, and it has good reasons to be.** That sentence is the premise of the phase and
+should not be argued with; it should be explained, precisely, and then engineered around.
+
+The reasons we can already name, none of which are the model's fault:
+
+1. **No memory between projects.** Every build is a first encounter with the tool. A human developer
+   gets better at Noodl over months; the model starts from zero every session and always will.
+2. **The corpus teaches wiring, not architecture.** Of 57 validated catalog examples, 51 are about
+   how to connect two nodes. Six (added in phase 54) are about composition. None of them, until
+   phase 54, showed an app decomposed into components before nodes existed.
+3. **Its priors are for code, and they map badly.** In React, the file boundary nags you into
+   factoring. On a canvas nothing does — a 400-node graph looks like the page you wanted until you
+   try to change it. Every instinct that makes a model a decent React developer produces a flat graph
+   here.
+4. **The natural generation order is wrong.** A model asked for a home page starts at the top and
+   works down, deciding each section's nodes as it reaches it. That order cannot produce components,
+   because components are a decision taken *before* drawing.
+5. **The tool surface rewards drawing.** `create_component` takes a bag of nodes. Nothing in the tool
+   shape asks "what is the component tree?" first.
+6. **The seams used to eat the output**, which is now mostly fixed (phase 40, and the five 0.1.4
+   runtime fixes) — but it means every prior belief about "the model is bad at styling" was measuring
+   the wrong thing, and the same trap is live for architecture.
+
+## The honest bit about our evidence
+
+The one pretty result we have was produced by **Claude Opus with an enormous amount of scaffolding**:
+a persistent MCP session, a render-and-measure loop, repeated human review, and an operator who
+already knew the answers. Richard's own words: *"which is kind of cheating if you think about it."*
+
+**Many people will use NodeGX with open-weight models.** A support system that only works with the
+strongest frontier model is not a support system, it is a demo. Every proposal in this phase must be
+evaluated against a mid-tier open-weight model, not against Opus.
+
+## The goal
+
+> Turn any competent LLM into a NodeGX developer who builds the way an experienced one does —
+> component tree first, repeaters over duplication, states and signals, responsive by construction —
+> **without** relying on the model already knowing how, and without relying on a human who does.
+
+## What phase 54 already built — do not redo it
+
+| Thing | Where | What it does |
+|---|---|---|
+| Design doctrine | `authoring/prompts/design.ts` | Composition, type, colour, imagery, responsive, mechanics. Shipped to the planner, the authoring prompt, and `get_project_info.designDoctrine` |
+| Decomposition doctrine | `authoring/prompts/decomposition.ts` | Components are the unit of good work. Predates phase 54 |
+| Composition recipes | `docs/node-catalog/examples/ui-*.json` | Six validated fragments, cross-referenced from the nine node types that draw pages |
+| The decomposition gate | `validation/rules/repeatedSiblingSubtree.ts` | Three identical siblings is a warning. Calibrated: 17 hits / 95 projects |
+| Best-practice reference | `dev-docs/best-practices/` | Five documents, including **Richard's own storefront architecture** — the single most valuable artefact for this phase |
+| The reference build | `NodeGX test projects/ecommerce-example` | Pretty, and architecturally wrong. Both halves are data |
+| The measuring harness | `scripts/devtools/render-from-disk.js` | Renders a project from disk against the working-tree runtime |
+
+**The gap this phase addresses is that all of the above is passive.** It is text a model may read and
+a warning it may receive after it has already done the work. None of it changes the *order* in which
+the model works, which is the actual defect.
+
+## The audit — do this before proposing anything
+
+This phase opens with an audit, not a build. The deliverable of the first session is a written,
+evidence-backed answer to these:
+
+### A. Where exactly does it go wrong?
+
+Replay the storefront brief cold against at least three models — Opus, a mid-tier hosted model, and a
+mid-tier **open-weight** model — with today's stack, and classify every failure. Distinguish
+ruthlessly between:
+
+- **Knowledge failures** (did not know `Static Data` exists) — fixed by documentation or tool output.
+- **Ordering failures** (knew about components, still drew top-to-bottom) — fixed only by changing
+  the workflow.
+- **Capability failures** (could not hold the plan) — fixed by decomposition into smaller turns.
+- **Seam failures** (did the right thing, the runtime discarded it) — fixed in the runtime. Assume
+  these still exist; phase 40 found five and phase 54 found three more in the harness alone.
+
+### B. What does the tool surface make easy, and what does it make hard?
+
+Right now the first authoring call a model makes is "here is a bag of nodes". Audit whether the tool
+*shape* can carry the method — e.g. a first-class "declare the component tree" step that must happen
+before any nodes are accepted, so the architecture is a required artefact rather than an
+encouragement.
+
+### C. How much can be moved from prompt to structure?
+
+Prompt text is the weakest possible enforcement and the most expensive per token. For each rule in
+the doctrine, ask: could this be a **tool that only accepts the right shape**, a **generated
+scaffold**, a **template the model fills in**, or a **check that rejects the wrong thing**? Prefer,
+in that order: structure > gate > example > prose.
+
+### D. What does a weak model need that a strong one does not?
+
+Likely candidates to test rather than assume: smaller turns; a fixed sequence rather than an open
+loop; fill-in-the-blank scaffolds instead of free authoring; fewer node types offered at once
+(progressive disclosure of a 175-type catalog); worked examples retrieved automatically rather than
+on request.
+
+### E. What does the feedback loop cost?
+
+The one thing that reliably worked in phase 54 was **render → measure → fix**. Audit whether that can
+be made routine and cheap enough to run inside every build, for every model, without a human driving
+it.
+
+## Candidate directions, none of them decided
+
+Deliberately listed as options for the audit to accept or kill, not as a plan:
+
+1. **A scaffolding step before authoring** — the model submits a component tree (names,
+   responsibilities, inputs, what repeats) and gets it validated before any node exists. Makes the
+   right order the only order.
+2. **Starter architectures** — a small set of app skeletons (storefront, dashboard, CRUD admin,
+   landing page) that arrive already decomposed, so the model fills in rather than invents.
+3. **A component-tree critic** — an agent whose only job is "why is this not a component, and where
+   is the Repeater?", run before apply.
+4. **Progressive disclosure of the catalog** — offering the ~20 types a page actually needs instead
+   of 175.
+5. **Retrieval instead of recall** — auto-attaching the relevant `ui-*` recipe to the operation being
+   authored.
+6. **More gates** — the phase-54 rule is one. Obvious siblings: a page component over N nodes, a
+   multi-column Group that can never collapse, an interactive node with no hover state, an image with
+   no explicit size.
+7. **A smaller, better-shaped authoring vocabulary**, if the audit shows the current one invites flat
+   graphs.
+
+## How we will know it worked
+
+The benchmark is Richard's, and it is the same one phase 40 set: **replay the briefs cold and judge
+the output side by side against a Claude artifact of the same brief.** Phase 55 adds one requirement:
+
+> The acceptance run must include a mid-tier open-weight model, and its output must be
+> *architecturally* correct — components, repeaters, states, responsive — even where its visual taste
+> is weaker than Opus's.
+
+Architecture is the thing a support system can actually guarantee. Taste is the thing it can only
+nudge. If a weak model produces a well-architected app with mediocre spacing, this phase has
+succeeded; if a strong model produces a beautiful 66-node page, it has not.
+
+## Settled — do not relitigate
+
+- **NodeGX stays primitive-only.** No opinionated composite node library (Container/Section/Card/Hero).
+  Invest in primitive defaults, machine-checkable gates, and a render→critique loop. (Richard,
+  2026-08-08.)
+- **One authoring substrate, two clients.** Anything added must reach both the in-editor loop and
+  `noodl-mcp` from one source, the way `decomposition.ts` and `design.ts` do. A second dialect is the
+  BCN-003 mistake.
+- **Doctrine text is Richard's**, and `dev-docs/best-practices/05-WORKED-EXAMPLE-STOREFRONT.md` is his
+  architecture. Encode it; do not rewrite it from model taste.
+
+## Register
+
+Session-1 audit findings live in [AUDIT-SESSION-1.md](AUDIT-SESSION-1.md) with full evidence; the
+open ones are mirrored here so a grep finds them.
+
+| # | Finding | State |
+|---|---|---|
+| F1 | `DESIGN_AUTHORING` per-turn preamble still teaches the deprecated wrapped-row pattern, never names `Columns` (`design.ts:246`) | ✅ **CLOSED** 2026-08-08 by **LAS-008**, tripwire-pinned |
+| F2 | Instance parameters vs component interface: **no check anywhere** — a component instantiated with parameters it has no `Component Inputs` for renders dead placeholders with 0 errors | ✅ **CLOSED** 2026-08-08 by **LAS-001** — 3 codes, all authored-blocking; 2 corpus hits, both haiku |
+| F8 | **`ecommerce-example`, the reference build, is broken**: all 11 ProductCard "inputs" are plugged `input`, so they are component *outputs* and their 12 wires are dropped as unhealthy. It renders only because `render-from-disk.js` rewrites the plug | ✅ gated by `component-port-direction` (LAS-001); the project and the renderer are **F9** |
+| F9 | `render-from-disk.js` forces `plug: 'input'` on Component Inputs ports — it will certify a page the editor cannot render. Fix in the `render_report` promotion | ✅ **CLOSED** 2026-08-08 by **LAS-005** — `liftInterface` inverts the plug as `componentmodel.getPorts()` does. Measured blast radius on the three builds: **zero** (LAS-005 F15) |
+| F22 | **LAS-005 §5, the editor client, is descoped and the blocker is not the one the task guessed.** Not the sandbox webview — `SandboxPreview.tsx:86` holds an `Electron.WebviewTag` ref that `PreviewTokenInjector` already reaches into. It is *where the shared substrate lives*: the pure report half is plain CJS under `scripts/` so the CLI needs no build, which is what the editor bundle cannot import and what a packaged editor does not ship. A packaging decision, then ~50 lines | 🔴 OPEN, filed in LAS-005 |
+| F14 | **`validate:project` runs rules only** and never the precondition checks, so every parameter-value and interface diagnostic is invisible to `validate_project`/`review_project`/the CLI — they reach an agent only at a write. Not folded into LAS-004: closing it adds ~15 error classes across 119 corpus projects | 🔴 OPEN, needs its own task |
+| F3 | `layoutString` value format unvalidated — `"1fr 1fr 1fr 1fr"` silently renders one column | ✅ **CLOSED** 2026-08-08 by **LAS-003/1** — authored-blocking error, 0 corpus hits |
+| F4 | "Strands TS harness" was decided, never built (AAQ-006 still open); the phase-40 memory implied otherwise | ✅ documented, memory corrected |
+| F5 | No render/measure tool on the MCP surface — doctrine §11 unfollowable externally; `measure-project.js` (7.5 s, headless) built, in `measurements/` | ✅ **CLOSED** 2026-08-08 by **LAS-005** — `scripts/devtools/render-report.js` + `measure-from-disk.js` + the `render_report` tool |
+| F6 | Phase-54 F6 re-confirmed: `stage_plan_operation` returns warning counts with no text | ✅ **CLOSED** 2026-08-08 by **LAS-002** |
+| F7 | Unsized absolute Group fills its parent (`%` dimension defaults) — badge pills render as parent-sized blobs; no check | ✅ **CLOSED** 2026-08-08 by **LAS-003/2** — warning, narrowed to *decorated* boxes (151 hits → 29) |
+| F23 | **The recipe library taught the defect LAS-001 blocks.** All 11 `Component Inputs` ports in the three phase-54 composition recipes were declared `plug: "input"` — backwards, so 12 connections drawn out of them are dropped as unhealthy. F8 verbatim, in the graphs an agent is told to imitate. Only 3 of 57 examples declare interface ports; all 3 were wrong | ✅ **CLOSED** 2026-08-08 by **LAS-007** — 11 ports corrected; measured consequence: 11 `component-port-direction` **and** 2 `interfaceless-instance` cleared together |
+| F24 | **`catalog:examples` was structurally incapable of catching F23** and reported `57/57 clean` throughout: it ran the `rules/` validator only (the F14 shape) and its project mapping discarded `plug` before any check could read it — the type did not declare the field | ✅ **CLOSED** 2026-08-08 by **LAS-007** — the gate runs the three interface checks; watched failing at 54/57 first |
+| F25 | **A path-prefix predicate would have been silent on 94% of its population.** LAS-006 §2's proposed `Components/`\|`Cards/`\|`Sections/` allowlist covers 16 of 256 interface-bearing corpus components | ✅ **CLOSED** 2026-08-08 by **LAS-006** — re-keyed on page-ness (0 of 51 pages declare an input; 178 of 236 instantiated non-pages do) |
+| F33 | **LAS-009's task file claimed a provider-override seam that does not exist.** `AiClient.getProvider()` takes no arguments and `AiChatRequest` has no provider field; the cited `(providerId, override)` signature is `verify()`'s. Per-request *model* is real; per-request *provider* is not, so cross-provider per-role is new plumbing | ✅ **CLOSED** 2026-08-08 by **LAS-009** — the missing plumbing built and driven live cross-provider |
+| F35 | **The model registry has zero `openai-compatible` entries**, so any picker built from `getModelsForProvider` is empty for a custom gateway — the provider LAS-010's DeepInfra leg needs. Ollama is half the same story: 2 registry models vs whatever was actually pulled | ✅ **CLOSED** 2026-08-08 by **LAS-009** for the role pickers (text field, not a picker). The main model picker still needs a **Test connection** pass to fill in |
+| F34 | **LAS-009 §3's cost premise was broken in two ways.** The usage log it proposed tagging feeds nothing — `getUsageLog()`/`getSessionCostUsd()` have **zero callers**; the visible cost line is `PlanRun.costUsd`. And `PlanningSession`'s `outcome.costUsd` is discarded at its call site, so **plan-role spend reaches no line at all**. The log is now role-tagged and `getSessionCostByRole()` exists, but the visible per-run split needs a run boundary the log does not have | 🔴 OPEN, filed in LAS-009 |
+| F30 | The example gate's remaining findings, deliberately out of scope: 7 `inactive-conditional-parameter`, 2 `invalid-parameter-value`, 1 `unsized-absolute-box`, 1 `raw-color-literal` across seven examples | 🔴 OPEN, filed in LAS-007 |
+| F36 | **LAS-010's settled model could never have run.** `Qwen/Qwen2.5-Coder-32B-Instruct` on DeepInfra is tagged `openai,completion` — **no `tools` tag**; the whole `qwen2.5-coder` family is superseded there. Caught against the public catalog before any spend | ✅ **CLOSED** — Richard re-chose `Qwen/Qwen3.5-27B` |
+| F37 | **Our write-mode MCP surface does not fit a 32k-context client.** 89 tools; **measured on the wire, turn one billed 27,322 prompt tokens** (100,512 chars of schema + 2,855 of instructions + a 1,235-char brief), resent every turn — qwen's 32-turn run billed 2.19M input tokens. **60 of 89 tools and 63% of the schema bytes are backend admin.** The baselines never met it: the `claude` CLI defers tools behind `ToolSearch` (haiku opened session 1 with 11 such calls) | 🔴 OPEN — filed as **LAS-013 §2** |
+| F38 | ⭐ **A `For Each` with no `template` renders nothing and every instrument reports a pass.** Haiku's post-gates run: 3 repeaters, correct `items` arrays, no `template` → no products, no categories, no footer links. `validate:project` 0/0; `render_report` 0 errors; a census reads "For Each 3". Qwen failed the same contract from the other side (template as a *child*), down an `invalid-argument` path that carries no recipe. Sonnet, which set `template`, is the only one whose page is whole | ✅ **CLOSED** — LAS-012 `ebfa578d` (three codes, both write doors and the plan gate) + `85a39388` (`empty-list` in the render report). ⚠️ **Its attribution was wrong: haiku did BOTH** — see F42 |
+| F39 | LAS-011's own sonnet connections cell was in endpoints (102) where haiku's was in connections (0). Measured 56 / 101 | ✅ **CLOSED** — normalised; `score-run.js` reports both |
+| F40 | **LAS-004's authored-blocking `repeated-sibling-subtree` is a wall for a 27B model.** `Qwen/Qwen3.5-27B` saw 19, discarded its plan, stopped at turn 32 with one component and **named the rule as its reason**. Not a loop, not a tool-calling failure. Capability class, on the model's own words. Both Claude models cleared the same rule again (5 and 3 hits) | 🔴 OPEN — filed as **LAS-013 §1** |
+| F41 | `create_project` mints `Pages/Home`; `create_plan` then rejects a plan that creates it. Haiku and qwen each burned a turn; sonnet did not. Knowledge given and dropped, but self-inflicted | ✅ **CLOSED** — LAS-012 §4, `00c59ceb`. A create aimed at the *untouched* skeleton is coerced to an update and reported as `absorbedCreates`; one node added and it is somebody's work again |
+| F42 | **F38's attribution was wrong, and reading the project off disk was all it took.** Session 6 recorded haiku as omitting `template` and qwen as nesting a child — "the same joint from opposite directions". Haiku did **both**: all three of its repeaters nest their item content (`/Components/ProductCard`, `/Components/CategoryCard`, a bare `Group`). One mistake, two models; qwen's was visible only because its child id dangled | ✅ **CLOSED** by LAS-012, whose load-bearing code is `repeater-with-visual-children` as a result |
+| F43 | **The render harness makes any page look complete to a text check.** `render-from-disk` injects the whole project as `window.projectData` in a `<script>` inside `<body>`, so `document.body.textContent` carries every authored string — including content that never rendered. The first `empty-list` probe found all six of haiku's missing strings on a page showing none of them | ✅ **CLOSED** — reads visible leaf text elements only (`85a39388`). Any future page-text check must do the same |
+| F44 | **A short common word is not evidence.** Matching any readable item value found "Ceramics"/"Coffee" in the section's own copy and "Home"/"Shop" in the nav, reporting two genuinely empty lists as rendered. Probe strings must be multi-word or long, and a list with nothing distinctive abstains | ✅ **CLOSED** in `85a39388`; the abstentions are covered by the gate |
+| F45 | `store.resolve` answers `{ key, entry }`; `listComponents()` answers rows with `.path`. Two shapes for one idea, and a broad `catch` turned the resulting TypeError into a silent negative answer — LAS-012 §4 shipped inert in its first version and its own specs caught it | ✅ **CLOSED** in `00c59ceb`. Filed because the *shape* recurs, not the instance |
+| F32 | **The editor's jasmine suite is RED at session-3's close commit and the handover said it was green.** `npm run test:ci` in `noodl-editor`: 2418 assertions, **4 failures**, all in `AIX-006 style vocabulary` — its fixture sets `color` on a `Group`, which `unknown-parameter` blocks, so the candidate is refused before the style pass it is testing. Measured **both ways** at `b550b750` (revert my changes → identical 4; restore → identical 4), so this is inherited, not session-4's. Note the two runners are different things and the handover conflated them: `npx jest` (tests-main + tests-unit) is the 76/1029 number and is green; `npm run test:ci` is the jasmine/Electron suite and is the red one | 🔴 OPEN, needs its own task — a fixture teaching a refused shape, the `PageWithoutPageNode` class |

@@ -27,10 +27,13 @@ import {
   NoodlGitHubRepo,
   GitHubClientInterface
 } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
+import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { Launcher } from '@noodl-core-ui/preview/launcher/Launcher/Launcher';
-import { LauncherLessonData } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { LauncherLessonData, LauncherPageId } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
 
 import { useEventListener } from '../../hooks/useEventListener';
+import { shouldFetchTemplates, useProjectTemplates } from '../../hooks/useProjectTemplates';
+import { useShareTemplate } from './useShareTemplate';
 import type { AuthoringPlan } from '../../models/AiAssistant/authoring/plan';
 import { provisionSummary } from '../../models/AiAssistant/authoring/plan';
 import {
@@ -45,11 +48,24 @@ import {
   setPendingScopePlan,
   writeScopeDocs
 } from '../../models/AiAssistant/scoping';
+import { App } from '../../models/app';
 import { DialogLayerModel } from '../../models/DialogLayerModel';
+import { LearningFolderModel } from '../../models/learningfolder';
+import { shippedChainOnStartup } from '../../models/lessonchain';
+import type { ResetLessonOutcome } from '../../models/learningfolder';
+import { resetLessonFromPlatform } from '../../models/lessonplatforminstall';
+import { stagingFs, stagingRoot } from '../../models/lessonplatformstaging';
+import { resetLesson } from '../../models/lessonreset';
+import { formatBundleScorecard } from '../../models/lessonbundleverify';
+import { describeInstallCheck } from '../../models/lessoninstallpolicy';
+import { attachLearningLesson } from '../../models/learninglesson';
 import { LessonsProjectsModel } from '../../models/LessonsProjectModel';
 import LessonTemplatesModel from '../../models/lessontemplatesmodel';
+import { getCloudServices, projectFromDirectory, setCloudServices } from '../../models/projectmodel.editor';
+import { ensureTemplateBackend } from '../../models/templatebackend';
 import { ProjectDocsModel } from '../../models/ProjectDocs/ProjectDocsModel';
 import type { ProjectModel } from '../../models/projectmodel';
+import { upgradeProjectAgentConfigForDocs } from '../../models/template/installAgentConfig';
 import { getAllPresets, setPendingPresetId } from '../../models/StylePresets';
 import { IRouteProps } from '../../pages/AppRoute';
 // Relative, not the `@noodl-store` alias: this file is inside noodl-core-ui's
@@ -63,10 +79,28 @@ import { EditorSettings } from '../../utils/editorsettings';
 import getContentEndpoint from '../../utils/getContentEndpoint';
 import { LocalProjectsModel, ProjectItemWithRuntime } from '../../utils/LocalProjectsModel';
 import { tracker } from '../../utils/tracker';
+import { toLearningCards } from '../../views/projectsview.learningstate';
 import { getLessonsState } from '../../views/projectsview.lessonstate';
 import { MigrationWizard } from '../../views/migration/MigrationWizard';
 import { ToastLayer } from '../../views/ToastLayer/ToastLayer';
+import { UpdateManager } from '../../views/UpdateManager';
 import { LauncherSettingsDialog, LauncherSettingsSection } from './LauncherSettingsDialog';
+import { LAST_PROJECT_LOCATION_KEY, pickProjectLocation } from './projectLocationMemory';
+import { CommunityApiClient } from '@noodl-models/community/communityapi';
+import { COMMUNITY_URL } from '@noodl-models/community/communityorigin';
+import { readCommunitySession } from '@noodl-models/community/communitysession';
+
+import { useCommunityChat } from '@noodl-hooks/useCommunityChat';
+import { useCommunityMirror } from '@noodl-hooks/useCommunityMirror';
+import { useLearnerPath } from '../../hooks/useLearnerPath';
+import { useCommunityPeople } from '@noodl-hooks/useCommunityPeople';
+import { useCommunityThread } from '@noodl-hooks/useCommunityThread';
+
+import { getIpc } from '@noodl-utils/ipc';
+import { takeLauncherLanding, takeLessonReset } from '@noodl-utils/launcher/launcherHandoff';
+
+import { useCommunityAccount } from './useCommunityAccount';
+import { useConnectAgent } from './useConnectAgent';
 
 export interface ProjectsPageProps extends IRouteProps {
   from: TSFixme;
@@ -207,7 +241,61 @@ function showLoadFailureToast(projectName: string | undefined, projectDir?: stri
   });
 }
 
+/**
+ * Run a lesson reset and say what happened, in one sentence per outcome.
+ *
+ * Shared by the launcher card's *Reset* button and by FIX-027 §20's *Start again*, which arrives
+ * from inside a finished lesson via `launcherHandoff`. 🔴 **One body on purpose**: the two
+ * gestures differ only in what they ask beforehand, and letting them differ in what they *say*
+ * afterwards is how a repair path grows two personalities.
+ *
+ * ⚠️ The title is read **before** the reset. `repairFrom` rewrites the register entry, and a
+ * sentence naming the lesson is worth more than one naming an id.
+ */
+async function performLessonReset(lessonId: string): Promise<void> {
+  const entry = LearningFolderModel.instance.get(lessonId);
+  if (!entry) return;
+
+  const outcome = await resetLesson(lessonId, {
+    register: LearningFolderModel.instance,
+    repull: repullFromPlatform
+  });
+  if (outcome.result === 'reset') ToastLayer.showSuccess(`"${entry.title}" is back to its starting state`);
+  else ToastLayer.showError(outcome.reason);
+}
+
+/**
+ * FIX-027 §20 — the launcher's half of *Start again*: a client, a staging directory, a toast.
+ *
+ * 🔴 **This is `resetLessonFromPlatform`'s first caller.** It existed, was specced twice over,
+ * and reached nobody — see `models/lessonreset.ts`, which now owns the *choice* between the two
+ * resets so that something other than a running editor can grade it. What is left here is the
+ * part that genuinely needs the launcher: the network client, and the fact that a reset can only
+ * happen once the project is **closed** (`launcherHandoff.ts`).
+ *
+ * ⚠️ The token, for the same reason `useTutorialInstall` builds its client with one: D15 answers
+ * 404 to an org-minor, so an anonymous client would report a lesson the learner installed
+ * yesterday as gone from the platform.
+ */
+function repullFromPlatform(lessonId: string): Promise<ResetLessonOutcome> {
+  return readCommunitySession().then((session) =>
+    resetLessonFromPlatform(lessonId, {
+      register: LearningFolderModel.instance,
+      source: new CommunityApiClient({ baseUrl: COMMUNITY_URL, token: session?.token ?? null }),
+      fs: stagingFs(),
+      stagingRoot: stagingRoot()
+    })
+  );
+}
+
 export function ProjectsPage(props: ProjectsPageProps) {
+  /**
+   * NAT-012 AC3. `useState`'s initialiser rather than a bare call, so a re-render does not read
+   * the stash a second time and get `undefined` — which would send the launcher back to Projects
+   * the first time anything above it re-rendered.
+   */
+  const [launcherLanding] = useState(takeLauncherLanding);
+
   // Real projects from LocalProjectsModel
   const [realProjects, setRealProjects] = useState<LauncherProjectData[]>([]);
 
@@ -215,8 +303,17 @@ export function ProjectsPage(props: ProjectsPageProps) {
   const [lessons, setLessons] = useState<LauncherLessonData[]>([]);
   const [lessonsProjectsModel] = useState(() => new LessonsProjectsModel());
 
+  // UNI-007 / D5 — lessons installed in the Learning folder. Not the same list
+  // as `lessons` above: that one is the hosted catalogue, this one is the shelf.
+  const [learning, setLearning] = useState<LauncherLearningData[]>([]);
+
   // Create project modal state
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
+  /**
+   * REL-013 — the template the wizard should open on, or `''` for the ordinary entry screen.
+   * Set by both openers so neither can inherit the other's last value.
+   */
+  const [wizardTemplateUrl, setWizardTemplateUrl] = useState('');
 
   // AIX-012 — the scoping conversation. The session lives in a ref because it
   // is a long-lived object with an in-flight request, not render state; what
@@ -234,6 +331,77 @@ export function ProjectsPage(props: ProjectsPageProps) {
    */
   const [draftProjectName, setDraftProjectName] = useState('');
   const [aiConfigVersion, setAiConfigVersion] = useState(0);
+
+  /** BST-003 — the connect-an-agent card's state, or `undefined` when there is nothing to offer. */
+  const connectAgent = useConnectAgent();
+
+  /**
+   * REL-013 — 🔴 **WHICH LAUNCHER TAB IS OPEN.** `usePersistentTab` lives inside `Launcher`, so
+   * this page could not tell; `onActivePageChange` is the report, and this is where it lands.
+   *
+   * ⚠️ Seeded from `launcherLanding` — the same value passed as `initialTab` — so the first
+   * render already agrees with the launcher rather than being corrected one render later.
+   * `LauncherLandingPage` is `'projects' | 'community' | 'learning'` and never `'templates'`, so
+   * on every cold start this seed leaves the template gate CLOSED, which is AC2's control.
+   */
+  const [activeLauncherPage, setActiveLauncherPage] = useState<LauncherPageId>(launcherLanding ?? 'projects');
+
+  /**
+   * FB-005 T3 — the template shelf. REL-013: read while the create wizard is open **or** the
+   * Templates tab is, and on no other frame. See `shouldFetchTemplates`.
+   *
+   * 🔴 **THE ONLY `useProjectTemplates` IN THE APPLICATION, AND IT HAS TO STAY THAT WAY.** Two
+   * instances would issue two community requests for every one the user caused, and the tab and
+   * the wizard could then be showing two different shelves — a difference nobody would read as a
+   * bug, because each list would look perfectly plausible on its own.
+   */
+  const projectTemplates = useProjectTemplates(
+    shouldFetchTemplates({ isCreateWizardOpen: isCreateModalVisible, activeLauncherPage })
+  );
+
+  /**
+   * UNI-001 AC2 — the NodeGX account. 🔴 Always present, unlike `connectAgent`: the card draws
+   * nothing until the store has answered, and a community that cannot be reached right now is
+   * still an account a person can have.
+   */
+  const community = useCommunityAccount();
+
+  /**
+   * FB-005 T5 — "Share as template". 🔴 **This is the caller `shareAsTemplate` shipped without**:
+   * the seam, the client method, the platform table and the promotion script all landed in
+   * session 45 with nothing in the product able to reach them.
+   */
+  const shareTemplate = useShareTemplate({
+    baseUrl: COMMUNITY_URL,
+    // ⚠️ `phase === 'signed-in'` and not `Boolean(session)` — `unknown` is "the store has not
+    // answered yet", and treating it as signed out would tell somebody with an account to sign in
+    // on the first frame. The same distinction `useCommunityAccount`'s header makes.
+    isSignedIn: community.state.phase === 'signed-in'
+  });
+  // UNI-011 / D21 — the community TAB's data. ⚠️ A different fact from `community` above:
+  // that one is who you are, this one is what the community contains.
+  const communityMirror = useCommunityMirror();
+  /**
+   * UNI-007 AC1 — the intake and the path it produces. ⚠️ A third distinct community fact
+   * beside the two above: `community` is who you are, `communityMirror` is what the community
+   * contains, and this is what YOU should learn next. It is always present for the same reason
+   * `community` is — the questions load without a session, so there is something to draw before
+   * anybody has signed in.
+   */
+  const learnerPath = useLearnerPath();
+  // NAT-007 — which thread is open, and its data. The same hook the editor's rail panel calls;
+  // see `useCommunityThread` on why one hook rather than one per surface.
+  const communityThread = useCommunityThread();
+  /**
+   * FB-013 C4 — the chat river. ⚠️ A hook of its own rather than a field on the mirror: only
+   * this tab draws it, and folding it into `useCommunityMirror` would make the editor's rail
+   * panel poll a river it never shows. See `useCommunityChat`'s header.
+   */
+  const communityChat = useCommunityChat();
+  // NAT-008 — the directory and whichever profile is open. A third hook rather than a field on
+  // the second, for the reason the second gives: each owns one question, and the surface that
+  // mounts them is where they meet.
+  const communityPeople = useCommunityPeople();
 
   // GitHub OAuth state
   const [githubIsAuthenticated, setGithubIsAuthenticated] = useState(false);
@@ -279,6 +447,168 @@ export function ProjectsPage(props: ProjectsPageProps) {
       templatesModel.off(group);
       lessonsModel.off(group);
     };
+  }, []);
+
+  /**
+   * UNI-007 / D5 — read the Learning register, and keep reading it.
+   *
+   * 🔴 The **editor process** owns this state. The register is an
+   * editor-process store and nothing outside this process writes it, so there
+   * is nothing to poll and no platform to ask: one read on mount, and one more
+   * every time this process changes it.
+   */
+  useEffect(() => {
+    const group = {};
+    const model = LearningFolderModel.instance;
+
+    // 2026-09-06 — the spine's order, read once from the shipped artefact. The register sorts by
+    // install time, which put spine lesson 8 first; `toLearningCards` puts the chain first, in
+    // chain order, and leaves everything else as the register gave it. See `models/lessonchain.ts`.
+    const chain = shippedChainOnStartup();
+    const rebuild = () => setLearning(toLearningCards(model.list(), chain));
+
+    model.on('learningFolderChanged', rebuild, group);
+    rebuild();
+
+    return () => {
+      model.off(group);
+    };
+  }, []);
+
+  /**
+   * Open an installed lesson.
+   *
+   * 🔴 Deliberately **not** `LocalProjectsModel.openProjectFromFolder`. That
+   * would add the lesson to the recents list, where rename and delete already
+   * exist — undoing D5's "cannot rename, detach or delete" and the whole reason
+   * the Learning folder is a separate register. The lesson is loaded straight
+   * from its directory, exactly as `LessonsProjectsModel` loads the hosted ones.
+   */
+  const handleOpenLearningLesson = useCallback(
+    (lessonId: string) => {
+      const entry = LearningFolderModel.instance.get(lessonId);
+      if (!entry) return;
+      if (entry.missing) {
+        ToastLayer.showError('That lesson’s folder is no longer on disk. Reset it to pull a fresh copy.');
+        return;
+      }
+
+      const activityId = 'opening-lesson';
+      ToastLayer.showActivity('Opening lesson', activityId);
+
+      projectFromDirectory(entry.projectDirectory, (project: TSFixme) => {
+        ToastLayer.hideActivity(activityId);
+        if (!project) {
+          ToastLayer.showError('Could not open that lesson. Reset it to pull a fresh copy.');
+          return;
+        }
+        // The id is the register's, not a minted one: it is what the runner
+        // records progress and grades against when the lesson is graded.
+        project.id = entry.id;
+        if (!project.name) project.name = entry.title;
+        /*
+         * 🔴 **Without this the lesson opens as an ordinary project.**
+         * `EditorPage` attaches the lesson layer only when
+         * `ProjectModel.instance.isLesson()`, i.e. `project.lesson` is set, and
+         * the only code that had ever set it is the hosted-zip path — which
+         * points a `LessonModel` at an HTTP base URL this lesson does not have.
+         * So slice 3 shipped a Learning section whose lessons opened with no
+         * steps, no instructions and nothing to grade against. Found by
+         * building slice 4's caller; see `models/learninglesson.ts`.
+         */
+        attachLearningLesson(project, entry);
+        props.route.router.route({ to: 'editor', project });
+      });
+    },
+    [props.route]
+  );
+
+  /**
+   * Install a lesson from a folder on this machine.
+   *
+   * 🔴 **This is the account-free route, and it is the point.** D5 makes the
+   * Learning section platform-managed but not platform-*dependent*: a lesson the
+   * user's own Claude writes locally (UNI-010) lands in the same section through
+   * the same editor-owned writer, with no sign-in anywhere in the story. Today
+   * the user points at the folder; when UNI-010's MCP hand-off exists it will
+   * call the same `install`, and pass `local-ai` because it will know who wrote
+   * the bundle.
+   *
+   * ⚠️ Provenance passed here is `'local'`, not `'local-ai'`. Picking a directory
+   * says nothing about who authored what is in it.
+   *
+   * 🔴 **The bundle may still make itself `local-ai`, and only in that
+   * direction** (UNI-010 slice 2). A manifest declaring `curated` would be a
+   * claim that buys trust and is ignored; a manifest declaring `authoredBy: "ai"`
+   * *spends* trust — it moves the bundle from a one-class install gate to a
+   * three-class one — so the register honours it. That is what lets the MCP route
+   * work through this very dialog with no new plumbing: the sidecar writes a
+   * folder, the learner points at it, and the stricter gate still applies.
+   *
+   * A refusal is reported in full: the verifier's first message is the useful
+   * half — "this lesson would never have been completable, and here is the line".
+   */
+  const handleInstallLearningLesson = useCallback(async () => {
+    const bundleDir = await filesystem.openDialog({ allowCreateDirectory: false });
+    if (!bundleDir) return;
+
+    const outcome = await LearningFolderModel.instance.install({ bundleDir, provenance: 'local' });
+
+    if (outcome.result === 'installed') {
+      const warnings = outcome.verification.findings.filter((f) => f.severity === 'warning');
+      ToastLayer.showSuccess(
+        warnings.length
+          ? `"${outcome.entry.title}" installed, with ${warnings.length} warning(s) — see the console`
+          : `"${outcome.entry.title}" is in your Learning section`
+      );
+      console.log('[Learning]', describeInstallCheck(outcome.scorecard, outcome.entry.provenance));
+      if (warnings.length) console.warn('[Learning] lesson installed with warnings:', warnings);
+      return;
+    }
+
+    if (outcome.scorecard) console.error('[Learning] lesson refused:', formatBundleScorecard(outcome.scorecard));
+    ToastLayer.showError(outcome.reason);
+  }, []);
+
+  /**
+   * D5's whole recovery story. Destructive to the learner's work, so it asks —
+   * and the register still refuses to delete anything if the source cannot be
+   * re-pulled, so a "yes" here cannot leave them with less than they had.
+   */
+  const handleResetLearningLesson = useCallback((lessonId: string) => {
+    const entry = LearningFolderModel.instance.get(lessonId);
+    if (!entry) return;
+
+    if (
+      !confirm(
+        `Reset "${entry.title}"?\n\nThis throws away your copy of the lesson project and pulls a fresh one. ` +
+          `Anything you have built inside it is lost.`
+      )
+    ) {
+      return;
+    }
+
+    void performLessonReset(lessonId);
+  }, []);
+
+  /**
+   * FIX-027 §20 — the second half of *Start again*, pressed at the lesson's completion moment.
+   *
+   * 🔴 **The reset happens here because here is where the project is closed.** The control that
+   * asked is inside the lesson, where `Learning/<slug>/` is the open project and a live
+   * `ProjectModel` would write its graph back over the fresh copy. See `launcherHandoff.ts`.
+   *
+   * ⚠️ **No confirm and no availability check** — both already happened, in the lesson, before
+   * the learner was moved. Asking again here would be asking someone who has just been thrown
+   * out of a lesson whether they meant it.
+   *
+   * ⚠️ `takeLessonReset` is **consumed on read**, which is what makes React 18's double-invoked
+   * effect harmless: the second call gets `undefined` and resets nothing. For a destructive
+   * action that is a safety property, not tidiness.
+   */
+  useEffect(() => {
+    const lessonId = takeLessonReset();
+    if (lessonId) void performLessonReset(lessonId);
   }, []);
 
   // Listen for GitHub auth state changes
@@ -476,6 +806,32 @@ export function ProjectsPage(props: ProjectsPageProps) {
     setScopingScope(emptyScope());
     setScopingError(undefined);
     setIsScopingBusy(false);
+    // REL-013 — and no leftover template either. "New project" means the entry screen, not
+    // whatever row somebody clicked on the Templates tab five minutes ago.
+    setWizardTemplateUrl('');
+    setIsCreateModalVisible(true);
+  }, []);
+
+  /**
+   * REL-013 AC5 — a row on the Templates tab opens **this** wizard, already on that template.
+   *
+   * 🔴 **NO SECOND CREATION ROUTE, AND THAT IS THE POINT.** `handleCreateProjectConfirm` below is
+   * where `needsBackend` is read off the chosen row and where `ensureTemplateBackend` is called
+   * (SBR-001). A tab that installed a template itself would have had to repeat both, and the
+   * repeat that forgot would hand somebody a backend-less project from a template that needs one
+   * — exactly the defect SBR-001 closed, re-entered by a new door.
+   *
+   * ⚠️ The scoping conversation is reset here too. Opening the wizard in template mode with a
+   * previous AI session still in state would carry that transcript into `finishScopedProject`
+   * if the user backed out to `ai` mode.
+   */
+  const handleUseTemplate = useCallback((templateUrl: string) => {
+    scopingSessionRef.current = null;
+    setScopingMessages([]);
+    setScopingScope(emptyScope());
+    setScopingError(undefined);
+    setIsScopingBusy(false);
+    setWizardTemplateUrl(templateUrl);
     setIsCreateModalVisible(true);
   }, []);
 
@@ -617,12 +973,38 @@ export function ProjectsPage(props: ProjectsPageProps) {
       const direntry = await filesystem.openDialog({
         allowCreateDirectory: true
       });
+      if (direntry) {
+        // FIX-021 — the write half of the seeded Location. Recorded here rather
+        // than on Create, because this is the moment the user chose a folder:
+        // abandoning the wizard afterwards does not make the choice less real,
+        // and a creation that fails is exactly when they will be back.
+        EditorSettings.instance.set(LAST_PROJECT_LOCATION_KEY, direntry);
+      }
       return direntry || null;
     } catch (error) {
       console.error('Failed to choose location:', error);
       return null;
     }
   }, []);
+
+  /**
+   * FIX-021 — the folder the wizard's Location field opens on.
+   *
+   * Re-read every time the modal opens, which is what `isCreateModalVisible` is
+   * doing in the dependency list: the wizard is unmounted while closed, so this
+   * is the value it mounts with, and a folder chosen in one pass is the seed for
+   * the next without any of it living in wizard state.
+   */
+  const initialWizardLocation = useMemo(
+    () =>
+      pickProjectLocation({
+        remembered: EditorSettings.instance.get(LAST_PROJECT_LOCATION_KEY),
+        documentsPath: platform.getDocumentsPath(),
+        exists: (path) => filesystem.exists(path)
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isCreateModalVisible is the re-read trigger
+    [isCreateModalVisible]
+  );
 
   /**
    * AIX-012 — everything that happens to an AI-scoped project *after* it has
@@ -664,6 +1046,30 @@ export function ProjectsPage(props: ProjectsPageProps) {
       abandoned: !scope.agreed
     });
 
+    /**
+     * FIX-021 slice 0 — the `CLAUDE.md` written during creation predates everything above.
+     *
+     * `newProject` writes it before this function runs, so it went out with `hasDocs: false`
+     * and no summary: no "Where the decisions are" section, no sentence saying what the app
+     * is. The `create_project` twin gets both, and BST-005's acceptance asks for *"the same
+     * two files, same content shape"* from either path. Re-rendered here rather than
+     * reordered because the ordering is deliberate — a docs failure must never cost the
+     * project — and the re-render is guarded so it can only replace a file we authored.
+     *
+     * Only when at least one doc actually landed: `hasDocs` would otherwise point the reader
+     * at a `docs/` that is not there.
+     */
+    if (result.written.length > 0) {
+      const projectDirectory = project._retainedProjectDirectory;
+      if (projectDirectory) {
+        await upgradeProjectAgentConfigForDocs({
+          projectDirectory,
+          projectName: project.name || 'Untitled',
+          summary: scope.summary
+        });
+      }
+    }
+
     if (plan.operations.length > 0) {
       setPendingScopePlan({ projectId: project.id, plan, recordPath: DOC_INITIAL_SCOPE });
     }
@@ -678,11 +1084,69 @@ export function ProjectsPage(props: ProjectsPageProps) {
     }
   }, []);
 
+  /**
+   * SBR-001 — a template that asked for a backend gets one before the route.
+   *
+   * Create + bind only. 🔴 Deliberately NO `backend:start` and NO cloud-function
+   * deploy from here: the route sets `ProjectModel.instance`, and
+   * `ProjectBackendLifecycle` then starts the bound backend **with the project
+   * dir** (so `nodegx.security.json` is enforced) and reaches
+   * `CloudFunctionDeployer.onBackendStarted` (so the template's cloud functions
+   * exist). A backend started on the launcher would be *adopted* by that
+   * reconcile instead, and the adopted path never deploys functions —
+   * `templatebackend.ts`'s header holds the full argument.
+   *
+   * The binding is applied HERE, not in the model, for `EditorPage`'s reason:
+   * `setCloudServices` raises `cloudServicesChanged`, and the helper stays
+   * plain-Node gradeable.
+   */
+  const finishTemplateBackend = useCallback(async (project: ProjectModel) => {
+    const ipc = getIpc();
+    if (!ipc) return;
+
+    const outcome = await ensureTemplateBackend({
+      needsBackend: true,
+      projectId: project.id,
+      projectName: project.name,
+      boundEndpoint: getCloudServices(project).endpoint,
+      invoke: (channel, ...args) => ipc.invoke(channel, ...args)
+    });
+
+    if (outcome.status === 'attached') {
+      setCloudServices(project, {
+        id: outcome.backendId,
+        endpoint: outcome.endpoint,
+        appId: outcome.backendId,
+        type: 'nodegx'
+      });
+      console.log(`[SBR-001] backend ${outcome.reused ? 'adopted' : 'created'} for template project at ${outcome.endpoint}`);
+    } else if (outcome.status === 'failed') {
+      // Advisory, never fatal: the project still opens, and the screen says so
+      // (SBR-002). This sentence names the repair.
+      ToastLayer.showError(
+        `The project was created, but its backend could not be attached: ${outcome.reason}. You can attach one from Backend Services.`
+      );
+    }
+  }, []);
+
   const handleCreateProjectConfirm = useCallback(
-    async (name: string, location: string, presetId: string, mode: WizardMode) => {
+    async (name: string, location: string, presetId: string, mode: WizardMode, templateUrl: string) => {
       setIsCreateModalVisible(false);
 
+      // SBR-001 — read the chosen row's derived need while the gallery is still
+      // in state. `undefined` (a community row, which has no column to say) is
+      // "no": a template that did not ask for a backend must not grow one.
+      const templateNeedsBackend =
+        mode === 'template' &&
+        projectTemplates.items.find((item) => item.url === templateUrl)?.needsBackend === true;
+
       // Store the chosen preset — StyleTokensModel will consume it on editor startup.
+      //
+      // 🔴 FB-005 T3. Template mode never visits the preset step, so `presetId` is the untouched
+      // default `'modern'` — which `setPendingPresetId` deliberately stores as `null`. So a
+      // template's own styling is not overwritten by a preset nobody picked, and that is a
+      // property of the default rather than of a branch here. If `DEFAULT_PRESET_ID` ever stops
+      // being the one preset that means "leave it alone", this needs a branch.
       setPendingPresetId(presetId);
 
       // Snapshot the scope now: the modal is closing and its state is about to
@@ -707,6 +1171,23 @@ export function ProjectsPage(props: ProjectsPageProps) {
               return;
             }
 
+            if (templateNeedsBackend) {
+              // Awaited before the route, like `finishScopedProject` below: the
+              // editor must open on a project that is already bound, because the
+              // binding is what `ProjectBackendLifecycle` starts from. A failure
+              // costs the backend, never the project.
+              finishTemplateBackend(project)
+                .catch((error) => {
+                  console.error('[SBR-001] Failed to attach the template backend:', error);
+                  ToastLayer.showError('The project was created, but its backend could not be attached.');
+                })
+                .finally(() => {
+                  ToastLayer.hideActivity(activityId);
+                  props.route.router.route({ to: 'editor', project });
+                });
+              return;
+            }
+
             if (!withScope) {
               ToastLayer.hideActivity(activityId);
               // Navigate to editor — StyleTokensModel will apply preset on load
@@ -728,7 +1209,9 @@ export function ProjectsPage(props: ProjectsPageProps) {
                 props.route.router.route({ to: 'editor', project });
               });
           },
-          { name, path, projectTemplate: '' }
+          // FB-005 T3 — `templateUrl` is `''` in every mode but `'template'`, and `''` is the
+          // value this call site has always passed. `resolveTemplateUrl` maps it to the default.
+          { name, path, projectTemplate: templateUrl }
         );
       } catch (error) {
         setPendingPresetId(null);
@@ -736,7 +1219,7 @@ export function ProjectsPage(props: ProjectsPageProps) {
         ToastLayer.showError('Failed to create project');
       }
     },
-    [props.route, scopingScope, finishScopedProject]
+    [props.route, scopingScope, finishScopedProject, finishTemplateBackend, projectTemplates.items]
   );
 
   const handleCreateModalClose = useCallback(() => {
@@ -1015,6 +1498,33 @@ export function ProjectsPage(props: ProjectsPageProps) {
   /**
    * Handle "Open Read-Only" button click - opens legacy project without migration
    */
+  /**
+   * FB-005 T5 — open the share dialog against one project row.
+   *
+   * ⚠️ **The directory comes from `LocalProjectsModel`, not from the card**, matching
+   * `handleMigrateProject`: the card's `localPath` is a copy made when the list was built, and the
+   * thing being read here is a folder on disk that a share will walk file by file.
+   *
+   * 🔴 A project with no retained directory is a row pointing at nothing — it is refused HERE
+   * rather than being carried into the dialog, because the dialog's refusals are all about the
+   * *contents* of a folder and "there is no folder" is not one of them.
+   */
+  const handleShareAsTemplate = useCallback(
+    (projectId: string) => {
+      const project = LocalProjectsModel.instance.getProjects().find((p) => p.id === projectId);
+      if (!project || !project.retainedProjectDirectory) {
+        ToastLayer.showError('Cannot share this project: its folder could not be found.');
+        return;
+      }
+      shareTemplate.open({
+        projectId,
+        projectName: project.name,
+        projectDir: project.retainedProjectDirectory
+      });
+    },
+    [shareTemplate]
+  );
+
   const handleOpenReadOnly = useCallback(
     async (projectId: string) => {
       const projects = LocalProjectsModel.instance.getProjects();
@@ -1054,6 +1564,15 @@ export function ProjectsPage(props: ProjectsPageProps) {
   return (
     <>
       <Launcher
+        /**
+         * 🔴 NAT-012 AC3 — a door in the editor asked for a page, and this is where it is
+         * honoured. `takeLauncherLanding` is **consumed on read**, so this is the one mount that
+         * lands anywhere but Projects: close a second project afterwards and nothing is stashed,
+         * so FIX-025's *"the launcher opens on Projects"* holds for every open nobody asked to
+         * redirect. ⚠️ Read during render on purpose — `initialTab` is only consulted on the
+         * `Launcher`'s first render, so claiming it in an effect would claim it too late.
+         */
+        initialTab={launcherLanding}
         projects={realProjects}
         appVersion={platform.getVersion()}
         onCreateProject={handleCreateProject}
@@ -1063,9 +1582,27 @@ export function ProjectsPage(props: ProjectsPageProps) {
         onDeleteProject={handleDeleteProject}
         onMigrateProject={handleMigrateProject}
         onOpenReadOnly={handleOpenReadOnly}
+        onShareAsTemplate={handleShareAsTemplate}
+        shareTemplateModal={shareTemplate.modal}
         lessons={lessons}
         onStartLesson={handleStartLesson}
         onRestartLesson={handleRestartLesson}
+        // UNI-007 / D5 — the Learning section. Empty until something installs
+        // into the register, and the section renders nothing when it is empty.
+        learning={learning}
+        onOpenLearningLesson={handleOpenLearningLesson}
+        onResetLearningLesson={handleResetLearningLesson}
+        onInstallLearningLesson={handleInstallLearningLesson}
+        // UNI-007 AC1 — the path above the shelf. 🔴 The `surface` is the whole decision;
+        // this page passes it through and adds nothing, which is what keeps the mirror a
+        // mirror (`learnerpathview.ts`, and D15's argument one surface along).
+        learnerPath={learnerPath.surface}
+        onChooseIntakeAnswer={learnerPath.onChoose}
+        onSubmitIntake={learnerPath.onSubmit}
+        onRetakeIntake={learnerPath.onRetake}
+        onProjectConcept={learnerPath.onProject}
+        projectingConcept={learnerPath.projecting}
+        learnerPathProjectionNote={learnerPath.projectionNote}
         projectOrganizationService={ProjectOrganizationService.instance}
         githubUser={githubUser}
         githubIsAuthenticated={githubIsAuthenticated}
@@ -1075,6 +1612,69 @@ export function ProjectsPage(props: ProjectsPageProps) {
         githubRepos={githubRepos}
         onCloneRepo={handleCloneRepo}
         onOpenSettings={handleOpenSettings}
+        // The window is frameless on every platform, and only macOS keeps
+        // native buttons — so on Windows and Linux the launcher had no
+        // minimise/maximise/close. `App` already owns these for the editor's
+        // own titlebar; the launcher just had nobody passing them in.
+        onMinimizeWindow={() => App.instance.minimize()}
+        onMaximizeWindow={() => App.instance.maximize()}
+        onCloseWindow={() => App.instance.close()}
+        // BST-003 — the on-ramp before there is a project. `undefined` when there is no server
+        // bundle to point at, in which case the card does not render at all.
+        connectAgent={connectAgent}
+        // UNI-001 AC2 — the sign-in card, and the chip plus sign-out once there is a session.
+        // The editor is fully functional signed out; this adds a surface and gates nothing.
+        community={community}
+        // REL-013 — the Templates tab. The SAME gallery state the wizard's picker is handed,
+        // from the one hook instance above; the tab draws it and creates nothing itself.
+        templates={projectTemplates}
+        onUseTemplate={handleUseTemplate}
+        // REL-013 — how this page learns which tab is open, which is half of the fetch gate.
+        onActivePageChange={setActiveLauncherPage}
+        communityMirror={{
+          view: communityMirror.view,
+          isRefreshing: communityMirror.isRefreshing,
+          onRefresh: communityMirror.refresh,
+          // 🔴 NAT-007 AC1 — this was `platform.openExternal(`${COMMUNITY_URL}/bench/${externalId}`)`,
+          // and `externalId` was a field the platform has never sent, so every thread anybody
+          // clicked opened `/bench/undefined`. It opens in place now; see `communityapi.ts`.
+          thread: communityThread.pane
+            ? // 🔴 NAT-008 AC4 — a post's author line opens their profile, and this is the join.
+              { ...communityThread.pane, onOpenPerson: communityPeople.openPerson }
+            : null,
+          onOpenThread: communityThread.openThread,
+          // FB-002 AC3 — the Bench pills. The default is the hook's, so this tab and the editor's
+          // rail panel open on the same list for the same account (AC4).
+          onSelectBenchFilter: communityMirror.selectBenchFilter,
+          // NAT-008 AC1/AC2. ⚠️ `people` is `null` when D15 refused this viewer, which the tab
+          // draws as nothing at all — see `LauncherCommunityHostState.people`.
+          people: communityPeople.people,
+          profile: communityPeople.profile,
+          // FB-013 C4 — the chat tab. Supplying this is what makes the tab exist at all; a build
+          // without it draws no Chat in the strip. See `LauncherCommunityHostState.chat`.
+          chat: {
+            view: communityChat.view,
+            thread: communityChat.thread,
+            onSelectChannel: communityChat.selectChannel,
+            onOpenThread: communityChat.openThread,
+            onBack: communityChat.closeThread,
+            onRetry: communityChat.refresh,
+            onOpenLink: (href) => platform.openExternal(href),
+            // 🔴 FB-013's WRITE half. `useCommunityChat` has composed these since the
+            // composer landed, and `CommunityChatView` has drawn them since the same
+            // commit — and this object never carried them across. Two green gates on the
+            // ends of a chain, and a river nobody could write to from the launcher.
+            // Richard, 2026-09-06: *"STILL doesn't have the ability to add chat"*.
+            composer: communityChat.composer,
+            reply: communityChat.reply
+          },
+          // ⚠️ `/tutorials/<slug>`, which is the route the web has (`src/app/tutorials/[slug]`).
+          // This said `/articles/` — a path the site has never served — so every guide anybody
+          // clicked opened a 404. Same shape as `/bench/undefined` before NAT-007.
+          onOpenArticle: (slug) => platform.openExternal(`${COMMUNITY_URL}/tutorials/${slug}`),
+          onOpenReplay: (slug) => platform.openExternal(`${COMMUNITY_URL}/replays/${slug}`),
+          onOpenCommunity: () => platform.openExternal(COMMUNITY_URL)
+        }}
       />
 
       <ProjectCreationWizard
@@ -1085,7 +1685,18 @@ export function ProjectsPage(props: ProjectsPageProps) {
         presets={STYLE_PRESETS}
         aiAvailability={aiAvailability}
         scoping={scopingState}
+        templates={projectTemplates}
+        initialLocation={initialWizardLocation}
+        // REL-013 AC5 — set only when the Templates tab opened this; `''` otherwise, which
+        // leaves the wizard on its entry screen exactly as before.
+        initialTemplateUrl={wizardTemplateUrl}
       />
+
+      {/* The launcher had no update surface at all: `BaseWindow`, which owned
+          the old popup, wraps only `EditorPage`. So an update could be offered
+          only to someone already inside a project — the one place a restart
+          costs the most. */}
+      <UpdateManager />
     </>
   );
 }

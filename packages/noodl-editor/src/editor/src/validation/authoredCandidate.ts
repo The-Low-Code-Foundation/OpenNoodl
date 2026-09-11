@@ -51,10 +51,33 @@
 
 import { checkBackendRequirements, type ProjectBackendFacts } from './backendRequirement';
 import type { CatalogIndex } from './CatalogIndex';
+import { checkComponentRefParameters } from './componentRefParameters';
+import { checkConnectionTargets } from './connectionTargets';
+import { checkDerivedPortTargets, derivedPortIndex, type DerivedPortIndex } from './derivedPortTargets';
+import {
+  checkComponentPortDirection,
+  checkUndeclaredComponentPorts,
+  checkInstanceInterfaces,
+  componentInterfaceIndex,
+  type ComponentInterfaceIndex,
+  type ComponentInterfaceView
+} from './componentInterface';
 import { DiagnosticCode, type Diagnostic } from './diagnostics';
+import { checkImageSources } from './imageSource';
+import { checkUnrealisedMeasure } from './unrealisedMeasure';
+import { checkPageScroll } from './pageScroll';
+import { checkFunctionNodePorts, checkScriptNodeRunnable, type FunctionWireLike } from './functionPorts';
 import { checkInstancePorts, type AuthoredPortLike } from './instancePorts';
 import { checkNavigation, checkPageShape, looksLikePageComponent, PAGE_NODE_TYPE } from './navigation';
 import { checkParameterValues } from './parameterValues';
+import { checkPublicWriteDoor, type FunctionSecurityPolicy } from './publicWriteDoor';
+import { checkRepeaterTemplate } from './repeaterTemplate';
+import { checkLayoutInertCombination } from './layoutInertCombination';
+import { checkOneWayGate } from './oneWayGate';
+import { checkQueryBeforeFilter } from './queryBeforeFilter';
+import { checkResponsiveArrangement } from './responsiveArrangement';
+import { checkRuntimeContext } from './runtimeContext';
+import { checkTypographyHierarchy } from './typographyHierarchy';
 
 /**
  * The node shape every precondition check reads. The three checks take three
@@ -69,6 +92,13 @@ export interface AuthoredNode {
   parameters?: Record<string, unknown> | null;
   /** Declared instance ports, for `checkInstancePorts`. */
   ports?: readonly AuthoredPortLike[] | null;
+  /**
+   * Child node ids, for `checkRepeaterTemplate` (LAS-012). Hierarchy was until
+   * now a `rules/` concern — `NormNode` carries `children` and the semantic
+   * validator reasons about it — but "a `For Each` with children" is a question
+   * about a *parameter and* a child at once, and only this layer sees both.
+   */
+  children?: readonly string[] | null;
 }
 
 /**
@@ -82,6 +112,33 @@ export interface StoredNodeLike {
   label?: string;
   parameters?: Record<string, unknown> | null;
   ports?: readonly AuthoredPortLike[] | null;
+  children?: readonly string[] | null;
+}
+
+/**
+ * A stored v2 connection, as much of it as {@link connectedInputs} reads.
+ */
+export interface StoredConnectionLike {
+  toId: string;
+  toProperty: string;
+}
+
+/**
+ * Which input ports carry a wire, as `` `${nodeId}::${port}` ``.
+ *
+ * LAS-012 needs it and it is the first thing in this layer that does: every
+ * other precondition asks about a value, and "is this port driven instead"
+ * is the one question that can turn a true finding into a false one. A
+ * `template` fed by a connection is a working list, and rejecting it would be
+ * the gate reporting the app's own working links as broken — the failure mode
+ * `urlPaths`' "omitted means do not check" convention exists to prevent.
+ */
+export function connectedInputs(connections: readonly StoredConnectionLike[]): Set<string> {
+  const set = new Set<string>();
+  for (const c of connections) {
+    if (typeof c?.toId === 'string' && typeof c?.toProperty === 'string') set.add(`${c.toId}::${c.toProperty}`);
+  }
+  return set;
 }
 
 /**
@@ -101,14 +158,28 @@ export function authoredNodes(nodes: readonly StoredNodeLike[]): AuthoredNode[] 
     type: n.type,
     ...(typeof n.label === 'string' && n.label ? { label: n.label } : {}),
     parameters: (n.parameters ?? null) as Record<string, unknown> | null,
-    ...(n.ports ? { ports: n.ports } : {})
+    ...(n.ports ? { ports: n.ports } : {}),
+    ...(n.children ? { children: n.children } : {})
   }));
 }
 
-/** A component seen only as "what nodes, with what parameters" — enough to find `Page` nodes. */
+/**
+ * A component seen only as "what nodes, with what parameters and ports" — enough
+ * to find `Page` nodes (`declaredUrlPaths`) and to derive its interface
+ * (`componentInterfaceIndex`, LAS-001).
+ *
+ * `ports` is optional because one of the three callers could not supply it until
+ * LAS-001 widened `ExplainGraph`'s node shape, and because a view built from a
+ * source that does not carry ports is still a perfectly good answer to the
+ * url-path question. A view without ports simply contributes an empty interface.
+ */
 export interface ComponentNodesView {
   name: string;
-  nodes: readonly { type: string; parameters?: Record<string, unknown> | null }[];
+  nodes: readonly {
+    type: string;
+    parameters?: Record<string, unknown> | null;
+    ports?: readonly AuthoredPortLike[] | null;
+  }[];
 }
 
 /**
@@ -147,10 +218,133 @@ export interface ComponentNodesView {
  * policy, so promoting a code here cannot turn 6 corpus hits into errors.
  */
 export const AUTHORED_BLOCKING_WARNINGS: ReadonlySet<string> = new Set([
+  // DEF-002 §3 — the set's charter is "output that is broken: a value the
+  // runtime discards", and a value input receiving a signal pulse discards it in
+  // the most literal way available: the port settles at `false` every time.
+  // `warning` rather than `error` because the corpus carries exactly one, and it
+  // is a TRUE positive in a hand-authored import (`big-merge-test-mine` wires
+  // `Switch.switchedToOn` into `Script Downloader.startLoad`, a boolean flag,
+  // when it meant the `load` signal beside it). Advisory for a project somebody
+  // imported; blocking for a graph an agent just wrote — which is the whole
+  // reason this set exists.
+  DiagnosticCode.SignalIntoValuePort,
   DiagnosticCode.UnknownParameter,
   DiagnosticCode.UnitlessDimension,
   DiagnosticCode.UnresolvedNavigation,
-  DiagnosticCode.PageWithoutPageNode
+  DiagnosticCode.PageWithoutPageNode,
+  // LAS-001 — the three halves of the interface gate, all promoted on the same
+  // corpus run and the same argument as `PageWithoutPageNode`. Project-wide each
+  // has a legitimate population (58 stale instance parameters in one real merge
+  // fixture; 22 backwards ports in the reference build) and none of it is
+  // authored today. For a graph an agent just wrote, an instance parameter that
+  // names no input is a value it believes it set and did not — the exact
+  // mechanism that shipped haiku's four identical "Text" cards under a clean
+  // report, and the single gap between an architecturally correct replay and a
+  // page that renders.
+  DiagnosticCode.InstanceUnknownParameter,
+  DiagnosticCode.InterfacelessInstance,
+  DiagnosticCode.ComponentPortDirection,
+  // LAS-004 — the only architecture gate in the system, and until now it blocked
+  // nothing anywhere. It fired correctly on every measured build (3 warnings on
+  // the reference build's exact failure, 2 on haiku's, 1 on sonnet's) and was
+  // ignored by all three, which is what advice gets under pressure. The audit's
+  // other measurement is the reason to expect this to work: hard rejections
+  // carrying a suggestion were self-corrected at a 100% rate even by the mid-tier
+  // model, and this rule's message already offers both exits. With LAS-002
+  // landed, the text now actually reaches a staging agent instead of arriving as
+  // the integer 1.
+  DiagnosticCode.RepeatedSiblingSubtree,
+  // LAS-012 — the two non-fatal halves of the repeater contract. The fatal half
+  // (`RepeaterWithoutTemplate`, and `RepeaterWithVisualChildren` on a repeater
+  // that also has no template) is an error and needs no entry here.
+  //
+  // `RepeaterTemplateUnresolved` has the `InstanceUnknownParameter` shape
+  // exactly: 2 corpus hits in one legacy merge fixture whose components moved,
+  // nothing authored. `RepeaterWithVisualChildren` at warning severity means the
+  // list does render and the nested children are merely inert — project-wide
+  // that is a tidy-up, and for a graph an agent just wrote it is the mental
+  // model that produced haiku's three blank sections.
+  DiagnosticCode.RepeaterTemplateUnresolved,
+  DiagnosticCode.RepeaterWithVisualChildren,
+  // DEF-010 (SB-009) — the parameter spelling of the same reference, promoted on
+  // the corpus number its task file demanded (`npm run calibrate:door`,
+  // 2026-08-29): 178 projects, 614 component-typed parameters checked (543
+  // `NavigationShowPopup.target`, 70 `RunTasks.taskTemplate`), **15 hits in 6
+  // projects, every sampled one a TRUE positive in a legacy hand-authored
+  // project** (dead popup targets whose components were renamed or deleted —
+  // the `RepeaterTemplateUnresolved` shape at 7× the population). Nothing
+  // authored today fires it, the baseline pass keeps legacy projects editable,
+  // and for a graph an agent just wrote a `taskTemplate` naming nothing is a
+  // cloud function that reports success having done no work per item.
+  DiagnosticCode.ComponentParameterUnresolved,
+  // DSG-004 §2.2 — the `sizeMode` family, split out of
+  // `InactiveConditionalParameter` precisely so this decision could be made about
+  // it alone. The general code stays a warning: project-wide its population is
+  // 366 hits of a dozen different conditions, and `validate:project` gaining an
+  // error class across that corpus is a separate decision.
+  //
+  // This subset has the `UnitlessDimension` shape exactly. Doctrine §8 names the
+  // measured consequence — "a `width: 100%` input that renders 170px wide is
+  // this, every time" — and the corpus's authored half is 17 hits, every one of
+  // them real: six Text Inputs in one QA project's admin form at `width: 100%`,
+  // rendering at 170px under a clean report. Zero of the 204 `Image` nodes in
+  // either corpus are affected, so this promotion cannot fire on the population
+  // §5 already taught correctly.
+  DiagnosticCode.InertDimension,
+  // SB-001 — a node the component's runtime cannot register. For a graph an
+  // agent just wrote there is no benign reading: the wrong runtime has no such
+  // node, so the graph silently does nothing where it should act — the exact
+  // "clean report over a dead graph" shape every promotion above answers. Kept
+  // a warning rather than an error so `validate:project` over hand-authored
+  // corpora stays advisory, per the file's standing convention.
+  DiagnosticCode.WrongRuntimeNode,
+  // DEF-002 §2 — the caller is not told the wrong thing, it is told **nothing**
+  // and waits out a 30s timeout. That is the most literal reading of this set's
+  // charter, "output that is broken", and it is why this belongs here.
+  //
+  // 🔴 It took two wrong answers to get here, both recorded because the shape
+  // recurs. First: "the shipped templates leave failure edges unanswered" —
+  // they do not. Then a peer's counter-measurement said the rule's *population*
+  // was wrong and it should skip components with no `Response`, which it has
+  // always done. What was actually true was **two false positives in the rule**,
+  // both on `submitContactForm`, the one graph written to honour this task's own
+  // trap:
+  //
+  //   - `mail.failure` unwired because `mail.completed -> res.send` already
+  //     answers — `completed` fires whatever the outcome, so it answers the
+  //     failure path too;
+  //   - `compose.failure` unwired because a parallel branch
+  //     (`recipient -> save -> stored -> mail -> res`) still answers.
+  //
+  // Both are now exits with an arm and a control, and the corpus went
+  // **249 -> 182 -> 33**. Neither measurement that argued about this could see
+  // the firing case: one counted only failure wires that *exist*, and an unwired
+  // port is not a wire.
+  DiagnosticCode.FailureReachesNothing,
+  // DEF-004 §4c — the other half of `FailureReachesNothing`, and the one that
+  // fits this set's charter more exactly than anything else in it. That rule is
+  // about a caller who is told **nothing**; this is about a caller who is told
+  // the **wrong thing**, and a record written to say work happened that did not.
+  // For a graph an agent just wrote there is no benign reading of it.
+  //
+  // ✅ Promoted on a measurement, not on the argument. Over 179 projects and
+  // **319 cloud-function components**: 34 `completed` wires reach a commit, **20
+  // are refused and 14 accepted**, and the split is exact —
+  //
+  //   - the 20 are `publishPage` / `duplicatePage` in ten copies of the
+  //     site-builder predating SBR-015, every one carrying literally the wire
+  //     that task repaired (`tasks.completed -> page.store`). True positives by
+  //     construction: the repaired template spells it `done`.
+  //   - the 14 are all `submitContactForm -> send`, the graph written to honour
+  //     this task's own trap. Accepted because `save.failure` and
+  //     `stored.failure` reach that same `send`.
+  //
+  // 🔴 **Zero false positives, and the zero on the second corpus is explained
+  // rather than bare**: 82 further projects hold 257 cloud-function components
+  // and **no `completed` wires at all**. `completed` is a rare port — authors
+  // reach for `done` — so the blast radius of making this blocking is small, and
+  // that is a measurement rather than a hope.
+  DiagnosticCode.CompletedCommitsUnchecked
 ]);
 
 /** Whether a diagnostic rejects an authored submission. */
@@ -174,6 +368,43 @@ export function isBlockingForAuthoredOutput(diagnostic: Diagnostic): boolean {
 export function diagnosticKey(diagnostic: Diagnostic): string {
   const l = diagnostic.location;
   return JSON.stringify([diagnostic.code, l.nodeId, l.port, l.plug, l.connection, diagnostic.message]);
+}
+
+/**
+ * Collapse findings that two overlapping sources both reported.
+ *
+ * 🔴 **The two diagnostic sources overlap, and since D13 they overlap on
+ * purpose.** A caller that merges the semantic validator's report with
+ * `authoredPreconditionDiagnostics` gets every parameter-value finding
+ * **twice**: D13 registered `rules/parameterValue`, which runs
+ * `checkParameterValues` — the same function the precondition set has always
+ * run. **A rejection naming one mistake twice reads as two mistakes**, and it
+ * reaches the agent's readable list and `summary.errors`/`warnings` that way.
+ *
+ * ⚠️ **Deduped rather than un-overlapped, deliberately.** Removing
+ * `checkParameterValues` from the precondition set would silently drop it for
+ * any caller that runs the preconditions alone, and that is a bigger change
+ * made for a cosmetic reason. The overlap stays harmless and each source stays
+ * independently complete.
+ *
+ * 🔴 **This lives here because it was fixed in ONE of three copies.**
+ * CN-009 AC5's drive found the regression on 2026-08-18 (`810478ce`) and
+ * deduped `noodl-mcp/src/validate.ts` — while `authoring/validate.ts` and
+ * `planTools.ts` kept doubling, which is 5 of the `Test (editor)` floor's ten
+ * failures (`AIX-006` ×4, `AIX-011`). That comment even names the editor's
+ * authoring loop as a caller. Same lesson as `diagnosticKey` directly above:
+ * **three copies that agree are still three copies; this is the one.**
+ */
+export function dedupeDiagnostics(diagnostics: readonly Diagnostic[]): Diagnostic[] {
+  const seen = new Set<string>();
+  const out: Diagnostic[] = [];
+  for (const diagnostic of diagnostics) {
+    const key = diagnosticKey(diagnostic);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(diagnostic);
+  }
+  return out;
 }
 
 export interface AuthoredPreconditionOptions {
@@ -202,6 +433,67 @@ export interface AuthoredPreconditionOptions {
    * would report a missing backend on every project that has one.
    */
   backend?: ProjectBackendFacts;
+  /**
+   * LAS-001 — every component's interface, keyed by both name forms. **Omitted
+   * means "do not check"**, the same convention `urlPaths` and `backend` follow:
+   * a caller that cannot enumerate the project's components cannot tell a
+   * parameter that names no input from one whose component it simply has not
+   * read, and guessing reports a working page as broken.
+   *
+   * Build it with {@link componentInterfaces} from the same views
+   * `declaredUrlPaths` reads, so the two can never disagree about which
+   * components exist — including the ones a plan is about to create, which is
+   * what makes a multi-component plan validate correctly.
+   */
+  interfaces?: ComponentInterfaceIndex;
+  /**
+   * LAS-012 — the candidate's wired input ports, from {@link connectedInputs}.
+   * **Omitted means "no connection information"**, and a `template` fed by a
+   * wire then reads as unset. Zero of the corpus's 89 repeaters are wired that
+   * way, so omitting it costs nothing measured; supplying it is what keeps the
+   * one that eventually is from being rejected for it.
+   */
+  connections?: ReadonlySet<string>;
+  /**
+   * FIX-007 — the candidate's connections in full, unlike {@link connections},
+   * which is the derived "which inputs carry a wire" set and has thrown away the
+   * source port by the time it arrives.
+   *
+   * **Omitted means "do not check"**, the convention the options above follow.
+   * {@link checkFunctionNodePorts} reads it to compare an endpoint against the
+   * ports a Function node's own script creates, and {@link checkOneWayGate}
+   * reads it to ask which writers feed a gate port — the two questions in this
+   * layer that need the wire itself rather than the fact of one.
+   */
+  wires?: readonly FunctionWireLike[];
+  /**
+   * DEF-002 §1(b)/§1(c) — every component's adapter-minted `in-…`/`out-…`/`pm-…`
+   * port names, from {@link derivedPortIndices}.
+   *
+   * **Omitted means "do not check"**, the convention every option above follows.
+   * Build it from the same views `interfaces` and `urlPaths` come from, so a
+   * component a plan is about to create resolves for all three at once.
+   */
+  derived?: DerivedPortIndex;
+  /**
+   * REL-002a — the project's `settings.bodyScroll`, in three states.
+   *
+   * **`undefined` means "do not check"; `null` means "the project file was read and the setting
+   * is absent"** — the same undefined/null distinction `security` carries just below, and for the
+   * same reason. A caller that cannot read project settings cannot tell an app that chose a fixed
+   * viewport from one whose author never met the setting, and reporting the first is the false
+   * positive that gets a rule turned off. `true`/`false` are decisions and are silent.
+   */
+  bodyScroll?: boolean | null;
+  /**
+   * DEF-009 — the `functions` block of the project's `nodegx.security.json`.
+   * **`undefined` means "do not check"; `null` means "the project has no policy
+   * file"** — the two must stay distinct, because a caller that cannot read the
+   * project root cannot tell a rate-limited public door from an unlimited one,
+   * and warning about a door that IS limited is the false positive that gets
+   * the rule switched off.
+   */
+  security?: FunctionSecurityPolicy | null;
 }
 
 /**
@@ -222,16 +514,143 @@ export interface AuthoredPreconditionOptions {
  * `checkInstancePorts` is the fifth, added by AAQ-005: converging the two tool
  * vocabularies showed that `plug` was undeclared on one door and unchecked on
  * both, and that a port without it is inert rather than wrong.
+ *
+ * The sixth and seventh are LAS-001's, and they are preconditions for the
+ * sharpest version of the same reason: an instance's parameters are values, and
+ * the target component's interface is a project-wide fact. `NormNode` carries
+ * neither, so no `rules/` rule can ask the question at all.
+ *
+ * The eighth is LAS-012's, and it is the first here to read *hierarchy* as well
+ * as values: a `For Each` fails its contract by omitting a `template`, by naming
+ * one that does not resolve, or by nesting the item content as a child, and
+ * telling those three apart needs the parameters and the children in one place.
+ *
+ * The ninth and tenth are DSG-004's, and they are the first two *design* gates
+ * in the set. They are here for the same reason as all the others — a
+ * `flexDirection` and a `fontWeight` are parameter values, which `NormNode` did
+ * not carry.
+ *
+ * 🔴 **"Neither can ever appear in `validate:project`" was the sentence here and
+ * it expired on 2026-08-18**, when D13 gave `NormNode` its `parameters` and
+ * registered `rules/parameterValue`. The mechanical barrier is gone. What has
+ * not changed is the *reason to be careful*: both are calibrated against the
+ * corpus (see their headers) and were deliberately scoped to graphs an agent
+ * just wrote, so putting them on the CLI gate is a call about false-positive
+ * tolerance on hand-authored projects — with its own evidence — rather than a
+ * consequence of this one.
  */
 export function authoredPreconditionDiagnostics(options: AuthoredPreconditionOptions): Diagnostic[] {
-  const { component, nodes, components, urlPaths, catalog, backend } = options;
+  const {
+    component,
+    nodes,
+    components,
+    urlPaths,
+    catalog,
+    backend,
+    interfaces,
+    connections,
+    wires,
+    derived,
+    security,
+    bodyScroll
+  } = options;
   return [
     ...checkParameterValues(nodes, catalog, { component }),
     ...(backend ? checkBackendRequirements(nodes, { ...backend, component }) : []),
     ...checkNavigation(nodes, { component, components, urlPaths }),
     ...checkPageShape(nodes, { component, isRoutedPage: looksLikePageComponent(component) }),
-    ...checkInstancePorts(nodes, { component })
+    ...checkInstancePorts(nodes, { component }),
+    ...(interfaces ? checkInstanceInterfaces(nodes, { component, interfaces }) : []),
+    // DEF-002 §1(a) — the same index, asked about WIRES rather than parameters.
+    // `checkInstanceInterfaces` above covers an instance's parameters and has
+    // since LAS-001; nothing covered its connections, and phase 78's sabotage
+    // measured that silence: a mistyped instance port produced a run identical
+    // to the clean one. Guarded on `interfaces` for the same reason as its
+    // neighbour — omitted means "do not check".
+    ...(interfaces ? checkConnectionTargets(nodes, { component, interfaces, wires }) : []),
+    // DEF-002 §1(b)/§1(c) — the other two of the three sabotages, and the two
+    // whose ports are not an interface at all: an editor adapter mints them from
+    // parameters inside the TARGET component. Guarded on `derived` for the same
+    // reason as its neighbours — omitted means "do not check".
+    ...(derived ? checkDerivedPortTargets(nodes, { component, derived, wires }) : []),
+    ...checkComponentPortDirection(nodes, { component }),
+    // VIB-007 / register V22 — the third question in the interface family, and the one
+    // neither neighbour can ask: both read the ports a node DECLARES, so a node that
+    // declares none is silent to both while every connection drawn out of it names a port
+    // the component does not have. Ruled by a render rather than by reading the runtime
+    // (`vib007-v22.look.ts`): under a `For Each`, the undeclared arm draws the right NUMBER
+    // of rows and every one shows the component's own placeholder. Reads wires; omitted
+    // means "do not check", the same convention as its neighbours.
+    ...(wires ? checkUndeclaredComponentPorts(nodes, wires, { component }) : []),
+    // VIB-007 / register V33 — an image-typed input set to "" with nothing wired into it. The
+    // connection list is the whole predicate: `ui-card-grid-repeater`'s identical `"src": ""` is
+    // correct because a repeater fills it per row, and `ui-image-scrim-band`'s was the recipe
+    // named for its image shipping without one. Reads `connections` rather than `wires` because
+    // the question is "is this input fed", which is exactly what that set answers.
+    ...checkImageSources(nodes, { component, catalog, connectedInputs: connections }),
+    // VIB-007 / register V29 — a shell whose declared measure no child can draw to. 🔴 The row
+    // names "a maxWidth on a Text"; the render says twelve of that shape's thirteen corpus
+    // instances are CORRECT, three of them on the WORTHY page, and the one defect is a property of
+    // the SHELL rather than the text. Reads `connections` because a maxWidth arriving over a wire
+    // is a value the predicate cannot read and must not count as a cap.
+    ...checkUnrealisedMeasure(nodes, { component, catalog, connectedInputs: connections }),
+    ...checkRepeaterTemplate(nodes, { component, components, connectedInputs: connections }),
+    // DEF-010 (SB-009) — the other twelve of the catalog's thirteen
+    // component-typed ports. `For Each.template` is skipped inside the check:
+    // the line above owns it, and a second producer over one population is a
+    // duplicate first — the spec asserts that cardinality.
+    ...checkComponentRefParameters(nodes, { component, components, catalog, connectedInputs: connections }),
+    // DEF-009 — a public write door with no rate limit. Guarded on `security`
+    // INSIDE the check (undefined = do not check, null = no policy file), the
+    // same convention as the guards above, but the undefined/null distinction
+    // lives with the predicate that needs it.
+    ...checkPublicWriteDoor(nodes, { component, security, catalog }),
+    // DSG-004 §2.1 — doctrine §7's only mechanical claim, which had no gate.
+    ...checkResponsiveArrangement(nodes, { component, catalog }),
+    // DEF-018/DEF-020 — the two layout combinations in which a declared
+    // parameter is silently inert: a contentSize child of a Columns, and a
+    // distributing justifyContent on a row whose children all grow.
+    ...checkLayoutInertCombination(nodes, { component, catalog, connectedInputs: connections }),
+    // DEF-024 — a mounted/visible gate whose every writer is a constant-true
+    // Condition: it can only ever turn on, so sibling answers accumulate.
+    ...checkOneWayGate(nodes, { component, catalog, wires }),
+    // DEF-012 §2 — a cloud query with connected filter parameters that fetches
+    // at graph build, before the parameters can arrive: the first result is
+    // every row in the class. Reads wires; omitted means "do not check".
+    ...checkQueryBeforeFilter(nodes, { component, wires, catalog }),
+    // DSG-004 §2.3 — doctrine §3, as an info that never blocks.
+    ...checkTypographyHierarchy(nodes, { component, connectedInputs: connections }),
+    // FIX-007 §2 — the wire the port rule is right to skip and nothing else could see.
+    ...checkFunctionNodePorts(nodes, { component, wires, catalog }),
+    // FIX-006 §3 — a Script node that runs once at load and can never be re-entered.
+    ...checkScriptNodeRunnable(nodes, { component }),
+    // SB-001 — a node the component's runtime cannot register. Unconditional,
+    // because everything it reads is already here: the component's runtime is
+    // its name and the catalog carries `availableIn`. Unknown types are skipped
+    // inside the check — `UnknownNodeType`/`NodeUncheckable` own those.
+    ...checkRuntimeContext(nodes, { component, catalog }),
+    // REL-002a — the app has no way to scroll, so this page's content below the fold is
+    // unreachable. A project fact rather than a node one, which is why it arrives as an option
+    // and not out of `nodes`; guarded on the undefined/null distinction inside the check.
+    ...checkPageScroll(nodes, { component, bodyScroll })
   ];
+}
+
+/**
+ * LAS-001 — the interface index, built from the views every client already
+ * assembles for {@link declaredUrlPaths}.
+ *
+ * One builder rather than three, and built from the *same* list, so a component
+ * a plan is about to create resolves as an interface exactly when it resolves as
+ * a navigation target. Three copies of an index that agree are still three
+ * copies; this is the one.
+ */
+export function derivedPortIndices(components: readonly ComponentNodesView[]): DerivedPortIndex {
+  return derivedPortIndex(components);
+}
+
+export function componentInterfaces(components: readonly ComponentNodesView[]): ComponentInterfaceIndex {
+  return componentInterfaceIndex(components as readonly ComponentInterfaceView[]);
 }
 
 /**

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "9b4a85b8-f73d-40c4-857b-6b4d44a2550b",
+  "name": "CategoryBrowse",
+  "path": "/Components/CategoryBrowse",
+  "type": "visual",
+  "created": "2026-08-08T20:29:06.633Z",
+  "modified": "2026-08-08T20:29:06.633Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "Section with heading and a responsive grid of 3 CategoryTiles with piece counts."
+}

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "b2c3d4e5-0000-4000-8000-000000000002",
+  "name": "Badge",
+  "path": "/Pages/Badge",
+  "type": "page",
+  "modified": "2026-08-30T21:40:00.000Z"
+}

@@ -8,6 +8,8 @@ import { tracker } from '@noodl-utils/tracker';
 import { HtmlRenderer } from '@noodl-core-ui/components/common/HtmlRenderer';
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 
+import { ExportBadge } from '../../../common/ExportBadge';
+import { getChooserNote } from '../../NodePicker.chooser';
 import { getPreviewPorts, NodeDocs } from '../../NodePicker.hooks';
 import { nodeIconName } from '../../NodePicker.icons';
 import { PickerItem } from '../../NodePicker.search';
@@ -41,6 +43,8 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
 
   const iconName = item.kind === 'action' ? IconName.Chat : nodeIconName(item.name);
   const { ports, total } = getPreviewPorts(item.type);
+  // LGC-001 §2 — present for the three logic nodes only.
+  const chooser = item.kind === 'node' ? getChooserNote(item.name) : undefined;
 
   return (
     <aside className={classNames(css['Root'], css[`Root--tint-${item.tint}`])}>
@@ -54,11 +58,56 @@ export function NodePickerPreview({ item, docs }: NodePickerPreviewProps) {
         <span className={css['Chip']}>{item.subCategoryName ? `${item.categoryName} · ${item.subCategoryName}` : item.categoryName}</span>
       </header>
 
+      {/* EXP-013 AC1 — the "expand" of the card's badge: the ledger's own sentence in full, above
+          the docs, because "will this survive an export" is decided before "what does it do"
+          for someone who intends to export. The same `Chooser` frame LGC-001 uses for a note
+          that is about this node's place in the product rather than about the node itself. */}
+      {item.exportBadge && (
+        <div className={css['Chooser']} data-test="export-badge-reason">
+          <p className={css['ChooserHeadline']}>
+            <ExportBadge badge={item.exportBadge} variant="header" />
+          </p>
+          <p className={css['ChooserDetail']}>
+            {item.exportBadge.kind === 'scheduled'
+              ? 'You can place and run it, but "Export as React code" leaves it out — and every node it fires — until a release translates it. '
+              : 'You can place and run it, but "Export as React code" leaves it out — and every node it fires. '}
+            {item.exportBadge.reason}
+          </p>
+        </div>
+      )}
+
+      {/* LGC-001 §2 — above the reference prose, not inside it. The docs below
+          answer "what does this node do"; this answers "why this one and not
+          the other two", which is the question a person has while the picker is
+          open and the only question the enriched catalog cannot answer, because
+          it is written one node at a time. */}
+      {chooser && (
+        <div className={css['Chooser']}>
+          <p className={css['ChooserHeadline']}>{chooser.headline}</p>
+          {Boolean(chooser.detail) && <p className={css['ChooserDetail']}>{chooser.detail}</p>}
+          {Boolean(chooser.examples.length) && (
+            <ul className={css['ChooserExamples']}>
+              {chooser.examples.map((example) => (
+                <li key={example}>
+                  <code className={css['ChooserExample']}>{example}</code>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className={css['ChooserSignals']}>{chooser.signals}</p>
+        </div>
+      )}
+
       <div className={css['Body']}>
         {docs.content ? (
           <div className={css['Docs']}>
             <HtmlRenderer html={docs.content} />
           </div>
+        ) : item.description ? (
+          // LEG-006 — a project component has no docs page and never will; its
+          // description is the documentation. The card's line is one row tall
+          // and ellipsised, so the full sentence needs somewhere to be read.
+          <p className={css['Placeholder']}>{item.description}</p>
         ) : (
           <p className={css['Placeholder']}>
             {item.kind === 'action' ? item.meta : 'No documentation yet.'}

@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "fc889956-7d22-40c0-b344-a1f391cfed60",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "visitorVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "cheerSend",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "cheerButton",
+      "fromProperty": "onClick",
+      "toId": "cheerSend",
+      "toProperty": "sendEvent"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "previewFormat",
+      "toProperty": "name"
+    },
+    {
+      "fromId": "previewFormat",
+      "fromProperty": "formatted",
+      "toId": "cheerPreview",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "hasName",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "hasName",
+      "fromProperty": "result",
+      "toId": "cheerButton",
+      "toProperty": "enabled"
+    },
+    {
+      "fromId": "farewell",
+      "fromProperty": "waved",
+      "toId": "goMood",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "aboutButton",
+      "fromProperty": "onClick",
+      "toId": "showAbout",
+      "toProperty": "show"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "formatShout",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "formatShout",
+      "fromProperty": "out-text",
+      "toId": "shoutText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "visitorVar",
+      "fromProperty": "value",
+      "toId": "hasLongName",
+      "toProperty": "name"
+    },
+    {
+      "fromId": "hasLongName",
+      "fromProperty": "isTrue",
+      "toId": "aboutButton",
+      "toProperty": "enabled"
+    },
+    {
+      "fromId": "cheerMeter",
+      "fromProperty": "draft",
+      "toId": "echoText",
+      "toProperty": "text"
+    }
+  ]
+}

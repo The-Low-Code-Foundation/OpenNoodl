@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "4868de1b-9633-5cf0-80d8-bd8cc2fb96da",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "nameField",
+      "fromProperty": "onTextChanged",
+      "toId": "send",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "emailField",
+      "fromProperty": "onTextChanged",
+      "toId": "send",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "passwordField",
+      "fromProperty": "onTextChanged",
+      "toId": "send",
+      "toProperty": "in-password"
+    },
+    {
+      "fromId": "messageField",
+      "fromProperty": "onTextChanged",
+      "toId": "send",
+      "toProperty": "in-message"
+    },
+    {
+      "fromId": "sendButton",
+      "fromProperty": "onClick",
+      "toId": "send",
+      "toProperty": "call"
+    },
+    {
+      "fromId": "send",
+      "fromProperty": "done",
+      "toId": "sentGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "sentGate",
+      "fromProperty": "result",
+      "toId": "sent-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "send",
+      "fromProperty": "failure",
+      "toId": "refusalGate-3",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate-3",
+      "fromProperty": "result",
+      "toId": "refusal-3",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "prompt-3",
+      "fromProperty": "clicked",
+      "toId": "toSignIn",
+      "toProperty": "navigate"
+    }
+  ]
+}

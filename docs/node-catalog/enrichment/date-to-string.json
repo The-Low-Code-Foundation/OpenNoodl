@@ -1,25 +1,29 @@
 {
   "typeName": "Date To String",
-  "summary": "Formats a date into a string using {year}/{month}/{date}/{hours}-style tokens.",
-  "description": "Date To String takes a date on `input` (Date) — a Date object, or a date string which it converts with `new Date()` — and writes a formatted string to `currentValue` (Date String) according to `formatString` (Format). Supported tokens: {date} (day of month, 2-digit), {month} (2-digit), {monthShort} (e.g. \"Jan\", en-US), {year} (4-digit), {yearShort} (2-digit), {hours}, {minutes}, {seconds} (all 2-digit, 24-hour); anything else in the format passes through literally. The default format is \"{year}-{month}-{date}\". Each time formatting runs, `inputChanged` (Date Changed) fires; if the input is not a usable date, `currentValue` becomes an empty string and `onError` (Invalid Date) fires instead of throwing. CWF-011 added a Timezone input: leave it empty (the default) and it formats in the host machine's zone exactly as it always has; set an IANA name like Europe/London or America/New_York and the same instant is rendered in that zone instead — including the date, which rolls when the zone crosses midnight. An unknown zone name is treated as an unreadable date: `currentValue` empties and `onError` fires, rather than silently falling back to local.",
-  "whenToUse": "Use it to display timestamps — record creation dates, 'last saved' times — without writing code. For formats beyond these tokens (locale-aware dates, relative times like '2 h ago'), use a Function node with Intl or a date library. Note there is no {day}-of-week token. On a server the host zone is whatever the container says, so set Timezone explicitly for anything a user reads.",
+  "summary": "Formats a date into a string with {year}/{monthName}/{dayName}/{h12}-style tokens, in any language.",
+  "description": "Date To String takes a date on `input` (Date) — a Date object, or a date string which it converts with `new Date()` — and writes a formatted string to `currentValue` (Date String) according to `formatString` (Format). Supported tokens, for Thursday 10 September 2026 at 15:05:07: {date} 09 and {d} 9 (day of month), {ordinal} 9th, {month} 09 and {m} 9, {monthShort} Sep, {monthName} September, {year} 2026, {yearShort} 26, {dayName} Thursday, {dayShort} Thu, {hours} 15 and {h} 15 (24-hour), {hours12} 03 and {h12} 3 (12-hour), {ampm} pm and {AMPM} PM, {minutes} 05 and {min} 5, {seconds} 07 and {s} 7; anything else in the format passes through literally. The default format is \"{year}-{month}-{date}\". Each time formatting runs, `inputChanged` (Date Changed) fires; if the input is not a usable date, `currentValue` becomes an empty string and `onError` (Invalid Date) fires instead of throwing. CWF-011 added a Timezone input: leave it empty (the default) and it formats in the host machine's zone exactly as it always has; set an IANA name like Europe/London or America/New_York and the same instant is rendered in that zone instead — including the date, which rolls when the zone crosses midnight. An unknown zone name is treated as an unreadable date: `currentValue` empties and `onError` fires, rather than silently falling back to local. CMP-005 added the weekday, full month name, 12-hour, unpadded and ordinal tokens, and a Locale input: leave Locale empty (the default) and every name renders in English exactly as it always did, or set a BCP 47 tag like fr-FR and {monthName}, {monthShort}, {dayName} and {dayShort} render in that language. {ordinal} stays English — Intl gives the ordinal category, not the suffix string. Locale and Timezone are independent: a French app can render a Tokyo instant.",
+  "whenToUse": "Use it to display timestamps — record creation dates, 'last saved' times, \"Thursday, 10 September 2026 at 3:05 pm\" — without writing code. It covers weekdays, full and short month names, 12-hour clocks, unpadded numbers, ordinals and any language, so reach for the tokens before reaching for a Function node. The one thing it deliberately does not do is RELATIVE time ('2 h ago'), which depends on the current moment rather than on the date it is given and so needs a clock, not a token. On a server the host zone is whatever the container says, so set Timezone explicitly for anything a user reads.",
   "ports": {
     "input": "Date value input; also accepts a date string, converted with new Date(). An unparsable value routes to `onError`.",
-    "formatString": "String value with the tokens above; changing it reformats the current date immediately.",
+    "formatString": "String value with the tokens above; changing it reformats the current date immediately. A token the node does not know is copied through unchanged, so a typo shows up as itself in the output.",
     "currentValue": "String value with the formatted result; empty string after a formatting error.",
     "inputChanged": "Signal; fires each time formatting runs (new date, and reformat after a format change).",
     "onError": "Signal; fires when formatting fails (e.g. invalid date), in which case `currentValue` is emptied.",
-    "timeZone": "String value; an IANA zone name (Europe/London, America/New_York, UTC). Empty means the host machine's zone, which is the historical behaviour. An unknown name routes to `onError`."
+    "timeZone": "String value; an IANA zone name (Europe/London, America/New_York, UTC). Empty means the host machine's zone, which is the historical behaviour. An unknown name routes to `onError`.",
+    "locale": "String value; a BCP 47 language tag (fr-FR, de-DE, ja-JP) for the month and day NAMES only. Empty means en-US, which is what every project rendered before this port existed. It does not change digits, padding, or {ordinal}."
   },
   "examples": [
+    "logic-date-formatting",
     "logic-autosave-after-typing"
   ],
   "patterns": [
-    "A Function output producing `new Date()` on demand → `input`: timestamp an event, then show `currentValue` in a String Format sentence."
+    "A Function output producing `new Date()` on demand → `input`: timestamp an event, then show `currentValue` in a String Format sentence.",
+    "{dayName}, {d} {monthName} {year} → \"Thursday, 10 September 2026\", and {h12}:{minutes} {ampm} → \"3:05 pm\". These are the two formats an app asks for most and neither was reachable before CMP-005."
   ],
   "antiPatterns": [
     "Wiring a number (epoch milliseconds) to `input` — number does not cast to date; convert to a Date in a Function or Expression first.",
-    "Relying on the host zone in a cloud function. It is the container's zone, not your user's, and it is the usual reason a date is right locally and an hour or a day out in production."
+    "Relying on the host zone in a cloud function. It is the container's zone, not your user's, and it is the usual reason a date is right locally and an hour or a day out in production.",
+    "Writing a Function node with Intl to get a weekday or a localised month name. That was the documented workaround until CMP-005 and it is now a component's worth of code replacing one token."
   ],
   "relatedNodes": [
     "String Format",

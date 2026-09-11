@@ -14,11 +14,27 @@
   overflow: hidden;
 }
 
+/**
+ * LGC-004 §1 — the row the two interface rails and the workspace share.
+ *
+ * The rails are siblings of the injection div rather than layers over it, so they cannot cover
+ * Blockly's own left-edge toolbox, and so the workspace is injected at its final width. See
+ * `InterfaceRailsOverlay.ts`.
+ */
+.Workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  /* Without this a flex item refuses to shrink below its content, and the rails get pushed out. */
+  min-height: 0;
+  min-width: 0;
+}
+
 .BlocklyContainer {
   flex: 1;
-  width: 100%;
   height: 100%;
   position: relative;
+  min-width: 0;
 
   /* Ensure Blockly SVG fills container */
   & > .injectionDiv {
@@ -27,27 +43,261 @@
   }
 }
 
+/**
+ * The rails.
+ *
+ * ⚠️ `box-sizing` is declared on every box below because this repo sets no global one — a padded
+ * fixed-width rail without it is wider than its declared width and the arithmetic quietly stops
+ * describing what is on screen.
+ */
+.Rail {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 152px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--theme-color-bg-2);
+  font-family: var(--font-family);
+  /* The rails never scroll away with the blocks; their own overflow is their own. */
+  overflow: hidden;
+}
+
+.RailInputs {
+  border-right: 1px solid var(--theme-color-border-default);
+}
+
+.RailOutputs {
+  border-left: 1px solid var(--theme-color-border-default);
+}
+
+.RailHeader {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 8px 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-muted);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.RailRows {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+}
+
+.RailEmpty {
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.45;
+  /* Not `opacity`: dimming a token cannot both read and stay legible (register). */
+  color: var(--theme-color-fg-muted);
+}
+
+.RailRow {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 5px 10px;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.RailRowName {
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.RailRowType {
+  font-size: 10px;
+  color: var(--theme-color-fg-muted);
+}
+
+/**
+ * An **inferred** row: no `Define …` block states this port, it exists because a block uses it.
+ *
+ * ⚠️ Distinct, never diminished. Marked by a dashed edge and an italic type rather than by being
+ * greyed further than the declared rows, because an undeclared port is a working port and this
+ * mark must not read as a warning (LGC-004 §3, register L12).
+ */
+.RailRowInferred {
+  border-left-style: dashed;
+  border-left-color: var(--theme-color-border-default);
+
+  & .RailRowType {
+    font-style: italic;
+  }
+}
+
+.RailRowSignal {
+  & .RailRowType {
+    color: var(--theme-color-primary);
+  }
+}
+
+.RailRowDraggable {
+  cursor: grab;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+.RailRowDragging {
+  cursor: grabbing;
+  background-color: var(--theme-color-bg-3);
+}
+
+/**
+ * VFN-011 — the bench.
+ *
+ * ⚠️ Acceptance criterion 3 asks that every sandbox surface be **marked**, and this note is the
+ * mark for the whole rail. It is a statement, not a warning: the bench is the feature, and
+ * colouring it like an error would teach a builder to distrust the thing they were told to use.
+ * Muted and italic, in the rail's own header band.
+ */
+.RailSandboxNote {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: 4px 10px 5px;
+  font-size: 10px;
+  font-style: italic;
+  line-height: 1.3;
+  color: var(--theme-color-fg-muted);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+/**
+ * A sandbox value cell.
+ *
+ * ⚠️ `width: 100%` **with** `box-sizing: border-box`, because this repo declares no global one and
+ * the rail is a fixed 152px: without it the padding and the border are added to the 100% and the
+ * cell overflows a rail whose own `overflow` is `hidden`, so the right-hand characters would simply
+ * be gone. Same arithmetic the `.Rail` comment above is about.
+ */
+.RailCell {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 3px;
+  padding: 2px 5px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: 3px;
+
+  &::placeholder {
+    color: var(--theme-color-fg-muted);
+    font-style: italic;
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--theme-color-primary);
+  }
+}
+
+/** A cell whose text cannot be read as the port's declared type. Reported, never coerced. */
+.RailCellProblem {
+  border-color: var(--theme-color-danger);
+}
+
+/** ▶ on a signal input row: a signal input is not a value, it is a run. */
+.RailTrigger {
+  box-sizing: border-box;
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 1px 8px;
+  font-family: var(--font-family);
+  font-size: 10px;
+  color: var(--theme-color-primary);
+  background-color: transparent;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: 3px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+}
+
+/** What the last bench run wrote to an output port. */
+.RailValue {
+  box-sizing: border-box;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/** A signal output the last bench run pulsed. */
+.RailPulse {
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--theme-color-primary);
+}
+
+/** The outputs rail while a block is being dragged over it. */
+.RailDropActive {
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-primary);
+}
+
+/**
+ * The thing that follows the pointer during a drag off a rail.
+ *
+ * `position: fixed` on `document.body` rather than inside the rail, because the drag crosses out
+ * of a container with `overflow: hidden` and would otherwise be clipped the moment it started.
+ */
+.RailDragGhost {
+  box-sizing: border-box;
+  position: fixed;
+  z-index: 10002;
+  pointer-events: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  color: var(--theme-color-fg-default);
+  background-color: var(--theme-color-bg-3);
+  border: 1px solid var(--theme-color-border-default);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
 /* Override Blockly default styles to match Noodl theme */
 :global {
-  /* Toolbox styling */
-  .blocklyToolboxDiv {
-    background-color: var(--theme-color-bg-2) !important;
-    border-right: 1px solid var(--theme-color-border-default) !important;
-  }
-
-  .blocklyTreeLabel {
-    color: var(--theme-color-fg-default) !important;
-    font-family: var(--font-family) !important;
-    font-size: 13px !important;
-  }
-
-  .blocklyTreeRow:hover {
-    background-color: var(--theme-color-bg-3) !important;
-  }
-
-  .blocklyTreeSelected {
-    background-color: var(--theme-color-primary) !important;
-  }
+  /*
+   * FIX-005 §1 — the four toolbox rules are deleted, not retargeted, for the same reason as the
+   * `.goog-*` rules below: they match nothing.
+   *
+   * `.blocklyToolboxDiv`, `.blocklyTreeLabel`, `.blocklyTreeRow` and `.blocklyTreeSelected` are
+   * pre-9 Blockly class names. Measured against a fully rendered toolbox (16 categories, one
+   * selected, both themes): **0 matches each**. Blockly 12 emits `.blocklyToolbox`,
+   * `.blocklyToolboxCategoryLabel`, `.blocklyTreeRowContentContainer` and
+   * `.blocklyToolboxSelected` instead.
+   *
+   * So the contrast figures once claimed here — 1.19:1 before, 4.65 / 5.58 after — described a
+   * rule that had never applied. What actually renders is Blockly's own selection: an inline
+   * `background-color` taken from the category's colour, with the stock
+   * `.blocklyToolboxSelected .blocklyToolboxCategoryLabel` rule painting the label `#fff`. That
+   * is **5.35:1** in both themes and passes AA, so there is no live defect to fix.
+   *
+   * Retargeting was rejected: beating an inline style needs `!important` and would visibly
+   * redesign the toolbox, which should not fall out of a contrast fix.
+   */
 
   /* Flyout styling */
   .blocklyFlyoutBackground {
@@ -131,62 +381,168 @@
     }
   }
 
-  /* Text input fields */
+  /*
+   * Blockly's field editor. 🔴 VFN-002 — theme it, but do not touch its box.
+   *
+   * *"the number field you can't see what you're typing until you unfocus the field and the
+   * number appears."*
+   *
+   * Blockly sizes this input by measuring the field's rendered text on the block and setting the
+   * widget div to exactly that box; the input is `width: 100%` of it. Its own base rule is
+   * `border: none; padding: 0; box-sizing: border-box`, and every one of those is load-bearing:
+   * with `border-box`, a border and padding come **out of** the measured width rather than off
+   * the outside of it. The 1px border and `4px 8px` that used to be here took **18 px of
+   * horizontal content box** away from a field measured at ~10 px for the digit `2`. The content
+   * box collapsed, `text-align: center` clipped the overflow symmetrically — which is why it was
+   * cut off at *both* ends — and there was nothing to read until the field closed and Blockly
+   * painted the value back as SVG text.
+   *
+   * So the ring is a `box-shadow`: it does not participate in the box model. ⚠️ Not an `outline`
+   * — Blockly's base rule sets `outline: none` on this element and means it; the focus ring is
+   * the widget div's job.
+   *
+   * ⚠️ And no `font-family` here either, which was the same defect one step smaller. Blockly
+   * measures the text with **its own** font (`FIELD_TEXT_FONTFAMILY`, applied to the block's
+   * `<text>`), then applies that same family to `.blocklyHtmlInput` through the renderer
+   * stylesheet — the widget div is given the renderer and theme class names when it is shown,
+   * precisely so the editor and the measurement agree. Overriding the family here broke that
+   * agreement by hand: a wider font overflows a box sized for a narrower one even with the
+   * padding gone. Letting Blockly's rule win makes them the same font by construction.
+   *
+   * 🔴 **The ring is `--theme-color-border-control`, and the token it replaced was invisible.**
+   * Criterion 3 asks for "a visible border", and it had never been measured. `border-default` is
+   * the *panel-edge* tone: against this rule's own `bg-3` fill it is **1.01:1 in the dark theme
+   * and 1.11:1 in the light one** — a ring painted the same colour as the surface it delimits.
+   * `border-control` is the token defined for exactly this ("the lightest tone that still clears
+   * 3:1 on bg-1, bg-2 and bg-3", `colors.css`) and measures **3.17:1 / 3.16:1**, which is WCAG
+   * 1.4.11's floor for a control boundary. Gated in `tests-unit/vfn-002/field-editor-contrast.spec.ts`.
+   *
+   * ⚠️ Note which side is measured. The ring's *outer* edge sits over the Blockly block, whose
+   * body is on the theme-independent hue scale, and no token clears 3:1 against all of those —
+   * VFN-013 hit the same wall and answered it by taking the theme out of the badge entirely. Here
+   * the inner edge is the one that carries the boundary, because the field's `bg-3` fill is a
+   * large flat area and the ring reads against it.
+   */
   .blocklyWidgetDiv input,
   .blocklyHtmlInput {
     background-color: var(--theme-color-bg-3) !important;
     color: var(--theme-color-fg-default) !important;
-    border: 1px solid var(--theme-color-border-default) !important;
+    border: none !important;
+    padding: 0 !important;
     border-radius: 4px !important;
-    padding: 4px 8px !important;
-    font-family: var(--font-family) !important;
+    box-shadow: 0 0 0 1px var(--theme-color-border-control);
   }
 
-  /* Dropdown menus - DARK BACKGROUND with WHITE TEXT (matches Noodl theme) */
-  /* Target ACTUAL Blockly classes: .blocklyMenuItem not .goog-menuitem */
-
-  .goog-menu,
-  :global(.goog-menu) {
-    background-color: var(--theme-color-bg-3) !important; /* DARK background */
-    border: 1px solid var(--theme-color-border-default) !important;
+  /* The menu container. Blockly's own class; `.blocklyDropDownDiv` above paints the surface. */
+  .blocklyMenu,
+  :global(.blocklyMenu) {
+    background-color: var(--theme-color-bg-3) !important;
     border-radius: 4px !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
     max-height: 400px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
     z-index: 10001 !important;
   }
 
-  /* Target Blockly's ACTUAL menu item class - DROPDOWN MENUS */
+  /*
+   * FIX-005 §1 — the dropdown rows. 🔴 Read this before changing a colour here.
+   *
+   * *"The dropdowns that appear on certain nodes have strange highlight colours, between the one
+   * selected and the other non selected ones, their hover animations make them very hard to
+   * read."*
+   *
+   * ## Why state is carried by a LEFT RULE and not by the background
+   *
+   * The obvious fix — move the selected row off solid primary and give hover a bigger background
+   * step — cannot work in this palette, and that is measured rather than assumed. The whole
+   * opaque background ladder is compressed: `bg-4` against `bg-3` is **1.18:1 dark / 1.08:1
+   * light**, and even `bg-5` against `bg-3`, two steps, is only **1.43 / 1.17**. Nothing in the
+   * neutrals is far enough apart to read as a state change, least of all in the light theme.
+   * So the background says *which* row is under discussion and the **rule** says *what is
+   * happening to it* — the rule is the only cue with real contrast to spend.
+   *
+   * The four states, and every number here is from `dropdown-contrast.spec.ts`:
+   *
+   *   resting        `bg-3`, transparent rule       text 13.03 / 14.20
+   *   hover / kbd    `bg-4` + `primary-highlight`   text 11.04 / 13.18, rule 5.94 / 4.77
+   *   selected       `bg-5` + `primary` + 600       text  9.09 / 12.11, rule 3.89 / 3.40
+   *   selected+hover `bg-4`, rule and weight kept   — the background moves, so it responds
+   *
+   * 🔴 **The row that was actually unreadable** was the selected one: `fg-highlight` on solid
+   * `--theme-color-primary` measures **2.33:1 dark / 3.56:1 light**, failing AA in both themes.
+   * Text never sits on the accent now; the accent is only ever a 3px rule, which is a UI
+   * boundary and answers to WCAG 1.4.11's 3:1 rather than to 1.4.3's 4.5:1.
+   *
+   * ⚠️ **`font-weight` on selected is load-bearing, not decoration.** `primary` and
+   * `primary-highlight` are only 2.02:1 apart from each other, so rule colour alone does not
+   * separate *selected* from *hovered*. Weight is a non-colour channel and separates them for a
+   * reader who cannot use hue at all.
+   *
+   * ⚠️ **`.blocklyMenuItemHighlight` is in the same ruleset as `:hover` on purpose.** Blockly's
+   * keyboard and open-menu highlight is a *class*, not `:hover` — its stock rule is
+   * `rgba(0,0,0,.1)`, a black wash that is invisible on a dark ground. It was never styled here,
+   * so mouse and keyboard highlighted differently and, on open, the class fought `[aria-selected]`
+   * for the same row.
+   *
+   * ⚠️ **`[aria-selected]` is listed after `:hover`** — the two have equal specificity and both
+   * carry `!important`, so source order decides. Previously `:hover` came second and won, which
+   * is why hovering the selected row appeared to do nothing at all. Now selected wins the rule
+   * and weight, and hover still moves the background underneath it.
+   */
   .blocklyDropDownDiv .blocklyMenuItem,
   :global(.blocklyDropDownDiv) :global(.blocklyMenuItem) {
-    color: var(--theme-color-fg-highlight) !important; /* WHITE text */
+    color: var(--theme-color-fg-highlight) !important;
     background-color: transparent !important;
+    /*
+     * ⚠️ The 28px left padding is Blockly's checkmark gutter and this rule used to flatten it to
+     * 12px, which pulled the checked row's floated checkbox to −12px — outside the box — so the
+     * tick was clipped and the checked row's label sat at a different x from every other row.
+     * Much of the "strange" in the report is that misalignment. The checkbox is hidden below and
+     * the 3px rule marks selection instead, so the gutter is now a uniform 12px on every row and
+     * nothing shifts when the selection moves.
+     */
     padding: 6px 12px !important;
+    border-left: 3px solid transparent !important;
     cursor: pointer !important;
     font-family: var(--font-family) !important;
     font-size: 13px !important;
 
-    /* ALL children white */
     & *,
     & div,
     & span {
       color: var(--theme-color-fg-highlight) !important;
     }
 
-    /* HOVER - Keep white text with lighter background */
     &:hover,
+    &.blocklyMenuItemHighlight,
     &:hover *,
-    &:hover div,
-    &:hover span {
+    &.blocklyMenuItemHighlight * {
       background-color: var(--theme-color-bg-4) !important;
-      color: var(--theme-color-fg-highlight) !important; /* WHITE on hover */
+      color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &:hover,
+    &.blocklyMenuItemHighlight {
+      border-left-color: var(--theme-color-primary-highlight) !important;
     }
 
     &[aria-selected='true'],
     &[aria-selected='true'] * {
-      background-color: var(--theme-color-primary) !important;
+      background-color: var(--theme-color-bg-5) !important;
       color: var(--theme-color-fg-highlight) !important;
+    }
+
+    &[aria-selected='true'] {
+      border-left-color: var(--theme-color-primary) !important;
+      font-weight: 600 !important;
+    }
+
+    /* Criterion 2: the selected row must visibly respond to being hovered. */
+    &[aria-selected='true']:hover,
+    &[aria-selected='true'].blocklyMenuItemHighlight,
+    &[aria-selected='true']:hover *,
+    &[aria-selected='true'].blocklyMenuItemHighlight * {
+      background-color: var(--theme-color-bg-4) !important;
     }
 
     &[aria-disabled='true'],
@@ -195,6 +551,20 @@
       opacity: 0.5;
       cursor: not-allowed !important;
     }
+  }
+
+  /*
+   * FIX-005 §1, criterion 3 — the tick, retired.
+   *
+   * Blockly floats a fixed sprite into a 28px gutter for the checked row. The sprite is a dark
+   * PNG that reads poorly on a dark ground even when its gutter is intact, and the left rule
+   * above now says the same thing in a way that works in both themes and does not depend on the
+   * padding this stylesheet overrides. Hidden rather than restored, so every row has identical
+   * metrics and the checked row's label cannot drift out of column.
+   */
+  .blocklyDropDownDiv .blocklyMenuItemCheckbox,
+  :global(.blocklyDropDownDiv) :global(.blocklyMenuItemCheckbox) {
+    display: none !important;
   }
 
   /* Target Blockly's ACTUAL content class */
@@ -209,37 +579,14 @@
     }
   }
 
-  /* Fallback for goog- classes if they exist */
-  .goog-menuitem,
-  .goog-option,
-  :global(.goog-menuitem),
-  :global(.goog-option) {
-    color: var(--theme-color-fg-highlight) !important;
-    background-color: transparent !important;
-    padding: 6px 12px !important;
-    font-family: var(--font-family) !important;
-    font-size: 13px !important;
-
-    & *,
-    & div,
-    & span {
-      color: var(--theme-color-fg-highlight) !important;
-    }
-
-    &:hover,
-    &:hover * {
-      background-color: var(--theme-color-bg-4) !important;
-    }
-  }
-
-  .goog-menuitem-content,
-  :global(.goog-menuitem-content) {
-    color: var(--theme-color-fg-highlight) !important;
-
-    & * {
-      color: var(--theme-color-fg-highlight) !important;
-    }
-  }
+  /*
+   * FIX-005 §1 — the `.goog-*` rules are deleted, not moved.
+   *
+   * They were Closure-library class names from Blockly's pre-9 menu implementation. Blockly 12
+   * emits none of them, so they matched nothing and had not for several major versions — while
+   * reading, to anyone scanning this file, as a second set of dropdown rules that might be the
+   * ones in force. That ambiguity is most of why the live rules above were hard to reason about.
+   */
 
   /* Blockly dropdown content container */
   :global(.blocklyDropDownContent) {

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "e5bb1e4c-fadd-5352-81b5-645c1ccf6a52",
+  "name": "InsideTile",
+  "path": "/Members/InsideTile",
+  "type": "visual",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

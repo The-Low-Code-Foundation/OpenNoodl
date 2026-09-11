@@ -8,6 +8,13 @@
    - `--theme-color-primary` is the azure ACTION accent. It is never used for
      destructive or error UI.
    - `--theme-color-danger` is the only red in chrome. Danger is never a CTA.
+   - NAT-002 (D10/D11): a FILL role and a TEXT role are not the same colour.
+     `primary`, `success`, `warning`/`notice` and `danger` are FILLS — button
+     grounds, rings, chips, wire tints — and they are chosen to look right as
+     an area. Words in those colours use `--theme-color-fg-accent`,
+     `-fg-success`, `-fg-notice` and `-fg-danger`, which are chosen to clear
+     4.5:1 on every surface the editor paints text on. Painting words with a
+     fill role is how the light theme shipped links at 3.99:1 on bg-3.
    - Elevation: page < bg-0 (canvas) < bg-1 (panels) < bg-2 (cards/inputs)
      < bg-3 (hover/active). Steps are deliberately distinct.
 
@@ -28,17 +35,31 @@
      --------------------------------------------------------------------------- */
 
   /* Neutrals - cool blue-gray ramp, dark end = elevation steps, light end = text */
-  --base-color-neutral-0: #07090c;
-  --base-color-neutral-50: #0b0e12;
-  --base-color-neutral-100: #12161b;
-  --base-color-neutral-200: #181d24;
-  --base-color-neutral-300: #222933;
-  --base-color-neutral-400: #2c3540;
+  --base-color-neutral-0: #0e1117;
+  --base-color-neutral-50: #161c24;
+  --base-color-neutral-100: #212932;
+  --base-color-neutral-200: #2b3440;
+  --base-color-neutral-300: #333e4d;
+  --base-color-neutral-400: #3c4857;
   --base-color-neutral-500: #4a5560;
-  --base-color-neutral-600: #6b7682;
+  --base-color-neutral-600: #7d8a98;
   --base-color-neutral-700: #8b95a1;
-  --base-color-neutral-800: #a6b0bb;
+  /* NAT-002: a half-step, added because the ramp had no tone between "secondary"
+     and "body" that clears 4.5:1 on bg-4 — and bg-4 is what `BaseDialog` paints,
+     so it is the ground of every dialog in the editor. neutral-700 measured
+     4.09:1 there. */
+  --base-color-neutral-750: #abb8c5;
+  --base-color-neutral-800: #bbc6d3;
+  /* FIX-028: two rungs above `800`, added because the dark theme's working inks all sat in the
+     middle of this ramp and read as disabled. Richard, 2026-08-21: *"the description text and
+     buttons are still light grey on a dark grey background, everything looks disabled … I'm sick
+     of grey on grey."* Both keep the family's blue-grey tint, which thins toward white exactly as
+     the existing rungs do (B−R: 750→26, 800→24, 850→23, 925→15, 950→8). ⚠️ Derived along the
+     ramp rather than by blending toward white — blending drops relative chroma and lands on flat
+     grey, which is the complaint rather than the fix. */
+  --base-color-neutral-850: #c4cedb;
   --base-color-neutral-900: #cbd3dc;
+  --base-color-neutral-925: #dde4ec;
   --base-color-neutral-950: #eef2f6;
   --base-color-neutral-1000: #ffffff;
 
@@ -94,6 +115,14 @@
   /* Absolute white — theme-invariant surfaces (e.g. toggle knob, mock `.toggle::after`) */
   --base-color-white: #ffffff;
 
+  /* Near-black ink for marks drawn ON media rather than on a themed surface — a
+     play triangle over a video poster reads the same in every theme, so it does
+     not follow `--theme-color-fg-*`. Literal on purpose, like `--base-color-white`
+     above. Added by REL-020: `Community.module.scss` had been writing this value
+     as a fallback to `var(--base-color-black, #111)`, a token that has never been
+     defined, so the fallback was the only thing ever used. */
+  --base-color-ink: #111111;
+
   /* Transparent variants */
   --base-color-black-transparent-90: rgba(0, 0, 0, 0.9);
   --base-color-black-transparent-80: rgba(0, 0, 0, 0.8);
@@ -107,6 +136,8 @@
   --base-color-white-transparent-15: rgba(255, 255, 255, 0.15);
   --base-color-white-transparent-16: rgba(255, 255, 255, 0.16); /* PAR-001: card ghost initial */
   --base-color-white-transparent-50: rgba(255, 255, 255, 0.5);
+  /* REL-020: was written as a fallback to the undefined `--base-color-white-transparent-80`. */
+  --base-color-white-transparent-85: rgba(255, 255, 255, 0.85);
 
   /* ---------------------------------------------------------------------------
      SEMANTIC COLORS (Status indicators)
@@ -265,19 +296,101 @@
   --theme-color-bg-2: var(--base-color-neutral-200);
   --theme-color-bg-3: var(--base-color-neutral-300);
   --theme-color-bg-4: var(--base-color-neutral-400);
-  --theme-color-bg-5: #37424f;
+  --theme-color-bg-5: #414e5e;
   --theme-color-bg-hover: var(--base-color-white-transparent-10);
 
   /* ---------------------------------------------------------------------------
      FOREGROUNDS
-     highlight = emphasized, default = body, muted = large/secondary text only
+     highlight = emphasized, default = body, default-shy = secondary.
+     Every one of these clears 4.5:1 on bg-0 through bg-4 in BOTH themes, which
+     is asserted by tests-unit/nat-001/palette-contrast.spec.ts.
      --------------------------------------------------------------------------- */
-  --theme-color-fg-highlight: var(--base-color-neutral-950);
-  --theme-color-fg-default-contrast: var(--base-color-neutral-900);
-  --theme-color-fg-default: var(--base-color-neutral-800);
-  --theme-color-fg-default-shy: var(--base-color-neutral-700);
-  --theme-color-fg-muted: var(--base-color-neutral-600);
+  /* 🔴 FIX-028 — THE DARK INKS WERE RAISED BECAUSE ALL OF THEM READ AS DISABLED.
+     Richard, 2026-08-21, on the launcher's learner path: *"the description text and buttons are
+     still light grey on a dark grey background, everything looks disabled … make everything as
+     close to white as reasonable."*
+
+     ⚠️ **This was never an AA failure, and reading it as one is how it survived.** Measured
+     before the change, `fg-default` was 8.50:1 on `bg-1` and `fg-default-shy` 7.28:1 — both
+     comfortably past 4.5, and the NAT-001 table below was green on every row. What was wrong is
+     that every working ink sat in the MIDDLE of the neutral ramp (750/800/900) while only
+     `fg-highlight` was near white, and the step from `fg-default-shy` down to `fg-disabled` was
+     just 1.74:1 — so ordinary words landed close enough to the disabled tone to be read as
+     disabled. A contrast table cannot see that; it grades each ink against its ground and never
+     against the ink one rung down.
+
+     Raised: highlight → white, default-contrast → 950, default → 925, default-shy → 850.
+     `fg-disabled` is deliberately UNCHANGED at `neutral-600` — the gap it needed was bought by
+     lifting everything above it (1.74 → 2.21), and moving it as well would have touched the
+     TopologyMapPanel styles that consume `neutral-600` directly for non-text.
+
+     Measured after: on `bg-1`, highlight 14.71 / contrast 12.61 / default 11.47 / shy 9.24 /
+     disabled 4.17. Worst text ratio anywhere is shy on `bg-5` at 5.33. The hierarchy bars in
+     `tests-unit/nat-001/palette-contrast.spec.ts` both IMPROVE: default↔shy 1.167 → 1.241 (bar
+     1.15), shy↔disabled 1.744 → 2.214 (bar 1.4). ⚠️ Light theme is untouched — it sets its own
+     literals further down, and its inks are dark on light, where this complaint does not arise. */
+  --theme-color-fg-highlight: var(--base-color-white);
+  --theme-color-fg-default-contrast: var(--base-color-neutral-950);
+  --theme-color-fg-default: var(--base-color-neutral-925);
+  /* 🔴 NAT-002 raised this from `neutral-700`. It was 4.09:1 on bg-4 in dark and
+     4.33 in light — under AA on the ground every DIALOG is painted on, including
+     the "Ask about this node" composer's consent copy. D9 also made it the
+     target of the retired `fg-muted`, so it now carries most of the editor's
+     secondary text and had to hold on every surface, not most of them.
+     ⚠️ The step down from `fg-default` narrows from 1.38:1 to 1.21:1 — still a
+     visible hierarchy, and asserted as one by the NAT-001 spec so a later raise
+     cannot quietly collapse it. */
+  /* ⚠️ FIX-028 raised this again, 750 → 850, for the reason in the block above: NAT-002's raise
+     fixed its ratio against the GROUND, which was the bug it was chasing, and left it a rung
+     below the tone the eye reads as "off". It carries most of the editor's secondary text, so it
+     is the token Richard's complaint was mostly about. */
+  --theme-color-fg-default-shy: var(--base-color-neutral-850);
+  /* 🔴 RETIRED (NAT-002, D9). This was `neutral-600` and it was documented right
+     here as "large/secondary text only" — an unenforceable licence that 217
+     `color:` declarations took as permission. It measured 3.93:1 on bg-1 and
+     3.17:1 on bg-3 in dark, 3.62/3.16 in light, and it was the colour of nearly
+     every word on the launcher's Community tab (4.18 dark / 3.19 light on bg-0,
+     the worst text ratio in the product).
+     It is now an ALIAS of `fg-default-shy` so no consumer breaks. The value it
+     used to hold has not been thrown away: `fg-disabled` and `border-control`
+     both carry `neutral-600` deliberately, and those are the two jobs it was
+     actually doing that were correct. Do not reach for this token in new code —
+     say `fg-default-shy` if you mean quiet words. */
+  --theme-color-fg-muted: var(--theme-color-fg-default-shy);
   --theme-color-fg-transparent: var(--base-color-white-transparent-15);
+
+  /* ---------------------------------------------------------------------------
+     FOREGROUNDS — COLOURED TEXT (NAT-002, rulings D10 and D11)
+     🔴 These exist because the FILL roles fail AA as words, and they fail in
+     ways a diff cannot show. `--theme-color-primary` is 4.57:1 on bg-1 in light
+     — passing by 0.07 — and 4.33 on bg-2, 4.03 on bg-0, 3.99 on bg-3. Every one
+     of those is a ground the editor paints links on. `--theme-color-success` is
+     3.81 in light and `--theme-color-danger` is 4.46 in DARK on a dialog's bg-4.
+     nodegx-community hit this first and answered it the same way
+     (`--site-fg-accent`, `--site-fg-good`, `--site-fg-warn`, `--site-fg-alert`);
+     this is that shape brought upstream instead of forked.
+     ⚠️ The values are one step along the existing ramps, not new inventions, and
+     each clears 4.5:1 on bg-0..bg-4 AND on the accent wash over bg-3.
+     --------------------------------------------------------------------------- */
+  /* 🔴 NAT-003 (2026-08-19): DARK NOW NEEDS THE SPLIT TOO, and the reason is that the GROUND
+     MOVED — not that NAT-002's reading was wrong. NAT-002 measured the fill accent at
+     7.37 / 6.92 / 6.45 / 5.58 / 4.73 on bg-0..bg-4 and correctly concluded dark needed no split.
+     Lifting the elevation ramp spent exactly that margin: on the ramp this file now carries, the
+     fill measures 6.53 / 5.60 / 4.80 / 4.13 / 3.54, so accent TEXT fails on bg-3 and bg-4 while
+     the fill itself is still a perfectly good fill (3:1 is its bar, and it clears it).
+     ⚠️ THE FILL DOES NOT MOVE. `--theme-color-primary` is still azure-500; a button, a ring and a
+     wire tint are unchanged. This is the D11 mechanism doing the job it was built for — without
+     it, opening the ramp would have forced the brand azure itself to lighten.
+     🔴 The step is TWO, not one, and the skipped one is deliberate. `azure-400` measures 4.45 on
+     bg-4 — under AA by 0.05 — AND it is `--theme-color-primary-highlight`, which is what a link's
+     HOVER is. NAT-002 recorded that collision when a first pass reached for it; this is the same
+     rock, and the way past it is `azure-300`, which clears bg-4 at 5.55 and is nobody else's
+     value. Same story for success: `success-500` lands at 4.45, so accent text takes
+     `success-400`. `amber-400` (5.06) and `red-300` (4.79) still clear and do not move. */
+  --theme-color-fg-accent: var(--base-color-azure-300);
+  --theme-color-fg-success: var(--base-color-success-400);
+  --theme-color-fg-notice: var(--base-color-amber-400);
+  --theme-color-fg-danger: var(--base-color-red-300);
 
   /* ---------------------------------------------------------------------------
      PRIMARY - Azure action accent
@@ -355,6 +468,12 @@
   --theme-color-node-category-logic: #f5b843;
   --theme-color-node-category-function: #f776c4;
   --theme-color-node-category-component: #a78bfa;
+  /* NAT-002. The canvas painted an uncategorised node with `--theme-color-fg-muted` — a
+     FOREGROUND token borrowed as a category hue. D9 retired that token to an alias of
+     `fg-default-shy`, which would have lightened every uncategorised node card on the graph as a
+     side effect of a TEXT fix. This is the value it always meant, said once, in the family it
+     belongs to. ⚠️ Both themes keep exactly the colour they had. */
+  --theme-color-node-category-default: var(--base-color-neutral-600);
   --theme-color-wire-signal: #35c3e8;
   --theme-color-wire-data: var(--theme-color-node-category-data);
 
@@ -395,9 +514,20 @@
   /* ---------------------------------------------------------------------------
      BORDERS
      --------------------------------------------------------------------------- */
-  --theme-color-border-default: #232a33;
-  --theme-color-border-subtle: #1a2029;
-  --theme-color-border-strong: #37404c;
+  /* 🔴 NAT-003: THESE THREE ARE RAMP-RELATIVE AND THEY ARE LITERALS, WHICH IS HOW THEY GOT LEFT
+     BEHIND. A divider is not a colour, it is a fixed distance off the surface it divides — so
+     when NAT-003 lifted the grounds and these did not follow, `border-default` stopped being a
+     hair off `bg-3` (1.01) and became a visible line on it (1.34), which is the opposite of what
+     it is for. VFN-002's negative control caught it: that spec asserts `border-default` is
+     INVISIBLE on bg-3 (<1.2), and it went red not because anything about dividers changed but
+     because the ground walked away from them.
+     ⚠️ Each is re-placed at the ratio it held against `bg-1` (1.109 / 1.254 / 1.730), which is
+     the relationship a reader actually sees. They are still literals — expressing them as ramp
+     offsets is a real improvement and a bigger change than this task should make. If the ramp
+     moves again, MOVE THESE, and re-run VFN-002. */
+  --theme-color-border-default: #2f3945;
+  --theme-color-border-subtle: #27303e;
+  --theme-color-border-strong: #434e5c;
   /* POL-016. The three above are DIVIDER tones: against bg-1/2/3 they measure
      1.01–1.73:1, which is right for a hairline between two regions and far under
      the 3:1 WCAG 1.4.11 asks of anything that has to be identified as a control.
@@ -419,11 +549,23 @@
      block. Add a syntax colour here + its light counterpart — never inline a hex
      in the CodeMirror theme.
      --------------------------------------------------------------------------- */
-  --theme-color-syntax-keyword: #569cd6;
+  /* 🔴 NAT-003 (2026-08-19): FIVE OF THESE MOVED, and the measurement says which were this
+     task's doing and which were not. On `bg-2` — CodeMirror's editing surface — before the ramp
+     lifted / after / now:
+       keyword        5.74 / 4.27 / 4.64   NAT-003 broke it
+       comment        5.08 / 3.78 / 4.61   NAT-003 broke it
+       string-special 4.79 / 3.56 / 4.63   NAT-003 broke it
+       invalid        4.71 / 3.50 / 4.62   NAT-003 broke it
+       meta           4.29 / 3.19 / 4.64   ⚠️ ALREADY SUB-AA — nothing was watching
+     Each is the SAME hue scaled, not a re-pick: the VSCode Dark+ lineage is the point of these
+     values and a taste change smuggled in beside a contrast fix is not a contrast fix.
+     ⚠️ `control` (4.60) and `string` (4.58) survive on thin margins. If `bg-2` moves again they
+     go first, and `tests-unit/nat-001/palette-contrast.spec.ts` now grades every one of them. */
+  --theme-color-syntax-keyword: #5aa3df;
   --theme-color-syntax-control: #c586c0;
-  --theme-color-syntax-comment: #6a9955;
+  --theme-color-syntax-comment: #76aa5f;
   --theme-color-syntax-string: #ce9178;
-  --theme-color-syntax-string-special: #d16969;
+  --theme-color-syntax-string-special: #f07979;
   --theme-color-syntax-number: #b5cea8;
   --theme-color-syntax-variable: #9cdcfe;
   --theme-color-syntax-function: #dcdcaa;
@@ -432,10 +574,10 @@
   --theme-color-syntax-operator: #d4d4d4;
   --theme-color-syntax-punctuation: #d4d4d4;
   --theme-color-syntax-type: #4ec9b0;
-  --theme-color-syntax-meta: #808080;
+  --theme-color-syntax-meta: #9d9d9d;
   --theme-color-syntax-escape: #d7ba7d;
   --theme-color-syntax-label: #c8c8c8;
-  --theme-color-syntax-invalid: #f44747;
+  --theme-color-syntax-invalid: #ff6e6e;
   --theme-color-syntax-paren: #ffd700;
   --theme-color-syntax-bracket: #87ceeb;
   --theme-color-syntax-brace: #98fb98;
@@ -459,8 +601,15 @@
   --theme-color-danger-transparent: rgba(249, 112, 102, 0.25);
   --theme-color-error: var(--theme-color-danger);
   --theme-color-error-bg: var(--theme-color-danger-bg);
-  --theme-color-fg-disabled: var(--theme-color-fg-muted);
-  --theme-color-fg-error: var(--theme-color-danger);
+  /* NAT-002 AC3. This used to alias `fg-muted`, so retiring that token would have
+     silently made disabled text as loud as secondary text. `neutral-600` is now
+     chosen here on purpose: it is what `fg-muted` used to be, which is the
+     appearance disabled controls already had and the one they should keep.
+     ⚠️ WCAG 1.4.3 exempts inactive controls from 4.5:1, and that exemption is
+     not a licence for this token to carry body copy. */
+  --theme-color-fg-disabled: var(--base-color-neutral-600);
+  /* NAT-002 D11: an ERROR is words, so this follows the text role, not the fill. */
+  --theme-color-fg-error: var(--theme-color-fg-danger);
   --theme-color-fg-on-accent: var(--theme-color-on-primary);
   --theme-color-fg-on-primary: var(--theme-color-on-primary);
   --theme-color-fg-on-warning: var(--base-color-neutral-0);
@@ -495,18 +644,32 @@
   --theme-color-bg-1: #ffffff;
   --theme-color-bg-1-transparent: rgba(255, 255, 255, 0.85);
   --theme-color-bg-1-transparent-2: rgba(255, 255, 255, 0.5);
-  --theme-color-bg-2: #f7f9fb;
-  --theme-color-bg-3: #ecf0f4;
-  --theme-color-bg-4: #e2e8ef;
-  --theme-color-bg-5: #d8dfe8;
+  --theme-color-bg-2: #f2f4f6;
+  --theme-color-bg-3: #e5e9ed;
+  --theme-color-bg-4: #d9dfe6;
+  --theme-color-bg-5: #cfd6df;
   --theme-color-bg-hover: rgba(23, 32, 43, 0.06);
 
   --theme-color-fg-highlight: #18212b;
   --theme-color-fg-default-contrast: #2e3945;
   --theme-color-fg-default: #4a5663;
-  --theme-color-fg-default-shy: #616c79;
-  --theme-color-fg-muted: #7c8894;
+  /* NAT-002: partner of the dark-block raise. Was #616c79 (4.33:1 on bg-4). */
+  --theme-color-fg-default-shy: #59626e;
+  /* NAT-002 D9: no `fg-muted` override any more. It is an alias of
+     `fg-default-shy` in `:root`, and an alias resolves per theme — restating it
+     here would fork it again. */
   --theme-color-fg-transparent: rgba(23, 32, 43, 0.15);
+
+  /* NAT-002 D10/D11 — partners of the dark-block definitions. Not aliases, so
+     they have to be restated. `fg-accent` is the value nodegx-community proved
+     (`--site-fg-accent`); the three status tones are one step further down their
+     ramps than the site's, because the editor paints text on bg-4 (dialogs) and
+     the site does not. Worst ground each: 4.59, 5.97, 5.86, 5.12. */
+  --theme-color-fg-accent: #0e5cca;
+  --theme-color-fg-success: #05603a;
+  --theme-color-fg-notice: #93370d;
+  --theme-color-fg-danger: #b42318;
+  --theme-color-fg-disabled: #7a8691;
 
   --theme-color-primary: #1570ef;
   --theme-color-primary-highlight: #0e5fd0;
@@ -528,9 +691,11 @@
   --theme-color-node-category-logic: #b87e14;
   --theme-color-node-category-function: #d6479a;
   --theme-color-node-category-component: #7c5ce0;
+  /* NAT-002: partner of the dark-block definition. The value light `fg-muted` used to hold. */
+  --theme-color-node-category-default: #7a8691;
   --theme-color-wire-signal: #0e9cc4;
 
-  --theme-color-success: #12915b;
+  --theme-color-success: #128f5a;
   --theme-color-success-dim: #027a48;
   --theme-color-success-bg: rgba(18, 145, 91, 0.1);
 
@@ -551,9 +716,13 @@
   --theme-color-border-subtle: #eaeef3;
   --theme-color-border-strong: #c9d2dc;
   /* POL-016: partner of the dark-block definition. Not an alias, so it has to be
-     restated. Same value as this theme's `fg-muted` — the lightest tone that
-     still clears 3:1 on bg-1 (3.62), bg-2 (3.43) and bg-3 (3.16). */
-  --theme-color-border-control: #7c8894;
+     restated. The lightest tone that still clears 3:1 on bg-1 (3.62), bg-2
+     (3.43), bg-3 (3.16) and bg-0 (3.19).
+     ⚠️ NAT-002: this used to be described as "same value as this theme's
+     `fg-muted`". `fg-muted` has been retired to an alias of `fg-default-shy`, so
+     that sentence stopped being true — but the VALUE is right here for its own
+     reason and did not move. */
+  --theme-color-border-control: #7a8691;
 
   --theme-color-focus-ring: #1570ef;
   --theme-color-focus-ring-offset: #ffffff;
@@ -588,27 +757,36 @@
   --theme-color-node-component-3: #9a7eea;
   --theme-color-node-component-dim: #e7defb;
 
-  /* Code syntax — light values (VSCode Light+ lineage; all AA on bg-1/bg-2). */
+  /* Code syntax — light values (VSCode Light+ lineage).
+     🔴 NAT-003: THIS COMMENT USED TO SAY "all AA on bg-1/bg-2" AND IT WAS NOT TRUE. Measured
+     2026-08-19 against the palette as it then shipped: `type` 4.35, `number` 4.36 and `brace`
+     4.36 on `bg-2`, all under AA before this task touched anything, while the line above
+     asserted otherwise and no spec checked it. `meta` was 4.12. NAT-003 lifting `bg-2` made all
+     four slightly worse and is what sent anyone looking.
+     ⚠️ CodeMirror's editing surface is `bg-2` (`codemirror-theme.ts:50`), which is why bg-2 is
+     the ground that binds — it is where a person reads for the longest stretch. The four values
+     below are darkened to clear 4.5 there; the claim is now asserted rather than written down,
+     by the syntax rows in `tests-unit/nat-001/palette-contrast.spec.ts`. */
   --theme-color-syntax-keyword: #0000ff;
   --theme-color-syntax-control: #af00db;
   --theme-color-syntax-comment: #008000;
   --theme-color-syntax-string: #a31515;
   --theme-color-syntax-string-special: #811f3f;
-  --theme-color-syntax-number: #098658;
+  --theme-color-syntax-number: #087e53;
   --theme-color-syntax-variable: #001080;
   --theme-color-syntax-function: #795e26;
   --theme-color-syntax-property: #001080;
   --theme-color-syntax-property-special: #0070c1;
   --theme-color-syntax-operator: #24292e;
   --theme-color-syntax-punctuation: #24292e;
-  --theme-color-syntax-type: #267f99;
-  --theme-color-syntax-meta: #6e7781;
+  --theme-color-syntax-type: #247790;
+  --theme-color-syntax-meta: #676f78;
   --theme-color-syntax-escape: #795e26;
   --theme-color-syntax-label: #24292e;
   --theme-color-syntax-invalid: #cf222e;
   --theme-color-syntax-paren: #795e26;
   --theme-color-syntax-bracket: #0070c1;
-  --theme-color-syntax-brace: #098658;
+  --theme-color-syntax-brace: #087e53;
   --theme-color-syntax-angle: #af00db;
 
   /* Compat aliases with literal values (see dark-theme compat block) */

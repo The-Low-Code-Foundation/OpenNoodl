@@ -1,0 +1,243 @@
+{
+  "id": "comp-slot-panel-with-interface",
+  "title": "A slot component that is still a component: Component Children plus a real interface",
+  "description": "`Component Children` marks where the consumer's own children land, which is what lets one panel hold a form on one page and a table on the next — the alternative is a panel per kind of content, and nobody writes the third one. But a slot is not a substitute for an interface, and that is the mistake this example exists to correct: the panel still takes `title` and `mounted`, still lets the instance decide whether the close button exists (`showClose`), and still publishes `closed` so the page can act on the request rather than guess. Note what `closed` is: the panel does NOT hide itself when the button is pressed — it says the user asked, and the page decides, which is the same contract a controlled value has. A component that unmounts itself is a component whose parent can be surprised. The page places the same panel twice with different children inside it and different chrome, and the two instances share every line of the panel's graph.",
+  "demonstrates": ["Component Children", "Component Inputs", "Component Outputs", "Group", "net.noodl.controls.button"],
+  "components": [
+    {
+      "name": "/Components/Panel",
+      "nodes": [
+        {
+          "id": "panel_root",
+          "type": "Group",
+          "label": "Panel",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "backgroundColor": "var(--surface)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "borderRadius": "var(--radius-lg)"
+          },
+          "children": ["panel_header", "panel_body"],
+          "x": 40,
+          "y": 200
+        },
+        {
+          "id": "panel_header",
+          "type": "Group",
+          "label": "Header",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "row",
+            "alignItems": "center",
+            "justifyContent": "space-between",
+            "columnGap": "var(--space-3)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)"
+          },
+          "parent": "panel_root",
+          "children": ["panel_title", "close_button"]
+        },
+        {
+          "id": "panel_title",
+          "type": "Text",
+          "label": "Title",
+          "parameters": {
+            "text": "Panel",
+            "fontSize": "var(--text-lg)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--foreground)"
+          },
+          "parent": "panel_header"
+        },
+        {
+          "id": "close_button",
+          "type": "net.noodl.controls.button",
+          "label": "Close — present only if the instance asked for it",
+          "parameters": {
+            "label": "Close",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--muted)",
+            "color": "var(--muted-foreground)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)",
+            "fontSize": "var(--text-sm)"
+          },
+          "parent": "panel_header"
+        },
+        {
+          "id": "panel_body",
+          "type": "Group",
+          "label": "Body — whatever the consumer put inside the instance",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-3)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-4)"
+          },
+          "parent": "panel_root",
+          "children": ["panel_slot"]
+        },
+        {
+          "id": "panel_slot",
+          "type": "Component Children",
+          "label": "The slot — the consumer's children render here",
+          "parent": "panel_body"
+        },
+        {
+          "id": "panel_inputs",
+          "type": "Component Inputs",
+          "label": "Panel interface in — plugged \"output\"",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            { "name": "title", "plug": "output", "type": "string" },
+            { "name": "mounted", "plug": "output", "type": "boolean" },
+            { "name": "showClose", "plug": "output", "type": "boolean" }
+          ]
+        },
+        {
+          "id": "panel_outputs",
+          "type": "Component Outputs",
+          "label": "Close was REQUESTED — the page decides what that means",
+          "x": 860,
+          "y": 200,
+          "ports": [{ "name": "closed", "plug": "input", "type": "signal" }]
+        }
+      ],
+      "connections": [
+        { "fromId": "panel_inputs", "fromProperty": "title", "toId": "panel_title", "toProperty": "text" },
+        { "fromId": "panel_inputs", "fromProperty": "mounted", "toId": "panel_root", "toProperty": "mounted" },
+        { "fromId": "panel_inputs", "fromProperty": "showClose", "toId": "close_button", "toProperty": "mounted" },
+        { "fromId": "close_button", "fromProperty": "onClick", "toId": "panel_outputs", "toProperty": "closed" }
+      ]
+    },
+    {
+      "name": "/Pages/Example",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Page",
+          "parameters": { "title": "Settings", "urlPath": "settings" },
+          "children": ["shell"]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": { "value": 100, "unit": "%" },
+            "sizeMode": "contentHeight",
+            "flexDirection": "column",
+            "rowGap": "var(--space-5)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-10)",
+            "paddingBottom": "var(--space-10)",
+            "backgroundColor": "var(--background)"
+          },
+          "parent": "page",
+          "children": ["notice_panel", "hours_panel"]
+        },
+        {
+          "id": "notice_panel",
+          "type": "/Components/Panel",
+          "label": "Panel one — dismissible, holding a sentence",
+          "parameters": { "title": "Card expiring", "mounted": true, "showClose": true },
+          "parent": "shell",
+          "children": ["notice_text", "notice_button"]
+        },
+        {
+          "id": "notice_text",
+          "type": "Text",
+          "label": "The consumer's child",
+          "parameters": {
+            "text": "The card ending 4417 expires next month. Payments will start failing on the 1st.",
+            "fontSize": "var(--text-sm)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "notice_panel"
+        },
+        {
+          "id": "notice_button",
+          "type": "net.noodl.controls.button",
+          "label": "The consumer's second child",
+          "parameters": {
+            "label": "Update the card",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--primary)",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-md)",
+            "paddingLeft": "var(--space-4)",
+            "paddingRight": "var(--space-4)",
+            "paddingTop": "var(--space-2)",
+            "paddingBottom": "var(--space-2)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-medium)"
+          },
+          "parent": "notice_panel"
+        },
+        {
+          "id": "hours_panel",
+          "type": "/Components/Panel",
+          "label": "Panel two — same component, no close button, different content",
+          "parameters": { "title": "Opening hours", "mounted": true, "showClose": false },
+          "parent": "shell",
+          "children": ["hours_weekday", "hours_weekend"]
+        },
+        {
+          "id": "hours_weekday",
+          "type": "Text",
+          "label": "Weekdays",
+          "parameters": {
+            "text": "Tuesday to Friday, 7am until the bread runs out.",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "hours_panel"
+        },
+        {
+          "id": "hours_weekend",
+          "type": "Text",
+          "label": "Weekend",
+          "parameters": {
+            "text": "Saturday 7am–1pm. Closed Sunday and Monday.",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--foreground)"
+          },
+          "parent": "hours_panel"
+        },
+        {
+          "id": "dismiss_notice",
+          "type": "JavaScriptFunction",
+          "label": "The page decides what closing means",
+          "parameters": {
+            "functionScript": "Outputs.hidden = false;\nOutputs.done();"
+          },
+          "x": 720,
+          "y": 360
+        }
+      ],
+      "connections": [
+        { "fromId": "notice_panel", "fromProperty": "closed", "toId": "dismiss_notice", "toProperty": "run" },
+        { "fromId": "dismiss_notice", "fromProperty": "out-hidden", "toId": "notice_panel", "toProperty": "mounted" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7568a224-ee61-5dd2-8887-065a6db656b3",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "association-2",
+      "fromProperty": "items",
+      "toId": "read-3",
+      "toProperty": "in-rows"
+    },
+    {
+      "fromId": "association-2",
+      "fromProperty": "fetched",
+      "toId": "read-3",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-name",
+      "toId": "heading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-tagline",
+      "toId": "tagline",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-blurb",
+      "toId": "aboutText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-needsSetup",
+      "toId": "setupCard",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-hasAssociation",
+      "toId": "actions-2",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-hasAssociation",
+      "toId": "hero",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-hasAssociation",
+      "toId": "about",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "read-3",
+      "fromProperty": "out-unanswered",
+      "toId": "waitingCard",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "signInButton",
+      "fromProperty": "onClick",
+      "toId": "toSignIn-4",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "joinButton",
+      "fromProperty": "onClick",
+      "toId": "toJoin",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "setupButton",
+      "fromProperty": "onClick",
+      "toId": "toSetup",
+      "toProperty": "navigate"
+    }
+  ]
+}

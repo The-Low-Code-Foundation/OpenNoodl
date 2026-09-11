@@ -72,7 +72,7 @@ Declared-port-groups only: the `json` and `csv` text inputs swap in based on `ty
 
 **Named shared array with insert, remove and clear**
 
-A client-side list without a backend: an Array node (Collection2) binds to the named shared array 'todos' and feeds a Repeater. Add Item (CollectionInsert), Remove Item (CollectionRemove) and Clear (CollectionClear) mutate the same array by its `collectionId`; every node bound to that id — including the Array feeding the list — sees the change immediately. Ids on wires tie the writers to the store.
+A client-side list without a backend: an Array node (Collection2) binds to the named shared array 'todos' and feeds a Repeater. Add Item (CollectionInsert), Remove Item (CollectionRemove) and Clear (CollectionClear) mutate the same array by its `collectionId`; every node bound to that id — including the Array feeding the list — sees the change immediately. Ids on wires tie the writers to the store. Remove is the row’s to raise: `/Todo Row` publishes a `remove` signal on its `Component Outputs`, and the Repeater re-publishes it as `itemOutputSignal-remove` while setting `itemActionItemId` to the row that fired — the trigger and the id both leave the Repeater, so they always describe the same row.
 
 **Static array filtered and mapped into a list**
 
@@ -80,7 +80,15 @@ Local data without a backend: Static Array holds inline JSON, Array Filter narro
 
 **Repeater item writes back to its own record object**
 
-Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to.
+Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to. The title rides the checkbox's own `label` port (`useLabel` on) rather than a sibling Text, so the words are a real click target that toggles the box.
+
+**A rich-text editor with a toolbar and local drafts**
+
+The larger companion to the single-button component: a `Static Data` node holds the list of toolbar commands, a `For Each` draws one button per entry, and the editor itself is mounted by a `JavaScriptFunction` onto a `Group`'s element. Two details are worth more than the editor. The draft is saved to `localStorage` on a `Timer` and read back on mount, which is the whole of 'don't lose my work' and costs two function nodes. And `Model2` plus `SetModelProperties` keep the document in the project's own data model rather than only inside the third-party editor, so something other than the editor can read what was typed. ⚠️ The toolbar is driven by data, so adding a command is a row in the `Static Data` node — not a new button.
+
+**A wrapping row of content-width items, with no CSS**
+
+Items that keep their own width and flow onto the next line when they run out of room — the layout a chip row, a filter bar or a tag list wants, and one people reach for a `CSS Definition` node to get. It needs no CSS: the container is a **Group** with `Multi Line Wrap` on, `Layout` set to row, a `Column Gap` and a `Row Gap` (the two gap ports only appear once wrapping is on) and `Align Y` at top, and each item is a **Group** at `Content Size`. ⚠️ That last part is the half that is usually missed. An item at `Content Size` gets no width of its own, and the runtime gives every node `flex-shrink: 0` and only grants `flex-grow` to a percentage width — so `Content Size` already *is* `flex: 0 0 auto`, and an item left at `100%` instead becomes `flex-grow: 100` and swallows the whole line. 🔴 This is not masonry: rows are laid out independently and nothing balances columns or packs items upward by height.
 
 ## Related nodes
 

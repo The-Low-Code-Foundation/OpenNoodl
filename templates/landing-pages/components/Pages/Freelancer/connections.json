@@ -1,0 +1,85 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "491fb5c2-0090-5ede-803c-3126c8ca99b1",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "flHeroPrimary",
+      "fromProperty": "onClick",
+      "toId": "flGoContact",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "flHeroSecondary",
+      "fromProperty": "onClick",
+      "toId": "flGoSecond",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "flQuotesData",
+      "fromProperty": "items",
+      "toId": "flQuotesCarousel",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flQuotesData",
+      "fromProperty": "count",
+      "toId": "flQuotesCarousel",
+      "toProperty": "count"
+    },
+    {
+      "fromId": "flWorkData",
+      "fromProperty": "items",
+      "toId": "flWorkFilter",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flWorkVariable",
+      "fromProperty": "value",
+      "toId": "flWorkFilter",
+      "toProperty": "filterFilterValue-category"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "items",
+      "toId": "flWorkRepeat",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "count",
+      "toId": "flWorkCountFmt",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "flWorkData",
+      "fromProperty": "count",
+      "toId": "flWorkCountFmt",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "flWorkCountFmt",
+      "fromProperty": "formatted",
+      "toId": "flWorkCount",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "flWorkFilter",
+      "fromProperty": "count",
+      "toId": "flWorkIsEmpty",
+      "toProperty": "shown"
+    },
+    {
+      "fromId": "flWorkIsEmpty",
+      "fromProperty": "asBoolean",
+      "toId": "flWorkEmpty",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "flWorkEmptyButton",
+      "fromProperty": "onClick",
+      "toId": "flWorkClear",
+      "toProperty": "do"
+    }
+  ]
+}

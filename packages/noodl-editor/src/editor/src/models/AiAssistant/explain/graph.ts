@@ -34,6 +34,8 @@ import type { ExplainGraph, GraphComponent, GraphConnection, GraphNode } from '.
  */
 interface EditorPortLike {
   name?: unknown;
+  /** LAS-001 — the direction, which `instancePorts` throws away. */
+  plug?: unknown;
 }
 
 interface EditorNodeLike {
@@ -51,6 +53,15 @@ interface EditorNodeLike {
 interface EditorComponentLike {
   name: string;
   fullName?: string;
+  /**
+   * LEG-003 §2 / LEG-006. Read from two places on purpose. LEG-006 has since
+   * landed and `ComponentModel` now carries `description` as a field of its
+   * own, so the top-level read is the live one. The `metadata` read is not
+   * dead: a project saved before LEG-006 still has the text in the metadata
+   * bag on disk, and stays readable until it is next saved.
+   */
+  description?: unknown;
+  metadata?: Record<string, unknown>;
   graph?: {
     roots?: EditorNodeLike[];
     connections?: ReadonlyArray<{ fromId: string; fromProperty: string; toId: string; toProperty: string }>;
@@ -64,6 +75,18 @@ interface EditorComponentLike {
  */
 const COMPONENT_INPUT_TYPES = new Set(['Component Inputs', 'PageInputs']);
 const COMPONENT_OUTPUT_TYPES = new Set(['Component Outputs']);
+
+/**
+ * True for the nodes that *are* a component's interface.
+ *
+ * FIX-001 §1c reads them first when a bound cuts an interior short: they are
+ * the boundary the parent actually wired to, so an interior read that dropped
+ * them would answer "what happens to what I send in" with the one part of the
+ * graph that cannot say.
+ */
+export function isInterfaceNodeType(type: string): boolean {
+  return COMPONENT_INPUT_TYPES.has(type) || COMPONENT_OUTPUT_TYPES.has(type);
+}
 
 /** The component's own interface, as a parent graph sees it. */
 export function componentPorts(component: GraphComponent): { inputPorts: string[]; outputPorts: string[] } {
@@ -89,6 +112,16 @@ function instancePortNames(node: EditorNodeLike): string[] {
   return names;
 }
 
+/** The same ports with their direction — LAS-001; see `GraphNode.ports`. */
+function declaredPorts(ports: readonly EditorPortLike[] | undefined | null): { name: string; plug?: string }[] {
+  const out: { name: string; plug?: string }[] = [];
+  for (const port of ports ?? []) {
+    if (!port || typeof port.name !== 'string') continue;
+    out.push({ name: port.name, ...(typeof port.plug === 'string' ? { plug: port.plug } : {}) });
+  }
+  return out;
+}
+
 /**
  * Parameters as authored. `node.parameters` is the raw authored map — reading it
  * directly (rather than `getParameter`, which falls back to port defaults) keeps
@@ -112,9 +145,22 @@ function fromEditorNode(node: EditorNodeLike, parentId: string | undefined, out:
     parent: parentId,
     children: children.map((c) => c.id),
     instancePorts: instancePortNames(node),
+    ports: declaredPorts(node.getPorts?.()),
     comment: node.getComment?.() || undefined
   });
   for (const child of children) fromEditorNode(child, node.id, out);
+}
+
+/**
+ * A description is only a description when someone wrote something in it. An
+ * empty string is the shape a form control leaves behind, not an author's
+ * sentence, and it must not produce an empty quotation in the panel.
+ */
+function authoredDescription(...candidates: unknown[]): string | undefined {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate.trim() !== '') return candidate;
+  }
+  return undefined;
 }
 
 /** Adapt one live `ComponentModel` (the case the panel always has in hand). */
@@ -129,7 +175,14 @@ export function fromComponentModel(component: EditorComponentLike): GraphCompone
     toProperty: c.toProperty
   }));
 
-  return { name: component.fullName ?? component.name, nodes, connections };
+  const description = authoredDescription(component.description, component.metadata?.['description']);
+
+  return {
+    name: component.fullName ?? component.name,
+    ...(description ? { description } : {}),
+    nodes,
+    connections
+  };
 }
 
 /**
@@ -144,6 +197,7 @@ export function fromProjectModel(project: { components?: EditorComponentLike[] }
 
 interface SerialisedPort {
   name?: string;
+  plug?: string;
 }
 
 interface SerialisedNode {
@@ -159,6 +213,8 @@ interface SerialisedNode {
 
 interface SerialisedComponent {
   name: string;
+  description?: string;
+  metadata?: Record<string, unknown>;
   graph?: {
     roots?: SerialisedNode[];
     connections?: GraphConnection[];
@@ -191,6 +247,7 @@ function fromSerialisedNode(node: SerialisedNode, parentId: string | undefined, 
     parent: parentId,
     children: children.map((c) => c.id),
     instancePorts: serialisedPortNames(node),
+    ports: declaredPorts([...(node.ports ?? []), ...(node.dynamicports ?? [])]),
     comment: serialisedComment(node)
   });
   for (const child of children) fromSerialisedNode(child, node.id, out);
@@ -206,8 +263,10 @@ export function fromSerialisedProject(project: SerialisedProject | null | undefi
   for (const comp of project?.components ?? []) {
     const nodes: GraphNode[] = [];
     for (const root of comp.graph?.roots ?? []) fromSerialisedNode(root, undefined, nodes);
+    const description = authoredDescription(comp.description, comp.metadata?.['description']);
     components.push({
       name: comp.name,
+      ...(description ? { description } : {}),
       nodes,
       connections: (comp.graph?.connections ?? []).map((c) => ({
         fromId: c.fromId,

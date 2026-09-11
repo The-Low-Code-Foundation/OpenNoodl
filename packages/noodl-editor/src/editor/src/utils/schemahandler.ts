@@ -4,6 +4,7 @@ import { getCloudServices } from '@noodl-models/projectmodel.editor';
 
 import { EventDispatcher } from '../../../shared/utils/EventDispatcher';
 import { getIpc } from './ipc';
+import { decideSchemaCache, SCHEMA_OUTCOME_CHANGED, type SchemaFetchOutcome } from './schemaCachePolicy';
 
 /**
  * WF-007: this used to cross-reference the deleted CloudServicePanel's stored
@@ -69,6 +70,49 @@ export default class SchemaHandler {
   public systemCollections: TSFixme[];
   public parseServerVersion: string;
 
+  /**
+   * DEF-036 AC1 — the outcome of the most recent attempt, kept.
+   *
+   * 🔴 This is the whole reason the property panel can say *no fields* today but not *why*.
+   * {@link fetchBuiltInSchema} has drawn the distinction AC1 needs since DEF-035 — no backend
+   * attached, attached but stopped, attached and still starting — and `_fetch` consumed it
+   * through {@link decideSchemaCache} alone, which answers one boolean: write or do not write.
+   * The `cause` was computed and dropped on the floor, so nothing in the editor could display
+   * it, because nothing retained it.
+   *
+   * `undefined` until the first attempt completes. A reader must treat that as *not yet known*
+   * and say nothing — an empty panel with no explanation is the defect, and a wrong explanation
+   * is worse than it.
+   *
+   * ⚠️ Read this; do not re-derive "is there a backend" in a panel. Two computations of one
+   * question drift, and the one that drifts is always the copy — see
+   * `a-second-copy-of-a-palette-drifts-silently`.
+   */
+  public lastOutcome: SchemaFetchOutcome | undefined;
+
+  /** Held so `dispose()` can unsubscribe the IPC listener the constructor added. */
+  private _onBackendStatusChanged?: (event: unknown, ...args: never[]) => void;
+
+  /**
+   * DEF-035 — `backend:statusChanged`, and the first fetch nobody was asking for.
+   *
+   * Two triggers used to exist, `window-focused` and `Model.cloudServicesChanged`,
+   * and between them they left the cache a function of when the human alt-tabbed.
+   * P77 s17 measured the shape of that: a project's unhealthy-node census moved
+   * **19 → 4 on its own, with no edit**, between 14:18:32 and 14:22:57 — a later
+   * focus event arriving after the backend had finished starting. An export taken
+   * in that window is a different build from one taken outside it.
+   *
+   * `BackendManager` already broadcasts `backend:statusChanged` on
+   * create/start/stop/delete and on an unexpected exit (WFA-005), and nothing here
+   * was listening. Now the cache fills the moment the backend is up, rather than
+   * the moment somebody clicks the window.
+   *
+   * The constructor also fetches once. `EditorPage` builds this on project open,
+   * and opening a project from the picker never leaves the window — so there was
+   * no focus event to wait for, and the first export of a session read whatever
+   * the last session happened to leave on disk.
+   */
   constructor() {
     EventDispatcher.instance.on(
       ['window-focused', 'Model.cloudServicesChanged'],
@@ -79,34 +123,97 @@ export default class SchemaHandler {
       },
       this
     );
+
+    const ipc = getIpc();
+    if (ipc) {
+      this._onBackendStatusChanged = () => {
+        if (ProjectModel.instance) {
+          void this._fetch();
+        }
+      };
+      ipc.on('backend:statusChanged', this._onBackendStatusChanged);
+    }
+
+    if (ProjectModel.instance) {
+      void this._fetch();
+    }
   }
 
   dispose() {
     EventDispatcher.instance.off(this);
+
+    if (this._onBackendStatusChanged) {
+      getIpc()?.removeListener('backend:statusChanged', this._onBackendStatusChanged);
+      this._onBackendStatusChanged = undefined;
+    }
   }
 
+  /**
+   * DEF-035 — nothing is cleared over an answer we did not get.
+   *
+   * The fields are no longer reset before the attempt. Resetting them was the
+   * wipe: every "could not ask" outcome fell through to `_store()`'s else branch,
+   * which writes `dbCollections = undefined`, and `setMetaData` schedules a
+   * project save — so a stopped backend and a focus event were between them
+   * enough to delete a project's `prop-*` ports from disk.
+   * {@link decideSchemaCache} is where the three outcomes are told apart.
+   */
   async _fetch(): Promise<void> {
-    this.dbCollections = [];
-    this.systemCollections = [];
-    this.haveCloudServices = false;
+    let outcome: SchemaFetchOutcome;
 
     try {
-      const tables = await fetchBuiltInSchema();
-      if (tables) {
-        // Every table, system ones included: `collectionsFromParseClasses` marks
-        // `isSystem` off the leading underscore, so splitting them here would
-        // only be a second place to get that rule wrong.
-        this.dbCollections = tables;
-        this.haveCloudServices = true;
-      }
+      outcome = await fetchBuiltInSchema();
     } catch (error) {
-      // A backend that is stopped, mid-restart, or simply not ours. The cache
-      // goes empty — which is the honest answer — and the ports disappear until
-      // it is up again. Never fatal: this runs on window focus.
+      // A backend that is stopped, mid-restart, or answering badly. We could not
+      // look — which is not the same as looking and finding nothing — so the
+      // cache stands. Never fatal: this runs on window focus.
       console.warn('[SchemaHandler] Could not read the built-in backend schema:', error);
+      outcome = { status: 'unavailable', cause: 'threw', reason: String(error) };
     }
 
+    // DEF-036 AC1 — before the decision, and whatever the decision turns out to be. The
+    // outcomes that change nothing are exactly the ones a person needs explained: a stopped
+    // backend writes no cache, and it is the state that leaves a node with no ports.
+    this._recordOutcome(outcome);
+
+    const decision = decideSchemaCache(outcome);
+    if (!decision.write) {
+      return;
+    }
+
+    // Every table, system ones included: `collectionsFromParseClasses` marks
+    // `isSystem` off the leading underscore, so splitting them here would only
+    // be a second place to get that rule wrong.
+    this.dbCollections = decision.value.dbCollections;
+    this.systemCollections = decision.value.systemCollections;
+    this.haveCloudServices = decision.value.haveCloudServices;
+
     this._store();
+  }
+
+  /**
+   * Keep the outcome, and tell anyone drawing it only when the answer actually changed.
+   *
+   * `_fetch` runs on window focus, on `cloudServicesChanged` and on every `backend:statusChanged`
+   * — several times a minute in a normal session, almost always with the same answer. The
+   * property panel clears its render hash on this event, so announcing an unchanged outcome
+   * would rebuild every row on the panel under whatever field the author is typing in.
+   *
+   * Compared on `cause` rather than on `reason`: `reason` interpolates a backend id, so two
+   * outcomes that mean the same thing can differ as strings.
+   */
+  private _recordOutcome(outcome: SchemaFetchOutcome) {
+    const previous = this.lastOutcome;
+    this.lastOutcome = outcome;
+
+    const changed =
+      !previous ||
+      previous.status !== outcome.status ||
+      (previous.status !== 'schema' && outcome.status !== 'schema' && previous.cause !== outcome.cause);
+
+    if (changed) {
+      EventDispatcher.instance.notifyListeners(SCHEMA_OUTCOME_CHANGED, outcome);
+    }
   }
 
   _store() {
@@ -115,7 +222,7 @@ export default class SchemaHandler {
         ProjectModel.instance.setMetaData('dbCollections', this.dbCollections);
         ProjectModel.instance.setMetaData('systemCollections', this.systemCollections);
 
-        const versionNumbers = this.parseServerVersion?.split(".")
+        const versionNumbers = this.parseServerVersion?.split('.');
         if (versionNumbers && versionNumbers.length > 0) {
           // Let's only save the major version number,
           // since this will be used to determine which verison of the API to use.
@@ -135,38 +242,74 @@ export default class SchemaHandler {
 /** One running local backend, as `backend:list` + `backend:status` describe it. */
 interface LocalBackendHandle {
   id: string;
+  /** `backend:list` sends it; DEF-036 AC4 needs it for the schema editor's own header. */
+  name?: string;
   port: number;
 }
 
 /**
- * The tables of the built-in backend this project points at, or `undefined`.
+ * One attempt to read the built-in backend's schema, as an outcome with a reason.
  *
- * `undefined` — never an empty array — for every "not applicable" case: no
- * project, no endpoint, an endpoint that is somebody else's server, a backend
- * that is not running, or no Electron around us (the Jasmine suite). The caller
- * distinguishes "there is nothing to cache" from "the cache is empty", because
- * the second wipes the ports of a project whose backend is merely asleep.
+ * DEF-035 — this used to return `unknown[] | undefined`, and its own docblock said
+ * the caller distinguished "there is nothing to cache" from "the cache is empty".
+ * It could not: both arrived as `undefined`, and `_store()` wiped on `undefined`.
+ * Three outcomes are the fix, and which branch each case takes is the decision —
+ * see {@link SchemaFetchOutcome} for what the caller does with each.
+ *
+ * ⚠️ **"No managed backend matches this endpoint" is `unavailable`, not
+ * `not-applicable`.** At editor start `backend:list` can answer before
+ * `BackendManager` has registered the project's own backend, and that window is
+ * exactly the one P77 s17 watched a project heal itself across. Clearing there
+ * would delete the ports of a project whose backend is thirty seconds from ready.
  */
-async function fetchBuiltInSchema(): Promise<unknown[] | undefined> {
+async function fetchBuiltInSchema(): Promise<SchemaFetchOutcome> {
   const project = ProjectModel.instance;
-  if (!project) return undefined;
+  if (!project) return { status: 'unavailable', cause: 'no-project', reason: 'no project is open' };
 
   const cloud = getCloudServices(project);
-  if (!cloud?.endpoint) return undefined;
-  // Only ours. A Parse server somebody else runs needs a master key we
-  // deliberately do not store — see the module note.
-  if (cloud.type && cloud.type !== 'nodegx') return undefined;
+  // Genuinely nothing to describe: no endpoint at all, or a Parse server somebody
+  // else runs, which needs a master key we deliberately do not store — see the
+  // module note. Both clear the cache, because keeping one would attribute another
+  // project's classes to this one.
+  if (!cloud?.endpoint) {
+    return { status: 'not-applicable', cause: 'no-endpoint', reason: 'the project has no backend endpoint' };
+  }
+  if (cloud.type && cloud.type !== 'nodegx') {
+    return {
+      status: 'not-applicable',
+      cause: 'external-endpoint',
+      reason: `the endpoint is a ${cloud.type} server we hold no key for`
+    };
+  }
 
   const ipc = getIpc();
-  if (!ipc) return undefined;
+  if (!ipc) return { status: 'unavailable', cause: 'no-ipc', reason: 'no ipcRenderer in this window' };
 
   const list = ((await ipc.invoke('backend:list')) as LocalBackendHandle[] | undefined) ?? [];
   const match = matchEndpointToManaged(cloud, list);
-  if (!match) return undefined;
+  if (!match) {
+    return { status: 'unavailable', cause: 'not-registered-yet', reason: 'no managed backend matches the endpoint yet' };
+  }
 
   const status = (await ipc.invoke('backend:status', match.id)) as { running?: boolean } | undefined;
-  if (!status?.running) return undefined;
+  if (!status?.running) {
+    return { status: 'unavailable', cause: 'not-running', reason: `backend ${match.id} is not running` };
+  }
 
   const schema = (await ipc.invoke('backend:getSchema', match.id)) as { tables?: unknown[] } | undefined;
-  return Array.isArray(schema?.tables) ? schema.tables : undefined;
+  if (!Array.isArray(schema?.tables)) {
+    return {
+      status: 'unavailable',
+      cause: 'unreadable-reply',
+      reason: `backend ${match.id} returned no readable table list`
+    };
+  }
+
+  // An empty array here is an answer, not a failure: a backend with no tables is a
+  // fact the Data Browser and the AI review both have to be able to state.
+  //
+  // DEF-036 AC4 — and this is the one moment we know *which* backend answered. See
+  // `SchemaBackendRef`: the alternative is a second resolution that can disagree with the
+  // one the ports were minted from.
+  return { status: 'schema', tables: schema.tables, backend: { id: match.id, name: match.name || match.id } };
 }

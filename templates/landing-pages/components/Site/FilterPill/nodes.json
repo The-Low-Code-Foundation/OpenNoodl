@@ -1,0 +1,131 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f9412d92-9641-50b2-8933-38cb08152db2",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fpPill",
+      "type": "Group",
+      "label": "One pill",
+      "children": [
+        "fpLabel"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "backgroundColor": "transparent",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "cssClassName": "pill pressable"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "fpLabel",
+      "type": "Text",
+      "label": "What it says",
+      "parent": "fpPill",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "fpCurrent",
+      "type": "Variable2",
+      "label": "What is selected, app-wide",
+      "parameters": {
+        "name": "workFilter"
+      },
+      "x": 350,
+      "y": 400
+    },
+    {
+      "id": "fpState",
+      "type": "Expression",
+      "label": "Am I the selected one?",
+      "parameters": {
+        "expression": "((selected || '') === (mine || '')) ? 'on' : 'off'"
+      },
+      "x": 350,
+      "y": 520
+    },
+    {
+      "id": "fpLook",
+      "type": "States",
+      "label": "Off / on",
+      "parameters": {
+        "states": "off,on",
+        "values": "bg,fg,edge",
+        "type-bg": "color",
+        "type-fg": "color",
+        "type-edge": "color",
+        "value-off-bg": "transparent",
+        "value-on-bg": "var(--primary)",
+        "value-off-fg": "var(--foreground)",
+        "value-on-fg": "var(--primary-foreground)",
+        "value-off-edge": "var(--border-control)",
+        "value-on-edge": "var(--primary)",
+        "useTransitions": true
+      },
+      "x": 350,
+      "y": 40
+    },
+    {
+      "id": "fpValue",
+      "type": "Expression",
+      "label": "The category, or nothing at all",
+      "parameters": {
+        "expression": "v || ''"
+      },
+      "x": 350,
+      "y": 640
+    },
+    {
+      "id": "fpWrite",
+      "type": "Set Variable",
+      "label": "Select this category",
+      "parameters": {
+        "name": "workFilter",
+        "setWith": "string"
+      },
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "fpInputs",
+      "type": "Component Inputs",
+      "label": "The pill",
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "fpPill"
+  ]
+}

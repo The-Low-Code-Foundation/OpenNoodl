@@ -23,7 +23,13 @@ import ModelImport = require('../../../model');
 import CloudStore = require('../../../api/cloudstore');
 import { outcomeOutputs, reportOutcomes } from '../../../outcome';
 
-import { recordBackendPickerPorts, recordClassPorts, recordFieldPorts, recordSchemaContext } from './record-ports';
+import {
+  recordBackendPickerPorts,
+  recordClassPorts,
+  recordFieldPorts,
+  recordSchemaContext,
+  recordWiredFieldPorts
+} from './record-ports';
 import { sendSchemaPorts, staticPortNames } from './schema-ports';
 
 const Model = ModelImport as unknown as ModelModule;
@@ -95,6 +101,12 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
   displayNodeName: 'Record',
   category: 'Cloud Services',
   usePortAsLabel: 'collectionName',
+  // P77 SBR-008 §9. The same declaration the write family carries, for the read half: this
+  // node's `prop-<field>` are OUTPUTS, so its wires are the ones `/Pages/PageEditor` uses to
+  // fill a form (`prop-title → startValue`). Set here rather than in a shared mixin because
+  // this node builds its ports in its own `updatePorts`, not through `_addInputProperties`.
+  // See `dbmodelcrudbase.ts` for why the editor needs to be told at all.
+  wireDeclaredPortPrefix: 'prop-',
   color: 'data',
   dynamicports: [
     {
@@ -155,7 +167,15 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
       type: 'signal',
       displayName: 'Fetched',
       group: 'Events',
-      description: 'Fires once the record has been read and the property outputs are up to date'
+      // 🔴 P77 D25 — the old sentence was *"Fires once the record has been read and the
+      // property outputs are up to date"*, and on the binding path neither half is true:
+      // `setModel` fires this straight from the `Id` setter (line ~324), where nothing has
+      // been read and every `prop-` output is empty. A site-builder endpoint hung a write
+      // off it and created a row per request from data that had not arrived. The twin
+      // (`Model2`) already said "bound"; this one now says what it does too, and names the
+      // port that means what this one promised.
+      description:
+        'Fires when the Id binds a record, and again when a Fetch finishes reading it — a bind has read nothing, so use Done to act on data that is really there'
     },
     changed: {
       type: 'signal',
@@ -242,9 +262,13 @@ const ModelNodeDefinition: NodeDefinitionOptions = {
         else if (typeof value === 'object' && value !== null)
           value = Model.create(value as Record<string, unknown>).getId(); // If this is an js object, dereference it
 
+        // DEF-046: read before write. ⚠️ AFTER the object→id dereference above, so an
+        // identical record handed over twice compares as the same id rather than as two
+        // freshly-minted objects.
+        const previous = this._internal.modelId;
         this._internal.modelId = value as string; // Wait to fetch data
         // NDA-017 §2. Was `if (this.isInputConnected('fetch') === false)`.
-        if (this.shouldRunOnValueChange('modelId')) this.setModelID(value as string);
+        if (this.shouldRunOnValueChanged('modelId', previous, value)) this.setModelID(value as string);
         else {
           this.flagOutputDirty('id');
         }
@@ -516,28 +540,30 @@ function userInputSetter(this: DbModelNodeInstance, name: string, value: unknown
  * nodes rather than as a port.
  */
 function updatePorts(
-  nodeId: string,
-  parameters: Record<string, unknown>,
+  node: GraphNodeModel,
   editorConnection: EditorConnectionLike,
   graphModel: GraphModelLike
 ) {
-  const ctx = recordSchemaContext(graphModel, parameters);
+  const ctx = recordSchemaContext(graphModel, node.parameters);
   const ports: RuntimeDiscoveredPort[] = [];
 
   ports.push(...recordBackendPickerPorts(ctx));
   ports.push(...recordClassPorts(ctx));
 
-  if (ctx.selectedCollection) {
-    ports.push(
-      ...recordFieldPorts(ctx, {
+  // Two producers of one family, in this order on purpose — the schema half knows the
+  // column's type, the wire half only its name and returns nothing the schema half
+  // already covered. See `recordWiredFieldPorts` (P77 SBR-008) for why it exists.
+  const fieldPorts = ctx.selectedCollection
+    ? recordFieldPorts(ctx, {
         plug: 'output',
         skipRelationColumns: true,
         includeChangedSignals: true
       })
-    );
-  }
+    : [];
+  ports.push(...fieldPorts);
+  ports.push(...recordWiredFieldPorts(node, fieldPorts, { plug: 'output' }));
 
-  sendSchemaPorts(editorConnection, nodeId, ports, { staticPorts: staticPortNames(ModelNodeDefinition) });
+  sendSchemaPorts(editorConnection, node.id, ports, { staticPorts: staticPortNames(ModelNodeDefinition) });
 }
 
 const DbModelNodeModule: NodeModule = {
@@ -548,29 +574,57 @@ const DbModelNodeModule: NodeModule = {
     }
 
     function _managePortsForNode(node: GraphNodeModel) {
-      updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+      updatePorts(node, context.editorConnection, graphModel);
 
       node.on('parameterUpdated', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
+
+      // P77 SBR-008 — the wire-derived half of `prop-*` changes when a WIRE changes, and
+      // nothing above fires for that. Both events are needed and neither covers the other:
+      // `inputConnectionAdded` reaches only the wire's TARGET node
+      // (`models/componentmodel.ts:149-158`), which is the write nodes' case and not the
+      // Record node's, whose `prop-*` are outputs. The component-level event carries both
+      // ends, so it is filtered to wires touching this node.
+      node.on('inputConnectionAdded', function () {
+        updatePorts(node, context.editorConnection, graphModel);
+      });
+
+      node.on('inputConnectionRemoved', function () {
+        updatePorts(node, context.editorConnection, graphModel);
+      });
+
+      const onConnectionChanged = function (connection: { sourceId?: string; targetId?: string }) {
+        if (!connection) return;
+        if (connection.sourceId !== node.id && connection.targetId !== node.id) return;
+        updatePorts(node, context.editorConnection, graphModel);
+      };
+
+      // `on` rather than the component being present: every real `ComponentModel` is an
+      // `EventSender`, but a node reaching here without one must not take the whole
+      // `setup()` down — it would cost the node every OTHER port on this list too.
+      if (typeof node.component?.on === 'function') {
+        node.component.on('connectionAdded', onConnectionChanged, node);
+        node.component.on('connectionRemoved', onConnectionChanged, node);
+      }
 
       graphModel.on('metadataChanged.dbCollections', function () {
         CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       graphModel.on('metadataChanged.systemCollections', function () {
         CloudStore.invalidateCollections();
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       // The two keys the picker and the schema-driven ports actually read now.
       graphModel.on('metadataChanged.backendServices', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
 
       graphModel.on('metadataChanged.cloudservices', function () {
-        updatePorts(node.id, node.parameters, context.editorConnection, graphModel);
+        updatePorts(node, context.editorConnection, graphModel);
       });
     }
 

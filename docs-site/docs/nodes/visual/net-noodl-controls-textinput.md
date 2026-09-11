@@ -56,12 +56,16 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `color` | Color | — | Colour of the text itself, not of the element behind it |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `enabled` | Boolean | `true` | Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `iconColor` | Color | `#000000` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
@@ -75,6 +79,9 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `labelcolor` | Color | — | Colour of the text itself, not of the element behind it |
 | `labelfontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `labelfontSize` | Number | — | Height of the text, in pixels |
+| `labelfontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `labelfontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `labelfontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `labelletterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `labellineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
 | `labeltextStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -98,10 +105,10 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `paddingRight` | Number | `0` | Space inside the element's right edge, between it and its content |
 | `paddingTop` | Number | `0` | Space inside the element's top edge, between it and its content |
 | `placeHolderOpacity` | Number | `0.5` | How faded the placeholder text is, from 0 to 1 |
-| `placeholder` | String | `Type here...` | Greyed-out hint shown while the field is empty |
+| `placeholder` | String | `` | Greyed-out hint shown while the field is empty |
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
 | `sizeMode` | Enum (`explicit`, `contentWidth`, `contentHeight`, `contentSize`) | `contentSize` | Whether Width and Height are used as given, or the element sizes itself to fit its contents |
-| `startValue` | String | — | The text to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse |
+| `startValue` | * | — | The value to put in the field. Applied as it arrives, unless you untick it under Run On Value Change, in which case it waits for a Set pulse |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
 | `textAlignX` | Enum (`left`, `center`, `right`) | `left` | Aligns the typed text within the field |
 | `textStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -127,7 +134,7 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `blur` | Signal | — | Takes keyboard focus away from this field, which is what fires Blurred |
 | `clear` | Signal | — | Empties the field |
 | `focus` | Signal | — | Puts the keyboard cursor in this field |
-| `set` | Signal | — | Writes the current Text into the field now. This is additional to Text applying as it arrives; untick Text under Run On Value Change to stop that |
+| `set` | Signal | — | Writes the current Value into the field now. This is additional to Value applying as it arrives; untick Value under Run On Value Change to stop that |
 
 ## Outputs
 
@@ -141,7 +148,7 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `enabled` | Boolean | — | Reports back whether this control is currently accepting interaction, following the Enabled input |
 | `focusState` | Boolean | — | True while this control holds keyboard focus, so typing and Enter go to it |
 | `hoverState` | Boolean | — | True while the pointer is over this control; stays false on touch devices with no pointer |
-| `onTextChanged` | String | — | What the field currently contains, updated as the user types |
+| `onTextChanged` | * | — | What the field currently contains, updated as the user types. A number when Type is Number, otherwise text |
 | `pressedState` | Boolean | — | True while a mouse button or finger is held down on this control, and false again the moment it is released or slides off |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
@@ -161,15 +168,15 @@ Any free-text entry. Use `type` instead of separate nodes for email/number/passw
 | `onFocus` | Signal | — | Fires the moment this control takes keyboard focus, whether from a click, a tab or a Focus action |
 | `pointerDown` | Signal | — | Fires as a mouse button or finger goes down on this control, before any click has completed |
 | `pointerUp` | Signal | — | Fires when the mouse button or finger is lifted, and also when a touch is cancelled by the system |
-| `textChanged` | Signal | — | Fires whenever the Text output changes, so a graph can sequence off the new value rather than poll it |
+| `textChanged` | Signal | — | Fires whenever the Value output changes, so a graph can sequence off the new value rather than poll it |
 | `unchanged` | Signal | — | Fires when a Set or Clear left the field as it was — most often a Set while the field has focus, which is deliberately absorbed so it cannot overwrite what is being typed |
 | `willUnmount` | Signal | — | Fires just before this element is removed from the page, while it still exists |
 
 ## Dynamic ports
 
-_This node's port list changes at runtime (declared-port-groups); the tables above may be incomplete for a given instance._
+_This node's port list changes at runtime (declared-port-groups, runtime-discovered); the tables above may be incomplete for a given instance._
 
-Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).
+The port list above is complete — this node mints no ports. It republishes its own two value ports (`startValue`, `onTextChanged`) per instance with a narrowed type: `number` when the `type` parameter is `number`, `string` for every other Type. They are declared `*` statically because nothing outside a connected editor can narrow them.
 
 | Condition | Inputs shown | Outputs shown |
 |---|---|---|
@@ -178,7 +185,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | useIcon = true | `iconSourceType`, `iconSize`, `iconPlacement`, `iconSpacing` | — |
 | useIcon = true AND iconSourceType = image | `iconImageSource` | — |
 | useIcon = true AND iconSourceType = icon | `iconIconSource`, `iconColor` | — |
-| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
+| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelfontWeight`, `labelfontStyle`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelfontVariantNumeric`, `labelSpacing` | — |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |
@@ -206,6 +213,10 @@ Declared-port-groups: `width`/`height` appear per `sizeMode`, icon ports per `us
 **Settings form: the standard input controls bound to values**
 
 One of each core control: Text Input's live string comes out of `onTextChanged`, Checkbox exposes `checked` (level) plus `onChange` (edge), Dropdown (net.noodl.controls.options) takes an items list and emits the selected `value`, Slider (net.noodl.controls.range) emits a numeric `value` between `min`/`max`, and a Radio Button Group reports the `value` of whichever child Radio Button is selected. Values flow into a live summary — no submit step needed for value binding.
+
+**Check an email is well-formed and not already taken**
+
+Sign-up validation as a chain of small truths rather than one function: an `Expression` says the field is non-empty, a `JavaScriptFunction` says it looks like an address, and a `DbCollection2` query says nobody has it yet — and an `And` node combines them into the one boolean the button enables on. The `Timer` in front of the query is the detail worth copying: it debounces, so the database is asked once the typing stops instead of once per keystroke. ⚠️ The two `Inverter` nodes read as clutter until you notice what they buy — 'no user came back' is the success case here, and inverting it keeps every input to the `And` meaning 'this is fine', which is what makes the combination readable at all.
 
 ## Related nodes
 

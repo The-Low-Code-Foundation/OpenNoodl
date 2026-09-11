@@ -1,0 +1,567 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4868de1b-9633-5cf0-80d8-bd8cc2fb96da",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-7",
+      "type": "Page",
+      "label": "Ask to join",
+      "children": [
+        "joinGround"
+      ],
+      "parameters": {
+        "title": "Ask to join",
+        "urlPath": "join"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "joinGround",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page-7",
+      "children": [
+        "joinMain",
+        "pageFooter-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between",
+        "backgroundColor": "var(--muted)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageFooter-6",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "joinGround",
+      "x": 160,
+      "y": 2680
+    },
+    {
+      "id": "joinMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "joinGround",
+      "children": [
+        "heroBand-3",
+        "formBand",
+        "prompt-3",
+        "inside-4"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "heroBand-3",
+      "type": "Group",
+      "label": "The photograph, and what this page is",
+      "parent": "joinMain",
+      "children": [
+        "heroShell-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 300,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-meeting.webp"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "heroShell-3",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand-3",
+      "children": [
+        "headingHead-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "headingHead-4",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "heroShell-3",
+      "children": [
+        "headingEyebrow-4",
+        "heading-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 640
+    },
+    {
+      "id": "headingEyebrow-4",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "headingHead-4",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "heading-5",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead-4",
+      "parameters": {
+        "text": "Ask to join",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "formBand",
+      "type": "Group",
+      "label": "The form band",
+      "parent": "joinMain",
+      "children": [
+        "ground-6"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--background)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "ground-6",
+      "type": "Group",
+      "label": "The form column",
+      "parent": "formBand",
+      "children": [
+        "form-2",
+        "sent-2",
+        "refusal-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "form-2",
+      "type": "Group",
+      "label": "The request",
+      "parent": "ground-6",
+      "children": [
+        "nameField",
+        "emailField",
+        "passwordField",
+        "messageField",
+        "sendButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 1240
+    },
+    {
+      "id": "nameField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Your name",
+      "parent": "form-2",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Your name"
+      },
+      "x": 400,
+      "y": 1360
+    },
+    {
+      "id": "emailField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email",
+      "parent": "form-2",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Email",
+        "type": "email"
+      },
+      "x": 400,
+      "y": 1480
+    },
+    {
+      "id": "passwordField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Choose a password",
+      "parent": "form-2",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Choose a password",
+        "type": "password"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "messageField",
+      "type": "net.noodl.controls.textinput",
+      "label": "Why you would like to join",
+      "parent": "form-2",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Why you’d like to join",
+        "type": "textArea"
+      },
+      "x": 400,
+      "y": 1720
+    },
+    {
+      "id": "sendButton",
+      "type": "net.noodl.controls.button",
+      "label": "Send",
+      "parent": "form-2",
+      "parameters": {
+        "label": "Send my request",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "sent-2",
+      "type": "Group",
+      "label": "Request received",
+      "parent": "ground-6",
+      "children": [
+        "sentText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "sentText",
+      "type": "Text",
+      "label": "Request received — the words",
+      "parent": "sent-2",
+      "parameters": {
+        "text": "Thank you. Your request has been passed to the moderators.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)"
+      },
+      "x": 400,
+      "y": 2080
+    },
+    {
+      "id": "refusal-3",
+      "type": "Group",
+      "label": "The one refusal",
+      "parent": "ground-6",
+      "children": [
+        "refusalText-3"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2200
+    },
+    {
+      "id": "refusalText-3",
+      "type": "Text",
+      "label": "The one refusal — the words",
+      "parent": "refusal-3",
+      "parameters": {
+        "text": "That request could not be sent. Please check the form and try again.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2320
+    },
+    {
+      "id": "prompt-3",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "joinMain",
+      "parameters": {
+        "heading": "Already have an account?",
+        "line": "Members sign in with the email and password they joined with.",
+        "action": "Sign in"
+      },
+      "x": 220,
+      "y": 2440
+    },
+    {
+      "id": "inside-4",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "joinMain",
+      "x": 220,
+      "y": 2560
+    },
+    {
+      "id": "send",
+      "type": "CloudFunction2",
+      "label": "requestAccess",
+      "parameters": {
+        "function": "requestAccess"
+      },
+      "x": 650,
+      "y": 1360
+    },
+    {
+      "id": "sentGate",
+      "type": "Condition",
+      "label": "Show the confirmation",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 650,
+      "y": 1960
+    },
+    {
+      "id": "refusalGate-3",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 650,
+      "y": 2200
+    },
+    {
+      "id": "toSignIn",
+      "type": "RouterNavigate",
+      "label": "Go to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 650,
+      "y": 2440
+    }
+  ],
+  "visualRoots": [
+    "page-7"
+  ]
+}

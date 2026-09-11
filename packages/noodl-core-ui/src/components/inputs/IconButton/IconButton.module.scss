@@ -68,9 +68,27 @@
       color: var(--icon-button-idle-fg, var(--theme-color-fg-default));
     }
 
+    /*
+      🔴 DSG-008. This used to be `var(--theme-color-bg-4)` — a **background**
+      token used as a foreground — which measured **1.46:1** on `bg-1` in dark
+      mode. Undo/redo in the topbar and back/forward in the component trail are
+      disabled the moment you open a project, so four of the editor's most
+      prominent glyphs were invisible on a fresh session. Measured live, not
+      inferred.
+
+      `fg-disabled` is `fg-muted` (#6b7682), which is **3.93:1** — clearly
+      dimmer than this variant's idle `fg-default` (#a6b0bb) so "disabled" still
+      reads at a glance, and clearly *there*. Disabled controls are exempt from
+      WCAG 1.4.11, which is why nothing caught this; "exempt" is not the same as
+      "may be the same colour as the panel".
+
+      ⚠️ Deliberately not the base `:disabled` rule's `fg-default-shy` — that is
+      #8b95a1 against an idle #a6b0bb, and the two are indistinguishable at 16px.
+      A disabled state has to be legible *and* obviously disabled.
+    */
     &:disabled {
       .Icon {
-        color: var(--theme-color-bg-4);
+        color: var(--theme-color-fg-disabled);
       }
     }
 
@@ -109,9 +127,10 @@
       }
     }
 
+    // DSG-008, same defect and same repair as the transparent variant above.
     &:disabled {
       .Icon {
-        color: var(--theme-color-bg-4);
+        color: var(--theme-color-fg-disabled);
       }
     }
   }

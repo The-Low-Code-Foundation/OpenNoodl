@@ -13,13 +13,13 @@
  * @module AiAssistant/client/models
  */
 
-import { AiProviderId } from '@noodl-models/AiAssistant/client/types';
+import { AiProviderId, AiRole } from '@noodl-models/AiAssistant/client/types';
 
 /**
  * Prices below were correct on this date. They are used only for the cost
  * readout; a stale price never breaks a request.
  */
-export const PRICING_AS_OF = '2026-07-26';
+export const PRICING_AS_OF = '2026-08-31';
 
 /**
  * Prompt-cache rate multipliers, applied to a model's *input* price.
@@ -60,6 +60,28 @@ export interface AiModelDefinition {
   tier: AiModelTier;
   contextWindow: number;
   maxOutputTokens: number;
+  /**
+   * Roles this model is recommended for, best-first within each role.
+   *
+   * LAS-011. The phase-55 acceptance matrix ended in a decision about which
+   * models to point people at, and this is where that decision lives so the
+   * settings UI and the docs cannot drift from each other. Richard's wording:
+   * Opus for scoping larger creations and high-level design, Sonnet for the
+   * creation work.
+   */
+  recommendedFor?: readonly AiRole[];
+  /**
+   * Whether this model was actually replayed against the storefront benchmark.
+   *
+   * The distinction is load-bearing, not decorative. Three models were measured
+   * in phase 55; every other recommendation here rests on reputation, including
+   * the peers Richard explicitly waived testing for. A table that cannot tell
+   * you which is which quietly upgrades an assumption into evidence — the exact
+   * failure this phase spent six sessions documenting.
+   */
+  measured: boolean;
+  /** Open weights, wherever it happens to be hosted. Informational. */
+  openWeights?: boolean;
   /** Omitted when unknown (e.g. self-hosted); cost is then reported as null. */
   pricing?: AiModelPricing;
   capabilities: {
@@ -78,9 +100,12 @@ export interface AiModelDefinition {
      */
     sampling: boolean;
     /**
-     * Whether the model supports Anthropic adaptive thinking. Enabled with
-     * `display: 'omitted'` so reasoning never leaks into the response text the
-     * XML templates parse.
+     * Whether the model supports Anthropic adaptive thinking.
+     *
+     * ⚠️ BLD-004 changed how it is requested — `display: 'summarized'`, not
+     * `'omitted'`. The old value did not protect the XML templates (nothing put
+     * reasoning in a `text` block on any setting); it made the thinking blocks
+     * arrive **empty**, so there was no reasoning to show. See the adapter.
      */
     adaptiveThinking?: boolean;
     /**
@@ -102,13 +127,50 @@ export interface AiModelDefinition {
      * for whoever wonders why a breakpoint did nothing.
      */
     minCacheableTokens?: number;
+    /**
+     * BLD-012 — whether this model accepts an image. Absent means **no**, and
+     * the absence is load-bearing: an unregistered id, a custom gateway and a
+     * freshly pulled Ollama model all arrive here with nothing set, and all
+     * three must degrade to the text twin rather than send bytes the endpoint
+     * will reject.
+     *
+     * Unlike `measured`, this is not a benchmark result — it is a documented
+     * API capability, read from each vendor's own docs. It says the endpoint
+     * will *accept* an image, not that the model is any good at reading one.
+     */
+    vision?: boolean;
+    /**
+     * BLD-013 — whether this model accepts a document (a PDF) as a content
+     * block. Absent means **no**, load-bearing in exactly the way `vision` is.
+     *
+     * ⚠️ Deliberately narrower than `vision`, and the gap is the finding: a
+     * model that reads images is not thereby a model whose *endpoint* takes a
+     * PDF. Anthropic's Messages API documents a base64 `application/pdf`
+     * document block and does its own extraction server-side; our OpenAI
+     * adapter speaks `image_url` parts only, which reject a PDF. Claiming the
+     * capability from the vision flag would have sent bytes to an endpoint that
+     * refuses them — the same silent failure `vision` was added to prevent,
+     * one media type later.
+     */
+    documents?: boolean;
   };
   /** The default pick for its provider. Exactly one per provider. */
   isDefault?: boolean;
 }
 
-const frontier = { streaming: true, tools: true, agentFlow: true, sampling: true } as const;
-const small = { streaming: true, tools: true, agentFlow: false, sampling: true } as const;
+// `vision: true` on the shared bands below: every GPT-4.1/4o-family model and
+// every current Claude model documents image input. The Ollama seeds and the
+// hosted open-weight coder models deliberately do NOT get it — see their
+// entries.
+const frontier = { streaming: true, tools: true, agentFlow: true, sampling: true, vision: true } as const;
+/**
+ * BLD-012. Frontier-class reasoning, no image input — the shape the hosted
+ * open-weight coder models actually have. They shared `frontier` before vision
+ * existed as a flag; keeping them on it would have claimed a capability their
+ * endpoints reject, which is the silent-failure this task exists to prevent.
+ */
+const frontierTextOnly = { streaming: true, tools: true, agentFlow: true, sampling: true } as const;
+const small = { streaming: true, tools: true, agentFlow: false, sampling: true, vision: true } as const;
 const claudeFrontier = {
   streaming: true,
   tools: true,
@@ -117,11 +179,32 @@ const claudeFrontier = {
   adaptiveThinking: true,
   effort: true,
   promptCaching: true,
-  minCacheableTokens: 1024
+  minCacheableTokens: 1024,
+  vision: true,
+  // BLD-013 — the only band that gets it. Anthropic documents base64
+  // `application/pdf` document blocks on the Messages API with no beta header;
+  // the `frontier` band above (OpenAI) does not get it, because this repo's
+  // OpenAI adapter encodes `image_url` parts and nothing else.
+  documents: true
 } as const;
 
 export const AI_MODELS: readonly AiModelDefinition[] = [
   // --- Anthropic ---------------------------------------------------------
+  {
+    // LAS-011. Added on Richard's verdict: "recommend Opus for scoping larger
+    // creations and doing high level design". The registry had only Opus 4.8
+    // when that was written, so the recommendation had no model to point at.
+    id: 'claude-opus-5',
+    provider: 'anthropic',
+    displayName: 'Claude Opus 5',
+    tier: 'frontier',
+    contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    pricing: { inputPerMTok: 5.0, outputPerMTok: 25.0 },
+    capabilities: claudeFrontier,
+    recommendedFor: ['design', 'plan'],
+    measured: false
+  },
   {
     id: 'claude-opus-4-8',
     provider: 'anthropic',
@@ -130,7 +213,8 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 1_000_000,
     maxOutputTokens: 128_000,
     pricing: { inputPerMTok: 5.0, outputPerMTok: 25.0 },
-    capabilities: claudeFrontier
+    capabilities: claudeFrontier,
+    measured: false
   },
   {
     id: 'claude-sonnet-5',
@@ -139,17 +223,19 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     tier: 'balanced',
     contextWindow: 1_000_000,
     maxOutputTokens: 128_000,
-    // MAINTENANCE: introductory pricing, $2/$10, ends 2026-08-31 — after that
-    // this entry reverts to the standard $3/$15. A stale price here does not
-    // break requests, it only misreports cost.
-    pricing: { inputPerMTok: 2.0, outputPerMTok: 10.0 },
+    pricing: { inputPerMTok: 3.0, outputPerMTok: 15.0 },
     capabilities: claudeFrontier,
     // AIX-007: the default moved here from `claude-opus-4-8` on measurement,
     // not on tier. Over the 8-prompt authoring corpus both reached 8/8
     // first-attempt validity; Sonnet did it at $0.0352/component against
     // Opus's $0.0923, and faster. Opus stays one click away for anyone who
     // wants it. Re-check with the measurement harness before moving this.
-    isDefault: true
+    isDefault: true,
+    // LAS-011: the only model that cleared the phase-55 storefront bar. It
+    // built the whole brief, rendered clean at 1280px and at a true 390px,
+    // and did it in 92 turns / $5.10 — down from 147 / $7.86 pre-gates.
+    recommendedFor: ['act'],
+    measured: true
   },
   {
     id: 'claude-haiku-4-5',
@@ -159,7 +245,11 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 200_000,
     maxOutputTokens: 64_000,
     pricing: { inputPerMTok: 1.0, outputPerMTok: 5.0 },
-    capabilities: small
+    capabilities: small,
+    // Replayed in phase 55: architecturally correct, but its repeaters carried
+    // no `template` so half the page never drew (F38 / LAS-012). Not
+    // recommended for authoring until that gate lands.
+    measured: true
   },
 
   // --- OpenAI ------------------------------------------------------------
@@ -172,7 +262,8 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     maxOutputTokens: 32_768,
     pricing: { inputPerMTok: 2.0, outputPerMTok: 8.0 },
     capabilities: frontier,
-    isDefault: true
+    isDefault: true,
+    measured: false
   },
   {
     id: 'gpt-4.1-mini',
@@ -182,7 +273,8 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 1_047_576,
     maxOutputTokens: 32_768,
     pricing: { inputPerMTok: 0.4, outputPerMTok: 1.6 },
-    capabilities: frontier
+    capabilities: frontier,
+    measured: false
   },
   {
     id: 'gpt-4o',
@@ -192,7 +284,8 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 128_000,
     maxOutputTokens: 16_384,
     pricing: { inputPerMTok: 2.5, outputPerMTok: 10.0 },
-    capabilities: frontier
+    capabilities: frontier,
+    measured: false
   },
   {
     id: 'gpt-4o-mini',
@@ -202,7 +295,8 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 128_000,
     maxOutputTokens: 16_384,
     pricing: { inputPerMTok: 0.15, outputPerMTok: 0.6 },
-    capabilities: small
+    capabilities: small,
+    measured: false
   },
 
   // --- Ollama (local) ----------------------------------------------------
@@ -218,7 +312,9 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     maxOutputTokens: 8_192,
     pricing: { inputPerMTok: 0, outputPerMTok: 0 },
     capabilities: { streaming: true, tools: true, agentFlow: false, sampling: true },
-    isDefault: true
+    isDefault: true,
+    openWeights: true,
+    measured: false
   },
   {
     id: 'llama3.1:8b',
@@ -228,7 +324,54 @@ export const AI_MODELS: readonly AiModelDefinition[] = [
     contextWindow: 32_768,
     maxOutputTokens: 8_192,
     pricing: { inputPerMTok: 0, outputPerMTok: 0 },
-    capabilities: { streaming: true, tools: true, agentFlow: false, sampling: true }
+    capabilities: { streaming: true, tools: true, agentFlow: false, sampling: true },
+    openWeights: true,
+    measured: false
+  },
+
+  // --- OpenAI-compatible gateways ----------------------------------------
+  //
+  // LAS-011 / F35. `openai-compatible` had no entries of its own, so
+  // `getModelsForProvider` fell through to the OpenAI catalogue and offered a
+  // DeepInfra or vLLM user `gpt-4.1` — an id their gateway does not serve.
+  //
+  // Richard's verdict allows open weights *hosted behind an API* ("DeepSeek v4
+  // or the latest Qwen, the big ones"), and rules out local ollama for
+  // authoring. These are the two that decision names.
+  //
+  // ⚠️ No `pricing` on purpose. The same weights cost different amounts on
+  // different gateways, so any number here would be wrong for most users; cost
+  // is reported as null rather than confidently wrong. Context windows are the
+  // model's own property and are taken from the serving catalogue.
+  {
+    id: 'deepseek-ai/DeepSeek-V4-Pro',
+    provider: 'openai-compatible',
+    displayName: 'DeepSeek V4 Pro (open weights, hosted)',
+    tier: 'frontier',
+    // 🔴 F35's surviving half. Giving the provider its own entries fixed the
+    // *list*, but `getDefaultModel` is `find(isDefault) || models[0]` — and the
+    // OpenAI entries that follow carry `isDefault`, so the fallback never ran
+    // and a DeepInfra or vLLM user's PRESELECTED model was still `gpt-4.1`,
+    // the exact id F35 records as one their gateway does not serve.
+    // DeepSeek rather than Qwen because Richard's verdict names it first and it
+    // carries four times the context window.
+    isDefault: true,
+    contextWindow: 1_048_576,
+    maxOutputTokens: 32_768,
+    capabilities: frontierTextOnly,
+    openWeights: true,
+    measured: false
+  },
+  {
+    id: 'Qwen/Qwen3-Coder-480B-A35B-Instruct-Turbo',
+    provider: 'openai-compatible',
+    displayName: 'Qwen3 Coder 480B (open weights, hosted)',
+    tier: 'frontier',
+    contextWindow: 262_144,
+    maxOutputTokens: 32_768,
+    capabilities: frontierTextOnly,
+    openWeights: true,
+    measured: false
   }
 ];
 
@@ -241,6 +384,8 @@ export function unknownModel(id: string, provider: AiProviderId): AiModelDefinit
     tier: provider === 'ollama' ? 'local' : 'balanced',
     contextWindow: 32_768,
     maxOutputTokens: 4_096,
+    // An id nobody registered has, by definition, not been through the bench.
+    measured: false,
     pricing: provider === 'ollama' ? { inputPerMTok: 0, outputPerMTok: 0 } : undefined,
     capabilities: {
       streaming: true,
@@ -255,10 +400,32 @@ export function unknownModel(id: string, provider: AiProviderId): AiModelDefinit
 
 export function getModelsForProvider(provider: AiProviderId): AiModelDefinition[] {
   // `openai-compatible` points at an arbitrary OpenAI-shaped endpoint, so the
-  // model list is whatever the user types — but the OpenAI catalogue is a
-  // reasonable starting set for Azure and friends.
-  const lookup = provider === 'openai-compatible' ? 'openai' : provider;
-  return AI_MODELS.filter((x) => x.provider === lookup);
+  // model list is whatever the user types. It used to map straight onto the
+  // OpenAI catalogue, which meant a DeepInfra or vLLM user was offered
+  // `gpt-4.1` — an id their gateway does not serve (F35). Its own entries come
+  // first now; the OpenAI catalogue still follows, because Azure and similar
+  // shims genuinely do serve those ids.
+  if (provider === 'openai-compatible') {
+    return [
+      ...AI_MODELS.filter((x) => x.provider === 'openai-compatible'),
+      ...AI_MODELS.filter((x) => x.provider === 'openai')
+    ];
+  }
+  return AI_MODELS.filter((x) => x.provider === provider);
+}
+
+/**
+ * The models recommended for a role, best-first.
+ *
+ * LAS-011, and the reason it is a function rather than a constant: the
+ * recommendation is a property of the models themselves, so adding a model
+ * cannot leave a separate lookup table stale. Ordering within a role follows
+ * registry order, which is deliberately best-first per provider.
+ */
+export function getRecommendedModels(role: AiRole, provider?: AiProviderId): AiModelDefinition[] {
+  return AI_MODELS.filter(
+    (x) => (x.recommendedFor || []).includes(role) && (!provider || x.provider === provider)
+  );
 }
 
 export function findModel(id: string, provider?: AiProviderId): AiModelDefinition | undefined {

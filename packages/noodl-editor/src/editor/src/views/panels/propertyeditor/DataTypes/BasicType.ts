@@ -11,6 +11,9 @@ import { PropertyPanelInputWithExpressionModal } from '../components/PropertyPan
 import { TypeView } from '../TypeView';
 import { getConnectionSourceLabel, getConnectionSourceNavigate, getEditType } from '../utils';
 import { expressionProps } from './expressionProps';
+import { readNumberFieldEdit } from './NumberWithUnits';
+import { commitScrub, writeScrubStep } from './scrubCommit';
+import { scrubSpecForPortType, scrubStartValue } from './scrubPolicy';
 
 function firstType(type) {
   return NodeLibrary.nameForPortType(type);
@@ -29,6 +32,13 @@ function mapTypeToInputType(type: string): PropertyPanelInputType {
 export class BasicType extends TypeView {
   el: TSFixme;
   private root: Root | null = null;
+  /** What the parameter held when the current scrub began; `undefined` between gestures. */
+  private scrubStartParameter: TSFixme = undefined;
+  /**
+   * REL-014 AC4 — how many edits this row has refused. It is the React `key`, and
+   * bumping it is what makes a refusal visible. See {@link rejectEdit}.
+   */
+  private refusals = 0;
 
   static fromPort(args) {
     const view = new BasicType();
@@ -78,13 +88,21 @@ export class BasicType extends TypeView {
     const displayValue = ParameterValueResolver.toString(rawValue);
 
     const props = {
+      // REL-014 AC4 — see `refusals`. Constant across every ordinary re-render (a
+      // scrub re-renders this row on every mousemove and must not remount the
+      // field), so the input is rebuilt only when an edit was actually turned down.
+      key: `${this.name}#${this.refusals}`,
       label: this.displayName,
       value: displayValue,
       dataIdentifier: this.name,
+      // FB-015 AC4 — a shape hint from the port's own metadata, so the field says what goes in it
+      // while it is empty. Only ports that declare one get anything.
+      placeholder: this.port?.placeholder,
       inputType: mapTypeToInputType(firstType(this.type)),
       properties: undefined, // No special properties needed for basic types
       isChanged: !this.isDefault,
       isConnected: this.isConnected,
+      scrub: this.scrubBinding(isExprMode),
       // PAR-002 binding chip: name the driving connection ("Node · Port");
       // clicking selects the source node on the canvas.
       connectionLabel: this.isConnected ? getConnectionSourceLabel(this.parent.model, this.name) : undefined,
@@ -100,11 +118,37 @@ export class BasicType extends TypeView {
       onChange: (value: unknown) => {
         // Handle standard value change
         if (firstType(this.type) === 'number') {
-          const numValue = parseFloat(String(value));
-          this.parent.setParameter(this.name, isNaN(numValue) ? undefined : numValue, {
-            undo: true,
-            label: `change ${this.displayName}`
-          });
+          // REL-014 — the fourth copy of "a parse failure is a deletion". This was
+          // `parseFloat(String(value))` → `isNaN ? undefined`, and `undefined` is the
+          // value that CLEARS a parameter. Same four outcomes as the dimension and
+          // number-with-units rows, from the same function, so a fix cannot land in
+          // three of the four fields again. See `readNumberFieldEdit`.
+          //
+          // ⚠️ **A unitless port, so there are no permitted units to hand it** — the
+          // numeric branch's unit sniffing is not wanted here and an empty list turns
+          // it off. What is left of that branch is `parseFloat`, which is exactly what
+          // this line used to do.
+          const edit = readNumberFieldEdit(value, []);
+
+          if (edit.kind === 'refuse') {
+            this.rejectEdit();
+            return;
+          }
+
+          // ⚠️ A `number` port has no units, so the runtime's `input.set` for it is the
+          // plain branch that assigns the value through untouched — a token is not
+          // fitted with a unit here and cannot become `var(--x)px`. It does mean a
+          // token can now reach a port whose consumer wanted arithmetic; that is the
+          // author's own edit, visible in the field and undoable, where before it was
+          // a silent deletion of whatever was there.
+          this.parent.setParameter(
+            this.name,
+            edit.kind === 'clear' ? undefined : edit.kind === 'token' ? edit.token : edit.value,
+            {
+              undo: true,
+              label: `change ${this.displayName}`
+            }
+          );
         } else {
           this.parent.setParameter(this.name, value, {
             undo: true,
@@ -112,6 +156,12 @@ export class BasicType extends TypeView {
           });
         }
         this.isDefault = false;
+        // REL-014 — re-read the row from the model after an accepted edit, as the dimension and
+        // number-with-units rows already do. Nothing else does it for this row: `resetToDefault`
+        // is bound only to a style-metadata change, so without this the `value` prop keeps the
+        // value the edit replaced. The key is unchanged on an accepted edit (only `rejectEdit`
+        // bumps `refusals`), so this updates the field in place and never remounts it mid-scrub.
+        this.renderReact();
       },
 
       // Expression support — POL-011 lifted this into `expressionProps` so
@@ -121,6 +171,77 @@ export class BasicType extends TypeView {
     };
 
     this.root.render(React.createElement(PropertyPanelInputWithExpressionModal, props));
+  }
+
+  /**
+   * REL-014 AC4 — turn an edit down, **visibly**.
+   *
+   * ⚠️ Re-rendering alone is not enough, which is the whole reason this method exists.
+   * `PropertyPanelNumberInput` keeps the typed text in local state and re-seeds it from
+   * the `value` prop only when that prop *changes* — and on a refusal nothing is written,
+   * so it does not. Bumping the key remounts the input, so its state is seeded from the
+   * model and the typed text snaps back to the value that survived.
+   */
+  private rejectEdit() {
+    this.refusals++;
+    this.renderReact();
+  }
+
+  /**
+   * FB-022 — the drag-to-scrub binding for this row, or `undefined` when the port is not a
+   * draggable number.
+   *
+   * This row serves both `string` and `number` ports, and `scrubSpecForPortType` is what
+   * separates them: a text field gets no binding because its type says so, not because
+   * anything here tests `inputType`.
+   *
+   * 🔴 **Expression mode and connection are both gates, and neither is cosmetic.** In
+   * expression mode the stored parameter is an `{ expression, fallback }` object and the
+   * control is an `ExpressionInput`, not a number — a drag would overwrite the expression
+   * with a literal, silently destroying what the author wrote. Both live in the policy rather
+   * than here so they are gradeable in a runner that cannot render this row; see
+   * `ScrubPortState`.
+   */
+  private scrubBinding(isExpressionMode: boolean) {
+    const spec = scrubSpecForPortType(this.type, undefined, {
+      isConnected: this.isConnected,
+      isExpressionMode
+    });
+    if (!spec) return undefined;
+
+    return {
+      step: spec.step,
+      value: scrubStartValue(this.parent.model.getParameter(this.name), this.port?.default),
+      onScrubBegin: () => {
+        this.scrubStartParameter = this.parent.model.getParameter(this.name);
+      },
+      onScrub: (value: number) => this.writeScrubbedValue(value),
+      onScrubEnd: (value: number) => {
+        this.writeScrubbedValue(value);
+        commitScrub({
+          model: this.parent.model,
+          name: this.name,
+          startValue: this.scrubStartParameter,
+          finalValue: value,
+          label: `change ${this.displayName}`
+        });
+        this.scrubStartParameter = undefined;
+        this.renderReact();
+      }
+    };
+  }
+
+  /**
+   * One live step of a drag.
+   *
+   * ⚠️ `model.setParameter`, not `parent.setParameter` — the latter hard-codes
+   * `{ undo: true, label: 'edit parameter' }`, so a drag routed through it would push an undo
+   * entry per mousemove. AC1 is the whole gesture as one entry.
+   */
+  private writeScrubbedValue(value: number) {
+    writeScrubStep(this.parent.model, this.name, value);
+    this.isDefault = false;
+    this.renderReact();
   }
 
   dispose() {
@@ -134,8 +255,16 @@ export class BasicType extends TypeView {
   // Legacy method kept for compatibility
   onPropertyChanged(scope, el) {
     if (firstType(scope.type) === 'number') {
-      const value = parseFloat(el.val());
-      this.parent.setParameter(scope.name, isNaN(value) ? undefined : value);
+      // REL-014 — the same four outcomes as `onChange` above. This path has no call
+      // site left in the editor, but it is a byte-identical copy of the defect and
+      // leaving it is how the fix un-lands the day something calls it again.
+      const edit = readNumberFieldEdit(el.val(), []);
+      if (edit.kind !== 'refuse') {
+        this.parent.setParameter(
+          scope.name,
+          edit.kind === 'clear' ? undefined : edit.kind === 'token' ? edit.token : edit.value
+        );
+      }
     } else {
       this.parent.setParameter(scope.name, el.val());
     }

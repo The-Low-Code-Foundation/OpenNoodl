@@ -1,15 +1,18 @@
 {
   "label": "PDF Viewer",
-  "description": "A UI component for rendering PDFs from an URL.",
+  "description": "A /PDF Viewer component that renders a PDF from a URL (PDF URL, Width and Height inputs) via Google's document viewer in an iframe. Installs the Custom HTML module alongside it, which is where the Custom HTML node it is built on comes from.",
   "type": "module",
   "tags": [
     "UI"
   ],
   "icon": "icon.png",
   "docsPath": "/library/modules/pdf-viewer/",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
+  "dependencies": [
+    "modules/custom-html"
+  ],
   "provenance": {
     "sourceUrl": "https://the-low-code-foundation.github.io/opennoodl-docs/library/modules/pdf-viewer/pdf-viewer-1.0.0.zip",
     "importedAt": "2026-07-25"

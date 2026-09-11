@@ -132,7 +132,32 @@ describe('the rule against every real project in the repository', () => {
 
   it('warns about an unnamed port at most a handful of times', () => {
     const warnings = corpus.diagnostics.filter((d) => d.code === DiagnosticCode.UnknownParameter);
-    expect([...new Set(warnings.map(classOf))].sort()).toEqual(['Drag.style']);
+    // Every one of these is a legacy parameter name the current runtime dropped
+    // and never reads: `image` became `src`, `fill` became `backgroundColor`,
+    // `textAlign` became `textAlignX`, `fillMode` became `objectFit`, and `y`
+    // was absolute positioning. None resolves against the shipped catalog under
+    // any condition — checked port by port, not assumed.
+    //
+    // They surfaced when the exemption narrowed from "declares any dynamic
+    // ports" to "ports are runtime-determined". The old rule was silent about
+    // `Text`, `Group` and `Image` altogether, which is the whole population a
+    // page is drawn from; the price of seeing `fontWeight` on a Text node is
+    // seeing the legacy drift on these too, and the drift is real.
+    expect([...new Set(warnings.map(classOf))].sort()).toEqual([
+      'Drag.style',
+      'Group.fill',
+      'Group.scrollBehavior',
+      'Group.scrollDirection',
+      'Group.scrollMouseWheelEnabled',
+      'Group.style',
+      'Image.fillMode',
+      'Image.image',
+      'Image.style',
+      'Image.y',
+      'Text.style',
+      'Text.textAlign',
+      'Text.y'
+    ]);
   });
 
   it('never reports a units-typed port, which is 3,589 of the corpus in object form', () => {

@@ -9,9 +9,19 @@ import { BasicNodeType } from '@noodl-models/nodelibrary/BasicNodeType';
 // of it. Nothing else about the filter changed.
 import { evaluateDynamicPortsCondition } from '@noodl-models/nodelibrary/dynamicPortRules';
 import type { NodeLibraryProjectSettings } from '@noodl-models/nodelibrary/NodeLibraryData';
+// FB-019 scope (3): the one predicate for "is this a port whose value carries a
+// unit", shared with the connection popup's shape sentence and the Ports tab so
+// the three cannot disagree about which ports they are talking about.
+import { declaredUnit, isUnitsPortType } from '@noodl-models/nodelibrary/portWireShape';
 import { UnknownNodeType } from '@noodl-models/nodelibrary/UnknownNodeType';
 
 import Model from '../../../../shared/model';
+// CN-003: the two halves of the project catalog overlay — the mapping (pure) and
+// the seam it is installed into. Imported from the modules rather than through
+// `../../validation`'s barrel, which would pull the whole rule engine into every
+// module that touches the node library.
+import { setCatalogOverlay } from '../../validation/catalog';
+import { overlayFromNodeLibrary } from '../../validation/kitOverlay';
 import { CanvasTheme } from '../../views/nodegrapheditor/canvas/CanvasTheme';
 import { ModelProxy } from '../../views/panels/propertyeditor/models/modelProxy';
 
@@ -44,19 +54,50 @@ export class NodeLibrary extends Model {
     return this;
   }
 
-  /** Returns the name for a port type */
-  static nameForPortType(type: string | { name: string }) {
+  /**
+   * Returns the name for a port type.
+   *
+   * SIG-001 widened the parameter to match what the body has always done: the
+   * `if (!type) return;` guard handles `null`/`undefined`, and a port
+   * declaration's `type` is `PortTypeLike` — an object whose `name` is optional.
+   * The signature claimed neither, so every call site holding a real port
+   * declaration had to cast. The return type is unchanged (`string | undefined`
+   * was already what it inferred).
+   */
+  static nameForPortType(type: string | { name?: string } | null | undefined): string | undefined {
     if (!type) return;
     return typeof type === 'string' ? type : type.name;
   }
 
-  loadLibrary() {
+  /**
+   * @param data HLS-013 — the library to load, for a caller with no `window`.
+   *
+   * 🔴 **Omitting it is not the same as passing an empty library.** With no
+   * argument this reads `window.NodeLibraryData`, which in a plain Node process
+   * is not "no library" but *silently* `{}` — every node type unresolved, every
+   * connection unhealthy, and an export that quietly ships a fraction of the
+   * graph. The headless cloud deploy hit exactly that, and it looked like a
+   * working export. A caller outside the renderer must say which library it
+   * means.
+   */
+  loadLibrary(data?: TSFixme) {
     this.types = [];
     this.typeCache.clear();
     this.unkownNodeTypes = {};
 
-    // @ts-expect-error window be scary!
-    this.library = (typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {};
+    this.library = data ?? ((typeof window !== 'undefined' ? window.NodeLibraryData : {}) || {});
+
+    // CN-003 ✅ D3 — the project catalog overlay, installed from the library the
+    // viewer already sent. Here rather than in `NodeLibraryImporter` because
+    // this is the one function that runs on *every* path that changes what the
+    // editor believes the node types are, including a `reload()` no importer
+    // triggered; and because it is the read of `NodeLibrary.instance` the ruling
+    // describes. It maps and merges — it never executes project code.
+    //
+    // The catalog this installs into is what `SemanticValidator` validates
+    // against, so an empty library (no project open) installs an empty overlay
+    // and puts the catalog back to built-ins only. That is the clearing path.
+    setCatalogOverlay(overlayFromNodeLibrary(this.library).nodes);
 
     // Register basic types from the node library
     for (const i in this.library.nodetypes) {
@@ -238,15 +279,32 @@ export class NodeLibrary extends Model {
       (port.displayName ? port.displayName : port.name) +
       (port.tab && port.tab.label ? ' (' + port.tab.label + ')' : '');
 
-    // Annotate an number port with units with the current unit
-    if (NodeLibrary.nameForPortType(port.type) === 'number' && port.type.units !== undefined) {
+    /*
+     * Annotate a port whose value carries a unit with the unit it is currently in.
+     *
+     * 🔴 FB-019: this used to read `nameForPortType(port.type) === 'number'`, which excluded
+     * `dimension` — and `dimension` is declared by exactly two ports, **Width and Height**. So
+     * every units-typed `number` in the popup said its unit (`Min Width (%)`, `Pad Left (px)`,
+     * `Margin Left (px)`) and the two ports a builder reaches for first said nothing. That is
+     * the reported defect — *"the node width or something, you have to input a JSON"* — sitting
+     * inside the editor's own annotation, as a hole shaped like the complaint.
+     *
+     * ⚠️ This answers a **different question** from the shape sentence in the port explainer,
+     * and the two may legitimately differ. This says what unit the port is in *now*, falling
+     * back to `defaultUnit`. `portWireShape`'s sentence says what unit a bare number arriving
+     * **over a wire** will land in, and declines to guess for a port that declares no `default`
+     * — because nothing is seeded for one, and whether it is coerced anyway depends on a
+     * registration path the editor cannot see. Only the predicate is shared.
+     */
+    if (isUnitsPortType(port.type)) {
       const haveUnit = node.parameters[port.name] !== undefined && node.parameters[port.name].unit !== undefined;
-      return (
-        displayName +
-        '<span class="portname-annotation-unit">&nbsp;(' +
-        (haveUnit ? node.parameters[port.name].unit : port.type.defaultUnit) +
-        ')<span>'
-      );
+      const unit = haveUnit ? node.parameters[port.name].unit : declaredUnit(port.type);
+      // ⚠️ `dimension` is admitted by name alone, so a module could declare one with no
+      // `defaultUnit`. Both shipped declarations have one; an annotation reading "(undefined)"
+      // would be the widening making things worse than the hole it closed.
+      if (unit) {
+        return displayName + '<span class="portname-annotation-unit">&nbsp;(' + unit + ')<span>';
+      }
     }
 
     return displayName;
@@ -266,12 +324,23 @@ export class NodeLibrary extends Model {
       if (e === undefined) return;
 
       return e.label ? e.label : e;
-    }
+    } else if (isUnitsPortType(port.type)) {
 
-    // If the value has a unit, format it
-    else if (NodeLibrary.nameForPortType(port.type) === 'number' && port.type.units !== undefined) {
-      if (value.unit !== undefined) return value.value + '' + value.unit;
-      else return value + '' + port.type.units[0];
+    /*
+     * If the value has a unit, format it.
+     *
+     * 🔴 FB-019 found this as the **third** copy of "is this a units port", and it had two
+     * defects the other two did not. It excluded `dimension` — so a Width in a merge-conflict
+     * list rendered as `[object Object]` rather than `100%` — and its bare-number fallback read
+     * `units[0]` where the runtime reads `defaultUnit`. Those disagree on six declarations, of
+     * which `transformOriginX` is one: a stored bare `50` was shown as `50px` while the viewer
+     * rendered it at `50%`. Both now come from the shared accessors.
+     *
+     * ⚠️ Every caller of this is the version-control conflict list (`NodeGraphNode.ts:1088`,
+     * `VariantModel.ts:350`), which is why neither defect was ever reported.
+     */
+      if (value && value.unit !== undefined) return value.value + '' + value.unit;
+      return value + '' + (declaredUnit(port.type) || '');
     }
 
     return value;

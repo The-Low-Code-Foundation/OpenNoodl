@@ -1,0 +1,52 @@
+{
+  "name": "@nodegx/core",
+  "version": "0.1.0",
+  "description": "Reactive primitives for code exported from NodeGX. Preserves the graph's push-signal semantics in idiomatic React.",
+  "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "require": "./dist/react.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CONTRACT.md"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "jest",
+    "typecheck": "tsc --noEmit",
+    "size": "node scripts/bundle-size.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

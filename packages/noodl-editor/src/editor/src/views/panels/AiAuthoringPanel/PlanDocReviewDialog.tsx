@@ -65,7 +65,7 @@ export function PlanDocReviewDialog({ doc, onKeep, onExclude, onClose }: PlanDoc
             <HStack UNSAFE_style={{ alignItems: 'flex-start', gap: 6 }}>
               <Icon icon={IconName.WarningTriangle} variant={FeedbackType.Notice} size={IconSize.Small} />
               <VStack UNSAFE_style={{ gap: 2, flex: 1 }}>
-                <Text textType={TextType.Secondary}>
+                <Text textType={TextType.Default}>
                   {doc.lintFindings.length} line{doc.lintFindings.length === 1 ? '' : 's'} may describe the graph
                   rather than the reasoning behind it. Those go stale the first time someone rearranges the canvas
                   — the editor can already narrate any component on demand.

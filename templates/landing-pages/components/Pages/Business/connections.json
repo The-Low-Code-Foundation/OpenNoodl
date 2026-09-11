@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "d7e32864-5c14-549c-8793-4b14944f7d35",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bzHeroPrimary",
+      "fromProperty": "onClick",
+      "toId": "bzGoContact",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "bzHeroSecondary",
+      "fromProperty": "onClick",
+      "toId": "bzGoSecond",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "bzQuotesData",
+      "fromProperty": "items",
+      "toId": "bzQuotesCarousel",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "bzQuotesData",
+      "fromProperty": "count",
+      "toId": "bzQuotesCarousel",
+      "toProperty": "count"
+    }
+  ]
+}

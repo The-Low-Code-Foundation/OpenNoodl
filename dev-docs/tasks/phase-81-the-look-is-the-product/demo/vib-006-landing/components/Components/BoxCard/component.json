@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "81eade04-cee0-5874-8cac-73c921eefb22",
+  "name": "BoxCard",
+  "path": "/Components/BoxCard",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

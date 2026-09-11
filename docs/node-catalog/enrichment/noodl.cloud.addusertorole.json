@@ -17,7 +17,7 @@
     "completed": "Signal; fires after every attempt, whatever the outcome.",
     "error": "Value; why the last attempt failed."
   },
-  "examples": [],
+  "examples": ["cloud-invite-a-team-member"],
   "patterns": [
     "Wire straight after Create User in a signup function to put every new account into a default role like `member` — `unchanged` and `done` both mean the account is now in that role, so wiring both to the same next step covers a re-run cleanly."
   ],

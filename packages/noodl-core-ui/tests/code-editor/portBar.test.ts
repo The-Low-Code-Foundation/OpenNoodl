@@ -1,0 +1,309 @@
+/**
+ * FUN-006 — the bar that knows what is true.
+ *
+ * The task file is unusually direct: a static hint is *"worth nothing"* and
+ * should not be built. What earns the space is a line that names **their** ports
+ * and **retires itself the moment they succeed** — a bar that persists once the
+ * user is winning is a bar that gets dismissed while it is still useful.
+ *
+ * Two things here are contracts rather than behaviour:
+ *
+ * - **The last row is the discipline.** Writing an output silences it, with no
+ *   dismissal and no delay.
+ * - **§3's split with FUN-004.** Both surfaces read the same two lists, and
+ *   *"two components narrating the same fact in different words is how a help
+ *   surface stops being believed."* The bar owns "you have not started"; FUN-004
+ *   owns "you started and this specific thing is wrong". The predicate is
+ *   `minesAnyPort`, and both sides test it — from opposite directions.
+ */
+import type { OpenNodeFact } from '@noodl-core-ui/components/code-editor/authoringContext';
+import {
+  isDismissed,
+  minesAnyPort,
+  portBarMessage,
+  portBarState,
+  recordSuccess,
+  RETIRE_AFTER_SUCCESSES,
+  setDismissed,
+  shouldRecordSuccess,
+  shouldShowBar,
+  successCount
+} from '@noodl-core-ui/components/code-editor/utils/portBar';
+import { unionPorts } from '@noodl-core-ui/components/code-editor/utils/unionPorts';
+
+function node(inputs: string[], outputs: { name: string; type: string }[] = []): OpenNodeFact {
+  return {
+    nodeId: 'n1',
+    typeName: 'JavaScriptFunction',
+    declaredInputs: inputs.map((name) => ({ name, type: 'string' })),
+    declaredOutputs: outputs
+  };
+}
+
+function messageFor(code: string, fact: OpenNodeFact | null = null, mode = 'function' as const) {
+  return portBarMessage(portBarState(mode, fact, code));
+}
+
+/** A localStorage that exists, for the dismissal half. `testEnvironment: 'node'`. */
+class MemoryStorage {
+  private store = new Map<string, string>();
+  getItem(key: string) {
+    return this.store.has(key) ? this.store.get(key) : null;
+  }
+  setItem(key: string, value: string) {
+    this.store.set(key, value);
+  }
+  clear() {
+    this.store.clear();
+  }
+}
+
+beforeEach(() => {
+  (globalThis as { localStorage?: unknown }).localStorage = new MemoryStorage();
+});
+
+afterEach(() => {
+  delete (globalThis as { localStorage?: unknown }).localStorage;
+});
+
+describe('what the bar says', () => {
+  it('tells a blank node that mentioning a name is what makes a port', () => {
+    expect(messageFor('')).toBe(
+      'This node has no ports yet. Type Inputs. — the name you use becomes an input port.'
+    );
+  });
+
+  it('names their actual ports when the code mentions none of them', () => {
+    // The sentence that would have saved the originating session.
+    const message = messageFor('', node(['Input_1'], [{ name: 'Output_1', type: 'string' }]));
+
+    expect(message).toBe('Read Input_1 with Inputs.Input_1, write Output_1 with Outputs.Output_1 = ….');
+  });
+
+  it('says the consequence when inputs are read and nothing is written', () => {
+    expect(messageFor('const a = Inputs.Value;')).toBe(
+      'Nothing is written to an output, so this node produces nothing when it runs.'
+    );
+  });
+
+  it('disappears the moment an output is written', () => {
+    // ⚠️ The discipline. No dismissal, no delay, no threshold.
+    expect(messageFor('Outputs.Result = 1;')).toBe(null);
+    expect(messageFor('Outputs.Result = Inputs.Value;')).toBe(null);
+  });
+
+  it('disappears on a signal output too', () => {
+    expect(messageFor('Outputs.Done();')).toBe(null);
+  });
+
+  it('writes a signal output as a call in the second row', () => {
+    const message = messageFor('', node([], [{ name: 'Done', type: 'signal' }]));
+    expect(message).toBe('write Done with Outputs.Done().');
+  });
+
+  it('uses bracket notation for a name the dot form would not mine', () => {
+    expect(messageFor('', node(['My Value']))).toContain('Inputs["My Value"]');
+  });
+
+  it('says nothing in expression mode, where a bare name already is a port', () => {
+    // A bar telling an Expression author to type `Inputs.` would be telling them
+    // to create a port called `Inputs`.
+    expect(messageFor('', node(['Input_1']), 'expression' as never)).toBe(null);
+    expect(messageFor('', node(['Input_1']), 'json' as never)).toBe(null);
+  });
+});
+
+/**
+ * CN-019 — a file is not a node.
+ *
+ * A kit's `index.js`, opened through `CodeFileDocument`, was greeted with
+ * *"This node has no ports yet. Type `Inputs.` — the name you use becomes an
+ * input port."* It is a whole module: no property panel, no ports, and
+ * `Inputs.` is not injected into it. It is also the **first** file CN-006's
+ * create command sends a new kit author to, so the first sentence they read
+ * named a mechanism that does not exist where they are standing.
+ *
+ * The mode is `'script'` for a parser reason — a module has top-level
+ * statements a Function-node parse rejects — and that one field was then read a
+ * second time as *"this is a Script node"*.
+ */
+describe('CN-019 — the subject, and why it is not `node != null`', () => {
+  /** What `openCodeFile` opens: a kit's entry module. Mines nothing. */
+  const KIT_INDEX = "define({ name: 'Stat Tile', inputs: {}, outputs: {} });";
+
+  it('says nothing over a file, whatever the mode', () => {
+    // AC1. Not an empty bar — no bar.
+    expect(portBarState('script', null, KIT_INDEX, 'file')).toEqual({ kind: 'silent' });
+    expect(portBarMessage(portBarState('script', null, KIT_INDEX, 'file'))).toBe(null);
+  });
+
+  /**
+   * 🔴 **The case that separates a real fix from a copied guard.**
+   *
+   * The lint pass solved the same problem with `getCodeAuthoringContext().openNode
+   * != null` (`portDiagnostics.ts:634-641`). Copied here it would close the row
+   * above and keep this one: `openNode` is module-level state whose only
+   * producer is the property panel, so a file opened while a Function node's
+   * ports are still in the slot reads a **non-null** node — and is handed that
+   * unrelated node's ports as if they were its own.
+   */
+  it('says nothing over a file opened while another node is still in the ambient slot', () => {
+    // AC2. `stale` is the Function node whose popout the author had open a
+    // moment ago; nothing about this file produced it.
+    const stale = node(['Temperature'], [{ name: 'Result', type: 'string' }]);
+
+    expect(portBarState('script', stale, KIT_INDEX, 'file')).toEqual({ kind: 'silent' });
+
+    // The control, and the whole point of the case: state the subject wrongly
+    // and the file is told to read a port it has never heard of. A guard on
+    // emptiness cannot tell these two calls apart — only the subject can.
+    //
+    // ⚠️ **FIX-016 moved this control from `'script'` to `'function'`, and the
+    // reason is worth keeping.** It used to read `'script'`, matching the file
+    // arm above, because that is the mode a kit's `index.js` opens in. The bar
+    // is now silent for `'script'` in **either** subject — a Script node does not
+    // use `Inputs.`/`Outputs.` notation, so the bar has no true sentence for it
+    // — which means script mode can no longer show what a wrong subject costs.
+    // The subject gate is still the only thing standing in `'function'`, so the
+    // control moves there rather than being deleted.
+    const asNode = portBarState('function', stale, KIT_INDEX, 'node');
+    expect(asNode.kind).toBe('unused-ports');
+    expect(portBarMessage(asNode)).toContain('Temperature');
+
+    // ✅ And the defence-in-depth fact the move would otherwise hide: in the mode
+    // a file actually opens in, the wrong subject is now harmless twice over.
+    expect(portBarState('script', stale, KIT_INDEX, 'node')).toEqual({ kind: 'silent' });
+  });
+
+  it('still speaks for a real node, which is the feature this must not retire', () => {
+    // AC3. FUN-006's whole reason to exist.
+    //
+    // ⚠️ **FIX-016 narrowed this row from two modes to one, deliberately.** It
+    // used to assert the bar spoke *"in the mode a Script node uses and the mode
+    // a Function node uses"*. The first half was the defect: the sentence below
+    // is `Inputs.` notation, and typing `Inputs.` in a Script node creates no
+    // port and throws. The bar not speaking there is now the requirement, pinned
+    // in `scriptPortNotation.test.ts`; this row keeps the half that is real.
+    expect(portBarState('function', node([]), '', 'node')).toEqual({ kind: 'no-ports' });
+    expect(messageFor('', node([]))).toBe(
+      'This node has no ports yet. Type Inputs. — the name you use becomes an input port.'
+    );
+  });
+
+  it('is a node when nobody says otherwise', () => {
+    // The four property-panel call sites pass no subject and must not change.
+    expect(portBarState('function', node([]), '')).toEqual(portBarState('function', node([]), '', 'node'));
+  });
+
+  it('offers no ? button over a file, because there is no hidden hint to restore', () => {
+    // `JavaScriptEditor` renders the restore button on `barMessage !== null &&
+    // !showBar`. A state that is silent rather than suppressed has no message,
+    // so the toolbar does not grow a control that would do nothing.
+    const state = portBarState('script', node(['Temperature']), KIT_INDEX, 'file');
+    expect(portBarMessage(state)).toBe(null);
+    expect(shouldShowBar(state, true)).toBe(false);
+  });
+});
+
+describe('§3 — the bar and FUN-004 never state the same fact', () => {
+  it('turns on exactly where minesAnyPort is false', () => {
+    // FUN-004's message 4 stands down on the same predicate, from the other side.
+    const fact = node(['Input_1']);
+
+    const blank = unionPorts(fact, '');
+    expect(minesAnyPort(blank)).toBe(false);
+    expect(messageFor('', fact)).not.toBe(null);
+
+    const started = unionPorts(fact, 'const a = Inputs.Other;');
+    expect(minesAnyPort(started)).toBe(true);
+  });
+
+  it('hands over to FUN-004 as soon as the author uses the notation at all', () => {
+    // The author has started. The bar's "you have not started" row is no longer
+    // true, and FUN-004 names the specific port that got left behind.
+    const message = messageFor('const a = Inputs.Other;', node(['Input_1']));
+    expect(message).toBe('Nothing is written to an output, so this node produces nothing when it runs.');
+    expect(message).not.toContain('Input_1');
+  });
+});
+
+describe('§2 — dismissal and retiring', () => {
+  const blank = portBarState('function', node(['Input_1']), '');
+  const silent = portBarState('function', null, 'Outputs.Result = 1;');
+
+  it('shows by default', () => {
+    expect(shouldShowBar(blank, false)).toBe(true);
+  });
+
+  it('never shows when there is nothing to say, forced or not', () => {
+    expect(shouldShowBar(silent, false)).toBe(false);
+    expect(shouldShowBar(silent, true)).toBe(false);
+  });
+
+  it('stays dismissed across nodes — per user, not per node', () => {
+    // "Dismissing it on one node and meeting it again on the next is the
+    // behaviour that makes people hate these."
+    setDismissed(true);
+    expect(isDismissed()).toBe(true);
+    expect(shouldShowBar(blank, false)).toBe(false);
+  });
+
+  it('comes back when explicitly asked for', () => {
+    setDismissed(true);
+    expect(shouldShowBar(blank, true)).toBe(true);
+  });
+
+  it('retires after the threshold, and the `?` still overrides it', () => {
+    for (let i = 0; i < RETIRE_AFTER_SUCCESSES; i++) recordSuccess(`node-${i}`);
+
+    expect(successCount()).toBe(RETIRE_AFTER_SUCCESSES);
+    expect(shouldShowBar(blank, false)).toBe(false);
+    expect(shouldShowBar(blank, true)).toBe(true);
+  });
+
+  it('counts nodes, not edits — one node succeeding repeatedly counts once', () => {
+    // ⚠️ Otherwise the threshold is reached by a single node and the bar retires
+    // for someone who has succeeded exactly once.
+    for (let i = 0; i < 10; i++) recordSuccess('the-same-node');
+
+    expect(successCount()).toBe(1);
+    expect(shouldShowBar(blank, false)).toBe(true);
+  });
+
+  it('ignores a success with no node id', () => {
+    recordSuccess(undefined);
+    expect(successCount()).toBe(0);
+  });
+
+  it('survives a corrupt store rather than failing to open the editor', () => {
+    localStorage.setItem('codeeditor_portbar_successes', '{not json');
+    expect(successCount()).toBe(0);
+    expect(() => shouldShowBar(blank, false)).not.toThrow();
+  });
+
+  it('survives no localStorage at all', () => {
+    delete (globalThis as { localStorage?: unknown }).localStorage;
+    expect(() => shouldShowBar(blank, false)).not.toThrow();
+    expect(successCount()).toBe(0);
+  });
+});
+
+describe('what counts as succeeding', () => {
+  it('counts writing an output in front of us', () => {
+    expect(shouldRecordSuccess('no-ports', 'silent')).toBe(true);
+    expect(shouldRecordSuccess('unused-ports', 'silent')).toBe(true);
+    expect(shouldRecordSuccess('no-output', 'silent')).toBe(true);
+  });
+
+  it('does not count opening a node that already worked', () => {
+    // ⚠️ The failure this exists to stop: a new user opening three working
+    // Function nodes in an example project would retire the bar having never
+    // written an output — the same defect §2 forbids, by a different route.
+    expect(shouldRecordSuccess('silent', 'silent')).toBe(false);
+  });
+
+  it('does not count going backwards', () => {
+    expect(shouldRecordSuccess('silent', 'no-output')).toBe(false);
+    expect(shouldRecordSuccess('no-ports', 'unused-ports')).toBe(false);
+  });
+});

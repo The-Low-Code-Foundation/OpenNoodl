@@ -67,6 +67,7 @@ const ScriptDownloadDefinition: NodeDefinitionOptions = {
   },
   outputs: {
     loaded: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Loaded',
       description: 'Fires once every script has finished loading; a script that fails to load reports nothing and this never fires'

@@ -27,6 +27,15 @@ import {
   AiToolCall
 } from '@noodl-models/AiAssistant/client/types';
 import { parseToolArguments } from '@noodl-models/AiAssistant/client/providers/stream-utils';
+import {
+  AiContentBlock,
+  asText,
+  assertCacheBoundary,
+  cacheBlockIndex,
+  degradeDocuments,
+  degradeImages,
+  isBlockContent
+} from '@noodl-models/AiAssistant/client/content';
 
 import { errorMessage, errorStatus, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
@@ -81,7 +90,14 @@ export interface AnthropicStreamEvent {
   index?: number;
   message?: { model?: string; usage?: AnthropicUsage };
   content_block?: { type?: string; id?: string; name?: string };
-  delta?: { type?: string; text?: string; partial_json?: string; stop_reason?: string };
+  delta?: {
+    type?: string;
+    text?: string;
+    /** BLD-004: the reasoning summary's delta, on `thinking_delta`. Never `text`. */
+    thinking?: string;
+    partial_json?: string;
+    stop_reason?: string;
+  };
   usage?: AnthropicUsage;
 }
 
@@ -175,11 +191,57 @@ function markCacheBreakpoint(message: AnthropicRequestMessage): boolean {
  */
 function splitAtCacheBoundary(message: AiMessage): AnthropicRequestBlock[] | null {
   const boundary = message.cacheBoundary;
-  if (typeof boundary !== 'number' || boundary <= 0 || boundary >= message.content.length) return null;
+  // BLD-012: string content only. `assertCacheBoundary` has already thrown if a
+  // caller paired an offset with blocks, so reaching here with an array means
+  // no boundary was set and the block path owns the breakpoint.
+  if (isBlockContent(message.content)) return null;
+  const content = message.content;
+  if (typeof boundary !== 'number' || boundary <= 0 || boundary >= content.length) return null;
   return [
-    { type: 'text', text: message.content.slice(0, boundary), cache_control: CACHE_CONTROL },
-    { type: 'text', text: message.content.slice(boundary) }
+    { type: 'text', text: content.slice(0, boundary), cache_control: CACHE_CONTROL },
+    { type: 'text', text: content.slice(boundary) }
   ];
+}
+
+/**
+ * BLD-012 — our closed block union onto Anthropic's open one.
+ *
+ * The image shape is the documented base64 source form; `mediaType` is already
+ * narrowed to the four types Anthropic accepts, so nothing is validated again
+ * here.
+ *
+ * BLD-013 adds `document`, whose source shape is the same base64 form with
+ * `application/pdf`. ⚠️ `title` is sent as the block's own field rather than
+ * folded into the surrounding prose: it is what Anthropic's citations name, and
+ * a filename stated once in the block cannot drift from the one the chip shows.
+ */
+function toAnthropicBlocks(blocks: AiContentBlock[]): AnthropicRequestBlock[] {
+  return blocks.map((block) => {
+    if (block.type === 'image') {
+      return { type: 'image', source: { type: 'base64', media_type: block.mediaType, data: block.data } };
+    }
+    if (block.type === 'document') {
+      return {
+        type: 'document',
+        source: { type: 'base64', media_type: block.mediaType, data: block.data },
+        title: block.title
+      };
+    }
+    return { type: 'text', text: block.text };
+  });
+}
+
+/**
+ * Blocks with the breakpoint placed on the block marked `cache`, or null when
+ * none is — the block-content analogue of `splitAtCacheBoundary`, and it spends
+ * from the same budget for the same reason.
+ */
+function markedBlocks(content: AiContentBlock[]): AnthropicRequestBlock[] | null {
+  const index = cacheBlockIndex(content);
+  if (index < 0) return null;
+  const blocks = toAnthropicBlocks(content);
+  blocks[index].cache_control = CACHE_CONTROL;
+  return blocks;
 }
 
 /**
@@ -214,15 +276,23 @@ export function toAnthropicMessages(
   let breakpoints = 0;
 
   for (const message of messages) {
+    // BLD-012: a character offset paired with block content is a caller bug the
+    // adapter cannot act on, and ignoring it would cost caching silently.
+    assertCacheBoundary(message);
+
     if (message.role === 'system') {
-      if (message.content) systemParts.push(message.content);
+      // System is a string on the wire, so an image here can only ever be its
+      // twin. Nothing legitimately puts one in a system turn; `asText` means
+      // that if something does, it is described rather than dropped.
+      const text = asText(message.content);
+      if (text) systemParts.push(text);
       continue;
     }
 
     if (options.cacheBoundaries && message.role === 'user' && breakpoints < (options.maxBoundaries ?? Infinity)) {
-      const split = splitAtCacheBoundary(message);
-      if (split) {
-        out.push({ role: 'user', content: split });
+      const marked = isBlockContent(message.content) ? markedBlocks(message.content) : splitAtCacheBoundary(message);
+      if (marked) {
+        out.push({ role: 'user', content: marked });
         breakpoints++;
         continue;
       }
@@ -232,7 +302,8 @@ export function toAnthropicMessages(
       const block = {
         type: 'tool_result',
         tool_use_id: message.toolCallId,
-        content: message.content
+        // A tool result is text by contract — no tool returns an image today.
+        content: asText(message.content)
       };
 
       const previous = out[out.length - 1];
@@ -246,7 +317,10 @@ export function toAnthropicMessages(
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
       const content: AnthropicRequestBlock[] = [];
-      if (message.content) content.push({ type: 'text', text: message.content });
+      // An assistant turn is generated text, never an image, so flattening is
+      // lossless here rather than a degradation.
+      const text = asText(message.content);
+      if (text) content.push({ type: 'text', text });
       for (const call of message.toolCalls) {
         content.push({ type: 'tool_use', id: call.id, name: call.name, input: call.arguments });
       }
@@ -254,7 +328,10 @@ export function toAnthropicMessages(
       continue;
     }
 
-    out.push({ role: message.role, content: message.content });
+    out.push({
+      role: message.role,
+      content: isBlockContent(message.content) ? toAnthropicBlocks(message.content) : message.content
+    });
   }
 
   // The API requires the first message to be `user`. Templates that open with
@@ -312,11 +389,28 @@ export class AnthropicProvider implements AiProvider {
 
     const model = resolveModel(modelId, this.id);
     const caching = model.capabilities.promptCaching === true;
+
+    // BLD-012 — degrade before mapping, never inside it. Every current Claude
+    // model takes images, so this is normally a pass-through; it earns its keep
+    // on an unregistered id, which `unknownModel` gives no `vision` flag and
+    // which would otherwise be sent bytes its endpoint may reject.
+    //
+    // BLD-013 chains documents through the same gate. Two passes rather than
+    // one combined flag because the capabilities are independent — and on this
+    // provider specifically, both are true for every *registered* model, so
+    // what this line actually protects is the unregistered id and the custom
+    // gateway, which arrive with neither flag set.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
+
     // Two of the four markers are spoken for here — one for system, one for the
     // newest turn — so the mapper may spend at most the remaining two. It is
     // budgeted rather than checked afterwards: an over-budget request is a 400,
     // and there is no partial success to fall back to.
-    const { system, messages, breakpoints } = toAnthropicMessages(request.messages, {
+    const { system, messages, breakpoints } = toAnthropicMessages(messagesIn, {
       cacheBoundaries: caching,
       maxBoundaries: MAX_CACHE_BREAKPOINTS - 2
     });
@@ -358,10 +452,25 @@ export class AnthropicProvider implements AiProvider {
       params.temperature = request.temperature;
     }
 
-    // Adaptive thinking with the reasoning hidden: better answers, and the
-    // visible text stays clean for the XML-parsing templates.
+    /*
+     * Adaptive thinking, with the reasoning summarised rather than hidden.
+     *
+     * ⚠️ **BLD-004, and the premise it corrects.** This shipped as
+     * `display: 'omitted'` under a comment saying that kept "reasoning out of
+     * the response text the XML templates parse". The templates were never at
+     * risk: `display` governs the *thinking block*, and thinking has never been
+     * part of a `text` block on any setting — the raw chain of thought is not
+     * returned at all, on any value of this field. What `'omitted'` actually
+     * does is stream thinking blocks whose text is **empty**, which is why
+     * `onReasoning` had nothing to report until this line changed.
+     *
+     * `'summarized'` returns a readable summary of the reasoning on its own
+     * block type. It is billed identically — display controls visibility only,
+     * not whether the model thinks — so this costs nothing and is the only
+     * setting under which the reasoning channel exists at all.
+     */
     if (model.capabilities.adaptiveThinking) {
-      params.thinking = { type: 'adaptive', display: 'omitted' };
+      params.thinking = { type: 'adaptive', display: 'summarized' };
     }
 
     // AIX-007 — reasoning depth. Unset inherits Anthropic's default of `high`,
@@ -429,6 +538,14 @@ export class AnthropicProvider implements AiProvider {
     const signal = request.abortController?.signal;
 
     let fullText = '';
+    /**
+     * BLD-004. Deliberately a *second* accumulator rather than a flag on the
+     * first: the response returned from this method carries `fullText` and
+     * nothing else, so reasoning can only reach the XML-parsed authoring output
+     * if someone renames this variable, which is a harder mistake to make than
+     * dropping a conditional.
+     */
+    let fullReasoning = '';
     const toolCalls: AiToolCall[] = [];
     let promptTokens = 0;
     let completionTokens = 0;
@@ -480,6 +597,16 @@ export class AnthropicProvider implements AiProvider {
             if (delta?.type === 'text_delta' && delta.text) {
               fullText += delta.text;
               callbacks.onText?.(fullText, delta.text);
+            } else if (delta?.type === 'thinking_delta' && delta.thinking) {
+              // BLD-004. ⚠️ `fullReasoning`, never `fullText` — the two
+              // accumulators are separate variables precisely so that the
+              // mistake this comment is about requires editing a name rather
+              // than forgetting a branch. Reasoning reaching `fullText` would
+              // be parsed as authoring output by the XML templates, which
+              // corrupts the component rather than the panel, and the response
+              // returned below carries `fullText` alone.
+              fullReasoning += delta.thinking;
+              callbacks.onReasoning?.(fullReasoning, delta.thinking);
             } else if (delta?.type === 'input_json_delta') {
               const index = event.index ?? 0;
               const pending = pendingTools.get(index);
@@ -488,8 +615,6 @@ export class AnthropicProvider implements AiProvider {
                 callbacks.onToolCallPartial?.({ index, name: pending.name, argsText: pending.json });
               }
             }
-            // `thinking_delta` is deliberately ignored: reasoning is requested
-            // with display 'omitted' and must never reach the response text.
             break;
           }
 

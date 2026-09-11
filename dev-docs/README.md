@@ -22,6 +22,7 @@ dev-docs/
 ├── TASK-TEMPLATE.md         # Template for creating new tasks
 │
 ├── guidelines/              # Development standards
+│   ├── PHASE-EXECUTION.md   # 🔴 Build tasks, don't farm defects — READ BEFORE A HANDOFF
 │   ├── CODING-STANDARDS.md  # Code style and patterns
 │   ├── TESTING-GUIDE.md     # How to write tests
 │   └── GIT-WORKFLOW.md      # Branch and commit conventions
@@ -105,6 +106,7 @@ not a numbered phase.
 
 ### For Human Contributors
 
+1. Read `guidelines/PHASE-EXECUTION.md` — **what the next session should actually do**
 1. Read `guidelines/CODING-STANDARDS.md`
 2. Check `reference/CODEBASE-MAP.md` to understand the project
 3. Pick a task from `tasks/` and follow its documentation
@@ -172,6 +174,7 @@ citations.
 | -------------------------------------------------- | --------------------- |
 | [**Compatibility Policy**](reference/COMPATIBILITY-POLICY.md) | **NodeGX is a fresh start — legacy Noodl projects are not a design constraint. Read before acting on any "existing projects" clause in a spec.** |
 | [Codebase Map](reference/CODEBASE-MAP.md)          | Navigate the monorepo |
+| 🔴 [**Phase Execution**](guidelines/PHASE-EXECUTION.md) | **How a phase spends its sessions — build the tasks, don't farm the defects. Read before writing any handoff.** |
 | [Coding Standards](guidelines/CODING-STANDARDS.md) | Style and patterns    |
 | [Node Patterns](reference/NODE-PATTERNS.md)        | Creating new nodes    |
 | [Common Issues](reference/COMMON-ISSUES.md)        | Troubleshooting       |

@@ -1,0 +1,145 @@
+{
+  "format": "noodl-lesson@1",
+  "title": "Snacks",
+  "description": "A menu of snacks is many similar things. One item design, repeated per item of data.",
+  "authoredBy": "ai",
+  "completionBadge": "One Design, Many Rows",
+  "steps": [
+    {
+      "kind": "popup",
+      "title": "Nibbles wants feeding, and there is nothing to feed it",
+      "body": "## Snacks\n\nYour app asks to be fed and you cannot feed it.\n\nLook at the board. `Feed`, `Play` and `Sleep` are three words you typed by hand in lesson 2, and every one of them is a copy: the same node, three times, with a different word inside. A fourth would be a fourth copy. Changing how one of them looks means changing three, and there is nothing in the app that knows they belong together.\n\nTwo ideas fix that, and they are the whole of this lesson:\n\n> **A list is data — a set of similar things — not a set of nodes.**\n>\n> **A design made once, repeated per item of data, is a list on screen.**\n\nBy the end of this lesson the card has a menu of snacks underneath it, drawn from three lines of text you typed once. Adding a snack is adding a line. And clicking a snack feeds Nibbles, which is what it has been asking for since the last lesson."
+    },
+    {
+      "title": "Write the menu down as data",
+      "body": "Add a **Static Array** node beside your other logic nodes and rename it `Pantry`. In its **CSV** box, type a first line reading `name`, then one snack per line underneath — `Apple`, `Biscuit` and `Carrot`, or any three you like.\n\nThe first line is not a snack. It is the *heading* of a column, and it is the one word in this step that has to be exactly `name`: two steps from now, a node will look for a field called `name` on every item, and a heading spelt any other way leaves it looking at nothing. The snacks themselves can be anything.\n\nWhat you have made is a list — three items, each with one field — that is data rather than nodes. Its **Items** output carries all three at once, and **Count** says how many. Nothing about it appears on screen yet, because a list of data has no appearance of its own.",
+      "detail": "**Static Array** is under **Read & Write Data** in the node picker. Its type name is `Static Data`, which is what you may see it called elsewhere; there is only one node and this is it.\n\n**CSV** is in the node’s properties with an **Edit** button beside it; press it and a text editor opens. One line per row; the first line names the columns, and a comma separates columns when there is more than one — here there is one, so there are no commas at all. Leave **Type** on **CSV**.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Pantry",
+          "hasType": "Static Data"
+        },
+        {
+          "node": "/Pages/Home:#Pantry",
+          "hasParams": [
+            "csv"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Design one snack",
+      "body": "In the **Components** panel, press **+** and choose **Create Visual Component**. Name it `Snack`. The editor opens it: an empty canvas with one **Group** node on it. Rename that Group `Snack row`, then add a **Text** node inside it and rename the Text `Name`.\n\nYou have just made a *component*: a design that lives apart from `Home` and can be placed as many times as there are items to draw. That is the second idea. `Snack row` is the frame of one snack, `Name` is where its word will go, and neither of them knows yet which snack it is — this is a design, not a snack.\n\nLeave the Text's **Text** property alone. It says `Text` for now, and that is right: the word is going to arrive from the data, and a word typed here would hide the fact that it had not.",
+      "detail": "The **Components** panel is the one on the left with `App`, `Pages` and `Home` in it. **+** is at the top of that panel; **Create Visual Component** is on the menu it opens. Type the name and press **Add**.\n\nTo get back to `Home` later, click it in the same panel. `Snack` stays where it is — a component is a place you can go to, not something on `Home`.\n\nRename a node by double-clicking its title on the canvas, exactly as in every lesson so far. Drop the Text onto `Snack row` in the node tree to put it inside.\n\nStyle `Snack row` however you like — padding, a border, a rounded corner. None of it is checked, and the design you settle on is what every snack will wear.",
+      "completeWhen": [
+        {
+          "node": "/Snack:#Snack row",
+          "hasType": "Group"
+        },
+        {
+          "node": "/Snack:#Snack row:#Name",
+          "hasType": "Text"
+        }
+      ]
+    },
+    {
+      "title": "Let the data in",
+      "body": "Still inside `Snack`, add a **Component Inputs** node beside `Snack row`, rename it `Fields`, and give it one port called `name` — spelt exactly as the heading in `Pantry`. Then wire `Fields`'s **name** output into `Name`'s **Text** input.\n\n**Component Inputs** is how a design receives the thing it is drawing. Each port on it is a question the design asks of whatever places it — *what is my `name`?* — and the answer arrives on the wire. The port and the column heading share a spelling on purpose: when the list is drawn, each item's fields are matched to these ports by name, and a field with no port of that name goes nowhere.\n\nThe word does not appear yet, and `Name` still says `Text`. Nobody has placed the design, so nobody has answered the question.",
+      "detail": "**Component Inputs** is under **Component Utilities** in the picker. Select it, and the panel that opens for it, headed **Inputs**, has a **+ Port** button at the bottom; press it, type `name` into **New port name**, and press **Add**. The new port appears on the right-hand edge of the node, where outputs live — an *input to the design* is an *output of this node*, because the value flows out of it into the design.\n\nThe Text's **Text** input is in its **Text** group. Drag from the `name` port on `Fields` to it.",
+      "completeWhen": [
+        {
+          "node": "/Snack:#Fields",
+          "hasType": "Component Inputs"
+        },
+        {
+          "node": "/Snack:#Fields",
+          "hasPort": "name"
+        },
+        {
+          "connection": {
+            "from": "/Snack:#Fields",
+            "fromPort": "name",
+            "to": "/Snack:#Snack row:#Name",
+            "toPort": "text"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Repeat it",
+      "body": "Go back to `Home`. Add a **Repeater** node inside `Board`, underneath `Rest`, rename it `Menu`, and set its **Template** to `Snack`. Then wire `Pantry`'s **Items** output into `Menu`'s **Items** input.\n\nRun the preview. Three snacks, in three rows, each wearing the design you made once — and each saying its own name, because the Repeater placed `Snack` once per item and answered `Fields`'s question with that item's `name`.\n\nNow go back to `Pantry` and add a fourth line. A fourth row appears, and you did not touch a node. That is the lesson in one edit: the list is the data, and the design is written once.",
+      "detail": "**Repeater** is under **Read & Write Data** in the picker; its type name is `For Each`. Drop it onto `Board` in the node tree so the rows land inside the board. **Template** is a box in its **Appearance** group. Click it and a **Choose component** list opens with every component in the project; pick `Snack`.\n\n**Items** is in the Repeater's **Data** group. It takes a whole list, which is why `Pantry`'s **Items** is the port to take it from.\n\nIf the rows say `Text` instead of a snack, the heading in `Pantry` and the port on `Fields` are spelt differently. Make them the same and the words arrive.",
+      "completeWhen": [
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Menu",
+          "hasType": "For Each"
+        },
+        {
+          "node": "/Pages/Home:#Home:#Page shell:#Board:#Menu",
+          "paramsEqual": {
+            "template": "/Snack"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Pantry",
+            "fromPort": "items",
+            "to": "/Pages/Home:#Home:#Page shell:#Board:#Menu",
+            "toPort": "items"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Say when a snack is eaten",
+      "body": "Open `Snack` again. Add a **Component Outputs** node, rename it `Signals`, and give it one port called `eaten`. Then wire `Snack row`'s **Click** output into it.\n\n**Component Outputs** is the other direction: what a design *tells* whoever placed it. A click on the row is an event inside the design, and the design does not know what should happen next — feeding is `Home`'s business, because `Home` is where the creature is. So the design announces it and stops there.\n\nNotice that you never said what kind of port `eaten` is. It took its kind from the wire: connected to a **Click**, it is a signal, and it fires once per click on that row.",
+      "detail": "**Component Outputs** is under **Component Utilities**, next to **Component Inputs**. Its panel has the same **+ Port** button, and it works the same way. The new port appears on the node's *left* edge this time, because a value flows into it on its way out of the design.\n\n**Click** is in `Snack row`'s **Events** group. Any **Group** can be clicked, so a snack does not need a button inside it.",
+      "completeWhen": [
+        {
+          "node": "/Snack:#Signals",
+          "hasType": "Component Outputs"
+        },
+        {
+          "node": "/Snack:#Signals",
+          "hasPort": "eaten"
+        },
+        {
+          "connection": {
+            "from": "/Snack:#Snack row",
+            "fromPort": "onClick",
+            "to": "/Snack:#Signals",
+            "toPort": "eaten"
+          }
+        }
+      ]
+    },
+    {
+      "title": "Feed Nibbles",
+      "body": "Back on `Home`, `Menu` has a new output called **eaten**, under **Item Signals**. Wire it into `Ignored`'s **Off** input, and into `Patience`'s **Restart** input — the same two places `Poke`'s **Click** already goes.\n\nRun the preview and take your hands off the mouse until the card asks. Click a snack. The nag fades — `Ignored` went off, so `Demanding` went false — and the countdown starts again from the beginning, so five seconds of neglect brings it back. The click began in one of three rows, all of them copies of one design; the Repeater collected the signal from whichever row it was and handed it up as its own.\n\nThat is a list, end to end: data in `Pantry`, one design in `Snack`, a Repeater joining them, and an event coming back up the same path.",
+      "detail": "The **eaten** port is only there while **Template** is set and `Snack` has `Signals` on it — the Repeater reads its outputs from the component it repeats. If you cannot see it, check that step 6 is complete and that **Template** still says `Snack`.\n\nBoth destinations are nodes you built in the last lesson. **Off** is on `Ignored`, **Restart** is on `Patience`, and each already has a wire from `Poke` arriving in it — a port can take more than one.",
+      "completeWhen": [
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Menu",
+            "fromPort": "itemOutputSignal-eaten",
+            "to": "/Pages/Home:#Ignored",
+            "toPort": "off"
+          }
+        },
+        {
+          "connection": {
+            "from": "/Pages/Home:#Home:#Page shell:#Board:#Menu",
+            "fromPort": "itemOutputSignal-eaten",
+            "to": "/Pages/Home:#Patience",
+            "toPort": "restart"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "popup",
+      "title": "What you just learned",
+      "body": "Nibbles has a menu, and you can feed it.\n\n- **A list is data.** Three lines in `Pantry` became three rows on screen, and a fourth line is a fourth row. Before this lesson the only way to put three things on screen was three nodes.\n- **A design is written once.** `Snack` is one component: a frame, a word, and a question. The Repeater placed it three times and answered the question three times. Change the design and every row changes with it.\n- **Data goes in by name; events come back as signals.** The column heading and the port had to agree, and that agreement is the whole join between data and design. A click inside one row came back up through the Repeater as its own output, and `Home` never needed to know which row.\n- **The picker's name is not always the type's name.** **Static Array** is `Static Data` underneath and **Repeater** is `For Each`. When something you read names one and the picker shows the other, they are the same node.\n\nNow try to use the menu the way a person would.\n\nAdd a snack from the app itself. You cannot — the pantry is text inside a node, and only the editor can change it. Then eat one, close the preview, and open it again: every snack is back, because nothing here remembers that anything was eaten. Nibbles has a menu, but not a cupboard.\n\nA cupboard the app can put things into and take things out of, that is still stocked tomorrow, is the next lesson."
+    }
+  ]
+}

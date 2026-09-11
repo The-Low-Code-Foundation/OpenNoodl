@@ -94,14 +94,36 @@ describe('the Markdown component cannot execute what a model writes', () => {
   it('refuses script-bearing link targets, which is why an allow-list adds nothing', () => {
     // Measured, not assumed: Remarkable's own link validation already declines
     // these, and leaves the markdown literal rather than emitting an anchor.
+    //
+    // ⚠️ FIX-003 widened this list past the three obvious spellings. A sibling
+    // lane found the same class of hole in `lessonformat.ts` — a model-authored
+    // `[click](javascript:…)` compiled to a live anchor in a renderer with node
+    // integration — and escaping does not touch it, because the payload is a
+    // *scheme*, not markup. The variants below are the ones that defeat a naive
+    // `startsWith('javascript:')`: a browser strips embedded control characters
+    // before reading the scheme, so `java\tscript:` and friends execute.
     for (const href of [
       'javascript:alert(1)',
       'JaVaScRiPt:alert(1)',
       'vbscript:msgbox(1)',
-      'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg=='
+      'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
+      `java${String.fromCharCode(9)}script:alert(1)`,
+      `java${String.fromCharCode(10)}script:alert(1)`,
+      `java${String.fromCharCode(0)}script:alert(1)`,
+      `${String.fromCharCode(1)}javascript:alert(1)`,
+      '  javascript:alert(1)',
+      '&#106;avascript:alert(1)'
     ]) {
       const html = render(`[click](${href})`);
       expect(html).not.toContain('<a ');
+    }
+  });
+
+  it('refuses the same schemes on an image, where the target is `src` not `href`', () => {
+    // The link path is the one everybody checks. An image carries a URL too, and
+    // `![x](data:text/html,…)` is the same hole with a different attribute.
+    for (const src of ['javascript:alert(1)', 'data:text/html,<script>alert(1)</script>']) {
+      expect(render(`![x](${src})`)).not.toContain('<img ');
     }
   });
 

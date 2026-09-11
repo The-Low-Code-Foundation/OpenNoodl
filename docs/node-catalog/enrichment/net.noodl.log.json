@@ -12,7 +12,7 @@
     "done": "Fires once the line has been written.",
     "completed": "Fires after every write. This node has no other outcome."
   },
-  "examples": [],
+  "examples": ["bubble-is-this-date-overdue", "bubble-do-two-date-ranges-overlap", "bubble-hash-a-value", "bubble-read-a-pasted-csv"],
   "patterns": [
     "Splice it onto an existing wire: value in, value out, and the Log signal taken from whatever outcome you want to record. The graph behaves identically with the node removed.",
     "Log at `error` on a Failure branch, with the failing record's id in Data. That line carries the request id, so it lines up with the access log and the execution record."

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c_kitapp",
+  "version": 1,
+  "nodes": [
+    { "id": "app_group", "type": "Group", "label": "App Root", "children": ["app_meter", "app_badge"] },
+    {
+      "id": "app_meter",
+      "type": "demo.kit.Meter",
+      "label": "Budget Meter",
+      "parent": "app_group",
+      "parameters": { "value": 42, "max": 100, "height": 8 }
+    },
+    {
+      "id": "app_badge",
+      "type": "demo.kit.Badge",
+      "label": "Budget Badge",
+      "parent": "app_group",
+      "parameters": { "label": "Budget", "showProgress": true }
+    }
+  ],
+  "visualRoots": ["app_group"]
+}

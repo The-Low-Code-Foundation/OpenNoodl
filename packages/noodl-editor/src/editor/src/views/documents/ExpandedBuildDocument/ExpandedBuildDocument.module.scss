@@ -1,0 +1,78 @@
+/*
+ * BLD-009 — the expanded workspace's chrome.
+ *
+ * The geometry is `AuthoringPreviewDocument.module.scss`'s, deliberately: the
+ * two documents sit in the same surface and a user moving between them should
+ * not see the bar change height. That file's `.Topbar` is the reference — 36px,
+ * the panel ground, a 2px rule underneath.
+ *
+ * ⚠️ `box-sizing` is declared where it is needed rather than assumed: this repo
+ * has no global `* { box-sizing: border-box }`, which is the trap BLD-011 and
+ * BLD-017 each paid for once. Any rule below that carries both a padding and a
+ * height states it.
+ */
+
+.Root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background-color: var(--theme-color-bg-1);
+}
+
+.Topbar {
+  box-sizing: border-box;
+  height: 36px;
+  flex: 0 0 auto;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 2px solid var(--theme-color-bg-1);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 8px;
+}
+
+/*
+ * The sentence that answers "is this a second Build panel?".
+ *
+ * ⚠️ It shrinks and the actions do not — the same rule `PanelHeader.Title`
+ * states, for the same reason: a fixed-width control pushed out of the bar is a
+ * way out of this document that the user cannot reach.
+ */
+.Status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  min-width: 0;
+
+  p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.Actions {
+  margin-left: auto;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * The portal target.
+ *
+ * `min-height: 0` is load-bearing rather than defensive: the thread inside is a
+ * flex column whose middle row scrolls, and a flex child's default `min-height:
+ * auto` refuses to shrink below its content — so without this the composer is
+ * pushed off the bottom of the window and the scroll area never engages. That is
+ * the same defect `.Thread`/`.Body` already guard against one level in; this is
+ * the level above it, and it is the level the *host* owns.
+ */
+.Surface {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}

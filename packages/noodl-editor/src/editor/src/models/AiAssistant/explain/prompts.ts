@@ -21,6 +21,7 @@
  * @module AiAssistant/explain/prompts
  */
 
+import { tutorOverlay, type TutorContext } from './tutor';
 import type { ExplainContext, ExplainScope } from './types';
 
 /** How much explanation the reader wants. Length, not vocabulary. */
@@ -65,6 +66,51 @@ exactly as it appears in backticks in the context. The reader clicks these to ju
 so citations are how the explanation connects to what they are looking at. Cite a node the first time it
 matters; do not re-cite the same node in every sentence.
 
+THE AUTHOR'S OWN WORDS
+Two things in the context were typed by a person, not derived from the graph: a component's
+"description, written by the author", and a node's "note from the author". The panel already shows
+both of them verbatim, above your answer — with one exception: a note on a node *inside* a component
+instance is not shown there, so quote that one rather than assuming the reader has already read it.
+- Treat them as evidence about intent, and never contradict one without saying you are.
+- Do not paraphrase, summarise or restate them. Rewriting the one authored sentence in a graph
+  destroys the only thing on screen the reader can trust as a human's. Build on it instead: say what
+  the graph does that the note does not already say.
+- If you must refer to one, quote it exactly and attribute it ("the author's note on
+  [Retry gate](noodl-node:n4) says …").
+
+AUTHORED VALUES ARE NOT CURRENT VALUES
+Two different kinds of value can appear, and treating one as the other is the single most likely way
+for your answer to be confidently wrong:
+- An **authored parameter** is what the user typed into the node. It is in the saved graph whether or
+  not anything is running, and it is what you see on a node's parameter lines.
+- A **current value** is what the running preview holds at the moment this question was asked. It
+  appears only as \`[now = …]\` beside an input, and in the "Runtime" section. It changes as the app runs.
+Rules:
+- If there is no "Runtime" section, or it says no preview is running, then you have not been told any
+  current value. Say so — "nothing is running, so I can't see what that output actually holds" — and
+  answer what the graph alone supports. Never present an authored parameter as the current value, and
+  never infer one from the other.
+- A node listed as not mounted holds no values because it is not on screen right now. That is often
+  the entire answer to "why is this empty".
+- An output has no authored value at all. If the Runtime section does not give you one, you do not
+  know it.
+- Warnings under "Warnings the editor is showing" are the editor's own diagnoses. Quote one when it
+  bears on the question, and attribute it to the editor rather than presenting it as your finding.
+
+NODES INSIDE A COMPONENT INSTANCE
+A component instance is another component of this project placed in this graph. When the reader
+selects one, the context may carry an "Inside the component instances that were selected" section
+holding that component's own nodes.
+- Those nodes are in that component, not in the one being explained. Say which component you are
+  talking about when you cross the boundary — "inside [Card](noodl-node:n3), a Text node renders…".
+- Cite them the same way. Clicking one navigates the reader into that component, which is exactly
+  what someone asking "what does this instance actually do" wants.
+- The interior is bounded too. If it says some of its nodes were not read, do not describe them.
+- You were given no current values for any node inside an instance, even when a preview is running.
+  Their absence from the Runtime section says nothing about whether they are mounted — nobody asked.
+- If there is no such section, you have not seen inside any instance. Say so rather than reasoning
+  from the component's name about what it probably contains.
+
 WHAT NOT TO CLAIM
 - If something depends on a node, component, or value outside the slice you were given, say so plainly
   and say what you would need to see. A wrong explanation is worse than an incomplete one.
@@ -88,8 +134,21 @@ export interface ExplainPromptOptions {
   detail?: ExplainDetail;
 }
 
-export function systemPrompt(): string {
-  return SYSTEM_PROMPT;
+/**
+ * The explain system prompt, plus UNI-007's tutor overlay when a lesson is
+ * active.
+ *
+ * 🔴 **Appended, never substituted.** TUTOR-BOUNDARY §4 is explicit that the
+ * overlay is *"appended after the existing rules (which all still apply —
+ * citations, bounded honesty, no invented facts)"*. Those three are what make an
+ * explanation trustworthy to a reader who cannot check it, and a beginner is the
+ * reader least able to catch a confabulation — so tutor mode is the last place
+ * to relax them. A `tutorSystemPrompt()` that returned its own text would be the
+ * two-vocabulary failure one layer up.
+ */
+export function systemPrompt(tutor?: TutorContext): string {
+  if (!tutor) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}\n\n${tutorOverlay(tutor)}`;
 }
 
 /** The opening user turn: the framing, the brevity control, and the context. */
@@ -113,7 +172,26 @@ export function initialUserMessage(
  * Follow-ups reuse the conversation, so the context is already in history. The
  * reminder is short on purpose: repeating the whole instruction set every turn
  * costs tokens and makes later answers drift toward restating the rules.
+ *
+ * `runtimeBlock` is the exception, and it is not a repetition: it is a **fresh
+ * reading**. The graph in history is still true a minute later; the values are
+ * not, and a follow-up answered from the opening turn's values would quote
+ * numbers that have since moved — the one failure mode that looks exactly like
+ * a correct answer. So every turn carries its own, and says which is current.
  */
-export function followUpMessage(question: string): string {
-  return `${question}\n\n(Answer from the same context. Keep citing nodes as [Name](noodl-node:ID). If the answer needs something outside the context you were given, say so.)`;
+export function followUpMessage(question: string, runtimeBlock?: string): string {
+  const reminder =
+    '(Answer from the same context. Keep citing nodes as [Name](noodl-node:ID). If the answer needs ' +
+    'something outside the context you were given, say so.)';
+  if (!runtimeBlock) return `${question}\n\n${reminder}`;
+  return [
+    question,
+    '',
+    reminder,
+    '',
+    '--- CURRENT VALUES, RE-READ FOR THIS QUESTION ---',
+    'These replace the runtime values in any earlier message. Values move; earlier ones are stale.',
+    runtimeBlock,
+    '--- END CURRENT VALUES ---'
+  ].join('\n');
 }

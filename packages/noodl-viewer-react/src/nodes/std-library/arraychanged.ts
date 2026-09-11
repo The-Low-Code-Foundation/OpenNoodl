@@ -265,6 +265,7 @@ const ArrayChangedNode: NodeDefinitionOptions = {
 
   inputs: {
     array: {
+      group: 'Values',
       type: 'array',
       displayName: 'Array',
       description:
@@ -307,22 +308,26 @@ const ArrayChangedNode: NodeDefinitionOptions = {
 
   outputs: {
     itemAdded: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Item Added',
       description: 'Fires when an item is added to the watched Array; Index and Item describe it'
     },
     itemRemoved: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Item Removed',
       description: 'Fires when an item is removed from the watched Array; Index is the position it occupied'
     },
     itemChanged: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Item Changed',
       description:
         'Fires when one of the Objects inside the watched Array is edited in place; Key names the property that changed. Items that are not Noodl Objects cannot be watched'
     },
     arrayReplaced: {
+      group: 'Events',
       type: 'signal',
       displayName: 'Array Replaced',
       description:

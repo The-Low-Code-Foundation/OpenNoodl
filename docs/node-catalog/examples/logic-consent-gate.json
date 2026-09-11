@@ -11,7 +11,7 @@
           "id": "root",
           "type": "Group",
           "label": "Form layout",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["terms_check", "age_check", "news_check", "offers_check", "email_note", "submit_button"]
         },
         {
@@ -19,28 +19,28 @@
           "type": "net.noodl.controls.checkbox",
           "label": "Terms consent",
           "parent": "root",
-          "parameters": { "label": "I accept the terms of service" }
+          "parameters": { "useLabel": true, "label": "I accept the terms of service" }
         },
         {
           "id": "age_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Age confirmation",
           "parent": "root",
-          "parameters": { "label": "I am 18 or older" }
+          "parameters": { "useLabel": true, "label": "I am 18 or older" }
         },
         {
           "id": "news_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Newsletter opt-in",
           "parent": "root",
-          "parameters": { "label": "Email me the newsletter" }
+          "parameters": { "useLabel": true, "label": "Email me the newsletter" }
         },
         {
           "id": "offers_check",
           "type": "net.noodl.controls.checkbox",
           "label": "Offers opt-in",
           "parent": "root",
-          "parameters": { "label": "Email me special offers" }
+          "parameters": { "useLabel": true, "label": "Email me special offers" }
         },
         {
           "id": "email_note",

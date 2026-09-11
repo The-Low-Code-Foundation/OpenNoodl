@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "n0t1ce00-4e1a-4b3e-9f2a-1a2b3c4d7e02",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "noteInput",
+      "fromProperty": "onTextChanged",
+      "toId": "postNotice",
+      "toProperty": "prop-headline"
+    },
+    {
+      "fromId": "postButton",
+      "fromProperty": "onClick",
+      "toId": "postNotice",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "board",
+      "fromProperty": "prop-headline",
+      "toId": "headlineText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "board",
+      "fromProperty": "prop-priority",
+      "toId": "priorityText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "board",
+      "fromProperty": "prop-footer",
+      "toId": "footerText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -1,0 +1,242 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cf21dd7d-f5b8-5278-8d6a-e38645ab2c16",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "qcRoot",
+      "type": "Group",
+      "label": "The quotes",
+      "children": [
+        "qcStage",
+        "qcControls"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-6)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "qcStage",
+      "type": "Group",
+      "label": "The one showing",
+      "parent": "qcRoot",
+      "children": [
+        "qcRepeat"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "qcRepeat",
+      "type": "For Each",
+      "label": "The quote the filter let through",
+      "parameters": {
+        "template": "/Site/Quote",
+        "templateType": "explicit"
+      },
+      "parent": "qcStage",
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "qcControls",
+      "type": "Group",
+      "label": "Back, where you are, forward",
+      "parent": "qcRoot",
+      "children": [
+        "qcPrev",
+        "qcPosition",
+        "qcNext"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "qcPrev",
+      "type": "net.noodl.controls.button",
+      "label": "Back",
+      "parent": "qcControls",
+      "parameters": {
+        "label": "Back",
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "cssClassName": "pressable"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "qcNext",
+      "type": "net.noodl.controls.button",
+      "label": "Next",
+      "parent": "qcControls",
+      "parameters": {
+        "label": "Next",
+        "sizeMode": "contentSize",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "cssClassName": "pressable"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "qcPosition",
+      "type": "Text",
+      "label": "Which one of how many",
+      "parent": "qcControls",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize",
+        "fontVariantNumeric": "tabular-nums"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "qcCounter",
+      "type": "Counter",
+      "label": "Which quote is showing",
+      "parameters": {
+        "limitsEnabled": true,
+        "limitsMin": 0,
+        "startValue": 0
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "qcLast",
+      "type": "Expression",
+      "label": "The last valid index",
+      "parameters": {
+        "expression": "total - 1"
+      },
+      "x": 410,
+      "y": 1000
+    },
+    {
+      "id": "qcFilter",
+      "type": "Filter Collection",
+      "label": "One quote, skipping to the current index",
+      "parameters": {
+        "filterEnableLimit": true,
+        "filterLimit": 1
+      },
+      "x": 410,
+      "y": 280
+    },
+    {
+      "id": "qcHuman",
+      "type": "Expression",
+      "label": "Where a person would say they are",
+      "parameters": {
+        "expression": "i + 1"
+      },
+      "x": 410,
+      "y": 1120
+    },
+    {
+      "id": "qcFmt",
+      "type": "String Format",
+      "label": "n of m",
+      "parameters": {
+        "format": "{pos} of {total}"
+      },
+      "x": 410,
+      "y": 760
+    },
+    {
+      "id": "qcCanPrev",
+      "type": "Expression",
+      "label": "Is there one before this?",
+      "parameters": {
+        "expression": "i > 0"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "qcCanNext",
+      "type": "Expression",
+      "label": "Is there one after this?",
+      "parameters": {
+        "expression": "i < total - 1"
+      },
+      "x": 410,
+      "y": 880
+    },
+    {
+      "id": "qcInputs",
+      "type": "Component Inputs",
+      "label": "The quotes",
+      "ports": [
+        {
+          "name": "items",
+          "plug": "output",
+          "type": "array"
+        },
+        {
+          "name": "count",
+          "plug": "output",
+          "type": "number"
+        }
+      ],
+      "x": 410,
+      "y": 1240
+    }
+  ],
+  "visualRoots": [
+    "qcRoot"
+  ]
+}

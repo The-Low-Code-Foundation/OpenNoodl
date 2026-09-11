@@ -1,0 +1,12 @@
+{
+  "label": "Keyboard Shortcuts",
+  "description": "Give your app real keyboard shortcuts. Ships one Keyboard Shortcut node — write the combination on a port (\"mod+k\", \"shift+?\", \"escape\") and wire the Pressed signal wherever you like. \"mod\" is Command on macOS and Control everywhere else; \"cmd\" and \"ctrl\" mean exactly those keys. The listener is registered on mount and removed on unmount, so a shortcut never survives navigating away and fires twice. Shortcuts stay quiet while you are typing in a text field — except Escape and Cmd/Ctrl/Alt chords, which always get through. No dependencies, no network.",
+  "type": "module",
+  "tags": [
+    "Utility"
+  ],
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

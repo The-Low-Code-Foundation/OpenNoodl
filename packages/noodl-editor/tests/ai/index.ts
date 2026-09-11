@@ -12,6 +12,12 @@ export * from './client.test';
 // the one spec that drives a response stubs the client.
 export * from './explain-context.test';
 export * from './explain-session.test';
+// FIX-001 §1a: the runtime layer — current values, unmounted nodes and editor
+// warnings, as plain data. The socket that fills it needs a preview; this does not.
+export * from './explain-runtime.test';
+// FIX-001 §1c: reading inside a selected component instance — its own section,
+// its own bound, and citations that cross the component boundary.
+export * from './explain-nested.test';
 
 // AIX-002: the authoring loop. Fully offline — the chat function is a script;
 // the validation gate runs against the real project corpus.
@@ -44,6 +50,16 @@ export * from './aix007-cost.test';
 // AIX-008: the sandbox preview — what data the graph expects, and the export a
 // preview window is fed (which must never touch the project).
 export * from './authoring-sandbox.test';
+
+// BEN-001: the component bench's harness — the synthetic parent that gives a
+// root-mounted component's `Component Inputs` ports a source, which is the one
+// thing the sandbox preview could never do.
+export * from './component-bench.test';
+
+// BEN-006 §2: the data editor's rules about values — table and JSON edit one
+// value, a number typed into a text cell stays a number, unparseable text is
+// kept rather than thrown away.
+export * from './sandbox-data-draft.test';
 
 // AIX-009: project context documents. The text transforms, path containment,
 // context charging, the cache-stable ordering the doc blocks must keep, and the

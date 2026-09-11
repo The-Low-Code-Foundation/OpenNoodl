@@ -40,7 +40,7 @@
           "id": "cart_root",
           "type": "Group",
           "label": "Cart layout",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["cart_title", "continue_button"]
         },
         {
@@ -82,7 +82,7 @@
           "id": "confirm_root",
           "type": "Group",
           "label": "Confirm layout",
-          "parameters": { "flexDirection": "column", "paddingLeft": 16, "paddingTop": 16 },
+          "parameters": { "flexDirection": "column", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)" },
           "children": ["confirm_title", "back_button", "place_order_button"]
         },
         {

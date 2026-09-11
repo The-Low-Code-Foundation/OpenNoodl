@@ -1,0 +1,1274 @@
+{
+  "name": "User Menu",
+  "components": [
+    {
+      "name": "/User Menu",
+      "id": "05e40000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Name",
+            "toId": "05e40000-1000-4000-9000-000000000003",
+            "toProperty": "in-Name"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Email",
+            "toId": "05e40000-1000-4000-9000-000000000003",
+            "toProperty": "in-Email"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Avatar",
+            "toId": "05e40000-1000-4000-9000-000000000003",
+            "toProperty": "in-Avatar"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Show Details",
+            "toId": "05e40000-1000-4000-9000-000000000003",
+            "toProperty": "in-ShowDetails"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000002",
+            "fromProperty": "items",
+            "toId": "05e40000-1000-4000-9000-000000000003",
+            "toProperty": "in-Sample"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Avatar",
+            "toId": "05e40000-1000-4000-9000-000000000013",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-HasImage",
+            "toId": "05e40000-1000-4000-9000-000000000013",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-NoImage",
+            "toId": "05e40000-1000-4000-9000-000000000014",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Initials",
+            "toId": "05e40000-1000-4000-9000-000000000014",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-ShowDetails",
+            "toId": "05e40000-1000-4000-9000-000000000015",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Name",
+            "toId": "05e40000-1000-4000-9000-000000000016",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Email",
+            "toId": "05e40000-1000-4000-9000-000000000017",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-HasEmail",
+            "toId": "05e40000-1000-4000-9000-000000000017",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Name",
+            "toId": "05e40000-1000-4000-9000-000000000032",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Email",
+            "toId": "05e40000-1000-4000-9000-000000000033",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000003",
+            "fromProperty": "out-HasEmail",
+            "toId": "05e40000-1000-4000-9000-000000000033",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Items",
+            "toId": "05e40000-1000-4000-9000-000000000005",
+            "toProperty": "in-Items"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000001",
+            "fromProperty": "Sign Out Label",
+            "toId": "05e40000-1000-4000-9000-000000000005",
+            "toProperty": "in-SignOutLabel"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000004",
+            "fromProperty": "items",
+            "toId": "05e40000-1000-4000-9000-000000000005",
+            "toProperty": "in-Samples"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000005",
+            "fromProperty": "out-Items",
+            "toId": "05e40000-1000-4000-9000-000000000035",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000005",
+            "fromProperty": "out-SignOutLabel",
+            "toId": "05e40000-1000-4000-9000-000000000039",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000011",
+            "fromProperty": "onClick",
+            "toId": "05e40000-1000-4000-9000-000000000006",
+            "toProperty": "flip"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000020",
+            "fromProperty": "onClick",
+            "toId": "05e40000-1000-4000-9000-000000000006",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000006",
+            "fromProperty": "state",
+            "toId": "05e40000-1000-4000-9000-000000000030",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000006",
+            "fromProperty": "state",
+            "toId": "05e40000-1000-4000-9000-000000000020",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000006",
+            "fromProperty": "state",
+            "toId": "05e40000-1000-4000-9000-000000000007",
+            "toProperty": "in-Open"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000006",
+            "fromProperty": "state",
+            "toId": "05e40000-1000-4000-9000-000000000008",
+            "toProperty": "Opened"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000007",
+            "fromProperty": "out-Chevron",
+            "toId": "05e40000-1000-4000-9000-000000000018",
+            "toProperty": "iconIconSource"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000035",
+            "fromProperty": "itemOutput-Label",
+            "toId": "05e40000-1000-4000-9000-000000000008",
+            "toProperty": "Clicked Label"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000035",
+            "fromProperty": "itemActionItemId",
+            "toId": "05e40000-1000-4000-9000-000000000008",
+            "toProperty": "Clicked Item Id"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000035",
+            "fromProperty": "itemOutputSignal-Clicked",
+            "toId": "05e40000-1000-4000-9000-000000000008",
+            "toProperty": "Item Clicked"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000035",
+            "fromProperty": "itemOutputSignal-Clicked",
+            "toId": "05e40000-1000-4000-9000-000000000006",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000037",
+            "fromProperty": "onClick",
+            "toId": "05e40000-1000-4000-9000-000000000008",
+            "toProperty": "Sign Out"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000037",
+            "fromProperty": "onClick",
+            "toId": "05e40000-1000-4000-9000-000000000006",
+            "toProperty": "off"
+          }
+        ],
+        "roots": [
+          {
+            "id": "05e40000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -860,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Name",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0,
+                "group": "Person"
+              },
+              {
+                "name": "Email",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "index": 1,
+                "group": "Person"
+              },
+              {
+                "name": "Avatar",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "index": 2,
+                "group": "Person"
+              },
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "index": 3,
+                "group": "Menu"
+              },
+              {
+                "name": "Sign Out Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "index": 4,
+                "group": "Menu"
+              },
+              {
+                "name": "Show Details",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 5,
+                "group": "Appearance"
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000002",
+            "type": "Static Data",
+            "label": "Sample user",
+            "x": -860,
+            "y": 320,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Name\": \"Alexandra Morgan\",\n        \"Email\": \"alexandra.morgan@example.com\",\n        \"Avatar\": \"noodl_modules/starter-imagery/avatar-2.webp\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Choose user",
+            "x": -520,
+            "y": 100,
+            "parameters": {
+              "functionScript": "// Who the menu is about. A sample person ships with the prefab so it shows what\n// it is the moment it is placed, exactly as Card Grid and Avatar Group do.\n//\n// This Function is also the boot anchor for the whole entry: `Sample` arrives\n// from a Static Data node at load, so it HAS run — with a real answer — before\n// anybody clicks anything. Nothing here is ever a first-click-eaten-as-boot-run.\nconst text = (v) => {\n  if (v === undefined || v === null) return '';\n  return typeof v === 'string' ? v.trim() : String(v).trim();\n};\n\nconst name = text(Inputs.Name);\nconst email = text(Inputs.Email);\nconst image = text(Inputs.Avatar);\n\n// All-or-nothing, not field-by-field. The moment ANY of the three is connected\n// with a value this is a real person and the sample is gone. Falling back per\n// field instead would leave the sample's PHOTO attached to your user's NAME\n// while you were half way through wiring it up, which reads as a bug in the\n// prefab rather than as an unfinished graph.\nconst real = name !== '' || email !== '' || image !== '';\n\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\nconst sample = asArray(Inputs.Sample)[0] || {};\n\nconst user = real\n  ? { Name: name, Email: email, Avatar: image }\n  : { Name: text(sample.Name), Email: text(sample.Email), Avatar: text(sample.Avatar) };\n\n// \"Ada Lovelace\" -> AL, \"ada.lovelace\" -> AL, \"Ada\" -> AD, \"\" -> ?\n// The same rule the Avatar prefab uses, so a project holding both never shows\n// one person two different ways.\nfunction initials(value) {\n  if (!value) return '?';\n  const bySpace = value.split(' ').filter(Boolean);\n  const byDot = value.split('.').filter(Boolean);\n  const parts = bySpace.length > byDot.length ? bySpace : byDot;\n  const first = parts[0] || '';\n  const second = parts[1] || '';\n  if (!first) return '?';\n  if (!second) return first.substring(0, 2).toUpperCase();\n  return (first[0] + second[0]).toUpperCase();\n}\n\nOutputs.Name = user.Name;\nOutputs.Email = user.Email;\nOutputs.Avatar = user.Avatar;\nOutputs.HasImage = user.Avatar !== '';\nOutputs.NoImage = user.Avatar === '';\nOutputs.Initials = initials(user.Name);\nOutputs.HasEmail = user.Email !== '';\n// An unconnected boolean Component Input arrives as undefined, not as its\n// default, so the default lives here: details ON unless you turn them off.\nOutputs.ShowDetails = Inputs.ShowDetails !== false;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Name",
+                "displayName": "Name",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Email",
+                "displayName": "Email",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Avatar",
+                "displayName": "Avatar",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "in-Sample",
+                "displayName": "Sample",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 3
+              },
+              {
+                "name": "in-ShowDetails",
+                "displayName": "ShowDetails",
+                "plug": "input",
+                "type": "boolean",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "out-Name",
+                "displayName": "Name",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-Email",
+                "displayName": "Email",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-Avatar",
+                "displayName": "Avatar",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-HasImage",
+                "displayName": "HasImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 8
+              },
+              {
+                "name": "out-NoImage",
+                "displayName": "NoImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 9
+              },
+              {
+                "name": "out-Initials",
+                "displayName": "Initials",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 10
+              },
+              {
+                "name": "out-HasEmail",
+                "displayName": "HasEmail",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 11
+              },
+              {
+                "name": "out-ShowDetails",
+                "displayName": "ShowDetails",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 12
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000004",
+            "type": "Static Data",
+            "label": "Sample menu items",
+            "x": -860,
+            "y": 560,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Label\": \"Your profile\",\n        \"Icon\": \"user\"\n    },\n    {\n        \"Label\": \"Account settings\",\n        \"Icon\": \"settings\"\n    },\n    {\n        \"Label\": \"Billing\",\n        \"Icon\": \"credit-card\"\n    },\n    {\n        \"Label\": \"Notifications\",\n        \"Icon\": \"bell\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000005",
+            "type": "JavaScriptFunction",
+            "label": "Choose items",
+            "x": -520,
+            "y": 520,
+            "parameters": {
+              "functionScript": "// A connected, non-empty Items array wins over the samples. Same contract as\n// Card Grid, Accordion and Avatar Group.\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\nconst connected = asArray(Inputs.Items);\nconst items = connected.length > 0 ? connected : asArray(Inputs.Samples);\n\n// 🔴 The icon OBJECT is stamped here, not authored per row.\n//\n// A Lucide icon source is THREE fields and `codeAsClass` is the one that is\n// easy to leave out — without it the glyph's NAME renders as visible text, and\n// that shipped on this shelf for six weeks. Rows carry a bare name\n// (\"credit-card\") and this makes the object, so a row CANNOT be written wrong.\n// Same reasoning as Avatar Group stamping `Overlap` onto each row: the thing\n// that has to be exactly right belongs in one place, not in every caller.\nconst toIconSource = (value) => {\n  const raw = String(value === undefined || value === null ? '' : value).trim();\n  if (raw === '') return undefined;\n  return {\n    class: 'lucide',\n    code: raw.indexOf('icon-') === 0 ? raw : 'icon-' + raw,\n    codeAsClass: true\n  };\n};\n\nOutputs.Items = items.map((item) => {\n  const row = item && typeof item === 'object' ? item : {};\n  const source = toIconSource(row.Icon !== undefined ? row.Icon : row.icon);\n  return Object.assign({}, row, {\n    Label: String(row.Label === undefined || row.Label === null ? '' : row.Label),\n    'Icon Source': source,\n    'Has Icon': source !== undefined\n  });\n});\n\nconst signOut = typeof Inputs.SignOutLabel === 'string' ? Inputs.SignOutLabel.trim() : '';\nOutputs.SignOutLabel = signOut !== '' ? signOut : 'Sign out';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Items",
+                "displayName": "Items",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Samples",
+                "displayName": "Samples",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-SignOutLabel",
+                "displayName": "SignOutLabel",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-Items",
+                "displayName": "Items",
+                "plug": "output",
+                "type": "array",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-SignOutLabel",
+                "displayName": "SignOutLabel",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000006",
+            "type": "Switch",
+            "label": "Menu open?",
+            "x": -520,
+            "y": 760,
+            "parameters": {
+              "onFromStart": false
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000007",
+            "type": "JavaScriptFunction",
+            "label": "Menu view",
+            "x": -220,
+            "y": 760,
+            "parameters": {
+              "functionScript": "// The chevron swaps GLYPH rather than rotating — Lucide has no rotation port,\n// and a swap reads correctly with animation turned off. Straight out of the\n// Accordion entry.\n//\n// This node is allowed never to run at load. Its only input is the Switch's\n// state, and if the Switch does not publish until it first changes then this\n// stays unrun — which is why the Chevron icon's own parameter is already the\n// CLOSED glyph. Whichever way the runtime behaves, a freshly loaded menu shows\n// a chevron pointing down.\nconst open = Inputs.Open === true;\n\nOutputs.Chevron = {\n  class: 'lucide',\n  code: open ? 'icon-chevron-up' : 'icon-chevron-down',\n  codeAsClass: true\n};\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Open",
+                "displayName": "Open",
+                "plug": "input",
+                "type": "boolean",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "out-Chevron",
+                "displayName": "Chevron",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 1
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000008",
+            "type": "Component Outputs",
+            "x": 180,
+            "y": 760,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Opened",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 0,
+                "group": "State"
+              },
+              {
+                "name": "Item Clicked",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1,
+                "group": "Interaction"
+              },
+              {
+                "name": "Clicked Label",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2,
+                "group": "Interaction"
+              },
+              {
+                "name": "Clicked Item Id",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 3,
+                "group": "Interaction"
+              },
+              {
+                "name": "Sign Out",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 4,
+                "group": "Interaction"
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "User menu",
+            "x": 180,
+            "y": -460,
+            "parameters": {
+              "sizeMode": "contentSize",
+              "flexDirection": "column",
+              "styleCss": "flex: 0 0 auto;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "05e40000-1000-4000-9000-000000000011",
+                "type": "Group",
+                "label": "Trigger",
+                "parameters": {
+                  "sizeMode": "contentWidth",
+                  "height": {
+                    "value": 48,
+                    "unit": "px"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingLeft": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "borderRadius": {
+                    "value": 9999,
+                    "unit": "px"
+                  },
+                  "styleCss": "cursor: pointer; gap: 10px; user-select: none; box-sizing: border-box;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000012",
+                    "type": "Group",
+                    "label": "Avatar",
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 36,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 36,
+                        "unit": "px"
+                      },
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "backgroundColor": "var(--muted)",
+                      "borderRadius": {
+                        "value": 9999,
+                        "unit": "px"
+                      },
+                      "clip": true,
+                      "styleCss": "flex: 0 0 auto; box-sizing: border-box;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000013",
+                        "type": "Image",
+                        "label": "Photo",
+                        "parameters": {
+                          "mounted": false,
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "objectFit": "cover"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000014",
+                        "type": "Text",
+                        "label": "Initials",
+                        "parameters": {
+                          "mounted": true,
+                          "text": "AM",
+                          "sizeMode": "contentSize",
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "styleCss": "font-weight: 600; letter-spacing: 0.02em; user-select: none;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000015",
+                    "type": "Group",
+                    "label": "Trigger details",
+                    "parameters": {
+                      "mounted": true,
+                      "sizeMode": "contentSize",
+                      "flexDirection": "column",
+                      "alignItems": "flex-start",
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000016",
+                        "type": "Text",
+                        "label": "Trigger name",
+                        "parameters": {
+                          "text": "Alexandra Morgan",
+                          "sizeMode": "contentSize",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "styleCss": "font-weight: 600; white-space: nowrap; user-select: none;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000017",
+                        "type": "Text",
+                        "label": "Trigger email",
+                        "parameters": {
+                          "text": "alexandra.morgan@example.com",
+                          "sizeMode": "contentSize",
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "marginTop": {
+                            "value": 1,
+                            "unit": "px"
+                          },
+                          "styleCss": "white-space: nowrap; user-select: none;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000018",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Chevron",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-chevron-down",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--muted-foreground)",
+                      "iconSize": {
+                        "value": 16,
+                        "unit": "px"
+                      },
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ],
+                "stateParameters": {
+                  "hover": {
+                    "backgroundColor": "var(--muted)"
+                  }
+                }
+              },
+              {
+                "id": "05e40000-1000-4000-9000-000000000020",
+                "type": "Group",
+                "label": "Scrim",
+                "parameters": {
+                  "mounted": false,
+                  "position": "fixed",
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "zIndex": 40,
+                  "styleCss": "cursor: default;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "05e40000-1000-4000-9000-000000000030",
+                "type": "Group",
+                "label": "Menu",
+                "parameters": {
+                  "mounted": false,
+                  "position": "absolute",
+                  "alignX": "right",
+                  "alignY": "top",
+                  "marginTop": {
+                    "value": 56,
+                    "unit": "px"
+                  },
+                  "zIndex": 50,
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 220,
+                    "unit": "px"
+                  },
+                  "flexDirection": "column",
+                  "paddingTop": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "boxShadowEnabled": true,
+                  "boxShadowOffsetX": {
+                    "value": 0,
+                    "unit": "px"
+                  },
+                  "boxShadowOffsetY": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "boxShadowBlurRadius": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "boxShadowColor": "rgba(15, 23, 42, 0.18)",
+                  "clip": true,
+                  "styleCss": "box-sizing: border-box;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000031",
+                    "type": "Group",
+                    "label": "Menu header",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "flexDirection": "column",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-3)",
+                      "paddingRight": "var(--space-3)",
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000032",
+                        "type": "Text",
+                        "label": "Menu name",
+                        "parameters": {
+                          "text": "Alexandra Morgan",
+                          "sizeMode": "contentHeight",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "textOverflow": "ellipsis",
+                          "styleCss": "font-weight: 600;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000033",
+                        "type": "Text",
+                        "label": "Menu email",
+                        "parameters": {
+                          "mounted": true,
+                          "text": "alexandra.morgan@example.com",
+                          "sizeMode": "contentHeight",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "marginTop": {
+                            "value": 2,
+                            "unit": "px"
+                          },
+                          "textOverflow": "ellipsis"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000034",
+                    "type": "Group",
+                    "label": "Divider",
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "marginBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "backgroundColor": "var(--border)",
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000035",
+                    "type": "For Each",
+                    "parameters": {
+                      "template": "/User Menu/Item"
+                    },
+                    "ports": [],
+                    "dynamicports": [
+                      {
+                        "name": "itemOutputSignal-Clicked",
+                        "displayName": "Clicked",
+                        "plug": "output",
+                        "type": "signal",
+                        "group": "Item Signals",
+                        "index": 6
+                      },
+                      {
+                        "name": "itemOutput-Label",
+                        "displayName": "Label",
+                        "plug": "output",
+                        "type": {
+                          "name": "*",
+                          "allowConnectionsOnly": true
+                        },
+                        "group": "Item Outputs",
+                        "index": 7
+                      }
+                    ],
+                    "children": []
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000036",
+                    "type": "Group",
+                    "label": "Divider",
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "marginBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "backgroundColor": "var(--border)",
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "05e40000-1000-4000-9000-000000000037",
+                    "type": "Group",
+                    "label": "Sign out row",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-3)",
+                      "paddingRight": "var(--space-3)",
+                      "styleCss": "cursor: pointer; gap: 10px; flex: 0 0 auto; user-select: none;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000038",
+                        "type": "net.noodl.visual.icon",
+                        "label": "Sign out icon",
+                        "parameters": {
+                          "iconIconSource": {
+                            "class": "lucide",
+                            "code": "icon-log-out",
+                            "codeAsClass": true
+                          },
+                          "iconColor": "var(--destructive)",
+                          "iconSize": {
+                            "value": 16,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "05e40000-1000-4000-9000-000000000039",
+                        "type": "Text",
+                        "label": "Sign out label",
+                        "parameters": {
+                          "text": "Sign out",
+                          "sizeMode": "contentSize",
+                          "color": "var(--destructive)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 1 1 auto; min-width: 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ],
+                    "stateParameters": {
+                      "hover": {
+                        "backgroundColor": "var(--muted)"
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "/User Menu/Item",
+      "id": "05e40000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000041",
+            "fromProperty": "Label",
+            "toId": "05e40000-1000-4000-9000-000000000052",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000041",
+            "fromProperty": "Label",
+            "toId": "05e40000-1000-4000-9000-000000000042",
+            "toProperty": "Label"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000041",
+            "fromProperty": "Icon Source",
+            "toId": "05e40000-1000-4000-9000-000000000051",
+            "toProperty": "iconIconSource"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000041",
+            "fromProperty": "Has Icon",
+            "toId": "05e40000-1000-4000-9000-000000000051",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "05e40000-1000-4000-9000-000000000050",
+            "fromProperty": "onClick",
+            "toId": "05e40000-1000-4000-9000-000000000042",
+            "toProperty": "Clicked"
+          }
+        ],
+        "roots": [
+          {
+            "id": "05e40000-1000-4000-9000-000000000041",
+            "type": "Component Inputs",
+            "x": -620,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0,
+                "group": "Content"
+              },
+              {
+                "name": "Icon Source",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1,
+                "group": "Content"
+              },
+              {
+                "name": "Has Icon",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 2,
+                "group": "Content"
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000042",
+            "type": "Component Outputs",
+            "x": 180,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Clicked",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 0,
+                "group": "Interaction"
+              },
+              {
+                "name": "Label",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1,
+                "group": "Interaction"
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "05e40000-1000-4000-9000-000000000050",
+            "type": "Group",
+            "label": "Item",
+            "x": -220,
+            "y": -200,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "flexDirection": "row",
+              "alignItems": "center",
+              "paddingTop": "var(--space-2)",
+              "paddingBottom": "var(--space-2)",
+              "paddingLeft": "var(--space-3)",
+              "paddingRight": "var(--space-3)",
+              "styleCss": "cursor: pointer; gap: 10px; flex: 0 0 auto; user-select: none;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "05e40000-1000-4000-9000-000000000051",
+                "type": "net.noodl.visual.icon",
+                "label": "Item icon",
+                "parameters": {
+                  "mounted": true,
+                  "iconIconSource": {
+                    "class": "lucide",
+                    "code": "icon-user",
+                    "codeAsClass": true
+                  },
+                  "iconColor": "var(--muted-foreground)",
+                  "iconSize": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 0 0 auto;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "05e40000-1000-4000-9000-000000000052",
+                "type": "Text",
+                "label": "Item label",
+                "parameters": {
+                  "text": "Menu item",
+                  "sizeMode": "contentSize",
+                  "color": "var(--foreground)",
+                  "fontSize": {
+                    "value": 14,
+                    "unit": "px"
+                  },
+                  "styleCss": "flex: 1 1 auto; min-width: 0;"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ],
+            "stateParameters": {
+              "hover": {
+                "backgroundColor": "var(--muted)"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {},
+  "variants": []
+}

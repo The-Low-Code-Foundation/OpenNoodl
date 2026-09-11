@@ -70,9 +70,10 @@ const Switch: NodeDefinitionOptions = {
   },
   outputs: {
     state: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Current State',
-      description: 'True while the switch is on',
+      description: 'True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off',
       getter(this: SwitchInstance) {
         return this._internal.state;
       }
@@ -80,19 +81,19 @@ const Switch: NodeDefinitionOptions = {
     switched: {
       displayName: 'Switched',
       type: 'signal',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires on every state change, alongside whichever of Switched To On and Switched To Off applies'
     },
     switchedToOn: {
       displayName: 'Switched To On',
       type: 'signal',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when the switch becomes on'
     },
     switchedToOff: {
       displayName: 'Switched To Off',
       type: 'signal',
-      group: 'Signals',
+      group: 'Events',
       description: 'Fires when the switch becomes off'
     },
 

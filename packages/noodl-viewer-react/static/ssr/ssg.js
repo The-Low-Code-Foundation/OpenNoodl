@@ -24,6 +24,7 @@ import { XMLHttpRequest } from 'xmlhttprequest';
  */
 
 const { installRuntimeGlobals } = require('./runtime-globals');
+const { loadKitModules } = require('./kit-modules');
 const { renderPage } = require('./server-core');
 const { routesFromExport, outputPathFor } = require('./ssg-paths');
 
@@ -41,6 +42,11 @@ const PAGE_READY_TIMEOUT = Number(process.env.NOODL_SSR_PAGE_READY_TIMEOUT || 10
 
 async function main() {
   const htmlData = await fs.promises.readFile(path.resolve('./public/index.html'), 'utf8');
+
+  // CN-013 — the same kit load the SSR server does, for the same reason. A pre-rendered page with
+  // its kit nodes missing is worse than a CSR one: it is served as finished.
+  const kits = loadKitModules({ htmlData });
+  if (kits.loaded.length) console.log(`SSG: loaded ${kits.loaded.length} kit script(s) for pre-rendering`);
 
   const { routes, dynamicRoutes } = routesFromExport(globalThis.projectData);
   if (dynamicRoutes.length > 0) {

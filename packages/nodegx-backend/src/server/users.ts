@@ -178,6 +178,34 @@ export class UserRoutes {
     }
   }
 
+  /**
+   * DEF-005 (a) — the roles this user is in, for the session responses.
+   *
+   * 🔴 **Synthetic: `roles` is NOT a `_User` column and must never become one.**
+   * It is resolved per response from `SecurityState.rolesForUser`, the single
+   * non-recursive JOIN over `_Join_users__Role` that the access check itself
+   * calls when it evaluates `role:member`. A second resolver here could have
+   * answered "member" while enforcement disagreed; this cannot. The same
+   * sentence `SystemRoles`' `roles` field carries, for the same reason.
+   *
+   * ⚠️ **Reading one's own roles grants nothing.** The server resolves them
+   * again on every request it gates, from the junction and never from anything
+   * the client sent — so a client that rewrites this value in its own memory
+   * changes what its graph *renders* and nothing about what it may *do*. That
+   * asymmetry is the whole reason the read is safe to hand to the browser while
+   * the WRITES (`addusertorole`, `removeuserfromrole`) stay cloud-only.
+   *
+   * `undefined` rather than `[]` when there is no `SecurityState` at all — a
+   * service built without one (older test harnesses) does not track membership,
+   * and "this backend has no roles" must not be reported as "you are in none of
+   * them". The same absent-versus-false distinction `emailVerified` records in
+   * `signup` below.
+   */
+  private rolesFor(userId: unknown): string[] | undefined {
+    if (!this.security || typeof userId !== 'string' || !userId) return undefined;
+    return this.security.rolesForUser(userId);
+  }
+
   // ==========================================================================
   // Handlers
   // ==========================================================================
@@ -208,7 +236,11 @@ export class UserRoutes {
     await this.facade.rawCreate('_Session', { sessionToken, userId: user.objectId });
 
     const wire = await this.facade.wireRecord('_User', user);
-    sendJSON(res, 200, { ...wire, sessionToken });
+    // ⚠️ The resolved roles go AFTER the spread, deliberately. If a `_User` row
+    // ever acquired a literal `roles` column — an admin-side import, a restored
+    // backup — `wire` would carry it, and a stored value outranking the live
+    // junction is exactly the lie this field must never tell.
+    sendJSON(res, 200, { ...wire, roles: this.rolesFor(user.objectId), sessionToken });
   }
 
   async logout(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -278,7 +310,17 @@ export class UserRoutes {
 
     // Parse's signup response: objectId + createdAt + sessionToken. The client
     // merges its own username/properties over this, so keep it minimal.
-    sendJSON(res, 201, { objectId: user.objectId, createdAt: user.createdAt, sessionToken });
+    sendJSON(res, 201, {
+      objectId: user.objectId,
+      createdAt: user.createdAt,
+      // Resolved rather than assumed empty. A signup cloud function that puts
+      // the new account straight into a role runs BEFORE this responds on some
+      // graphs and after on others; asking the junction is right either way,
+      // and hard-coding `[]` would be a guess that is wrong exactly when a
+      // membership app's first screen depends on it.
+      roles: this.rolesFor(user.objectId),
+      sessionToken
+    });
   }
 
   async me(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
@@ -286,7 +328,16 @@ export class UserRoutes {
     const wire = await this.facade.wireRecord('_User', user);
     // /users/me must echo the session token — the client stores this whole
     // response as its current user and reads sessionToken from it afterwards.
-    sendJSON(res, 200, { ...wire, sessionToken: req.headers['x-parse-session-token'] });
+    //
+    // Which is also why `roles` is answered HERE and not on a route of its own:
+    // this response is already the client's current-user record, so membership
+    // arrives on the read the client was making anyway. No new route, no second
+    // round trip, and nothing for a `User` node to schedule.
+    sendJSON(res, 200, {
+      ...wire,
+      roles: this.rolesFor(user.objectId),
+      sessionToken: req.headers['x-parse-session-token']
+    });
   }
 
   async updateUser(req: http.IncomingMessage, res: http.ServerResponse, objectId: string): Promise<void> {
@@ -300,6 +351,14 @@ export class UserRoutes {
     delete body.objectId;
     delete body.sessionToken;
     delete body._hashed_password;
+    // 🔴 DEF-005 AC3. `roles` is resolved, never stored, so a client PUTting it
+    // could not escalate anything even if this line were absent — enforcement
+    // reads the junction and has never read a `_User` column. It is stripped
+    // anyway because the alternative is a row that CARRIES a roles list which
+    // nothing consults: the next reader to find `roles` on a `_User` row would
+    // reasonably believe it meant something. A field that cannot be trusted
+    // must not be storable.
+    delete body.roles;
     const passwordChanged = typeof body.password === 'string' && body.password;
     if (passwordChanged) {
       body._hashed_password = hashPassword(body.password as string);

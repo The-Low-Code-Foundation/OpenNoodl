@@ -1,0 +1,828 @@
+<title>LearnBook</title>
+<style>
+  :root {
+    --ground: #eef1f4;
+    --paper: #ffffff;
+    --paper-2: #f5f7fa;
+    --paper-3: #eaeef3;
+    --ink: #1c2430;
+    --ink-2: #5a6676;
+    --ink-3: #8b95a5;
+    --line: #dce1e8;
+    --line-soft: #e7ebf0;
+    --accent: #33619e;
+    --accent-ink: #274b7a;
+    --accent-soft: #e3ebf6;
+    --done: #2e7d4f;
+    --done-soft: #e2f0e7;
+    --wait: #a66e0a;
+    --wait-soft: #f7edd8;
+    --shadow: 0 1px 2px rgba(28, 36, 48, 0.06), 0 8px 28px rgba(28, 36, 48, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #12151b;
+      --paper: #1a1f27;
+      --paper-2: #212733;
+      --paper-3: #29303e;
+      --ink: #e6eaf1;
+      --ink-2: #a6afbe;
+      --ink-3: #78818f;
+      --line: #2e3542;
+      --line-soft: #272e3a;
+      --accent: #85abdd;
+      --accent-ink: #a9c5ea;
+      --accent-soft: #253349;
+      --done: #6fbf8f;
+      --done-soft: #1e3428;
+      --wait: #d9a24a;
+      --wait-soft: #3a2f17;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #12151b;
+    --paper: #1a1f27;
+    --paper-2: #212733;
+    --paper-3: #29303e;
+    --ink: #e6eaf1;
+    --ink-2: #a6afbe;
+    --ink-3: #78818f;
+    --line: #2e3542;
+    --line-soft: #272e3a;
+    --accent: #85abdd;
+    --accent-ink: #a9c5ea;
+    --accent-soft: #253349;
+    --done: #6fbf8f;
+    --done-soft: #1e3428;
+    --wait: #d9a24a;
+    --wait-soft: #3a2f17;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Seravek", "Avenir Next", "Segoe UI", "Gill Sans Nova", Ubuntu, system-ui, sans-serif;
+    line-height: 1.5;
+    margin: 0;
+    padding: 0 20px 64px;
+  }
+  .serif { font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif; }
+
+  .page { max-width: 1240px; margin: 0 auto; }
+
+  /* ---------- document header ---------- */
+  header.doc {
+    padding: 44px 4px 26px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 18px 32px;
+  }
+  .doc-id .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 0 0 10px;
+  }
+  .doc-id h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: clamp(30px, 4.5vw, 42px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8px;
+    text-wrap: balance;
+  }
+  .doc-id p.sub {
+    margin: 0;
+    max-width: 56ch;
+    color: var(--ink-2);
+    font-size: 15px;
+  }
+  .doc-notes { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  .note-chip {
+    font-size: 12px;
+    color: var(--ink-2);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 12px;
+    white-space: nowrap;
+  }
+  .note-chip strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- view toggle ---------- */
+  .viewbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 4px 14px;
+    flex-wrap: wrap;
+  }
+  .seg {
+    display: inline-flex;
+    background: var(--paper-3);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink-2);
+    background: transparent;
+    border: 0;
+    border-radius: 7px;
+    padding: 5px 14px;
+    cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(28, 36, 48, 0.12);
+  }
+  .seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .viewbar .hint { font-size: 13px; color: var(--ink-3); }
+
+  /* ---------- app frame ---------- */
+  .app {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .app.coachee .coach-only { display: none !important; }
+  .app:not(.coachee) .coachee-only { display: none !important; }
+
+  /* top bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+  .logotype {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .logotype .book { color: var(--accent); }
+  .crumb { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .crumb b { color: var(--ink-2); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .spacer { flex: 1; }
+  .bell { position: relative; color: var(--ink-2); display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--paper); cursor: pointer; }
+  .bell .badge {
+    position: absolute; top: -5px; right: -5px;
+    background: var(--accent); color: var(--paper);
+    font-size: 10px; font-weight: 700;
+    min-width: 16px; height: 16px; border-radius: 8px;
+    display: grid; place-items: center; padding: 0 4px;
+  }
+  .avatar {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    flex: none;
+  }
+  .av-ro { background: #4a6b8a; }
+  .av-mk { background: #8a6b4a; }
+  .avatar.small { width: 24px; height: 24px; font-size: 9px; }
+
+  /* three panes */
+  .panes {
+    display: grid;
+    grid-template-columns: 292px minmax(0, 1fr) 296px;
+  }
+  .tree { border-right: 1px solid var(--line); background: var(--paper-2); display: flex; flex-direction: column; }
+  .rail { border-left: 1px solid var(--line); background: var(--paper-2); padding: 18px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ---------- tree pane ---------- */
+  .program-head { padding: 18px 18px 12px; border-bottom: 1px solid var(--line-soft); }
+  .program-head .kicker { font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 5px; }
+  .program-head h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 19px; font-weight: 700; margin: 0 0 8px; line-height: 1.25;
+  }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); margin-bottom: 8px; }
+  .who .avatar { width: 22px; height: 22px; font-size: 9px; margin-right: -12px; border: 2px solid var(--paper-2); }
+  .who .avatar + .avatar { margin-right: 0; }
+  .booking {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; color: var(--ink-2);
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 6px; padding: 3px 8px;
+  }
+  .booking svg { color: var(--ink-3); }
+
+  .modules { padding: 10px 10px 6px; flex: 1; }
+  .module { margin-bottom: 6px; }
+  .module-row {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 8px; border-radius: 8px;
+    font-size: 13.5px; font-weight: 600;
+  }
+  .module-row .mstate { flex: none; display: grid; place-items: center; width: 18px; height: 18px; }
+  .module-row .mname { flex: 1; min-width: 0; }
+  .m-done .mstate { color: var(--done); }
+  .m-new-chip, .m-hidden-chip {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    border-radius: 5px; padding: 2px 6px; flex: none;
+  }
+  .m-new-chip { background: var(--accent-soft); color: var(--accent-ink); }
+  .m-hidden-chip { background: var(--paper-3); color: var(--ink-3); }
+  .module.hidden-mod .module-row { color: var(--ink-3); }
+  .module.hidden-mod { border: 1px dashed var(--line); border-radius: 10px; padding: 2px 2px 8px; }
+  .reveal-btn {
+    font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--accent-ink); background: var(--accent-soft);
+    border: 0; border-radius: 7px; padding: 5px 11px;
+    margin: 4px 0 0 37px; cursor: pointer;
+  }
+  .reveal-btn:hover { filter: brightness(0.96); }
+  .reveal-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .threads { list-style: none; margin: 0; padding: 0 0 0 14px; }
+  .thread-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 8px; border-radius: 7px;
+    font-size: 13px; color: var(--ink-2);
+    position: relative;
+  }
+  .thread-row .ticon { flex: none; color: var(--ink-3); display: grid; place-items: center; width: 16px; }
+  .thread-row .tname { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .thread-row .tmark { flex: none; font-size: 11px; font-weight: 600; }
+  .thread-row.t-done .tmark { color: var(--done); }
+  .thread-row.t-active {
+    background: var(--paper);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 2px 0 0 var(--accent), 0 1px 2px rgba(28,36,48,0.07);
+  }
+  .thread-row.t-active .ticon { color: var(--accent); }
+  .thread-row.t-wait .tmark { color: var(--wait); }
+  .thread-row.t-wait .ticon { color: var(--wait); }
+  .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+
+  .tree-foot { border-top: 1px solid var(--line-soft); padding: 10px 18px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .tree-foot a { font-size: 12px; color: var(--ink-3); text-decoration: none; display: inline-flex; gap: 6px; align-items: center; }
+  .tree-foot a:hover { color: var(--accent); }
+
+  /* ---------- thread pane ---------- */
+  .exchange { display: flex; flex-direction: column; min-height: 640px; background: var(--paper); }
+  .thread-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    padding: 18px 24px 14px; border-bottom: 1px solid var(--line-soft);
+  }
+  .thread-head h3 { font-size: 17px; font-weight: 700; margin: 0; }
+  .thread-head .in-module { font-size: 12.5px; color: var(--ink-3); }
+  .thread-head .spacer { flex: 1; }
+  .done-toggle {
+    font: inherit; font-size: 12.5px; font-weight: 600;
+    color: var(--done); background: var(--done-soft);
+    border: 0; border-radius: 7px; padding: 5px 12px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .done-toggle:focus-visible { outline: 2px solid var(--done); outline-offset: 1px; }
+
+  .posts { padding: 20px 24px 8px; display: flex; flex-direction: column; gap: 20px; flex: 1; }
+  .post { display: flex; gap: 12px; }
+  .post .body { flex: 1; min-width: 0; }
+  .post .meta { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .post .meta .name { font-size: 13.5px; font-weight: 700; }
+  .post .meta .time { font-size: 12px; color: var(--ink-3); }
+  .post .meta .pdots { margin-left: auto; color: var(--ink-3); background: none; border: 0; cursor: pointer; font-size: 15px; line-height: 1; padding: 2px 6px; border-radius: 5px; }
+  .post .meta .pdots:hover { background: var(--paper-3); color: var(--ink-2); }
+  .post .prose { font-size: 14px; color: var(--ink); max-width: 62ch; }
+  .post .prose p { margin: 0 0 10px; }
+  .post .prose p:last-child { margin-bottom: 0; }
+  .post.reply { margin-left: 26px; }
+  .post.reply .body { border-left: 2px solid var(--line-soft); padding-left: 14px; }
+
+  table.rich {
+    border-collapse: collapse; font-size: 13px; margin: 4px 0 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  table.rich th, table.rich td { border: 1px solid var(--line); padding: 5px 11px; text-align: left; }
+  table.rich th { background: var(--paper-2); font-weight: 600; font-size: 12px; }
+  .table-scroll { overflow-x: auto; }
+
+  .clip {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--paper-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 6px 16px 6px 6px; margin: 2px 0 10px;
+  }
+  .clip .playbtn {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--paper); border: 0; cursor: pointer;
+    display: grid; place-items: center; flex: none;
+  }
+  .clip .wave { display: flex; align-items: center; gap: 2px; height: 18px; }
+  .clip .wave i { display: block; width: 3px; border-radius: 2px; background: var(--ink-3); }
+  .clip .dur { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+  .attachment {
+    display: inline-flex; align-items: center; gap: 10px;
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 7px 14px 7px 7px; margin: 2px 0 10px; background: var(--paper-2);
+  }
+  .attachment .thumb {
+    width: 44px; height: 34px; border-radius: 5px; flex: none;
+    background: linear-gradient(135deg, var(--accent-soft), var(--paper-3));
+    display: grid; place-items: center; color: var(--accent-ink);
+  }
+  .attachment .fname { font-size: 12.5px; font-weight: 600; }
+  .attachment .fsize { font-size: 11.5px; color: var(--ink-3); }
+
+  .refchip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12.5px; font-weight: 600;
+    color: var(--accent-ink); background: var(--accent-soft);
+    border-radius: 6px; padding: 2px 8px; text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* composer */
+  .composer { border-top: 1px solid var(--line); padding: 12px 24px 18px; background: var(--paper); }
+  .toolbar { display: flex; gap: 2px; margin-bottom: 8px; flex-wrap: wrap; }
+  .toolbar button {
+    font: inherit; font-size: 13px; color: var(--ink-2);
+    width: 30px; height: 28px; display: grid; place-items: center;
+    background: none; border: 0; border-radius: 6px; cursor: pointer;
+  }
+  .toolbar button:hover { background: var(--paper-3); color: var(--ink); }
+  .toolbar .tsep { width: 1px; background: var(--line); margin: 4px 6px; }
+  .composer textarea {
+    width: 100%; resize: none; font: inherit; font-size: 14px;
+    color: var(--ink); background: var(--paper-2);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 13px; min-height: 64px;
+  }
+  .composer textarea::placeholder { color: var(--ink-3); }
+  .composer textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
+  .composer .actions { display: flex; align-items: center; gap: 10px; margin-top: 9px; }
+  .composer .actions .note { font-size: 12px; color: var(--ink-3); }
+  .composer .actions .spacer { flex: 1; }
+  .post-btn {
+    font: inherit; font-size: 13.5px; font-weight: 700;
+    color: #fff; background: var(--accent-ink);
+    border: 0; border-radius: 8px; padding: 8px 18px; cursor: pointer;
+  }
+  .post-btn:hover { filter: brightness(1.1); }
+  .post-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ---------- right rail ---------- */
+  .card {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 11px; padding: 14px 15px;
+  }
+  .card h4 {
+    font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--ink-3); margin: 0 0 10px; font-weight: 700;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .progress-row { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; margin-bottom: 9px; }
+  .progress-row .plabel { font-size: 12.5px; font-weight: 600; }
+  .progress-row .pcount { font-size: 12px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .pbar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--paper-3); overflow: hidden; }
+  .pbar i { display: block; height: 100%; border-radius: 3px; background: var(--done); }
+  .pbar.p-hidden i { background: var(--ink-3); }
+  .rollup-note { font-size: 11.5px; color: var(--ink-3); margin: 8px 0 0; }
+
+  .assign-card { border-color: var(--wait); border-width: 1px; }
+  .assign-card .astate {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 700; color: var(--wait);
+    background: var(--wait-soft); border-radius: 6px; padding: 3px 9px;
+    margin-bottom: 8px;
+  }
+  .assign-card .aname { font-size: 13.5px; font-weight: 700; margin: 0 0 3px; }
+  .assign-card .asub { font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; }
+  .validate-btn {
+    font: inherit; font-size: 12.5px; font-weight: 700;
+    color: #fff; background: var(--wait);
+    border: 0; border-radius: 7px; padding: 6px 13px; cursor: pointer;
+  }
+  .validate-btn:focus-visible { outline: 2px solid var(--wait); outline-offset: 2px; }
+
+  .session-when { font-size: 13.5px; font-weight: 700; margin: 0 0 2px; }
+  .session-sub { font-size: 12.5px; color: var(--ink-2); margin: 0 0 10px; }
+  .join-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 600; color: var(--accent-ink);
+    background: var(--accent-soft); border-radius: 7px; padding: 5px 11px;
+    text-decoration: none; margin-bottom: 10px;
+  }
+  .attendance { display: flex; gap: 12px; font-size: 12px; color: var(--ink-2); }
+  .attendance b { color: var(--done); font-weight: 700; }
+  .card .foot-note { font-size: 11px; color: var(--ink-3); margin: 9px 0 0; }
+
+  .notes-card { background: var(--paper-2); border-style: dashed; }
+  .notes-card .prose { font-size: 13px; color: var(--ink-2); margin: 0; }
+  .notes-card .lockline { font-size: 11px; color: var(--ink-3); margin: 9px 0 0; display: flex; gap: 5px; align-items: center; }
+
+  /* ---------- legend & scope ---------- */
+  section.after { margin-top: 40px; padding: 0 4px; }
+  section.after h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 22px; font-weight: 700; margin: 0 0 6px; text-wrap: balance;
+  }
+  section.after > p.lede { color: var(--ink-2); font-size: 14px; margin: 0 0 20px; max-width: 68ch; }
+  .legend {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 10px; padding: 0; margin: 0; list-style: none;
+  }
+  .legend li {
+    background: var(--paper); border: 1px solid var(--line);
+    border-radius: 10px; padding: 11px 14px;
+    display: flex; gap: 11px; align-items: baseline;
+    font-size: 13px; color: var(--ink-2);
+  }
+  .legend .lb {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+    color: var(--accent-ink); background: var(--accent-soft);
+    border-radius: 5px; padding: 2px 7px; flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend b { color: var(--ink); font-weight: 600; }
+  .legend li.absent { border-style: dashed; }
+  .legend li.absent .lb { background: var(--paper-3); color: var(--ink-3); }
+
+  .notlist { columns: 2; column-gap: 40px; padding-left: 18px; margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 900px; }
+  .notlist li { margin-bottom: 7px; break-inside: avoid; }
+  .notlist b { color: var(--ink); font-weight: 600; }
+
+  footer.doc {
+    margin-top: 44px; padding: 18px 4px 0; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-3); max-width: 76ch;
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1080px) {
+    .panes { grid-template-columns: 260px minmax(0, 1fr); }
+    .rail { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); flex-direction: row; flex-wrap: wrap; }
+    .rail .card { flex: 1 1 240px; }
+  }
+  @media (max-width: 720px) {
+    .panes { grid-template-columns: 1fr; }
+    .tree { border-right: 0; border-bottom: 1px solid var(--line); }
+    .exchange { min-height: 0; }
+    .doc-notes { align-items: flex-start; }
+    .notlist { columns: 1; }
+    .crumb { display: none; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .seg button, .reveal-btn, .post-btn, .join-link { transition: filter 120ms ease, background 120ms ease; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="doc">
+    <div class="doc-id">
+      <p class="eyebrow">Phase 68 · Mockup · Scoped 2026-08-14</p>
+      <h1>LearnBook</h1>
+      <p class="sub">The coaching space: where a program bought through NodeGX Community actually gets
+        delivered — a coach, a coachee, and a tree of threads they work through together.</p>
+    </div>
+    <div class="doc-notes">
+      <span class="note-chip">Name pending ruling <strong>E1</strong> — could ship as “Coaching” or “Spaces”</span>
+      <span class="note-chip">Vocabulary is ruled (L3): <strong>Program → Module → Thread</strong></span>
+    </div>
+  </header>
+
+  <div class="viewbar">
+    <div class="seg" role="group" aria-label="Choose whose view of the space is shown">
+      <button type="button" id="btn-coach" aria-pressed="true">Coach view — Richard</button>
+      <button type="button" id="btn-coachee" aria-pressed="false">Coachee view — Maya</button>
+    </div>
+    <span class="hint">Toggle to see the visibility model: what the coach paces, the coachee can’t see yet.</span>
+  </div>
+
+  <div class="app" id="app">
+
+    <div class="topbar">
+      <span class="logotype"><span class="book">Learn</span>Book</span>
+      <span class="crumb">
+        <span class="coach-only">Your programs</span><span class="coachee-only">My programs</span>
+        <span>›</span>
+        <b>Ship Your First App</b>
+      </span>
+      <span class="spacer"></span>
+      <button class="bell" type="button" aria-label="Notifications, 2 unread" title="Unread across your spaces — email digest configurable">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M8 2a4 4 0 0 0-4 4v2.5L2.8 11h10.4L12 8.5V6a4 4 0 0 0-4-4Z"/><path d="M6.5 13.5a1.5 1.5 0 0 0 3 0"/>
+        </svg>
+        <span class="badge">2</span>
+      </button>
+      <span class="avatar av-ro coach-only" title="Richard O.">RO</span>
+      <span class="avatar av-mk coachee-only" title="Maya K.">MK</span>
+    </div>
+
+    <div class="panes">
+
+      <!-- ============ TREE ============ -->
+      <aside class="tree" aria-label="Program tree">
+        <div class="program-head">
+          <p class="kicker">Program</p>
+          <h2 class="serif">Ship Your First App</h2>
+          <div class="who">
+            <span class="avatar av-ro" title="Richard O.">RO</span>
+            <span class="avatar av-mk" title="Maya K.">MK</span>
+            <span class="coach-only">You &amp; Maya K.</span>
+            <span class="coachee-only">You &amp; Richard O.</span>
+          </div>
+          <span class="booking" title="This space was attached to a coaching booking made through Richard’s offer">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>
+            Booking B-1041 · 6 sessions
+          </span>
+        </div>
+
+        <nav class="modules" aria-label="Modules and threads">
+
+          <div class="module m-done">
+            <div class="module-row">
+              <span class="mstate"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="6.5" stroke-width="1.4"/><path d="m5.2 8.2 1.9 1.9 3.7-4"/></svg></span>
+              <span class="mname">1 · Foundations</span>
+            </div>
+            <ul class="threads">
+              <li class="thread-row t-done">
+                <span class="ticon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5h12v8H8.5L5 14v-2.5H2z"/></svg></span>
+                <span class="tname">Welcome + how we’ll work</span>
+                <span class="tmark">Done</span>
+              </li>
+              <li class="thread-row t-done">
+                <span class="ticon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5h12v8H8.5L5 14v-2.5H2z"/></svg></span>
+                <span class="tname">Your app idea, in one paragraph</span>
+                <span class="tmark">Done</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="module">
+            <div class="module-row">
+              <span class="mstate" style="color: var(--accent)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/><path d="M8 4.5V8l2.3 1.6" stroke-linecap="round"/></svg></span>
+              <span class="mname">2 · The Data Model</span>
+            </div>
+            <ul class="threads">
+              <li class="thread-row t-active" aria-current="true">
+                <span class="ticon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 3.5h12v8H8.5L5 14v-2.5H2z"/></svg></span>
+                <span class="tname">Sketching your records</span>
+              </li>
+              <li class="thread-row t-wait">
+                <span class="ticon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 2.5h6a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1Z"/><path d="M6.5 1.5h3v2h-3z"/><path d="m6 9 1.5 1.5L10.5 7"/></svg></span>
+                <span class="tname">Assignment · Build the Records page</span>
+                <span class="tmark coach-only">Validate</span>
+                <span class="tmark coachee-only">Submitted</span>
+              </li>
+              <li class="thread-row">
+                <span class="ticon"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="9" height="8" rx="1.5"/><path d="m10.5 7 4-2v6l-4-2"/></svg></span>
+                <span class="tname">Session 3 · Model review</span>
+                <span class="tmark">Thu</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="module">
+            <div class="module-row">
+              <span class="mstate" style="color: var(--ink-3)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="6.5"/></svg></span>
+              <span class="mname">3 · Pages &amp; Navigation</span>
+              <span class="unread-dot" title="Revealed — unread"></span>
+              <span class="m-new-chip">New</span>
+            </div>
+          </div>
+
+          <div class="module hidden-mod coach-only">
+            <div class="module-row">
+              <span class="mstate"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M2 8s2.2-3.8 6-3.8S14 8 14 8s-2.2 3.8-6 3.8S2 8 2 8Z"/><path d="m3 13 10-10"/></svg></span>
+              <span class="mname">4 · Polish &amp; Publish</span>
+              <span class="m-hidden-chip">Hidden</span>
+            </div>
+            <button class="reveal-btn" type="button" title="Reveals the module and notifies Maya">Reveal to Maya</button>
+          </div>
+
+        </nav>
+
+        <div class="tree-foot">
+          <a href="#" class="coachee-only" title="Your threads, replies and media — always exportable">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v8m0 0 3-3M8 10 5 7"/><path d="M2.5 12.5h11"/></svg>
+            Export my space
+          </a>
+          <a href="#" class="coach-only" title="Clone this tree for the next coachee or cohort">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>
+            Save as template
+          </a>
+        </div>
+      </aside>
+
+      <!-- ============ THREAD ============ -->
+      <main class="exchange" aria-label="Thread">
+        <div class="thread-head">
+          <h3>Sketching your records</h3>
+          <span class="in-module">in 2 · The Data Model</span>
+          <span class="spacer"></span>
+          <button class="done-toggle coach-only" type="button" title="Done rolls up: thread → module → program">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 8.5 3 3 6-7"/></svg>
+            Mark thread done
+          </button>
+        </div>
+
+        <div class="posts">
+
+          <article class="post">
+            <span class="avatar av-ro" aria-hidden="true">RO</span>
+            <div class="body">
+              <div class="meta"><span class="name">Richard O.</span><span class="time">Coach · Tue 09:12</span><button class="pdots" type="button" aria-label="Post actions: reference, report" title="Reference this post · Report">⋯</button></div>
+              <div class="prose">
+                <p>Before Thursday’s session, let’s pin down what Waggle actually stores. From your idea
+                  paragraph I count three records:</p>
+                <div class="table-scroll">
+                  <table class="rich">
+                    <thead><tr><th>Record</th><th>What it holds</th><th>One per…</th></tr></thead>
+                    <tbody>
+                      <tr><td>Owner</td><td>name, contact, address</td><td>customer</td></tr>
+                      <tr><td>Dog</td><td>name, breed, walk notes</td><td>dog</td></tr>
+                      <tr><td>Walk</td><td>date, length, who walked</td><td>booking</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>One question to answer here before we meet — and there’s a voice note with a hint if
+                  you want it: does a <em>Walk</em> belong to a <em>Dog</em>, or to an <em>Owner</em>?
+                  Answer in your own words; wrong answers are useful here.</p>
+                <span class="clip">
+                  <button class="playbtn" type="button" aria-label="Play voice note, 1 minute 24 seconds">
+                    <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor" aria-hidden="true"><path d="M3 1.8v8.4L10 6z"/></svg>
+                  </button>
+                  <span class="wave" aria-hidden="true"><i style="height:6px"></i><i style="height:12px"></i><i style="height:16px"></i><i style="height:9px"></i><i style="height:14px"></i><i style="height:7px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:8px"></i><i style="height:13px"></i><i style="height:5px"></i><i style="height:10px"></i></span>
+                  <span class="dur">1:24</span>
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article class="post reply">
+            <span class="avatar av-mk" aria-hidden="true">MK</span>
+            <div class="body">
+              <div class="meta"><span class="name">Maya K.</span><span class="time">Tue 17:40</span><button class="pdots" type="button" aria-label="Post actions: reference, report" title="Reference this post · Report">⋯</button></div>
+              <div class="prose">
+                <p>I think a Walk belongs to a Dog — an owner can have two dogs, and the walker needs to
+                  know which one they’re picking up. But the invoice goes to the Owner… so maybe both?
+                  I sketched it:</p>
+                <span class="attachment">
+                  <span class="thumb"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="m2 10.5 3.5-3 3 2.5 2.5-2 3 2.5" stroke-linecap="round"/><circle cx="6" cy="6" r="1" fill="currentColor" stroke="none"/></svg></span>
+                  <span><span class="fname">records-sketch.png</span><br/><span class="fsize">312 KB</span></span>
+                </span>
+              </div>
+            </div>
+          </article>
+
+          <article class="post reply">
+            <span class="avatar av-ro" aria-hidden="true">RO</span>
+            <div class="body">
+              <div class="meta"><span class="name">Richard O.</span><span class="time">Coach · Tue 19:02</span><button class="pdots" type="button" aria-label="Post actions: reference, report" title="Reference this post · Report">⋯</button></div>
+              <div class="prose">
+                <p>Both — and noticing that is the whole point of this thread. You’ve found why relations
+                  exist. Look back at
+                  <a class="refchip" href="#" title="Opens the referenced thread">↗ Your app idea, in one paragraph</a>
+                  — you wrote “owners book walks,” which already answers the invoice half. Thursday we’ll
+                  turn your sketch into real records in the editor.</p>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="composer">
+          <div class="toolbar" role="toolbar" aria-label="Formatting">
+            <button type="button" title="Bold" aria-label="Bold"><b>B</b></button>
+            <button type="button" title="Italic" aria-label="Italic"><i style="font-family: Georgia, serif">I</i></button>
+            <button type="button" title="List" aria-label="List"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M5.5 4h8M5.5 8h8M5.5 12h8"/><circle cx="2.5" cy="4" r="0.9" fill="currentColor" stroke="none"/><circle cx="2.5" cy="8" r="0.9" fill="currentColor" stroke="none"/><circle cx="2.5" cy="12" r="0.9" fill="currentColor" stroke="none"/></svg></button>
+            <button type="button" title="Table" aria-label="Table"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1"/><path d="M2 6.5h12M2 10.5h12M8 2.5v11"/></svg></button>
+            <span class="tsep" aria-hidden="true"></span>
+            <button type="button" title="Insert image" aria-label="Insert image"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="m2 10.5 3.5-3 3 2.5 2.5-2 3 2.5" stroke-linecap="round"/><circle cx="6" cy="6" r="1" fill="currentColor" stroke="none"/></svg></button>
+            <button type="button" title="Record audio or video" aria-label="Record audio or video"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><rect x="5.5" y="1.5" width="5" height="8" rx="2.5"/><path d="M3 7.5a5 5 0 0 0 10 0M8 12.5v2"/></svg></button>
+            <button type="button" title="Attach file" aria-label="Attach file"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 7.5 8.2 12.3a3.2 3.2 0 0 1-4.5-4.5L8.9 2.6a2.1 2.1 0 0 1 3 3L7.1 10.4a1 1 0 0 1-1.5-1.5l4.3-4.3"/></svg></button>
+            <button type="button" title="Reference a program, module or thread" aria-label="Reference a program, module or thread"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9.5 13 3M9 2.5h4.5V7"/><path d="M12 9.5v3A1.5 1.5 0 0 1 10.5 14h-6A1.5 1.5 0 0 1 3 12.5v-6A1.5 1.5 0 0 1 4.5 5h3"/></svg></button>
+          </div>
+          <textarea placeholder="Reply to this thread…" aria-label="Reply to this thread"></textarea>
+          <div class="actions">
+            <span class="note coachee-only">Richard is notified when you post.</span>
+            <span class="note coach-only">Maya is notified when you post.</span>
+            <span class="spacer"></span>
+            <button class="post-btn" type="button">Post reply</button>
+          </div>
+        </div>
+      </main>
+
+      <!-- ============ RAIL ============ -->
+      <aside class="rail" aria-label="Progress and sessions">
+
+        <div class="card">
+          <h4>Progress</h4>
+          <div class="progress-row"><span class="plabel">Foundations</span><span class="pcount">2 / 2</span><span class="pbar"><i style="width:100%"></i></span></div>
+          <div class="progress-row"><span class="plabel">The Data Model</span><span class="pcount">1 / 3</span><span class="pbar"><i style="width:33%"></i></span></div>
+          <div class="progress-row"><span class="plabel">Pages &amp; Navigation</span><span class="pcount">0 / 2</span><span class="pbar"><i style="width:0"></i></span></div>
+          <div class="progress-row coach-only"><span class="plabel" style="color: var(--ink-3)">Polish &amp; Publish · hidden</span><span class="pcount">0 / 2</span><span class="pbar p-hidden"><i style="width:0"></i></span></div>
+          <p class="rollup-note">Done rolls up — a module completes when its threads do, the program when its modules do.</p>
+        </div>
+
+        <div class="card assign-card">
+          <h4>Assignment</h4>
+          <span class="astate">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.5V8l2.3 1.6"/></svg>
+            <span class="coach-only">Awaiting your validation</span>
+            <span class="coachee-only">Waiting for Richard</span>
+          </span>
+          <p class="aname">Build the Records page</p>
+          <p class="asub"><span class="coach-only">Maya replied 2 h ago. The Data Model can’t complete until you validate.</span><span class="coachee-only">Submitted 2 h ago. Richard reviews it before the module can complete.</span></p>
+          <button class="validate-btn coach-only" type="button">Review &amp; validate</button>
+        </div>
+
+        <div class="card">
+          <h4>Next live session</h4>
+          <p class="session-when">Session 3 · Model review</p>
+          <p class="session-sub">Thu 21 Aug · 15:00–15:45</p>
+          <a class="join-link" href="#" title="The call runs on Meet — LearnBook stores the link and the attendance marks">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1.5" y="4" width="9" height="8" rx="1.5"/><path d="m10.5 7 4-2v6l-4-2"/></svg>
+            Join on Meet ↗
+          </a>
+          <div class="attendance"><span>Session 1 <b>✓✓</b></span><span>Session 2 <b>✓✓</b></span></div>
+          <p class="foot-note">The call itself runs on Meet, Zoom or Whereby — LearnBook keeps the link and the attendance marks.</p>
+        </div>
+
+        <div class="card notes-card coach-only">
+          <h4>
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+            Session notes
+          </h4>
+          <p class="prose">S2: Maya’s confident on the canvas but avoids the data panel — start S3 there.
+            Ask about the walker-roster idea she mentioned in passing.</p>
+          <p class="lockline">Private to you. Maya never sees these.</p>
+        </div>
+
+      </aside>
+    </div>
+  </div>
+
+  <section class="after">
+    <h2 class="serif">Every region is a scoped task</h2>
+    <p class="lede">The mockup draws only what phase 68 scopes — each region below names the LB task that
+      builds it. Two tasks have no honest place in a solo-pair screen and are listed as not pictured.</p>
+    <ul class="legend">
+      <li><span class="lb">LB-001</span><span><b>The tree.</b> The sidebar: Program → Module → Thread, done-rollup, and who-sees-what (the hidden module).</span></li>
+      <li><span class="lb">LB-002</span><span><b>Composer &amp; thread.</b> The centre pane: WYSIWYG posts with tables, replies, cross-references (the ↗ chip).</span></li>
+      <li><span class="lb">LB-003</span><span><b>Notifications.</b> The bell and unread dot; email digests and mutes behind it. Platform-wide, not LearnBook-only.</span></li>
+      <li class="absent"><span class="lb">LB-004</span><span><b>Groups — not pictured.</b> A cohort here is UNI-005’s one roster, never a second group system. This screen shows a solo pair.</span></li>
+      <li><span class="lb">LB-005</span><span><b>Visibility, progress, notes.</b> The “Reveal to Maya” button, the progress card, and the coach-private session notes.</span></li>
+      <li><span class="lb">LB-006</span><span><b>Assignments &amp; live sessions.</b> The amber validation state (UNI-006’s state machine, human grader) and the session card (a URL plus attendance — L6).</span></li>
+      <li><span class="lb">LB-007</span><span><b>Rich media.</b> The voice note and the sketch attachment; capped raw uploads, quotas per E4.</span></li>
+      <li><span class="lb">LB-008</span><span><b>Templates.</b> “Save as template” at the sidebar’s foot — the coach’s second cohort costs a clone, not a rebuild.</span></li>
+      <li><span class="lb">LB-009</span><span><b>The sellable.</b> The booking chip under the program title. Purchase-grants-access is blocked on ruling E2; until then the coach attaches the space by hand.</span></li>
+      <li><span class="lb">LB-010</span><span><b>Safeguarding &amp; exit.</b> Report on every post’s ⋯ menu, “Export my space” in the coachee’s sidebar (E5), and the org-minor gate held shut (L5).</span></li>
+    </ul>
+  </section>
+
+  <section class="after">
+    <h2 class="serif">Deliberately not in the picture</h2>
+    <ul class="notlist">
+      <li><b>No in-app video.</b> The live session is a stored URL; the call runs on Meet, Zoom or Whereby (L6).</li>
+      <li><b>No real-time anything.</b> No presence, no live cursors — the exchange is async-first.</li>
+      <li><b>No marketplace.</b> No browse, ratings or take-rate; a program is reached from a coach’s profile and offer.</li>
+      <li><b>No search.</b> The tree is small enough to browse in v1.</li>
+      <li><b>No minors.</b> Org-minor accounts cannot enter coaching spaces until E3 is ruled (L5, default off).</li>
+      <li><b>Not built in NodeGX — yet.</b> LearnBook ships on the platform stack (L1); the coachee frontend’s NodeGX rebuild is the pre-registered second act, once its missing pieces exist as published prefabs.</li>
+    </ul>
+  </section>
+
+  <footer class="doc">
+    <p>Mockup for <b>dev-docs/tasks/phase-68-learnbook</b> (ruled as D13, 2026-08-14). Illustrative only —
+      build starts after phase 67’s Tier 1 + UNI-004 land. People and program are fictional; the
+      vocabulary is not: Program → Module → Thread, with “lesson” reserved for UNI-007’s editor-lesson
+      format.</p>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var app = document.getElementById('app');
+    var coach = document.getElementById('btn-coach');
+    var coachee = document.getElementById('btn-coachee');
+    function setView(isCoachee) {
+      app.classList.toggle('coachee', isCoachee);
+      coach.setAttribute('aria-pressed', String(!isCoachee));
+      coachee.setAttribute('aria-pressed', String(isCoachee));
+    }
+    coach.addEventListener('click', function () { setView(false); });
+    coachee.addEventListener('click', function () { setView(true); });
+  })();
+</script>

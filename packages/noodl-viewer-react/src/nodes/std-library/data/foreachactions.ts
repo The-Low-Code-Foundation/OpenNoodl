@@ -45,7 +45,7 @@ const ForEachActionsDefinition: NodeDefinitionOptions = {
       description:
         'Tells the Repeater the exit work is finished and this item may now be destroyed; needed ' +
         'only when Try Remove is connected',
-      group: 'Events',
+      group: 'Actions',
       valueChangedToTrue: function (this: ForEachActionsInstance) {
         // ERG-001. This line was `callback && callback()` — silent whether or not there was a
         // handshake to complete, which is §0's "emits nothing at all" entry for this node.

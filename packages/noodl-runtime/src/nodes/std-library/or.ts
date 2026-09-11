@@ -45,6 +45,7 @@ const OrNode: NodeDefinitionOptions = {
   },
   outputs: {
     result: {
+      group: 'Values',
       type: 'boolean',
       displayName: 'Result',
       description: 'True while at least one connected input is true; false when no input is connected at all',

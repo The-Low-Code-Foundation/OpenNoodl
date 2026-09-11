@@ -10,6 +10,8 @@ import { KeyCode } from '@noodl-utils/keyboard/KeyCode';
 import KeyboardHandler from '@noodl-utils/keyboardhandler';
 import { windowTitleBarHeight } from '@noodl-utils/utils';
 
+import { CodeExportModal, CodeExportModalProps } from './PopupLayer/CodeExportModal';
+import { blockerIsNeeded, popoutBlocksOutsideClicks, pressIsInsideKeptRegion } from './PopupLayer/popoutdismissal';
 import { ConfirmModal, ErrorModal } from './PopupLayer/ConfirmModal';
 import { StringInputPopup } from './PopupLayer/StringInputPopup';
 import { ToastLayer } from './ToastLayer/ToastLayer';
@@ -67,6 +69,31 @@ export interface PopoutArgs {
   disableCentering?: boolean;
   offsetX?: number;
   offsetY?: number;
+  /**
+   * P79 J2 — whether this popout puts the full-screen blocker over the editor.
+   *
+   * 🔴 The blocker is NOT what dismisses a popout. Dismissal is decided by the
+   * `pointerdown`/`pointerup` pair bound to `document.body`, which fire for any
+   * press anywhere regardless of what is on top; and `.popup-layer-popout` sets
+   * its own `pointer-events: all`, so the popout's own content stays clickable
+   * without it. The blocker's only effect is to EAT the press, so the control
+   * underneath never receives it.
+   *
+   * That is right for a popout that owns the screen while it is up, and wrong
+   * for one that sits beside a control the learner is meant to press — see
+   * `keepOpenWithin`. Defaults to `true`, so every existing caller is unchanged.
+   */
+  blockOutsideClicks?: boolean;
+  /**
+   * P79 J2 — a CSS selector for the region that belongs to this popout but is
+   * not inside it. A press whose target `.closest()`-matches is treated as
+   * INSIDE: it neither dismisses the popout nor is swallowed.
+   *
+   * The lesson instructions are attached to a step in the lesson bar, and the
+   * bar carries the controls the instructions are telling the learner to use.
+   * Without this, pressing them counts as pressing outside.
+   */
+  keepOpenWithin?: string;
   onClose?: () => void;
 }
 
@@ -81,6 +108,10 @@ export interface Popout {
   arrowColor?: string;
   animate?: boolean;
   manualClose?: boolean;
+  /** P79 J2 — see {@link PopoutArgs.blockOutsideClicks}. `undefined` means blocking. */
+  blockOutsideClicks?: boolean;
+  /** P79 J2 — see {@link PopoutArgs.keepOpenWithin}. */
+  keepOpenWithin?: string;
   attachToRect: Rect;
   resizeObserver: ResizeObserver;
 }
@@ -147,6 +178,16 @@ function setArrowDirection(arrow: HTMLElement, position: string) {
   else if (position === 'left') arrow.classList.add('right');
   else if (position === 'right') arrow.classList.add('left');
 }
+
+/**
+ * How long `.popup-layer-activity`'s opacity transition lasts, in ms.
+ *
+ * 🔴 **Keep in step with `transition: opacity 500ms` in `popuplayer.css`.** A
+ * number smaller than the CSS one cuts the fade off mid-way; a larger one just
+ * leaves the spinner animating for the difference, which is the cost this
+ * pairing exists to remove.
+ */
+const ACTIVITY_FADE_MS = 500;
 
 const ARROW_COLOR_CSS_ATTR = {
   bottom: 'borderBottomColor',
@@ -383,10 +424,28 @@ export class PopupLayer {
       return !!portal && portal.contains(target);
     };
 
+    /**
+     * P79 J2 — a popout may declare a region that belongs to it but is not
+     * inside it (`keepOpenWithin`). The lesson instructions are attached to a
+     * step in the lesson bar and the bar carries the controls they tell the
+     * learner to press — CHECK MY WORK above all — so a press there is part of
+     * using the instructions, not a gesture away from them.
+     *
+     * Read from the LIVE popout list on every press rather than captured once,
+     * because the popout that owns the region is opened and closed repeatedly
+     * over a lesson.
+     */
+    const insideKeptRegion = (target: EventTarget | null) => {
+      if (!(target instanceof Element)) return false;
+      return pressIsInsideKeptRegion(this.popouts, (selector) => !!target.closest(selector));
+    };
+
     const outsidePopup = (target: EventTarget | null) =>
       !isInside(target, this.popupEl) && !insideDialogPortal(target);
     const outsidePopouts = (target: EventTarget | null) =>
-      !(isInside(target, this.popupEl) || isInside(target, this.popoutsEl)) && !insideDialogPortal(target);
+      !(isInside(target, this.popupEl) || isInside(target, this.popoutsEl)) &&
+      !insideDialogPortal(target) &&
+      !insideKeptRegion(target);
 
     // Armed by a pointerdown that landed outside; only a pointerup that also
     // lands outside acts on it.
@@ -859,7 +918,10 @@ export class PopupLayer {
   public showPopout(args: PopoutArgs): Popout {
     this.disarmDismissal();
 
-    this.blockerEl.style.display = '';
+    // P79 J2 — a popout that does not block leaves the editor underneath live.
+    if (popoutBlocksOutsideClicks(args)) {
+      this.blockerEl.style.display = '';
+    }
 
     const content = args.content.el;
     args.content.owner = this;
@@ -885,6 +947,8 @@ export class PopupLayer {
       position: args.position,
       animate: args.animate,
       manualClose: args.manualClose,
+      blockOutsideClicks: args.blockOutsideClicks,
+      keepOpenWithin: args.keepOpenWithin,
       attachToRect: args.attachTo
         ? attachToRect(args.attachTo)
         : { left: args.attachToPoint.x, top: args.attachToPoint.y, width: 0, height: 0 },
@@ -899,7 +963,9 @@ export class PopupLayer {
     this.popouts.push(popout);
 
     // Enable pointer events for outside-click-to-close when popouts are active
-    this.el.classList.add('has-popouts');
+    if (popoutBlocksOutsideClicks(args)) {
+      this.el.classList.add('has-popouts');
+    }
 
     if (args.animate) {
       popoutEl.style.transform = 'translateY(10px)';
@@ -952,7 +1018,7 @@ export class PopupLayer {
     const close = () => {
       popout.el.remove();
 
-      if (this.popouts.length === 0) {
+      if (!blockerIsNeeded(this.popouts)) {
         this.blockerEl.style.display = 'none';
         // Disable pointer events when no popouts are active
         this.el.classList.remove('has-popouts');
@@ -1072,6 +1138,27 @@ export class PopupLayer {
     );
   }
 
+  /**
+   * EXP-012: the code export's pre-flight. Same close discipline as `showConfirmModal` — the
+   * modal is hidden before either callback runs, so a confirm that opens the native folder
+   * dialog does not leave this one underneath it.
+   */
+  public showCodeExportModal({ summary, onConfirm, onCancel }: CodeExportModalProps) {
+    this.showReactModal(
+      React.createElement(CodeExportModal, {
+        summary,
+        onCancel: () => {
+          this.hideModal();
+          onCancel && onCancel();
+        },
+        onConfirm: () => {
+          this.hideModal();
+          onConfirm();
+        }
+      })
+    );
+  }
+
   public showErrorModal({ message, title, onOk }: { message: string; title?: string; onOk?: () => void }) {
     //print error so it is logged to the debug log
     console.log('Showing error modal: ');
@@ -1107,6 +1194,11 @@ export class PopupLayer {
     this.draggerLabel.textContent = item.label;
 
     this.dragItem = item;
+
+    // FIX-003: text is selectable by default now, and this drag crosses panels
+    // full of it. The class (style.css) suspends selection everywhere until
+    // `dragCompleted` lifts it.
+    document.body.classList.add('noodl-dragging');
 
     const placeDragItem = (x: number, y: number) => {
       this.draggerEl.style.opacity = '1';
@@ -1165,6 +1257,7 @@ export class PopupLayer {
   public dragCompleted() {
     this.draggerEl.style.opacity = '0';
     this.dragItem = undefined;
+    document.body.classList.remove('noodl-dragging');
   }
 
   // -------------------------------- Tooltip ----------------------------------
@@ -1276,8 +1369,22 @@ export class PopupLayer {
   }
 
   // ------------------ Activity (deprecated) ---------------------
+  /**
+   * FLD-017 — the fade has to be paired with a `display` toggle, because the
+   * spinner inside this box animates whether or not anyone can see it.
+   *
+   * `.popup-layer-activity` is now `display: none` by default (see
+   * `styles/popuplayer.css` for the measurement). `display` is set here BEFORE
+   * `outerSize` reads the box: a `display: none` element measures 0 x 0, and
+   * the centring below is computed from that size.
+   */
+  private activityHideTimeout: ReturnType<typeof setTimeout> | undefined;
+
   public showActivity(text: string) {
     this.activityText.innerHTML = text;
+    clearTimeout(this.activityHideTimeout);
+    this.activityEl.style.display = 'block';
+    this.activityEl.style.pointerEvents = '';
     const size = outerSize(this.activityEl, false);
     const x = (this.width - size.width) / 2;
     const y = (this.height - size.height) / 2;
@@ -1294,6 +1401,15 @@ export class PopupLayer {
   public hideActivity() {
     this.activityEl.style.opacity = '0';
     this.activityEl.style.pointerEvents = 'none';
+
+    // Take it out of layout only once the 500ms opacity transition in
+    // `popuplayer.css` has run — `display: none` immediately would replace the
+    // fade with a disappearance. After that the spinner stops animating, which
+    // is the whole point of the pairing.
+    clearTimeout(this.activityHideTimeout);
+    this.activityHideTimeout = setTimeout(() => {
+      this.activityEl.style.display = 'none';
+    }, ACTIVITY_FADE_MS);
 
     console.error('hideActivity is deprecated. Use ToastLayer.hideActivity() instead.');
   }

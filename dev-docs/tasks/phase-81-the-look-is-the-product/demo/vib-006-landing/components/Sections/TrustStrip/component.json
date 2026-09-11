@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "2c10040e-c332-531d-8d91-58c2b0d3c904",
+  "name": "TrustStrip",
+  "path": "/Sections/TrustStrip",
+  "type": "visual",
+  "created": "2026-08-31T00:00:00.000Z",
+  "modified": "2026-08-31T00:00:00.000Z",
+  "modifiedBy": "vib-006"
+}

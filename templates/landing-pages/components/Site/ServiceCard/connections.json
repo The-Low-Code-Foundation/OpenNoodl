@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "1cec27ac-96bc-5896-867b-a159c4d7da07",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "svInputs",
+      "fromProperty": "title",
+      "toId": "svTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "svInputs",
+      "fromProperty": "price",
+      "toId": "svPrice",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "svInputs",
+      "fromProperty": "line",
+      "toId": "svLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "svInputs",
+      "fromProperty": "detail",
+      "toId": "svDetailText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "svInputs",
+      "fromProperty": "deliverable",
+      "toId": "svGet",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "svInputs",
+      "fromProperty": "icon",
+      "toId": "svSource",
+      "toProperty": "in-icon"
+    },
+    {
+      "fromId": "svSource",
+      "fromProperty": "out-source",
+      "toId": "svGlyph",
+      "toProperty": "iconIconSource"
+    },
+    {
+      "fromId": "svHead",
+      "fromProperty": "onClick",
+      "toId": "svStates",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "svStates",
+      "fromProperty": "at-open",
+      "toId": "svDetail",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "svStates",
+      "fromProperty": "chevron",
+      "toId": "svChevron",
+      "toProperty": "transformRotation"
+    }
+  ]
+}

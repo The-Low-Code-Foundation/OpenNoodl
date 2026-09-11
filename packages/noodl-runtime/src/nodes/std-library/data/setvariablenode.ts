@@ -81,7 +81,7 @@ const SetVariableNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the write was refused, in one sentence; empty until something fails',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: SetVariableInstance) {
         return this._internal.lastError;
       }

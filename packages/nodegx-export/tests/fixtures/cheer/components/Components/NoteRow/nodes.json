@@ -1,0 +1,78 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "47016a28-2ae9-441e-8a6c-370bc9776aa5",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "noteRow",
+      "type": "Group",
+      "label": "Note row",
+      "children": [
+        "noteText",
+        "moodTag"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "noteText",
+      "type": "Text",
+      "label": "Note text",
+      "parent": "noteRow",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "moodTag",
+      "type": "Text",
+      "label": "Mood tag",
+      "parent": "noteRow",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "text",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        },
+        {
+          "name": "mood",
+          "plug": "output",
+          "type": "string",
+          "index": 1
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "noteRow"
+  ]
+}

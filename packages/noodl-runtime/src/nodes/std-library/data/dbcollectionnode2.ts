@@ -182,7 +182,9 @@ interface DbCollectionNodeInstance extends NodeInstance {
   setError(err: string): void;
   scheduleFetch(): void;
   fetch(): void;
-  getStorageFilter(): { where?: ParseWhere; neutralWhere?: Filter; sort?: string | string[] } | undefined;
+  getStorageFilter():
+    | { where?: ParseWhere; neutralWhere?: Filter; sort?: string | string[]; failed?: string }
+    | undefined;
   getStorageLimit(): number | undefined;
   getStorageSkip(): number | undefined;
   getStorageFetchTotalCount(): boolean;
@@ -559,9 +561,11 @@ const DbCollectionNode: NodeDefinitionOptions = {
   },
   prototypeExtensions: {
     setCollectionName: function (this: DbCollectionNodeInstance, name: string) {
+      // DEF-046: read before write — the stored value IS the previous one.
+      const previous = this._internal.name;
       this._internal.name = name;
 
-      if (this.shouldRunOnValueChange('collectionName')) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('collectionName', previous, name)) this.scheduleFetch();
       // A subscription is to a named collection; the old one is watching the wrong thing.
       this.scheduleRealtimeReconfigure();
     },
@@ -847,6 +851,10 @@ const DbCollectionNode: NodeDefinitionOptions = {
 
       const _c = Collection.get();
       const f = this.getStorageFilter();
+      if (f && f.failed) {
+        this.setError(f.failed);
+        return;
+      }
       const limit = this.getStorageLimit();
       const skip = this.getStorageSkip();
       const count = this.getStorageFetchTotalCount();
@@ -895,7 +903,42 @@ const DbCollectionNode: NodeDefinitionOptions = {
           this.sendSignalOnOutput('fetched');
         },
         error: (err: string) => {
-          this.setCollection(_c);
+          /**
+           * 🔴 **REL-011b AC2 — a failed fetch must not DELETE the rows it has
+           * already delivered.**
+           *
+           * `_c` is the empty collection minted at the top of `fetch()` and
+           * filled only by `success`, so publishing it here replaced whatever
+           * this node was showing with **nothing** — and `isEmpty` went true, so
+           * every `For Each` downstream redrew zero rows and every `mounted`
+           * wrapper fed by them unmounted.
+           *
+           * Measured on the published site-builder template, 2026-09-03: with
+           * the backend up the page held 82 elements, 6 sections, 3 images and
+           * 2 buttons; **within one round trip of the backend stopping it held
+           * 38, 0, 0 and 0**, with two `query-records/query-failed` lines in the
+           * console and nothing else changed. SBR-011 gives three of this
+           * template's queries a realtime subscription, and a dropped stream
+           * re-runs the query — so on a published site any backend restart or
+           * network blip empties every visitor's page until they reload it.
+           *
+           * 🔴 **This is the odd one out among `fetch()`'s three failure
+           * exits.** The unconfigured-backend exit and the bad-filter exit both
+           * `setError` and return, leaving the collection alone; only this one
+           * overwrote it. The guard aligns it with them.
+           *
+           * ⚠️ **The FIRST failure is deliberately unchanged**: with nothing yet
+           * bound, the empty collection is still published, so `items` is `[]`,
+           * `isEmpty` is true and `count` is 0 exactly as before. The behaviour
+           * differs only where there is something to lose.
+           *
+           * ⚠️ It does NOT make a refusal legible — P77 D4's *"a refused query
+           * and an empty collection are the same screen"* is a separate row with
+           * a separate fix (wire `failure`/`error`, which this node already
+           * offers). This one stops the query destroying good data on its way to
+           * being illegible.
+           */
+          if (this._internal.collection === undefined) this.setCollection(_c);
           this.setError(err || 'Failed to fetch.');
         }
       });
@@ -923,12 +966,20 @@ const DbCollectionNode: NodeDefinitionOptions = {
             _neutral = QueryUtils.convertVisualFilterToNeutral(this._internal.visualFilter, filterOptions);
             _where = QueryUtils.convertVisualFilter(this._internal.visualFilter, filterOptions);
           } catch (e) {
-            this.context.editorConnection.sendWarning(
-              this.nodeScope.componentOwner.name,
-              this.id,
-              'query-collection-filter',
-              { message: (e as Error).message }
-            );
+            if (this.context.editorConnection) {
+              this.context.editorConnection.sendWarning(
+                this.nodeScope.componentOwner.name,
+                this.id,
+                'query-collection-filter',
+                { message: (e as Error).message }
+              );
+            }
+            // A filter that cannot be translated must not fall away: an
+            // unfiltered query is every row in the class, answered as a
+            // success. SB-011 measured a cloud function's publish flow opening
+            // every Section on the site through exactly this path — the warning
+            // above goes to a socket a deployed backend does not have.
+            return { failed: (e as Error).message || 'The filter could not be applied.' };
           }
         }
 
@@ -965,6 +1016,7 @@ const DbCollectionNode: NodeDefinitionOptions = {
         if (!this._internal.filterFunc) return;
 
         let _filter: unknown = {},
+          _filterFailed: string | undefined,
           _neutralFilter: Filter | undefined,
           _sort: unknown = [];
         const _this = this;
@@ -980,14 +1032,30 @@ const DbCollectionNode: NodeDefinitionOptions = {
           _filter = QueryUtils.convertFilterOp(f, {
             collectionName: _this._internal.name,
             error: function (err: string) {
-              _this.context.editorConnection.sendWarning(
-                _this.nodeScope.componentOwner.name,
-                _this.id,
-                'query-collection-filter',
-                {
-                  message: err
-                }
-              );
+              /**
+               * FLD-008 — the same two compounding defects that let Aggregate Records
+               * answer a filter it had refused (issue #14), in the node next to it.
+               *
+               * `editorConnection` is undefined outside the editor, so this warning threw
+               * a `TypeError`; the throw unwound into the `catch` below, which logs and
+               * carries on with `_filter` still `{}`. A query whose filter could not be
+               * translated then fetched **every row in the collection** — the widening
+               * `wire.ts` §166 names, arriving by a second route.
+               *
+               * Keep the message so `getStorageFilter` returns it as `failed` and the
+               * caller's existing guard fails the node instead.
+               */
+              _filterFailed = err;
+              if (_this.context.editorConnection) {
+                _this.context.editorConnection.sendWarning(
+                  _this.nodeScope.componentOwner.name,
+                  _this.id,
+                  'query-collection-filter',
+                  {
+                    message: err
+                  }
+                );
+              }
             }
           });
         };
@@ -1012,8 +1080,11 @@ const DbCollectionNode: NodeDefinitionOptions = {
         try {
           this._internal.filterFunc.apply(this, filterFuncArgs);
         } catch (e) {
+          // Kept: before FLD-008 this was the only trace a swallowed refusal left.
           console.log('Error while running filter script: ' + e);
         }
+
+        if (_filterFailed !== undefined) return { failed: _filterFailed };
 
         return { where: _filter, neutralWhere: _neutralFilter, sort: _sort };
       }
@@ -1058,15 +1129,20 @@ const DbCollectionNode: NodeDefinitionOptions = {
     // query unchanged). Orthogonal to the Filter — combined server-side with
     // whatever `where` the Visual/Javascript filter produces.
     setSearch: function (this: DbCollectionNodeInstance, value: string) {
+      // DEF-046: read before write — the stored value IS the previous one. Re-querying on a search string the
+      // node already holds is a round trip nobody asked for.
+      const previous = this._internal.search;
       this._internal.search = value;
 
-      if (this.shouldRunOnValueChange('search')) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('search', previous, value)) this.scheduleFetch();
     },
     setQueryParameter: function (this: DbCollectionNodeInstance, name: string, value: unknown) {
+      // DEF-046: read before write — the stored value IS the previous one.
+      const previous = this._internal.queryParameters[name];
       this._internal.queryParameters[name] = value;
 
       // One box per query parameter — see the note in `initialize`.
-      if (this.shouldRunOnValueChange('qp-' + name)) this.scheduleFetch();
+      if (this.shouldRunOnValueChanged('qp-' + name, previous, value)) this.scheduleFetch();
     },
     registerInputIfNeeded: function (this: DbCollectionNodeInstance, name: string) {
       if (this.hasInput(name)) {
@@ -1101,8 +1177,10 @@ const DbCollectionNode: NodeDefinitionOptions = {
         // BCN-004 step 5. Without the branch the picker's value would fall through to
         // `userInputSetter` and land in `storageSettings`, where nothing reads it.
         backendId: ((value: string) => {
+          // DEF-046: read before write — the stored value IS the previous one.
+          const previous = this._internal.backendId;
           this._internal.backendId = value;
-          if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
+          if (this.shouldRunOnValueChanged('querySettings', previous, value)) this.scheduleFetch();
           // BCN-008: and the subscription follows the picker, or it stays connected to
           // whichever backend happened to be selected when the node first ran.
           this.scheduleRealtimeReconfigure();
@@ -1136,9 +1214,11 @@ function userOutputGetter(this: DbCollectionNodeInstance, name: string) {
 
 function userInputSetter(this: DbCollectionNodeInstance, name: string, value: unknown) {
   /* jshint validthis:true */
+  // DEF-046: read before write — the stored value IS the previous one.
+  const previous = this._internal.storageSettings[name];
   this._internal.storageSettings[name] = value;
 
-  if (this.shouldRunOnValueChange('querySettings')) this.scheduleFetch();
+  if (this.shouldRunOnValueChanged('querySettings', previous, value)) this.scheduleFetch();
 }
 
 const _defaultJSONQuery =

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "connections": [
+    {
+      "fromId": "gauge",
+      "fromProperty": "liveReading",
+      "toId": "readout",
+      "toProperty": "text",
+      "label": "the needle's live value drives the readout"
+    },
+    {
+      "fromId": "gauge",
+      "fromProperty": "onPress",
+      "toId": "showPressed",
+      "toProperty": "show"
+    },
+    {
+      "fromId": "gauge",
+      "fromProperty": "settled",
+      "toId": "showSettled",
+      "toProperty": "show"
+    },
+    {
+      "fromId": "counter",
+      "fromProperty": "tick",
+      "toId": "gauge",
+      "toProperty": "reading"
+    },
+    {
+      "fromId": "gauge",
+      "fromProperty": "retiredOutput",
+      "toId": "readout",
+      "toProperty": "text"
+    }
+  ]
+}

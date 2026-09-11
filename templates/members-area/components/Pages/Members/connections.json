@@ -1,0 +1,73 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "131f4366-b550-56fe-870b-331bfb8843f2",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "chrome",
+      "fromProperty": "isMember",
+      "toId": "memberArea",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome",
+      "fromProperty": "isModerator",
+      "toId": "moderatorTools",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome",
+      "fromProperty": "isPending",
+      "toId": "pendingNotice",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome",
+      "fromProperty": "isUnknown",
+      "toId": "unknownNotice",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome",
+      "fromProperty": "Member",
+      "toId": "announcements",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "chrome",
+      "fromProperty": "Denied",
+      "toId": "toLanding",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "items",
+      "toId": "list",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "count",
+      "toId": "emptyGate",
+      "toProperty": "in-count"
+    },
+    {
+      "fromId": "announcements",
+      "fromProperty": "fetched",
+      "toId": "emptyGate",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "emptyGate",
+      "fromProperty": "out-empty",
+      "toId": "emptyState",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "postButton",
+      "fromProperty": "onClick",
+      "toId": "toPost",
+      "toProperty": "navigate"
+    }
+  ]
+}

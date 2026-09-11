@@ -1351,6 +1351,12 @@
                         "fromProperty": "out-SessionToken",
                         "toId": "2d6f5f92-e762-40bd-8a07-7795753b2a82",
                         "toProperty": "pm-Session Token"
+                    },
+                    {
+                        "fromId": "dbfdeb53-c4ad-b9d7-a6c9-43666f4e1d37",
+                        "fromProperty": "failure",
+                        "toId": "bb02b5e7-ed56-497e-a86f-e5faca56e985",
+                        "toProperty": "send"
                     }
                 ],
                 "roots": [
@@ -1411,7 +1417,7 @@
                         "x": -29,
                         "y": -17,
                         "parameters": {
-                            "functionScript": "let user;\ntry {\n    user = await Noodl.Users.logIn(Inputs.Username,Inputs.Password)\n}\ncatch(e) {\n    Outputs.Failure();\n    throw e;\n}\n\nif(user.totp_secret) {\n    // TOTP is enabled, need extra login step\n    Outputs.SessionToken = null;\n    Outputs.Success();\n}\nelse {\n    // TOTP is not enabled, return session token\n    Outputs.SessionToken = user.sessionToken;\n    Outputs.Success();\n}"
+                            "functionScript": "let user;\ntry {\n    user = await Noodl.Users.logIn(Inputs.Username,Inputs.Password)\n}\ncatch(e) {\n    // A cloud function's request ends only when something sends. Outputs.Failure()\n    // is wired to the \"Wrong username / password\" Response, so answer and stop here:\n    // re-throwing would fire the node's own Failure signal on the same run, and the\n    // caller would get two answers for one request.\n    Outputs.Failure();\n    return;\n}\n\nif(user.totp_secret) {\n    // TOTP is enabled, need extra login step\n    Outputs.SessionToken = null;\n    Outputs.Success();\n}\nelse {\n    // TOTP is not enabled, return session token\n    Outputs.SessionToken = user.sessionToken;\n    Outputs.Success();\n}"
                         },
                         "ports": [],
                         "dynamicports": [
@@ -1473,6 +1479,19 @@
                         "parameters": {
                             "status": "failure",
                             "errorMessage": "Wrong username / password"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "bb02b5e7-ed56-497e-a86f-e5faca56e985",
+                        "type": "noodl.cloud.response",
+                        "x": 237.66666666666663,
+                        "y": -168.33333333333331,
+                        "parameters": {
+                            "status": "failure",
+                            "errorMessage": "Log in could not be completed."
                         },
                         "ports": [],
                         "dynamicports": [],

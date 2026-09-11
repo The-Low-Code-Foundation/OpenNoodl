@@ -1,0 +1,307 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "fc889956-7d22-40c0-b344-a1f391cfed60",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Cheer",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "children": [
+        "headline",
+        "nameInput",
+        "cheerPreview",
+        "visitorBadge",
+        "cheerButton",
+        "cheerBanner",
+        "farewell",
+        "aboutButton",
+        "greetingCard",
+        "shoutText",
+        "cheerMeter",
+        "echoText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "page",
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Cheer for a visitor",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "nameInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Visitor name",
+      "parent": "shell",
+      "parameters": {
+        "placeholder": "Type a visitor name",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "borderRadius": "var(--radius-md)",
+        "fontSize": "var(--text-base)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "visitorBadge",
+      "type": "/Components/GreetingBadge",
+      "label": "Greeting badge",
+      "parent": "shell",
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "cheerButton",
+      "type": "net.noodl.controls.button",
+      "label": "Cheer",
+      "parent": "shell",
+      "parameters": {
+        "label": "Cheer",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "cheerBanner",
+      "type": "/Components/CheerBanner",
+      "label": "Cheer banner",
+      "parent": "shell",
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "visitorVar",
+      "type": "Variable2",
+      "label": "visitorName variable",
+      "parameters": {
+        "name": "visitorName"
+      },
+      "x": 410,
+      "y": 400
+    },
+    {
+      "id": "cheerSend",
+      "type": "Event Sender",
+      "label": "Broadcast celebrate",
+      "parameters": {
+        "channelName": "celebrate",
+        "payload": "message"
+      },
+      "x": 410,
+      "y": 640
+    },
+    {
+      "id": "cheerPreview",
+      "type": "Text",
+      "label": "Cheer preview",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "previewFormat",
+      "type": "String Format",
+      "label": "Preview sentence",
+      "parameters": {
+        "format": "Cheering for {name}!"
+      },
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "hasName",
+      "type": "Condition",
+      "label": "Has a name",
+      "x": 610,
+      "y": 640,
+      "metadata": {
+        "comment": "Value mode: Run On Value Change stays ticked (the default) so Is True is a live comparator; nothing triggers Evaluate and no arm is wired — the result gates the button's enabled."
+      }
+    },
+    {
+      "id": "farewell",
+      "type": "/Components/FarewellCard",
+      "label": "Farewell card",
+      "x": 160,
+      "y": 1000,
+      "parent": "shell"
+    },
+    {
+      "id": "goMood",
+      "type": "RouterNavigate",
+      "label": "Go to Mood",
+      "x": 410,
+      "y": 1000,
+      "parameters": {
+        "target": "/Pages/Mood"
+      }
+    },
+    {
+      "id": "aboutButton",
+      "type": "net.noodl.controls.button",
+      "label": "About",
+      "x": 160,
+      "y": 1120,
+      "parent": "shell",
+      "parameters": {
+        "label": "About",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      }
+    },
+    {
+      "id": "showAbout",
+      "type": "NavigationShowPopup",
+      "label": "Show About dialog",
+      "x": 410,
+      "y": 1120,
+      "parameters": {
+        "target": "/Components/AboutDialog"
+      }
+    },
+    {
+      "id": "greetingCard",
+      "type": "/Components/GreetingCard",
+      "label": "Greeting card",
+      "x": 160,
+      "y": 1240,
+      "parent": "shell",
+      "parameters": {
+        "Name": "Ada"
+      }
+    },
+    {
+      "id": "shoutText",
+      "type": "Text",
+      "label": "Cheer shout",
+      "x": 160,
+      "y": 1360,
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-lg)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--primary)"
+      }
+    },
+    {
+      "id": "formatShout",
+      "type": "JavaScriptFunction",
+      "label": "formatShout",
+      "x": 410,
+      "y": 1360,
+      "parameters": {
+        "functionScript": "const name = Inputs.name || 'friend';\nOutputs.text = name.toUpperCase() + '!';"
+      },
+      "metadata": {
+        "comment": "EXP-003 A1 fixture: a pure Inputs→Outputs body — no Noodl API, no environment — re-hosted verbatim by the exporter."
+      }
+    },
+    {
+      "id": "hasLongName",
+      "type": "Expression",
+      "label": "hasLongName",
+      "x": 610,
+      "y": 1120,
+      "parameters": {
+        "expression": "(name || '').length > 1"
+      },
+      "metadata": {
+        "comment": "EXP-003 A1 fixture: a pure expression gating the About button's enabled through Is True."
+      }
+    },
+    {
+      "id": "cheerMeter",
+      "type": "/Components/CheerMeter",
+      "label": "Cheer meter",
+      "x": 160,
+      "y": 1480,
+      "parent": "shell"
+    },
+    {
+      "id": "echoText",
+      "type": "Text",
+      "label": "Draft echo",
+      "x": 160,
+      "y": 1600,
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "metadata": {
+        "comment": "CONTROLLED-STATE §4d fixture: reads the meter's lifted draft value output."
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

@@ -61,7 +61,7 @@ const NowNode: NodeDefinitionOptions = {
     date: {
       type: 'date',
       displayName: 'Date',
-      group: 'Value',
+      group: 'Values',
       description: 'The instant of the last Read, for the other date nodes',
       getter: function (this: NowNodeInstance) {
         return this._internal.now;
@@ -70,7 +70,7 @@ const NowNode: NodeDefinitionOptions = {
     timestamp: {
       type: 'number',
       displayName: 'Timestamp',
-      group: 'Value',
+      group: 'Values',
       description: 'The same instant as milliseconds since 1 January 1970 UTC',
       getter: function (this: NowNodeInstance) {
         return this._internal.now.getTime();
@@ -79,7 +79,7 @@ const NowNode: NodeDefinitionOptions = {
     iso: {
       type: 'string',
       displayName: 'ISO String',
-      group: 'Value',
+      group: 'Values',
       description: 'The same instant as an ISO-8601 string in UTC — the shape to put in a JSON body',
       getter: function (this: NowNodeInstance) {
         return this._internal.now.toISOString();

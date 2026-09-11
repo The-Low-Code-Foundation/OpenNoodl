@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "It breaks on a phone",
+  "id": "2e9953dd-fa7f-403e-a3a9-54f53c32be06",
+  "version": "4",
+  "nodegxVersion": "0.1.0",
+  "runtimeVersion": "react19",
+  "created": "2026-09-05T06:35:10.397497Z",
+  "modified": "2026-09-05T06:35:10.397497Z",
+  "settings": {
+    "htmlTitle": "It breaks on a phone",
+    "navigationPathType": "path"
+  },
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "rootNodeId": "ba9b869f-dc3a-425d-a06b-8da8846e7c3e"
+}

@@ -4,6 +4,16 @@
   gap: 6px;
   flex: 1;
   min-width: 0;
+
+  /* FB-017 AC6: the chip is `inline-flex`, so outside a flex parent `flex: 1`
+     does nothing and it sizes shrink-to-fit — i.e. to the full, `nowrap` source
+     name. `PropertyPanelInput`'s `.InputContainer` is a block, so that is the
+     usual case, and the chip was the one run of content wide enough to widen the
+     whole property column and push it into a horizontal scroll (measured on an
+     `Image` whose `src` is bound: column 346px in a 312px scrollport). With a
+     ceiling the `text-overflow: ellipsis` below finally has something to bite
+     on; the full source stays reachable through the chip's `title`. */
+  max-width: 100%;
   background-color: var(--theme-color-primary-bg);
   color: var(--theme-color-primary);
   border-radius: var(--radius-md);

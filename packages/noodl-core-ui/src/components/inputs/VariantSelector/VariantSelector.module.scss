@@ -31,7 +31,17 @@
   padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
   background: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
-  border: 1px solid var(--theme-color-border-default);
+  /* Phase-75 border sweep. The property editor is a `bg-1` panel
+     (`.sidebar-panel`, PAR-002), and this trigger's `bg-3` fill is only
+     1.36:1 dark / 1.22:1 light on it — so the fill does not carry the object
+     and the ring is load-bearing. `border-default` was 1.26 / 1.27 there;
+     `border-control` is 4.17 / 3.72 on the panel and 3.08 / 3.05 on this
+     control's own fill, so it clears 3:1 on BOTH sides.
+     ✅ The `:hover` below already names `primary` (5.60 / 4.57 on the panel),
+     which is stronger than the resting tone — checked, not assumed, because
+     raising a resting edge and leaving a divider-toned hover behind is the
+     regression this sweep documents. */
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-default);
   font-size: var(--font-size-base);
   cursor: pointer;

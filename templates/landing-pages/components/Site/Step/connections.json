@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c945fa23-eb27-55a2-8b2e-e96d5943de27",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "stInputs",
+      "fromProperty": "number",
+      "toId": "stNumber",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "stInputs",
+      "fromProperty": "title",
+      "toId": "stTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "stInputs",
+      "fromProperty": "line",
+      "toId": "stLine",
+      "toProperty": "text"
+    }
+  ]
+}

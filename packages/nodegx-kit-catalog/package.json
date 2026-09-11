@@ -1,0 +1,18 @@
+{
+  "name": "@nodegx/kit-catalog",
+  "version": "1.0.0",
+  "description": "Turns a runtime node-library payload into catalog-shaped entries for a project's kit nodes, merges them over the built-in catalog as a project-scoped overlay, and names any divergence between the two routes that produce one. No build step.",
+  "license": "GPL-3.0",
+  "private": true,
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "test": "jest --config jest.config.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

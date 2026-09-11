@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4c2f8a61-9e05-4b7d-a318-7d6b0f95e2c4",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowGroup",
+      "type": "Group",
+      "label": "Note row",
+      "children": [
+        "rowText",
+        "deleteButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "center"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowText",
+      "type": "Text",
+      "label": "Note text",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "deleteButton",
+      "type": "net.noodl.controls.button",
+      "label": "Delete",
+      "parent": "rowGroup",
+      "parameters": {
+        "label": "Delete",
+        "backgroundColor": "var(--destructive)",
+        "color": "var(--destructive-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "text",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "rowOutputs",
+      "type": "Component Outputs",
+      "label": "Row outputs",
+      "ports": [
+        {
+          "name": "removed",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "noteId",
+          "plug": "input",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "rowGroup"
+  ]
+}

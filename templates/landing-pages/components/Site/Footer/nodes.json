@@ -1,0 +1,144 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0dfdf031-19f5-550e-89c7-c0e1087da353",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ftBand",
+      "type": "Group",
+      "label": "The foot of the page",
+      "children": [
+        "ftShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--muted)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-10)",
+        "as": "footer"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "ftShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "ftBand",
+      "children": [
+        "ftMark",
+        "ftReach",
+        "ftSmall"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignX": "center",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "ftMark",
+      "type": "Group",
+      "label": "The wordmark",
+      "parent": "ftShell",
+      "children": [
+        "ftGlyph",
+        "ftName"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "paddingBottom": "var(--space-3)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "ftGlyph",
+      "type": "net.noodl.visual.icon",
+      "label": "The glyph",
+      "parent": "ftMark",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-sparkles",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "iconColor": "var(--primary)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "ftName",
+      "type": "Text",
+      "label": "EDIT — the name in the footer",
+      "parent": "ftMark",
+      "parameters": {
+        "text": "Your name here",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "fontWeight": "var(--font-semibold)"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "ftReach",
+      "type": "Text",
+      "label": "EDIT — how to reach you",
+      "parent": "ftShell",
+      "parameters": {
+        "text": "Your phone number, your address, and when you are open.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "ftSmall",
+      "type": "Text",
+      "label": "EDIT — the small print",
+      "parent": "ftShell",
+      "parameters": {
+        "text": "© Your name · Your town. Delete this line or write your own.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 760
+    }
+  ],
+  "visualRoots": [
+    "ftBand"
+  ]
+}

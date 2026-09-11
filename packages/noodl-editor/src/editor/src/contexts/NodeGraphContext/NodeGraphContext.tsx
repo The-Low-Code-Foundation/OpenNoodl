@@ -56,6 +56,11 @@ export function NodeGraphContextProvider({ children }: NodeGraphContextProviderP
 
     let currentInstance = createNodeGraph();
     setNodeGraph(currentInstance);
+
+    // ⚠️ NAT-012 AC3 briefly called `restoreEditorPlace(currentInstance)` here. The drive
+    // (2026-08-22) removed it: `useSwitchToDefaultComponent` runs after this effect and
+    // switched to the default unconditionally, so the restore never survived. The component
+    // you were on is restored by `EditorDocument`'s `selectedComponentName`, which persists.
     if (import.meta.webpackHot) {
       import.meta.webpackHot.accept('../../views/nodegrapheditor', () => {
         const activeComponent = currentInstance.activeComponent;

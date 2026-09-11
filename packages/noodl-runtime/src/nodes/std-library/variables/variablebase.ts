@@ -127,7 +127,18 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
       return [{ type, value: this._internal.currentValue }];
     },
     inputs: {
+      /*
+       * SIG-003 — the reported case, and the worst one in the library.
+       *
+       * `value`, `saveValue`, `savedValue` and `changed` — the four ports that
+       * are the entire point of a Variable — declared no group, so all four fell
+       * to `Other`, while `treatEmptyAs`, which is pure NDA-003 back-compat, was
+       * the only port with a heading. A beginner opening a String variable saw a
+       * category called *Advanced* and a bucket called *Other* containing
+       * everything they came for.
+       */
       value: {
+        group: 'Values',
         type: args.type,
         displayName: 'Value',
         default: args.startValue,
@@ -149,10 +160,12 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
           // branch never ran. With `Set` additive both can happen, and a node that stored
           // eagerly while leaving `latestValue` behind would revert to a stale value the next
           // time `Set` was pulsed.
+          // DEF-046: read before the unconditional write above replaces it.
+          const previous = this._internal.latestValue;
           this._internal.latestValue = value;
 
           // Was `if (this.isInputConnected('saveValue') === false)`.
-          if (this.shouldRunOnValueChange('value')) {
+          if (this.shouldRunOnValueChanged('value', previous, value)) {
             this.setValueTo(value);
           }
         }
@@ -176,6 +189,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
         }
       },
       saveValue: {
+        group: 'Actions', // SIG-003 — a signal input is an Action you cause
         displayName: 'Set',
         description:
           'Stores the latest value now. This is additional to Value storing on change; untick Value under Run On Value Change to stop that',
@@ -200,6 +214,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
     },
     outputs: {
       savedValue: {
+        group: 'Values', // SIG-003
         type: args.type.name,
         displayName: 'Value',
         description:
@@ -210,6 +225,7 @@ export function createDefinition(args: VariableDefinitionArgs): NodeDefinitionOp
         }
       },
       changed: {
+        group: 'Events', // SIG-003 — a signal output is an Event that happened
         type: 'signal',
         displayName: 'Changed',
         description:

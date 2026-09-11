@@ -6,6 +6,8 @@ import { createRoot } from 'react-dom/client';
 import './process-setup';
 
 import { EventDispatcher } from '../shared/utils/EventDispatcher';
+import { flushAiSidecars } from './src/models/AiAssistant/thread/installThreadPersistence';
+import { seedShippedLessonsOnStartup } from './src/models/lessonseed';
 import { NodeLibrary } from './src/models/nodelibrary';
 import { flushPendingProjectSave, ProjectModel } from './src/models/projectmodel';
 
@@ -59,13 +61,19 @@ ipcRenderer.on('import-projectmetadata', (event, data) => {
 // Registered at module scope rather than inside `DOMContentLoaded` so a quit
 // during startup is handled too. Both are free when nothing is pending:
 // `flushPendingProjectSave()` returns immediately unless an edit is queued.
+// BLD-006: the AI sidecars ride the same handshake, and one of them has been
+// waiting for it. `PlanSessionSidecar.flush()` was written for the quit path in
+// AIB-003 slice 4 and never had a caller, so an unapplied build staged inside
+// its 750ms debounce was lost to ⌘Q — the same defect this handler exists to
+// fix, one directory over. `flushAiSidecars` drains both and never rejects.
 ipcRenderer.on('flush-project-save', () => {
   const reply = () => ipcRenderer.send('flush-project-save-done');
-  flushPendingProjectSave().then(reply, reply);
+  Promise.all([flushPendingProjectSave(), flushAiSidecars()]).then(reply, reply);
 });
 
 window.addEventListener('blur', () => {
   flushPendingProjectSave();
+  void flushAiSidecars();
 });
 
 function setupViewerIpc() {
@@ -94,10 +102,9 @@ window.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
   });
 
-  ipcRenderer.on('showAutoUpdatePopup', () => {
-    //@ts-expect-error
-    window._hasNewAutoUpdateAvailable = true;
-  });
+  // `showAutoUpdatePopup` set a `window._hasNewAutoUpdateAvailable` global that
+  // nothing ever read. Update state now lives in the main process and reaches
+  // the renderer as `update:state`; see `views/UpdateManager`.
 
   setupViewerIpc();
 
@@ -121,10 +128,19 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   EventDispatcher.instance.on('ProjectModel.instanceWillChange', () => {
-    //@ts-expect-error
     window.NodeLibraryData = undefined;
     NodeLibrary.instance.reload();
   }, null);
+
+  // REL-012 — put the shipped lesson bundles into the Learning register, once each, ever.
+  //
+  // 🔴 The Learning tab reads an install register, not a curated list, and nothing seeded it — so a
+  // fresh install opened an empty shelf however the bundles were packaged. This is the writer that
+  // was missing. It is fire-and-forget on purpose: `install` emits `learningFolderChanged`, which
+  // `ProjectsPage` already listens for and rebuilds on, so the shelf fills itself and nothing on
+  // the render path waits for a verification pass that after the first run does not happen at all.
+  // Never throws — see `models/lessonseed`.
+  void seedShippedLessonsOnStartup();
 
   // Create the main element
   const rootElement = document.getElementById('root');

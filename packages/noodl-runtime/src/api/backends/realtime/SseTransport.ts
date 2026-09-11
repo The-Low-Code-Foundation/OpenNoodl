@@ -35,12 +35,17 @@
  * every reconnect, not an optimisation. `EventSource` reconnecting on its own is the
  * common case, and it does not tell us; the hello frame does.
  *
- * **3. One stream per subscription, deliberately.** Both servers' subscription POST
- * *replaces* the set for a `clientId`. Two subscriptions sharing a stream would silently
- * clobber each other, so each owns its own `EventSource`. The cost is one connection per
- * subscribing node, which is the honest trade: the alternative is a shared registry that
- * has to be right about ordering, and a wrong one presents as "the other node stopped
- * receiving" with nothing in any log.
+ * **3. One stream per BACKEND, shared — and it took a measurement to get here.** Both
+ * servers' subscription POST *replaces* the set for a `clientId`, and this file used to
+ * read that as a reason for one `EventSource` per subscription: *"the cost is one
+ * connection per subscribing node, which is the honest trade"*. 🔴 **The cost was measured
+ * on SBR-011's drive and it is not one connection, it is the app** — a browser holds six
+ * per origin, an SSE stream never ends, and the sixth one stops every other request to
+ * that backend from being *sent*, including the registration POSTs the streams themselves
+ * are waiting for (D46). So the registry the old note called the alternative is now
+ * {@link SseConnectionPool}, and "replaces the set" is the reason it is mandatory rather
+ * than an argument against it. What this class still owns is one subscription's state
+ * machine; what it no longer owns is the socket.
  *
  * @module api/backends/realtime/SseTransport
  */
@@ -54,10 +59,14 @@ import type {
 } from '@noodl/backend-contract/realtime';
 
 import {
+  connectionFor,
+  type SharedSseConnection,
+  type SseMember,
+  type SseSubscriptionRequest
+} from './SseConnectionPool';
+import {
   RealtimeSubscription,
-  errorMessage,
   normalizedHttpBase,
-  type RealtimeFetch,
   type RealtimeSubscriptionOptions
 } from './RealtimeSubscription';
 
@@ -79,16 +88,26 @@ export interface SseDialect {
   changeEvents(collection: string): string[];
   /** Extra event names to listen for, mapped straight to a {@link RealtimeChange} type. */
   readonly resyncEvent?: string;
-  /** The subscription registration request. */
+  /**
+   * The registration request for **every** subscription on this stream at once.
+   *
+   * ⚠️ An array, not one collection, because the POST *replaces* the set for a
+   * `clientId` — see {@link SseConnectionPool}. Both measured servers already take one.
+   */
   subscribeRequest(
     base: string,
     token: string,
     clientId: string,
-    collection: string,
-    where: RealtimeFilter | undefined
+    subscriptions: readonly SseSubscriptionRequest[]
   ): { url: string; init: Record<string, unknown> };
-  /** Whether the registration actually took, from the status **and** the body. */
-  readVerdict(status: number | undefined, body: unknown): SseSubscribeVerdict;
+  /**
+   * Whether the registration took **for one collection**, from the status and the body.
+   *
+   * Per collection rather than per response, because a union POST can be answered with
+   * some accepted and some rejected — our own backend gates each entry on that
+   * collection's `find` CLP independently (`RealtimeHub.setSubscriptions`).
+   */
+  readVerdict(status: number | undefined, body: unknown, collection: string): SseSubscribeVerdict;
   /** One change frame, normalised. `null` for a frame this dialect ignores. */
   parseChange(collection: string, primaryKey: string, raw: unknown): RealtimeChange | null;
 }
@@ -98,7 +117,23 @@ export interface SseDialect {
 /** `{accepted, rejected}` — the body our own backend answers a subscription POST with. */
 interface NodeGXVerdictBody {
   accepted?: unknown[];
-  rejected?: { reason?: string }[];
+  rejected?: { collection?: string; reason?: string }[];
+}
+
+/**
+ * Whether an `accepted[]` / `rejected[]` entry is about `collection`.
+ *
+ * `RealtimeHub.setSubscriptions` names the collection on **every** entry it pushes, which
+ * is what makes a union POST readable per member at all. An entry that names nothing is
+ * treated as being about whatever is asking — the only producer of one is a fixture, and
+ * a fixture that means "the POST was accepted" should not have to say which of one
+ * collection it meant.
+ */
+function entryIsAbout(entry: unknown, collection: string): boolean {
+  if (!entry || typeof entry !== 'object') return true;
+  const named = (entry as { collection?: unknown }).collection;
+  if (typeof named !== 'string') return true;
+  return named === collection;
 }
 
 export const NODEGX_SSE: SseDialect = {
@@ -109,13 +144,16 @@ export const NODEGX_SSE: SseDialect = {
   helloEvent: 'connected',
   changeEvents: () => ['change'],
   resyncEvent: 'resync',
-  subscribeRequest(base, token, clientId, collection, where) {
-    const subscription: { collection: string; filter?: unknown } = { collection };
+  subscribeRequest(base, token, clientId, subscriptions) {
     // ⚠️ `where` is the **Parse-style `$` grammar**, not the neutral `Filter` — see
     // `RealtimeFilter`. `nodegx-backend/src/realtime/filter.ts` evaluates it with
     // `matchOperator`, which throws on any other operator name, and `RealtimeHub` then
     // fails closed: a confirmed subscription that delivers nothing, forever, silently.
-    if (where) subscription.filter = where;
+    const body = subscriptions.map((subscription) =>
+      subscription.where === undefined
+        ? { collection: subscription.collection }
+        : { collection: subscription.collection, filter: subscription.where }
+    );
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (token) headers['authorization'] = 'Bearer ' + token;
     return {
@@ -123,16 +161,20 @@ export const NODEGX_SSE: SseDialect = {
       init: {
         method: 'POST',
         headers,
-        body: JSON.stringify({ clientId, subscriptions: [subscription] })
+        body: JSON.stringify({ clientId, subscriptions: body })
       }
     };
   },
-  readVerdict(_status, body) {
-    // ⚠️ The status is 200 either way. `accepted[]` is the answer.
+  readVerdict(_status, body, collection) {
+    // ⚠️ The status is 200 either way. `accepted[]` is the answer — and on a union POST it
+    // is the answer for some collections and not others, so read the entries, not the
+    // length.
     const verdict = (body || {}) as NodeGXVerdictBody;
-    if (Array.isArray(verdict.accepted) && verdict.accepted.length > 0) return { ok: true };
-    const reason = verdict.rejected && verdict.rejected[0] && verdict.rejected[0].reason;
-    return { ok: false, reason: reason || undefined };
+    const accepted = Array.isArray(verdict.accepted) ? verdict.accepted : [];
+    if (accepted.some((entry) => entryIsAbout(entry, collection))) return { ok: true };
+    const rejected = Array.isArray(verdict.rejected) ? verdict.rejected : [];
+    const mine = rejected.filter((entry) => entryIsAbout(entry, collection))[0];
+    return { ok: false, reason: (mine && mine.reason) || undefined };
   },
   parseChange(collection, primaryKey, raw) {
     const payload = raw as { action?: string; collection?: string; record?: Record<string, unknown> };
@@ -166,16 +208,22 @@ export const POCKETBASE_SSE: SseDialect = {
   // ⚠️ THE surprise in this dialect: the SSE event name is the collection's own name.
   // A listener on 'change' receives nothing, forever, with no error anywhere.
   changeEvents: (collection) => [collection],
-  subscribeRequest(base, token, clientId, collection) {
+  subscribeRequest(base, token, clientId, subscriptions) {
     const headers: Record<string, string> = { 'content-type': 'application/json' };
     if (token) headers['authorization'] = token;
+    // A flat list of names, not objects, and it REPLACES the set for this clientId.
+    // ⚠️ PocketBase carries no filter on the wire at all, so two members of the same
+    // collection collapse to one name here even though the pool keeps them apart.
+    const names: string[] = [];
+    for (const subscription of subscriptions) {
+      if (names.indexOf(subscription.collection) === -1) names.push(subscription.collection);
+    }
     return {
       url: base + '/api/realtime',
       init: {
         method: 'POST',
         headers,
-        // A flat list of names, not objects, and it REPLACES the set for this clientId.
-        body: JSON.stringify({ clientId, subscriptions: [collection] })
+        body: JSON.stringify({ clientId, subscriptions: names })
       }
     };
   },
@@ -202,14 +250,24 @@ export const POCKETBASE_SSE: SseDialect = {
   }
 };
 
-// ── the transport ──────────────────────────────────────────────────────────
+// -- the transport ----------------------------------------------------------
 
+/**
+ * One subscription, riding a stream it shares with every other subscription on the same
+ * backend.
+ *
+ * The split is the whole point of D46's fix: {@link SharedSseConnection} owns the socket,
+ * the client id and the union registration; this class owns one subscription's state
+ * machine — its generation, its confirmation deadline, its backoff — exactly as before.
+ * A member reports *into* itself through the four callbacks below, which is why a
+ * rejection takes one subscription down and leaves its neighbours subscribed.
+ */
 export class SseTransport extends RealtimeSubscription {
   readonly transport: RealtimeTransport = 'sse';
 
   private readonly _dialect: SseDialect;
-  private _es: RealtimeEventSourceLike | null = null;
-  private _clientId: string | null = null;
+  private _connection: SharedSseConnection | null = null;
+  private _member: SseMember | null = null;
 
   constructor(handle: BackendHandle, options: RealtimeSubscriptionOptions, dialect: SseDialect) {
     super(handle, options);
@@ -230,102 +288,80 @@ export class SseTransport extends RealtimeSubscription {
       return;
     }
 
+    // ⚠️ Resolved here rather than when the hello frame arrives: a shared connection is
+    // built from both, and a host with an `EventSource` and no `fetch` cannot register
+    // anything, so finding out before opening a stream is strictly better than after.
+    const fetchImpl = this.resolveFetch();
+    if (!fetchImpl) {
+      this.fail('TRANSPORT_UNAVAILABLE', 'fetch is not available to register the realtime subscription.');
+      return;
+    }
+
     const base = normalizedHttpBase(this.handle.url);
     if (!base) {
       this.fail('CONNECT_FAILED', `Backend URL is not a valid http(s) URL: ${this.handle.url}`, 'fatal');
       return;
     }
 
-    const dialect = this._dialect;
-    const es = new EventSourceImpl(dialect.streamUrl(base, this.token));
-    this._es = es;
-    this._clientId = null;
-
-    es.addEventListener(dialect.helloEvent, (event) => {
-      if (this._es !== es) return;
-      let clientId: string | undefined;
-      try {
-        clientId = (JSON.parse(event.data) as { clientId?: string }).clientId;
-      } catch (e) {
-        return;
-      }
-      if (!clientId) return;
-      // A fresh id on every connection, including an EventSource-initiated reconnect the
-      // base class never saw — so registering again is mandatory, not an optimisation.
-      this._clientId = clientId;
-      this._register(generation, base, clientId);
+    const connection = connectionFor({
+      host: this.hostKey,
+      dialect: this._dialect,
+      base,
+      token: this.token,
+      EventSourceImpl,
+      fetchImpl,
+      where: this.where
     });
-
-    for (const name of dialect.changeEvents(this.collection)) {
-      es.addEventListener(name, (event) => {
-        if (this._es !== es) return;
-        let raw: unknown;
-        try {
-          raw = JSON.parse(event.data);
-        } catch (e) {
-          return;
-        }
-        const change = dialect.parseChange(this.collection, this.primaryKey, raw);
-        if (change) this.emitChange(change);
-      });
-    }
-
-    if (dialect.resyncEvent) {
-      es.addEventListener(dialect.resyncEvent, () => {
-        if (this._es !== es) return;
-        // No replay log on either server. `resync` is the frame that says "your view may
-        // be stale, re-run your query" — a consumer modelling only create/update/delete
-        // ignores the one message that tells it so.
-        this.emitChange({ type: 'resync', collection: this.collection, ids: [], records: [], recordsComplete: false });
-      });
-    }
-
-    es.onerror = () => {
-      if (this._es !== es) return;
-      // ⚠️ `EventSource` reconnects on its own, and its retry keeps `Last-Event-ID` — which
-      // is what earns our backend's `resync` frame. So an error is NOT reported down the
-      // funnel immediately: the base class's confirmation deadline is re-armed instead, and
-      // if the stream has not delivered a fresh hello frame by the time it fires, the
-      // funnel runs and our own backoff takes over. Closing here would trade a measured
-      // server behaviour for a uniform-looking one.
-      this.interrupted(generation);
-    };
+    const member = this._buildMember(generation);
+    this._connection = connection;
+    this._member = member;
+    connection.join(member);
   }
 
   protected closeTransport(): void {
-    const es = this._es;
-    this._clientId = null;
-    if (!es) return;
-    this._es = null;
-    es.onerror = null;
-    es.close();
+    const connection = this._connection;
+    const member = this._member;
+    this._connection = null;
+    this._member = null;
+    // ⚠️ Leaving is not the same as closing: the stream stays up for whoever else is on
+    // it, and the registry re-POSTs the union without this one. It closes only when the
+    // last member has gone.
+    if (connection && member) connection.leave(member);
   }
 
   /**
-   * Register (or re-register) this subscription, and read the *body* for the verdict.
+   * This subscription's face to the shared connection.
+   *
+   * A fresh one per generation, so a report that arrives for a connection this
+   * subscription has already left is dropped by the registry rather than raced here — the
+   * `this._clientId !== clientId` guard the un-shared version needed is now the registry's,
+   * and it is the same guard.
    */
-  private _register(generation: number, base: string, clientId: string): void {
-    const fetchImpl: RealtimeFetch | null = this.resolveFetch();
-    if (!fetchImpl) {
-      this.fail('TRANSPORT_UNAVAILABLE', 'fetch is not available to register the realtime subscription.');
-      return;
-    }
+  private _buildMember(generation: number): SseMember {
+    const dialect = this._dialect;
+    return {
+      collection: this.collection,
+      where: this.where,
 
-    const { url, init } = this._dialect.subscribeRequest(base, this.token, clientId, this.collection, this.where);
+      receiveFrame: (raw: unknown): void => {
+        const change = dialect.parseChange(this.collection, this.primaryKey, raw);
+        if (change) this.emitChange(change);
+      },
 
-    fetchImpl(url, init)
-      .then((response) => {
-        const status = response ? response.status : undefined;
-        const readBody = response && typeof response.json === 'function' ? response.json() : Promise.resolve(null);
-        // A 204 has no body; a rejected JSON parse must not look like a rejected
-        // subscription.
-        return readBody.catch(() => null).then((body) => ({ status, body }));
-      })
-      .then(({ status, body }) => {
-        // A reply for a connection we have already replaced says nothing about this one.
-        if (this._clientId !== clientId) return;
+      receiveResync: (): void => {
+        // No replay log on either server. `resync` is the frame that says "your view may
+        // be stale, re-run your query" — a consumer modelling only create/update/delete
+        // ignores the one message that tells it so.
+        this.emitChange({
+          type: 'resync',
+          collection: this.collection,
+          ids: [],
+          records: [],
+          recordsComplete: false
+        });
+      },
 
-        const verdict = this._dialect.readVerdict(status, body);
+      settle: (verdict: SseSubscribeVerdict): void => {
         if (verdict.ok) {
           this.confirmed();
           return;
@@ -334,14 +370,25 @@ export class SseTransport extends RealtimeSubscription {
           'SUBSCRIPTION_REJECTED',
           `The subscription to "${this.collection}" was rejected: ${verdict.reason || 'no reason given'}`
         );
-        // Retryable in the table, so hand it to the one backoff rather than leaving an
-        // open stream that will never deliver until the deadline notices.
+        // Retryable in the table, so hand it to the one backoff rather than staying on a
+        // stream that will never deliver to this member until the deadline notices.
         this.transportDownFrom(generation, 'closed');
-      })
-      .catch((e) => {
-        if (this._clientId !== clientId) return;
-        this.fail('CONNECT_FAILED', 'Could not register the realtime subscription: ' + errorMessage(e));
+      },
+
+      interrupt: (): void => {
+        // ⚠️ `EventSource` reconnects on its own, and its retry keeps `Last-Event-ID` —
+        // which is what earns our backend's `resync` frame. So an error is NOT reported
+        // down the funnel immediately: the confirmation deadline is re-armed instead, and
+        // if the stream has not delivered a fresh hello frame by the time it fires, the
+        // funnel runs and our own backoff takes over. Closing here would trade a measured
+        // server behaviour for a uniform-looking one.
+        this.interrupted(generation);
+      },
+
+      abort: (message: string): void => {
+        this.fail('CONNECT_FAILED', message);
         this.transportDownFrom(generation, 'closed');
-      });
+      }
+    };
   }
 }

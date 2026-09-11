@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "fld0004-0000-4000-8000-00000000000b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "num-0001",
+      "fromProperty": "savedValue",
+      "toId": "box-a",
+      "toProperty": "height"
+    },
+    {
+      "fromId": "str-0001",
+      "fromProperty": "savedValue",
+      "toId": "box-b",
+      "toProperty": "height"
+    }
+  ]
+}

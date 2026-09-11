@@ -7,7 +7,7 @@
   ],
   "icon": "icon.png",
   "docsPath": "/library/modules/qr-code/",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minEditorVersion": "0.1.0",
   "runtimeVersion": "2.7.0",
   "provenance": {

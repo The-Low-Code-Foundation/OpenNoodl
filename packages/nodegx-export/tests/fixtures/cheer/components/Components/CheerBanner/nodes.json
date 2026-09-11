@@ -1,0 +1,75 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cb80401b-1ab0-4498-9339-3b215cc37788",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "banner",
+      "type": "Group",
+      "label": "Banner",
+      "children": [
+        "cheerText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "borderRadius": "var(--radius-lg)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "cheerText",
+      "type": "Text",
+      "label": "Last cheer",
+      "parent": "banner",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "readCheer",
+      "type": "Variable2",
+      "label": "Read lastCheer",
+      "parameters": {
+        "name": "lastCheer"
+      },
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "onCheer",
+      "type": "Event Receiver",
+      "label": "On celebrate",
+      "parameters": {
+        "channelName": "celebrate"
+      },
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "storeCheer",
+      "type": "Set Variable",
+      "label": "Write lastCheer",
+      "parameters": {
+        "name": "lastCheer",
+        "setWith": "string"
+      },
+      "x": 350,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "banner"
+  ]
+}

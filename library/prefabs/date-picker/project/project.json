@@ -1,671 +1,657 @@
 {
-    "name": "Export",
-    "components": [
-        {
-            "name": "/Date Picker",
-            "id": "0ececb11-4758-90a2-28af-4f9fe6cd5e94",
-            "graph": {
-                "connections": [
-                    {
-                        "fromId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "fromProperty": "didMount",
-                        "toId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
-                        "toProperty": "DidMount"
-                    },
-                    {
-                        "fromId": "fa754631-0587-9a87-4d13-4d1edd21a376",
-                        "fromProperty": "Value",
-                        "toId": "cc62d018-f22b-33b8-d191-5899549ad702",
-                        "toProperty": "value-Date"
-                    },
-                    {
-                        "fromId": "cc62d018-f22b-33b8-d191-5899549ad702",
-                        "fromProperty": "value-Date",
-                        "toId": "d69fd382-b164-583b-e617-fdc2f9e38af8",
-                        "toProperty": "Value"
-                    },
-                    {
-                        "fromId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
-                        "fromProperty": "DateSelected",
-                        "toId": "d69fd382-b164-583b-e617-fdc2f9e38af8",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Align Y",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "alignY"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Align X",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "alignX"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Margin Top",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "marginTop"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Margin Bottom",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "marginBottom"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Margin Left",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "marginLeft"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Margin Right",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "marginRight"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Position",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "position"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Width",
-                        "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "toProperty": "width"
-                    },
-                    {
-                        "fromId": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
-                        "fromProperty": "this",
-                        "toId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
-                        "toProperty": "TextInput"
-                    },
-                    {
-                        "fromId": "cc62d018-f22b-33b8-d191-5899549ad702",
-                        "fromProperty": "value-Formatted Date",
-                        "toId": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
-                        "toProperty": "startValue"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Label",
-                        "toId": "0e249857-1c15-d80f-9934-ec9b33e2adff",
-                        "toProperty": "text"
-                    },
-                    {
-                        "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "fromProperty": "Show Label",
-                        "toId": "0e249857-1c15-d80f-9934-ec9b33e2adff",
-                        "toProperty": "mounted"
-                    }
-                ],
-                "roots": [
-                    {
-                        "id": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
-                        "type": "Group",
-                        "label": "Date Picker",
-                        "x": -260,
-                        "y": -153,
-                        "parameters": {
-                            "height": {
-                                "value": 40,
-                                "unit": "px"
-                            },
-                            "borderColor": "Grey - 400",
-                            "flexDirection": "column",
-                            "sizeMode": "contentHeight",
-                            "borderWidth": {
-                                "value": 2,
-                                "unit": "px"
-                            },
-                            "styleCss": "cursor:pointer;"
-                        },
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": [
-                            {
-                                "id": "0e249857-1c15-d80f-9934-ec9b33e2adff",
-                                "type": "Text",
-                                "parameters": {
-                                    "textStyle": "Label Small",
-                                    "marginBottom": {
-                                        "value": 4,
-                                        "unit": "px"
-                                    },
-                                    "text": "Label",
-                                    "color": "Grey - 700",
-                                    "sizeMode": "contentSize"
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": []
-                            },
-                            {
-                                "id": "d000dcda-4e22-1874-7492-a5032dbfab18",
-                                "type": "Group",
-                                "parameters": {
-                                    "height": {
-                                        "value": 40,
-                                        "unit": "px"
-                                    }
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": [
-                                    {
-                                        "id": "fef355ba-5a41-0262-f9fb-49bed930e8f9",
-                                        "type": "Group",
-                                        "label": "Icon wrapper",
-                                        "parameters": {
-                                            "position": "absolute",
-                                            "sizeMode": "contentSize",
-                                            "alignY": "center",
-                                            "styleCss": "cursor:pointer;"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": [
-                                            {
-                                                "id": "07e64992-7915-3344-e620-e8487b981538",
-                                                "type": "net.noodl.visual.icon",
-                                                "parameters": {
-                                                    "iconIconSource": {
-                                                        "class": "material-icons",
-                                                        "code": "calendar_today"
-                                                    },
-                                                    "iconSize": {
-                                                        "value": 20,
-                                                        "unit": "px"
-                                                    },
-                                                    "iconColor": "Grey - 700",
-                                                    "marginLeft": {
-                                                        "value": 12,
-                                                        "unit": "px"
-                                                    }
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "id": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
-                                        "type": "net.noodl.controls.textinput",
-                                        "parameters": {
-                                            "useLabel": false,
-                                            "placeholder": "MMM DD, YYYY",
-                                            "alignY": "center",
-                                            "paddingLeft": {
-                                                "value": 40,
-                                                "unit": "px"
-                                            },
-                                            "paddingRight": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "height": {
-                                                "value": 100,
-                                                "unit": "%"
-                                            },
-                                            "useIcon": false,
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "calendar_today"
-                                            },
-                                            "iconSpacing": {
-                                                "value": 8,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "stateParameters": {
-                                            "focused": {
-                                                "iconColor": "Primary"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "id": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
-                        "type": "Javascript2",
-                        "label": "Date Picker",
-                        "x": 135.41077978324927,
-                        "y": -121.10018885810723,
-                        "parameters": {
-                            "code": "function mobileAndTabletCheck() {\n  let check = false;\n  (function(a){if(/(android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|lynx|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||window.opera);\n  return check;\n}\n\nfunction isMobile() {\n    return mobileAndTabletCheck()\n}\n\nconst scriptUrl = \"https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.2.0/dist/js/datepicker-full.min.js\"\nconst cssUrl =  \"https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.2.0/dist/css/datepicker.min.css\"\n\nfunction injectDatePicker(onload) {\n    if (document.querySelectorAll('#--ndl-datepicker-datepicker-js--').length === 0) {\n        window.__ndl_datepicker_onload = [onload]\n\n        var script = document.createElement('script');\n        script.id = \"--ndl-datepicker-datepicker-js--\"\n        script.setAttribute('src', scriptUrl);\n        script.onload = () => {\n            window.__ndl_datepicker_onload.forEach(cb => cb())\n            window.__ndl_datepicker_onload = []\n        }\n        document.head.appendChild(script)\n    }\n    else {\n        if (window.__ndl_datepicker_onload.length > 0) window.__ndl_datepicker_onload.push(onload)\n        else onload()\n    }\n}\n\nfunction injectDatePickerStyles() {\n    const datePickerStyles = `\n        .ndl-datepicker-native-input {\n            display: block;\n            position: absolute;\n            width: 100%;\n            height: 100%;\n            opacity: 0;\n            cursor: pointer;\n            min-width: 100%;\n            margin: 0;\n            padding: 0;\n            border: 0;\n            border-radius: 0;\n        }\n        .ndl-datepicker-native-input::-webkit-calendar-picker-indicator {\n            position: absolute;\n            left: 0;\n            top: 0;\n            width: 100%;\n            height: 100%;\n            margin: 0;\n            padding: 0;\n            cursor: pointer;\n        }\n\n        .datepicker {\n            display:none;\n            font-family: Inter, sans-serif;\n            border: 1px solid ${Script.Inputs.Accent};\n            border-radius: 4px;\n        }\n\n        .datepicker-picker {\n            background-color: ${Script.Inputs.Background};\n            padding: 24px;\n        }\n\n        .datepicker-header {\n            padding-bottom: 14px;\n        }\n\n        .datepicker-header .datepicker-controls {\n            display: flex;\n            justify-content: space-between;\n        }\n\n        .datepicker-header .datepicker-controls .button {\n            background-color: transparent;\n            color: ${Script.Inputs.Text};\n        }\n\n        .datepicker-header .datepicker-controls button.button:focus,\n        .datepicker-header .datepicker-controls button.button:hover {\n            background-color: ${Script.Inputs.HoverDateBackground};\n            color: ${Script.Inputs.HoverDateText};\n        }\n\n        .datepicker-controls .button.view-switch {\n            border: 1px solid ${Script.Inputs.Text};\n            flex: 0 0 180px;\n        }\n\n        .days-of-week .dow {\n            height: 45px;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            font-size: 16px;\n            font-weight: 400;\n            color: ${Script.Inputs.Accent}\n        }\n\n        .datepicker-grid {\n            width: 315px;\n        }\n\n        .datepicker-grid .datepicker-cell.day {\n            border-radius: 50%;\n            width: 45px;\n            height: 45px;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n        }\n\n        .datepicker-grid .datepicker-cell {\n            color: ${Script.Inputs.Text}\n            font-size: 16px;\n        }\n\n        .datepicker-grid .datepicker-cell.next,\n        .datepicker-grid .datepicker-cell.prev {\n            color: ${Script.Inputs.TextMuted};\n        }\n\n        .datepicker-grid .datepicker-cell.focused {\n        }\n\n        .datepicker-grid .datepicker-cell.selected {\n            background-color:  ${Script.Inputs.SelectedDateBackgroud};\n            color: ${Script.Inputs.SelectedDateText};\n        }\n\n        .datepicker-grid .datepicker-cell:hover,\n        .datepicker-grid .datepicker-cell:focus {\n            color: ${Script.Inputs.HoverDateText};\n            background-color: ${Script.Inputs.HoverDateBackground};\n        }\n`\n\n    if(!isMobile()) { // This sheet is only needed if we are on desktop\n        if(document.querySelectorAll('#--ndl-datepicker-sheet--').length === 0) {\n            let addSheet = document.createElement('link');\n            addSheet.id = \"--ndl-datepicker-sheet--\"\n            addSheet.setAttribute('rel', 'stylesheet');\n            addSheet.setAttribute('href',cssUrl);\n            document.head.appendChild(addSheet);\n        }\n    }\n\n    if(document.querySelectorAll('#--ndl-datepicker-styles--').length === 0) {\n        const styles = document.createElement('style')\n        styles.id = '--ndl-datepicker-styles--'\n        styles.innerHTML = datePickerStyles\n        document.head.append(styles)\n    }\n}\n\n// Format a date object into a string\nfunction formatDate(date) {\n    if(!(date instanceof Date)) return\n\n    const months = [\n        'Jan',\n        'Feb',\n        'Mar',\n        'Apr',\n        'May',\n        'Jun',\n        'Jul',\n        'Aug',\n        'Sep',\n        'Oct',\n        'Nov',\n        'Dec'\n    ]\n\n    let newDateString = months[date.getMonth()] + ' ' +date.getDate() + ', ' + date.getFullYear()\n\n    return newDateString\n}\n\n// Parse a date string in the format we use into a date object\n// if possible\nfunction parseDate(_dateString) {\n    // No valid date, return todays date\n    if(_dateString === undefined || _dateString.length < 3) \n        return null\n\n    let dateString = _dateString.trim().toLowerCase()\n\n    const months = {\n        'jan':0,\n        'feb':1,\n        'mar':2,\n        'apr':3,\n        'may':4,\n        'jun':5,\n        'jul':6,\n        'aug':7,\n        'sep':8,\n        'oct':9,\n        'nov':10,\n        'dec':11\n    }\n\n    let month = months[dateString.substring(0,3)]\n    if(month === undefined) return new Date() // Not a valid month\n\n    // Remove month\n    dateString = dateString.substring(3)\n    dateString = dateString.trim()\n\n    let sepIndex = dateString.indexOf(',')\n    let dayString = dateString.substring(0,sepIndex==-1?dateString.length:sepIndex)\n\n    let day = parseInt(dayString) || 1\n\n    let year = (new Date()).getFullYear()\n    if(sepIndex !== -1) {\n        dateString = dateString.substring(sepIndex+1)\n        dateString = dateString.trim()\n        \n        if(dateString.length === 4)\n        year = parseInt(dateString)\n    }\n\n    return new Date(year,month,day)\n}\n\n// Compare two dates, ignoring the time\nfunction compareDates(a,b) {\n    if(a.getFullYear() === b.getFullYear() && a.getDate() === b.getDate() && a.getMonth() === b.getMonth())\n        return true\n\n    return false\n}\n\nvar dateInput,datepicker,datePopup\n\nconst TextInputFocused = () => {\n    Component.Object.TextInputIsFocused = true\n\n    // If the text input is focused and we are not running on a mobile device\n    // launch the popup\n    if(!isMobile()) {\n        const textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n        const rect = textInput.getBoundingClientRect()\n\n      //  let top = rect.bottom + Script.Inputs.PopupMarginTop\n      //  let left = rect.left + Script.Inputs.PopupMarginRight\n\n        datePopup = document.createElement('div')\n        datePopup.style.zIndex = 100\n        datePopup.style.position = 'absolute'\n        datePopup.style.border = \"1px solid \" + Script.Inputs.BorderColor\n        datePopup.style.borderRadius = \"4px\"\n        datePopup.style.top = (rect.bottom + Script.Inputs.PopupMarginTop) + 'px'\n        datePopup.style.left = (rect.left + Script.Inputs.PopupMarginRight) + 'px'\n        document.body.appendChild(datePopup)\n\n        // This is running on desktop, install the vanilla js\n        injectDatePicker(() => {\n            // Script is loaded\n\n            datepicker = new Datepicker(datePopup, {\n                prevArrow:'<',\n                nextArrow:'>',\n            }); \n\n            // adjuste position if outside of screen\n            const rect = datePopup.getBoundingClientRect()\n            if(rect.top + rect.height > window.innerHeight) {\n                datePopup.style.top = Math.max(0,window.innerHeight - rect.height) + 'px'\n            }\n            if(rect.left + rect.width > window.innerWidth) {\n                datePopup.style.left = Math.max(0,window.innerWidth - rect.width) + 'px'\n            }\n         \n           \n\n            if(Component.Object.Date !== undefined) {\n                datepicker.setDate(Component.Object.Date)\n            }\n\n            datePopup.addEventListener('changeDate',() => {\n                // The picker reports a changed date\n                \n            })\n\n            datePopup.addEventListener('click',(ev) => {\n                // The user have clicked a date in the popup\n                var date = datepicker.getDate()\n\n                // If the date is a new date\n                if(date && (!Component.Object.Date || !compareDates(Component.Object.Date,date))) {\n                    \n                    // Blur the text input so the date can be updated\n                    Component.Object.Date = date\n                   \n                    textInput.blur()\n                }\n            })\n            \n        })\n\n    }\n}\n\nconst TextInputBlurred = () => {\n    Component.Object.TextInputIsFocused = false\n\n    const textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n    const dateString = textInput.value\n\n    const date = parseDate(dateString)\n    Component.Object.Date = date\n    Script.Outputs.DateSelected()\n\n    document.body.removeChild(datePopup)\n}\n\nconst DateStringChanged = (e) => {\n    const dateString = e.target.value\n\n    if(Component.Object.TextInputIsFocused) {\n        const date = parseDate(dateString)\n\n        // The date have changed in the component object, update the\n        // date picker\n        if(datepicker !== undefined) {\n            datepicker.setDate(date)\n        }\n\n        if(dateInput !== undefined) {\n            dateInput.value = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()\n        }\n    }\n}\n\nScript.Inputs = {\n    PopupMarginRight: 'number',\n    PopupMarginTop: 'number',\n    Text: 'color',\n    TextMuted: 'color',\n    Accent: 'color',\n    Background: 'color',\n    SelectedDateBackground: 'color',\n    SelectedDateText: 'color',\n    HoverDateBackground: 'color',\n    HoverDateText: 'color'\n}\n\nScript.Signals.DidMount = () => {\n    Script.Outputs.IsMobile = isMobile()\n\n    injectDatePickerStyles()\n\n    // Register blur / focus listeners\n    if(Script.Inputs.TextInput.getDOMElement() !== undefined) {\n        var textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n        textInput.addEventListener('focus',TextInputFocused)\n        textInput.addEventListener('blur',TextInputBlurred)\n        textInput.addEventListener('keydown',(e) => {\n            if(e.keyCode===13) textInput.blur()\n        })\n        textInput.addEventListener('keyup',DateStringChanged)\n    }\n\n    // If there is a date set from start, format it \n    if(Component.Object.Date !== undefined) {\n        let formattedDate = formatDate(Component.Object.Date)\n        Component.Object['Formatted Date'] = formattedDate\n    }\n\n\n    Component.Object.on('change',(ev) => {\n        if(ev.name === 'Date') {\n            const date = Component.Object.Date\n            // The date have changed in the component object, update the\n            // date picker\n            if(datepicker !== undefined) {\n                datepicker.setDate(date)\n            }\n\n            if(dateInput !== undefined) {\n                dateInput.value = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()\n            }\n\n            let formattedDate = formatDate(date)\n            textInput.value = formattedDate\n            Component.Object['Formatted Date'] = formattedDate\n        }\n    })\n\n    if(isMobile()) {\n        // On Mobile create a native date input hidden\n        // under the icon, clicking it will show the\n        // native picker\n        const elem = Script.Inputs.TextInput.getDOMElement()\n\n        dateInput = document.createElement('input')\n        dateInput.className = 'ndl-datepicker-native-input'\n\n        elem.parentNode.appendChild(dateInput)\n\n        dateInput.type = \"date\"\n\n        dateInput.onchange = () => {\n            var date = new Date(dateInput.value)\n            Component.Object.Date = date\n            Script.Outputs.DateSelected()\n        }\n    }\n}",
-                            "scriptInputs": [],
-                            "PopupRightMargin": -44,
-                            "PopupMarginRight": -42,
-                            "PopupMarginTop": 4,
-                            "Text": "Grey - 700",
-                            "Accent": "Primary",
-                            "SelectedDateBackground": "Primary",
-                            "SelectedDateText": "White",
-                            "HoverDateBackground": "Grey - 300",
-                            "HoverDateText": "Grey - 900",
-                            "BorderColor": "Primary",
-                            "Background": "White",
-                            "TextMuted": "Grey - 400"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "PopupMarginRight",
-                                "plug": "input",
-                                "type": {
-                                    "name": "number"
-                                },
-                                "group": "Inputs",
-                                "index": 5
-                            },
-                            {
-                                "name": "PopupMarginTop",
-                                "plug": "input",
-                                "type": {
-                                    "name": "number"
-                                },
-                                "group": "Inputs",
-                                "index": 6
-                            },
-                            {
-                                "name": "Text",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 7
-                            },
-                            {
-                                "name": "TextMuted",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 8
-                            },
-                            {
-                                "name": "Accent",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 9
-                            },
-                            {
-                                "name": "Background",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 10
-                            },
-                            {
-                                "name": "SelectedDateBackground",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 11
-                            },
-                            {
-                                "name": "SelectedDateText",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 12
-                            },
-                            {
-                                "name": "HoverDateBackground",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 13
-                            },
-                            {
-                                "name": "HoverDateText",
-                                "plug": "input",
-                                "type": {
-                                    "name": "color"
-                                },
-                                "group": "Inputs",
-                                "index": 14
-                            },
-                            {
-                                "name": "DidMount",
-                                "plug": "input",
-                                "type": {
-                                    "name": "signal"
-                                },
-                                "group": "Inputs",
-                                "index": 15
-                            },
-                            {
-                                "name": "SelectedDateBackgroud",
-                                "displayName": "SelectedDateBackgroud",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 16
-                            },
-                            {
-                                "name": "TextInput",
-                                "displayName": "TextInput",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 17
-                            },
-                            {
-                                "name": "BorderColor",
-                                "displayName": "BorderColor",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 18
-                            },
-                            {
-                                "name": "DateSelected",
-                                "displayName": "DateSelected",
-                                "plug": "output",
-                                "type": "signal",
-                                "group": "Outputs",
-                                "index": 19
-                            },
-                            {
-                                "name": "IsMobile",
-                                "displayName": "IsMobile",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 20
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "code"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "id": "cc62d018-f22b-33b8-d191-5899549ad702",
-                        "type": "net.noodl.ComponentObject",
-                        "x": -699.4916489820396,
-                        "y": 120.64558149300865,
-                        "parameters": {
-                            "properties": "Date,Formatted Date"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Date",
-                                "displayName": "Date",
-                                "index": 4
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Date Changed",
-                                "name": "changed-Date",
-                                "index": 5
-                            },
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Formatted Date",
-                                "displayName": "Formatted Date",
-                                "index": 6
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Formatted Date Changed",
-                                "name": "changed-Formatted Date",
-                                "index": 7
-                            }
-                        ],
-                        "children": []
-                    },
-                    {
-                        "id": "fa754631-0587-9a87-4d13-4d1edd21a376",
-                        "type": "Component Inputs",
-                        "x": -991.015517828351,
-                        "y": 136.41885823553514,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Value",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "d69fd382-b164-583b-e617-fdc2f9e38af8",
-                        "type": "Component Outputs",
-                        "x": 134.95985723986172,
-                        "y": 115.83345879317977,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Value",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            },
-                            {
-                                "name": "Changed",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 2
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
-                        "type": "Component Inputs",
-                        "x": -590.5466150500234,
-                        "y": -166.54382360308125,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Align X",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 1
-                            },
-                            {
-                                "name": "Align Y",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 0
-                            },
-                            {
-                                "name": "Position",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Layout",
-                                "index": 7
-                            },
-                            {
-                                "name": "Margin Top",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 2
-                            },
-                            {
-                                "name": "Margin Bottom",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 3
-                            },
-                            {
-                                "name": "Margin Left",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 4
-                            },
-                            {
-                                "name": "Margin Right",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 5
-                            },
-                            {
-                                "name": "Width",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Dimensions",
-                                "index": 8
-                            },
-                            {
-                                "name": "Text",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Colors",
-                                "index": 9
-                            },
-                            {
-                                "name": "Show Label",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Label",
-                                "index": 10
-                            },
-                            {
-                                "name": "Label",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Label",
-                                "index": 11
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    }
-                ],
-                "comments": [
-                    {
-                        "text": "This is where the Datepicker is being initiated. \nIt's also where all the styling can be done.\n\nWe've exposed the colors as variables for easy \ncustomisation, but more advanced stying can\nbe done in the style block at the top of the code",
-                        "width": 313,
-                        "height": 378,
-                        "fill": true,
-                        "x": 55,
-                        "y": -286,
-                        "id": "11dc4abe-eb63-832b-1643-e0882309b74b",
-                        "color": "visual"
-                    }
-                ]
+  "name": "Export",
+  "components": [
+    {
+      "name": "/Date Picker",
+      "id": "0ececb11-4758-90a2-28af-4f9fe6cd5e94",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "fromProperty": "didMount",
+            "toId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
+            "toProperty": "DidMount"
+          },
+          {
+            "fromId": "fa754631-0587-9a87-4d13-4d1edd21a376",
+            "fromProperty": "Value",
+            "toId": "cc62d018-f22b-33b8-d191-5899549ad702",
+            "toProperty": "value-Date"
+          },
+          {
+            "fromId": "cc62d018-f22b-33b8-d191-5899549ad702",
+            "fromProperty": "value-Date",
+            "toId": "d69fd382-b164-583b-e617-fdc2f9e38af8",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
+            "fromProperty": "DateSelected",
+            "toId": "d69fd382-b164-583b-e617-fdc2f9e38af8",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Align Y",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "alignY"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Align X",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "alignX"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Margin Top",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "marginTop"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Margin Bottom",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "marginBottom"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Margin Left",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "marginLeft"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Margin Right",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "marginRight"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Position",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "position"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Width",
+            "toId": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
+            "fromProperty": "this",
+            "toId": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
+            "toProperty": "TextInput"
+          },
+          {
+            "fromId": "cc62d018-f22b-33b8-d191-5899549ad702",
+            "fromProperty": "value-Formatted Date",
+            "toId": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Label",
+            "toId": "0e249857-1c15-d80f-9934-ec9b33e2adff",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "fromProperty": "Show Label",
+            "toId": "0e249857-1c15-d80f-9934-ec9b33e2adff",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "966c4f1b-1a36-5150-a79d-ee824bcf72dd",
+            "type": "Group",
+            "label": "Date Picker",
+            "x": -260,
+            "y": -153,
+            "parameters": {
+              "borderColor": "Grey - 400",
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "borderWidth": {
+                "value": 2,
+                "unit": "px"
+              },
+              "styleCss": "cursor:pointer;",
+              "borderStyle": "solid"
             },
-            "metadata": {
-                "canvasPos": {
-                    "x": 564,
-                    "y": 20
-                }
-            }
-        }
-    ],
-    "settings": {},
-    "version": "4",
-    "metadata": {
-        "styles": {
-            "text": {
-                "Label Small": {
-                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
-                    "fontSize": {
-                        "value": "12",
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "0e249857-1c15-d80f-9934-ec9b33e2adff",
+                "type": "Text",
+                "parameters": {
+                  "textStyle": "Label Small",
+                  "marginBottom": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "text": "Label",
+                  "color": "Grey - 700",
+                  "sizeMode": "contentSize"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "d000dcda-4e22-1874-7492-a5032dbfab18",
+                "type": "Group",
+                "parameters": {
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "fef355ba-5a41-0262-f9fb-49bed930e8f9",
+                    "type": "Group",
+                    "label": "Icon wrapper",
+                    "parameters": {
+                      "position": "absolute",
+                      "sizeMode": "contentSize",
+                      "alignY": "center",
+                      "styleCss": "cursor:pointer;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "07e64992-7915-3344-e620-e8487b981538",
+                        "type": "net.noodl.visual.icon",
+                        "parameters": {
+                          "iconIconSource": {
+                            "class": "lucide",
+                            "code": "icon-calendar",
+                            "codeAsClass": true
+                          },
+                          "iconSize": {
+                            "value": 20,
+                            "unit": "px"
+                          },
+                          "iconColor": "Grey - 700",
+                          "marginLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "13e35eec-4d7c-6af9-9f48-9f668f3fc681",
+                    "type": "net.noodl.controls.textinput",
+                    "parameters": {
+                      "useLabel": false,
+                      "placeholder": "MMM DD, YYYY",
+                      "alignY": "center",
+                      "paddingLeft": {
+                        "value": 40,
                         "unit": "px"
-                    },
-                    "color": "#000000",
-                    "letterSpacing": "Auto",
-                    "lineHeight": {
-                        "value": "120",
+                      },
+                      "paddingRight": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "sizeMode": "explicit",
+                      "height": {
+                        "value": 100,
                         "unit": "%"
+                      },
+                      "useIcon": false
                     },
-                    "textTransform": "none"
-                }
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "64c08932-28dd-2d6b-ad1f-280b8db782c2",
+            "type": "Javascript2",
+            "label": "Date Picker",
+            "x": 135.41077978324927,
+            "y": -121.10018885810723,
+            "parameters": {
+              "code": "function mobileAndTabletCheck() {\n  let check = false;\n  (function(a){if(/(android|bb\\d+|meego).+mobile|avantgo|bada\\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\\-(n|u)|c55\\/|capi|ccwa|cdm\\-|cell|chtm|cldc|cmd\\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\\-s|devi|dica|dmob|do(c|p)o|ds(12|\\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\\-|_)|g1 u|g560|gene|gf\\-5|g\\-mo|go(\\.w|od)|gr(ad|un)|haie|hcit|hd\\-(m|p|t)|hei\\-|hi(pt|ta)|hp( i|ip)|hs\\-c|ht(c(\\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\\-(20|go|ma)|i230|iac( |\\-|\\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\\/)|klon|kpt |kwc\\-|kyo(c|k)|le(no|xi)|lg( g|\\/(k|l|u)|50|54|\\-[a-w])|libw|lynx|m1\\-w|m3ga|m50\\/|ma(te|ui|xo)|mc(01|21|ca)|m\\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\\-2|po(ck|rt|se)|prox|psio|pt\\-g|qa\\-a|qc(07|12|21|32|60|\\-[2-7]|i\\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\\-|oo|p\\-)|sdk\\/|se(c(\\-|0|1)|47|mc|nd|ri)|sgh\\-|shar|sie(\\-|m)|sk\\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\\-|v\\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\\-|tdg\\-|tel(i|m)|tim\\-|t\\-mo|to(pl|sh)|ts(70|m\\-|m3|m5)|tx\\-9|up(\\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\\-|your|zeto|zte\\-/i.test(a.substr(0,4))) check = true;})(navigator.userAgent||navigator.vendor||window.opera);\n  return check;\n}\n\nfunction isMobile() {\n    return mobileAndTabletCheck()\n}\n\nconst scriptUrl = \"https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.2.0/dist/js/datepicker-full.min.js\"\nconst cssUrl =  \"https://cdn.jsdelivr.net/npm/vanillajs-datepicker@1.2.0/dist/css/datepicker.min.css\"\n\nfunction injectDatePicker(onload) {\n    if (document.querySelectorAll('#--ndl-datepicker-datepicker-js--').length === 0) {\n        window.__ndl_datepicker_onload = [onload]\n\n        var script = document.createElement('script');\n        script.id = \"--ndl-datepicker-datepicker-js--\"\n        script.setAttribute('src', scriptUrl);\n        script.onload = () => {\n            window.__ndl_datepicker_onload.forEach(cb => cb())\n            window.__ndl_datepicker_onload = []\n        }\n        document.head.appendChild(script)\n    }\n    else {\n        if (window.__ndl_datepicker_onload.length > 0) window.__ndl_datepicker_onload.push(onload)\n        else onload()\n    }\n}\n\nfunction injectDatePickerStyles() {\n    const datePickerStyles = `\n        .ndl-datepicker-native-input {\n            display: block;\n            position: absolute;\n            width: 100%;\n            height: 100%;\n            opacity: 0;\n            cursor: pointer;\n            min-width: 100%;\n            margin: 0;\n            padding: 0;\n            border: 0;\n            border-radius: 0;\n        }\n        .ndl-datepicker-native-input::-webkit-calendar-picker-indicator {\n            position: absolute;\n            left: 0;\n            top: 0;\n            width: 100%;\n            height: 100%;\n            margin: 0;\n            padding: 0;\n            cursor: pointer;\n        }\n\n        .datepicker {\n            display:none;\n            font-family: Inter, sans-serif;\n            border: 1px solid ${Script.Inputs.Accent};\n            border-radius: 4px;\n        }\n\n        .datepicker-picker {\n            background-color: ${Script.Inputs.Background};\n            padding: 24px;\n        }\n\n        .datepicker-header {\n            padding-bottom: 14px;\n        }\n\n        .datepicker-header .datepicker-controls {\n            display: flex;\n            justify-content: space-between;\n        }\n\n        .datepicker-header .datepicker-controls .button {\n            background-color: transparent;\n            color: ${Script.Inputs.Text};\n        }\n\n        .datepicker-header .datepicker-controls button.button:focus,\n        .datepicker-header .datepicker-controls button.button:hover {\n            background-color: ${Script.Inputs.HoverDateBackground};\n            color: ${Script.Inputs.HoverDateText};\n        }\n\n        .datepicker-controls .button.view-switch {\n            border: 1px solid ${Script.Inputs.Text};\n            flex: 0 0 180px;\n        }\n\n        .days-of-week .dow {\n            height: 45px;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            font-size: 16px;\n            font-weight: 400;\n            color: ${Script.Inputs.Accent}\n        }\n\n        .datepicker-grid {\n            width: 315px;\n        }\n\n        .datepicker-grid .datepicker-cell.day {\n            border-radius: 50%;\n            width: 45px;\n            height: 45px;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n        }\n\n        .datepicker-grid .datepicker-cell {\n            color: ${Script.Inputs.Text}\n            font-size: 16px;\n        }\n\n        .datepicker-grid .datepicker-cell.next,\n        .datepicker-grid .datepicker-cell.prev {\n            color: ${Script.Inputs.TextMuted};\n        }\n\n        .datepicker-grid .datepicker-cell.focused {\n        }\n\n        .datepicker-grid .datepicker-cell.selected {\n            background-color:  ${Script.Inputs.SelectedDateBackgroud};\n            color: ${Script.Inputs.SelectedDateText};\n        }\n\n        .datepicker-grid .datepicker-cell:hover,\n        .datepicker-grid .datepicker-cell:focus {\n            color: ${Script.Inputs.HoverDateText};\n            background-color: ${Script.Inputs.HoverDateBackground};\n        }\n`\n\n    if(!isMobile()) { // This sheet is only needed if we are on desktop\n        if(document.querySelectorAll('#--ndl-datepicker-sheet--').length === 0) {\n            let addSheet = document.createElement('link');\n            addSheet.id = \"--ndl-datepicker-sheet--\"\n            addSheet.setAttribute('rel', 'stylesheet');\n            addSheet.setAttribute('href',cssUrl);\n            document.head.appendChild(addSheet);\n        }\n    }\n\n    if(document.querySelectorAll('#--ndl-datepicker-styles--').length === 0) {\n        const styles = document.createElement('style')\n        styles.id = '--ndl-datepicker-styles--'\n        styles.innerHTML = datePickerStyles\n        document.head.append(styles)\n    }\n}\n\n// Format a date object into a string\nfunction formatDate(date) {\n    if(!(date instanceof Date)) return\n\n    const months = [\n        'Jan',\n        'Feb',\n        'Mar',\n        'Apr',\n        'May',\n        'Jun',\n        'Jul',\n        'Aug',\n        'Sep',\n        'Oct',\n        'Nov',\n        'Dec'\n    ]\n\n    let newDateString = months[date.getMonth()] + ' ' +date.getDate() + ', ' + date.getFullYear()\n\n    return newDateString\n}\n\n// Parse a date string in the format we use into a date object\n// if possible\nfunction parseDate(_dateString) {\n    // No valid date, return todays date\n    if(_dateString === undefined || _dateString.length < 3) \n        return null\n\n    let dateString = _dateString.trim().toLowerCase()\n\n    const months = {\n        'jan':0,\n        'feb':1,\n        'mar':2,\n        'apr':3,\n        'may':4,\n        'jun':5,\n        'jul':6,\n        'aug':7,\n        'sep':8,\n        'oct':9,\n        'nov':10,\n        'dec':11\n    }\n\n    let month = months[dateString.substring(0,3)]\n    if(month === undefined) return new Date() // Not a valid month\n\n    // Remove month\n    dateString = dateString.substring(3)\n    dateString = dateString.trim()\n\n    let sepIndex = dateString.indexOf(',')\n    let dayString = dateString.substring(0,sepIndex==-1?dateString.length:sepIndex)\n\n    let day = parseInt(dayString) || 1\n\n    let year = (new Date()).getFullYear()\n    if(sepIndex !== -1) {\n        dateString = dateString.substring(sepIndex+1)\n        dateString = dateString.trim()\n        \n        if(dateString.length === 4)\n        year = parseInt(dateString)\n    }\n\n    return new Date(year,month,day)\n}\n\n// Compare two dates, ignoring the time\nfunction compareDates(a,b) {\n    if(a.getFullYear() === b.getFullYear() && a.getDate() === b.getDate() && a.getMonth() === b.getMonth())\n        return true\n\n    return false\n}\n\nvar dateInput,datepicker,datePopup\n\nconst TextInputFocused = () => {\n    Component.Object.TextInputIsFocused = true\n\n    // If the text input is focused and we are not running on a mobile device\n    // launch the popup\n    if(!isMobile()) {\n        const textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n        const rect = textInput.getBoundingClientRect()\n\n      //  let top = rect.bottom + Script.Inputs.PopupMarginTop\n      //  let left = rect.left + Script.Inputs.PopupMarginRight\n\n        datePopup = document.createElement('div')\n        datePopup.style.zIndex = 100\n        datePopup.style.position = 'absolute'\n        datePopup.style.border = \"1px solid \" + Script.Inputs.BorderColor\n        datePopup.style.borderRadius = \"4px\"\n        datePopup.style.top = (rect.bottom + Script.Inputs.PopupMarginTop) + 'px'\n        datePopup.style.left = (rect.left + Script.Inputs.PopupMarginRight) + 'px'\n        document.body.appendChild(datePopup)\n\n        // This is running on desktop, install the vanilla js\n        injectDatePicker(() => {\n            // Script is loaded\n\n            datepicker = new Datepicker(datePopup, {\n                prevArrow:'<',\n                nextArrow:'>',\n            }); \n\n            // adjuste position if outside of screen\n            const rect = datePopup.getBoundingClientRect()\n            if(rect.top + rect.height > window.innerHeight) {\n                datePopup.style.top = Math.max(0,window.innerHeight - rect.height) + 'px'\n            }\n            if(rect.left + rect.width > window.innerWidth) {\n                datePopup.style.left = Math.max(0,window.innerWidth - rect.width) + 'px'\n            }\n         \n           \n\n            if(Component.Object.Date !== undefined) {\n                datepicker.setDate(Component.Object.Date)\n            }\n\n            datePopup.addEventListener('changeDate',() => {\n                // The picker reports a changed date\n                \n            })\n\n            datePopup.addEventListener('click',(ev) => {\n                // The user have clicked a date in the popup\n                var date = datepicker.getDate()\n\n                // If the date is a new date\n                if(date && (!Component.Object.Date || !compareDates(Component.Object.Date,date))) {\n                    \n                    // Blur the text input so the date can be updated\n                    Component.Object.Date = date\n                   \n                    textInput.blur()\n                }\n            })\n            \n        })\n\n    }\n}\n\nconst TextInputBlurred = () => {\n    Component.Object.TextInputIsFocused = false\n\n    const textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n    const dateString = textInput.value\n\n    const date = parseDate(dateString)\n    Component.Object.Date = date\n    Script.Outputs.DateSelected()\n\n    document.body.removeChild(datePopup)\n}\n\nconst DateStringChanged = (e) => {\n    const dateString = e.target.value\n\n    if(Component.Object.TextInputIsFocused) {\n        const date = parseDate(dateString)\n\n        // The date have changed in the component object, update the\n        // date picker\n        if(datepicker !== undefined) {\n            datepicker.setDate(date)\n        }\n\n        if(dateInput !== undefined) {\n            dateInput.value = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()\n        }\n    }\n}\n\nScript.Inputs = {\n    PopupMarginRight: 'number',\n    PopupMarginTop: 'number',\n    Text: 'color',\n    TextMuted: 'color',\n    Accent: 'color',\n    Background: 'color',\n    SelectedDateBackground: 'color',\n    SelectedDateText: 'color',\n    HoverDateBackground: 'color',\n    HoverDateText: 'color'\n}\n\nScript.Signals.DidMount = () => {\n    Script.Outputs.IsMobile = isMobile()\n\n    injectDatePickerStyles()\n\n    // Register blur / focus listeners\n    if(Script.Inputs.TextInput.getDOMElement() !== undefined) {\n        var textInput = Script.Inputs.TextInput.getDOMElement().querySelectorAll('input')[0]\n        textInput.addEventListener('focus',TextInputFocused)\n        textInput.addEventListener('blur',TextInputBlurred)\n        textInput.addEventListener('keydown',(e) => {\n            if(e.keyCode===13) textInput.blur()\n        })\n        textInput.addEventListener('keyup',DateStringChanged)\n    }\n\n    // If there is a date set from start, format it \n    if(Component.Object.Date !== undefined) {\n        let formattedDate = formatDate(Component.Object.Date)\n        Component.Object['Formatted Date'] = formattedDate\n    }\n\n\n    Component.Object.on('change',(ev) => {\n        if(ev.name === 'Date') {\n            const date = Component.Object.Date\n            // The date have changed in the component object, update the\n            // date picker\n            if(datepicker !== undefined) {\n                datepicker.setDate(date)\n            }\n\n            if(dateInput !== undefined) {\n                dateInput.value = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate()\n            }\n\n            let formattedDate = formatDate(date)\n            textInput.value = formattedDate\n            Component.Object['Formatted Date'] = formattedDate\n        }\n    })\n\n    if(isMobile()) {\n        // On Mobile create a native date input hidden\n        // under the icon, clicking it will show the\n        // native picker\n        const elem = Script.Inputs.TextInput.getDOMElement()\n\n        dateInput = document.createElement('input')\n        dateInput.className = 'ndl-datepicker-native-input'\n\n        elem.parentNode.appendChild(dateInput)\n\n        dateInput.type = \"date\"\n\n        dateInput.onchange = () => {\n            var date = new Date(dateInput.value)\n            Component.Object.Date = date\n            Script.Outputs.DateSelected()\n        }\n    }\n}",
+              "scriptInputs": [],
+              "PopupRightMargin": -44,
+              "PopupMarginRight": -42,
+              "PopupMarginTop": 4,
+              "Text": "Grey - 700",
+              "Accent": "Primary",
+              "SelectedDateBackground": "Primary",
+              "SelectedDateText": "White",
+              "HoverDateBackground": "Grey - 300",
+              "HoverDateText": "Grey - 900",
+              "BorderColor": "Primary",
+              "Background": "White",
+              "TextMuted": "Grey - 400"
             },
-            "colors": {
-                "Grey - 300": "#E9E9E9",
-                "Grey - 400": "#CECECE",
-                "Grey - 700": "#4C4C4C",
-                "Grey - 900": "#1F1F1F",
-                "Primary": "#5836F5",
-                "White": "#FFFFFF"
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "PopupMarginRight",
+                "plug": "input",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "PopupMarginTop",
+                "plug": "input",
+                "type": {
+                  "name": "number"
+                },
+                "group": "Inputs",
+                "index": 6
+              },
+              {
+                "name": "Text",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 7
+              },
+              {
+                "name": "TextMuted",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 8
+              },
+              {
+                "name": "Accent",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 9
+              },
+              {
+                "name": "Background",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 10
+              },
+              {
+                "name": "SelectedDateBackground",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 11
+              },
+              {
+                "name": "SelectedDateText",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 12
+              },
+              {
+                "name": "HoverDateBackground",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 13
+              },
+              {
+                "name": "HoverDateText",
+                "plug": "input",
+                "type": {
+                  "name": "color"
+                },
+                "group": "Inputs",
+                "index": 14
+              },
+              {
+                "name": "DidMount",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Inputs",
+                "index": 15
+              },
+              {
+                "name": "SelectedDateBackgroud",
+                "displayName": "SelectedDateBackgroud",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 16
+              },
+              {
+                "name": "TextInput",
+                "displayName": "TextInput",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 17
+              },
+              {
+                "name": "BorderColor",
+                "displayName": "BorderColor",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 18
+              },
+              {
+                "name": "DateSelected",
+                "displayName": "DateSelected",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 19
+              },
+              {
+                "name": "IsMobile",
+                "displayName": "IsMobile",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 20
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "code"
+                ]
+              }
             }
+          },
+          {
+            "id": "cc62d018-f22b-33b8-d191-5899549ad702",
+            "type": "net.noodl.ComponentObject",
+            "x": -699.4916489820396,
+            "y": 120.64558149300865,
+            "parameters": {
+              "properties": "Date,Formatted Date"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Date",
+                "displayName": "Date",
+                "index": 4
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Date Changed",
+                "name": "changed-Date",
+                "index": 5
+              },
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Formatted Date",
+                "displayName": "Formatted Date",
+                "index": 6
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Formatted Date Changed",
+                "name": "changed-Formatted Date",
+                "index": 7
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "fa754631-0587-9a87-4d13-4d1edd21a376",
+            "type": "Component Inputs",
+            "x": -991.015517828351,
+            "y": 136.41885823553514,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "d69fd382-b164-583b-e617-fdc2f9e38af8",
+            "type": "Component Outputs",
+            "x": 134.95985723986172,
+            "y": 115.83345879317977,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "18796a60-b7a2-3c9e-c99b-dd26e95e152c",
+            "type": "Component Inputs",
+            "x": -590.5466150500234,
+            "y": -166.54382360308125,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Align X",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 1
+              },
+              {
+                "name": "Align Y",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 0
+              },
+              {
+                "name": "Position",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Layout",
+                "index": 7
+              },
+              {
+                "name": "Margin Top",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 2
+              },
+              {
+                "name": "Margin Bottom",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 3
+              },
+              {
+                "name": "Margin Left",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 4
+              },
+              {
+                "name": "Margin Right",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 5
+              },
+              {
+                "name": "Width",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Dimensions",
+                "index": 8
+              },
+              {
+                "name": "Text",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Colors",
+                "index": 9
+              },
+              {
+                "name": "Show Label",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Label",
+                "index": 10
+              },
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Label",
+                "index": 11
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ],
+        "comments": [
+          {
+            "text": "This is where the Datepicker is being initiated. \nIt's also where all the styling can be done.\n\nWe've exposed the colors as variables for easy \ncustomisation, but more advanced stying can\nbe done in the style block at the top of the code",
+            "width": 313,
+            "height": 378,
+            "fill": true,
+            "x": 55,
+            "y": -286,
+            "id": "11dc4abe-eb63-832b-1643-e0882309b74b",
+            "color": "visual"
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 564,
+          "y": 20
         }
-    },
-    "variants": []
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {
+        "Label Small": {
+          "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+          "fontSize": {
+            "value": "12",
+            "unit": "px"
+          },
+          "color": "#000000",
+          "letterSpacing": "Auto",
+          "lineHeight": {
+            "value": "120",
+            "unit": "%"
+          },
+          "textTransform": "none"
+        }
+      },
+      "colors": {
+        "Grey - 300": "#E9E9E9",
+        "Grey - 400": "#CECECE",
+        "Grey - 700": "#4C4C4C",
+        "Grey - 900": "#1F1F1F",
+        "Primary": "#5836F5",
+        "White": "#FFFFFF"
+      }
+    }
+  },
+  "variants": []
 }

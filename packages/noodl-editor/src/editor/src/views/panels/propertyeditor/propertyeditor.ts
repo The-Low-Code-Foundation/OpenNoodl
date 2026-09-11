@@ -201,7 +201,14 @@ export class PropertyEditor extends View {
   /** Build the panel shell (legacy `propertyeditor.html`). */
   private buildShell() {
     const root = document.createElement('div');
-    root.className = 'sidebar-panel';
+    // FB-017 AC6: `property-editor-shell` is the modifier that lets this one shell
+    // opt out of `.sidebar-panel`'s `overflow: hidden`. That declaration makes the
+    // element a scroll container, and a scroll container that never overflows still
+    // captures every `position: sticky` beneath it and pins it to a scrollport that
+    // cannot move — which is why the filter header measured -16px at scrollTop 400.
+    // Scoped rather than removed from `.sidebar-panel` because `componentports.ts`
+    // wears the same class and is not part of this measurement.
+    root.className = 'sidebar-panel property-editor-shell';
 
     this.bodyEl = document.createElement('div');
     this.bodyEl.className = 'sidebar-property-editor';

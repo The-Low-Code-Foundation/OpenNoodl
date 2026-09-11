@@ -1,0 +1,78 @@
+{
+  "id": "media-record-audio-and-upload",
+  "title": "Record audio in the browser and upload it as a cloud file",
+  "description": "The whole round trip in built-in nodes: **Record Media** captures from the microphone, **Upload File** stores the result, and a **Video** node plays it back. The wiring worth copying is the three-way split on the outcome — `Started` and `Stopped` drive a `States` node that owns the status text, `Recording` drives the Stop button's `enabled` so the two buttons can never both be live, and `Permission Denied` / `Device Busy` land on their own states because a refused prompt and a microphone another tab is holding need different words. ⚠️ `Blob URL` is a string and `Mounted` is a boolean, so the playback surface is gated through an `Expression` rather than wired straight across — a URL is not a truth value. The `File` output is a real `File`, which is exactly what `Upload File` expects, so nothing here converts the recording to text and back on the way.",
+  "demonstrates": ["nodegx.mediarecorder", "Upload File", "Video", "States", "Expression"],
+  "requiresModules": [
+    { "module": "media-recorder", "nodes": ["nodegx.mediarecorder"] }
+  ],
+  "components": [
+    {
+      "name": "/Voice Note",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Voice note",
+          "parameters": { "flexDirection": "column", "sizeMode": "contentHeight", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "rowGap": "var(--space-3)" },
+          "children": ["controls", "player", "status", "error"]
+        },
+        {
+          "id": "controls",
+          "type": "Group",
+          "label": "Buttons",
+          "parent": "root",
+          "parameters": { "flexDirection": "row", "sizeMode": "contentSize", "alignY": "center", "columnGap": "var(--space-3)" },
+          "children": ["record_btn", "stop_btn"]
+        },
+        { "id": "record_btn", "type": "net.noodl.controls.button", "label": "Record", "parent": "controls", "parameters": { "label": "Record" } },
+        { "id": "stop_btn", "type": "net.noodl.controls.button", "label": "Stop", "parent": "controls", "parameters": { "label": "Stop", "enabled": false } },
+        { "id": "player", "type": "Video", "label": "Playback", "parent": "root", "parameters": { "controls": true, "mounted": false } },
+        { "id": "status", "type": "Text", "label": "Status", "parent": "root", "parameters": { "text": "Ready" } },
+        { "id": "error", "type": "Text", "label": "Error", "parent": "root", "parameters": { "text": "", "color": "var(--destructive)" } },
+        {
+          "id": "recorder",
+          "type": "nodegx.mediarecorder",
+          "label": "Record the microphone",
+          "parameters": { "mode": "audio", "maxDuration": 120 }
+        },
+        {
+          "id": "has_recording",
+          "type": "Expression",
+          "label": "Is there a recording?",
+          "parameters": { "expression": "url != \"\" && url != null" }
+        },
+        {
+          "id": "upload",
+          "type": "Upload File",
+          "label": "Store the voice note",
+          "parameters": {}
+        },
+        {
+          "id": "state",
+          "type": "States",
+          "label": "What the user is told",
+          "parameters": { "states": "Ready,Recording,Saving,Saved,Denied,Busy", "currentState": "Ready" }
+        }
+      ],
+      "connections": [
+        { "fromId": "record_btn", "fromProperty": "onClick", "toId": "recorder", "toProperty": "Start" },
+        { "fromId": "stop_btn", "fromProperty": "onClick", "toId": "recorder", "toProperty": "Stop" },
+        { "fromId": "recorder", "fromProperty": "recording", "toId": "stop_btn", "toProperty": "enabled" },
+        { "fromId": "recorder", "fromProperty": "Started", "toId": "state", "toProperty": "to-Recording" },
+        { "fromId": "recorder", "fromProperty": "PermissionDenied", "toId": "state", "toProperty": "to-Denied" },
+        { "fromId": "recorder", "fromProperty": "DeviceBusy", "toId": "state", "toProperty": "to-Busy" },
+        { "fromId": "recorder", "fromProperty": "Error", "toId": "error", "toProperty": "text" },
+        { "fromId": "recorder", "fromProperty": "url", "toId": "player", "toProperty": "src" },
+        { "fromId": "recorder", "fromProperty": "url", "toId": "has_recording", "toProperty": "url" },
+        { "fromId": "has_recording", "fromProperty": "result", "toId": "player", "toProperty": "mounted" },
+        { "fromId": "recorder", "fromProperty": "file", "toId": "upload", "toProperty": "file" },
+        { "fromId": "recorder", "fromProperty": "Stopped", "toId": "upload", "toProperty": "upload" },
+        { "fromId": "recorder", "fromProperty": "Stopped", "toId": "state", "toProperty": "to-Saving" },
+        { "fromId": "upload", "fromProperty": "done", "toId": "state", "toProperty": "to-Saved" },
+        { "fromId": "upload", "fromProperty": "error", "toId": "error", "toProperty": "text" },
+        { "fromId": "state", "fromProperty": "currentState", "toId": "status", "toProperty": "text" }
+      ]
+    }
+  ]
+}

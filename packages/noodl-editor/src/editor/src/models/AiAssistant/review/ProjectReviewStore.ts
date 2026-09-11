@@ -19,7 +19,7 @@
  */
 
 import Model from '../../../../../shared/model';
-import type { ProjectReviewState } from './ProjectReviewRun';
+import type { ProjectReviewRun, ProjectReviewState } from './ProjectReviewRun';
 import type { ProjectReviewCoverage } from './types';
 
 export const PROJECT_REVIEW_CHANGED = 'projectReviewChanged';
@@ -33,9 +33,34 @@ export class ProjectReviewStore extends Model {
   private state: ProjectReviewState | null = null;
   /** Survives the run, so the review UI can explain a proposal accepted later. */
   private coverage: ProjectReviewCoverage | null = null;
+  /**
+   * BLD-008 — the live run, so whoever is looking at it can act on it.
+   *
+   * ⚠️ It used to be a `useRef` in each view, and that was a latent defect the
+   * interview turned into a real one. `ProjectReviewView`'s Stop button reads
+   * its own ref — which is null in the embedded case, because the run was
+   * started by `AiAuthoringPanel`, so **Stop did nothing in the panel the
+   * button actually ships in**. The interview's controls have the same problem
+   * and could not have worked around it: answering a question has to reach the
+   * run, and the run was reachable from one of the two mounts.
+   *
+   * The store was already "the one place both panels look" for the state; the
+   * producer of that state belongs in the same place. Held weakly in spirit —
+   * `clear()` drops it — and never persisted: a run is a live object.
+   */
+  private run: ProjectReviewRun | null = null;
 
   getState(): ProjectReviewState | null {
     return this.state;
+  }
+
+  /** The run producing the current state, when one is still around. */
+  getRun(): ProjectReviewRun | null {
+    return this.run;
+  }
+
+  setRun(run: ProjectReviewRun | null): void {
+    this.run = run;
   }
 
   /** The coverage of the review that produced the pending proposals, if any. */
@@ -52,6 +77,7 @@ export class ProjectReviewStore extends Model {
   /** Called when the project changes — a review belongs to the project it read. */
   clear(): void {
     this.requested = false;
+    this.run = null;
     if (this.state === null && this.coverage === null) return;
     this.state = null;
     this.coverage = null;

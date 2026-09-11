@@ -1,0 +1,541 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000081",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Stream Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "loadABtn",
+        "loadBBtn",
+        "parseBtn",
+        "clearParserBtn",
+        "valuesText",
+        "valueCountText",
+        "pendingText",
+        "isCompleteText",
+        "parserErrorText",
+        "loadTokABtn",
+        "loadTokBBtn",
+        "addTokenBtn",
+        "accumulatedText",
+        "messageCountText",
+        "lastMessageText",
+        "pushBtn",
+        "flushBtn",
+        "bufferSizeText",
+        "flushedDataText",
+        "flushCountText",
+        "droppedText",
+        "statusText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Stream Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "loadABtn",
+      "type": "net.noodl.controls.button",
+      "label": "Load A",
+      "parent": "shell",
+      "parameters": {
+        "label": "Load A"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "loadBBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Load B",
+      "parent": "shell",
+      "parameters": {
+        "label": "Load B"
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "parseBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Parse",
+      "parent": "shell",
+      "parameters": {
+        "label": "Parse"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "clearParserBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Clear parser",
+      "parent": "shell",
+      "parameters": {
+        "label": "Clear parser"
+      },
+      "x": 100,
+      "y": 600
+    },
+    {
+      "id": "valuesText",
+      "type": "Text",
+      "label": "Values",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "valueCountText",
+      "type": "Text",
+      "label": "Value count",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "pendingText",
+      "type": "Text",
+      "label": "Pending",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 840
+    },
+    {
+      "id": "isCompleteText",
+      "type": "Text",
+      "label": "Is complete",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "parserErrorText",
+      "type": "Text",
+      "label": "Parser error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "loadTokABtn",
+      "type": "net.noodl.controls.button",
+      "label": "Load token A",
+      "parent": "shell",
+      "parameters": {
+        "label": "Load token A"
+      },
+      "x": 100,
+      "y": 1080
+    },
+    {
+      "id": "loadTokBBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Load token B",
+      "parent": "shell",
+      "parameters": {
+        "label": "Load token B"
+      },
+      "x": 100,
+      "y": 1160
+    },
+    {
+      "id": "addTokenBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Add token",
+      "parent": "shell",
+      "parameters": {
+        "label": "Add token"
+      },
+      "x": 100,
+      "y": 1240
+    },
+    {
+      "id": "accumulatedText",
+      "type": "Text",
+      "label": "Accumulated",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1320
+    },
+    {
+      "id": "messageCountText",
+      "type": "Text",
+      "label": "Message count",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1400
+    },
+    {
+      "id": "lastMessageText",
+      "type": "Text",
+      "label": "Last message",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1480
+    },
+    {
+      "id": "pushBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Push tick",
+      "parent": "shell",
+      "parameters": {
+        "label": "Push tick"
+      },
+      "x": 100,
+      "y": 1560
+    },
+    {
+      "id": "flushBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Flush",
+      "parent": "shell",
+      "parameters": {
+        "label": "Flush"
+      },
+      "x": 100,
+      "y": 1640
+    },
+    {
+      "id": "bufferSizeText",
+      "type": "Text",
+      "label": "Buffer size",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1720
+    },
+    {
+      "id": "flushedDataText",
+      "type": "Text",
+      "label": "Flushed data",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1800
+    },
+    {
+      "id": "flushCountText",
+      "type": "Text",
+      "label": "Flush count",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1880
+    },
+    {
+      "id": "droppedText",
+      "type": "Text",
+      "label": "Dropped items",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1960
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 2040
+    },
+    {
+      "id": "parser",
+      "type": "net.noodl.JSONStreamParser",
+      "label": "Parser",
+      "parameters": {
+        "format": "ndjson"
+      },
+      "x": 500,
+      "y": 400
+    },
+    {
+      "id": "acc",
+      "type": "net.noodl.TextAccumulator",
+      "label": "Acc",
+      "parameters": {
+        "delimiter": "|"
+      },
+      "x": 500,
+      "y": 1200
+    },
+    {
+      "id": "buffer",
+      "type": "net.noodl.StreamBuffer",
+      "label": "Buffer",
+      "parameters": {
+        "maxSize": 3
+      },
+      "x": 500,
+      "y": 1700
+    },
+    {
+      "id": "chunkVar",
+      "type": "Variable2",
+      "label": "Chunk",
+      "parameters": {
+        "name": "chunk"
+      },
+      "x": 800,
+      "y": 400
+    },
+    {
+      "id": "setChunkA",
+      "type": "Set Variable",
+      "label": "Set chunk A",
+      "parameters": {
+        "name": "chunk"
+      },
+      "x": 800,
+      "y": 300
+    },
+    {
+      "id": "setChunkB",
+      "type": "Set Variable",
+      "label": "Set chunk B",
+      "parameters": {
+        "name": "chunk"
+      },
+      "x": 800,
+      "y": 500
+    },
+    {
+      "id": "partA",
+      "type": "String",
+      "label": "Part A",
+      "parameters": {
+        "value": "{\"id\":1,\"name\":\"A"
+      },
+      "x": 1000,
+      "y": 300
+    },
+    {
+      "id": "partB",
+      "type": "String",
+      "label": "Part B",
+      "parameters": {
+        "value": "da\"}\n{\"id\":2,\"name\":\"Bob\"}\n"
+      },
+      "x": 1000,
+      "y": 500
+    },
+    {
+      "id": "tokenVar",
+      "type": "Variable2",
+      "label": "Token",
+      "parameters": {
+        "name": "token"
+      },
+      "x": 800,
+      "y": 1200
+    },
+    {
+      "id": "setTokA",
+      "type": "Set Variable",
+      "label": "Set token A",
+      "parameters": {
+        "name": "token"
+      },
+      "x": 800,
+      "y": 1100
+    },
+    {
+      "id": "setTokB",
+      "type": "Set Variable",
+      "label": "Set token B",
+      "parameters": {
+        "name": "token"
+      },
+      "x": 800,
+      "y": 1300
+    },
+    {
+      "id": "tokA",
+      "type": "String",
+      "label": "Token A",
+      "parameters": {
+        "value": "Hello, wor"
+      },
+      "x": 1000,
+      "y": 1100
+    },
+    {
+      "id": "tokB",
+      "type": "String",
+      "label": "Token B",
+      "parameters": {
+        "value": "ld|Bye|"
+      },
+      "x": 1000,
+      "y": 1300
+    },
+    {
+      "id": "tickConst",
+      "type": "String",
+      "label": "Tick",
+      "parameters": {
+        "value": "tick"
+      },
+      "x": 800,
+      "y": 1700
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "Status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 2100
+    },
+    {
+      "id": "setStatusParsed",
+      "type": "Set Variable",
+      "label": "Status parsed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 600
+    },
+    {
+      "id": "parsedConst",
+      "type": "String",
+      "label": "Parsed",
+      "parameters": {
+        "value": "parsed"
+      },
+      "x": 1000,
+      "y": 600
+    },
+    {
+      "id": "setStatusMessage",
+      "type": "Set Variable",
+      "label": "Status message",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 1400
+    },
+    {
+      "id": "messageConst",
+      "type": "String",
+      "label": "Message",
+      "parameters": {
+        "value": "message"
+      },
+      "x": 1000,
+      "y": 1400
+    },
+    {
+      "id": "setStatusFlushed",
+      "type": "Set Variable",
+      "label": "Status flushed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 1800
+    },
+    {
+      "id": "flushedConst",
+      "type": "String",
+      "label": "Flushed",
+      "parameters": {
+        "value": "flushed"
+      },
+      "x": 1000,
+      "y": 1800
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

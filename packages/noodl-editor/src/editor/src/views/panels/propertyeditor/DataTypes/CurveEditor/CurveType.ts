@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot, Root } from 'react-dom/client';
 
 import { PropertyPanelButton } from '@noodl-core-ui/components/property-panel/PropertyPanelButton';
-import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput';
+import { PropertyPanelRow } from '@noodl-core-ui/components/property-panel/PropertyPanelInput/PropertyPanelRow';
 
 import { TypeView } from '../../TypeView';
 import { getEditType } from '../../utils';

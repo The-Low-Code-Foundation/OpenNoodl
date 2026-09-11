@@ -1,0 +1,127 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "aa76001e-171e-423c-ae74-8e1dc380961b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "anchorFmt",
+      "fromProperty": "currentValue",
+      "toId": "anchorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "shift",
+      "fromProperty": "result",
+      "toId": "reviewFmt",
+      "toProperty": "input"
+    },
+    {
+      "fromId": "reviewFmt",
+      "fromProperty": "currentValue",
+      "toId": "reviewText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parts",
+      "fromProperty": "dayName",
+      "toId": "dayNameText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parts",
+      "fromProperty": "isoWeek",
+      "toId": "isoWeekText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "gapDays",
+      "fromProperty": "difference",
+      "toId": "daysText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "gapMonths",
+      "fromProperty": "difference",
+      "toId": "monthsText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "tokyoFmt",
+      "fromProperty": "currentValue",
+      "toId": "tokyoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "cmpDay",
+      "fromProperty": "same",
+      "toId": "sameDayText",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "cmpMs",
+      "fromProperty": "same",
+      "toId": "sameMsText",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "date",
+      "toId": "cmpNow",
+      "toProperty": "a"
+    },
+    {
+      "fromId": "cmpNow",
+      "fromProperty": "after",
+      "toId": "futureText",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "cmpNow",
+      "fromProperty": "before",
+      "toId": "pastText",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "iso",
+      "toId": "clockIsoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "date",
+      "toId": "clockFmt",
+      "toProperty": "input"
+    },
+    {
+      "fromId": "clockFmt",
+      "fromProperty": "currentValue",
+      "toId": "clockTimeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "refreshButton",
+      "fromProperty": "onClick",
+      "toId": "clock",
+      "toProperty": "read"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "done",
+      "toId": "saveStamp",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "clock",
+      "fromProperty": "iso",
+      "toId": "saveStamp",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "lastReadVar",
+      "fromProperty": "value",
+      "toId": "savedText",
+      "toProperty": "text"
+    }
+  ]
+}

@@ -1,0 +1,670 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7568a224-ee61-5dd2-8887-065a6db656b3",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Landing",
+      "children": [
+        "landingGround"
+      ],
+      "parameters": {
+        "title": "Welcome",
+        "urlPath": ""
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "landingGround",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "page",
+      "children": [
+        "landingMain",
+        "footer-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between",
+        "backgroundColor": "var(--muted)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "landingMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "landingGround",
+      "children": [
+        "heroBand",
+        "about",
+        "inside-2"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "heroBand",
+      "type": "Group",
+      "label": "The hero — a photograph, and whichever of the three states is true",
+      "parent": "landingMain",
+      "children": [
+        "heroShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 560,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-coffee-shop.webp"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "heroShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand",
+      "children": [
+        "hero",
+        "actions-2",
+        "setupCard",
+        "waitingCard"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "hero",
+      "type": "Group",
+      "label": "The hero",
+      "parent": "heroShell",
+      "children": [
+        "eyebrow-2",
+        "heading",
+        "tagline"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingBottom": "var(--space-6)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 640
+    },
+    {
+      "id": "eyebrow-2",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "hero",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "as": "span"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Association name",
+      "parent": "hero",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "tagline",
+      "type": "Text",
+      "label": "The tagline",
+      "parent": "hero",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 400,
+      "y": 1000
+    },
+    {
+      "id": "actions-2",
+      "type": "Group",
+      "label": "Ways in",
+      "parent": "heroShell",
+      "children": [
+        "signInButton",
+        "joinButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1120
+    },
+    {
+      "id": "signInButton",
+      "type": "net.noodl.controls.button",
+      "label": "Members sign in",
+      "parent": "actions-2",
+      "parameters": {
+        "label": "Members sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1240
+    },
+    {
+      "id": "joinButton",
+      "type": "net.noodl.controls.button",
+      "label": "Ask to join",
+      "parent": "actions-2",
+      "parameters": {
+        "label": "Ask to join",
+        "backgroundColor": "var(--surface-glass)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1360
+    },
+    {
+      "id": "about",
+      "type": "Group",
+      "label": "What this association is",
+      "parent": "landingMain",
+      "children": [
+        "aboutShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)",
+        "backgroundColor": "var(--background)",
+        "mounted": false
+      },
+      "x": 220,
+      "y": 2320
+    },
+    {
+      "id": "aboutShell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "about",
+      "children": [
+        "aboutHeading",
+        "aboutProse"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-4)"
+      },
+      "x": 280,
+      "y": 2440
+    },
+    {
+      "id": "aboutHeading",
+      "type": "Text",
+      "label": "About — heading",
+      "parent": "aboutShell",
+      "parameters": {
+        "text": "About us",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 340,
+      "y": 2560
+    },
+    {
+      "id": "aboutProse",
+      "type": "Group",
+      "label": "About — the measure",
+      "parent": "aboutShell",
+      "children": [
+        "aboutText",
+        "aboutJoinHint"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 2680
+    },
+    {
+      "id": "aboutText",
+      "type": "Text",
+      "label": "About — the association’s own words",
+      "parent": "aboutProse",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 400,
+      "y": 2800
+    },
+    {
+      "id": "aboutJoinHint",
+      "type": "Text",
+      "label": "About — who may join",
+      "parent": "aboutProse",
+      "parameters": {
+        "text": "Membership is by request: ask to join and a moderator will approve you.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 400,
+      "y": 2920
+    },
+    {
+      "id": "inside-2",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "landingMain",
+      "x": 220,
+      "y": 3040
+    },
+    {
+      "id": "footer-2",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "landingGround",
+      "x": 160,
+      "y": 3160
+    },
+    {
+      "id": "setupCard",
+      "type": "Group",
+      "label": "Nobody has set this up yet",
+      "parent": "heroShell",
+      "children": [
+        "setupHeading",
+        "setupText",
+        "setupButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "columnGap": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1480
+    },
+    {
+      "id": "waitingCard",
+      "type": "Group",
+      "label": "The association could not be read",
+      "parent": "heroShell",
+      "children": [
+        "waitingHeading",
+        "waitingText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface-glass)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-glass)",
+        "borderRadius": "var(--radius-xl)",
+        "backdropBlur": {
+          "value": 14,
+          "unit": "px"
+        },
+        "columnGap": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-6)",
+        "paddingBottom": "var(--space-6)",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        }
+      },
+      "x": 340,
+      "y": 1960
+    },
+    {
+      "id": "waitingHeading",
+      "type": "Text",
+      "label": "Could not be read — the heading",
+      "parent": "waitingCard",
+      "parameters": {
+        "text": "This members’ area is not connected yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 2080
+    },
+    {
+      "id": "waitingText",
+      "type": "Text",
+      "label": "Could not be read — the words",
+      "parent": "waitingCard",
+      "parameters": {
+        "text": "The app cannot reach its backend, so it does not yet know which association this is or who you are. If you have just installed it, connect a backend and reload. If you are a member, this is usually temporary — please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "setupHeading",
+      "type": "Text",
+      "label": "Not set up yet — the heading",
+      "parent": "setupCard",
+      "parameters": {
+        "text": "Nobody has set this up yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "setupText",
+      "type": "Text",
+      "label": "Setup notice",
+      "parent": "setupCard",
+      "parameters": {
+        "text": "Name your association and create the first moderator account. It takes a minute, and nothing else on this site works until it is done.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--primary-foreground)"
+      },
+      "x": 400,
+      "y": 1720
+    },
+    {
+      "id": "setupButton",
+      "type": "net.noodl.controls.button",
+      "label": "Set it up",
+      "parent": "setupCard",
+      "parameters": {
+        "label": "Set it up",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "association-2",
+      "type": "DbCollection2",
+      "label": "The association",
+      "parameters": {
+        "collectionName": "Association"
+      },
+      "x": 650,
+      "y": 1960
+    },
+    {
+      "id": "read-3",
+      "type": "JavaScriptFunction",
+      "label": "The association, or the invitation to set one up",
+      "parameters": {
+        "runOnChange-in-rows": true,
+        "functionScript": "if (Inputs.rows === undefined) return;\nconst rows = Inputs.rows || [];\nconst row = rows.length > 0 ? rows[0] : undefined;\nOutputs.name = row ? (row.name || '') : '';\nOutputs.tagline = row ? (row.tagline || '') : '';\nOutputs.blurb = row ? (row.blurb || '') : '';\nOutputs.hasAssociation = rows.length > 0;\nOutputs.needsSetup = rows.length === 0;\n// REL-002b. Always `false`, and that is the point: this node runs\n// only when the query answered, so publishing \"the query has not\n// answered = false\" is what takes the waiting card down. There is\n// deliberately no path that sets it back to `true` — a page that\n// answered once has answered.\nOutputs.unanswered = false;"
+      },
+      "x": 650,
+      "y": 880,
+      "ports": [
+        {
+          "name": "in-rows",
+          "displayName": "rows",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-tagline",
+          "displayName": "tagline",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-blurb",
+          "displayName": "blurb",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-hasAssociation",
+          "displayName": "hasAssociation",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-needsSetup",
+          "displayName": "needsSetup",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-unanswered",
+          "displayName": "unanswered",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "toSignIn-4",
+      "type": "RouterNavigate",
+      "label": "Go to sign in",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/SignIn"
+      },
+      "x": 650,
+      "y": 1240
+    },
+    {
+      "id": "toJoin",
+      "type": "RouterNavigate",
+      "label": "Go to the join form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Join"
+      },
+      "x": 650,
+      "y": 1360
+    },
+    {
+      "id": "toSetup",
+      "type": "RouterNavigate",
+      "label": "Go to setup",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Setup"
+      },
+      "x": 650,
+      "y": 1840
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

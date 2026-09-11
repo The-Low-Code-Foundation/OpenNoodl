@@ -1,0 +1,115 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f8ca965b-332b-453f-9f0c-51d0cd65c832",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "titleInput",
+      "fromProperty": "onTextChanged",
+      "toId": "titleVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "titleVar",
+      "fromProperty": "value",
+      "toId": "makeBook",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "addButton",
+      "fromProperty": "onClick",
+      "toId": "makeBook",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "makeBook",
+      "fromProperty": "id",
+      "toId": "insertBook",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeBook",
+      "fromProperty": "done",
+      "toId": "insertBook",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "booksArray",
+      "fromProperty": "items",
+      "toId": "favouritesOnly",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "favouritesOnly",
+      "fromProperty": "items",
+      "toId": "toRow",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "toRow",
+      "fromProperty": "items",
+      "toId": "shelfList",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "clearButton",
+      "fromProperty": "onClick",
+      "toId": "clearShelf",
+      "toProperty": "clear"
+    },
+    {
+      "fromId": "clearShelf",
+      "fromProperty": "done",
+      "toId": "clearedVar",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "clearShelf",
+      "fromProperty": "unchanged",
+      "toId": "emptyVar",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "clearedLabel",
+      "fromProperty": "savedValue",
+      "toId": "clearedVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "emptyLabel",
+      "fromProperty": "savedValue",
+      "toId": "emptyVar",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "clearedText",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "titleVar",
+      "fromProperty": "value",
+      "toId": "makeWish",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "wishButton",
+      "fromProperty": "onClick",
+      "toId": "makeWish",
+      "toProperty": "new"
+    },
+    {
+      "fromId": "makeWish",
+      "fromProperty": "id",
+      "toId": "insertWish",
+      "toProperty": "modifyId"
+    },
+    {
+      "fromId": "makeWish",
+      "fromProperty": "done",
+      "toId": "insertWish",
+      "toProperty": "add"
+    }
+  ]
+}

@@ -1,0 +1,110 @@
+# model-finished turns=57 costUsd=17.01 durS=1096
+get_project_info
+list_components
+list_project_docs
+get_style_vocabulary
+get_project_doc
+get_project_doc
+get_project_doc
+get_project_doc
+get_component
+get_component
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+list_node_types
+get_node_type
+get_node_type
+get_node_type
+list_node_types
+get_example
+get_example
+get_example
+list_node_types
+list_node_types
+list_node_types
+get_node_type
+get_example
+get_example
+list_node_types
+list_node_types
+get_node_type
+get_example
+set_project_tokens
+create_plan
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+set_project_tokens
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+stage_plan_operation
+apply_plan
+get_component
+validate_project
+render_report
+get_component
+get_component
+update_component
+render_report
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+update_component
+set_project_tokens
+update_component
+update_component
+render_report
+update_component
+update_component
+render_report
+update_component
+render_report
+update_component
+render_report
+update_component
+render_report
+update_component
+write_project_doc
+write_project_doc
+write_project_doc
+validate_project
+render_report
+
+# --- rejections: 5 of 91 calls (0 carried a LAS-007 recipe) ---
+5	stage_plan_operation
+
+# --- diagnostic codes seen by the model ---
+15	raw-color-literal
+13	inactive-conditional-parameter
+4	invalid-parameter-value
+4	unknown-parameter
+2	repeated-sibling-subtree
+2	unsized-absolute-box
+
+# --- what each rejection actually said ---
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/ProductCard" rejected — nothing was staged. · 1 diag: ERROR [invalid-parameter-value] /Components/ProductCard › node price_row "Price row" (Group) › input "alignItems": parameter "alignItems" (enum) "base
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Header" rejected — nothing was staged. · 1 diag: ERROR [invalid-parameter-value] /Components/Header › node bar "Header bar" (Group) › input "zIndex": parameter "zIndex" (number) expects a number. Got
+[stage_plan_operation] validation-failed · stage_plan_operation "Components/Hero" rejected — nothing was staged. · 4 diag: WARN [unknown-parameter] /Components/Hero › node shell "Shell (2-up, collapses)" (net.noodl.visual.columns) › input "maxWidth": net.noodl.visual.colum
+[stage_plan_operation] validation-failed · stage_plan_operation "Pages/Home" rejected — nothing was staged. · 1 diag: ERROR [invalid-parameter-value] /Pages/Home › node basket_step "Add one to basket" (Set Variable) › input "setWith": parameter "setWith" (enum) an enu
+[stage_plan_operation] validation-failed · stage_plan_operation "Pages/Home" rejected — nothing was staged. · 1 diag: ERROR [invalid-parameter-value] /Pages/Home › node basket_step "Add one to basket" (Set Variable) › input "setWith": parameter "setWith" (enum) an enu

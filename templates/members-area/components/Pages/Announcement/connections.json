@@ -1,0 +1,139 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "6d8c5bb3-6024-52d7-8a41-859aae1dcbe4",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "pageInputs",
+      "fromProperty": "pm-announcementId",
+      "toId": "hold-3",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "page-4",
+      "fromProperty": "didMount",
+      "toId": "hold-3",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "hold-3",
+      "fromProperty": "out-announcementId",
+      "toId": "record-2",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "hold-3",
+      "fromProperty": "out-ready",
+      "toId": "record-2",
+      "toProperty": "fetch"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-title",
+      "toId": "title",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-body",
+      "toId": "body",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "prop-postedAt",
+      "toId": "when-2",
+      "toProperty": "in-postedAt"
+    },
+    {
+      "fromId": "when-2",
+      "fromProperty": "out-label",
+      "toId": "date",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "record-2",
+      "fromProperty": "failure",
+      "toId": "refusalGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "refusalGate",
+      "fromProperty": "result",
+      "toId": "refusal",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "chrome-2",
+      "fromProperty": "isModerator",
+      "toId": "removal",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "removeButton",
+      "fromProperty": "onClick",
+      "toId": "confirmGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmGate",
+      "fromProperty": "result",
+      "toId": "confirm",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "confirmNo",
+      "fromProperty": "onClick",
+      "toId": "confirmClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "confirmClear",
+      "fromProperty": "result",
+      "toId": "confirm",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "hold-3",
+      "fromProperty": "out-announcementId",
+      "toId": "confirmed",
+      "toProperty": "in-announcementId"
+    },
+    {
+      "fromId": "confirmYes",
+      "fromProperty": "onClick",
+      "toId": "confirmed",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "confirmed",
+      "fromProperty": "out-announcementId",
+      "toId": "del",
+      "toProperty": "modelId"
+    },
+    {
+      "fromId": "confirmed",
+      "fromProperty": "out-go",
+      "toId": "del",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "del",
+      "fromProperty": "done",
+      "toId": "toList",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "del",
+      "fromProperty": "failure",
+      "toId": "removeFailedGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "removeFailedGate",
+      "fromProperty": "result",
+      "toId": "removeFailed",
+      "toProperty": "mounted"
+    }
+  ]
+}

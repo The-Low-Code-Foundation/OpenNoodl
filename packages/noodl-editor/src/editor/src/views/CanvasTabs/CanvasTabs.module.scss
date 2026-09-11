@@ -4,21 +4,234 @@
  * Theme-aware styling for canvas/Blockly tab system
  */
 
+/* LGC-010: the floating window. Its box is four custom properties on the shell
+   root, written by `LogicOverlay.ts` from a `mousemove`; see
+   `styles/nodegrapheditor.css` for the layer it floats in.
+
+   `position: absolute` inside a `position: fixed` full-viewport layer, so the
+   numbers are viewport coordinates and the window is not clipped by the node
+   graph frame — which is the whole point: on a 13" laptop the frame is half the
+   screen and the two interface rails alone are 304px. */
 .CanvasTabs {
+  position: absolute;
+  left: var(--logic-overlay-left, 5vw);
+  top: var(--logic-overlay-top, 5vh);
+  width: var(--logic-overlay-width, 90vw);
+  height: var(--logic-overlay-height, 90vh);
+
   display: flex;
   flex-direction: column;
-  height: 100%;
-  width: 100%;
-  pointer-events: all; /* Enable clicks on tabs */
+  box-sizing: border-box;
+  pointer-events: all; /* the layer around it is `none`, so clicks outside pass through */
+
+  background-color: var(--theme-color-bg-1);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-default);
+  /* It is a window over a working canvas, so it needs to read as being *above*
+     something rather than as a region of it. */
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
 }
 
+/* 🔴 VFN-005 — parked: the window rolled down to its title bar, in place.
+
+   **Height only, and only here.** The window's four custom properties are
+   untouched by parking — `--logic-overlay-height` still holds the box the
+   builder chose — so restoring is `height: var(...)` coming back, and it comes
+   back to the same number by construction. There is no remembered rect to get
+   out of step with a drag, a viewport resize or a reopen, which is what makes
+   acceptance criterion 2 structural rather than defended.
+
+   `height: auto` on a column flex container with the only flexible child gone
+   is exactly the tab bar's own height, so no constant has to be guessed and
+   none goes stale when the bar's padding changes.
+
+   ⚠️ `.TabContent` is `display: none` and not `height: 0`, because the point is
+   for `.BlocklyContainer` to measure **0×0**: `Blockly.svgResize` reads
+   `parentElement.offsetWidth/offsetHeight` and caches whatever it finds, and
+   the guard in `BlocklyWorkspace.tsx` declines a zero-size container rather
+   than letting it cache the zero and set the SVG to `0px`. Collapse goes
+   through that same door; `CanvasTabs.tsx` calls `resizeBlocklyWorkspaces()`
+   synchronously on the way back. */
+.CanvasTabs.isParked {
+  height: auto;
+
+  .TabContent {
+    display: none;
+  }
+
+  /* The bar stops offering a drag it will refuse. A parked window cannot be
+     moved — a drag would read its origin from the collapsed box and write the
+     title bar's height back as the window's — so the `grab` cursor would be a
+     promise the handler does not keep. See `CanvasTabs.tsx`. */
+  .TabBar,
+  .TabBar:active {
+    cursor: default;
+  }
+}
+
+/* LGC-010: the eight resize targets.
+
+   🔴 They sit **entirely inside** the window, and that is a fix rather than a
+   preference. Written the conventional way — 6px strips overhanging the border
+   by half, so the grab area is centred on the visible edge — half of every
+   handle was unreachable: `.CanvasTabs` carries `overflow: hidden` for its
+   border radius, and `overflow: hidden` clips **hit-testing**, not only paint.
+   Driven and measured: the east handle's box was x 1151–1157 while
+   `elementFromPoint` stopped answering it at 1154, so a drag starting on the
+   visible edge landed on the canvas behind and the window did not move.
+
+   8px inside is also a bigger target than 3px reachable, so the repair is
+   better than the thing it repairs. `z-index` puts them above the tab bar and
+   the workspace; the corners come after the edges in document order and so win
+   the overlap without needing a second number. */
+.ResizeHandle {
+  position: absolute;
+  z-index: 2;
+  pointer-events: all;
+
+  &.is-n,
+  &.is-s {
+    left: 0;
+    right: 0;
+    height: 8px;
+    cursor: ns-resize;
+  }
+
+  &.is-e,
+  &.is-w {
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+  }
+
+  &.is-n {
+    top: 0;
+  }
+  &.is-s {
+    bottom: 0;
+  }
+  &.is-e {
+    right: 0;
+  }
+  &.is-w {
+    left: 0;
+  }
+
+  &.is-ne,
+  &.is-nw,
+  &.is-se,
+  &.is-sw {
+    width: 16px;
+    height: 16px;
+  }
+
+  &.is-ne {
+    top: 0;
+    right: 0;
+    cursor: nesw-resize;
+  }
+  &.is-nw {
+    top: 0;
+    left: 0;
+    cursor: nwse-resize;
+  }
+  &.is-se {
+    bottom: 0;
+    right: 0;
+    cursor: nwse-resize;
+  }
+  &.is-sw {
+    bottom: 0;
+    left: 0;
+    cursor: nesw-resize;
+  }
+}
+
+/* The tab bar is also the window's title bar: dragging its background moves the
+   window, which is why it says so with a `grab` cursor. */
 .TabBar {
   display: flex;
+  align-items: center;
   gap: var(--spacing-1);
   padding: var(--spacing-2);
   background-color: var(--theme-color-bg-2);
   border-bottom: 1px solid var(--theme-color-border-default);
   flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* Takes the slack between the tabs and the window controls, and is drag surface
+   like the rest of the bar's background. */
+.TabBarSpacer {
+  flex: 1;
+  align-self: stretch;
+  min-width: var(--spacing-2);
+}
+
+/* VFN-005 — the placement controls (home, park). Square siblings of `Done`,
+   sharing its chrome so the right-hand cluster reads as one group.
+
+   Sized rather than padded: the window's floor is 640px and the title bar has
+   to hold the tabs as well, so these are two 24px targets and not two more
+   labelled buttons. The glyph is `aria-hidden` — each button carries the answer
+   in words on `aria-label` and `title`, because a `⌂` announced as "house" is
+   worse than nothing. */
+.WindowButton {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-base);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
+}
+
+.WindowCloseButton {
+  flex: 0 0 auto;
+  padding: var(--spacing-1) var(--spacing-3);
+  border: 1px solid var(--theme-color-border-default);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--theme-color-bg-4);
+    color: var(--theme-color-fg-highlight);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
 }
 
 .Tab {
@@ -52,10 +265,92 @@
   }
 }
 
+/* VFN-004: `Component · Node`, in three spans so the component side can carry
+   the away state and truncate on its own.
+
+   `min-width: 0` is what lets `.TabComponent` shrink at all: a nowrap span in a
+   flex row has an automatic minimum equal to its content, so without it the tab
+   would grow past the window rather than ellipsis. `flex-wrap` is deliberately
+   not involved — it wraps before it shrinks, which is the opposite of what a
+   one-line tab wants. */
 .TabLabel {
+  display: flex;
+  align-items: center;
+  min-width: 0;
   font-size: var(--font-size-base);
   font-weight: 500;
   white-space: nowrap;
+}
+
+/* 🔴 The COMPONENT side truncates, not the node side. The node name is the more
+   specific of the two and is what tells two open tabs apart, so it keeps its
+   width. `tabLocation.ts` already caps the string at a character count; this is
+   the second line of defence for a narrow window, and the two agree on which
+   half gives way.
+
+   Its own token rather than opacity: a foreground dimmed by `opacity` cannot be
+   turned down far enough to read as secondary and still pass AA, and the away
+   state below needs a step it is still legible at. */
+.TabComponent {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--theme-color-fg-default-shy);
+}
+
+.TabSeparator {
+  flex: 0 0 auto;
+  padding: 0 var(--spacing-1);
+  color: var(--theme-color-fg-default-shy);
+}
+
+/* The node name never gives way. */
+.TabNode {
+  flex: 0 0 auto;
+}
+
+/* VFN-004 — the away mark: the graph on screen is NOT this tab's component.
+
+   🔴 A shape, not a colour. It is a hollow ring, present in the DOM only while
+   the tab is away, so it survives a screenshot, a greyscale print and both
+   themes — and it reads as "elsewhere" at a glance rather than after reading and
+   comparing two names, which is the failure the label alone would leave one step
+   later. `currentColor` so it inherits the active/inactive tab foreground and
+   needs no second palette. */
+.AwayMark {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  align-self: center;
+}
+
+/* An away tab also italicises its component segment. Belt and braces on purpose:
+   the ring answers "is this tab elsewhere?", and the slant answers "elsewhere
+   than WHAT?" by pointing at the half of the label that is currently untrue of
+   the screen. Both are shapes; neither is a colour.
+
+   ⚠️ `.Tab.isAway .TabComponent` and not a bare `.isAway` rule — `.TabComponent`
+   already sets `color`, and a bare class loses to a descendant selector of the
+   same specificity only by source order. Stated as a descendant so it wins by
+   specificity regardless of where the two end up in the emitted sheet. */
+.Tab.isAway .TabComponent {
+  font-style: italic;
+}
+
+/* VFN-009 — a saved block's tab wears the glyph its call block wears, so the tab
+   and the block on the canvas read as the same thing.
+
+   `currentColor` and no palette of its own, for the away mark's reason: it has to
+   survive a greyscale print and both themes, and the tab already decides what
+   colour its foreground is in each of its three states. */
+.SavedBlockMark {
+  flex: 0 0 auto;
+  align-self: center;
+  color: currentColor;
+  font-size: 11px;
+  line-height: 1;
 }
 
 .TabCloseButton {
@@ -97,9 +392,13 @@
   position: relative;
 }
 
+/* LGC-008: every open tab's workspace is mounted, so the containers are stacked
+   on top of each other and all but the active one is `display: none` (written
+   inline by `buildTabWorkspaces`). Absolute rather than in flow: two 100%-height
+   blocks in a column would make the second overflow its pane. */
 .BlocklyContainer {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background-color: var(--theme-color-bg-1);
 }

@@ -17,7 +17,7 @@
         { "id": "title_input", "type": "net.noodl.controls.textinput", "label": "Title field", "parent": "root" },
         { "id": "save_btn", "type": "net.noodl.controls.button", "label": "Save", "parent": "root", "parameters": { "label": "Save" } },
         { "id": "saved_text", "type": "Text", "label": "Saved note", "parent": "root", "parameters": { "text": "Saved." } },
-        { "id": "detail_inputs", "type": "Component Inputs", "label": "Task id in" },
+        { "id": "detail_inputs", "type": "Component Inputs", "label": "Task id in", "ports": [{ "name": "taskId", "plug": "output", "type": "*" }] },
         {
           "id": "task_record",
           "type": "DbModel2",

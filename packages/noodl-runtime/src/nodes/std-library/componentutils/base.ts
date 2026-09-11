@@ -171,7 +171,7 @@ function extendSetComponentObjectProperties(def: SetComponentObjectPropertiesDef
             },
             error: {
               type: 'string',
-              group: 'Events',
+              group: 'Error',
               displayName: 'Error',
               description: 'Which ancestor was looked for and why it was not found',
               getter: function (this: SetComponentObjectPropertiesInstance) {

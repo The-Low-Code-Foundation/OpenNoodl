@@ -1,0 +1,14 @@
+Build a **stock cupboard** for a small café — one page, for the staff.
+
+The page needs:
+
+- A list of what is in the cupboard: item name, how many are left, and the supplier.
+- A way to add a new item, and a way to change the count on one that is already there.
+- Items that have run out should stand out from the rest.
+- Only staff should be able to see any of it, so there needs to be a way to sign in, and the
+  page should say who is signed in.
+
+The counts have to survive a reload — if someone changes a number on one machine, the next
+person to open it sees the new number.
+
+Build this in the NodeGX project using the NodeGX MCP tools. The project is already created and the server is connected.

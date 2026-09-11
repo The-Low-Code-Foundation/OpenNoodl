@@ -1,0 +1,229 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "68b6cbd3-e3df-475d-b162-c36df44e87b3",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "footer-root",
+      "type": "Group",
+      "label": "Footer Band",
+      "x": 0,
+      "y": 0,
+      "children": [
+        "footer-shell"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingLeft": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 48,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 64,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 32,
+          "unit": "px"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderTopColor": "var(--border)"
+      }
+    },
+    {
+      "id": "footer-shell",
+      "type": "Group",
+      "label": "Shell",
+      "x": 0,
+      "y": 100,
+      "parent": "footer-root",
+      "children": [
+        "footer-columns",
+        "footer-bottom"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1100,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 48,
+          "unit": "px"
+        }
+      }
+    },
+    {
+      "id": "footer-columns",
+      "type": "net.noodl.visual.columns",
+      "label": "Link Columns",
+      "x": 0,
+      "y": 200,
+      "parent": "footer-shell",
+      "children": [
+        "footer-col-shop",
+        "footer-col-company",
+        "footer-col-help"
+      ],
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 32,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 700,
+          "unit": "px"
+        },
+        "smallLayout": "1",
+        "sizing": "layoutString"
+      }
+    },
+    {
+      "id": "footer-col-shop",
+      "type": "/Components/FooterLinkColumn",
+      "label": "Shop Column",
+      "x": 0,
+      "y": 300,
+      "parent": "footer-columns",
+      "parameters": {
+        "heading": "Shop",
+        "links": [
+          {
+            "label": "All products"
+          },
+          {
+            "label": "Ceramics"
+          },
+          {
+            "label": "Coffee"
+          },
+          {
+            "label": "Home goods"
+          }
+        ]
+      }
+    },
+    {
+      "id": "footer-col-company",
+      "type": "/Components/FooterLinkColumn",
+      "label": "Company Column",
+      "x": 0,
+      "y": 360,
+      "parent": "footer-columns",
+      "parameters": {
+        "heading": "Company",
+        "links": [
+          {
+            "label": "Our story"
+          },
+          {
+            "label": "The studio"
+          },
+          {
+            "label": "Stockists"
+          },
+          {
+            "label": "Journal"
+          }
+        ]
+      }
+    },
+    {
+      "id": "footer-col-help",
+      "type": "/Components/FooterLinkColumn",
+      "label": "Help Column",
+      "x": 0,
+      "y": 420,
+      "parent": "footer-columns",
+      "parameters": {
+        "heading": "Help",
+        "links": [
+          {
+            "label": "Delivery & returns"
+          },
+          {
+            "label": "Contact us"
+          },
+          {
+            "label": "FAQs"
+          },
+          {
+            "label": "Care guide"
+          }
+        ]
+      }
+    },
+    {
+      "id": "footer-bottom",
+      "type": "Group",
+      "label": "Bottom Bar",
+      "x": 0,
+      "y": 480,
+      "parent": "footer-shell",
+      "children": [
+        "footer-copyright",
+        "footer-payment"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+        "alignItems": "center",
+        "paddingTop": {
+          "value": 24,
+          "unit": "px"
+        },
+        "borderTopStyle": "solid",
+        "borderTopWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderTopColor": "var(--border)"
+      }
+    },
+    {
+      "id": "footer-copyright",
+      "type": "Text",
+      "label": "Copyright",
+      "x": 0,
+      "y": 580,
+      "parent": "footer-bottom",
+      "parameters": {
+        "text": "© 2026 Kiln & Co. All rights reserved.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    },
+    {
+      "id": "footer-payment",
+      "type": "Text",
+      "label": "Payment methods",
+      "x": 0,
+      "y": 640,
+      "parent": "footer-bottom",
+      "parameters": {
+        "text": "Visa · Mastercard · Amex · Apple Pay",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      }
+    }
+  ]
+}

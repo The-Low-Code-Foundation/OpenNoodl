@@ -4,6 +4,7 @@ import { NodeLibrary } from '../../models/nodelibrary';
 import { CanvasFonts, CanvasTheme } from './canvas/CanvasTheme';
 import { fillRoundRect, roundRect, strokeRoundRect, truncateText } from './canvasHelpers';
 import { NodeGraphEditorNode } from './NodeGraphEditorNode';
+import { arrowheadPolygon, diamondPolygon, glyphForPlugIcon, glyphScaleFor, WIRE_ENDPOINT } from './wireEndpoints';
 
 function _getColorForAnnotation(annotation) {
   const theme = CanvasTheme.instance.colors;
@@ -129,6 +130,42 @@ function paintCategoryGlyph(ctx: CanvasRenderingContext2D, category: string, cx:
 }
 
 /**
+ * FIX-018 — the "card behind the card" edge, the mark that says this card opens.
+ *
+ * A second card body offset down-right, painted *before* the real one, so all
+ * that survives is a 3px L-shaped band along the bottom and right. Fill and
+ * outline are the card's own, which is the whole point: it reads as another
+ * card of the same kind sitting underneath, not as a thick border.
+ *
+ * Bottom-right is forced, not chosen. The unhealthy ring lives at −1px and the
+ * selection glow is a 6px stroke centred on the card edge; both are painted
+ * later and would sit on top of an edge anywhere else. Bottom-right they
+ * overlap it at 15% alpha, so the silhouette survives selection.
+ *
+ * The band falls outside `pointInside` and the cull rect. At 3px that is fine
+ * and it is why the offset must not grow: this is paint, not hit area.
+ */
+function paintStackedCardEdge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  theme: TSFixme
+) {
+  const offset = NodeGraphEditorNode.stackedCardEdgeOffset;
+  const radius = NodeGraphEditorNode.cornerRadius;
+
+  ctx.save();
+  ctx.fillStyle = theme.cardBg;
+  fillRoundRect(ctx, x + offset, y + offset, width, height, radius);
+  ctx.strokeStyle = theme.cardBorder;
+  ctx.lineWidth = 1;
+  strokeRoundRect(ctx, x + offset, y + offset, width, height, radius);
+  ctx.restore();
+}
+
+/**
  * The comment stripe's width in *graph* units, widened at low zoom so it never
  * falls below one device pixel (CAN-004 — a mark you must zoom in to see is not
  * a mark). The context transform's horizontal scale is device pixels per graph
@@ -165,13 +202,32 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     // Category (UIX-005): existing taxonomy keys only — component / visual /
     // data / javascript / default. colorOverride (AiAssistant metadata) wins,
     // matching the old colorSchemeForNodeColorName precedence.
+    //
+    // FIX-018: a component instance is `component`, whatever its graph is made
+    // of. Left to itself `ComponentModel.get color()` inherits the hue of the
+    // component's own root node (componentmodel.ts:440-449), so a component
+    // wrapping a Group painted the identical blue chip as a Group and a
+    // logic-only one painted grey — nothing about the chip said "component".
+    // Structure beats inheritance here; an explicit colorOverride still wins,
+    // because that is somebody saying so on purpose.
+    const isComponentInstance = node.isComponent();
     const categoryName: string =
-      node.model.metadata?.colorOverride || (node.model.type as TSFixme).color || 'default';
+      node.model.metadata?.colorOverride ||
+      (isComponentInstance ? 'component' : (node.model.type as TSFixme).color) ||
+      'default';
     const cat = CanvasTheme.instance.categoryColors(categoryName);
 
     const isHighligthed = node.owner.isHighlighted(node);
     const horizontalSpacing = 10,
       connectionDragAreaWidth = 10; //the circle icon where you can drag connection from
+
+    // FIX-018. Before the card body and before the clip, so the body covers all
+    // but the 3px that peeks out bottom-right. Gated on the instance itself, not
+    // on the category above, so an AiAssistant-tinted component keeps the
+    // affordance even though its chip keeps its override hue.
+    if (isComponentInstance) {
+      paintStackedCardEdge(ctx, x, y, node.nodeSize.width, node.nodeSize.height, theme);
+    }
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
@@ -391,25 +447,70 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
     // Paint plugs
     let tx, ty;
 
-    function arrow(side, color) {
-      const dx = side === 'left' ? 4 : -4;
-      const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
-      ctx.fillStyle = color;
+    // SIG-006: the node-side direction glyphs. Circle = it leaves here,
+    // arrowhead = it arrives here, diamond = both. The shapes and their sizes
+    // come from `wireEndpoints.ts`, which the *wire's* own ends read too, so the
+    // two statements of the same fact cannot drift apart.
+    //
+    // ⚠️ Painted at constant screen size below 100% zoom. The old pair was a 7px
+    // disc against an 8px triangle — one pixel of extent apart, in the same
+    // colour, and halving with the zoom.
+    const plugGlyphScale = glyphScaleFor(_this.owner?.getPanAndScale?.().scale ?? 1);
+
+    const fillPolygon = (points) => {
       ctx.beginPath();
-      ctx.moveTo(cx - dx, ty - 4);
-      ctx.lineTo(cx + dx, ty);
-      ctx.lineTo(cx - dx, ty + 4);
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      ctx.closePath();
       ctx.fill();
     }
 
-    function dot(side, color) {
-      const cx = x + (side === 'left' ? 0 : _this.nodeSize.width);
-      const radius = 3.5; // mock: flat 7px port dots
+    const plugCentre = (side) => {
+      return { x: x + (side === 'left' ? 0 : _this.nodeSize.width), y: ty };
+    }
 
+    const arrow = (side, color) => {
+      // Pointing *into* the node: a wire arriving on the left side comes from
+      // the left, so its head points right.
+      const direction = { x: side === 'left' ? 1 : -1, y: 0 };
+      ctx.fillStyle = color;
+      fillPolygon(
+        arrowheadPolygon(
+          plugCentre(side),
+          direction,
+          WIRE_ENDPOINT.arrowLength * plugGlyphScale,
+          WIRE_ENDPOINT.arrowHalfWidth * plugGlyphScale
+        )
+      );
+    }
+
+    const dot = (side, color) => {
+      const c = plugCentre(side);
       ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(cx, ty, radius, 0, 2 * Math.PI, false);
+      ctx.arc(c.x, c.y, WIRE_ENDPOINT.sourceRadius * plugGlyphScale, 0, 2 * Math.PI, false);
       ctx.fill();
+    }
+
+    const diamond = (side, color) => {
+      ctx.fillStyle = color;
+      fillPolygon(diamondPolygon(plugCentre(side), WIRE_ENDPOINT.diamondRadius * plugGlyphScale));
+    }
+
+    /**
+     * SIG-006 item 3, decided rather than inherited.
+     *
+     * `'both'` used to fall into the arrow branch — `leftIcon === 'to' ||
+     * leftIcon === 'both'` — so an arrow did not actually mean "input", and the
+     * ports where direction is hardest to read were the ones being told a small
+     * lie. A port that is the source of one wire and the target of another is a
+     * third fact and gets a third silhouette.
+     */
+    const paintPlugGlyph = (side, icon, color) => {
+      const glyph = glyphForPlugIcon(icon);
+      if (glyph === 'circle') dot(side, color);
+      else if (glyph === 'arrowhead') arrow(side, color);
+      else if (glyph === 'diamond') diamond(side, color);
     }
 
     function drawPlugs(plugs, offset) {
@@ -467,11 +568,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
             color = _getColorForAnnotation(topConnection.model.annotation);
           }
 
-          if (p.leftIcon === 'from') {
-            dot('left', color);
-          } else if (p.leftIcon === 'to' || p.leftIcon === 'both') {
-            arrow('left', color);
-          }
+          paintPlugGlyph('left', p.leftIcon, color);
         }
 
         // Plug - Right side
@@ -494,11 +591,7 @@ export function paintNode(node: NodeGraphEditorNode, ctx: CanvasRenderingContext
             color = _getColorForAnnotation(topConnection.model.annotation);
           }
 
-          if (p.rightIcon === 'from') {
-            dot('right', color);
-          } else if (p.rightIcon === 'to' || p.rightIcon === 'both') {
-            arrow('right', color);
-          }
+          paintPlugGlyph('right', p.rightIcon, color);
         }
       }
     }

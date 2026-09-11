@@ -2,6 +2,7 @@ import { isEqual } from 'underscore';
 
 import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { NodeLibrary } from '@noodl-models/nodelibrary';
+import { partitionGatedPorts, reasonsForGatedPorts } from '@noodl-models/nodelibrary/portGateReason';
 
 /**
  * The model proxy is used to simulate different models for different interaction states / default values etc
@@ -31,6 +32,19 @@ export class ModelProxy {
 
   get variantName() {
     return this.model.variantName;
+  }
+
+  /**
+   * SYL-003 — the node's own label, forwarded like `type` and `variantName` above.
+   *
+   * 🔴 Its absence was not visible from a property row. A `TypeView` is handed this proxy rather
+   * than the `NodeGraphNode`, and `label` is a *getter* on the node, so `parent.model.label` read
+   * `undefined` in silence — the avatar picker prefilled an empty box instead of the name on the
+   * node, and looked exactly like a picker that had simply chosen not to prefill. Measured in a
+   * running editor, not reasoned about.
+   */
+  get label() {
+    return this.model.label;
   }
 
   constructor(args) {
@@ -72,6 +86,24 @@ export class ModelProxy {
   off(group) {
     return this.model.off(group);
   }
+  /**
+   * FB-022 — completes the listener facade `on`/`off` already start.
+   *
+   * 🔴 **Found by driving, not by a spec.** Every row that reaches this proxy treats it as the
+   * node: it subscribes through `on` here, and `NodeGraphNode.setParameter`'s own undo closures
+   * fire `modelParameterUndo`/`modelParameterRedo` on the *node* to make the panel rebuild. A
+   * caller holding the proxy had no way to do the same — `notifyListeners` simply was not here,
+   * so an undo restored the value in the model and left the field on screen showing the old
+   * one. That is exactly what FB-022's first drive saw: `width` reverted to 160 in the project
+   * and the input still read 220.
+   *
+   * Forwarding to `this.model` is the whole fix, and it is correct rather than convenient:
+   * `on` already registers against the node, so this reaches the same listeners the node's own
+   * notifications do.
+   */
+  notifyListeners(event: string, ...args: unknown[]) {
+    return this.model.notifyListeners(event, ...args);
+  }
 
   getPorts(filter?: 'input' | TSFixme) {
     const source: NodeGraphNode = this.editMode === 'variant' ? this.model.variant : this.model;
@@ -79,11 +111,24 @@ export class ModelProxy {
     let ports = [].concat(source.getPorts(filter));
 
     // Apply ports condition filter
+    //
+    // FB-021 — the splice this used to be is what made Jordan ask "where is
+    // width?" four times. A `conditionalports/basic` rule does not remove the
+    // port (see `portConnectivity.ts`, and `portGateReason.ts`'s header for the
+    // measurement): the port is live, a wire to it survives a reload and
+    // delivers its value, and the layout then throws that value away. Removing
+    // the row made a live-but-ignored port and an absent one look identical.
+    //
+    // So a port whose condition can be put into a sentence is **kept and
+    // marked**; `Ports.renderParams` draws it as a disabled row carrying that
+    // sentence. One that cannot be explained is spliced out exactly as before —
+    // `portDecoration.ts`'s rule, that a dead control with no reason reads as
+    // broken rather than as switched off, applies here unchanged.
     const portFilter = NodeLibrary.instance.applyPortConditionsFilterForNode(this);
-    portFilter.forEach((portname) => {
-      const idx = ports.findIndex((p) => p.name === portname);
-      if (idx !== -1) ports.splice(idx, 1);
-    });
+    if (portFilter.length) {
+      const reasons = reasonsForGatedPorts(source.type && source.type.dynamicports, portFilter, ports);
+      ports = partitionGatedPorts(ports, portFilter, reasons);
+    }
 
     // Apply filter for allowVisualStates
     if (this.visualState !== undefined && this.visualState !== 'neutral') {

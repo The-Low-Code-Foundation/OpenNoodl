@@ -1,0 +1,1040 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "bc820954-03cc-4e61-9cce-dfc8fdc91214",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-4",
+      "type": "Page",
+      "label": "Admin Page",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "title": "Admin",
+        "urlPath": "admin"
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Admin",
+          "index": 34
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "admin",
+          "index": 35
+        }
+      ],
+      "children": [
+        "root-4"
+      ]
+    },
+    {
+      "id": "root-4",
+      "type": "Group",
+      "label": "Page Root",
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--background)",
+        "height": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "children": [
+        "header-2",
+        "listCard",
+        "formCard"
+      ],
+      "parent": "page-4"
+    },
+    {
+      "id": "header-2",
+      "type": "Group",
+      "label": "Header Row",
+      "parameters": {
+        "flexDirection": "row",
+        "alignItems": "center",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "paddingLeft": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 32,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 24,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 24,
+          "unit": "px"
+        }
+      },
+      "children": [
+        "titleText",
+        "logoutBtn"
+      ],
+      "parent": "root-4"
+    },
+    {
+      "id": "titleText",
+      "type": "Text",
+      "label": "Page Title",
+      "parameters": {
+        "text": "Puppy Admin",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "header-2"
+    },
+    {
+      "id": "logoutBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Log Out Button",
+      "parameters": {
+        "label": "Log Out",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "parent": "header-2"
+    },
+    {
+      "id": "listCard",
+      "type": "Group",
+      "label": "Puppy List Card",
+      "parameters": {
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface)",
+        "borderColor": "var(--border)",
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        },
+        "width": {
+          "value": 600,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 16,
+          "unit": "px"
+        }
+      },
+      "children": [
+        "listHeading",
+        "listText"
+      ],
+      "parent": "root-4"
+    },
+    {
+      "id": "listHeading",
+      "type": "Text",
+      "label": "List Heading",
+      "parameters": {
+        "text": "Current Puppies",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "listCard"
+    },
+    {
+      "id": "listText",
+      "type": "Text",
+      "label": "Puppy List Text",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize",
+        "fontFamily": "var(--font-mono)"
+      },
+      "parent": "listCard"
+    },
+    {
+      "id": "formCard",
+      "type": "Group",
+      "label": "Add / Edit Puppy Form",
+      "parameters": {
+        "flexDirection": "column",
+        "backgroundColor": "var(--surface)",
+        "borderColor": "var(--border)",
+        "borderStyle": "solid",
+        "borderWidth": {
+          "value": 1,
+          "unit": "px"
+        },
+        "borderRadius": {
+          "value": 12,
+          "unit": "px"
+        },
+        "width": {
+          "value": 600,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingLeft": {
+          "value": 16,
+          "unit": "px"
+        },
+        "paddingRight": {
+          "value": 16,
+          "unit": "px"
+        },
+        "rowGap": {
+          "value": 12,
+          "unit": "px"
+        }
+      },
+      "children": [
+        "formHeading",
+        "idInput",
+        "nameInput-2",
+        "photoInput",
+        "breedInput",
+        "ageInput",
+        "descInput",
+        "buttonsRow",
+        "statusText"
+      ],
+      "parent": "root-4"
+    },
+    {
+      "id": "formHeading",
+      "type": "Text",
+      "label": "Form Heading",
+      "parameters": {
+        "text": "Add, Update or Delete a Puppy",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "idInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Puppy Id Input",
+      "parameters": {
+        "placeholder": "Puppy ID (leave blank to add new)",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "nameInput-2",
+      "type": "net.noodl.controls.textinput",
+      "label": "Name Input",
+      "parameters": {
+        "placeholder": "Name",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "photoInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Photo URL Input",
+      "parameters": {
+        "placeholder": "Photo URL",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "breedInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Breed Input",
+      "parameters": {
+        "placeholder": "Breed",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "ageInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Age Input",
+      "parameters": {
+        "placeholder": "Age",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "descInput",
+      "type": "net.noodl.controls.textinput",
+      "label": "Description Input",
+      "parameters": {
+        "placeholder": "Description",
+        "type": "textArea",
+        "borderColor": "var(--border)",
+        "backgroundColor": "var(--background)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "buttonsRow",
+      "type": "Group",
+      "label": "Form Buttons Row",
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": {
+          "value": 8,
+          "unit": "px"
+        },
+        "width": {
+          "value": 100,
+          "unit": "%"
+        }
+      },
+      "children": [
+        "addBtn",
+        "updateBtn",
+        "deleteBtn"
+      ],
+      "parent": "formCard"
+    },
+    {
+      "id": "addBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Add Puppy Button",
+      "parameters": {
+        "label": "Add Puppy",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "parent": "buttonsRow"
+    },
+    {
+      "id": "updateBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Update Puppy Button",
+      "parameters": {
+        "label": "Update Puppy",
+        "backgroundColor": "var(--secondary)",
+        "color": "var(--secondary-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "parent": "buttonsRow"
+    },
+    {
+      "id": "deleteBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Delete Puppy Button",
+      "parameters": {
+        "label": "Delete Puppy",
+        "backgroundColor": "var(--destructive)",
+        "color": "var(--destructive-foreground)",
+        "borderWidth": {
+          "value": 0,
+          "unit": "px"
+        }
+      },
+      "parent": "buttonsRow"
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status Message",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "formCard"
+    },
+    {
+      "id": "logout",
+      "type": "net.noodl.user.LogOut",
+      "label": "Log Out Action",
+      "x": 300,
+      "y": 340
+    },
+    {
+      "id": "navigateLogout",
+      "type": "RouterNavigate",
+      "label": "Go To Admin Login (after logout)",
+      "x": 450,
+      "y": 340,
+      "parameters": {
+        "target": "/Pages/Admin Login",
+        "router": "Main"
+      },
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "title": "Choose page component",
+            "components": [
+              "/#__page__/Home",
+              "/Pages/Landing",
+              "/Pages/Thank You",
+              "/Pages/Admin Login",
+              "/Pages/Admin"
+            ],
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Target Page",
+          "name": "target",
+          "index": 7
+        }
+      ]
+    },
+    {
+      "id": "userCheck",
+      "type": "net.noodl.user.User",
+      "label": "Current User",
+      "x": 0,
+      "y": 340,
+      "dynamicports": [
+        {
+          "plug": "output",
+          "name": "loggedIn",
+          "type": "signal",
+          "displayName": "Logged In",
+          "group": "Events",
+          "index": 12
+        },
+        {
+          "plug": "output",
+          "name": "loggedOut",
+          "type": "signal",
+          "displayName": "Logged Out",
+          "group": "Events",
+          "index": 13
+        },
+        {
+          "plug": "output",
+          "name": "sessionLost",
+          "type": "signal",
+          "displayName": "Session Lost",
+          "group": "Events",
+          "index": 14
+        }
+      ]
+    },
+    {
+      "id": "authGate",
+      "type": "Condition",
+      "label": "Require Login",
+      "x": 150,
+      "y": 340
+    },
+    {
+      "id": "navigateNotAuth",
+      "type": "RouterNavigate",
+      "label": "Go To Admin Login (not authed)",
+      "x": 300,
+      "y": 420,
+      "parameters": {
+        "target": "/Pages/Admin Login",
+        "router": "Main"
+      },
+      "dynamicports": [
+        {
+          "plug": "input",
+          "type": {
+            "name": "component",
+            "title": "Choose page component",
+            "components": [
+              "/#__page__/Home",
+              "/Pages/Landing",
+              "/Pages/Thank You",
+              "/Pages/Admin Login",
+              "/Pages/Admin"
+            ],
+            "allowEditOnly": true
+          },
+          "group": "General",
+          "displayName": "Target Page",
+          "name": "target",
+          "index": 7
+        }
+      ]
+    },
+    {
+      "id": "query",
+      "type": "DbCollection2",
+      "label": "Query Puppies",
+      "x": 0,
+      "y": 460,
+      "parameters": {
+        "collectionName": "Puppy"
+      },
+      "dynamicports": [
+        {
+          "name": "collectionName",
+          "displayName": "Class",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "User",
+                "value": "_User"
+              },
+              {
+                "label": "Role",
+                "value": "_Role"
+              },
+              {
+                "label": "Puppy",
+                "value": "Puppy"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "index": 19
+        },
+        {
+          "name": "storageFilterType",
+          "type": {
+            "name": "enum",
+            "allowEditOnly": true,
+            "enums": [
+              {
+                "value": "simple",
+                "label": "Visual"
+              },
+              {
+                "value": "json",
+                "label": "Javascript"
+              }
+            ]
+          },
+          "displayName": "Filter",
+          "default": "simple",
+          "plug": "input",
+          "group": "General",
+          "index": 20
+        },
+        {
+          "type": "string",
+          "plug": "input",
+          "group": "Search",
+          "name": "search",
+          "displayName": "Search",
+          "index": 21
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Limit",
+          "name": "storageEnableLimit",
+          "displayName": "Use limit",
+          "index": 22
+        },
+        {
+          "type": "signal",
+          "plug": "input",
+          "group": "Actions",
+          "name": "storageFetch",
+          "displayName": "Do",
+          "index": 23
+        },
+        {
+          "name": "runOnChange-collectionName",
+          "displayName": "Class",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 24
+        },
+        {
+          "name": "runOnChange-search",
+          "displayName": "Search",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 25
+        },
+        {
+          "name": "runOnChange-records",
+          "displayName": "Record changes",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 26
+        },
+        {
+          "name": "runOnChange-querySettings",
+          "displayName": "Query settings",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 27
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Realtime",
+          "name": "realtime",
+          "default": false,
+          "displayName": "Subscribe To Changes",
+          "tooltip": "Keep Items current from the server: re-runs this query when another client creates, updates or deletes a record, and fires the Record Created/Updated/Deleted signals. Not every backend can — see Realtime Error.",
+          "index": 28
+        },
+        {
+          "type": "boolean",
+          "plug": "input",
+          "group": "Total Count",
+          "name": "storageEnableCount",
+          "displayName": "Fetch total count",
+          "index": 29
+        },
+        {
+          "name": "visualFilter",
+          "plug": "input",
+          "type": {
+            "name": "query-filter",
+            "schema": {
+              "properties": {
+                "name": {
+                  "type": "String"
+                },
+                "breed": {
+                  "type": "String"
+                },
+                "age": {
+                  "type": "String"
+                },
+                "available": {
+                  "type": "Boolean"
+                },
+                "description": {
+                  "type": "String"
+                },
+                "photo": {
+                  "type": "String"
+                }
+              }
+            },
+            "allowEditOnly": true,
+            "backend": "nodegx",
+            "valuePortPrefix": "qp-"
+          },
+          "displayName": "Filter",
+          "group": "Filter",
+          "index": 30
+        },
+        {
+          "name": "visualSort",
+          "plug": "input",
+          "type": {
+            "name": "query-sorting",
+            "schema": {
+              "properties": {
+                "name": {
+                  "type": "String"
+                },
+                "breed": {
+                  "type": "String"
+                },
+                "age": {
+                  "type": "String"
+                },
+                "available": {
+                  "type": "Boolean"
+                },
+                "description": {
+                  "type": "String"
+                },
+                "photo": {
+                  "type": "String"
+                }
+              }
+            },
+            "allowEditOnly": true
+          },
+          "displayName": "Sort",
+          "group": "Sorting",
+          "index": 31
+        }
+      ]
+    },
+    {
+      "id": "formatList",
+      "type": "JavaScriptFunction",
+      "label": "Format Puppy List",
+      "x": 150,
+      "y": 680,
+      "parameters": {
+        "functionScript": "const list = Inputs.items || [];\nOutputs.text = list.map(p => `${p.id || p.objectId} — ${p['prop-name'] || p.name} (${p['prop-breed'] || p.breed}, ${p['prop-age'] || p.age})`).join('\\n') || 'No puppies yet.';"
+      },
+      "dynamicports": [
+        {
+          "name": "in-items",
+          "displayName": "items",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs",
+          "index": 10
+        },
+        {
+          "name": "out-text",
+          "displayName": "text",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs",
+          "index": 11
+        },
+        {
+          "name": "runOnChange-in-items",
+          "displayName": "items",
+          "group": "Run On Value Change",
+          "plug": "input",
+          "default": true,
+          "type": {
+            "name": "boolean",
+            "allowEditOnly": true
+          },
+          "index": 12
+        }
+      ],
+      "metadata": {
+        "merge": {
+          "soureCodePorts": [
+            "functionScript"
+          ]
+        }
+      }
+    },
+    {
+      "id": "createRecord",
+      "type": "NewDbModelProperties",
+      "label": "Create Puppy",
+      "x": 700,
+      "y": 960,
+      "parameters": {
+        "collectionName": "Puppy"
+      },
+      "dynamicports": [
+        {
+          "name": "collectionName",
+          "displayName": "Class",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "User",
+                "value": "_User"
+              },
+              {
+                "label": "Role",
+                "value": "_Role"
+              },
+              {
+                "label": "Puppy",
+                "value": "Puppy"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "index": 8
+        },
+        {
+          "name": "prop-name",
+          "displayName": "name",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 9
+        },
+        {
+          "name": "prop-breed",
+          "displayName": "breed",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 10
+        },
+        {
+          "name": "prop-age",
+          "displayName": "age",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 11
+        },
+        {
+          "name": "prop-available",
+          "displayName": "available",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 12
+        },
+        {
+          "name": "prop-description",
+          "displayName": "description",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 13
+        },
+        {
+          "name": "prop-photo",
+          "displayName": "photo",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 14
+        }
+      ]
+    },
+    {
+      "id": "updateRecord",
+      "type": "SetDbModelProperties",
+      "label": "Update Puppy",
+      "x": 700,
+      "y": 1080,
+      "parameters": {
+        "collectionName": "Puppy"
+      },
+      "dynamicports": [
+        {
+          "name": "collectionName",
+          "displayName": "Class",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "User",
+                "value": "_User"
+              },
+              {
+                "label": "Role",
+                "value": "_Role"
+              },
+              {
+                "label": "Puppy",
+                "value": "Puppy"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "index": 12
+        },
+        {
+          "name": "prop-name",
+          "displayName": "name",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 13
+        },
+        {
+          "name": "prop-breed",
+          "displayName": "breed",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 14
+        },
+        {
+          "name": "prop-age",
+          "displayName": "age",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 15
+        },
+        {
+          "name": "prop-available",
+          "displayName": "available",
+          "type": {
+            "name": "boolean"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 16
+        },
+        {
+          "name": "prop-description",
+          "displayName": "description",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 17
+        },
+        {
+          "name": "prop-photo",
+          "displayName": "photo",
+          "type": {
+            "name": "string"
+          },
+          "plug": "input",
+          "group": "Properties",
+          "index": 18
+        }
+      ]
+    },
+    {
+      "id": "deleteRecord",
+      "type": "DeleteDbModelProperties",
+      "label": "Delete Puppy",
+      "x": 700,
+      "y": 1200,
+      "dynamicports": [
+        {
+          "name": "collectionName",
+          "displayName": "Class",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "User",
+                "value": "_User"
+              },
+              {
+                "label": "Role",
+                "value": "_Role"
+              },
+              {
+                "label": "Puppy",
+                "value": "Puppy"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "index": 9
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "page-4"
+  ]
+}

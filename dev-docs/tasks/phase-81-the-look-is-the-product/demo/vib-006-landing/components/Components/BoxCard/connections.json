@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "81eade04-cee0-5874-8cac-73c921eefb22",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "bc_inputs",
+      "fromProperty": "image",
+      "toId": "bc_photo",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "bc_inputs",
+      "fromProperty": "alt",
+      "toId": "bc_photo",
+      "toProperty": "alt"
+    },
+    {
+      "fromId": "bc_inputs",
+      "fromProperty": "title",
+      "toId": "bc_title",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bc_inputs",
+      "fromProperty": "price",
+      "toId": "bc_price",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "bc_inputs",
+      "fromProperty": "body",
+      "toId": "bc_text",
+      "toProperty": "text"
+    }
+  ]
+}

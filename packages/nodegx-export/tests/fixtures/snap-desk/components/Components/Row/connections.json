@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d1c3-6a4e-4f9b-8d2c-000000000096",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "rowInputs",
+      "fromProperty": "text",
+      "toId": "rowText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "removeButton",
+      "fromProperty": "onClick",
+      "toId": "rowOutputs",
+      "toProperty": "removed"
+    }
+  ]
+}

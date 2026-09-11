@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "67efa155-7606-446f-aef2-3c1b7fbfb32c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "ct-inputs",
+      "fromProperty": "image",
+      "toId": "ct-image",
+      "toProperty": "src"
+    },
+    {
+      "fromId": "ct-inputs",
+      "fromProperty": "name",
+      "toId": "ct-name",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ct-inputs",
+      "fromProperty": "count",
+      "toId": "ct-count",
+      "toProperty": "text"
+    }
+  ]
+}

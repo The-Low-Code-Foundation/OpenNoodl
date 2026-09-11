@@ -1,0 +1,255 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "b7c2d9e1-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Mood",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Mood Desk",
+        "urlPath": "mood"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "openText",
+        "openButton",
+        "closeButton",
+        "moodText",
+        "calmButton",
+        "angryButton"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-10)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Mood Desk",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "openText",
+      "type": "Text",
+      "label": "Open or closed",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 440
+    },
+    {
+      "id": "openButton",
+      "type": "net.noodl.controls.button",
+      "label": "Open up",
+      "parent": "shell",
+      "parameters": {
+        "label": "Open up"
+      },
+      "x": 160,
+      "y": 440
+    },
+    {
+      "id": "closeButton",
+      "type": "net.noodl.controls.button",
+      "label": "Close down",
+      "parent": "shell",
+      "parameters": {
+        "label": "Close down"
+      },
+      "x": 160,
+      "y": 480
+    },
+    {
+      "id": "setOpen",
+      "type": "Set Variable",
+      "label": "Open",
+      "parameters": {
+        "name": "isOpen",
+        "value": true
+      },
+      "x": 400,
+      "y": 440
+    },
+    {
+      "id": "setClosed",
+      "type": "Set Variable",
+      "label": "Closed",
+      "parameters": {
+        "name": "isOpen",
+        "value": false
+      },
+      "x": 400,
+      "y": 480
+    },
+    {
+      "id": "openVar",
+      "type": "Variable2",
+      "label": "Is open",
+      "parameters": {
+        "name": "isOpen"
+      },
+      "x": 400,
+      "y": 360
+    },
+    {
+      "id": "openLabel",
+      "type": "Boolean To String",
+      "label": "Open or closed",
+      "parameters": {
+        "trueString": "Open",
+        "falseString": "Closed"
+      },
+      "x": 620,
+      "y": 360
+    },
+    {
+      "id": "moodText",
+      "type": "Text",
+      "label": "Mood colour",
+      "parent": "shell",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 600
+    },
+    {
+      "id": "calmButton",
+      "type": "net.noodl.controls.button",
+      "label": "Calm",
+      "parent": "shell",
+      "parameters": {
+        "label": "Calm"
+      },
+      "x": 160,
+      "y": 600
+    },
+    {
+      "id": "angryButton",
+      "type": "net.noodl.controls.button",
+      "label": "Angry",
+      "parent": "shell",
+      "parameters": {
+        "label": "Angry"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "setCalm",
+      "type": "Set Variable",
+      "label": "Calm",
+      "parameters": {
+        "name": "mood",
+        "value": 0.5
+      },
+      "x": 400,
+      "y": 600
+    },
+    {
+      "id": "setAngry",
+      "type": "Set Variable",
+      "label": "Angry",
+      "parameters": {
+        "name": "mood",
+        "value": 1.5
+      },
+      "x": 400,
+      "y": 640
+    },
+    {
+      "id": "moodVar",
+      "type": "Variable2",
+      "label": "Mood",
+      "parameters": {
+        "name": "mood"
+      },
+      "x": 400,
+      "y": 520
+    },
+    {
+      "id": "moodBlend",
+      "type": "Color Blend",
+      "label": "Mood colour",
+      "parameters": {
+        "color 0": "#ff0000",
+        "color 1": "#00ff00",
+        "color 2": "#0000ff"
+      },
+      "x": 620,
+      "y": 520
+    },
+    {
+      "id": "trueConst",
+      "type": "Boolean",
+      "label": "True",
+      "parameters": {
+        "value": true
+      },
+      "x": 300,
+      "y": 440
+    },
+    {
+      "id": "falseConst",
+      "type": "Boolean",
+      "label": "False",
+      "parameters": {
+        "value": false
+      },
+      "x": 300,
+      "y": 480
+    },
+    {
+      "id": "calmConst",
+      "type": "Number",
+      "label": "Calm value",
+      "parameters": {
+        "value": 0.5
+      },
+      "x": 300,
+      "y": 600
+    },
+    {
+      "id": "angryConst",
+      "type": "Number",
+      "label": "Angry value",
+      "parameters": {
+        "value": 1.5
+      },
+      "x": 300,
+      "y": 640
+    }
+  ]
+}

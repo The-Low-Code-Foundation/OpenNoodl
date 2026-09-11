@@ -14,6 +14,7 @@
 
 // Type-only import of the generated catalog shape (no runtime cost).
 import type { NodeCatalog, CatalogNode, CatalogPort, Typecast } from '../../../../../noodl-types/src/node-catalog';
+import type { DeclaredPortGroup, ParameterBag } from './portConditions';
 
 export type { NodeCatalog, CatalogNode, CatalogPort };
 
@@ -56,6 +57,8 @@ export class CatalogIndex {
   private readonly byType = new Map<string, CatalogNode>();
   /** typeName → plug → Set<portName> (static + declared-port-group names). */
   private readonly portNamesCache = new Map<string, { input: Set<string>; output: Set<string> }>();
+  /** DEF-006 — memoised {@link inputDefaults} bags, one per node type. */
+  private readonly defaultsByType = new Map<string, ParameterBag>();
   /** from-type → Set<to-type> reachable via a documented typecast. */
   private readonly typecasts = new Map<string, Set<string>>();
   private readonly allTypeNames: string[];
@@ -80,6 +83,51 @@ export class CatalogIndex {
     return this.byType.get(typeName);
   }
 
+  // ── Provenance (CN-003 item 4) ────────────────────────────────────────────
+
+  /**
+   * True when this type is known because **a project kit declares it**, rather
+   * than because we shipped it.
+   *
+   * 🔴 **`hasType()` must stay true for both, and does.** ✅ **D4** rules that a
+   * kit-declared type counts as known and is fully checked; ✅ **P1** forbids a
+   * capability a node cannot reach for being non-first-party. So this is not a
+   * gate — nothing may branch on it to check a kit node *less*. It exists
+   * because two callers need to *say* where a node came from: ✅ **D1**'s
+   * property-panel provenance ("from Cashflow Kit v1.2"), and CN-015's rule that
+   * a failure names the kit responsible.
+   *
+   * ⚠️ Reads a field the generated `CatalogNode` type does not declare — a kit
+   * entry is by construction outside the generated vocabulary (`node-catalog.d.ts`
+   * types `providedBy` as a union of the four shipped sources). The overlay's
+   * `KIT_PROVENANCE` and this cast are the one place that asymmetry is handled.
+   */
+  isProjectKitType(typeName: string): boolean {
+    const node = this.byType.get(typeName) as { providedBy?: string } | undefined;
+    return node?.providedBy === 'project-kit';
+  }
+
+  /**
+   * The kit module that declared this type, or `undefined` for a built-in.
+   *
+   * ⚠️ **Today the editor route answers `'Unknown Module'` for every kit**, and
+   * that is not this method failing. `registerModule` names a module from the
+   * object passed to `Noodl.defineModule` and no kit sets that name; the
+   * manifest holds it and the viewer never reads it. The MCP route reads the
+   * manifest and answers correctly, so the two disagree — measured in slice 3,
+   * asserted in `kitAgreement.test.ts`. A caller showing this to a user is
+   * showing the viewer's answer, so fix it there, not here.
+   */
+  kitModuleOf(typeName: string): string | undefined {
+    const node = this.byType.get(typeName) as { kitModule?: string } | undefined;
+    return this.isProjectKitType(typeName) ? node?.kitModule : undefined;
+  }
+
+  /** Every type name this project's own kits contribute. Empty for a project with none. */
+  projectKitTypeNames(): string[] {
+    return this.allTypeNames.filter((name) => this.isProjectKitType(name));
+  }
+
   /** Type names an author should reasonably use (in the node picker, not deprecated). */
   authorableTypeNames(): string[] {
     return this.catalog.nodes.filter((n) => n.inNodePicker && !n.isDeprecated).map((n) => n.typeName);
@@ -101,6 +149,19 @@ export class CatalogIndex {
     const dyn = this.byType.get(typeName)?.dynamicPorts;
     if (!dyn) return false;
     return dyn.mechanisms.some((m) => RUNTIME_DYNAMIC_MECHANISMS.has(m));
+  }
+
+  /**
+   * The node's conditionally-declared port groups, if it has any.
+   *
+   * Every member of these groups is *also* a statically declared input (checked
+   * across the whole shipped catalog: no type declares a port only
+   * conditionally), so `getPort` still finds them. What the groups add is the
+   * `condition` — the only place the catalog records that a port depends on a
+   * sibling parameter's value.
+   */
+  declaredPortGroups(typeName: string): DeclaredPortGroup[] | undefined {
+    return this.byType.get(typeName)?.dynamicPorts?.declaredPortGroups as DeclaredPortGroup[] | undefined;
   }
 
   /** A short human note describing why a port could not be checked. */
@@ -145,6 +206,30 @@ export class CatalogIndex {
   portNames(typeName: string, plug: Plug): string[] {
     const set = this.portNamesFor(typeName)?.[plug];
     return set ? [...set].sort() : [];
+  }
+
+  /**
+   * DEF-006 — every statically-declared input default for a node type.
+   *
+   * The bag {@link conditionIsUnsatisfied} has to be answered against. The
+   * canonical evaluator reads `NodeGraphNode.getParameter`, which falls back to
+   * `port.default` when nothing is authored, so a condition like
+   * `useIcon = true AND iconSourceType = icon` is *satisfied* on a node that
+   * sets only `useIcon` — `iconSourceType` defaults to `icon`. Answered from
+   * the authored bag alone that reads as unsatisfied, and the validator reports
+   * an icon that renders perfectly well as never read.
+   *
+   * Memoised with the port-name sets, and for the same reason: this is called
+   * once per node in a whole-project validation.
+   */
+  inputDefaults(typeName: string): ParameterBag {
+    const cached = this.defaultsByType.get(typeName);
+    if (cached) return cached;
+    const node = this.byType.get(typeName);
+    const bag: ParameterBag = {};
+    if (node) for (const port of node.inputs) if (port.default !== undefined) bag[port.name] = port.default;
+    this.defaultsByType.set(typeName, bag);
+    return bag;
   }
 
   /** The catalog port object, when statically known. */

@@ -1,0 +1,2281 @@
+{
+  "name": "Settings Page",
+  "components": [
+    {
+      "name": "/Settings Page",
+      "id": "5e770000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000001",
+            "fromProperty": "Title",
+            "toId": "5e770000-1000-4000-9000-000000000012",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000001",
+            "fromProperty": "Description",
+            "toId": "5e770000-1000-4000-9000-000000000013",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000001",
+            "fromProperty": "Settings",
+            "toId": "5e770000-1000-4000-9000-000000000003",
+            "toProperty": "in-Settings"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000002",
+            "fromProperty": "items",
+            "toId": "5e770000-1000-4000-9000-000000000003",
+            "toProperty": "in-Fallback"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000003",
+            "fromProperty": "out-Settings",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Loaded"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000055",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000004",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000054",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000005",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000004",
+            "fromProperty": "currentCount",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Saves"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000005",
+            "fromProperty": "currentCount",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Discards"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-State",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-State"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-IsDirty",
+            "toId": "5e770000-1000-4000-9000-000000000050",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-Summary",
+            "toId": "5e770000-1000-4000-9000-000000000052",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000055",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000007",
+            "toProperty": "Saved"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000054",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000007",
+            "toProperty": "Discarded"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-Values",
+            "toId": "5e770000-1000-4000-9000-000000000007",
+            "toProperty": "Values"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-IsDirty",
+            "toId": "5e770000-1000-4000-9000-000000000007",
+            "toProperty": "Is Dirty"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-ChangeCount",
+            "toId": "5e770000-1000-4000-9000-000000000007",
+            "toProperty": "Change Count"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-DisplayName",
+            "toId": "5e770000-1000-4000-9000-000000000027",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000027",
+            "fromProperty": "Value",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-DisplayName"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-Email",
+            "toId": "5e770000-1000-4000-9000-000000000028",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000028",
+            "fromProperty": "Value",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Email"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-Digest",
+            "toId": "5e770000-1000-4000-9000-000000000037",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000037",
+            "fromProperty": "Value",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Digest"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-ProductUpdates",
+            "toId": "5e770000-1000-4000-9000-000000000038",
+            "toProperty": "Checked"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000038",
+            "fromProperty": "Checked",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-ProductUpdates"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-WeeklyReport",
+            "toId": "5e770000-1000-4000-9000-000000000039",
+            "toProperty": "Checked"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000039",
+            "fromProperty": "Checked",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-WeeklyReport"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000006",
+            "fromProperty": "out-Theme",
+            "toId": "5e770000-1000-4000-9000-000000000047",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000047",
+            "fromProperty": "Value",
+            "toId": "5e770000-1000-4000-9000-000000000006",
+            "toProperty": "in-Theme"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000054",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000027",
+            "toProperty": "Revert"
+          },
+          {
+            "fromId": "5e770000-1000-4000-9000-000000000054",
+            "fromProperty": "onClick",
+            "toId": "5e770000-1000-4000-9000-000000000028",
+            "toProperty": "Revert"
+          }
+        ],
+        "roots": [
+          {
+            "id": "5e770000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -980,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Settings",
+                "plug": "output",
+                "type": {
+                  "name": "object"
+                },
+                "group": "Data",
+                "index": 0
+              },
+              {
+                "name": "Title",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Description",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000002",
+            "type": "Static Data",
+            "label": "Sample settings",
+            "x": -980,
+            "y": 200,
+            "parameters": {
+              "type": "json",
+              "json": "[\n    {\n        \"Display Name\": \"Ada Lovelace\",\n        \"Email\": \"ada@example.com\",\n        \"Digest\": \"weekly\",\n        \"Product Updates\": true,\n        \"Weekly Report\": false,\n        \"Theme\": \"system\"\n    }\n]"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000003",
+            "type": "JavaScriptFunction",
+            "label": "Choose settings",
+            "x": -700,
+            "y": 100,
+            "parameters": {
+              "functionScript": "// A connected Settings record wins over the sample below it, so the component\n// shows what it is the moment you place it. Every input may be unconnected, so\n// everything is guarded.\n//\n// Static Data hands out Models, a connected Record is a Model too, and another\n// Function's output is a plain object. `plain` reads all three the same way.\nconst plain = (v) =>\n  v && typeof v === 'object'\n    ? (typeof v.get === 'function' && v.data ? { ...v.data } : { ...v })\n    : {};\nconst asArray = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.items) ? v.items : []);\n\nconst connected = plain(Inputs.Settings);\nconst sample = plain(asArray(Inputs.Fallback)[0]);\nOutputs.Settings = Object.keys(connected).length > 0 ? connected : sample;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Settings",
+                "displayName": "Settings",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Fallback",
+                "displayName": "Fallback",
+                "plug": "input",
+                "type": "array",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "out-Settings",
+                "displayName": "Settings",
+                "plug": "output",
+                "type": "object",
+                "group": "Outputs",
+                "index": 2
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000004",
+            "type": "Counter",
+            "label": "Save presses",
+            "x": -700,
+            "y": 380,
+            "parameters": {
+              "startValue": 0
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000005",
+            "type": "Counter",
+            "label": "Discard presses",
+            "x": -700,
+            "y": 520,
+            "parameters": {
+              "startValue": 0
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000006",
+            "type": "JavaScriptFunction",
+            "label": "Settings state",
+            "x": -380,
+            "y": 240,
+            "parameters": {
+              "functionScript": "// -- The whole of the dirty tracking, in one node. ---------------------------\n//\n// Five things here are load-bearing, and each was a measured failure first.\n//\n// 1. A control's value output ALREADY HAS A VALUE before anything runs, and\n//    making a connection copies it straight into the target. A Dropdown seeds\n//    its own Value to its first default option and a Checkbox seeds Checked to\n//    false, both in `initialize`; a Text Input does not, so its Value is still\n//    undefined when the connection is made and the copy is skipped. So a field\n//    is only believed once it has AGREED with the baseline at least once\n//    (`settled` below). Without that the tracker mirrors a default the control\n//    was never told to hold, never delivers the loaded value, and the page\n//    opens on \"3 unsaved changes\" with two empty dropdowns and two unticked\n//    boxes - which is exactly what the first render of this entry did.\n// 2. `State` is this node's OWN output wired back to its own input, with \"Run\n//    on value change\" UNTICKED (`runOnChange-in-State`). A Function keeps\n//    nothing between runs, and this is the only memory it has. Ticked, the node\n//    re-runs on the state it has just written - the shape that walks a stepper\n//    to its last step on one click.\n// 3. `Saves` and `Discards` are Counters, and a Counter arrives at 0 at load.\n//    A Function whose inputs never arrive never runs, and then the FIRST press\n//    is silently eaten as the boot run it never had.\n// 4. `undefined` means \"this control has not reported yet\" and is NOT a\n//    difference.\n// 5. Every port is read and written by its literal name. The editor re-derives\n//    a Function's ports by matching those names in the script text, so a value\n//    reached through a variable key is a port the editor cannot see - and it\n//    drops the port, and the connection with it, the next time the project is\n//    opened.\n//\n// And the reason the value outputs MIRROR the live values rather than parking\n// on the baseline: a Function output only publishes when it CHANGES. An output\n// still holding the baseline it published at load cannot re-send it, so the\n// SECOND Discard would do nothing at all while looking perfectly correct.\n\nconst FIELDS = ['Display Name', 'Email', 'Digest', 'Product Updates', 'Weekly Report', 'Theme'];\n\n// Static Data hands out Models, a connected Record is a Model too, and another\n// Function's output is a plain object. Read all three the same way.\nconst plain = (v) =>\n  v && typeof v === 'object'\n    ? (typeof v.get === 'function' && v.data ? { ...v.data } : { ...v })\n    : {};\n\nconst loaded = plain(Inputs.Loaded);\nconst saves = Number(Inputs.Saves) || 0;\nconst discards = Number(Inputs.Discards) || 0;\n\nconst current = {\n  'Display Name': Inputs.DisplayName,\n  Email: Inputs.Email,\n  Digest: Inputs.Digest,\n  'Product Updates': Inputs.ProductUpdates,\n  'Weekly Report': Inputs.WeeklyReport,\n  Theme: Inputs.Theme\n};\n\nlet state = Inputs.State;\nif (!state || typeof state !== 'object' || state.source !== Inputs.Loaded) {\n  // First run, or the host pushed a different record: what loaded IS the\n  // baseline, and every field goes back to being unbelieved until it agrees\n  // with it. `source` is the identity of the record and not its contents, so\n  // an ordinary re-run does not keep resetting it.\n  state = { source: Inputs.Loaded, baseline: { ...loaded }, saves: saves, discards: discards, settled: {} };\n}\n\nlet reverting = false;\nif (saves > state.saves) {\n  // Save RE-BASELINES: what is on screen becomes what \"unchanged\" means from\n  // here on, so the next Discard goes back to the saved values and not to the\n  // ones this page was loaded with.\n  const baseline = { ...state.baseline };\n  for (const key of FIELDS) if (current[key] !== undefined) baseline[key] = current[key];\n  state = { ...state, baseline: baseline, saves: saves };\n}\nif (discards > state.discards) {\n  state = { ...state, discards: discards };\n  reverting = true;\n}\n\n// What each control should show, and which controls are worth listening to.\nconst settled = { ...state.settled };\nconst show = {};\nlet learned = false;\nfor (const key of FIELDS) {\n  const live = current[key];\n  if (!settled[key] && live !== undefined && live === state.baseline[key]) {\n    settled[key] = true;\n    learned = true;\n  }\n  // An unsettled field is handed the baseline again on every run. That costs\n  // nothing - an unchanged output publishes nothing - and it is what makes the\n  // loaded record arrive whatever a control claimed about itself beforehand.\n  show[key] = reverting || !settled[key] || live === undefined ? state.baseline[key] : live;\n}\nif (learned) state = { ...state, settled: settled };\n\nOutputs.DisplayName = show['Display Name'];\nOutputs.Email = show.Email;\nOutputs.Digest = show.Digest;\nOutputs.ProductUpdates = show['Product Updates'];\nOutputs.WeeklyReport = show['Weekly Report'];\nOutputs.Theme = show.Theme;\n\n// On a revert the controls still hold the old text for one more frame, so the\n// answer is known rather than measured: nothing is dirty.\nconst changed = reverting\n  ? []\n  : FIELDS.filter(\n      (key) => settled[key] && current[key] !== undefined && current[key] !== state.baseline[key]\n    );\n\nOutputs.State = state;\nOutputs.IsDirty = changed.length > 0;\nOutputs.ChangeCount = changed.length;\nOutputs.ChangedFields = changed.join(', ');\nOutputs.Summary =\n  changed.length === 0\n    ? 'No unsaved changes'\n    : changed.length === 1\n    ? '1 unsaved change'\n    : changed.length + ' unsaved changes';\nOutputs.Values = { ...state.baseline, ...show };\n",
+              "runOnChange-in-State": false
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Loaded",
+                "displayName": "Loaded",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Saves",
+                "displayName": "Saves",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Discards",
+                "displayName": "Discards",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "in-State",
+                "displayName": "State",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 3
+              },
+              {
+                "name": "in-DisplayName",
+                "displayName": "Display Name",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Email",
+                "displayName": "Email",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "in-Digest",
+                "displayName": "Digest",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 6
+              },
+              {
+                "name": "in-ProductUpdates",
+                "displayName": "Product Updates",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 7
+              },
+              {
+                "name": "in-WeeklyReport",
+                "displayName": "Weekly Report",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 8
+              },
+              {
+                "name": "in-Theme",
+                "displayName": "Theme",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 9
+              },
+              {
+                "name": "runOnChange-in-State",
+                "displayName": "State",
+                "group": "Run On Value Change",
+                "plug": "input",
+                "default": true,
+                "type": {
+                  "name": "boolean",
+                  "allowEditOnly": true
+                },
+                "index": 10
+              },
+              {
+                "name": "out-State",
+                "displayName": "State",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 11
+              },
+              {
+                "name": "out-IsDirty",
+                "displayName": "IsDirty",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 12
+              },
+              {
+                "name": "out-ChangeCount",
+                "displayName": "ChangeCount",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 13
+              },
+              {
+                "name": "out-Summary",
+                "displayName": "Summary",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 14
+              },
+              {
+                "name": "out-ChangedFields",
+                "displayName": "ChangedFields",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 15
+              },
+              {
+                "name": "out-Values",
+                "displayName": "Values",
+                "plug": "output",
+                "type": "object",
+                "group": "Outputs",
+                "index": 16
+              },
+              {
+                "name": "out-DisplayName",
+                "displayName": "Display Name",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 17
+              },
+              {
+                "name": "out-Email",
+                "displayName": "Email",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 18
+              },
+              {
+                "name": "out-Digest",
+                "displayName": "Digest",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 19
+              },
+              {
+                "name": "out-ProductUpdates",
+                "displayName": "Product Updates",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 20
+              },
+              {
+                "name": "out-WeeklyReport",
+                "displayName": "Weekly Report",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 21
+              },
+              {
+                "name": "out-Theme",
+                "displayName": "Theme",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 22
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000007",
+            "type": "Component Outputs",
+            "x": 420,
+            "y": 240,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Saved",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Actions",
+                "index": 0
+              },
+              {
+                "name": "Discarded",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Actions",
+                "index": 1
+              },
+              {
+                "name": "Values",
+                "plug": "input",
+                "type": {
+                  "name": "object"
+                },
+                "group": "Data",
+                "index": 2
+              },
+              {
+                "name": "Is Dirty",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "State",
+                "index": 3
+              },
+              {
+                "name": "Change Count",
+                "plug": "input",
+                "type": {
+                  "name": "number"
+                },
+                "group": "State",
+                "index": 4
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-1000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Settings page",
+            "x": 20,
+            "y": -620,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "backgroundColor": "var(--background)",
+              "paddingTop": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": 24,
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": 24,
+                "unit": "px"
+              },
+              "styleCss": "min-width: 0;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5e770000-1000-4000-9000-000000000011",
+                "type": "Group",
+                "label": "Header",
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 20,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000012",
+                    "type": "Text",
+                    "label": "Title",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "Settings",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 24,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000013",
+                    "type": "Text",
+                    "label": "Description",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "Manage your profile and how we get in touch.",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 4,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-1000-4000-9000-000000000020",
+                "type": "Group",
+                "label": "Section: Profile",
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "paddingTop": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "marginBottom": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000021",
+                    "type": "Group",
+                    "label": "Section header",
+                    "parameters": {
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "marginBottom": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000022",
+                        "type": "Group",
+                        "label": "Icon chip",
+                        "parameters": {
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "height": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "flexDirection": "row",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "backgroundColor": "var(--muted)",
+                          "borderRadius": {
+                            "value": 8,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000023",
+                            "type": "net.noodl.visual.icon",
+                            "label": "Section icon",
+                            "parameters": {
+                              "iconIconSource": {
+                                "class": "lucide",
+                                "code": "icon-user-round",
+                                "codeAsClass": true
+                              },
+                              "iconColor": "var(--foreground)",
+                              "iconSize": {
+                                "value": 16,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000024",
+                        "type": "Group",
+                        "label": "Section titles",
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "marginLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 1 1 auto; min-width: 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000025",
+                            "type": "Text",
+                            "label": "Section title",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "Profile",
+                              "color": "var(--foreground)",
+                              "fontSize": {
+                                "value": 15,
+                                "unit": "px"
+                              },
+                              "styleCss": "font-weight: 600;"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          },
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000026",
+                            "type": "Text",
+                            "label": "Section blurb",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "How you appear to everyone else.",
+                              "color": "var(--muted-foreground)",
+                              "fontSize": {
+                                "value": 13,
+                                "unit": "px"
+                              },
+                              "marginTop": {
+                                "value": 2,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000027",
+                    "type": "/Settings Page/Text Field",
+                    "label": "Display name",
+                    "parameters": {
+                      "Label": "Display name",
+                      "Placeholder": "Your name",
+                      "Helper Text": "Shown on your comments and anything you share."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000028",
+                    "type": "/Settings Page/Text Field",
+                    "label": "Email",
+                    "parameters": {
+                      "Label": "Email address",
+                      "Placeholder": "you@example.com",
+                      "Helper Text": "Where receipts and password resets are sent."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-1000-4000-9000-000000000030",
+                "type": "Group",
+                "label": "Section: Notifications",
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "paddingTop": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "marginBottom": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000031",
+                    "type": "Group",
+                    "label": "Section header",
+                    "parameters": {
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "marginBottom": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000032",
+                        "type": "Group",
+                        "label": "Icon chip",
+                        "parameters": {
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "height": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "flexDirection": "row",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "backgroundColor": "var(--muted)",
+                          "borderRadius": {
+                            "value": 8,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000033",
+                            "type": "net.noodl.visual.icon",
+                            "label": "Section icon",
+                            "parameters": {
+                              "iconIconSource": {
+                                "class": "lucide",
+                                "code": "icon-bell",
+                                "codeAsClass": true
+                              },
+                              "iconColor": "var(--foreground)",
+                              "iconSize": {
+                                "value": 16,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000034",
+                        "type": "Group",
+                        "label": "Section titles",
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "marginLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 1 1 auto; min-width: 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000035",
+                            "type": "Text",
+                            "label": "Section title",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "Notifications",
+                              "color": "var(--foreground)",
+                              "fontSize": {
+                                "value": 15,
+                                "unit": "px"
+                              },
+                              "styleCss": "font-weight: 600;"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          },
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000036",
+                            "type": "Text",
+                            "label": "Section blurb",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "What we send, and how often.",
+                              "color": "var(--muted-foreground)",
+                              "fontSize": {
+                                "value": 13,
+                                "unit": "px"
+                              },
+                              "marginTop": {
+                                "value": 2,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000037",
+                    "type": "/Settings Page/Select Field",
+                    "label": "Digest",
+                    "parameters": {
+                      "Label": "Email digest",
+                      "Items": [
+                        {
+                          "Label": "Every day",
+                          "Value": "daily"
+                        },
+                        {
+                          "Label": "Once a week",
+                          "Value": "weekly"
+                        },
+                        {
+                          "Label": "Never",
+                          "Value": "never"
+                        }
+                      ],
+                      "Helper Text": "A summary of everything that happened while you were away."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000038",
+                    "type": "/Settings Page/Toggle Field",
+                    "label": "Product updates",
+                    "parameters": {
+                      "Label": "Product updates",
+                      "Helper Text": "Occasional notes about new features. No more than one a month."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000039",
+                    "type": "/Settings Page/Toggle Field",
+                    "label": "Weekly report",
+                    "parameters": {
+                      "Label": "Weekly report",
+                      "Helper Text": "Your numbers for the week, every Monday morning."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-1000-4000-9000-000000000040",
+                "type": "Group",
+                "label": "Section: Appearance",
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "paddingTop": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "marginBottom": {
+                    "value": 16,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000041",
+                    "type": "Group",
+                    "label": "Section header",
+                    "parameters": {
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "marginBottom": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000042",
+                        "type": "Group",
+                        "label": "Icon chip",
+                        "parameters": {
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "height": {
+                            "value": 32,
+                            "unit": "px"
+                          },
+                          "flexDirection": "row",
+                          "alignItems": "center",
+                          "justifyContent": "center",
+                          "backgroundColor": "var(--muted)",
+                          "borderRadius": {
+                            "value": 8,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000043",
+                            "type": "net.noodl.visual.icon",
+                            "label": "Section icon",
+                            "parameters": {
+                              "iconIconSource": {
+                                "class": "lucide",
+                                "code": "icon-palette",
+                                "codeAsClass": true
+                              },
+                              "iconColor": "var(--foreground)",
+                              "iconSize": {
+                                "value": 16,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "5e770000-1000-4000-9000-000000000044",
+                        "type": "Group",
+                        "label": "Section titles",
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "marginLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 1 1 auto; min-width: 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000045",
+                            "type": "Text",
+                            "label": "Section title",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "Appearance",
+                              "color": "var(--foreground)",
+                              "fontSize": {
+                                "value": 15,
+                                "unit": "px"
+                              },
+                              "styleCss": "font-weight: 600;"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          },
+                          {
+                            "id": "5e770000-1000-4000-9000-000000000046",
+                            "type": "Text",
+                            "label": "Section blurb",
+                            "parameters": {
+                              "sizeMode": "contentSize",
+                              "text": "How this looks on your screen.",
+                              "color": "var(--muted-foreground)",
+                              "fontSize": {
+                                "value": 13,
+                                "unit": "px"
+                              },
+                              "marginTop": {
+                                "value": 2,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000047",
+                    "type": "/Settings Page/Select Field",
+                    "label": "Theme",
+                    "parameters": {
+                      "Label": "Theme",
+                      "Items": [
+                        {
+                          "Label": "Match my system",
+                          "Value": "system"
+                        },
+                        {
+                          "Label": "Light",
+                          "Value": "light"
+                        },
+                        {
+                          "Label": "Dark",
+                          "Value": "dark"
+                        }
+                      ],
+                      "Helper Text": "Match your system, or pin it to one or the other."
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-1000-4000-9000-000000000050",
+                "type": "Group",
+                "label": "Save bar",
+                "parameters": {
+                  "mounted": false,
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border-strong)",
+                  "borderRadius": {
+                    "value": 10,
+                    "unit": "px"
+                  },
+                  "paddingTop": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 16,
+                    "unit": "px"
+                  },
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "styleCss": "position: sticky; bottom: 12px; z-index: 5; box-shadow: var(--shadow-lg);"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000051",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Unsaved marker",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-circle-alert",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--primary)",
+                      "iconSize": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000052",
+                    "type": "Text",
+                    "label": "Summary",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "1 unsaved change",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "marginLeft": {
+                        "value": 10,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 500;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000053",
+                    "type": "Group",
+                    "label": "Spacer",
+                    "parameters": {
+                      "styleCss": "flex: 1 1 0%; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000054",
+                    "type": "net.noodl.controls.button",
+                    "label": "Discard",
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Discard",
+                      "backgroundColor": "var(--secondary)",
+                      "color": "var(--secondary-foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "borderRadius": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "sizeMode": "contentSize",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer; font-weight: 500;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "5e770000-1000-4000-9000-000000000055",
+                    "type": "net.noodl.controls.button",
+                    "label": "Save changes",
+                    "parameters": {
+                      "useLabel": true,
+                      "label": "Save changes",
+                      "backgroundColor": "var(--primary)",
+                      "color": "var(--primary-foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "borderRadius": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "marginLeft": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "sizeMode": "contentSize",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer; font-weight: 500;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "/Settings Page/Text Field",
+      "id": "5e770000-0000-4000-9000-000000000002",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Label",
+            "toId": "5e770000-2000-4000-9000-000000000012",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Helper Text",
+            "toId": "5e770000-2000-4000-9000-000000000014",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Placeholder",
+            "toId": "5e770000-2000-4000-9000-000000000013",
+            "toProperty": "placeholder"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Value",
+            "toId": "5e770000-2000-4000-9000-000000000013",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Revert",
+            "toId": "5e770000-2000-4000-9000-000000000013",
+            "toProperty": "blur"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000001",
+            "fromProperty": "Revert",
+            "toId": "5e770000-2000-4000-9000-000000000013",
+            "toProperty": "set"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000013",
+            "fromProperty": "onTextChanged",
+            "toId": "5e770000-2000-4000-9000-000000000002",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-2000-4000-9000-000000000013",
+            "fromProperty": "textChanged",
+            "toId": "5e770000-2000-4000-9000-000000000002",
+            "toProperty": "Changed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "5e770000-2000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Placeholder",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 3
+              },
+              {
+                "name": "Revert",
+                "plug": "output",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Actions",
+                "index": 4
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-2000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Field",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 16,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5e770000-2000-4000-9000-000000000011",
+                "type": "Group",
+                "label": "Label row",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-2000-4000-9000-000000000012",
+                    "type": "Text",
+                    "label": "Label",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "Label",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 500;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-2000-4000-9000-000000000013",
+                "type": "net.noodl.controls.textinput",
+                "label": "Input",
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "fontSize": {
+                    "value": 14,
+                    "unit": "px"
+                  },
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "type": "text"
+                },
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "5e770000-2000-4000-9000-000000000014",
+                "type": "Text",
+                "label": "Helper text",
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "text": "",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "5e770000-2000-4000-9000-000000000002",
+            "type": "Component Outputs",
+            "x": 420,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 900,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "/Settings Page/Select Field",
+      "id": "5e770000-0000-4000-9000-000000000003",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000001",
+            "fromProperty": "Label",
+            "toId": "5e770000-3000-4000-9000-000000000012",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000001",
+            "fromProperty": "Helper Text",
+            "toId": "5e770000-3000-4000-9000-000000000014",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000001",
+            "fromProperty": "Items",
+            "toId": "5e770000-3000-4000-9000-000000000013",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000001",
+            "fromProperty": "Value",
+            "toId": "5e770000-3000-4000-9000-000000000013",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000013",
+            "fromProperty": "value",
+            "toId": "5e770000-3000-4000-9000-000000000002",
+            "toProperty": "Value"
+          },
+          {
+            "fromId": "5e770000-3000-4000-9000-000000000013",
+            "fromProperty": "onChange",
+            "toId": "5e770000-3000-4000-9000-000000000002",
+            "toProperty": "Changed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "5e770000-3000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Items",
+                "plug": "output",
+                "type": {
+                  "name": "array"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Value",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 3
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-3000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Field",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 16,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5e770000-3000-4000-9000-000000000011",
+                "type": "Group",
+                "label": "Label row",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "marginBottom": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-3000-4000-9000-000000000012",
+                    "type": "Text",
+                    "label": "Label",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "text": "Label",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 500;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-3000-4000-9000-000000000013",
+                "type": "net.noodl.controls.options",
+                "label": "Dropdown",
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 40,
+                    "unit": "px"
+                  },
+                  "sizeMode": "explicit",
+                  "backgroundColor": "var(--background)",
+                  "color": "var(--foreground)",
+                  "fontSize": {
+                    "value": 14,
+                    "unit": "px"
+                  },
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": {
+                    "value": 6,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "placeholder": "Select an option"
+                },
+                "stateParameters": {
+                  "hover": {
+                    "borderColor": "var(--border-strong)"
+                  },
+                  "focused": {
+                    "borderColor": "var(--ring)"
+                  },
+                  "disabled": {
+                    "backgroundColor": "var(--muted)",
+                    "color": "var(--muted-foreground)"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              },
+              {
+                "id": "5e770000-3000-4000-9000-000000000014",
+                "type": "Text",
+                "label": "Helper text",
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "text": "",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "marginTop": {
+                    "value": 6,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "5e770000-3000-4000-9000-000000000002",
+            "type": "Component Outputs",
+            "x": 420,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Value",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 1800,
+          "y": 0
+        }
+      }
+    },
+    {
+      "name": "/Settings Page/Toggle Field",
+      "id": "5e770000-0000-4000-9000-000000000004",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "5e770000-4000-4000-9000-000000000001",
+            "fromProperty": "Label",
+            "toId": "5e770000-4000-4000-9000-000000000013",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "5e770000-4000-4000-9000-000000000001",
+            "fromProperty": "Helper Text",
+            "toId": "5e770000-4000-4000-9000-000000000014",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "5e770000-4000-4000-9000-000000000001",
+            "fromProperty": "Checked",
+            "toId": "5e770000-4000-4000-9000-000000000013",
+            "toProperty": "checked"
+          },
+          {
+            "fromId": "5e770000-4000-4000-9000-000000000013",
+            "fromProperty": "checked",
+            "toId": "5e770000-4000-4000-9000-000000000002",
+            "toProperty": "Checked"
+          },
+          {
+            "fromId": "5e770000-4000-4000-9000-000000000013",
+            "fromProperty": "onChange",
+            "toId": "5e770000-4000-4000-9000-000000000002",
+            "toProperty": "Changed"
+          }
+        ],
+        "roots": [
+          {
+            "id": "5e770000-4000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -700,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Label",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 0
+              },
+              {
+                "name": "Checked",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "Content",
+                "index": 1
+              },
+              {
+                "name": "Helper Text",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Content",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "5e770000-4000-4000-9000-000000000010",
+            "type": "Group",
+            "label": "Field",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "column",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "marginBottom": {
+                "value": 16,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5e770000-4000-4000-9000-000000000011",
+                "type": "Group",
+                "label": "Checkbox row",
+                "parameters": {
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "5e770000-4000-4000-9000-000000000013",
+                    "type": "net.noodl.controls.checkbox",
+                    "label": "Checkbox",
+                    "parameters": {
+                      "width": {
+                        "value": 18,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 18,
+                        "unit": "px"
+                      },
+                      "backgroundColor": "var(--background)",
+                      "borderStyle": "solid",
+                      "borderWidth": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "borderColor": "var(--border)",
+                      "borderRadius": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "useLabel": true,
+                      "label": "Label",
+                      "labelSpacing": {
+                        "value": 10,
+                        "unit": "px"
+                      },
+                      "labelcolor": "var(--foreground)",
+                      "labelfontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      }
+                    },
+                    "stateParameters": {
+                      "hover": {
+                        "borderColor": "var(--border-strong)"
+                      },
+                      "focused": {
+                        "borderColor": "var(--ring)"
+                      },
+                      "checked": {
+                        "backgroundColor": "var(--primary)",
+                        "borderColor": "var(--primary)"
+                      },
+                      "disabled": {
+                        "backgroundColor": "var(--muted)"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "5e770000-4000-4000-9000-000000000014",
+                "type": "Text",
+                "label": "Helper text",
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "text": "",
+                  "color": "var(--muted-foreground)",
+                  "fontSize": {
+                    "value": 12,
+                    "unit": "px"
+                  },
+                  "marginTop": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "marginLeft": {
+                    "value": 28,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "5e770000-4000-4000-9000-000000000002",
+            "type": "Component Outputs",
+            "x": 420,
+            "y": 0,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Checked",
+                "plug": "input",
+                "type": {
+                  "name": "boolean"
+                },
+                "index": 0
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 2700,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

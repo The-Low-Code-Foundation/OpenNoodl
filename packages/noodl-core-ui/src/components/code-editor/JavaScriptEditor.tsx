@@ -15,6 +15,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 import { ToolbarGrip } from '@noodl-core-ui/components/toolbar/ToolbarGrip';
 
+import { getCodeAuthoringContext, subscribeToOpenNode } from './authoringContext';
 import { CodeHistoryButton, type CodeSnapshot } from './CodeHistory';
 import {
   createEditorState,
@@ -25,7 +26,19 @@ import {
   type DiagnosticSummary
 } from './codemirror-extensions';
 import css from './JavaScriptEditor.module.scss';
+import { modeHasDeclaredPorts } from './utils/declaredPorts';
 import { defaultPlaceholder, isValidatedType, modeLabel } from './utils/modes';
+import {
+  isDismissed,
+  portBarMessage,
+  portBarState,
+  recordSuccess,
+  setDismissed,
+  shouldRecordSuccess,
+  shouldShowBar
+} from './utils/portBar';
+import { requestRelint } from './utils/relint';
+import { setRuntimeDiagnostic } from './utils/runtimeDiagnostic';
 import { isPixelSize, parseSizeProp, type CssSize } from './utils/size';
 import { minimalChange } from './utils/textChange';
 import { JavaScriptEditorProps } from './utils/types';
@@ -51,11 +64,13 @@ export function JavaScriptEditor({
   onSave,
   onClose,
   validationType = 'expression',
+  subject = 'node',
   disabled = false,
   height,
   width,
   placeholder,
-  historyProvider
+  historyProvider,
+  runtimeDiagnostic
 }: JavaScriptEditorProps) {
   // Mode-specific, because the editor is not always holding JavaScript.
   const resolvedPlaceholder = placeholder ?? defaultPlaceholder(validationType);
@@ -69,6 +84,17 @@ export function JavaScriptEditor({
   // therefore say "✗ Error" over text with no squiggle in it, or the reverse
   // (FH-017 slice 2).
   const [problems, setProblems] = useState<DiagnosticSummary>({ errors: 0, warnings: 0 });
+
+  // FUN-006. The bar reads the *document*, which the `value` prop does not track
+  // once the user starts typing — `onChange` reports upward but nothing comes
+  // back down. So the text is mirrored here, from both the user's edits and the
+  // external-sync effect below.
+  const [documentText, setDocumentText] = useState(value || '');
+
+  // §2's `?`: an explicit request overrides both dismissal and retirement,
+  // because a user asking for the help is a user who wants it.
+  const [barForced, setBarForced] = useState(false);
+  const [barDismissed, setBarDismissed] = useState(() => isDismissed());
 
   // A number or px string is resizable; every other CSS length passes straight through
   // (CED-001, A6 — `parseInt('100%')` used to yield a 100px editor, clamped up to 400).
@@ -95,6 +121,7 @@ export function JavaScriptEditor({
   // Handle text changes from CodeMirror
   const handleChange = useCallback(
     (newValue: string) => {
+      setDocumentText(newValue);
       onChange?.(newValue);
     },
     [onChange]
@@ -141,6 +168,9 @@ export function JavaScriptEditor({
         value || '',
         createExtensions({
           validationType,
+          // CN-019. Fixed for the lifetime of an editor instance, like
+          // `validationType` beside it — a document does not become a node.
+          subject,
           placeholder: resolvedPlaceholder,
           readOnly: disabled,
           onChange: (newValue) => handleChangeRef.current(newValue),
@@ -173,6 +203,9 @@ export function JavaScriptEditor({
     if (!view) return;
 
     const next = value || '';
+    // FUN-006's bar reads this even when the text arrived from outside.
+    setDocumentText(next);
+
     const change = minimalChange(view.state.doc.toString(), next);
     if (!change) return;
 
@@ -184,6 +217,45 @@ export function JavaScriptEditor({
     // No re-validation here: the linter is an extension of this editor and runs
     // itself on any document change, whoever caused it.
   }, [value]);
+
+  // FUN-007 §2. Push the last run's error into the gutter.
+  //
+  // ⚠️ This runs *after* the `value` effect above on any render that changes
+  // both, which is the order it has to be: the field drops itself on
+  // `docChanged`, so a diagnostic dispatched before the text landed would be
+  // cleared by its own document update. Ordering by effect declaration is
+  // load-bearing here rather than incidental.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    if (!view) return;
+
+    setRuntimeDiagnostic(view, runtimeDiagnostic ?? null);
+  }, [runtimeDiagnostic]);
+
+  // FIX-016 §2 follow-up. The open node's declared ports can change under a
+  // sitting editor — the Type dropdown that message 5 tells the author to use is
+  // in the property panel *behind* this popout, and using it used to leave the
+  // message standing.
+  //
+  // Two consumers, and they need different waking:
+  //
+  // - the **port bar** is computed during render, so it needs a re-render, which
+  //   is what the counter is for. Nothing reads its value; `useState` is being
+  //   used as "render again", and the alternative — mirroring the ports into
+  //   state — would be a second copy of something the registry already holds.
+  // - the **diagnostics** live in CodeMirror, which re-lints on document changes
+  //   only. `requestRelint` is the whole of `utils/relint.ts`.
+  const [, bumpPortRevision] = useState(0);
+  useEffect(
+    () =>
+      subscribeToOpenNode(() => {
+        bumpPortRevision((revision) => revision + 1);
+
+        const view = editorViewRef.current;
+        if (view) requestRelint(view);
+      }),
+    []
+  );
 
   // Toggle read-only on the live editor.
   useEffect(() => {
@@ -224,13 +296,77 @@ export function JavaScriptEditor({
    * (`Mod-Shift-M`) has been in our keymap since CED-001 — with no button, no
    * label and nothing in the UI that says so, it had zero callers. The verdict
    * is that button now (FH-017 slice 3).
+   *
+   * Focus is left where `openLintPanel` puts it — on the panel's list. Pulling
+   * it back to the document (which this used to do) is what made the panel
+   * open in its *unfocused* selected state, and it also disabled the arrow
+   * keys, which are how you step through the diagnostics and move the cursor
+   * to each one.
    */
   const showProblems = useCallback(() => {
     const view = editorViewRef.current;
     if (!view) return;
 
     openLintPanel(view);
-    view.focus();
+  }, []);
+
+  /**
+   * FUN-006. What is true of this node and this document right now.
+   *
+   * Recomputed per render rather than held: it is a pure function of text the
+   * component already has, and a second copy of that text is a second thing that
+   * can be stale.
+   *
+   * CN-019 — `subject` is what decides whether there is a node to speak about at
+   * all; see `utils/portBar.ts` for why the ambient `openNode` cannot answer
+   * that question in either direction. `'file'` is silent, so the `?` restore
+   * button below is not offered either: there is no hidden hint to bring back.
+   */
+  const barState = portBarState(validationType, getCodeAuthoringContext().openNode, documentText, subject);
+
+  // ⚠️ §2's auto-retire counts "**wrote** a working output", not "opened the
+  // editor". Opening it fifty times without succeeding is exactly when the bar
+  // should keep appearing, so a counter on opens would retire it fastest for the
+  // person it exists for.
+  //
+  // ⚠️ Which is why it counts the **transition**, not the state. Recording
+  // whenever the bar is silent would also count *opening a node that already
+  // worked* — so a new user opening three Function nodes in an example project
+  // would retire the bar without ever having written an output, which is the
+  // same defect wearing a different hat. Only not-silent → silent is someone
+  // succeeding in front of us. Keyed by node id inside `recordSuccess`, so one
+  // node edited repeatedly still counts once.
+  const previousBarKind = useRef(barState.kind);
+  useEffect(() => {
+    const previous = previousBarKind.current;
+    previousBarKind.current = barState.kind;
+
+    if (!shouldRecordSuccess(previous, barState.kind)) return;
+    if (!modeHasDeclaredPorts(validationType)) return;
+
+    recordSuccess(getCodeAuthoringContext().openNode?.nodeId);
+  }, [barState.kind, validationType]);
+
+  const barMessage = portBarMessage(barState);
+
+  // ⚠️ The second clause looks redundant against `shouldShowBar`, which already
+  // reads the persisted flag. It is not: `setDismissed` swallows a storage
+  // failure (a full or blocked `localStorage` is not worth an exception over a
+  // hint bar), so on a browser where the write silently fails `isDismissed()`
+  // keeps answering `false` and the ✕ would do nothing at all. The React state
+  // is what makes dismissal work for the session regardless.
+  const showBar = shouldShowBar(barState, barForced) && !(barDismissed && !barForced);
+
+  const dismissBar = useCallback(() => {
+    setDismissed(true);
+    setBarDismissed(true);
+    setBarForced(false);
+  }, []);
+
+  const restoreBar = useCallback(() => {
+    setDismissed(false);
+    setBarDismissed(false);
+    setBarForced(true);
   }, []);
 
   const problemCount = problems.errors + problems.warnings;
@@ -257,7 +393,7 @@ export function JavaScriptEditor({
       {/* Toolbar */}
       <div className={css['Toolbar']}>
         <div className={css['ToolbarLeft']}>
-          <span className={css['ModeLabel']}>{modeLabel(validationType)}</span>
+          <span className={css['ModeLabel']}>{modeLabel(validationType, subject)}</span>
           {showsVerdict &&
             (problemCount > 0 ? (
               <button
@@ -273,6 +409,22 @@ export function JavaScriptEditor({
             ))}
         </div>
         <div className={css['ToolbarRight']}>
+          {/*
+            FUN-006 §2 — dismissal is not a one-way door. Shown only when the bar
+            has something to say and is not currently saying it, so it is not a
+            permanent extra control in a dense toolbar.
+          */}
+          {barMessage !== null && !showBar && (
+            <button
+              type="button"
+              onClick={restoreBar}
+              className={css['HintButton']}
+              title="Show the port hint again"
+              aria-label="Show the port hint again"
+            >
+              ?
+            </button>
+          )}
           {/* History button — only shown when the consumer supplies a provider */}
           {historyProvider && (
             <CodeHistoryButton provider={historyProvider} getCurrentCode={readCurrentCode} onRestore={handleRestore} />
@@ -313,6 +465,26 @@ export function JavaScriptEditor({
           )}
         </div>
       </div>
+
+      {/*
+        FUN-006 — the bar. Between the toolbar and the editor, in *our* DOM
+        rather than CodeMirror's: a `baseTheme` hardcodes colours our tokens
+        never reach, which is how the lint panel shipped at 1.36:1 (F23).
+      */}
+      {showBar && barMessage !== null && (
+        <div className={css['PortHint']} role="status">
+          <span className={css['PortHintText']}>{barMessage}</span>
+          <button
+            type="button"
+            onClick={dismissBar}
+            className={css['PortHintDismiss']}
+            title="Hide this hint"
+            aria-label="Hide this hint"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/*
         CodeMirror Editor Container.

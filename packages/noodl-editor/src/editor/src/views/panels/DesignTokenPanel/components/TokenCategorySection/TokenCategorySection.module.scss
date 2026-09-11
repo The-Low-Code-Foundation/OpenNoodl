@@ -9,7 +9,7 @@
   padding: 4px 12px;
   min-height: 28px;
   border-radius: 4px;
-  transition: background-color var(--duration-100) var(--ease-out);
+  transition: background-color var(--transition-fast) var(--transition-ease-out);
 
   &:hover {
     background-color: var(--theme-color-bg-3);
@@ -73,7 +73,7 @@
   padding: 0 2px;
   line-height: 1;
   opacity: 0;
-  transition: opacity var(--duration-100) var(--ease-out);
+  transition: opacity var(--transition-fast) var(--transition-ease-out);
 
   .TokenRow:hover & {
     opacity: 1;

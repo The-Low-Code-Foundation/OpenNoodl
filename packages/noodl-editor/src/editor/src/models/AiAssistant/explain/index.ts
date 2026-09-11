@@ -9,7 +9,9 @@
 
 export * from './types';
 export * from './graph';
+export * from './authoredNotes';
 export * from './assemble';
+export * from './runtime';
 export * from './render';
 export * from './prompts';
 export * from './citations';

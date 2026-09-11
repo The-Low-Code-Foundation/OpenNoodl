@@ -1,0 +1,173 @@
+/* BEN-002 — the inputs rail.
+
+   Sits beside the stage rather than above it: the whole point of the rail is to
+   change a value and watch the component change, so the control and its
+   consequence have to be visible at the same time. A rail above the stage would
+   push the component down every time an error line appeared under a field. */
+/* BEN-003: the width, border and background moved up to `ComponentBench`'s
+   `.Rail`, which is now the column holding this and the outputs read-out. This
+   is one of two panes in it and takes the space the other does not. */
+.Root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.Header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--theme-color-border-subtle);
+}
+
+.Scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0 12px;
+}
+
+.Group {
+  display: flex;
+  flex-direction: column;
+}
+
+.GroupName {
+  padding: 10px 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.Row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 12px 8px;
+}
+
+.RowHead {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.Name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--theme-color-fg-default);
+}
+
+/* The derived type, always shown. The bench knowing a port is a `string` and
+   the bench guessing because the port is wired to nothing are different
+   situations, and the user is entitled to know which one they are in. */
+.Type {
+  flex: none;
+  font-size: 11px;
+  font-family: var(--font-family-code);
+  color: var(--theme-color-fg-default-shy);
+}
+
+.Type.is-untyped {
+  color: var(--theme-color-notice);
+}
+
+.Reset {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--theme-color-fg-muted);
+  cursor: pointer;
+}
+
+.Reset:hover {
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+}
+
+/* `visibility` rather than not rendering it: a control that appears and
+   disappears as you type moves the row under the cursor. */
+.Reset.is-hidden {
+  visibility: hidden;
+}
+
+.Control {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.Hint,
+.Error {
+  padding-top: 2px;
+}
+
+/* Phase 75's border sweep (`BORDER-CONTROL-SWEEP.md`). These edges were
+   `--theme-color-border-default`, a DIVIDER tone measuring 1.07:1 on the rail
+   behind them — so the control had no perceivable boundary. POL-016's
+   `--theme-color-border-control` is the tone for a thing a reader must identify
+   as operable (1.4.11), and it clears 3:1 on every step this family sits on. */
+.SignalButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: var(--radius-sm);
+  background-color: var(--theme-color-bg-3);
+  color: var(--theme-color-fg-default);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* 🔴 Same shape as `BenchScenarioBar .PickerChip:hover`, and the same reason —
+   the hover fill moves AWAY from the control tone (bg-3 -> bg-4, where it is
+   2.64 / 2.77), so this rule cannot simply drop its `border-color`. */
+.SignalButton:hover {
+  background-color: var(--theme-color-bg-4);
+  border-color: var(--theme-color-primary);
+}
+
+.ResetAll {
+  flex: none;
+  padding: 2px 6px;
+  border: 1px solid var(--theme-color-border-control);
+  border-radius: var(--radius-sm);
+  background-color: transparent;
+  color: var(--theme-color-fg-default);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ResetAll:hover {
+  background-color: var(--theme-color-bg-3);
+}
+
+.ResetAll.is-hidden {
+  visibility: hidden;
+}
+
+.Empty {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 12px;
+}
+
+.Usage {
+  padding-top: 4px;
+  border-top: 1px solid var(--theme-color-border-subtle);
+}

@@ -84,12 +84,19 @@
   color: var(--theme-color-warning);
 }
 
+/* Phase 75's border sweep. `border-default` was 1.08:1 on the `bg-3` fill.
+   `border-control` is 3.08 / 3.05 there and 3.57 / 3.37 on the `bg-2` toolbar.
+   ⚠️ This declaration is SHARED, and only `.FormatButton` actually wears it —
+   `.SaveButton` below overrides `border-color` to `primary`, so it was never part
+   of this defect. The sweep's inventory has that backwards: it lists `.SaveButton`
+   and does not list `.FormatButton`. ✅ `:hover` already used `primary` (3.54 /
+   3.40 on `bg-4`), which is where the remedy for the trapped hovers came from. */
 .FormatButton,
 .SaveButton {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   background-color: var(--theme-color-bg-3);
   color: var(--theme-color-fg-default);
   border-radius: 4px;
@@ -122,11 +129,20 @@
   }
 }
 
+/* 🔴 Phase 75's border sweep, and the one site in this family where the sweep's
+   OWN remedy does not work. This button's fill is `bg-4`, and POL-016 scopes
+   `border-control`'s guarantee to "bg-1, bg-2 and bg-3" — on `bg-4` it is 2.64:1
+   dark / 2.77:1 light, UNDER 1.4.11's 3:1. Swapping the token in here would have
+   looked like the rest of the sweep and shipped a control that still fails.
+   `fg-default-shy` is 5.85 / 4.61 on the fill and 7.91 / 5.61 on the `bg-2`
+   toolbar, and — as with the hovers above — the rule already contained its own
+   answer: `:hover` below has used exactly this token all along. Only the RESTING
+   state was left behind. */
 .CloseButton {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-fg-default-shy);
   background-color: var(--theme-color-bg-4);
   color: var(--theme-color-fg-default);
   border-radius: 4px;
@@ -185,4 +201,61 @@
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/*
+  FUN-006 — the port hint bar.
+
+  ⚠️ §4 is not decoration, and every instinct here has a filed defect behind it.
+
+  - **No opacity.** No opacity value both dims antialiased text and keeps it
+    legible, and light mode is the binding constraint (F22).
+  - **No "secondary" foreground.** `TextType.Secondary` is identical to
+    `TextType.Default` on screen in both themes, so reaching for it buys nothing
+    and costs a measurement.
+  - **`--theme-color-fg-default` on `--theme-color-bg-2`** — deliberately the
+    *same pairing the toolbar above already ships* (`.ModeLabel` on `.Toolbar`).
+    Picking a combination already on screen is the honest way to choose without a
+    contrast meter in hand; anything else would be a guess dressed as a decision.
+  - It sits in our own DOM, not CodeMirror's, so the tokens actually apply. A
+    `baseTheme` hardcodes colours our tokens never reach, which is how the lint
+    panel shipped at 1.36:1 (F23).
+
+  ⏳ The measured numbers in both themes are still owed — see the task file.
+*/
+.PortHint {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.PortHintText {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+}
+
+.PortHintDismiss,
+.HintButton {
+  flex: none;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--theme-color-fg-default);
+
+  &:hover {
+    color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 1px;
+  }
 }

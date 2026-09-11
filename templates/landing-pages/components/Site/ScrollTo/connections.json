@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "18b718e2-6764-56aa-8e4e-1d59fa74fff5",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "scInputs",
+      "fromProperty": "target",
+      "toId": "scFn",
+      "toProperty": "in-target"
+    },
+    {
+      "fromId": "scInputs",
+      "fromProperty": "go",
+      "toId": "scFn",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "scFn",
+      "fromProperty": "out-done",
+      "toId": "scOutputs",
+      "toProperty": "done"
+    },
+    {
+      "fromId": "scFn",
+      "fromProperty": "out-missing",
+      "toId": "scOutputs",
+      "toProperty": "missing"
+    }
+  ]
+}

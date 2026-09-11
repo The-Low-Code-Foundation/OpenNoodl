@@ -8,6 +8,10 @@ import type {
   ReactOutputPropDefinition
 } from './react-component-node';
 import FontLoader from './fontloader';
+// VIB-002 — the background-image port needs the same empty-value handling the
+// Image node's `src` has: `null`/`undefined`/`''` must clear the layer rather
+// than resolve to `/null` and fire a request. `resolveMediaSource` is that rule.
+import { resolveMediaSource } from './nodes/visual/media-source';
 import { createTooltip } from './tooltips';
 
 /**
@@ -34,6 +38,7 @@ export interface PaddingInputsOptions extends StyleTagOption, DefaultsOption {}
 export interface CornerRadiusOptions extends StyleTagOption, DefaultsOption {}
 export interface BorderInputsOptions extends StyleTagOption, DefaultsOption {}
 export interface ShadowInputsOptions extends StyleTagOption {}
+export interface BackgroundInputsOptions extends StyleTagOption {}
 export interface IconInputsOptions extends StyleTagOption {
   [extra: string]: any;
 }
@@ -68,6 +73,43 @@ const SIZE_MODES = ['explicit', 'contentWidth', 'contentHeight', 'contentSize'];
  */
 function humanCorner(suffix: string): string {
   return suffix.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+/**
+ * Coerce a dimension port's value into a CSS length string.
+ *
+ * These ports carry three shapes, and only two of them were ever handled: the
+ * editor's `{value, unit}` pair, and a bare number meaning pixels. A design
+ * token — `var(--radius-lg)`, or any other CSS length such as `calc(...)` or
+ * `1rem` — went through `Number(value) + 'px'` and became the literal string
+ * `'NaNpx'`. The CSSOM rejects that on assignment, so the declaration never
+ * reached the DOM and nothing anywhere reported an error: tokens resolved for
+ * colour and font size (those ports pass their value straight into the style
+ * object) while every radius and border width silently vanished.
+ *
+ * So anything that is not a number is passed through verbatim and left for the
+ * browser to resolve. Returning `undefined` for an unset value matters too — the
+ * `_update*` methods fall back to the all-corners/all-edges value with `||`, and
+ * a truthy `'NaNpx'` used to win that fallback.
+ */
+function cssLength(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined;
+
+  if (typeof value === 'object') {
+    const dimension = value as { value?: number; unit?: string };
+    if (typeof dimension.value !== 'number' || !Number.isFinite(dimension.value)) return undefined;
+    return `${dimension.value}${dimension.unit || 'px'}`;
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? `${value}px` : undefined;
+  }
+
+  const text = String(value).trim();
+  if (text === '') return undefined;
+
+  // A bare numeric string is the legacy "this many pixels" shape.
+  return /^[+-]?(\d+\.?\d*|\.\d+)$/.test(text) ? `${text}px` : text;
 }
 
 export interface DimensionsOptions {
@@ -124,6 +166,132 @@ function addDynamicInputPorts(definition: ReactNodeDefinition, condition: string
 
 function addOutputProps(definition: ReactNodeDefinition, values: Record<string, ReactOutputPropDefinition>): void {
   mergeAttribute(definition, 'outputProps', values);
+}
+
+/**
+ * Plain outputs, whose value comes from a `get` rather than from a React prop.
+ *
+ * `outputProps` exists for ports a rendered element *pushes* to, and every one of them also
+ * installs a callback into `node.props`. A port that is only ever read — DEF-029's file
+ * metadata is the case — wants none of that, so it goes through `outputs` and reads
+ * `_internal`, which is how `Open File Picker` already exposes exactly this data.
+ */
+function addOutputs(definition: ReactNodeDefinition, values: Record<string, unknown>): void {
+  mergeAttribute(definition, 'outputs', values as Record<string, ReactInputDefinition>);
+}
+
+/**
+ * A conditional-port group that may gate outputs as well as inputs.
+ *
+ * `addDynamicInputPorts` covers the common case; this one exists because DEF-029 gates eight
+ * *outputs* behind one checkbox. The editor's filter keys purely by port name and its callers
+ * pass both plugs through it — `PortsTab.buildRows(model, direction)` and the connection
+ * popup's `ConnectionBar` — so an output listed here is hidden in every surface an author
+ * meets, not just the property panel.
+ */
+function addDynamicPorts(
+  definition: ReactNodeDefinition,
+  condition: string,
+  ports: { inputs?: string[]; outputs?: string[] }
+): void {
+  if (!definition.dynamicports) {
+    definition.dynamicports = [];
+  }
+
+  definition.dynamicports.push({ condition, ...ports });
+}
+
+/**
+ * The slice of a visual node the file-drop handlers touch.
+ *
+ * Deliberately structural rather than an import of the real node type: this file is a set of
+ * definition mutators and has never depended on the runtime's instance classes, and `_internal`
+ * is the same free-form per-instance bag every node in the runtime already uses.
+ */
+interface FileDropInstance {
+  _internal: {
+    acceptFileDrops?: boolean;
+    acceptedFileTypes?: string;
+    /** Enters minus leaves — see the note on `onDragEnter`. */
+    dragDepth?: number;
+    isDragOver?: boolean;
+    droppedFile?: File;
+    droppedFiles?: File[];
+    [extra: string]: unknown;
+  };
+  hasOutput(name: string): boolean;
+  flagOutputDirty(name: string): void;
+  sendSignalOnOutput(name: string): void;
+}
+
+/**
+ * Should this drag event be acted on at all?
+ *
+ * Two questions, and both have to be asked on every event. The author must have switched the
+ * feature on — the handlers are installed unconditionally, so this is what keeps a node that
+ * nobody enabled drops on behaving exactly as it did before. And the drag must actually carry
+ * files: `dataTransfer.types` lists `'Files'` only for a drag off the desktop, so dragging
+ * selected text or an image within the page no longer lights the zone up and no longer has its
+ * default suppressed.
+ */
+function fileDropArmed(node: FileDropInstance, e: DragEvent): boolean {
+  if (!node._internal.acceptFileDrops) return false;
+
+  const types = e.dataTransfer && e.dataTransfer.types;
+  if (!types) return false;
+
+  // A `DOMStringList` in older browsers, an array in current ones; `indexOf` is on both.
+  return Array.prototype.indexOf.call(types, 'Files') !== -1;
+}
+
+/** Publishes `Is Dragging Over`, and only when it actually changed. */
+function setDragOver(node: FileDropInstance, value: boolean): void {
+  if (!!node._internal.isDragOver === value) return;
+
+  node._internal.isDragOver = value;
+  node.flagOutputDirty('isDragOver');
+}
+
+/**
+ * Marks every value output dirty after a drop.
+ *
+ * `flagOutputDirty` throws for a port that was never registered, so each is asked for first —
+ * the guard `stopsClickPropagation` uses for the same reason. It matters here because these
+ * ports are conditional: a node whose `Accept File Drops` is off never registers them.
+ */
+function flagFileDropOutputs(node: FileDropInstance): void {
+  for (const name of ['droppedFile', 'droppedFiles', 'droppedFileName', 'droppedFileType', 'droppedFileSizeInBytes']) {
+    if (node.hasOutput(name)) node.flagOutputDirty(name);
+  }
+}
+
+/**
+ * Does a dropped file pass the author's "Accepted file types" filter?
+ *
+ * Same vocabulary as `<input accept>` and therefore as `Open File Picker`'s port of the same
+ * name — a comma-separated list of extensions (`.png`), wildcard MIME groups (`image/*`) or
+ * exact MIME types (`application/pdf`). An empty filter accepts everything, which is what a
+ * blank port must mean: the alternative is a drop zone that silently refuses every file until
+ * a field nobody filled in gets filled in.
+ */
+function fileMatchesAcceptedTypes(file: File, accept: string | undefined): boolean {
+  const patterns = (accept || '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (patterns.length === 0) return true;
+
+  const name = (file.name || '').toLowerCase();
+  const mime = (file.type || '').toLowerCase();
+
+  return patterns.some((pattern) => {
+    if (pattern.startsWith('.')) return name.endsWith(pattern);
+    // `image/*` — compare against the group including its slash, so `image/*` does not match
+    // `imagex/png`.
+    if (pattern.endsWith('/*')) return mime.startsWith(pattern.slice(0, -1));
+    return mime === pattern;
+  });
 }
 
 export default {
@@ -263,6 +431,21 @@ export default {
       }
     });
   },
+  /**
+   * ⚠️ **`applyDefault` is per-port and depends on whether a caller supplied that side.**
+   *
+   * Every padding port was hard-coded `applyDefault: false`, which is right for the 0 that is
+   * only a placeholder: emitting `padding-left: 0px` on every node would beat any stylesheet rule
+   * the node relies on (`Button`'s, for one). But it also meant a node that *asked* for padding
+   * could not get it — NDA-012's Icon defect was exactly that, the panel showing a 5 no element
+   * ever received, and the remedy there was to delete the declaration because Icon did not want
+   * the padding after all.
+   *
+   * Dropdown does. Richard, 2026-09-06: *"The initial rendering of the dropdown has no padding at
+   * all between the input border and contained option."* So a side a caller names is applied, and
+   * a side nobody named keeps the old inert 0 — the panel and the element agree either way, which
+   * is the property that defect was about.
+   */
   addPaddingInputs(definition: ReactNodeDefinition, args?: PaddingInputsOptions) {
     args = args || {};
     const defaults: Record<string, any> = args.defaults ? args.defaults : {};
@@ -270,11 +453,39 @@ export default {
     const styleTag = args.styleTag;
 
     addInputCss(definition, {
+      /**
+       * The runtime used to emit no `box-sizing` at all, so the browser default
+       * `content-box` applied: a node with `width: 100%` *and* padding overflowed
+       * its parent by exactly the padding, every time. There was no way to author
+       * a padded full-width container — `alignItems` has no `stretch` either — so
+       * the only workaround was hand-computing pixel widths against the parent,
+       * which is not something a person or an agent should have to do.
+       *
+       * Defaults to `border-box` because that is what "width" means to everyone
+       * who is not a CSS historian. It is a real behaviour change for a layout
+       * that was tuned around the old overflow.
+       */
+      boxSizing: {
+        index: 63,
+        group: 'Margin and padding',
+        displayName: 'Box Sizing',
+        description: "Whether Width and Height include this element's padding and border, or only its content",
+        default: 'border-box',
+        type: {
+          name: 'enum',
+          enums: [
+            { value: 'border-box', label: 'Include padding and border' },
+            { value: 'content-box', label: 'Content only' }
+          ]
+        },
+        allowVisualStates: true,
+        styleTag
+      },
       paddingLeft: {
         index: 64,
         group: 'Margin and padding',
         default: defaults.paddingLeft || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingLeft !== undefined,
         displayName: 'Pad Left',
         description: 'Space inside the element\'s left edge, between it and its content',
         type: {
@@ -290,7 +501,7 @@ export default {
         index: 65,
         group: 'Margin and padding',
         default: defaults.paddingRight || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingRight !== undefined,
         displayName: 'Pad Right',
         description: 'Space inside the element\'s right edge, between it and its content',
         type: {
@@ -308,7 +519,7 @@ export default {
         displayName: 'Pad Top',
         description: 'Space inside the element\'s top edge, between it and its content',
         default: defaults.paddingTop || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingTop !== undefined,
         type: {
           name: 'number',
           units: ['px'],
@@ -324,7 +535,7 @@ export default {
         displayName: 'Pad Bottom',
         description: 'Space inside the element\'s bottom edge, between it and its content',
         default: defaults.paddingBottom || 0,
-        applyDefault: false,
+        applyDefault: defaults.paddingBottom !== undefined,
         type: {
           name: 'number',
           units: ['px'],
@@ -685,6 +896,222 @@ export default {
 
     addPointerEventsTooltips(definition);
   },
+
+  /**
+   * DEF-029 — file drop, which the runtime could not express at all.
+   *
+   * Registered from phase 77 D15, where SBR-007 AC3 asked for "drop an image here" and the
+   * answer was that no drop target was authorable: measured word-boundary, every one of
+   * `onDrop` / `onDragOver` / `onDragEnter` / `onDragLeave` / `dataTransfer` read **0** across
+   * the whole viewer, against known-firing controls of `onClick` = 37 and `onMouseDown` = 8.
+   * `draggable` = 7 is `react-draggable`, the `Drag` node's pointer gesture, which is a
+   * different feature and not a partial implementation of this one.
+   *
+   * ## What a dropped file is
+   *
+   * Not a new question. `Open File Picker` already emits a browser `File` on a `type: '*'`
+   * port and `Upload File`'s `File` input already documents itself as taking it — "as an Open
+   * File Picker node produces it". These ports emit that same shape under the same names, so a
+   * drop zone wires into the upload path that already exists rather than beside it.
+   *
+   * ## Why it is off by default
+   *
+   * `preventDefault` on `dragover` is what makes an element droppable at all, and it is also
+   * what stops the browser navigating away to the dropped file. Installing that unconditionally
+   * would change what every existing project does with a stray drop, so the handlers are live
+   * on every node but return immediately unless the author has switched `Accept File Drops` on.
+   * The check is at event time rather than render time for the reason `stopsClickPropagation`
+   * documents: a port set in the editor while the preview runs does not re-render the node, so
+   * a render-time answer would be stale exactly when someone is testing it.
+   *
+   * Everything except that one checkbox is a dynamic port, so a node nobody has enabled drops
+   * on shows one extra row and gains no output clutter at all.
+   */
+  addFileDropPorts(definition: ReactNodeDefinition) {
+    addInputs(definition, {
+      acceptFileDrops: {
+        index: 350,
+        group: 'File Drop',
+        displayName: 'Accept File Drops',
+        type: 'boolean',
+        default: false,
+        description:
+          'Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below',
+        set(this: FileDropInstance, value: boolean) {
+          this._internal.acceptFileDrops = !!value;
+        }
+      },
+      acceptedFileTypes: {
+        index: 351,
+        group: 'File Drop',
+        displayName: 'Accepted file types',
+        type: 'string',
+        description:
+          'Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped',
+        set(this: FileDropInstance, value: string) {
+          this._internal.acceptedFileTypes = value;
+        }
+      }
+    });
+
+    // One checkbox reveals the accepted-types field and all eight outputs.
+    addDynamicPorts(definition, 'acceptFileDrops = true', {
+      inputs: ['acceptedFileTypes'],
+      outputs: [
+        'filesDropped',
+        'filesRejected',
+        'droppedFile',
+        'droppedFiles',
+        'droppedFileName',
+        'droppedFileType',
+        'droppedFileSizeInBytes',
+        'isDragOver'
+      ]
+    });
+
+    // `filesDropped` carries the four DOM handlers, the way `pointerDown` carries its two.
+    // Everything else the drop produces is a plain output read off `_internal`.
+    addOutputProps(definition, {
+      filesDropped: {
+        displayName: 'Files Dropped',
+        description: 'Fires when one or more accepted files are dropped here, after every File Drop output is up to date',
+        group: 'File Drop',
+        type: 'signal',
+        propPath: 'pointer',
+        props: {
+          onDragEnter(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+            e.preventDefault();
+
+            // Dragging onto a child fires `dragleave` on this element and `dragenter` on the
+            // child, so a plain boolean flickers off every time the pointer crosses an inner
+            // edge. Counting enters and leaves is the standard answer and the only one that
+            // survives a drop zone with content in it — which is every real drop zone, since
+            // the "Drop files here" label is itself a child.
+            this._internal.dragDepth = (this._internal.dragDepth || 0) + 1;
+            setDragOver(this, true);
+          },
+          onDragOver(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+            // The one line that makes the element droppable. Without it `drop` never fires,
+            // whatever else is wired.
+            e.preventDefault();
+
+            // Tells the browser to draw a copy cursor rather than the move-or-forbidden one.
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+          },
+          onDragLeave(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+
+            this._internal.dragDepth = Math.max(0, (this._internal.dragDepth || 0) - 1);
+            if (this._internal.dragDepth === 0) setDragOver(this, false);
+          },
+          onDrop(this: FileDropInstance, e: DragEvent) {
+            if (!fileDropArmed(this, e)) return;
+
+            // Without this the browser leaves the app and renders the dropped file.
+            e.preventDefault();
+            // The innermost enabled drop zone owns the drop; an ancestor that also accepts
+            // files does not get a second copy of it. Same rule `clickBubbling` applies.
+            e.stopPropagation();
+
+            this._internal.dragDepth = 0;
+            setDragOver(this, false);
+
+            const dropped: File[] = e.dataTransfer ? Array.from(e.dataTransfer.files || []) : [];
+            const accepted = dropped.filter((file) =>
+              fileMatchesAcceptedTypes(file, this._internal.acceptedFileTypes)
+            );
+
+            if (accepted.length === 0) {
+              // A drop that produced nothing must not fire the completion signal — the same
+              // clause of the Failure Contract that made `Open File Picker` report `Unchanged`
+              // on an empty `FileList`. Silence is not an option either: an author who set
+              // "image/*" and dropped a PDF would have no way to tell the app from a broken
+              // one, so the refusal gets its own port.
+              this._internal.droppedFiles = [];
+              this._internal.droppedFile = undefined;
+              flagFileDropOutputs(this);
+              this.sendSignalOnOutput('filesRejected');
+              return;
+            }
+
+            this._internal.droppedFiles = accepted;
+            this._internal.droppedFile = accepted[0];
+            flagFileDropOutputs(this);
+            this.sendSignalOnOutput('filesDropped');
+          }
+        }
+      }
+    });
+
+    addOutputs(definition, {
+      filesRejected: {
+        displayName: 'Files Rejected',
+        description:
+          'Fires when a drop landed here but every file in it was excluded by Accepted file types',
+        group: 'File Drop',
+        type: 'signal'
+      },
+      droppedFile: {
+        displayName: 'File',
+        description: 'The first accepted file, in the form an Upload File node takes',
+        group: 'File Drop',
+        type: '*',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile;
+        }
+      },
+      droppedFiles: {
+        displayName: 'Files',
+        description: 'Every accepted file in the drop, as an array — a drop can carry more than one',
+        group: 'File Drop',
+        type: 'array',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFiles;
+        }
+      },
+      droppedFileName: {
+        displayName: 'File Name',
+        description: 'Name of the first accepted file, extension included',
+        group: 'File Drop',
+        type: 'string',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.name;
+        }
+      },
+      droppedFileType: {
+        displayName: 'File Type',
+        description: 'MIME type the browser reports for the first accepted file, blank for one it does not recognise',
+        group: 'File Drop',
+        type: 'string',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.type;
+        }
+      },
+      droppedFileSizeInBytes: {
+        displayName: 'File Size In Bytes',
+        description: 'Size of the first accepted file, in bytes',
+        group: 'File Drop',
+        type: 'number',
+        get(this: FileDropInstance) {
+          return this._internal.droppedFile && this._internal.droppedFile.size;
+        }
+      },
+      isDragOver: {
+        displayName: 'Is Dragging Over',
+        description:
+          'True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts',
+        group: 'File Drop',
+        type: 'boolean',
+        get(this: FileDropInstance) {
+          return !!this._internal.isDragOver;
+        }
+      }
+    });
+
+    addFileDropTooltips(definition);
+  },
   addDimensions(
     definition: ReactNodeDefinition,
     { defaultSizeMode = 'explicit', contentLabel = 'Content', useDimensionConstraints = true }: DimensionsOptions = {}
@@ -875,8 +1302,7 @@ export default {
           default: defaults[radiusName],
           tab,
           set(value) {
-            this._internal.borderRadius[radiusName] =
-              value.value === undefined ? Number(value) + 'px' : value.value + value.unit;
+            this._internal.borderRadius[radiusName] = cssLength(value);
 
             this._updateCornerRadii();
           }
@@ -993,8 +1419,7 @@ export default {
           default: defaults[widthName],
           tab,
           set(value) {
-            this._internal.borders[widthName] =
-              value.value === undefined ? Number(value) + 'px' : value.value + value.unit;
+            this._internal.borders[widthName] = cssLength(value);
             this._updateBorders();
           }
         },
@@ -1103,7 +1528,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowOffsetX = value.value + value.unit;
+          this._internal.boxShadowOffsetX = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1120,7 +1545,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowOffsetY = value.value + value.unit;
+          this._internal.boxShadowOffsetY = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1137,7 +1562,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowBlurRadius = value.value + value.unit;
+          this._internal.boxShadowBlurRadius = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1154,7 +1579,7 @@ export default {
         },
         allowVisualStates: true,
         set(value) {
-          this._internal.boxShadowSpreadRadius = value.value + value.unit;
+          this._internal.boxShadowSpreadRadius = cssLength(value) || '0px';
           this._updateBoxShadow();
         }
       },
@@ -1213,14 +1638,211 @@ export default {
       this._internal.boxShadowColor = '#00000033';
     };
   },
+  /**
+   * VIB-002 — the decorative ground.
+   *
+   * ## Why this exists
+   *
+   * The phase-81 baseline photographed both shipped templates and wrote the same
+   * sentence about every marketing surface: *one background colour end to end*.
+   * Measured at the door rather than reasoned about, the cause was narrower than
+   * the phase README's first diagnosis claimed. `opacity`, `mixBlendMode`,
+   * `zIndex`, `position` (including `absolute` and `sticky`) and the whole
+   * `boxShadow*` family were **already ports on Group** — layering and depth were
+   * expressible and simply never taught. What `get_node_type('Group')` answered
+   * `notFound` to was `backgroundImage`. There was no way, anywhere in the
+   * sanctioned vocabulary, to put a gradient or a picture behind anything.
+   *
+   * So this mixin adds exactly the missing half, and nothing that already worked.
+   *
+   * ## The one design decision worth knowing
+   *
+   * `backgroundGradient` and `backgroundImage` are separate ports that compose
+   * into **one** `background-image` declaration, gradient first:
+   *
+   *     background-image: <gradient>, url("<image>")
+   *
+   * That order is the CSS scrim idiom — the gradient paints *over* the picture.
+   * It is the whole reason a headline can sit on a photograph and stay legible,
+   * and expressing it as two ports on one node is what keeps a hero from needing
+   * a stack of absolutely-positioned Groups that an authoring model will not
+   * reliably build. A gradient alone is a designed colour field; an image alone
+   * is a picture ground; the two together are a hero.
+   *
+   * ⚠️ Both ports take a `var(--token)` reference happily — a gradient token's
+   * value is a complete `linear-gradient(...)`, and nested `var()`s inside it
+   * resolve against `:root`, so a themed gradient re-themes with the project.
+   * That is why the port is a plain string and not a structured gradient editor:
+   * the token layer is where a gradient should be decided once.
+   */
+  addBackgroundInputs(definition: ReactNodeDefinition, args?: BackgroundInputsOptions) {
+    const styleTag = args?.styleTag;
+
+    addInputs(definition, {
+      backgroundImage: {
+        index: 202,
+        group: 'Style',
+        displayName: 'Background Image',
+        description:
+          'A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the ' +
+          'picture so text on top stays readable',
+        type: { name: 'image' },
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundImageUrl = resolveMediaSource(value);
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundGradient: {
+        index: 203,
+        group: 'Style',
+        displayName: 'Background Gradient',
+        description:
+          'A CSS gradient painted as the ground — normally a design token such as "var(--gradient-brand)". ' +
+          'It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim',
+        type: { name: 'string' },
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          const text = typeof value === 'string' ? value.trim() : '';
+          internal.backgroundGradient = text === '' ? undefined : text;
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundSize: {
+        index: 204,
+        group: 'Style',
+        displayName: 'Background Size',
+        description: 'How the background picture fills the box. Cover crops it to fill; contain fits it whole',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Cover', value: 'cover' },
+            { label: 'Contain', value: 'contain' },
+            { label: 'Original Size', value: 'auto' }
+          ]
+        },
+        default: 'cover',
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundSize = value;
+          this._updateBackgroundLayers();
+        }
+      },
+      backgroundPosition: {
+        index: 205,
+        group: 'Style',
+        displayName: 'Background Position',
+        description: 'Which part of the picture stays in view when Cover crops it',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Center', value: 'center' },
+            { label: 'Top', value: 'top center' },
+            { label: 'Bottom', value: 'bottom center' },
+            { label: 'Left', value: 'center left' },
+            { label: 'Right', value: 'center right' }
+          ]
+        },
+        default: 'center',
+        allowVisualStates: true,
+        set(value) {
+          const internal = this._internal || (this._internal = {});
+          internal.backgroundPosition = value;
+          this._updateBackgroundLayers();
+        }
+      },
+      backdropBlur: {
+        index: 206,
+        group: 'Style',
+        displayName: 'Backdrop Blur',
+        description:
+          'Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over ' +
+          'the ground it sits on. Needs a see-through Background Color to show at all',
+        type: { name: 'number', units: ['px'], defaultUnit: 'px' },
+        default: 0,
+        allowVisualStates: true,
+        set(value) {
+          // A units port arrives as `{value, unit}` from the editor and as a bare
+          // number from a parameter the AIB-001 gate let through; `cssLength`
+          // normalises both. Zero removes the filter rather than painting
+          // `blur(0px)`, which would still promote the element to its own layer.
+          const length = cssLength(value);
+          const isZero = length === undefined || parseFloat(length) === 0;
+          if (isZero) {
+            this.removeStyle(['backdropFilter', 'WebkitBackdropFilter'], styleTag);
+          } else {
+            this.setStyle({ backdropFilter: `blur(${length})`, WebkitBackdropFilter: `blur(${length})` }, styleTag);
+          }
+        }
+      }
+    });
+
+    /**
+     * Compose whichever layers are set into one declaration.
+     *
+     * Written as one method rather than three independent `inputCss` ports
+     * because `background-image` is a single CSS property that both the gradient
+     * and the picture have to reach — the same reason `_updateBoxShadow` exists
+     * above. Setting them independently would mean whichever port was written
+     * last silently erased the other, and (per this file's own header) a later
+     * same-named write overwrites with no warning anywhere.
+     */
+    definition.methods._updateBackgroundLayers = function () {
+      const internal = this._internal || (this._internal = {});
+      const layers: string[] = [];
+      if (internal.backgroundGradient) layers.push(String(internal.backgroundGradient));
+      if (internal.backgroundImageUrl) layers.push(`url("${internal.backgroundImageUrl}")`);
+
+      if (layers.length === 0) {
+        this.removeStyle(['backgroundImage', 'backgroundSize', 'backgroundPosition', 'backgroundRepeat'], styleTag);
+        return;
+      }
+
+      this.setStyle(
+        {
+          backgroundImage: layers.join(', '),
+          // A single value applies to every layer, which is what is wanted: a
+          // gradient scrim should cover exactly what the picture covers.
+          backgroundSize: internal.backgroundSize || 'cover',
+          backgroundPosition: internal.backgroundPosition || 'center',
+          // Tiling a hero ground is never the intent and is the single ugliest
+          // default the browser has here, so it is not offered as a port.
+          backgroundRepeat: 'no-repeat'
+        },
+        styleTag
+      );
+    };
+  },
   addIconInputs(definition: ReactNodeDefinition, args?: IconInputsOptions) {
     args = args || {};
 
     const index = 20;
 
+    /**
+     * 🔴 **Black, since 2026-09-04.** This was `#FFFFFF`, and a white default is invisible on every
+     * ground the library actually puts an icon on: the page, an unfilled Checkbox, an unfilled
+     * Radio Button. Richard, having just found the checkbox's tick: *"of course it's WHITE by
+     * default so I didn't see it... Can we make every icon everywhere black by default please?"*
+     *
+     * It is the single source for the Icon node, the Checkbox's author glyph, the Radio Button's
+     * and the Button's — `Text Input` and `Select` already passed `#000000` explicitly, which is
+     * the same judgement reached one node at a time.
+     *
+     * ⚠️ **`Button` overrides this back to white, and that is not an oversight** — see the note at
+     * its `addIconInputs` call. It is the one control whose own default variant paints a filled
+     * ground under the icon.
+     *
+     * ⚠️ **A raw hex rather than `var(--foreground)` on purpose.** `Icon.tsx` assigns `iconColor`
+     * straight to `style.color` without `resolveColor`, so a project that has not declared the
+     * token would render the icon with no colour at all. Tokens belong on author-set parameters,
+     * not on a runtime default that has to work in every project.
+     */
     const defaults = {
       useIcon: true,
-      iconColor: '#FFFFFF'
+      iconColor: '#000000'
     };
 
     if (args.defaults) {
@@ -1386,9 +2008,18 @@ export default {
     const textStylePortPrefix = args.styleTag || '';
 
     const ports = ['label'].concat(
-      ['textStyle', 'fontFamily', 'fontSize', 'color', 'letterSpacing', 'lineHeight', 'textTransform'].map(
-        (port) => textStylePortPrefix + port
-      )
+      [
+        'textStyle',
+        'fontFamily',
+        'fontSize',
+        'fontWeight',
+        'fontStyle',
+        'color',
+        'letterSpacing',
+        'lineHeight',
+        'textTransform',
+        'fontVariantNumeric'
+      ].map((port) => textStylePortPrefix + port)
     );
     if (args.enableSpacing) {
       ports.push('labelSpacing');
@@ -1462,7 +2093,17 @@ export default {
         index: index,
         type: {
           name: 'textStyle',
-          childPorts: ['fontFamily', 'fontSize', 'color', 'letterSpacing', 'lineHeight', 'textTransform'],
+          childPorts: [
+            'fontFamily',
+            'fontSize',
+            'fontWeight',
+            'fontStyle',
+            'color',
+            'letterSpacing',
+            'lineHeight',
+            'textTransform',
+            'fontVariantNumeric'
+          ],
           childPortPrefix: portPrefix
         },
         group: group,
@@ -1531,6 +2172,74 @@ export default {
         allowVisualStates: true,
         popout: args.popout,
         styleTag
+      },
+      // The design system has shipped nine weight tokens (`--font-thin` …
+      // `--font-black`) and four Inter faces to serve them since POL-006, every
+      // Text/Button/Input variant in `ElementConfigs` specifies a `fontWeight`,
+      // and `StyleVocabulary` hands those variants to an authoring model as the
+      // worked example — while no node in the runtime had a port that could
+      // consume any of it. An authored page therefore carried 18 `fontWeight`
+      // parameters and rendered every word at 400: correct type *scale*, no type
+      // *hierarchy*, which is most of why such a page reads as undesigned.
+      //
+      // Typed like `lineHeight` — a unitless number with an `Auto` escape —
+      // rather than as an enum of 100…900, because a token reference is the
+      // documented way to say "semibold" here and an enum port rejects one.
+      [portPrefix + 'fontWeight']: {
+        index: index + 2.5,
+        group: group,
+        displayName: 'Font Weight',
+        editorName: prettyName('Font Weight'),
+        description:
+          'How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets',
+        targetStyleProperty: 'fontWeight',
+        type: {
+          name: 'number',
+          units: [''],
+          defaultUnit: '',
+          parentPort: textStyleInputName
+        },
+        default: 'Auto',
+        applyDefault: false,
+        allowVisualStates: true,
+        popout: args.popout,
+        styleTag,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
+      },
+      // The other typography axis with no port, found alongside `fontWeight` by
+      // checking the style vocabulary against the catalog: the `blockquote`
+      // variant has always specified `fontStyle: 'italic'` and nothing could
+      // apply it. An enum rather than a token-bearing number, because there are
+      // no `--font-style-*` tokens for it to have to accept.
+      [portPrefix + 'fontStyle']: {
+        index: index + 2.6,
+        group: group,
+        displayName: 'Font Style',
+        editorName: prettyName('Font Style'),
+        description: 'Renders the text upright or italic',
+        targetStyleProperty: 'fontStyle',
+        applyDefault: false,
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Italic', value: 'italic' }
+          ],
+          parentPort: textStyleInputName
+        },
+        default: 'normal',
+        allowVisualStates: true,
+        popout: args.popout,
+        styleTag,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
       },
       [portPrefix + 'color']: {
         index: index + 3,
@@ -1618,6 +2327,39 @@ export default {
           parentPort: textStyleInputName
         },
         default: 'none',
+        popout: args.popout,
+        styleTag,
+        allowVisualStates: true,
+        onChange() {
+          if (this.props[textStyleInputName]) {
+            this.forceUpdate();
+          }
+        }
+      },
+      // The bundled Inter's default figures are proportional (`1` advances 1308/2048 em, `8`
+      // 1736) and the font has shipped a `tnum` feature since POL-006 — so every column of
+      // numbers a project renders is ragged, and the one-line fix had no port to arrive
+      // through (P78 D30). Two values rather than the full `font-variant-numeric` grammar
+      // because aligning digits is the axis an app here needs; the rest can join the enum
+      // later without breaking anything authored against this one.
+      [portPrefix + 'fontVariantNumeric']: {
+        index: index + 6.5,
+        group: group,
+        displayName: 'Numerals',
+        editorName: prettyName('Numerals'),
+        description:
+          'Tabular draws every digit at the same width so columns of numbers align; Normal follows the font',
+        applyDefault: false,
+        targetStyleProperty: 'fontVariantNumeric',
+        type: {
+          name: 'enum',
+          enums: [
+            { label: 'Normal', value: 'normal' },
+            { label: 'Tabular', value: 'tabular-nums' }
+          ],
+          parentPort: textStyleInputName
+        },
+        default: 'normal',
         popout: args.popout,
         styleTag,
         allowVisualStates: true,
@@ -1752,6 +2494,26 @@ function addPointerEventsTooltips(definition: ReactNodeDefinition): void {
     body: [
       '- Enabled: This element will receive mouse and touch events',
       '- Disabled: No mouse or touch events will be captured by this element and the element below will receive it instead'
+    ]
+  });
+}
+
+function addFileDropTooltips(definition: ReactNodeDefinition): void {
+  definition.inputs.acceptFileDrops.tooltip = createTooltip({
+    title: 'Accept file drops',
+    body: [
+      'Lets a file dragged in from the desktop be dropped onto this element',
+      'The File Drop outputs appear once this is on — wire File to an Upload File node, and Is Dragging Over to a border or background so the zone reacts'
+    ]
+  });
+  definition.inputs.acceptedFileTypes.tooltip = createTooltip({
+    title: 'Accepted file types',
+    body: [
+      'Comma-separated extensions or MIME types this element will take',
+      '- ".png, .jpg" matches by file name',
+      '- "image/*" matches a whole MIME group',
+      '- Blank accepts every file',
+      'A drop carrying nothing acceptable fires Files Rejected rather than Files Dropped'
     ]
   });
 }

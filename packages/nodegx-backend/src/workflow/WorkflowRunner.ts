@@ -29,9 +29,24 @@ import * as path from 'path';
 
 import type { ExecutionHistory } from '../execution/ExecutionStore';
 import { logger } from '../ops/logger';
+// SB-016 — the endpoint predicate, shared with the deploy interlock so the gate
+// and the runner cannot disagree about what a function is.
+import {
+  CLOUD_COMPONENT_PREFIX,
+  declaredFunctionsIn,
+  findRequestNode,
+  graphWritesRecords,
+  requestNodeAllowsNoAuth
+} from './functionDeclarations';
 // CWF-013 — type-only, from the cloud runtime's own declaration, so the sink this file builds
 // and the `NodeScope.runContext` a node reads cannot drift apart.
-import type { NodeRunContext, RuntimeLogEntry } from '@cloud-runtime';
+import type {
+  CloudKitLoadResult,
+  NodeRunContext,
+  RuntimeLogEntry,
+  RuntimeStepEnd,
+  RuntimeStepStart
+} from '@cloud-runtime';
 
 // Bundled from noodl-viewer-cloud/src by esbuild (test-time: jest mapper).
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -125,6 +140,17 @@ export interface LogValueScrubber {
  */
 export const MAX_LOG_LINES_PER_RUN = 200;
 
+/**
+ * How many execution steps one run may record before the rest are counted and dropped.
+ *
+ * ⚠️ Same trap as the line cap above and a different denominator: a `Run Tasks` loop over 10,000
+ * items writes an execution step per action per item whether or not a single `Log` node is
+ * anywhere in the graph, so a cap that only bounded logging would bound nothing. Higher than the
+ * line cap because a step is the *evidence* — an author who capped their logging still wants the
+ * shape of the run — and, like it, the suppression is announced exactly once.
+ */
+export const MAX_STEPS_PER_RUN = 1000;
+
 export interface RunnerResponse {
   statusCode: number;
   body: string;
@@ -156,11 +182,37 @@ export interface RunTriggerContext {
   requestId?: string;
 }
 
+/** One loaded bundle, and the fingerprint of the deploy that put it here. */
+export interface WorkflowBundleStatus {
+  name: string;
+  /**
+   * HLS-013 — the `deployFingerprint` the deployer sent with this bundle, or
+   * `null` for one deployed before fingerprints existed (or written by hand).
+   *
+   * 🔴 **Echoed, never recomputed.** The fingerprint is the deployer's own
+   * `hashCloudExport`, and a second implementation of that function living here
+   * would drift from it silently — this repo has the scar (`a-second-copy-of-a-
+   * palette-drifts-silently`). Echoing makes the backend a *record* of what was
+   * pushed rather than a second opinion about it, so a mismatch can only mean
+   * the bundle changed.
+   */
+  deployFingerprint: string | null;
+  functionCount: number;
+}
+
 /** The body of `GET /admin/workflows` — what the editor's panel renders. */
 export interface WorkflowRunnerStatus {
   initialized: boolean;
   workflowCount: number;
   functions: { name: string; workflow: string }[];
+  /**
+   * HLS-013 — what each bundle on this backend was deployed from.
+   *
+   * A headless deploy is a new process every run, so it has no memory of its own
+   * previous push the way the editor does. Without this it could only ever
+   * report a fresh success, which is the thing AC3 exists to prevent.
+   */
+  bundles: WorkflowBundleStatus[];
 }
 
 export class WorkflowRunner {
@@ -188,7 +240,8 @@ export class WorkflowRunner {
   }
 
   /**
-   * CWF-013 — where a `Log` node's line goes, for ONE run.
+   * CWF-013 / DEF-004 — the per-run services a cloud graph may reach: where a `Log` node's line
+   * goes, and where an action invocation is recorded.
    *
    * Built per run and handed to `CloudRunner.run`, which puts it on the request's own
    * `NodeScope`. That is what carries the request id: two functions run concurrently in this
@@ -205,15 +258,18 @@ export class WorkflowRunner {
    *     `Secret → Log` is a two-node graph.
    *
    * The execution-record copy goes through both too. A record that is safer than the log, or
-   * less safe, is a record nobody can reason about.
+   * less safe, is a record nobody can reason about. That now covers steps as well as lines: a
+   * node hands `beginOutcome` its own `inputData` raw, because a node must not be able to see a
+   * secret's value, so **this** is the only place that can redact it.
    */
-  private createLogSink(
+  private createRunContext(
     functionName: string,
     execLogger: ReturnType<ExecutionHistory['createLogger']>,
     trigger?: RunTriggerContext
   ): NodeRunContext {
     const requestId = trigger && trigger.requestId;
     let written = 0;
+    let stepsWritten = 0;
 
     return {
       requestId,
@@ -247,17 +303,67 @@ export class WorkflowRunner {
           ...(data !== undefined ? { data } : {})
         });
 
-        if (execLogger) {
-          // A step per line, started and completed in the same breath: a log line has no
-          // duration, and the History panel already renders steps.
-          const stepId = execLogger.startNode({
-            nodeId: (entry && entry.nodeId) || 'log',
-            nodeType: 'net.noodl.Log',
-            nodeName: 'Log',
-            inputData: { level, message, ...(data !== undefined ? { data } : {}) }
-          });
-          execLogger.completeNode(stepId, true);
+        // ⚠️ **No step is written here, and that is DEF-004's doing.** This used to open and
+        // close one, and since the `Log` node reports an outcome like every other action, the
+        // step channel below now writes the same row — two producers, one table, and a count
+        // that silently doubles. The line's own content is not lost: the node hands it to
+        // `beginOutcome` as the step's `inputData`, so it arrives through the one pipeline.
+        // `cloud-log-node.test.ts` asserts the cardinality.
+      },
+
+      /**
+       * DEF-004 — one row per action invocation, opened when the action starts.
+       *
+       * Returns the store's step id, or `undefined` where there is nothing to write to or the
+       * cap has been reached. The runtime treats `undefined` as "not recorded" and never calls
+       * `endStep` for it, which is what keeps a capped run from leaving half-open rows.
+       */
+      beginStep: (step: RuntimeStepStart): unknown => {
+        if (!execLogger) return undefined;
+
+        stepsWritten++;
+        if (stepsWritten > MAX_STEPS_PER_RUN) {
+          if (stepsWritten === MAX_STEPS_PER_RUN + 1) {
+            logger.warn('function.steps.suppressed', {
+              function: functionName,
+              requestId,
+              limit: MAX_STEPS_PER_RUN,
+              hint: 'an action inside a loop — the rest of this run’s steps are not recorded'
+            });
+          }
+          return undefined;
         }
+
+        const scrub = this.scrubSecretValues;
+        const inputData =
+          step.inputData !== undefined
+            ? ((scrub ? scrub.scrubValue(step.inputData) : step.inputData) as Record<string, unknown>)
+            : undefined;
+
+        // `startNode` answers `''` when history is off or no execution is open. Normalised to
+        // `undefined` so the runtime's "was this recorded" test is one check, not two.
+        const stepId = execLogger.startNode({ nodeId: step.nodeId, nodeType: step.nodeType, inputData });
+        return stepId || undefined;
+      },
+
+      /**
+       * Close the row. `unchanged` counts as a success: the action was valid and there was
+       * nothing to do, and colouring that red is how an author learns to ignore the column.
+       *
+       * ⚠️ The failure message is scrubbed here for the same reason the log line is — it is
+       * composed by the node from its own inputs, and `Secret`'s says which secret.
+       */
+      endStep: (handle: unknown, end: RuntimeStepEnd) => {
+        if (!execLogger || typeof handle !== 'string' || !handle) return;
+        const scrub = this.scrubSecretValues;
+        const failed = end.status === 'failure';
+        const reason = failed
+          ? new Error(
+              [end.code, scrub ? scrub.scrub(end.message || '') : end.message].filter(Boolean).join(': ') ||
+                'The action could not be performed'
+            )
+          : undefined;
+        execLogger.completeNode(handle, !failed, { outcome: end.status }, reason);
       }
     };
   }
@@ -320,6 +426,44 @@ export class WorkflowRunner {
     };
   }
 
+  /**
+   * CN-013 — say what happened to a bundle's kits, at load, in the service log.
+   *
+   * 🔴 **The alternative is a hang that names nothing.** A kit whose nodes are not registered
+   * leaves every cloud function using them with its chain cut: `NodeScope` logs and skips the
+   * unknown type *and its connections*, no Response node is reached, and the request ends as
+   * CWF-018's 504 — which talks about unwired `Failure` ports and cannot mention kits, because at
+   * that point nothing knows a kit was involved. Load is the only moment the two facts are in the
+   * same place.
+   *
+   * ⚠️ `not-cloud-enabled` is logged at `info`, not `warn`: a project whose kits are all browser
+   * kits is the ordinary case, and a warning on every start for the ordinary case is a warning
+   * nobody reads. Everything else is a `warn` — it means the author asked for a cloud kit and did
+   * not get one.
+   */
+  private reportKitLoad(workflowName: string, load: CloudKitLoadResult | undefined): void {
+    if (!load) return;
+
+    if (load.registered.length) {
+      safeLog(
+        `Workflow ${workflowName}: registered ${load.registered.length} cloud kit(s) — ` +
+          `${load.registered.join(', ')} (${load.nodeTypes.length} node type(s))`
+      );
+    }
+
+    for (const skip of load.skippedReactNodes) {
+      safeLog(
+        `Workflow ${workflowName}: kit "${skip.module}" has ${skip.count} visual node(s), ` +
+          'which do not exist in the cloud runtime. Its logic nodes were registered.'
+      );
+    }
+
+    for (const failure of load.failures) {
+      if (failure.reason === 'not-cloud-enabled') safeLog(`Workflow ${workflowName}: ${failure.message}`);
+      else logger.warn(`Workflow ${workflowName}: ${failure.message}`, { workflow: workflowName, kit: failure.module });
+    }
+  }
+
   private createCloudRunner(): void {
     this.cloudRunner = new CloudRunner({
       enableDebugInspectors: this.enableDebugInspectors,
@@ -348,7 +492,7 @@ export class WorkflowRunner {
         const content = await fs.readFile(path.join(this.workflowsPath, file), 'utf-8');
         const exportData = JSON.parse(content);
         this.loadedWorkflows.set(workflowName, exportData);
-        await this.cloudRunner.load(exportData);
+        this.reportKitLoad(workflowName, await this.cloudRunner.load(exportData));
         safeLog(`Loaded workflow: ${workflowName}`);
       } catch (e) {
         // One broken file must not take down the rest — but say so.
@@ -395,9 +539,9 @@ export class WorkflowRunner {
         enableDebugInspectors: this.enableDebugInspectors,
         connectToEditor: false
       });
-      for (const bundle of candidateWorkflows.values()) {
+      for (const [bundleName, bundle] of candidateWorkflows) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (candidateRunner as any).load(bundle);
+        this.reportKitLoad(bundleName, await (candidateRunner as any).load(bundle));
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e);
@@ -480,7 +624,7 @@ export class WorkflowRunner {
       const response = await this.cloudRunner.run(functionName, request, {
         timeoutMs,
         // CWF-013: this is what gives a `Log` node in the graph somewhere to go.
-        runContext: this.createLogSink(functionName, execLogger, trigger)
+        runContext: this.createRunContext(functionName, execLogger, trigger)
       });
       const duration = Date.now() - startTime;
       safeLog(`Function ${functionName} completed in ${duration}ms`);
@@ -577,7 +721,7 @@ export class WorkflowRunner {
       // when you call it and does not when a workflow does, which is the worst of both.
       return await this.cloudRunner.run(functionName, request, {
         timeoutMs,
-        runContext: this.createLogSink(functionName, null)
+        runContext: this.createRunContext(functionName, null)
       });
     } catch (e) {
       if (isCloudFunctionTimeout(e)) {
@@ -600,11 +744,66 @@ export class WorkflowRunner {
     }
   }
 
-  hasFunction(functionName: string): boolean {
-    const fullName = `/#__cloud__/${functionName}`;
+  /**
+   * SB-003: a cloud *function* is a `/#__cloud__/` component whose graph holds a
+   * `noodl.cloud.request` node. A component without one is a helper — a per-item
+   * unit of work instantiated by another cloud graph (Run Tasks, component
+   * instances) — and is not an endpoint: calling it can only ever 500 inside the
+   * CloudRunner ("Could not find request node"), after writing a failed
+   * execution record for a call that was never servable. So the function
+   * predicate is "has a Request node", not "has the name prefix", and a helper
+   * is indistinguishable from a nonexistent name at every boundary
+   * (HTTP 404, workflow step, trigger dispatch, the permissions listing).
+   *
+   * 🔴 **SB-016: the predicate itself now lives in `functionDeclarations.ts`**,
+   * because the deploy interlock has to answer the same question at startup step
+   * 1.5, off disk, before any of this is loaded. Two implementations of "what is
+   * an endpoint" is how a gate ends up refusing a deploy over a name nothing
+   * serves — or waving through one it does.
+   */
+  private findRequestNodeForFunction(functionName: string): Record<string, unknown> | null {
+    const fullName = `${CLOUD_COMPONENT_PREFIX}${functionName}`;
     for (const exportData of this.loadedWorkflows.values()) {
-      const components = exportData.components as { name: string }[] | undefined;
-      if (components && components.some((c) => c.name === fullName)) return true;
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
+      for (const component of components) {
+        if (component.name !== fullName) continue;
+        const found = findRequestNode(component.nodes || []);
+        if (found) return found;
+      }
+    }
+    return null;
+  }
+
+  hasFunction(functionName: string): boolean {
+    return this.findRequestNodeForFunction(functionName) !== null;
+  }
+
+  /**
+   * DEF-009 AC4: does this function's own graph create, change or delete a
+   * record?
+   *
+   * A sibling of `findRequestNodeForFunction` rather than a widening of it: the
+   * existing lookup answers *where is the Request node*, and its three callers
+   * want that node itself. The predicate is `functionDeclarations`', so the
+   * dispatcher's answer and the deploy interlock's answer come from one place —
+   * the module docblock's rule about two readers of one predicate.
+   *
+   * ⚠️ **A name this runner has not loaded answers `false`**, which fails OPEN
+   * for the default. That is the same degradation `functionAllowsNoAuth` already
+   * has at the same call site, and it is bounded by the same fact: a function
+   * the runner cannot find is a function the dispatcher 404s before any budget
+   * is spent.
+   */
+  functionWritesRecords(functionName: string): boolean {
+    const fullName = `${CLOUD_COMPONENT_PREFIX}${functionName}`;
+    for (const exportData of this.loadedWorkflows.values()) {
+      const components =
+        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
+      for (const component of components) {
+        if (component.name !== fullName) continue;
+        if (graphWritesRecords(component.nodes || [])) return true;
+      }
     }
     return false;
   }
@@ -615,49 +814,44 @@ export class WorkflowRunner {
    * (public when true, authenticated otherwise); a config entry overrides it.
    */
   functionAllowsNoAuth(functionName: string): boolean {
-    const fullName = `/#__cloud__/${functionName}`;
-    for (const exportData of this.loadedWorkflows.values()) {
-      const components =
-        (exportData.components as { name: string; nodes?: Record<string, unknown>[] }[] | undefined) || [];
-      for (const component of components) {
-        if (component.name !== fullName) continue;
-        const found = this.findRequestNode(component.nodes || []);
-        return Boolean(found && (found.parameters as Record<string, unknown> | undefined)?.allowNoAuth === true);
-      }
-    }
-    return false;
+    return requestNodeAllowsNoAuth(this.findRequestNodeForFunction(functionName));
   }
 
-  private findRequestNode(nodes: Record<string, unknown>[]): Record<string, unknown> | null {
-    for (const node of nodes) {
-      if (node.type === 'noodl.cloud.request') return node;
-      const children = node.children as Record<string, unknown>[] | undefined;
-      if (Array.isArray(children)) {
-        const found = this.findRequestNode(children);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  getAvailableFunctions(): { name: string; workflow: string }[] {
-    const functions: { name: string; workflow: string }[] = [];
+  getAvailableFunctions(): { name: string; workflow: string; writesRecords: boolean }[] {
+    const functions: { name: string; workflow: string; writesRecords: boolean }[] = [];
     for (const [workflowName, exportData] of this.loadedWorkflows) {
-      const components = (exportData.components as { name: string }[] | undefined) || [];
-      for (const component of components) {
-        if (component.name.startsWith('/#__cloud__/')) {
-          functions.push({ name: component.name.replace('/#__cloud__/', ''), workflow: workflowName });
-        }
+      for (const declaration of declaredFunctionsIn(exportData, workflowName)) {
+        functions.push({
+          name: declaration.name,
+          workflow: declaration.workflow,
+          // DEF-009 AC4: the panel has to show what budget applies, and that
+          // answer depends on this. Carried rather than re-derived by the
+          // caller, which would be a second reader of the predicate.
+          writesRecords: declaration.writesRecords
+        });
       }
     }
     return functions;
   }
 
   getStatus(): WorkflowRunnerStatus {
+    const bundles: WorkflowBundleStatus[] = [];
+    for (const [name, bundle] of this.loadedWorkflows) {
+      const fingerprint = (bundle as { deployFingerprint?: unknown }).deployFingerprint;
+      bundles.push({
+        name,
+        deployFingerprint: typeof fingerprint === 'string' ? fingerprint : null,
+        functionCount: Array.isArray((bundle as { components?: unknown }).components)
+          ? ((bundle as { components: unknown[] }).components).length
+          : 0
+      });
+    }
+
     return {
       initialized: this.isInitialized,
       workflowCount: this.loadedWorkflows.size,
-      functions: this.getAvailableFunctions()
+      functions: this.getAvailableFunctions(),
+      bundles
     };
   }
 }

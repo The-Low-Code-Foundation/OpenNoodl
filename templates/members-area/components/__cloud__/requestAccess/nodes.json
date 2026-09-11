@@ -1,0 +1,272 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "687a5547-5a65-5d25-825e-6816e222ade6",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "req-2",
+      "type": "noodl.cloud.request",
+      "label": "requestAccess(name, email, password, message)",
+      "parameters": {
+        "params": "name,email,password,message",
+        "ptype-name": "string",
+        "preq-name": true,
+        "ptype-email": "string",
+        "preq-email": true,
+        "ptype-password": "string",
+        "preq-password": true,
+        "ptype-message": "string",
+        "preq-message": false,
+        "allowNoAuth": true
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "prep",
+      "type": "JavaScriptFunction",
+      "label": "Hold the request until every field is here",
+      "parameters": {
+        "runOnChange-in-name": true,
+        "runOnChange-in-email": true,
+        "runOnChange-in-password": true,
+        "runOnChange-in-message": true,
+        "functionScript": "if (Inputs.email === undefined || Inputs.password === undefined) return;\nconst email = (Inputs.email || '').trim();\nconst password = Inputs.password || '';\nif (email.length === 0 || password.length === 0) {\n  Outputs.refuse();\n  return;\n}\nOutputs.username = email;\nOutputs.email = email;\nOutputs.password = password;\nOutputs.name = (Inputs.name || '').trim() || email;\nOutputs.message = Inputs.message || '';\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-refuse",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-password",
+          "displayName": "password",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-name",
+          "displayName": "name",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-message",
+          "displayName": "message",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-username",
+          "displayName": "username",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-email",
+          "displayName": "email",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-password",
+          "displayName": "password",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-message",
+          "displayName": "message",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "create-2",
+      "type": "noodl.cloud.createuser",
+      "label": "Create the account — with no roles, which is what pending means",
+      "parameters": {},
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "stamp",
+      "type": "JavaScriptFunction",
+      "label": "Everything the request row needs, from one node",
+      "parameters": {
+        "runOnChange-in-userId": true,
+        "runOnChange-in-email": true,
+        "runOnChange-in-name": true,
+        "runOnChange-in-message": true,
+        "functionScript": "if (Inputs.userId === undefined || Inputs.email === undefined) return;\nOutputs.userId = Inputs.userId;\nOutputs.email = Inputs.email;\nOutputs.name = Inputs.name || '';\nOutputs.message = Inputs.message || '';\n// Written here rather than by the backend: an ISO day string sorts and\n// compares lexicographically, which is what the moderators’ queue orders by.\nOutputs.requestedAt = new Date().toISOString();\nOutputs.file();"
+      },
+      "ports": [
+        {
+          "name": "out-file",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-userId",
+          "displayName": "userId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-email",
+          "displayName": "email",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-name",
+          "displayName": "name",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-message",
+          "displayName": "message",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-userId",
+          "displayName": "userId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-email",
+          "displayName": "email",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-name",
+          "displayName": "name",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-message",
+          "displayName": "message",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-requestedAt",
+          "displayName": "requestedAt",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    },
+    {
+      "id": "file",
+      "type": "NewDbModelProperties",
+      "label": "File the request for the moderators",
+      "parameters": {
+        "collectionName": "MemberRequest",
+        "accessControl": [
+          {
+            "id": "admin",
+            "label": "Moderators"
+          }
+        ],
+        "acl-admin-target": "role",
+        "acl-admin-role": "admin",
+        "acl-admin-read": true,
+        "acl-admin-write": true
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "res-2",
+      "type": "noodl.cloud.response",
+      "label": "Request received",
+      "parameters": {
+        "params": "received"
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "deny-2",
+      "type": "noodl.cloud.response",
+      "label": "Refused",
+      "parameters": {
+        "status": "failure",
+        "errorMessage": "That request could not be sent. Please check the form and try again."
+      },
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "received",
+      "type": "JavaScriptFunction",
+      "label": "The one success value",
+      "parameters": {
+        "functionScript": "Outputs.received = true;\nOutputs.answer();"
+      },
+      "ports": [
+        {
+          "name": "out-answer",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "out-received",
+          "displayName": "received",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 40,
+      "y": 880
+    }
+  ]
+}

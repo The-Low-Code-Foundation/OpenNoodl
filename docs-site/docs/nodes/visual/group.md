@@ -25,12 +25,19 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignContent` | Enum (`flex-start`, `flex-end`, `center`, `space-between`, `space-around`, `space-evenly`) | — | Where the wrapped lines sit as a group; only applies once Multi Line Wrap is on |
-| `alignItems` | Enum (`flex-start`, `flex-end`, `center`) | `flex-start` | Where children sit across the layout direction |
+| `alignItems` | Enum (`flex-start`, `flex-end`, `center`, `stretch`) | `flex-start` | Where children sit across the layout direction |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `as` | Enum (`div`, `section`, `article`, `aside`, `nav`, `header`, `footer`, `main`, `span`) | `div` | HTML element to render as, which changes nothing visually but matters for screen readers and SEO |
+| `backdropBlur` | Number | `0` | Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over the ground it sits on. Needs a see-through Background Color to show at all |
 | `backgroundColor` | Color | `transparent` | Fill colour behind the children |
+| `backgroundGradient` | String | — | A CSS gradient painted as the ground — normally a design token such as "var(--gradient-brand)". It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim |
+| `backgroundImage` | Image | — | A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the picture so text on top stays readable |
+| `backgroundPosition` | Enum (`center`, `top center`, `bottom center`, `center left`, `center right`) | `center` | Which part of the picture stays in view when Cover crops it |
+| `backgroundSize` | Enum (`cover`, `contain`, `auto`) | `cover` | How the background picture fills the box. Cover crops it to fill; contain fits it whole |
 | `blockTouch` | Boolean | — | Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in |
 | `borderBottomColor` | Color | — | Colour of the bottom edge only, overriding Border Color |
 | `borderBottomLeftRadius` | Number | — | Rounds the bottom-left corner only, overriding Corner Radius |
@@ -59,6 +66,7 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all |
 | `clip` | Boolean | `false` | Hides any child that overflows the group instead of letting it spill out |
 | `columnGap` | Number | `0` | Space between children on the horizontal axis |
@@ -127,6 +135,12 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
 | `childrenCount` | Number | — | How many child elements are currently mounted inside this one |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `onScrollPositionChanged` | Number | — | How far the content is scrolled, in pixels from the start |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
@@ -139,6 +153,8 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
 | `done` | Signal | — | Fires once Focus, Scroll To Element or Scroll To Index has been carried out |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `focusLost` | Signal | — | Fires when keyboard focus leaves this group |
 | `focused` | Signal | — | Fires when this group takes keyboard focus |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
@@ -176,6 +192,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | sizeMode = explicit OR sizeMode = contentHeight OR sizeMode NOT SET | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth OR sizeMode NOT SET | `height` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |
@@ -205,6 +222,34 @@ The canonical data-list shape. Query Records (DbCollection2) fetches a database 
 **Validate an input before acting on a click**
 
 The idiomatic gate shape: a Button click does not act directly — it evaluates a Condition. The Condition's boolean comes from an Expression that checks the text input's current value, so the same click either proceeds (ontrue) or reveals an error message (isfalse drives the error Text's visibility as a level, not a pulse). Note the two kinds of flow: text/booleans are values, onClick/eval/ontrue are momentary signals.
+
+**Page spine: full-bleed bands, a centred max-width shell, an announced section**
+
+The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems "center" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.
+
+**Card grid: Query Records into a Repeater, in a Columns node that reflows on its own**
+
+The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing "autoFit" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
+**Icon feature strip: one item component, instantiated three times inside a Columns**
+
+Three reassurances on a bordered band — and the shape this recipe is really about. The item is its OWN component with Component Inputs for its icon, title and body, instantiated three times; writing the subtree out three times is a `repeated-sibling-subtree` warning, not a style preference. The row is a Columns node so it collapses to one column under 700px: a Group row cannot, because no Group in the runtime has a breakpoint. The band sits on --surface with hairlines top and bottom so it reads as a rule across the page rather than another section.
+
+**Stat tile row: one tile component, four instances, collapsing to two then one**
+
+The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.
+
+**Empty state: what a list shows when it has no rows**
+
+A list with nothing in it should say what it is and what to do, not render nothing. The designed version is small and centred inside a dashed card: an icon in a muted disc, one heading, one line of explanation capped at ~380px, and exactly one action. The switch is one wire: the query's `isEmpty` boolean into the empty state's `mounted` input. Use `mounted`, not `visible` — `mounted` takes the element out of the layout, while `visible` only hides it and keeps the space it occupies, which leaves a page-height hole above your empty state. The list needs no gate at all: a `For Each` over an empty array renders no rows and occupies no height, so nothing has to be inverted and no logic node is involved. Skipping the empty state is the difference between an app that looks unfinished on first run and one that does not, and first run is when it is always seen.
+
+**A wrapping row of content-width items, with no CSS**
+
+Items that keep their own width and flow onto the next line when they run out of room — the layout a chip row, a filter bar or a tag list wants, and one people reach for a `CSS Definition` node to get. It needs no CSS: the container is a **Group** with `Multi Line Wrap` on, `Layout` set to row, a `Column Gap` and a `Row Gap` (the two gap ports only appear once wrapping is on) and `Align Y` at top, and each item is a **Group** at `Content Size`. ⚠️ That last part is the half that is usually missed. An item at `Content Size` gets no width of its own, and the runtime gives every node `flex-shrink: 0` and only grants `flex-grow` to a percentage width — so `Content Size` already *is* `flex: 0 0 auto`, and an item left at `100%` instead becomes `flex-grow: 100` and swallows the whole line. 🔴 This is not masonry: rows are laid out independently and nothing balances columns or packs items upward by height.
 
 ## Related nodes
 

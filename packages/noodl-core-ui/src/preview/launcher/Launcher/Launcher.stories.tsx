@@ -17,7 +17,8 @@ const meta: Meta<typeof Launcher> = {
   argTypes: {
     initialTab: {
       control: 'select',
-      options: ['projects', 'learn', 'templates'],
+      // ⚠️ `learn` and `learning` are different pages — see `LauncherPageId`.
+      options: ['projects', 'learning', 'learn', 'templates'],
       description: 'Initial tab to display'
     }
   }
@@ -68,6 +69,47 @@ export const ProjectsTab: Story = {
   }
 };
 
+/**
+ * The Learning tab — UNI-007 / D5's installed lessons, which used to render
+ * above the project grid and now has the header tab to itself.
+ */
+export const LearningTab: Story = {
+  args: {
+    initialTab: 'learning',
+    learning: [
+      {
+        id: 'first-app',
+        title: 'Build your first app',
+        description: 'Pages, a router and a list, from an empty project.',
+        provenance: 'curated',
+        progressPercent: 60,
+        state: 'in-progress'
+      },
+      {
+        id: 'data-basics',
+        title: 'Working with data',
+        description: 'Static data, For Each, and a record you can edit.',
+        provenance: 'local',
+        progressPercent: 100,
+        state: 'completed',
+        score: 82,
+        gradedBy: 'runner'
+      }
+    ],
+    onInstallLearningLesson: () => undefined
+  }
+};
+
+/** The empty Learning tab: the install route is the only thing to do in it. */
+export const LearningTabEmpty: Story = {
+  args: {
+    initialTab: 'learning',
+    learning: [],
+    onInstallLearningLesson: () => undefined
+  }
+};
+
+/** POL-002's retired lesson catalogue. Page id `'learn'`, reachable from no tab. */
 export const LearnTab: Story = {
   args: {
     initialTab: 'learn'

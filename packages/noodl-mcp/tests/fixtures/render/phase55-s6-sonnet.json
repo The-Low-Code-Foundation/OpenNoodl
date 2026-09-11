@@ -1,0 +1,442 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [
+      {
+        "component": "/Components/Home/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Products\"",
+        "strings": [
+          "Stoneware Dinner Bowl",
+          "Hand-thrown in a matte oat glaze, stacks four to a shelf.",
+          "Stack of matte oat-glaze stoneware bowls",
+          "Best seller",
+          "★ 4.9 · 128 reviews",
+          "Speckled Ceramic Mug"
+        ],
+        "found": 5,
+        "missing": [
+          "Stack of matte oat-glaze stoneware bowls"
+        ]
+      }
+    ],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 3004,
+    "contentBottom": 3004,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 73,
+      "onScreen": 17,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 33,
+        "500": 4,
+        "600": 34,
+        "700": 2
+      },
+      "fontSizes": {
+        "20px": 4,
+        "12px": 16,
+        "14px": 35,
+        "48px": 1,
+        "18px": 15,
+        "30px": 2
+      },
+      "distinctFontSizes": 6,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 2,
+      "byText": {
+        "Shop": 2
+      },
+      "samples": [
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 10,
+      "onScreen": 1,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1152,
+        "itemHeight": 15,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 1152,
+        "itemHeight": 15,
+        "parentWidth": 1152,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 6,
+        "columns": 4,
+        "rows": 2,
+        "itemWidth": 291,
+        "itemHeight": 449,
+        "parentWidth": 1164,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 564,
+        "itemHeight": 15,
+        "parentWidth": 564,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 363,
+        "itemHeight": 17,
+        "parentWidth": 363,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 363,
+        "itemHeight": 17,
+        "parentWidth": 363,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 363,
+        "itemHeight": 17,
+        "parentWidth": 363,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 400,
+        "itemHeight": 79,
+        "parentWidth": 1200,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 395,
+        "itemHeight": 120,
+        "parentWidth": 1184,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 4,
+        "rows": 1,
+        "itemWidth": 294,
+        "itemHeight": 33,
+        "parentWidth": 1176,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 389,
+        "itemHeight": 318,
+        "parentWidth": 1168,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 237,
+        "itemHeight": 25,
+        "parentWidth": 277,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [
+      {
+        "component": "/Components/Home/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "One card per product",
+        "rows": 6,
+        "source": "Static Data \"Products\"",
+        "strings": [
+          "Stoneware Dinner Bowl",
+          "Hand-thrown in a matte oat glaze, stacks four to a shelf.",
+          "Stack of matte oat-glaze stoneware bowls",
+          "Best seller",
+          "★ 4.9 · 128 reviews",
+          "Speckled Ceramic Mug"
+        ],
+        "found": 5,
+        "missing": [
+          "Stack of matte oat-glaze stoneware bowls"
+        ]
+      }
+    ],
+    "layoutWidth": 390,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 390,
+    "pageHeight": 6434,
+    "contentBottom": 6434,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 73,
+      "onScreen": 11,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 33,
+        "500": 4,
+        "600": 34,
+        "700": 2
+      },
+      "fontSizes": {
+        "20px": 4,
+        "12px": 16,
+        "14px": 35,
+        "48px": 1,
+        "18px": 15,
+        "30px": 2
+      },
+      "distinctFontSizes": 6,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 2,
+      "byText": {
+        "Shop": 2
+      },
+      "samples": [
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Shop",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 10,
+      "onScreen": 1,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 6,
+        "columns": 1,
+        "rows": 6,
+        "itemWidth": 354,
+        "itemHeight": 449,
+        "parentWidth": 354,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 366,
+        "itemHeight": 33,
+        "parentWidth": 366,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 342,
+        "itemHeight": 17,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 342,
+        "itemHeight": 17,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 4,
+        "columns": 1,
+        "rows": 4,
+        "itemWidth": 342,
+        "itemHeight": 17,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 390,
+        "itemHeight": 79,
+        "parentWidth": 390,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 374,
+        "itemHeight": 120,
+        "parentWidth": 374,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 358,
+        "itemHeight": 318,
+        "parentWidth": 358,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 15,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 15,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 15,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 300,
+        "itemHeight": 25,
+        "parentWidth": 340,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  }
+}

@@ -154,7 +154,7 @@ const CSVNode: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the JSON could not be parsed, in one sentence; empty until a parse fails',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: StaticDataInstance) {
         return this._internal.lastError;
       }

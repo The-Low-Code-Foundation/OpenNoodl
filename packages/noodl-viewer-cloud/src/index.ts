@@ -2,18 +2,31 @@
 
 //import WebSocket from 'ws';
 import { NoodlRequest, NoodlResponse } from './bridge';
+import { loadCloudKitModules, type CloudKitLoadResult, type CloudKitModule } from './kitModules';
 import { registerNodes } from './nodes';
 import NoodlRuntime from '@noodl/runtime';
 import Model from '@noodl/runtime/src/model';
 import NodeScope from '@noodl/runtime/src/nodescope';
-import type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel } from '@noodl/runtime/src/runcontext';
+import type {
+  NodeRunContext,
+  RuntimeLogEntry,
+  RuntimeLogLevel,
+  RuntimeStepEnd,
+  RuntimeStepStart
+} from '@noodl/runtime/src/runcontext';
 import type { RuntimeNodeContext } from '@noodl/runtime/src/internal';
 import './noodl-js-api';
 
 // CWF-013 — the shape a host has to fill in to give a cloud function's `Log` node somewhere to
 // go. Re-exported from the package entry because the backend reaches this module through the
 // `@cloud-runtime` bundler alias and has no other way to name the type.
-export type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel };
+export type { NodeRunContext, RuntimeLogEntry, RuntimeLogLevel, RuntimeStepEnd, RuntimeStepStart };
+
+// CN-013 — the cloud kit loader's vocabulary, re-exported for the same reason as the three above:
+// `nodegx-backend` reaches this module through the `@cloud-runtime` bundler alias and has no other
+// way to name these types.
+export { loadCloudKitModules, REQUIRE_LIMIT } from './kitModules';
+export type { CloudKitModule, CloudKitLoadFailure, CloudKitLoadResult } from './kitModules';
 
 require('./services/userservice');
 
@@ -73,6 +86,18 @@ export function isCloudFunctionTimeout(e: unknown): e is CloudFunctionTimeoutErr
 export class CloudRunner {
   private runtime: NoodlRuntime;
 
+  /**
+   * Kit modules this runner has already evaluated, by manifest name.
+   *
+   * Per-runner rather than per-`load`: `WorkflowRunner` loads every bundle it serves into one
+   * runner, and two projects on one backend may ship the same kit. Re-evaluating an entry script
+   * is a side effect an author has no reason to expect.
+   */
+  private loadedKitModules = new Set<string>();
+
+  /** What {@link load} made of each bundle's kits, newest last. Read by hosts that log. */
+  public readonly kitLoads: CloudKitLoadResult[] = [];
+
   constructor(options: {
     webSocketClass?: any;
     enableDebugInspectors?: boolean;
@@ -101,10 +126,46 @@ export class CloudRunner {
     }
   }
 
+  /**
+   * Load one cloud-function bundle, registering its kits first.
+   *
+   * ⚠️ **The order is not what it looks like, and the comment that used to be
+   * here was wrong.** The obvious reason to register before `setData` —
+   * *"`importEditorData` resolves node types as it imports"* — does not apply to
+   * this class: it is constructed with `dontCreateRootComponent: true` and
+   * builds its graph **per request** in {@link run}, via
+   * `createComponentInstanceNode`, long after `setData` has returned. Moving the
+   * registration after `setData` broke nothing in the suite, which is how the
+   * claim was caught.
+   *
+   * What the order genuinely buys is `setup`: `NoodlRuntime.setData` loops
+   * `this.noodlModules` and calls each module's `setup` once. A kit registered
+   * afterwards is not in that list yet and its `setup` silently never runs.
+   * `cn-013-cloud-kits.test.ts` pins that, and reddens if the two are swapped.
+   *
+   * 🔴 What the *registration itself* buys is the whole feature. An unregistered
+   * type is logged and skipped by `NodeScope` **with its connections**, so the
+   * graph runs with the chain cut and no Response node is ever reached. That is
+   * CN-012's measured failure — a hang, not an error, until CWF-018 bounded it
+   * into a 504 that says nothing about kits.
+   *
+   * The result is kept on {@link kitLoads} rather than thrown: one kit that
+   * cannot load must not stop the bundle's other functions serving, and the
+   * host is the thing with somewhere to log. `WorkflowRunner` prints it.
+   */
   public async load(exportData: any, projectSettings?: any) {
+    const kitLoad = loadCloudKitModules(
+      this.runtime,
+      exportData && (exportData.modules as CloudKitModule[] | undefined),
+      this.loadedKitModules
+    );
+    this.kitLoads.push(kitLoad);
+
     await this.runtime.setData(exportData);
 
     if (projectSettings) this.runtime.setProjectSettings(projectSettings);
+
+    return kitLoad;
   }
 
   /**

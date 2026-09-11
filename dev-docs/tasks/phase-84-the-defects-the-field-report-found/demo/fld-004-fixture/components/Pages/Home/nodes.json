@@ -1,0 +1,119 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "fld0004-0000-4000-8000-00000000000b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-0001",
+      "type": "Page",
+      "label": "Home",
+      "x": 40,
+      "y": 40,
+      "parameters": {
+        "title": "Home",
+        "urlPath": "home"
+      },
+      "dynamicports": [
+        {
+          "name": "title",
+          "displayName": "Title",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "Home",
+          "index": 2
+        },
+        {
+          "name": "urlPath",
+          "displayName": "Url Path",
+          "type": "string",
+          "group": "General",
+          "plug": "input",
+          "default": "home",
+          "index": 3
+        }
+      ],
+      "children": [
+        "column-0001"
+      ]
+    },
+    {
+      "id": "column-0001",
+      "type": "Group",
+      "label": "Column parent",
+      "parameters": {
+        "flexDirection": "column",
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "#eeeeee"
+      },
+      "children": [
+        "box-a",
+        "box-b"
+      ],
+      "parent": "page-0001"
+    },
+    {
+      "id": "box-a",
+      "type": "Group",
+      "label": "Box A wired height no static value",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "#cc0000"
+      },
+      "parent": "column-0001"
+    },
+    {
+      "id": "box-b",
+      "type": "Group",
+      "label": "Box B wired height with a static 120px",
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 120,
+          "unit": "px"
+        },
+        "backgroundColor": "#0000cc"
+      },
+      "parent": "column-0001"
+    },
+    {
+      "id": "num-0001",
+      "type": "Number",
+      "label": "Four hundred",
+      "x": 600,
+      "y": 260,
+      "parameters": {
+        "value": 400
+      }
+    },
+    {
+      "id": "str-0001",
+      "type": "String",
+      "label": "Not a size",
+      "x": 600,
+      "y": 400,
+      "parameters": {
+        "value": "tall"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page-0001"
+  ]
+}

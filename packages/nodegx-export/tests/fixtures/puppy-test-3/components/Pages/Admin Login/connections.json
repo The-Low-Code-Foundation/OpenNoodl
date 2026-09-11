@@ -1,0 +1,59 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "dc18707e-5627-4f83-bdfe-019ecbbd6f3d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "usernameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "username",
+      "anchors": [
+        {
+          "u": 0.45,
+          "v": 160
+        }
+      ]
+    },
+    {
+      "fromId": "passwordInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "loginBtn",
+      "fromProperty": "onClick",
+      "toId": "login",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "done",
+      "toId": "navigate",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "error",
+      "toId": "errorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "usernameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "passwordInput",
+      "toProperty": "placeholder",
+      "anchors": [
+        {
+          "u": -0.27071764559170963,
+          "v": -221.37510396132726
+        },
+        {
+          "u": 1.6390067098959094,
+          "v": -275.4661792815632
+        }
+      ]
+    }
+  ]
+}

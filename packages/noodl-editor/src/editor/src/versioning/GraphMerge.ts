@@ -690,6 +690,13 @@ function connectionRefFor(context: MergeContext, connection: SnapshotConnection)
  * other's is exactly what must not happen quietly. `labelT` is presentation:
  * whichever side moved it wins, and two different positions are not worth
  * asking about.
+ *
+ * `route` (SIG-007) takes `labelT`'s rule, and it is here rather than left in
+ * `rest` **because of the first line of this function** — `deepClone(ours)`
+ * means our `rest` wins unconditionally, so a colleague's hand-drawn routing
+ * would be dropped on every merge where we had not touched our own. It is not a
+ * conflict either: routing is where a wire goes on a screen, not what it means,
+ * and stopping a merge to ask about it would be asking about the wrong thing.
  */
 function mergeConnectionFields(
   context: MergeContext,
@@ -714,6 +721,14 @@ function mergeConnectionFields(
   const labelT = ours.labelT === base?.labelT ? theirs.labelT : ours.labelT;
   if (labelT === undefined) delete merged.labelT;
   else merged.labelT = labelT;
+
+  // Compared by value: a route is an object of arrays, so `ours === base` is
+  // false between two snapshots of the same unchanged routing and every merge
+  // would take theirs.
+  const untouched = JSON.stringify(ours.route ?? null) === JSON.stringify(base?.route ?? null);
+  const route = untouched ? theirs.route : ours.route;
+  if (!route) delete merged.route;
+  else merged.route = route;
 
   return merged;
 }

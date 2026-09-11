@@ -1,0 +1,457 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4a5dff26-a4d2-5774-85d9-5b4999b0c09b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-2",
+      "type": "Page",
+      "label": "Sign in",
+      "children": [
+        "pageShell"
+      ],
+      "parameters": {
+        "title": "Sign in",
+        "urlPath": "sign-in"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-2",
+      "children": [
+        "pageBody",
+        "pageFooter"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell",
+      "children": [
+        "pageMain"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody",
+      "children": [
+        "heroBand-2",
+        "ground",
+        "prompt-2",
+        "inside-3"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "prompt-2",
+      "type": "/Members/Prompt",
+      "label": "The closing prompt",
+      "parent": "pageMain",
+      "parameters": {
+        "heading": "Not a member yet?",
+        "line": "Membership is by request. Ask to join and a moderator will approve you.",
+        "action": "Ask to join"
+      },
+      "x": 280,
+      "y": 1960
+    },
+    {
+      "id": "inside-3",
+      "type": "/Members/InsideBand",
+      "label": "What members can see",
+      "parent": "pageMain",
+      "x": 280,
+      "y": 2080
+    },
+    {
+      "id": "heroBand-2",
+      "type": "Group",
+      "label": "The photograph, and what this page is",
+      "parent": "pageMain",
+      "children": [
+        "heroShell-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 300,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)",
+        "backgroundImage": "noodl_modules/starter-imagery/people-desk.webp"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "heroShell-2",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "heroBand-2",
+      "children": [
+        "headingHead"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 640
+    },
+    {
+      "id": "pageFooter",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell",
+      "x": 160,
+      "y": 2200
+    },
+    {
+      "id": "ground",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain",
+      "children": [
+        "form",
+        "error"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 720,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "headingHead",
+      "type": "Group",
+      "label": "Heading — the head",
+      "parent": "heroShell-2",
+      "children": [
+        "headingEyebrow",
+        "heading-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 400,
+      "y": 760
+    },
+    {
+      "id": "headingEyebrow",
+      "type": "Text",
+      "label": "Members’ area",
+      "parent": "headingHead",
+      "parameters": {
+        "text": "Members’ area",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary-foreground)",
+        "as": "span"
+      },
+      "x": 460,
+      "y": 880
+    },
+    {
+      "id": "heading-2",
+      "type": "Text",
+      "label": "Heading",
+      "parent": "headingHead",
+      "parameters": {
+        "text": "Members sign in",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--primary-foreground)",
+        "as": "h1"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "form",
+      "type": "Group",
+      "label": "The sign-in form",
+      "parent": "ground",
+      "children": [
+        "email",
+        "password",
+        "submit"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)"
+      },
+      "x": 340,
+      "y": 1240
+    },
+    {
+      "id": "email",
+      "type": "net.noodl.controls.textinput",
+      "label": "Email",
+      "parent": "form",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Email",
+        "type": "email"
+      },
+      "x": 400,
+      "y": 1360
+    },
+    {
+      "id": "password",
+      "type": "net.noodl.controls.textinput",
+      "label": "Password",
+      "parent": "form",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "borderRadius": "var(--radius-md)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "useLabel": true,
+        "label": "Password",
+        "type": "password"
+      },
+      "x": 400,
+      "y": 1480
+    },
+    {
+      "id": "submit",
+      "type": "net.noodl.controls.button",
+      "label": "Sign in",
+      "parent": "form",
+      "parameters": {
+        "label": "Sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 1600
+    },
+    {
+      "id": "error",
+      "type": "Group",
+      "label": "Sign-in error",
+      "parent": "ground",
+      "children": [
+        "errorText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Sign-in error — the words",
+      "parent": "error",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "login",
+      "type": "net.noodl.user.LogIn",
+      "label": "Log in",
+      "x": 710,
+      "y": 1840
+    },
+    {
+      "id": "errorGate",
+      "type": "Condition",
+      "label": "Show the sign-in refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 710,
+      "y": 1720
+    },
+    {
+      "id": "toMembers",
+      "type": "RouterNavigate",
+      "label": "Go to members area",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Members"
+      },
+      "x": 710,
+      "y": 2080
+    },
+    {
+      "id": "toJoin-2",
+      "type": "RouterNavigate",
+      "label": "Go to the join form",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Join"
+      },
+      "x": 710,
+      "y": 1960
+    }
+  ],
+  "visualRoots": [
+    "page-2"
+  ]
+}

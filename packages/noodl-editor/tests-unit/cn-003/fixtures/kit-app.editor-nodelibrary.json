@@ -1,0 +1,953 @@
+{
+  "_recording": {
+    "what": "The editor node library (window.NodeLibraryData / NodeLibrary.instance.library) with the Kit App fixture open.",
+    "recordedAt": "2026-08-17T07:12:40.324Z",
+    "project": "packages/noodl-mcp/tests/fixtures/kit-app, copied to a scratchpad directory and opened there (opening writes into a project).",
+    "how": "npm run dev:debug, LocalProjectsModel.openProjectFromFolder + loadProject + router.route({to:\"projects\"}) then route({to:\"editor\"}), then NodeLibrary.instance.library once the viewer had delivered its library.",
+    "reduction": "Kit entries (module set) are verbatim. Built-in entries are reduced to {name} \u2014 the whole payload is ~1.6MB and the only thing the editor route reads from a non-module entry is its name (see builtinTypeNamesFor). The MCP extractor reduces its own output the same way and for the same reason.",
+    "rerecordedBecause": "CN-018 / CN-003 re-record. The 2026-08-16 recording predates the __noodl_module_name fix and said module: \"Unknown Module\" for every kit node. This capture is taken from a viewer build that carries both that fix and CN-018 grouping, so module now reads the manifest name.",
+    "counts": {
+      "total": 177,
+      "kit": 2,
+      "builtinsReducedToNames": 175
+    },
+    "orderingNote": "The entry ORDER differs from the 2026-08-16 recording (the kit entries now sort last rather than first), which is why the line diff is ~400 lines for a two-value change. Compared by NAME, the two recordings have an identical 177-name set and exactly two content differences: demo.kit.Badge and demo.kit.Meter went module: 'Unknown Module' -> 'Demo Kit'. Ports are byte-identical. Order is whatever the editor delivered and is not asserted on."
+  },
+  "nodetypes": [
+    {
+      "name": "Component Children"
+    },
+    {
+      "name": "Component Inputs"
+    },
+    {
+      "name": "Component Outputs"
+    },
+    {
+      "name": "RunTasks"
+    },
+    {
+      "name": "REST2"
+    },
+    {
+      "name": "Expression"
+    },
+    {
+      "name": "JavaScriptFunction"
+    },
+    {
+      "name": "Logic Builder"
+    },
+    {
+      "name": "DbCollection2"
+    },
+    {
+      "name": "DbModel2"
+    },
+    {
+      "name": "SetDbModelProperties"
+    },
+    {
+      "name": "DeleteDbModelProperties"
+    },
+    {
+      "name": "NewDbModelProperties"
+    },
+    {
+      "name": "AddDbModelRelation"
+    },
+    {
+      "name": "RemoveDbModelRelation"
+    },
+    {
+      "name": "FilterDBModels"
+    },
+    {
+      "name": "Model2"
+    },
+    {
+      "name": "SetModelProperties"
+    },
+    {
+      "name": "NewModel"
+    },
+    {
+      "name": "Collection2"
+    },
+    {
+      "name": "CollectionNew"
+    },
+    {
+      "name": "CollectionInsert"
+    },
+    {
+      "name": "CollectionRemove"
+    },
+    {
+      "name": "CollectionClear"
+    },
+    {
+      "name": "Filter Collection"
+    },
+    {
+      "name": "Map Collection"
+    },
+    {
+      "name": "Static Data"
+    },
+    {
+      "name": "Variable2"
+    },
+    {
+      "name": "Set Variable"
+    },
+    {
+      "name": "net.noodl.ComponentObject"
+    },
+    {
+      "name": "net.noodl.SetComponentObjectProperties"
+    },
+    {
+      "name": "Cloud File"
+    },
+    {
+      "name": "Sign File URL"
+    },
+    {
+      "name": "Number"
+    },
+    {
+      "name": "String"
+    },
+    {
+      "name": "Boolean"
+    },
+    {
+      "name": "Condition"
+    },
+    {
+      "name": "And"
+    },
+    {
+      "name": "Or"
+    },
+    {
+      "name": "Boolean To String"
+    },
+    {
+      "name": "Date To String"
+    },
+    {
+      "name": "String Mapper"
+    },
+    {
+      "name": "Inverter"
+    },
+    {
+      "name": "Substring"
+    },
+    {
+      "name": "String Format"
+    },
+    {
+      "name": "Counter"
+    },
+    {
+      "name": "Unique Id"
+    },
+    {
+      "name": "net.noodl.Hash"
+    },
+    {
+      "name": "net.noodl.RandomBytes"
+    },
+    {
+      "name": "net.noodl.UUID"
+    },
+    {
+      "name": "net.noodl.Now"
+    },
+    {
+      "name": "net.noodl.DateAdd"
+    },
+    {
+      "name": "net.noodl.DateDifference"
+    },
+    {
+      "name": "net.noodl.DateCompare"
+    },
+    {
+      "name": "net.noodl.DateParts"
+    },
+    {
+      "name": "net.noodl.ParseCSV"
+    },
+    {
+      "name": "net.noodl.ToCSV"
+    },
+    {
+      "name": "net.noodl.Log"
+    },
+    {
+      "name": "Switch"
+    },
+    {
+      "name": "Number Remapper"
+    },
+    {
+      "name": "On App Error"
+    },
+    {
+      "name": "net.noodl.user.SetUserProperties"
+    },
+    {
+      "name": "net.noodl.user.User"
+    },
+    {
+      "name": "net.noodl.WebSocket"
+    },
+    {
+      "name": "net.noodl.SSE"
+    },
+    {
+      "name": "net.noodl.TextAccumulator"
+    },
+    {
+      "name": "net.noodl.JSONStreamParser"
+    },
+    {
+      "name": "net.noodl.PatternExtractor"
+    },
+    {
+      "name": "net.noodl.StreamBuffer"
+    },
+    {
+      "name": "net.noodl.GlobalStore"
+    },
+    {
+      "name": "net.noodl.GlobalStore.Set"
+    },
+    {
+      "name": "net.noodl.GlobalStore.Subscribe"
+    },
+    {
+      "name": "net.noodl.OptimisticUpdate"
+    },
+    {
+      "name": "net.noodl.StateHistory"
+    },
+    {
+      "name": "net.noodl.StateHistory.Undo"
+    },
+    {
+      "name": "net.noodl.StateSnapshot"
+    },
+    {
+      "name": "net.noodl.ActionDispatcher"
+    },
+    {
+      "name": "net.noodl.ActionHandler"
+    },
+    {
+      "name": "SubscribeToChanges"
+    },
+    {
+      "name": "Timer"
+    },
+    {
+      "name": "Color"
+    },
+    {
+      "name": "Event Sender"
+    },
+    {
+      "name": "Event Receiver"
+    },
+    {
+      "name": "Screen Resolution"
+    },
+    {
+      "name": "Javascript2"
+    },
+    {
+      "name": "Value Changed"
+    },
+    {
+      "name": "States"
+    },
+    {
+      "name": "For Each"
+    },
+    {
+      "name": "For Each Actions"
+    },
+    {
+      "name": "Color Blend"
+    },
+    {
+      "name": "net.noodl.animatetovalue"
+    },
+    {
+      "name": "net.noodl.HTTP"
+    },
+    {
+      "name": "net.noodl.ParentComponentObject"
+    },
+    {
+      "name": "net.noodl.SetParentComponentObjectProperties"
+    },
+    {
+      "name": "CloudFunction2"
+    },
+    {
+      "name": "Open File Picker"
+    },
+    {
+      "name": "Upload File"
+    },
+    {
+      "name": "PageStackNavigateBack"
+    },
+    {
+      "name": "PageStackNavigateToPath"
+    },
+    {
+      "name": "PageStackNavigate"
+    },
+    {
+      "name": "NavigationShowPopup"
+    },
+    {
+      "name": "NavigationClosePopup"
+    },
+    {
+      "name": "PageInputs"
+    },
+    {
+      "name": "RouterNavigate"
+    },
+    {
+      "name": "net.noodl.user.LogIn"
+    },
+    {
+      "name": "net.noodl.user.LogOut"
+    },
+    {
+      "name": "net.noodl.user.SignUp"
+    },
+    {
+      "name": "net.noodl.user.VerifyEmail"
+    },
+    {
+      "name": "net.noodl.user.SendEmailVerification"
+    },
+    {
+      "name": "net.noodl.user.ResetPassword"
+    },
+    {
+      "name": "net.noodl.user.RequestPasswordReset"
+    },
+    {
+      "name": "net.noodl.user.SignInWith"
+    },
+    {
+      "name": "net.noodl.user.RequestMagicLink"
+    },
+    {
+      "name": "net.noodl.ObjectChanged"
+    },
+    {
+      "name": "net.noodl.ArrayChanged"
+    },
+    {
+      "name": "Cloud Function"
+    },
+    {
+      "name": "Component State"
+    },
+    {
+      "name": "Parent Component State"
+    },
+    {
+      "name": "Model"
+    },
+    {
+      "name": "Variable"
+    },
+    {
+      "name": "Gyroscope"
+    },
+    {
+      "name": "Globals"
+    },
+    {
+      "name": "Signal To Index"
+    },
+    {
+      "name": "Number Blend"
+    },
+    {
+      "name": "String Selector"
+    },
+    {
+      "name": "Animation"
+    },
+    {
+      "name": "Transition"
+    },
+    {
+      "name": "DbModel"
+    },
+    {
+      "name": "DbCollection"
+    },
+    {
+      "name": "Collection"
+    },
+    {
+      "name": "Script Downloader"
+    },
+    {
+      "name": "CSS Definition"
+    },
+    {
+      "name": "Group"
+    },
+    {
+      "name": "Text"
+    },
+    {
+      "name": "Image"
+    },
+    {
+      "name": "net.noodl.visual.icon"
+    },
+    {
+      "name": "Circle"
+    },
+    {
+      "name": "Video"
+    },
+    {
+      "name": "Drag"
+    },
+    {
+      "name": "net.noodl.externallink"
+    },
+    {
+      "name": "net.noodl.visual.columns"
+    },
+    {
+      "name": "Button"
+    },
+    {
+      "name": "Checkbox"
+    },
+    {
+      "name": "Radio Button"
+    },
+    {
+      "name": "Options"
+    },
+    {
+      "name": "Range"
+    },
+    {
+      "name": "Label"
+    },
+    {
+      "name": "Text Input"
+    },
+    {
+      "name": "Form"
+    },
+    {
+      "name": "Field Set"
+    },
+    {
+      "name": "net.noodl.controls.button"
+    },
+    {
+      "name": "net.noodl.controls.checkbox"
+    },
+    {
+      "name": "Radio Button Group"
+    },
+    {
+      "name": "net.noodl.controls.radiobutton"
+    },
+    {
+      "name": "net.noodl.controls.options"
+    },
+    {
+      "name": "net.noodl.controls.range"
+    },
+    {
+      "name": "net.noodl.controls.textinput"
+    },
+    {
+      "name": "Page Stack"
+    },
+    {
+      "name": "Page"
+    },
+    {
+      "name": "Router"
+    },
+    {
+      "name": "demo.kit.Badge",
+      "displayNodeName": "Demo Badge",
+      "module": "Demo Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "A labelled badge that can show a percentage.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here",
+          "index": 2
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Label",
+          "default": "Badge",
+          "index": 4
+        },
+        {
+          "name": "progress",
+          "type": "number",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Progress",
+          "default": 0,
+          "index": 5
+        },
+        {
+          "name": "showProgress",
+          "type": "boolean",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Show Progress",
+          "default": true,
+          "index": 6
+        },
+        {
+          "name": "background",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Background",
+          "default": "var(--color-primary)",
+          "index": 7
+        },
+        {
+          "name": "textColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Text Color",
+          "default": "var(--color-on-primary)",
+          "index": 8
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Corner Radius",
+          "default": 12,
+          "index": 9
+        },
+        {
+          "name": "paddingX",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Padding X",
+          "default": 8,
+          "index": 10
+        },
+        {
+          "name": "fontSize",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Font Size",
+          "default": 12,
+          "index": 11
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0",
+          "index": 12
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value",
+          "index": 13
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge",
+          "index": 14
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge",
+          "index": 15
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels",
+          "index": 16
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels",
+          "index": 17
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured",
+          "index": 18
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists",
+          "index": 19
+        },
+        {
+          "name": "clicked",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Clicked",
+          "index": 20
+        }
+      ],
+      "runtimeTypes": [
+        "browser"
+      ]
+    },
+    {
+      "name": "demo.kit.Meter",
+      "displayNodeName": "Demo Meter",
+      "module": "Demo Kit",
+      "allowAsChild": true,
+      "allowAsExportRoot": true,
+      "color": "visual",
+      "docs": "A horizontal meter. Outputs the fraction it is filled to, as a percentage.",
+      "category": "Visual",
+      "useVariants": true,
+      "ports": [
+        {
+          "name": "cssClassName",
+          "type": "string",
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Class",
+          "description": "Extra CSS class names to put on this element, for styling from a stylesheet you supply",
+          "default": "",
+          "index": 100010
+        },
+        {
+          "name": "styleCss",
+          "type": {
+            "name": "string",
+            "codeeditor": "text",
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced HTML",
+          "displayName": "CSS Style",
+          "description": "Raw CSS declarations applied to this element, overriding the styling ports above",
+          "default": "/* background-color: red; */",
+          "index": 100011
+        },
+        {
+          "name": "variant",
+          "type": {
+            "name": "string",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "General",
+          "displayName": "Variant",
+          "description": "Name of a saved variant of this node type to apply, replacing the styling set here",
+          "index": 2
+        },
+        {
+          "name": "mounted",
+          "type": "boolean",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Mounted",
+          "description": "Removes the element from the page entirely when false, unlike Visible which leaves its space behind",
+          "default": true,
+          "index": 9999
+        },
+        {
+          "name": "value",
+          "type": "number",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Value",
+          "default": 0,
+          "index": 4
+        },
+        {
+          "name": "max",
+          "type": "number",
+          "plug": "input",
+          "group": "Content",
+          "displayName": "Max",
+          "default": 100,
+          "index": 5
+        },
+        {
+          "name": "trackColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Track Color",
+          "default": "var(--color-surface)",
+          "index": 6
+        },
+        {
+          "name": "fillColor",
+          "type": "color",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Fill Color",
+          "default": "var(--color-primary)",
+          "index": 7
+        },
+        {
+          "name": "radius",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Corner Radius",
+          "default": 4,
+          "index": 8
+        },
+        {
+          "name": "height",
+          "type": "number",
+          "plug": "input",
+          "group": "Style",
+          "displayName": "Height",
+          "default": 8,
+          "index": 9
+        },
+        {
+          "name": "childIndex",
+          "type": "number",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "Child Index",
+          "description": "This element's position among its parent's children, counting from 0",
+          "index": 10
+        },
+        {
+          "name": "this",
+          "type": "reference",
+          "plug": "output",
+          "group": "Advanced",
+          "displayName": "This",
+          "description": "A reference to this node itself, for ports that take a node rather than a value",
+          "index": 11
+        },
+        {
+          "name": "screenPositionX",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position X",
+          "description": "Distance in pixels from the left edge of the window to this element's left edge",
+          "index": 12
+        },
+        {
+          "name": "screenPositionY",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Screen Position Y",
+          "description": "Distance in pixels from the top edge of the window to this element's top edge",
+          "index": 13
+        },
+        {
+          "name": "boundingWidth",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Width",
+          "description": "Width this element actually ended up with after layout, in pixels",
+          "index": 14
+        },
+        {
+          "name": "boundingHeight",
+          "type": "number",
+          "plug": "output",
+          "group": "Bounding Box",
+          "displayName": "Height",
+          "description": "Height this element actually ended up with after layout, in pixels",
+          "index": 15
+        },
+        {
+          "name": "didMount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Did Mount",
+          "description": "Fires once this element has been added to the page and can be measured",
+          "index": 16
+        },
+        {
+          "name": "willUnmount",
+          "type": "signal",
+          "plug": "output",
+          "group": "Mounted",
+          "displayName": "Will Unmount",
+          "description": "Fires just before this element is removed from the page, while it still exists",
+          "index": 17
+        },
+        {
+          "name": "percent",
+          "type": "number",
+          "plug": "output",
+          "group": "Values",
+          "displayName": "Percent",
+          "index": 18
+        }
+      ],
+      "runtimeTypes": [
+        "browser"
+      ]
+    },
+    {
+      "name": "noodl.cloud.request"
+    },
+    {
+      "name": "noodl.cloud.response"
+    },
+    {
+      "name": "noodl.cloud.sendemail"
+    },
+    {
+      "name": "noodl.cloud.secret"
+    },
+    {
+      "name": "noodl.cloud.hmac"
+    },
+    {
+      "name": "noodl.cloud.jwtsign"
+    },
+    {
+      "name": "noodl.cloud.jwtverify"
+    },
+    {
+      "name": "noodl.cloud.createuser"
+    },
+    {
+      "name": "noodl.cloud.updateuser"
+    },
+    {
+      "name": "noodl.cloud.deleteuser"
+    },
+    {
+      "name": "noodl.cloud.verifysessiontoken"
+    },
+    {
+      "name": "noodl.cloud.addusertorole"
+    },
+    {
+      "name": "noodl.cloud.removeuserfromrole"
+    },
+    {
+      "name": "noodl.cloud.getuserroles"
+    },
+    {
+      "name": "noodl.cloud.aggregate"
+    }
+  ]
+}

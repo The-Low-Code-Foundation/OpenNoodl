@@ -1,0 +1,110 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e73a3da9-367c-51b7-89e9-ae3b99c9276a",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Page",
+      "parameters": {
+        "title": "Example",
+        "urlPath": "example"
+      },
+      "children": [
+        "band"
+      ]
+    },
+    {
+      "id": "band",
+      "type": "Group",
+      "label": "Image band — picture ground under a scrim",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "explicit",
+        "height": {
+          "value": 520,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "flex-end",
+        "backgroundImage": "noodl_modules/starter-imagery/ground-city-dusk.webp",
+        "backgroundGradient": "var(--gradient-scrim)",
+        "backgroundSize": "cover",
+        "backgroundPosition": "center",
+        "backgroundColor": "var(--foreground)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "parent": "page",
+      "children": [
+        "shell"
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight"
+      },
+      "parent": "band",
+      "children": [
+        "heading",
+        "sub"
+      ]
+    },
+    {
+      "id": "heading",
+      "type": "Text",
+      "label": "Heading over the picture",
+      "parameters": {
+        "text": "The workshop, on the morning of the first firing",
+        "fontSize": "var(--display-md)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        }
+      },
+      "parent": "shell"
+    },
+    {
+      "id": "sub",
+      "type": "Text",
+      "label": "Sub-line",
+      "parameters": {
+        "text": "Six weeks of glazing tests, and one kiln that finally behaved.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--primary-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "parent": "shell"
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

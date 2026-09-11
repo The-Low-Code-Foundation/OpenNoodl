@@ -25,6 +25,8 @@ Any bitmap content: photos, thumbnails, logos, user uploads (a cloud file output
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `alt` | String | `` | The alt text is used by screen readers, or if the image can't be downloaded or displayed |
@@ -98,6 +100,12 @@ Any bitmap content: photos, thumbnails, logos, user uploads (a cloud file output
 | `boundingHeight` | Number | — | Height this element actually ended up with after layout, in pixels |
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
 | `this` | Reference | — | A reference to this node itself, for ports that take a node rather than a value |
@@ -107,6 +115,8 @@ Any bitmap content: photos, thumbnails, logos, user uploads (a cloud file output
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
 | `hoverStart` | Signal | — | Fires when the pointer moves over this element or any of its children |
 | `onClick` | Signal | — | Fires when this element is clicked or tapped |
@@ -135,6 +145,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | sizeMode = explicit OR sizeMode = contentHeight | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth | `height` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |
@@ -161,9 +172,17 @@ Declared-port-groups: `objectFit`, `width` and `height` appear based on `sizeMod
 
 A card layout composed from the visual primitives: Columns (net.noodl.visual.columns) distributes its children by a layout string ('1 2' — the second column twice as wide), the Image shows a picture from a URL/asset on `src`, the Icon (net.noodl.visual.icon) renders a themed glyph, and the Circle doubles as a status dot whose `fillColor` is data-driven. Layout is containment; only the dynamic bits (image source, status color) are wired.
 
+**Card grid: Query Records into a Repeater, in a Columns node that reflows on its own**
+
+The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing "autoFit" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
 ## Related nodes
 
-[Group](./group.md), [Icon](./net-noodl-visual-icon.md), [Video](./video.md), [Circle](./circle.md)
+[Group](./group.md), [Icon](./net-noodl-visual-icon.md), [Video](./video.md), [Shape](./circle.md)
 
 
 :::info Generated

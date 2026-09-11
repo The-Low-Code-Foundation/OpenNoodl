@@ -7,6 +7,7 @@ import {
   omitHiddenPorts,
   PORT_CONDITION_FILTER_MODES
 } from '@noodl-models/nodelibrary/portConnectivity';
+import { portWireShape, type PortWireShape } from '@noodl-models/nodelibrary/portWireShape';
 
 import { Icon, IconName } from '@noodl-core-ui/components/common/Icon';
 import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
@@ -14,6 +15,8 @@ import { ScrollArea } from '@noodl-core-ui/components/layout/ScrollArea';
 import { connectablePortTypes, TypecastRule } from '../../portTypes';
 import { getPortConnections, PortConnectionRef } from '../../utils';
 import css from './PortsTab.module.scss';
+import { isValuePort, portValueKey, type PortValueMap, type PortValueRef, type PortValuesStatus } from './portValues';
+import { usePortValues } from './usePortValues';
 
 /**
  * FH-020 — the read-only port explorer.
@@ -61,6 +64,8 @@ import css from './PortsTab.module.scss';
 
 interface PortRow {
   key: string;
+  /** The port's real name — what the runtime is addressed with, not what the row reads. */
+  name: string;
   displayName: string;
   group: string;
   typeName: string;
@@ -68,6 +73,11 @@ interface PortRow {
   isSignal: boolean;
   /** False for an `allowEditOnly` port: a setting the canvas will not wire. */
   isConnectable: boolean;
+  /**
+   * FB-019 scope (3) — what this port takes, for the structured types whose
+   * answer is not their own type name. `undefined` for every ordinary port.
+   */
+  wireShape?: PortWireShape;
   description?: string;
   connections: PortConnectionRef[];
 }
@@ -118,12 +128,20 @@ function buildRows(model: NodeGraphNode, direction: 'input' | 'output'): PortGro
 
     const row: PortRow = {
       key: `${direction}-${port.name}`,
+      name: port.name,
       displayName: (port.displayName || port.name) + tabSuffix,
       group: port.group || 'Other',
       typeName,
       typeLabel: typeLabelFor(port.type),
       isSignal: typeName === 'signal',
       isConnectable: isPortConnectable(port),
+      /*
+       * The stored parameter is passed because it is what decides the answer: an
+       * author who has picked a unit in the property panel keeps it, whatever the
+       * port declares. `model.parameters` is the same object the panel writes, so
+       * the `parametersChanged` subscription below already re-renders this.
+       */
+      wireShape: portWireShape(port, model.parameters ? model.parameters[port.name] : undefined),
       description:
         typeof port.description === 'string' && port.description.trim() !== '' ? port.description : undefined,
       connections: getPortConnections(model, port.name, direction)
@@ -158,6 +176,14 @@ function acceptsLineFor(typeName: string, direction: 'input' | 'output'): { verb
   return { verb, types: types.join(', ') };
 }
 
+/** What the header says about the live values, per {@link PortValuesStatus}. */
+const LIVE_STATUS_TEXT: Record<PortValuesStatus, string> = {
+  'no-preview': 'Run the app to see the value each port is carrying.',
+  waiting: 'Reading the values from the running app…',
+  live: 'Live values from the running app, updating as you use it.',
+  absent: 'The app is running, but this node is not on screen right now — no live values.'
+};
+
 function ConnectionChip({ direction, connection }: { direction: 'input' | 'output'; connection: PortConnectionRef }) {
   return (
     <button type="button" className={css['Chip']} onClick={connection.navigate} title="Select this node on the canvas">
@@ -167,7 +193,31 @@ function ConnectionChip({ direction, connection }: { direction: 'input' | 'outpu
   );
 }
 
-function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'output' }) {
+/**
+ * The current value, when the running preview has one for this port.
+ *
+ * ⚠️ It renders **nothing** rather than a placeholder when there is no value.
+ * A row that says `—` on every port of a node the preview is not running is a
+ * column of noise, and the panel header already says why the values are absent.
+ *
+ * The string arrives pre-rendered by the runtime's `previewValue`, which is
+ * what answers the "in what format?" half of the question: a string comes back
+ * quoted (`"Hello"`), a number bare (`42`), an array as `[1,2,3]`, a Noodl
+ * container by identity (`<Collection 3>`). Capped at 200 characters runtime-
+ * side, so this cannot be handed a 10,000-row collection to lay out.
+ */
+function ValueLine({ value }: { value: string }) {
+  return (
+    <p className={css['Value']}>
+      <span className={css['ValueLabel']}>Now</span>
+      <code className={css['ValueText']} title={value}>
+        {value}
+      </code>
+    </p>
+  );
+}
+
+function PortRowView({ row, direction, value }: { row: PortRow; direction: 'input' | 'output'; value?: string }) {
   // SPR-003 §1: "Accepts number, string" on a port no wire can reach is the
   // false half of the sentence, so an edit-only row does not get one.
   const accepts = row.isConnectable ? acceptsLineFor(row.typeName, direction) : undefined;
@@ -192,6 +242,10 @@ function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'o
         <span className={css['Type']}>{row.typeLabel}</span>
       </div>
 
+      {/* Directly under the type, because the two are one sentence: what this
+          port is, and what it happens to be holding right now. */}
+      {value !== undefined && <ValueLine value={value} />}
+
       {!row.isConnectable && (
         <p className={css['NotConnectable']}>
           <Icon icon={IconName.Setting} UNSAFE_style={{ width: 12, height: 12 }} />
@@ -200,6 +254,22 @@ function PortRowView({ row, direction }: { row: PortRow; direction: 'input' | 'o
       )}
 
       {Boolean(row.description) && <p className={css['Description']}>{row.description}</p>}
+
+      {/*
+       * FB-019 scope (3). Between the description (what the port *means*) and
+       * "Accepts …" (which *types* can reach it) sits the question neither
+       * answers and which is the one that was actually asked: what shape does
+       * the value have. It is placed here rather than beside the type chip so
+       * the type/value adjacency above stays intact.
+       */}
+      {Boolean(row.wireShape) && (
+        <p className={css['WireShape']}>
+          <span className={css['WireShapeLabel']}>Takes</span>{' '}
+          <code className={css['WireShapeCode']}>{row.wireShape.shape}</code>{' '}
+          <span className={css['WireShapeBody']}>{row.wireShape.body}</span>
+        </p>
+      )}
+
       {Boolean(accepts) && (
         <p className={css['Accepts']}>
           <span className={css['AcceptsLabel']}>{accepts.verb}</span> {accepts.types}
@@ -233,12 +303,16 @@ function PortSection({
   title,
   direction,
   groups,
-  emptyText
+  emptyText,
+  nodeId,
+  values
 }: {
   title: string;
   direction: 'input' | 'output';
   groups: PortGroupRows[];
   emptyText: string;
+  nodeId: string;
+  values: PortValueMap;
 }) {
   const count = groups.reduce((sum, g) => sum + g.rows.length, 0);
 
@@ -255,7 +329,12 @@ function PortSection({
         <React.Fragment key={group.group}>
           <h3 className={css['GroupTitle']}>{group.group}</h3>
           {group.rows.map((row) => (
-            <PortRowView key={row.key} row={row} direction={direction} />
+            <PortRowView
+              key={row.key}
+              row={row}
+              direction={direction}
+              value={values[portValueKey(nodeId, row.name, direction)]}
+            />
           ))}
         </React.Fragment>
       ))}
@@ -322,17 +401,66 @@ export function PortsTab({ model }: PortsTabProps) {
   const inputs = useMemo(() => (model ? buildRows(model, 'input') : []), [model, revision]);
   const outputs = useMemo(() => (model ? buildRows(model, 'output') : []), [model, revision]);
 
+  /*
+   * Every value port on the node, in one request. Batched because a hundred
+   * one-port requests down a socket that coalesces on a 200ms timer is a
+   * hundred times the traffic for the same answer — and the runtime resolves
+   * the whole batch off a single id→node map it builds per call.
+   */
+  const refs = useMemo<PortValueRef[]>(() => {
+    if (!model) return [];
+    const out: PortValueRef[] = [];
+    for (const { direction, groups } of [
+      { direction: 'input' as const, groups: inputs },
+      { direction: 'output' as const, groups: outputs }
+    ]) {
+      for (const group of groups) {
+        for (const row of group.rows) {
+          if (isValuePort(row)) out.push({ node: model.id, port: row.name, direction });
+        }
+      }
+    }
+    return out;
+  }, [model, inputs, outputs]);
+
+  const live = usePortValues(refs, model ? model.id : undefined);
+
   if (!model) return null;
 
   return (
     <ScrollArea>
       <div className={css['Root']}>
-        <p className={css['Intro']}>
-          Every port on this node, whether or not it has a property. Read-only — connect ports on the canvas.
-        </p>
+        <div className={css['Header']}>
+          <p className={css['Intro']}>
+            Every port on this node, whether or not it has a property. Read-only — connect ports on the canvas.
+          </p>
 
-        <PortSection title="Inputs" direction="input" groups={inputs} emptyText="This node has no inputs." />
-        <PortSection title="Outputs" direction="output" groups={outputs} emptyText="This node has no outputs." />
+          {/*
+           * One sentence about the live values, saying which state we are in.
+           * Blank rows look the same whether the app is not running, the node
+           * is not on screen, or the ports genuinely hold nothing — and only
+           * the last of those means what a blank row appears to mean. A node
+           * with nothing to ask about (all signals) says nothing at all.
+           */}
+          {refs.length > 0 && <p className={css['LiveStatus']}>{LIVE_STATUS_TEXT[live.status]}</p>}
+        </div>
+
+        <PortSection
+          title="Inputs"
+          direction="input"
+          groups={inputs}
+          emptyText="This node has no inputs."
+          nodeId={model.id}
+          values={live.values}
+        />
+        <PortSection
+          title="Outputs"
+          direction="output"
+          groups={outputs}
+          emptyText="This node has no outputs."
+          nodeId={model.id}
+          values={live.values}
+        />
       </div>
     </ScrollArea>
   );

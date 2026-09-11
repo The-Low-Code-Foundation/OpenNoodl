@@ -32,7 +32,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `do` | Signal | — | Opens Link, or fires Failure if there is no Link or the browser blocked the new tab |
+| `do` | Signal | — | Opens Link, or fires Failure if there is no Link or the link was opened outside a user action |
 
 ## Outputs
 
@@ -41,7 +41,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
-| `done` | Signal | — | Fires once the link has been handed to the browser. With Open In New Tab off the page is replaced, so nothing downstream of this may still exist |
+| `done` | Signal | — | Fires once the link has been handed to the browser. It does not promise a tab appeared — nothing readable in the page does, once Open In New Tab is on. With it off the page is replaced, so nothing downstream of this may still exist |
 | `unchanged` | Signal | — | Fires when there is no browser to open a link in — a server-side render, where there is nothing to do and nothing to fail at |
 
 ### Failure outputs
@@ -49,7 +49,7 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `error` | String | — | Why the link could not be opened, set just before Failure fires |
-| `failure` | Signal | — | Fires when no Link was set, or the browser blocked the new tab |
+| `failure` | Signal | — | Fires when no Link was set, or when the link was opened outside a user action — the case a browser refuses a new tab for. A tab blocked for any other reason still reports Done |
 
 ## Watch out for
 
@@ -60,6 +60,10 @@ Documentation links, third-party checkout, mailto/tel URLs. For anything inside 
 **URL-driven detail page: Router, Page Inputs, Navigate To Path and External Link**
 
 URL-style navigation end to end. A Router named 'Main' hosts /Home and /Product (its `pages` parameter is `{ routes, startPage }`); each page component is rooted by a Page node whose `urlPath` defines its URL pattern — /Product uses 'product/{productId}', so the id lives in the URL. On /Home, a Navigate To Path node (PageStackNavigateToPath) builds the URL from its `path` parameter: the '{productId}' placeholder becomes the `p-productId` input, set here as a parameter, and clicking the button pushes the compiled path into browser history, which the Router picks up. On /Product, a Page Inputs node declares `pathParams: "productId"` so the value parsed from the URL is exposed as its `pm-productId` output, wired into a Text. An External Link node (net.noodl.externallink) opens an outside URL in a new tab — external URLs never go through the Router.
+
+**Turn rows into a file the browser downloads**
+
+Two `JavaScriptFunction` nodes in series and no backend anywhere: the first folds an array of objects into CSV text, the second wraps that text in a `Blob` and hands `URL.createObjectURL` the result, and `External Link` opens it. That URL is the whole trick — it is a real, fetchable address that exists only inside this tab, so the download never leaves the browser and nothing has to be uploaded first. ⚠️ Compare it with `net.noodl.ToCSV` before reusing the conversion half: the built-in node handles quoting and embedded delimiters, which hand-rolled CSV usually does not. The half worth copying is the object-URL download.
 
 ## Related nodes
 

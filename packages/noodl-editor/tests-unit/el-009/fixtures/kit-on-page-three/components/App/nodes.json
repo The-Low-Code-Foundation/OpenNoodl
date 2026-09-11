@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "el009f00-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    { "id": "el009-router", "type": "Router", "x": 0, "y": 0,
+      "parameters": { "pages": { "startPage": "/Pages/Home", "routes": ["/Pages/Home", "/Pages/Middle", "/Pages/Deep"] } } }
+  ],
+  "visualRoots": ["el009-router"]
+}

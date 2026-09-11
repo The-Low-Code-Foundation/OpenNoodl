@@ -47,6 +47,12 @@ class Viewer extends View {
       this.canvasView.setNodeSelected(nodeId);
     });
 
+    // FB-016 scope 4 — the crosshair follows a field in the editor window's properties panel,
+    // so the detached preview can only hear about it through main.
+    ipcRenderer.on('viewer-transform-origin-focus', (sender, enabled) => {
+      this.canvasView.setTransformOriginFocus(enabled);
+    });
+
     ipcRenderer.on('viewer-set-zoom-factor', (sender, zf) => {
       this.canvasView.setZoomFactor(zf);
     });
@@ -57,6 +63,12 @@ class Viewer extends View {
 
     ipcRenderer.on('viewer-set-inspect-mode', (sender, inspectMode) => {
       this.canvasView.setInspectMode(inspectMode);
+    });
+
+    // DES-001 — the design-mode toast, resolved to a label by the editor
+    // window (it owns the project model) and shown here, where the click was.
+    ipcRenderer.on('viewer-design-selection', (sender, label) => {
+      this.canvasView.showDesignSelection(label);
     });
 
     ipcRenderer.on('viewer-set-viewport-size', (sender, viewportSize) => {

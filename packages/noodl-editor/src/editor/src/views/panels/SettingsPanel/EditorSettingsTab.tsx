@@ -14,6 +14,7 @@ import { Text, TextSize } from '@noodl-core-ui/components/typography/Text';
 import { AiSettingsSection } from '../AiSettings/AiSettingsSection';
 import { AppearanceSettingsSection } from './sections/AppearanceSettingsSection';
 import { McpSettingsSection } from './sections/McpSettingsSection';
+import { UserProfileSection } from './sections/UserProfileSection';
 
 /**
  * PNL-008 — everything scoped to *this editor*, on *this machine*, in one tab.
@@ -71,6 +72,11 @@ export function EditorSettingsTab() {
         </>
       )}
       <AiSettingsSection />
+      {/* FIX-021 slice B: immediately after the keys. You have just told NodeGX
+          which model to use; this is where you tell it who it is working for,
+          and both answers are about this editor on this machine rather than
+          about any project. */}
+      <UserProfileSection />
       {/* MCP-001: beside the AI keys the user has just configured — the agent
           they connect here is the one those keys are for. */}
       <McpSettingsSection />

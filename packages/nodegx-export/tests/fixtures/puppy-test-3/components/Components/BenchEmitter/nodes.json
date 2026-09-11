@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7f9a0729-e6e0-49ce-9ebf-bcaf13d9e4ad",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "be-ci",
+      "type": "Component Inputs",
+      "label": "Inputs under test",
+      "x": -280,
+      "y": 0,
+      "ports": [
+        {
+          "name": "Label",
+          "plug": "output",
+          "type": "*",
+          "index": 0
+        },
+        {
+          "name": "Bump",
+          "plug": "output",
+          "type": "*",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "id": "be-root",
+      "type": "Group",
+      "label": "Visual root",
+      "x": 0,
+      "y": 0,
+      "parameters": {
+        "flexDirection": "column",
+        "paddingTop": "16",
+        "paddingBottom": "16",
+        "paddingLeft": "16",
+        "paddingRight": "16",
+        "rowGap": "8"
+      },
+      "children": [
+        "be-label",
+        "be-count",
+        "be-button"
+      ]
+    },
+    {
+      "id": "be-label",
+      "type": "Text",
+      "label": "Shows Label",
+      "parameters": {
+        "text": "emitter"
+      },
+      "parent": "be-root"
+    },
+    {
+      "id": "be-count",
+      "type": "Text",
+      "label": "Shows the counter the outputs report",
+      "parent": "be-root"
+    },
+    {
+      "id": "be-button",
+      "type": "net.noodl.controls.button",
+      "label": "Emits Pressed and bumps the counter",
+      "parameters": {
+        "label": "Press me"
+      },
+      "parent": "be-root"
+    },
+    {
+      "id": "be-counter",
+      "type": "Counter",
+      "label": "The value behind the Count output",
+      "x": 0,
+      "y": 320
+    },
+    {
+      "id": "be-co",
+      "type": "Component Outputs",
+      "label": "The interface this fixture exists for",
+      "x": 320,
+      "y": 320,
+      "ports": [
+        {
+          "name": "Count",
+          "plug": "input",
+          "type": "*",
+          "index": 0
+        },
+        {
+          "name": "Pressed",
+          "plug": "input",
+          "type": "*",
+          "index": 1
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "be-root"
+  ]
+}

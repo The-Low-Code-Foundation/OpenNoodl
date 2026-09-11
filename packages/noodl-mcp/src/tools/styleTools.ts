@@ -25,6 +25,9 @@ import {
   type TokenCategory
 } from '../editor-deps';
 import { ToolError } from '../errors';
+import { readIconSets, renderIconSets } from '../iconSets';
+import { readImagery, renderImagery } from '../imagery';
+import type { ProjectBinding } from '../project/ProjectBinding';
 import type { ProjectStore } from '../project/ProjectStore';
 import { guarded, jsonResult } from './util';
 
@@ -80,32 +83,54 @@ function upsertTokens(store: ProjectStore, entries: Array<{ name: string; value:
 }
 
 /** Always-registered read tool. */
-export function registerStyleReadTools(server: McpServer, store: ProjectStore): void {
+export function registerStyleReadTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'get_style_vocabulary',
     {
       title: 'Get style vocabulary',
       description:
         "This project's design system: design tokens by category (semantic colours, spacing, typography, " +
-        'radius, borders, shadows) and the legal variants/sizes per element type. Reference a token in a node ' +
+        'radius, borders, shadows), the legal variants/sizes per element type, and the named COMPOSITIONS — ' +
+        'ready-made parameter sets for a card, a shell, a section head, the buttons and the type ramp, each ' +
+        'naming the recipe that shows it assembled, the icon sets installed here with a copyable ' +
+        'iconIconSource value, and the bundled stock photographs. ' +
+        'Reference a token in a node ' +
         'parameter as "var(--token-name)" (never a raw hex or px). Set detail: "prompt" for the compact ' +
         'prompt-shaped block, or "full" (default) for the structured JSON. Built-in presets are listed too.',
       inputSchema: {
-        detail: z.enum(['full', 'prompt']).optional().describe('full = structured JSON (default); prompt = compact text block')
+        detail: z
+          .enum(['full', 'prompt'])
+          .optional()
+          .describe('full = structured JSON (default); prompt = compact text block')
       }
     },
     guarded((args: { detail?: 'full' | 'prompt' }) => {
+      const store = binding.require();
       const vocab = buildStyleVocabulary(store.designTokenMetaSource());
+
+      // VIB-003. Read here rather than inside `buildStyleVocabulary`: that function is pure and
+      // takes a token source, while the installed sets are a fact about a directory on disk. The
+      // editor's own AI loop reaches the same fact through the doctrine (`prompts/design.ts` §5),
+      // which is where a shared function would have had to put it anyway.
+      const icons = readIconSets(store.projectDir);
+      // VIB-011, and the same argument one asset class along: a model cannot use what it cannot
+      // enumerate. 44 photographs on disk that this response never mentions are 44 photographs an
+      // authoring model will not reach for. Read from the project for the same reason as `icons` —
+      // what is installed is a fact about a directory, not about the product.
+      const imagery = readImagery(store.projectDir);
+
       if (args.detail === 'prompt') {
-        return jsonResult({ vocabulary: renderStyleVocabulary(vocab) });
+        return jsonResult({
+          vocabulary: `${renderStyleVocabulary(vocab)}\n\n${renderIconSets(icons)}\n\n${renderImagery(imagery)}`
+        });
       }
-      return jsonResult(vocab);
+      return jsonResult({ ...vocab, icons, imagery });
     })
   );
 }
 
 /** Write tools — only when --allow-writes. */
-export function registerStyleWriteTools(server: McpServer, store: ProjectStore): void {
+export function registerStyleWriteTools(server: McpServer, binding: ProjectBinding): void {
   server.registerTool(
     'set_project_tokens',
     {
@@ -123,7 +148,7 @@ export function registerStyleWriteTools(server: McpServer, store: ProjectStore):
       }
     },
     guarded((args: { tokens: Array<{ name: string; value: string }> }) => {
-      const customTokens = upsertTokens(store, args.tokens);
+      const customTokens = upsertTokens(binding.require(), args.tokens);
       return jsonResult({
         ok: true,
         updated: args.tokens.map((t) => t.name),
@@ -141,12 +166,15 @@ export function registerStyleWriteTools(server: McpServer, store: ProjectStore):
         'coherent look from the start. Applied as token overrides on top of the defaults (like ' +
         'set_project_tokens). List available presets via get_style_vocabulary (presets field).',
       inputSchema: {
-        preset_id: z
-          .string()
-          .describe(`One of: ${listVocabularyPresets().map((p) => p.id).join(', ')}`)
+        preset_id: z.string().describe(
+          `One of: ${listVocabularyPresets()
+            .map((p) => p.id)
+            .join(', ')}`
+        )
       }
     },
     guarded((args: { preset_id: string }) => {
+      const store = binding.require();
       const preset = getPreset(args.preset_id);
       if (!preset) {
         throw new ToolError('not-found', `No style preset "${args.preset_id}".`, {
@@ -161,7 +189,12 @@ export function registerStyleWriteTools(server: McpServer, store: ProjectStore):
         return jsonResult({ ok: true, preset: preset.id, customTokenCount: 0 });
       }
       const customTokens = upsertTokens(store, entries);
-      return jsonResult({ ok: true, preset: preset.id, updated: entries.map((e) => e.name), customTokenCount: customTokens.length });
+      return jsonResult({
+        ok: true,
+        preset: preset.id,
+        updated: entries.map((e) => e.name),
+        customTokenCount: customTokens.length
+      });
     })
   );
 }

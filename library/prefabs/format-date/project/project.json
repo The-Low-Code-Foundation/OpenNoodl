@@ -1,0 +1,157 @@
+{
+  "name": "Format Date",
+  "components": [
+    {
+      "name": "/Parts/Format Date",
+      "graph": {
+        "roots": [
+          {
+            "id": "fdIn",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "What to format",
+            "x": 60,
+            "y": 60,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "date",
+                "plug": "output",
+                "type": "date"
+              },
+              {
+                "name": "style",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "format",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "locale",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "fdPick",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Style to format string",
+            "x": 420,
+            "y": 60,
+            "parameters": {
+              "functionScript": "// One named style instead of twenty-one tokens to remember.\n// Every preset below is written in Date To String's own token vocabulary,\n// so Format overrides it with anything that node can read.\nvar PRESETS = {\n  short: '{date}/{month}/{yearShort}',\n  date: '{monthName} {ordinal}, {year}',\n  long: '{dayName} {ordinal} {monthName} {year}',\n  time: '{h12}:{minutes} {ampm}',\n  datetime: '{dayShort} {ordinal} {monthShort} {year}, {h12}:{minutes} {ampm}',\n  iso: '{year}-{month}-{date}'\n};\nvar custom = String(Inputs.format == null ? '' : Inputs.format).trim();\nif (custom) { Outputs.format = custom; return; }\nvar key = String(Inputs.style == null ? '' : Inputs.style).trim().toLowerCase();\nOutputs.format = PRESETS[key] || PRESETS.date;"
+            },
+            "ports": [
+              {
+                "name": "in-style",
+                "plug": "input",
+                "type": "*",
+                "displayName": "style",
+                "group": "Inputs"
+              },
+              {
+                "name": "in-format",
+                "plug": "input",
+                "type": "*",
+                "displayName": "format",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-format",
+                "plug": "output",
+                "type": "string",
+                "displayName": "format",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "fdFormat",
+            "type": "Date To String",
+            "children": [],
+            "label": "Render it",
+            "x": 780,
+            "y": 60,
+            "parameters": {
+              "formatString": "{monthName} {ordinal}, {year}"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fdOut",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "The string",
+            "x": 1140,
+            "y": 60,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "text",
+                "plug": "input",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "fdIn",
+            "fromProperty": "style",
+            "toId": "fdPick",
+            "toProperty": "in-style"
+          },
+          {
+            "fromId": "fdIn",
+            "fromProperty": "format",
+            "toId": "fdPick",
+            "toProperty": "in-format"
+          },
+          {
+            "fromId": "fdPick",
+            "fromProperty": "out-format",
+            "toId": "fdFormat",
+            "toProperty": "formatString"
+          },
+          {
+            "fromId": "fdIn",
+            "fromProperty": "date",
+            "toId": "fdFormat",
+            "toProperty": "input"
+          },
+          {
+            "fromId": "fdIn",
+            "fromProperty": "locale",
+            "toId": "fdFormat",
+            "toProperty": "locale"
+          },
+          {
+            "fromId": "fdFormat",
+            "fromProperty": "currentValue",
+            "toId": "fdOut",
+            "toProperty": "text"
+          }
+        ]
+      },
+      "id": "f825325f-c851-4a0c-a197-b5293ac3acee",
+      "description": "Turns a date into a string by name — \"long\", \"time\", \"datetime\" — instead of a token string nobody remembers. Pass Format to write your own.",
+      "created": "2026-09-10T19:03:39.851Z",
+      "modifiedBy": "noodl-mcp"
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {
+    "styles": {}
+  },
+  "variants": []
+}

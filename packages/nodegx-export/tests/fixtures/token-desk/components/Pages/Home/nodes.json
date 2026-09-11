@@ -1,0 +1,245 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000091",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "children": [
+        "shell"
+      ],
+      "parameters": {
+        "title": "Token Desk",
+        "urlPath": "home"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "headline",
+        "connectBtn",
+        "stopBtn",
+        "stateText",
+        "connectedText",
+        "countText",
+        "errorText",
+        "tokensText",
+        "statusText"
+      ],
+      "parameters": {
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-8)",
+        "paddingLeft": "var(--space-6)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "headline",
+      "type": "Text",
+      "label": "Headline",
+      "parent": "shell",
+      "parameters": {
+        "text": "Token Desk",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 360
+    },
+    {
+      "id": "connectBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Connect",
+      "parent": "shell",
+      "parameters": {
+        "label": "Connect"
+      },
+      "x": 100,
+      "y": 440
+    },
+    {
+      "id": "stopBtn",
+      "type": "net.noodl.controls.button",
+      "label": "Stop",
+      "parent": "shell",
+      "parameters": {
+        "label": "Stop"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "stateText",
+      "type": "Text",
+      "label": "State",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 600
+    },
+    {
+      "id": "connectedText",
+      "type": "Text",
+      "label": "Connected",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 680
+    },
+    {
+      "id": "countText",
+      "type": "Text",
+      "label": "Count",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "errorText",
+      "type": "Text",
+      "label": "Error",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 840
+    },
+    {
+      "id": "tokensText",
+      "type": "Text",
+      "label": "Tokens",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 920
+    },
+    {
+      "id": "statusText",
+      "type": "Text",
+      "label": "Status",
+      "parent": "shell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)"
+      },
+      "x": 100,
+      "y": 1000
+    },
+    {
+      "id": "stream",
+      "type": "net.noodl.SSE",
+      "label": "Stream",
+      "parameters": {
+        "url": "http://localhost:8582/stream",
+        "textPath": "choices.0.delta.content"
+      },
+      "x": 500,
+      "y": 300
+    },
+    {
+      "id": "acc",
+      "type": "net.noodl.TextAccumulator",
+      "label": "Tokens",
+      "parameters": {},
+      "x": 500,
+      "y": 700
+    },
+    {
+      "id": "statusVar",
+      "type": "Variable2",
+      "label": "Status",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 1000
+    },
+    {
+      "id": "setOpen",
+      "type": "Set Variable",
+      "label": "Status open",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 300
+    },
+    {
+      "id": "openStr",
+      "type": "String",
+      "label": "Open",
+      "parameters": {
+        "value": "open"
+      },
+      "x": 1000,
+      "y": 300
+    },
+    {
+      "id": "setClosed",
+      "type": "Set Variable",
+      "label": "Status closed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 500
+    },
+    {
+      "id": "closedStr",
+      "type": "String",
+      "label": "Closed",
+      "parameters": {
+        "value": "closed"
+      },
+      "x": 1000,
+      "y": 500
+    },
+    {
+      "id": "setFailed",
+      "type": "Set Variable",
+      "label": "Status failed",
+      "parameters": {
+        "name": "status"
+      },
+      "x": 800,
+      "y": 700
+    },
+    {
+      "id": "failedStr",
+      "type": "String",
+      "label": "Failed",
+      "parameters": {
+        "value": "failed"
+      },
+      "x": 1000,
+      "y": 700
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

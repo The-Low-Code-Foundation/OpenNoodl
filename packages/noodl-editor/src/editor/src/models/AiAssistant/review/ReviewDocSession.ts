@@ -57,6 +57,23 @@ export interface ReviewDocRequest {
   baseline: string | null;
   template?: string;
   siblings?: Array<{ path: string; summary: string }>;
+  /**
+   * BLD-008 — the owner's answers, already rendered (`answersBlock`).
+   *
+   * A string rather than the interview state, so this session keeps knowing
+   * nothing about interviews: it is handed prose to put in a prompt, exactly as
+   * it is handed `context` and `coverage`.
+   */
+  answers?: string;
+  /**
+   * BLD-008 — rewrite the submitted file before it is returned.
+   *
+   * The one hook the interview needs: `insertSkipTodos` puts one `> TODO:` line
+   * per declined question under its heading, and it must run on the content that
+   * is *kept* — including the standing submission an advisory pass left behind —
+   * which is one place, here, rather than at each of the four `authored` exits.
+   */
+  transform?: (content: string) => string;
 }
 
 export interface ReviewDocOptions {
@@ -147,7 +164,8 @@ export class ReviewDocSession {
           coverage: this.request.coverage,
           current: this.request.baseline ?? undefined,
           template: this.request.template,
-          siblings: this.request.siblings
+          siblings: this.request.siblings,
+          answers: this.request.answers
         })
       }
     ];
@@ -280,12 +298,22 @@ export class ReviewDocSession {
     return standing ? this.authored(standing, costUsd, turns) : this.stop('exhausted', costUsd, turns);
   }
 
+  /**
+   * The one exit that returns a file, and where the interview's TODOs are added.
+   *
+   * ⚠️ `todoCount` is recounted **after** the transform rather than carried from
+   * the submission. It is the number the panel displays and acceptance criterion
+   * 2 is stated in it — a count taken before the lines were inserted would read
+   * zero on a draft that carries three, which is the panel telling the user the
+   * opposite of what happened.
+   */
   private authored(submission: Submission, costUsd: number | null, turns: number): ReviewDocOutcome {
+    const content = this.request.transform ? this.request.transform(submission.content) : submission.content;
     return {
       status: 'authored',
-      content: submission.content,
+      content,
       summary: submission.summary,
-      todoCount: submission.todoCount,
+      todoCount: content === submission.content ? submission.todoCount : countTodoMarkers(content),
       lintFindings: submission.lintFindings,
       costUsd,
       turns

@@ -9,15 +9,23 @@ import EventSender = require('../eventsender');
  * from. Published as {@link GraphNodeModel} in `@noodl/types`; this is its implementation.
  *
  * The members below are the ones the published type does not name, because a node author
- * never touches them: `inputs`/`outputs` are the *connection* lists the graph model fills
- * in, and the port-mutation methods are the editor's write path.
+ * never touches them: the port-mutation methods are the editor's write path.
+ *
+ * 🔴 `inputs` and `outputs` are **dead**. They were described here as "the connection
+ * lists the graph model fills in"; nothing fills them. They are initialised to `[]` in the
+ * constructor and there is no other write to either in this package. That sentence is what
+ * sent P77 SBR-008's plan at a field with no data in it. **A node's wires live on its
+ * component** — `component.getConnectionsTo(id)` / `getConnectionsFrom(id)`, which is what
+ * `nodedefinition.ts`'s numbered-input ports have always used. Kept rather than deleted
+ * because they are on the wire format's read path via `createFromExportData` consumers
+ * outside this package; do not read them expecting connections.
  */
 interface NodeModel extends GraphNodeModel {
   id: string;
   type: string;
-  /** Connections into this node. Populated by `GraphModel`, not by this class. */
+  /** 🔴 Always empty — see the class docblock. Use `component.getConnectionsTo(id)`. */
   inputs: unknown[];
-  /** Connections out of this node. Populated by `GraphModel`, not by this class. */
+  /** 🔴 Always empty — see the class docblock. Use `component.getConnectionsFrom(id)`. */
   outputs: unknown[];
   /** The variant this node inherits parameters and transitions from, if any. */
   variant?: unknown;

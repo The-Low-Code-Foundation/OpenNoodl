@@ -35,12 +35,55 @@ const isCI = process.argv.includes('--ci') || process.env.NOODL_TEST_CI === '1';
 // Belt and braces: the renderer reads this to decide where to load the bundle from.
 process.env.NOODL_TEST_CI = isCI ? '1' : '';
 
-// If the renderer never reports back (bundle failed to load, hard crash, hung spec)
-// we must not sit forever holding a CI runner.
-const OVERALL_TIMEOUT_MS = 15 * 60 * 1000;
+/**
+ * If the renderer never reports back (bundle failed to load, hard crash, hung
+ * spec) we must not sit forever holding a CI runner.
+ *
+ * ⚠️ **A run that trips this grades NOTHING.** It prints no `Jasmine:` line and
+ * writes no `tests/test-results.json`, so there is no spec count and no failure
+ * list — the result is not "zero failures" and not "one failure", it is *no
+ * measurement*. The readout is `tests/test-results.json` (deleted before each
+ * run by run-electron-tests.js, so absent = ungraded); the `Jasmine:` line is
+ * the human echo of the same message.
+ *
+ * 🔴 **The 15-minute default is no longer comfortably above the suite.** On
+ * 2026-08-12 a healthy machine reached **2476 of ~2700 specs — 92% — and was cut
+ * off**, the third consecutive run across two sessions to grade nothing. The
+ * usual cause is a thrashing machine and the usual fix is to free memory rather
+ * than raise this; that advice did not fit here, because swap was fine and the
+ * suite was simply close to the wall. The suite has grown 2596 → ~2700.
+ *
+ * So the ceiling is overridable — for a slow or loaded machine that still
+ * deserves a real measurement — while the default stays put so CI keeps its
+ * guard. Raise it only after checking the machine is not swapping; a timeout is
+ * far more often a symptom than a limit.
+ */
+const DEFAULT_TIMEOUT_MS = 15 * 60 * 1000;
+const overrideMinutes = Number(process.env.NOODL_TEST_TIMEOUT_MINUTES);
+const OVERALL_TIMEOUT_MS =
+  Number.isFinite(overrideMinutes) && overrideMinutes > 0 ? Math.round(overrideMinutes * 60 * 1000) : DEFAULT_TIMEOUT_MS;
 
 let win = null;
 let didReportResults = false;
+const startedAt = new Date();
+
+// GAT-001: the run exited 0 once having graded 2,620 specs and written nothing —
+// some path that never goes through finish(). If the process reaches 'exit'
+// without finish() having run, this prints WHICH kind of nothing happened.
+// ⚠️ The exitCode rewrite below works in plain Node but is IGNORED under
+// Electron's app.exit() (measured 2026-08-27 via NOODL_TEST_PROVE_GUARD): the
+// child still exits 0. The code-level enforcement therefore lives in
+// run-electron-tests.js, which refuses a zero exit without a fresh
+// tests/test-results.json. This handler is the diagnosis; the runner is the law.
+process.on('exit', (code) => {
+  if (!didReportResults) {
+    fs.writeSync(2, `Test run exited (code ${code}) without reporting results — cause unknown to the harness. `);
+    fs.writeSync(2, 'This is NOT a timeout and NOT a renderer crash (those print their own messages); investigate, do not re-run and hope.\n');
+    if (code === 0) {
+      process.exitCode = 1;
+    }
+  }
+});
 
 // `app.exit()` is process.exit() underneath: it does not flush pending writes.
 // When stdout is a pipe (CI, `npm run test:ci > log`, lerna) those writes are
@@ -86,9 +129,34 @@ ipcMain.on('noodl-test-results', (_event, results) => {
   report('');
 
   // A machine-readable copy, so a CI run that loses its log tail (or a reviewer
-  // reading an artifact) can still see what happened. Gitignored.
+  // reading an artifact) can still see what happened. Gitignored. This file is
+  // the primary readout (GAT-001) — the runner script deletes it before the run
+  // and refuses a zero exit unless a fresh one exists, so absent = ungraded.
+  // The stamp is for COMPARING, not displaying: `gitHead` against the reader's
+  // current HEAD, `startedAt` against the invocation they think they are reading.
+  const resultsPath = path.join(__dirname, 'tests', 'test-results.json');
   try {
-    fs.writeFileSync(path.join(__dirname, 'tests', 'test-results.json'), JSON.stringify(results, null, 2));
+    let gitHead = 'unknown';
+    try {
+      gitHead = require('child_process').execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
+    } catch (_ignored) {
+      // Not fatal: a tarball checkout still deserves a readout.
+    }
+    fs.writeFileSync(
+      resultsPath,
+      JSON.stringify(
+        {
+          ...results,
+          gitHead,
+          startedAt: startedAt.toISOString(),
+          finishedAt: new Date().toISOString(),
+          elapsedSeconds: Math.round((Date.now() - startedAt.getTime()) / 1000)
+        },
+        null,
+        2
+      )
+    );
+    report(`Results written to ${resultsPath}`);
   } catch (err) {
     fs.writeSync(2, `Failed to write tests/test-results.json: ${err.message}\n`);
   }
@@ -171,6 +239,15 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', function () {
+  // GAT-001 acceptance: "prove the guard red". This reproduces the 2026-08-12
+  // 23:40 shape — the app exits 0 without finish() ever running — without
+  // needing the suite. It deliberately does NOT touch the results handler or
+  // the guard itself: a stub that answers for the thing under test proves
+  // nothing. `npm run test:_start_electron` with this set must exit non-zero.
+  if (process.env.NOODL_TEST_PROVE_GUARD === '1') {
+    setTimeout(() => app.exit(0), 1000);
+    return;
+  }
   createWindow();
 });
 

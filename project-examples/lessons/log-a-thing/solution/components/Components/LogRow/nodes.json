@@ -1,0 +1,70 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "23e1f470-a43a-40e0-812a-b81ff63166e1",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row",
+      "type": "Group",
+      "label": "Entry row",
+      "children": [
+        "row_title"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)"
+      },
+      "metadata": {
+        "comment": "The Repeater's template. parameters.template on a For Each names a COMPONENT, which is why a list is always two components and never one."
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "row_title",
+      "type": "Text",
+      "label": "Entry title",
+      "parent": "row",
+      "parameters": {
+        "text": "An entry",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "row_inputs",
+      "type": "Component Inputs",
+      "label": "Record fields in",
+      "x": -320,
+      "y": 0,
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "metadata": {
+        "comment": "The row's interface. Declared as `ports` and not `dynamicports`: the editor reads `ports`, and a row component whose interface is in the wrong key renders the node-type default once per record with nothing to say which one broke."
+      }
+    }
+  ],
+  "visualRoots": [
+    "row"
+  ]
+}

@@ -41,7 +41,141 @@ export interface ApiMember {
   label: string;
   type: 'property' | 'function' | 'namespace' | 'constant' | 'variable';
   info: string;
+  /**
+   * What this member's own `.` offers, when that is knowable statically.
+   *
+   * FIX-017 §B. Absent means "this source does not know", which is a different
+   * claim from "it has no members" — `Noodl.Variables` has members and they are
+   * the *project's*, so they are answered from the authoring context instead
+   * (see `resolveNamespace` in `noodl-completions.ts`), never from here.
+   */
+  members?: readonly ApiMember[];
 }
+
+/**
+ * `Noodl.Records` — the object `createRecordsAPI()` returns
+ * (`noodl-runtime/src/api/records.js`). Every one of the eleven is async.
+ *
+ * ⚠️ Read off `records.js`, **not** the generated `records.d.ts` that
+ * FIX-017 §B recommended as "generated — best". That file is real and it is
+ * accurate, but `packages/noodl-runtime/dist-types` is **gitignored**
+ * (`.gitignore:225`), so a citation to it cannot be checked on a fresh clone —
+ * the reader is told to look at a file that is not there. Cite the source that
+ * ships.
+ */
+const RECORDS_MEMBERS: readonly ApiMember[] = [
+  { label: 'query', type: 'function', info: 'query(className, query, options) — find records matching a query.' },
+  { label: 'count', type: 'function', info: 'count(className, query) — how many records match.' },
+  { label: 'distinct', type: 'function', info: 'distinct(className, property, query) — the distinct values of a property.' },
+  { label: 'aggregate', type: 'function', info: 'aggregate(className, group, query) — grouped totals.' },
+  { label: 'fetch', type: 'function', info: 'fetch(objectOrId, options) — re-read one record from the backend.' },
+  { label: 'increment', type: 'function', info: 'increment(objectOrId, properties, options) — add to numeric properties atomically.' },
+  { label: 'save', type: 'function', info: 'save(objectOrId, properties, options) — write changes to an existing record.' },
+  { label: 'create', type: 'function', info: 'create(className, properties, options) — make a new record.' },
+  { label: 'delete', type: 'function', info: 'delete(objectOrId, options) — remove a record.' },
+  { label: 'addRelation', type: 'function', info: 'addRelation(options) — relate one record to another.' },
+  { label: 'removeRelation', type: 'function', info: 'removeRelation(options) — unrelate two records.' }
+];
+
+/** `Noodl.Users` — `noodl-viewer-react/src/api/users.ts`, the `UsersApi` interface. */
+const USERS_MEMBERS: readonly ApiMember[] = [
+  { label: 'logIn', type: 'function', info: 'logIn({ username, password }) — sign a user in.' },
+  { label: 'signUp', type: 'function', info: 'signUp({ username, password, ... }) — create an account and sign in.' },
+  { label: 'become', type: 'function', info: 'become(sessionToken) — adopt an existing session.' },
+  { label: 'on', type: 'function', info: 'on(event, callback) — listen for sign-in / sign-out.' },
+  { label: 'off', type: 'function', info: 'off(event, callback) — stop listening.' },
+  {
+    label: 'Current',
+    type: 'property',
+    // Capital C, and undefined when signed out — both are the kind of thing a
+    // remembered list gets wrong. `users.ts:40`.
+    info: 'The signed-in user, or undefined when nobody is. `Noodl.Users.Current.email`'
+  }
+];
+
+/** `Noodl.CloudFunctions` — `noodl-viewer-react/src/api/cloudfunctions.ts`. */
+const CLOUD_FUNCTIONS_MEMBERS: readonly ApiMember[] = [
+  { label: 'run', type: 'function', info: 'run(functionName, params) — call a backend function and await its result.' }
+];
+
+/** `Noodl.Navigation` — `noodl-viewer-react/src/api/navigation.ts`. */
+const NAVIGATION_MEMBERS: readonly ApiMember[] = [
+  { label: 'navigate', type: 'function', info: 'navigate(routerName, targetPageName, params) — go to a page in a router.' },
+  { label: 'navigateToPath', type: 'function', info: 'navigateToPath(path, { query }) — go to a URL path.' },
+  { label: 'showPopup', type: 'function', info: 'showPopup(componentPath, params) — open a popup and await how it closed.' }
+];
+
+/** `Noodl.Files` — `noodl-viewer-react/src/api/files.ts`. One method. */
+const FILES_MEMBERS: readonly ApiMember[] = [
+  { label: 'upload', type: 'function', info: 'upload(file, { onProgress }) — upload a File or Blob, resolving to a CloudFile.' }
+];
+
+/** `Noodl.SEO` — the `SeoApi` class, `noodl-viewer-react/src/api/seo.ts`. */
+const SEO_MEMBERS: readonly ApiMember[] = [
+  { label: 'setTitle', type: 'function', info: 'setTitle(value) — set the page title.' },
+  { label: 'setMeta', type: 'function', info: 'setMeta(key, value) — set one meta tag.' },
+  { label: 'getMeta', type: 'function', info: 'getMeta(key) — read one meta tag.' },
+  { label: 'clearMeta', type: 'function', info: 'clearMeta() — remove the meta tags this API set.' },
+  { label: 'reset', type: 'function', info: 'reset() — back to the document defaults.' }
+];
+
+/**
+ * `Noodl.Config` — the **fixed** keys `buildFlatConfig` always writes
+ * (`noodl-viewer-react/src/api/config.ts:35-59`).
+ *
+ * ⚠️ Deliberately partial, and that is the honest shape. `Config` is a Proxy,
+ * and the same flat object also carries every custom variable from App Setup —
+ * names this file cannot know. So the list below is a floor, never a contents
+ * page: a name missing from it may still be real. Offering it as complete would
+ * teach a user that their own config variable does not exist.
+ */
+const CONFIG_MEMBERS: readonly ApiMember[] = [
+  { label: 'appName', type: 'property', info: 'App name, from App Setup → Identity.' },
+  { label: 'description', type: 'property', info: 'App description, from App Setup → Identity.' },
+  { label: 'coverImage', type: 'property', info: 'Cover image, from App Setup → Identity.' },
+  { label: 'ogTitle', type: 'property', info: 'Open Graph title. Falls back to `appName`.' },
+  { label: 'ogDescription', type: 'property', info: 'Open Graph description. Falls back to `description`.' },
+  { label: 'ogImage', type: 'property', info: 'Open Graph image. Falls back to `coverImage`.' },
+  { label: 'favicon', type: 'property', info: 'Favicon URL, from App Setup → SEO.' },
+  { label: 'themeColor', type: 'property', info: 'Theme colour, from App Setup → SEO.' },
+  { label: 'pwaEnabled', type: 'property', info: 'Whether the PWA manifest is on.' },
+  { label: 'pwaShortName', type: 'property', info: 'PWA short name.' },
+  { label: 'pwaDisplay', type: 'property', info: 'PWA display mode.' },
+  { label: 'pwaStartUrl', type: 'property', info: 'PWA start URL.' },
+  { label: 'pwaBackgroundColor', type: 'property', info: 'PWA background colour.' }
+];
+
+/**
+ * The statics on `Noodl.Object` / `Noodl.Model` — `noodl-runtime/src/model.ts`
+ * (FIX-017 §B cited `model.js`; it is TypeScript now).
+ */
+const MODEL_MEMBERS: readonly ApiMember[] = [
+  { label: 'get', type: 'function', info: 'get(id) — the object with this id, created if it does not exist yet.' },
+  { label: 'create', type: 'function', info: 'create(data) — a new object with a generated id.' },
+  { label: 'exists', type: 'function', info: 'exists(id) — whether an object with this id has been made.' },
+  { label: 'instanceOf', type: 'function', info: 'instanceOf(value) — whether a value is a Noodl Object.' }
+];
+
+/** The statics on `Noodl.Array` / `Noodl.Collection` — `noodl-runtime/src/collection.ts`. */
+const COLLECTION_MEMBERS: readonly ApiMember[] = [
+  { label: 'get', type: 'function', info: 'get(name) — the array with this id, created if it does not exist yet.' },
+  { label: 'create', type: 'function', info: 'create(items) — a new array holding these items.' },
+  { label: 'exists', type: 'function', info: 'exists(name) — whether an array with this id has been made.' },
+  { label: 'instanceOf', type: 'function', info: 'instanceOf(value) — whether a value is a Noodl Array.' }
+];
+
+/**
+ * `Noodl.Events` — `nodecontext.ts:225`'s `eventSenderEmitter`, which is
+ * `noodl-runtime/src/events.js`: a vendored copy of Node's `EventEmitter`, so
+ * these four are the same four. The channel is the event name a Send Event /
+ * Receive Event node uses.
+ */
+const EVENTS_MEMBERS: readonly ApiMember[] = [
+  { label: 'emit', type: 'function', info: 'emit(channel, payload) — send an app-wide event.' },
+  { label: 'on', type: 'function', info: 'on(channel, listener) — receive events on a channel.' },
+  { label: 'once', type: 'function', info: 'once(channel, listener) — receive the next event only.' },
+  { label: 'off', type: 'function', info: 'off(channel, listener) — stop receiving.' }
+];
 
 /**
  * Members of `window.Noodl`, as installed by `createNoodlAPI`
@@ -52,19 +186,24 @@ export const NOODL_SCRIPT_API: readonly ApiMember[] = [
   { label: 'Variables', type: 'property', info: 'App-wide variables. `Noodl.Variables.name`' },
   { label: 'Objects', type: 'property', info: 'Objects by id. `Noodl.Objects.myId`' },
   { label: 'Arrays', type: 'property', info: 'Arrays by id. `Noodl.Arrays.myId`' },
-  { label: 'Object', type: 'namespace', info: 'The Object/Model class. `Noodl.Object.get(id)`' },
-  { label: 'Model', type: 'namespace', info: 'Alias of `Noodl.Object`' },
-  { label: 'Array', type: 'namespace', info: 'The Array/Collection class. `Noodl.Array.get(id)`' },
-  { label: 'Collection', type: 'namespace', info: 'Alias of `Noodl.Array`' },
-  { label: 'Records', type: 'namespace', info: 'Backend records — query, create, save, delete' },
-  { label: 'Users', type: 'namespace', info: 'Sign up, log in, and the current user' },
-  { label: 'CloudFunctions', type: 'namespace', info: 'Call your cloud functions from code' },
-  { label: 'Navigation', type: 'namespace', info: 'Navigate, and read the current route' },
-  { label: 'Files', type: 'namespace', info: 'Upload and read files' },
-  { label: 'Events', type: 'namespace', info: 'Send and receive app-wide events' },
-  { label: 'eventEmitter', type: 'namespace', info: 'Alias of `Noodl.Events`' },
-  { label: 'SEO', type: 'namespace', info: 'Page title and meta tags' },
-  { label: 'Config', type: 'namespace', info: 'Values from project settings' },
+  { label: 'Object', type: 'namespace', info: 'The Object/Model class. `Noodl.Object.get(id)`', members: MODEL_MEMBERS },
+  { label: 'Model', type: 'namespace', info: 'Alias of `Noodl.Object`', members: MODEL_MEMBERS },
+  { label: 'Array', type: 'namespace', info: 'The Array/Collection class. `Noodl.Array.get(id)`', members: COLLECTION_MEMBERS },
+  { label: 'Collection', type: 'namespace', info: 'Alias of `Noodl.Array`', members: COLLECTION_MEMBERS },
+  { label: 'Records', type: 'namespace', info: 'Backend records — query, create, save, delete', members: RECORDS_MEMBERS },
+  { label: 'Users', type: 'namespace', info: 'Sign up, log in, and the current user', members: USERS_MEMBERS },
+  { label: 'CloudFunctions', type: 'namespace', info: 'Call your cloud functions from code', members: CLOUD_FUNCTIONS_MEMBERS },
+  { label: 'Navigation', type: 'namespace', info: 'Navigate, and read the current route', members: NAVIGATION_MEMBERS },
+  { label: 'Files', type: 'namespace', info: 'Upload and read files', members: FILES_MEMBERS },
+  { label: 'Events', type: 'namespace', info: 'Send and receive app-wide events', members: EVENTS_MEMBERS },
+  { label: 'eventEmitter', type: 'namespace', info: 'Alias of `Noodl.Events`', members: EVENTS_MEMBERS },
+  { label: 'SEO', type: 'namespace', info: 'Page title and meta tags', members: SEO_MEMBERS },
+  {
+    label: 'Config',
+    type: 'namespace',
+    info: 'Values from App Setup, plus your own config variables',
+    members: CONFIG_MEMBERS
+  },
   { label: 'Env', type: 'property', info: 'Environment values' },
   { label: 'getProjectSettings', type: 'function', info: 'Read the project settings object' },
   { label: 'getMetaData', type: 'function', info: 'Read a project metadata value by key' }
@@ -122,18 +261,47 @@ const EXPRESSION_GLOBALS: readonly ApiMember[] = [
 ];
 
 /**
- * The names a Function or Script node's body is compiled with:
+ * The names a **Function** node's body is compiled with:
  * `new AsyncFunction('Inputs', 'Outputs', 'Noodl', 'Component', prefix + script)`
- * (`simplejavascript.ts:446-453`), plus `Script`, which the prefix declares
+ * (`simplejavascript.ts:609-619`), plus `Script`, which the prefix declares
  * from `Node` (`javascriptnodeparser.js:492-494`).
  *
  * Note what is **not** here: `Props` and `State`, both of which the old array
  * offered. Neither is a parameter of that function and neither is a global —
  * completing them was an invitation to write code that throws.
  */
-const SCRIPT_GLOBALS: readonly ApiMember[] = [
+const FUNCTION_GLOBALS: readonly ApiMember[] = [
   { label: 'Inputs', type: 'property', info: "This node's input values. Reading `Inputs.x` creates the port" },
   { label: 'Outputs', type: 'property', info: "This node's outputs. Assigning `Outputs.y` creates the port" },
+  { label: 'Noodl', type: 'namespace', info: 'The Noodl API' },
+  { label: 'Component', type: 'property', info: 'The scope of the component this node sits in' },
+  { label: 'Script', type: 'property', info: 'The script node itself, when there is one' }
+];
+
+/**
+ * The names a **Script** node's body is compiled with:
+ * `new Function(['define', 'script', 'Node', 'Component'], prefix + code)`
+ * (`javascriptnodeparser.js:22`).
+ *
+ * 🔴 **This list used to be the Function node's, and that is the whole defect
+ * FIX-016 ruling 1 is about.** The Script node was offered `Inputs` and
+ * `Outputs` — with the info text *"Reading `Inputs.x` creates the port"*, which
+ * is true of the other node and false here — while `define`, its actual first
+ * argument and the notation `NOTATION_RULES.script` tells authors to use, was
+ * offered nowhere in the product. The editor was completing an API that throws.
+ *
+ * ⚠️ `Noodl` stays: the Script path reads `window.Noodl` when it is there
+ * (`javascriptnodeparser.js#createNoodlAPI`), the same reason the linter's
+ * globals keep it.
+ */
+const SCRIPT_NODE_GLOBALS: readonly ApiMember[] = [
+  {
+    label: 'define',
+    type: 'function',
+    info: 'Declare this node: `define({ inputs: { … }, outputs: { … }, run: function (inputs, outputs) { … } })`'
+  },
+  { label: 'Node', type: 'namespace', info: 'Node.Inputs / Node.Outputs / Node.Signals — the newer declaration API' },
+  { label: 'script', type: 'function', info: 'The second-generation form of `define`' },
   { label: 'Noodl', type: 'namespace', info: 'The Noodl API' },
   { label: 'Component', type: 'property', info: 'The scope of the component this node sits in' },
   { label: 'Script', type: 'property', info: 'The script node itself, when there is one' }
@@ -146,5 +314,40 @@ export function noodlMembersFor(validationType: ValidationType): readonly ApiMem
 
 /** Top-level names this mode puts in scope. */
 export function globalsFor(validationType: ValidationType): readonly ApiMember[] {
-  return validationType === 'expression' ? EXPRESSION_GLOBALS : SCRIPT_GLOBALS;
+  if (validationType === 'expression') return EXPRESSION_GLOBALS;
+  if (validationType === 'script') return SCRIPT_NODE_GLOBALS;
+  return FUNCTION_GLOBALS;
+}
+
+/**
+ * The members of a dotted path — `Noodl`, `Noodl.Records`, and no deeper today.
+ *
+ * FIX-017 §B. `Noodl.` has answered since FH-019, but every namespace it named
+ * answered `null` at its own dot: a beginner who took the editor's advice and
+ * typed `Noodl.Records` was then handed nothing, which reads as "there is
+ * nothing here" rather than "I only know one level".
+ *
+ * Anchored at `Noodl` on purpose. `Object.` and `Array.` are the *JavaScript*
+ * globals in a Function body, and answering for the bare form would offer
+ * `Noodl.Object`'s statics for `Object.keys` — a wrong answer in place of the
+ * language's right one. Expression mode needs no special case: its `Noodl` has
+ * four members and none of them carries a second level, so the walk stops of
+ * its own accord.
+ *
+ * Returns `null` for a path this file does not know, which is the signal the
+ * caller needs to let another completion source answer.
+ */
+export function apiMembersAtPath(path: string, validationType: ValidationType): readonly ApiMember[] | null {
+  const segments = path.split('.');
+  if (segments[0] !== 'Noodl') return null;
+
+  let members = noodlMembersFor(validationType);
+
+  for (const segment of segments.slice(1)) {
+    const match = members.find((member) => member.label === segment);
+    if (!match || !match.members) return null;
+    members = match.members;
+  }
+
+  return members;
 }

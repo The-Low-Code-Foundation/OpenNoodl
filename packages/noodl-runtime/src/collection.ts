@@ -58,6 +58,11 @@ import WeakRegistry = require('./weak-registry');
 interface PatchedArray extends CollectionLike {
   _id?: string;
   _listeners?: Record<string, Array<(args?: unknown) => unknown>>;
+  /**
+   * Plain source object → the Model this collection converted it into, so a repeated `set`
+   * of the same array diffs as unchanged. F50; see `set`.
+   */
+  _plainItemModels?: WeakMap<object, ModelLike>;
 }
 
 interface CollectionConstructor {
@@ -495,12 +500,50 @@ Object.defineProperty(Array.prototype, "set", {
     }
 
     // Src can be a collection, or an array
+    //
+    // F50. A plain object has to convert to the *same* Model every time this collection sees
+    // it, or the diff below is meaningless. `Model.create` on an object with no `id` reaches
+    // `Model.get(undefined)`, which mints a fresh anonymous guid per call — so setting the
+    // same array twice used to produce two disjoint sets of ids, `keyIndex` matched nothing,
+    // and every record was removed and re-added. For a Repeater that is not merely wasteful:
+    // `refresh()` iterates this collection across `await`s while a coalesced `scheduleCopyItems`
+    // sets it again, the two passes see different records, and rows get drawn twice. A footer
+    // authored with 19 texts rendered 31, with every gate in the repo green.
+    //
+    // The cache is keyed on the source object's *identity* and held per collection, so the
+    // rule is the narrow one: the same object in the same list is the same record. Two equal
+    // but distinct objects stay distinct, which is what keeps duplicate rows legitimate.
+    let plainModels = (self as PatchedArray)._plainItemModels;
+    if (plainModels === undefined) {
+      plainModels = new WeakMap<object, ModelLike>();
+      Object.defineProperty(self, '_plainItemModels', { value: plainModels, enumerable: false, writable: true });
+    }
+
     var bItems: ModelLike[] = [];
     length = src.length;
     for (i = 0; i < length; i++) {
       var item = src[i];
-      if (Model.instanceOf(item)) bItems.push(item as ModelLike);
-      else bItems.push(Model.create(item as Record<string, unknown>));
+      if (Model.instanceOf(item)) {
+        bItems.push(item as ModelLike);
+        continue;
+      }
+
+      const plain = item as Record<string, unknown>;
+      let model = typeof plain === 'object' && plain !== null ? plainModels.get(plain) : undefined;
+      if (model === undefined) {
+        model = Model.create(plain);
+        if (typeof plain === 'object' && plain !== null) plainModels.set(plain, model);
+      } else {
+        // The same object, mutated in place since it was last seen. Writing the fields back
+        // keeps the record current and notifies anything bound to it, which is strictly more
+        // than the old path managed — it threw the record away and built a new one, so an
+        // item component's state went with it.
+        for (const key in plain) {
+          if (key === 'id') continue;
+          if (model.data[key] !== plain[key]) model.set(key, plain[key]);
+        }
+      }
+      bItems.push(model);
     }
 
     // NDA-002, the contract's second clause: `set` is *one* logical mutation, however many

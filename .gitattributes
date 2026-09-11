@@ -1,4 +1,9 @@
-project.json merge=noodl
-components/**/component.json merge=noodl
-components/**/nodes.json merge=noodl
-components/**/connections.json merge=noodl
+# NodeGX renders these files as readable graphs in `git diff`, `git log -p`,
+# `git show` and `git blame` ON THE COMMAND LINE, for anyone who has opened
+# this project in the NodeGX editor. Web diffs (GitHub, GitLab) do not run
+# textconv and are unaffected. `git blame` changes what is displayed, not
+# what is attributed: line attribution is still computed on the stored JSON.
+project.json merge=noodl diff=noodl
+components/**/component.json merge=noodl diff=noodl
+components/**/nodes.json merge=noodl diff=noodl
+components/**/connections.json merge=noodl diff=noodl

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2b8d1c3-6a4e-4f9b-8d2c-000000000096",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowGroup",
+      "type": "Group",
+      "label": "Row",
+      "children": [
+        "rowText",
+        "removeButton"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "center"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowText",
+      "type": "Text",
+      "label": "Row text",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "removeButton",
+      "type": "net.noodl.controls.button",
+      "label": "Remove",
+      "parent": "rowGroup",
+      "parameters": {
+        "label": "Remove",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "text",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "rowOutputs",
+      "type": "Component Outputs",
+      "label": "Row outputs",
+      "ports": [
+        {
+          "name": "removed",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "rowGroup"
+  ]
+}

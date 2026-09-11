@@ -70,7 +70,7 @@ const UuidNode: NodeDefinitionOptions = {
     uuid: {
       type: 'string',
       displayName: 'Id',
-      group: 'Value',
+      group: 'Values',
       description:
         'A random version-4 UUID, generated once when the node is created and again on every New. ' +
         'Use this rather than Unique Id wherever the id has to be globally unique or unguessable',

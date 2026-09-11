@@ -1,0 +1,44 @@
+{
+  "id": "cloud-revoke-a-role-and-record-it",
+  "title": "Take a privilege away, and write down that you did",
+  "description": "Revoking is the other half of granting, and it has one behaviour that surprises people: removing a role membership does NOT end that user's existing sessions. They stay signed in; what changes is what the access rules let them do on their next request. If the requirement is 'they are out, now', revoking the role is not sufficient on its own. `unchanged` covers two different post-conditions that both mean 'they are not in it' — they were never a member, or the role does not exist at all — and Error says which. Both are wired into the same continuation here, because for a revoke, 'they are not in that role any more' is the goal and it has been reached either way; a function that failed on an already-revoked user would break every retry. Update User then stamps the account with who did it and when, and it is worth being clear why that is a different node from Set User Properties: that one writes to whoever is signed in and fails when nobody is, while this writes to the account whose id you give it with the authority of the server. `userId` is required and a blank one is a failure rather than a fallback to the caller — which is exactly the accident (editing the admin instead of the target) that the split exists to prevent. Get User Roles reads the result back through the same resolver the permission check uses, so the Response tells the screen what the access rules will actually agree to, not what this function believes it just did.",
+  "demonstrates": ["noodl.cloud.removeuserfromrole", "noodl.cloud.updateuser", "noodl.cloud.getuserroles", "noodl.cloud.request"],
+  "components": [
+    {
+      "name": "/Cloud Functions/Revoke Role",
+      "nodes": [
+        { "id": "fn_request", "type": "noodl.cloud.request", "label": "Request", "parameters": { "params": "userId,role,revokedBy" } },
+        { "id": "revoke", "type": "noodl.cloud.removeuserfromrole", "label": "Take the role away" },
+        {
+          "id": "stamp",
+          "type": "noodl.cloud.updateuser",
+          "label": "Record who revoked it",
+          "parameters": { "properties": "revokedBy" }
+        },
+        { "id": "roles_now", "type": "noodl.cloud.getuserroles", "label": "What they are left with" },
+        { "id": "ok_response", "type": "noodl.cloud.response", "label": "The roles that remain", "parameters": { "params": "roles" } },
+        { "id": "fail_response", "type": "noodl.cloud.response", "label": "Failure", "parameters": { "status": "failure" } }
+      ],
+      "connections": [
+        { "fromId": "fn_request", "fromProperty": "userId", "toId": "revoke", "toProperty": "userId" },
+        { "fromId": "fn_request", "fromProperty": "role", "toId": "revoke", "toProperty": "role" },
+        { "fromId": "fn_request", "fromProperty": "receive", "toId": "revoke", "toProperty": "remove" },
+        { "fromId": "fn_request", "fromProperty": "userId", "toId": "stamp", "toProperty": "userId" },
+        { "fromId": "fn_request", "fromProperty": "revokedBy", "toId": "stamp", "toProperty": "revokedBy" },
+        { "fromId": "revoke", "fromProperty": "done", "toId": "stamp", "toProperty": "store" },
+        { "fromId": "revoke", "fromProperty": "unchanged", "toId": "stamp", "toProperty": "store" },
+        { "fromId": "fn_request", "fromProperty": "userId", "toId": "roles_now", "toProperty": "userId" },
+        { "fromId": "stamp", "fromProperty": "done", "toId": "roles_now", "toProperty": "read" },
+        { "fromId": "roles_now", "fromProperty": "roles", "toId": "ok_response", "toProperty": "roles" },
+        { "fromId": "roles_now", "fromProperty": "done", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "roles_now", "fromProperty": "unchanged", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "revoke", "fromProperty": "error", "toId": "fail_response", "toProperty": "errorMessage" },
+        { "fromId": "stamp", "fromProperty": "error", "toId": "fail_response", "toProperty": "errorMessage" },
+        { "fromId": "roles_now", "fromProperty": "error", "toId": "fail_response", "toProperty": "errorMessage" },
+        { "fromId": "revoke", "fromProperty": "failure", "toId": "fail_response", "toProperty": "send" },
+        { "fromId": "stamp", "fromProperty": "failure", "toId": "fail_response", "toProperty": "send" },
+        { "fromId": "roles_now", "fromProperty": "failure", "toId": "fail_response", "toProperty": "send" }
+      ]
+    }
+  ]
+}

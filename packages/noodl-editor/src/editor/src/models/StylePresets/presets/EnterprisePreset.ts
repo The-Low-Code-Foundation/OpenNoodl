@@ -38,6 +38,7 @@ export const EnterprisePreset: StylePreset = {
     '--border': '#cbd5e1',
     '--border-subtle': '#e2e8f0',
     '--border-strong': '#94a3b8',
+    '--border-control': '#64748b',
     // Focus ring
     '--ring': '#0f172a',
     '--ring-offset': '#ffffff',

@@ -17,7 +17,23 @@
         { "id": "join_btn", "type": "net.noodl.controls.button", "label": "Join", "parent": "root", "parameters": { "label": "Join project" } },
         { "id": "leave_btn", "type": "net.noodl.controls.button", "label": "Leave", "parent": "root", "parameters": { "label": "Leave project" } },
         { "id": "delete_btn", "type": "net.noodl.controls.button", "label": "Delete", "parent": "root", "parameters": { "label": "Delete project" } },
-        { "id": "ids_in", "type": "Component Inputs", "label": "Project & member ids" },
+        {
+          "id": "ids_in",
+          "type": "Component Inputs",
+          "label": "Project & member ids",
+          "ports": [
+            {
+              "name": "memberId",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "projectId",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        },
         {
           "id": "add_member",
           "type": "AddDbModelRelation",

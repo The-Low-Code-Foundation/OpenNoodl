@@ -25,7 +25,12 @@ export const TextInputConfig: ElementConfig = {
     color: 'var(--foreground)',
 
     borderWidth: 'var(--border-1)',
-    borderColor: 'var(--border)',
+    // DEF-001: was `var(--border)`, the decorative hairline, at **1.23:1** against `--background`
+    // — a field a person is asked to type into, with an edge below WCAG 1.4.11's 3:1.
+    // `--border-control` exists in the defaults and in every preset for exactly this and already
+    // clears 3:1 in all of them (3.62–4.83). The knowledge was one composition away and never
+    // made the trip; this is the trip.
+    borderColor: 'var(--border-control)',
     borderStyle: 'solid',
     borderRadius: 'var(--radius-md)',
 
@@ -36,7 +41,7 @@ export const TextInputConfig: ElementConfig = {
 
   variants: {
     default: {
-      borderColor: 'var(--border)',
+      borderColor: 'var(--border-control)',
       backgroundColor: 'var(--background)',
       states: {
         focus: {

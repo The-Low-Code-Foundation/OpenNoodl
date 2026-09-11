@@ -56,12 +56,16 @@ One-of-many choices too numerous or space-constrained for radio buttons: country
 | `boxShadowOffsetX` | Number | `0` | How far to the right the shadow is cast from the element |
 | `boxShadowOffsetY` | Number | `0` | How far down the shadow is cast from the element |
 | `boxShadowSpreadRadius` | Number | `2` | How much larger than the element the shadow is drawn |
+| `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click on this control also fires Click on the nodes it sits inside. Automatic keeps it here as soon as this control's own Click is connected, so a Favourite button inside a clickable card runs Favourite and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not |
 | `color` | Color | — | Colour of the text itself, not of the element behind it |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `enabled` | Boolean | `true` | Lets the user interact with this control; when off it still renders and occupies its space but ignores clicks, touches and typing |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `iconColor` | Color | `#000000` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
@@ -70,12 +74,15 @@ One-of-many choices too numerous or space-constrained for radio buttons: country
 | `iconSize` | Number | `16` | Height of the icon |
 | `iconSourceType` | Enum (`image`, `icon`) | `icon` | Whether the icon comes from an installed icon set or from an image file, which decides the source port below |
 | `iconSpacing` | Number | `10` | Gap between the icon and the text beside it |
-| `items` | Array | — | Options to offer, as an array of objects with Label and Value properties; an empty value offers nothing |
+| `items` | Optionslist | `[{"Label":"Option 1","Value":"Option 1"},{"Label":"Option 2","Value":"Option 2"}]` | Options to offer. Type a label per option — the value it sends is the label — or switch the editor to Advanced and give an option its own Value when it must send something different |
 | `label` | String | `Label` | Text shown on this element |
 | `labelSpacing` | Number | `10` | Gap between the label and the edges around it |
 | `labelcolor` | Color | — | Colour of the text itself, not of the element behind it |
 | `labelfontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `labelfontSize` | Number | — | Height of the text, in pixels |
+| `labelfontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `labelfontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `labelfontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `labelletterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `labellineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
 | `labeltextStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -93,13 +100,14 @@ One-of-many choices too numerous or space-constrained for radio buttons: country
 | `mixBlendMode` | Enum (`normal`, `multiply`, `screen`, `overlay`, `darken`, `lighten`, `color-dodge`, `color-burn`, `hard-light`, `soft-light`, `difference`, `exclusion`, `hue`, `saturation`, `color`, `luminosity`) | `normal` | How this element's colours blend with whatever is painted behind it |
 | `mounted` | Boolean | `true` | Removes the element from the page entirely when false, unlike Visible which leaves its space behind |
 | `opacity` | Number | `1` | How opaque this element is, from 0 for invisible to 1 for solid |
-| `paddingBottom` | Number | `0` | Space inside the element's bottom edge, between it and its content |
-| `paddingLeft` | Number | `0` | Space inside the element's left edge, between it and its content |
-| `paddingRight` | Number | `0` | Space inside the element's right edge, between it and its content |
-| `paddingTop` | Number | `0` | Space inside the element's top edge, between it and its content |
+| `paddingBottom` | Number | `6` | Space inside the element's bottom edge, between it and its content |
+| `paddingLeft` | Number | `8` | Space inside the element's left edge, between it and its content |
+| `paddingRight` | Number | `8` | Space inside the element's right edge, between it and its content |
+| `paddingTop` | Number | `6` | Space inside the element's top edge, between it and its content |
 | `placeholder` | String | — | Text shown while nothing is selected |
 | `placeholderOpacity` | Number | `0.5` | How faded the placeholder text is, from 0 to 1 |
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
+| `showChevron` | Boolean | `true` | Draws the small downward arrow at the end of the control that marks it as a dropdown |
 | `sizeMode` | Enum (`explicit`, `contentWidth`, `contentHeight`, `contentSize`) | `contentSize` | Whether Width and Height are used as given, or the element sizes itself to fit its contents |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
 | `textStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
@@ -112,7 +120,7 @@ One-of-many choices too numerous or space-constrained for radio buttons: country
 | `transformY` | Number | `0` | Moves the element down after layout, without moving its siblings |
 | `useIcon` | Boolean | `false` | Shows an icon on this element |
 | `useLabel` | Boolean | `false` | Shows a text label on this element |
-| `value` | String | — | Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed |
+| `value` | String | `Option 1` | Selects the option with this Value; a value matching no option deselects everything. Setting it from the graph does not fire Changed |
 | `variant` | String | — | Name of a saved variant of this node type to apply, replacing the styling set here |
 | `visible` | Boolean | `true` | Hides the element while keeping the space it occupies in the layout |
 | `width` | Dimension | `100` | Width of the element; how the value is read depends on Size Mode |
@@ -152,9 +160,9 @@ One-of-many choices too numerous or space-constrained for radio buttons: country
 
 ## Dynamic ports
 
-_This node's port list changes at runtime (declared-port-groups); the tables above may be incomplete for a given instance._
+_This node's port list changes at runtime (declared-port-groups, runtime-discovered); the tables above may be incomplete for a given instance._
 
-Declares conditional/expandable port groups whose visibility depends on parameter values (see declaredPortGroups).
+The port list above is complete — this node mints no ports. It republishes its own `value` input per instance as an `enum` built from this node's `items`: one choice per option, labelled with the option's `Label` and carrying its `Value`, plus the currently stored value when that matches no option. It is declared `string` statically because nothing outside a connected editor can know the instance's options.
 
 | Condition | Inputs shown | Outputs shown |
 |---|---|---|
@@ -163,7 +171,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | useIcon = true | `iconSourceType`, `iconSize`, `iconPlacement`, `iconSpacing` | — |
 | useIcon = true AND iconSourceType = image | `iconImageSource` | — |
 | useIcon = true AND iconSourceType = icon | `iconIconSource`, `iconColor` | — |
-| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelSpacing` | — |
+| useLabel = true | `label`, `labeltextStyle`, `labelfontFamily`, `labelfontSize`, `labelfontWeight`, `labelfontStyle`, `labelcolor`, `labelletterSpacing`, `labellineHeight`, `labeltextTransform`, `labelfontVariantNumeric`, `labelSpacing` | — |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted OR borderStyle NOT SET | `borderTopWidth`, `borderTopColor` | — |

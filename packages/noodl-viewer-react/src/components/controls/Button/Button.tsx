@@ -59,6 +59,21 @@ export function Button(props: ButtonProps) {
       return <img alt="" src={props.iconImageSource} style={iconStyle} />;
     } else if (props.iconSourceType === 'icon' && props.iconIconSource !== undefined) {
       iconStyle.fontSize = props.iconSize;
+
+      /**
+       * 🔴 **`undefined` here means "the label's colour", and that is load-bearing.**
+       *
+       * React omits a style property whose value is `undefined`, so when the author has set no
+       * `Icon Color` this line emits nothing and the glyph inherits the `<button>`'s own resolved
+       * text colour (`style.color`, above). That is what makes `button.ts` able to ship **no**
+       * default for `iconColor` — which is where the actual fix lives; this line did not have to
+       * change for it, and a guard here would be dead code.
+       *
+       * Ruled by Richard, 2026-09-04, asked what a Button's icon should default to: *"Same as
+       * label colour I'd imagine."* No constant could be right for this node: the default
+       * `primary` variant is a filled `--primary` ground wanting a light icon, while `outline`
+       * and `ghost` are transparent with `--foreground` text and want a dark one.
+       */
       iconStyle.color = props.iconColor;
 
       return <IconGlyph source={props.iconIconSource} style={iconStyle} />;

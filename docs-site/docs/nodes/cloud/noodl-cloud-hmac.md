@@ -67,6 +67,12 @@ Verifying a Stripe, GitHub or supplier webhook; signing a request some API requi
 - Re-serialising the request body before signing it. Any difference in key order or whitespace changes the signature.
 - Typing the key into the graph. It ends up in the exported project; use a Secret node.
 
+## Examples
+
+**Prove an inbound request really came from who it says**
+
+Two different 'is this genuine' questions, side by side, because choosing the wrong one is the common mistake. HMAC is for a webhook: the sender computed a keyed digest of the body with a shared secret and put it in a header, and you recompute it and compare. The input that decides whether this works is Value — it must be the RAW body, byte for byte, exactly as it arrived. Re-serialising the parsed object first produces a different string (key order, whitespace, number formatting) and therefore a different signature, and the symptom is every webhook failing verification with no clue why. JWT Verify is for a token somebody else ISSUED to you, and it refuses any token whose header names an algorithm other than the one you selected — which is what defeats both `alg: none` and algorithm confusion, and is why Algorithm is set here rather than read from the token. Nothing inside a token may be believed before the signature check, so Claims is left alone on failure rather than handed over unchecked; reading claims off a token you have not verified is the same bug as trusting the webhook body. Clock Tolerance exists for issuers whose clock is not quite yours and defaults to 0. Both keys come from Secret nodes by name, so neither credential is in the graph. Note what neither node is for: your own users' sessions. That is Verify Session Token, which asks this backend about its own `_Session` rows.
+
 ## Related nodes
 
 [Secret](./noodl-cloud-secret.md), [Hash](../utilities/net-noodl-hash.md), [JWT Sign](./noodl-cloud-jwtsign.md)

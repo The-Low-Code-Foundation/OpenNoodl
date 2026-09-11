@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "EL-009 Kit On Page Three",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "structure": { "componentsDir": "components", "assetsDir": "assets" },
+  "id": "el009f00-0000-4000-8000-000000000001",
+  "runtimeVersion": "react19",
+  "rootNodeId": "el009-router",
+  "settings": { "htmlTitle": "EL-009 Kit On Page Three" },
+  "metadata": {}
+}

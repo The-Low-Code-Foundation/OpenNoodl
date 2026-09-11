@@ -25,6 +25,7 @@ import type {
   VisualStateDefinition
 } from '@noodl/types';
 
+import { iconSourceProblem } from './components/visual/Icon/iconSourceProblem';
 import DOMBoundingBoxObserver from './dom-boundingbox-oberver';
 import Layout, { type ParentLayout } from './layout';
 import mergeDeep from './mergedeep';
@@ -458,6 +459,18 @@ export interface ReactNodeDefinition {
   displayName?: string;
   displayNodeName?: string;
   docs?: string;
+  /**
+   * URL of a documentation page for this node.
+   *
+   * 🔴 **Separate from {@link docs} on purpose (D10).** `docs` is one field over
+   * two vocabularies — a URL on the 158 shipped nodes that carry one, the kit
+   * author's own prose on a kit node — so a kit had no way to offer a link
+   * without its sentence being rendered as an `href` that opens nothing.
+   * Sniffing for `http` was considered and rejected: it encodes a guess about
+   * the author's intent in a regex, and it mislabels a kit whose prose merely
+   * opens with a URL. Two fields, two meanings, no guessing.
+   */
+  docsUrl?: string;
   allowChildren?: boolean;
   allowAsExportRoot?: boolean;
   singleton?: boolean;
@@ -574,10 +587,71 @@ function isTokenReference(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('var(');
 }
 
+/**
+ * FLD-004 (b) — is `{ value, unit }` a magnitude that can be concatenated into CSS?
+ *
+ * 🔴 Found by DRIVING, not by reading, and it is a THIRD copy of the unit merge. `setInputValue`
+ * guards its merge with `isNaN`; the inputCss setter coerces a bare value into the default unit;
+ * and `Node.queueInputValue`'s first-update consolidation wraps an incoming non-object in *the
+ * unit of the value it is overwriting* — `"tall"` arriving on a port holding `{value: 120, unit:
+ * 'px'}` becomes `{value: "tall", unit: "px"}` — **with no numeric check at all**. That sailed
+ * straight past the `.value !== undefined` test above and was emitted as `"tallpx"`: invalid CSS,
+ * dropped by the browser with no error anywhere, and the authored `120px` gone with it. Exactly
+ * the same disappearance as the `delete` this branch was written to stop, one shape further out.
+ *
+ * Guarded here rather than at the three merge sites because this is where they converge, and a
+ * fourth copy of "is this a number" is how the first three came about.
+ *
+ * A unit-LESS port is left exactly as it was: `units: ['']` exists for line-height, where a bare
+ * `1.4` is the whole point and the concatenation is a no-op. Only a value that is about to have a
+ * real unit stuck on the end of it has to be a number.
+ */
+function dimensionIsUsable(value: { value?: unknown; unit?: string }): boolean {
+  if (!value.unit) return true;
+  const magnitude = value.value;
+  if (typeof magnitude === 'number') return Number.isFinite(magnitude);
+  if (typeof magnitude === 'string') return magnitude.trim() !== '' && Number.isFinite(Number(magnitude));
+  return false;
+}
+
+/** Diagnostic key namespace for an icon port that was handed something it cannot draw. */
+const ICON_SOURCE_DIAGNOSTIC = 'visual/icon-source-not-an-icon';
+
+/** A port type is a bare string or `{ name }`; this is the name, or `null`. */
+function portTypeNameOf(type: unknown): string | null {
+  if (!type) return null;
+  const name = typeof type === 'string' ? type : (type as { name?: string }).name;
+  return typeof name === 'string' ? name.toLowerCase() : null;
+}
+
 function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
   if (!input.type) throw new Error(`input ${name} is missing a type`);
 
-  if ((input.type as PortType).units) {
+  // FB-019 AC3. An icon port is the one structured type with no cast row of its own, so the
+  // only value that can arrive over a wire comes from a `*` output and has been checked by
+  // nobody. Reported at the port rather than in `IconGlyph`: here the port has a name and the
+  // node has an id, the check runs once per set instead of once per render, and `setDiagnostic`
+  // is a setter — the statement that raises the warning is the one that clears it.
+  if (portTypeNameOf(input.type) === 'icon') {
+    input.set = function (value) {
+      const props = input.propPath ? this.props[input.propPath] : this.props;
+      const problem = iconSourceProblem(value, input.displayName || name);
+      this.setDiagnostic(ICON_SOURCE_DIAGNOSTIC + '/' + name, problem);
+
+      // Dropped rather than passed on, so a value the renderer cannot draw behaves like a port
+      // that was never set — an empty span still takes its `iconSize` in layout, which is the
+      // half of this defect that looks like a rendering bug rather than a wiring one.
+      if (value !== undefined && !problem) {
+        props[name] = value;
+      } else {
+        delete props[name];
+      }
+      if (input.onChange) {
+        input.onChange.call(this, value);
+      }
+      this.forceUpdate();
+    };
+  } else if ((input.type as PortType).units) {
     input.set = function (value) {
       const props = input.propPath ? this.props[input.propPath] : this.props;
       // AIB-001: see the matching guard in the inputCss loop below. Here the
@@ -585,10 +659,34 @@ function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
       // prop was DELETED and the property fell back to its default.
       if (isTokenReference(value)) {
         props[name] = value;
-      } else if (value && value.value !== undefined) {
+      } else if (value && (value as { value?: unknown }).value !== undefined && dimensionIsUsable(value)) {
         props[name] = value.value + value.unit;
-      } else {
+      } else if (value === undefined || value === null) {
+        // The explicit empty, and the one the editor sends when a parameter is cleared. The
+        // Empty-Value Contract's `null` clears; `undefined` here keeps the sibling setters'
+        // shipped meaning, because this is also the path the property panel uses to remove a
+        // value and abstaining there would leave a cleared parameter on screen until reload.
         delete props[name];
+      } else {
+        // FLD-004 (b), #26 — a value that is not a dimension at all: a bare number that did not
+        // merge into the port's unit, a string, an object with no magnitude in it.
+        //
+        // 🔴 It used to fall into the `delete` above, which removed the property AND the DECLARED
+        // DEFAULT with it, so one bad value on a wire cost the author the static value they had
+        // authored as well — *"accepted, then silently discarded"*, the exact third state #26 is
+        // about, and the reason the reporter's Group went to 100% rather than staying where they
+        // had put it. Abstaining keeps what is there, which is what every other port in the
+        // runtime does with a value it cannot use.
+        //
+        // Said out loud rather than swallowed, on `sizeMode`'s precedent a few lines away in
+        // `node-shared-port-definitions.ts`: a port that quietly ignores a live connection is the
+        // defect, not the fix. Raised from here, where the port has a name and the node has an id.
+        this.raiseRuntimeError(
+          'dimensions/not-a-dimension',
+          `"${input.displayName || name}" was sent ${JSON.stringify(value)}, which is not a size. A size is a ` +
+            '{value, unit} object — "400" alone is only a size on a port that already holds one, because a bare ' +
+            'number is merged into the unit the port is currently using. The previous value is kept.'
+        );
       }
       if (input.onChange) {
         input.onChange.call(this, value);
@@ -629,7 +727,12 @@ export interface NoodlReactComponentProps {
   [prop: string]: any;
 }
 
-class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
+/**
+ * Exported for DEF-027's spec, which renders it inside a real `Drag` to grade the className
+ * merge at the seam. Nothing outside this module constructs it — the node's own `render` is
+ * still the only production caller.
+ */
+export class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
   componentDidMount() {
     // During SSR (server) and SSR hydration (client pre-settle), triggerDidMount()
     // already sent this node's didMount before React committed; sending it again on
@@ -697,6 +800,30 @@ class NoodlReactComponent extends React.Component<NoodlReactComponentProps> {
       //otherProps can be empty, but some react components add additional props to their children
       ...otherProps
     };
+
+    /**
+     * DEF-027. A React parent that injects a `className` **adds** to the node's own; it does not
+     * replace it. `style` above is deliberately the other way round (the parent wins, see
+     * `NoodlReactComponentProps`) because two parents disagreeing about a css property must
+     * resolve to one value. Class names do not disagree — they accumulate — so the spread's
+     * last-one-wins was silently discarding the author's.
+     *
+     * The node that made this visible is `Drag`: `react-draggable` clones its child with
+     * `clsx(children.props.className || '', 'react-draggable', …)`, and the child it clones is
+     * *this* wrapper element, whose props are only `{key, noodlNode, ref}` (see the node's
+     * `render`). So the library's own merge has nothing to see, it hands down a bare
+     * `react-draggable`, and `...otherProps` then overwrote the `cssClassName` the author set.
+     * The element reaching the DOM carried `react-draggable` and nothing else: accepted at the
+     * door, stored in the graph, surviving the deploy, and simply absent at runtime.
+     *
+     * Fixed here rather than in `Drag.tsx` because the discarding is the spread's, not the
+     * node's — a repair naming `Drag` would leave any future wrapper with the same hole. `Drag`
+     * is the only child-cloning node in the viewer today (it holds the sole `cloneElement`), so
+     * the sweep D28 asked for has an answer, and it is one.
+     */
+    if (otherProps.className && noodlNode.props.className) {
+      props.className = `${noodlNode.props.className} ${otherProps.className}`;
+    }
 
     if (noodlNode.noodlNodeAsProp) {
       props.noodlNode = noodlNode;
@@ -819,7 +946,14 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
 
     if (hasDefault) {
       const type = input.type as PortType;
-      const value = type.units ? input.default + type.defaultUnit : input.default;
+      // CN-006: the same guard as `input.set` below, on the half AIB-001 did not
+      // reach. AIB-001 fixed the path a *set parameter* takes; a port's declared
+      // `default` never goes through it, so a units-typed port defaulting to a
+      // token was fitted with the unit here and emitted as `var(--space-3)px`.
+      // That is exactly what ✅ D8 asks a scaffold to emit, so the ruling landed
+      // on the one path still broken — silently, because invalid CSS is dropped
+      // without an error and the parameter still reads back as the right token.
+      const value = type.units && !isTokenReference(input.default) ? input.default + type.defaultUnit : input.default;
       if (input.styleTag) {
         startStyles[input.styleTag][name] = value;
       } else {
@@ -846,6 +980,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
   const ReactComponentNode: CompiledReactNodeDefinition = {
     name: def.name,
     docs: def.docs,
+    docsUrl: def.docsUrl,
     displayNodeName: def.displayNodeName || def.displayName,
     category: 'Visual',
     deprecated: def.deprecated,
@@ -899,7 +1034,12 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           // Only the object form of a port type carries units; the bare-name form
           // never does, so reading through it is safe and yields undefined.
           const type = input.type as PortType;
-          if (type.defaultUnit && input.default !== undefined) {
+          // CN-006 — the `inputProps` twin of the `inputCss` guard above. Same
+          // defect, different destination: this one reaches the component as a
+          // prop rather than the style object, so a token default arrived as the
+          // string `var(--text-sm)px` for the component to do nothing useful
+          // with.
+          if (type.defaultUnit && input.default !== undefined && !isTokenReference(input.default)) {
             props[name] = input.default + type.defaultUnit;
           } else {
             props[name] = input.default;
@@ -961,7 +1101,20 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
       }
     },
     outputs: {
+      /*
+       * SIG-003 — `Advanced`, not the absence of a group.
+       *
+       * These three are the largest single source of `Other` in the library: 27
+       * `childIndex`, 27 `this` and 12 `childrenCount` reached the connection
+       * popup with no `group`, and `ConnectionBar` renders an ungrouped port
+       * under `Other` — so a beginner opening any visual node found a heading
+       * nobody chose. `Advanced` is the honest subject: they describe this
+       * element's place in the tree and a reference to the node itself, not
+       * anything the node is *for*, and it keeps `Values` meaning "the things
+       * this node is about".
+       */
       childIndex: {
+        group: 'Advanced',
         displayName: 'Child Index',
         type: 'number',
         description: "This element's position among its parent's children, counting from 0",
@@ -970,6 +1123,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         }
       },
       this: {
+        group: 'Advanced',
         displayName: 'This',
         type: 'reference',
         description: 'A reference to this node itself, for ports that take a node rather than a value',
@@ -1221,6 +1375,19 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
         });
         this.context.scheduleUpdate();
       },
+      /**
+       * DEF-037. The editor changed a parameter, so re-run render rather than trusting the
+       * declaration `setStyle` patched onto the DOM — a component that *derives* properties
+       * from a style value (Text's `textOverflow`, Checkbox's `width`/`height`) only recomputes
+       * them in render. `forceUpdate` is already frame-debounced, so a burst of parameter
+       * changes costs one render.
+       *
+       * ⚠️ Not `_resetReactVirtualDOM`: that remounts and would discard focus, scroll and
+       * video state on every keystroke in the property panel.
+       */
+      _rerenderReactNode() {
+        this.forceUpdate();
+      },
       _resetReactVirtualDOM() {
         //reset the react key to force a full re-render
         //this can be required since we're editing the DOM tree, without React knowing
@@ -1377,6 +1544,22 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
           if (newStyles.position || newStyles.flexDirection || newStyles.clip) {
             forceUpdate = true;
           }
+        } else {
+          /**
+           * DEF-037 — a tagged port has no safety net at all, so it gets a render.
+           *
+           * 🔴 **Every check above is inside `if (!styleTag)`.** A port carrying a `styleTag`
+           * could therefore only ever re-render through its own `onChange`, which made each
+           * one a defect waiting to be noticed by hand — and that is exactly what happened:
+           * Radio Button's `Width`/`Height` carry the `onChange` and **Checkbox's, declared
+           * identically, do not**.
+           *
+           * A tagged style is by construction one the *component* re-reads at render onto
+           * some inner element (`props.styles[tag]`), which is the whole derived-sibling
+           * class. The hot path the DOM patch was built for — a wire animating `opacity` or
+           * `transform` per frame — is untagged and keeps it.
+           */
+          forceUpdate = true;
         }
 
         if (forceUpdate) {
@@ -1787,6 +1970,7 @@ function createNodeFromReactComponent(def: ReactNodeDefinition): ReactNodeModule
 
   if (hasChildCountOutput) {
     ReactComponentNode.outputs.childrenCount = {
+      group: 'Advanced', // SIG-003 — see `childIndex` above
       displayName: 'Children Count',
       type: 'number',
       description: 'How many child elements are currently mounted inside this one',

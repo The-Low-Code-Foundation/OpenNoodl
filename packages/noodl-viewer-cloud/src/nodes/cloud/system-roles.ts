@@ -1,5 +1,5 @@
 /**
- * The shared half of the three role-membership nodes (F86).
+ * The shared half of the four role-membership nodes (F86, plus DEF-005 b).
  *
  * ## ⚠️ Cloud only, and this family is the reason the rule exists
  *
@@ -44,6 +44,12 @@ export interface SystemRoleResult {
   userId?: string;
   roles?: string[];
   roleCreated?: boolean;
+  /** `members` only (DEF-005 b) — who is in the role, rather than which roles a user is in. */
+  userIds?: string[];
+  /** `members` only — the wire records for `userIds`, in the same order. */
+  users?: Record<string, unknown>[];
+  /** `members` only — the whole membership count, before `limit`. */
+  total?: number;
 }
 
 /** The message every one of these nodes gives when it is not running in a backend. */
@@ -75,7 +81,7 @@ export function setError(this: NodeLike, code: string, message: string, tokens: 
 }
 
 /**
- * The one call into the backend, shared by all three nodes.
+ * The one call into the backend, shared by all four nodes.
  *
  * ⚠️ **The result's `outcome` is reported verbatim.** "Already a member", "was
  * not in it" and "there is no such role" are decided at the end that knows; a
@@ -178,7 +184,11 @@ export const userIdInput = {
   }
 };
 
-/** The `Roles` output, identical on all three nodes. */
+/**
+ * The `Roles` output — on the three nodes that answer *which roles is this user
+ * in*. ⚠️ **Not on List Users In Role**, which walks the junction the other way
+ * and answers with `Users`; the two must not be confused for one port.
+ */
 export const rolesOutput = {
   group: 'Roles',
   displayName: 'Roles',
@@ -191,7 +201,7 @@ export const rolesOutput = {
   }
 };
 
-/** The `Error` output, identical on all three nodes. */
+/** The `Error` output, identical on all four nodes. */
 export const errorOutput = {
   displayName: 'Error',
   type: 'string',

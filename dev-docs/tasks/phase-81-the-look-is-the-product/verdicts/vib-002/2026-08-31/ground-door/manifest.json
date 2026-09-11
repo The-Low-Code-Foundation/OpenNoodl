@@ -1,0 +1,94 @@
+{
+  "task": "vib-002",
+  "subject": "ground",
+  "state": "door",
+  "headSha": "585344454f2c25d7e08aea0ef0b0dc3df8e32ffb",
+  "artefactMd5": "e6dad55fb2a4e4b192f7d74337bb787b",
+  "outDir": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door",
+  "shots": [
+    {
+      "task": "vib-002",
+      "subject": "ground",
+      "state": "door",
+      "page": "ground",
+      "url": "/",
+      "as": "the three grounds, one page, nobody signed in",
+      "viewport": {
+        "id": "preview",
+        "width": 988,
+        "height": 313
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-preview-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-preview-full.png",
+      "contentBottom": 1881,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 674,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-002",
+      "subject": "ground",
+      "state": "door",
+      "page": "ground",
+      "url": "/",
+      "as": "the three grounds, one page, nobody signed in",
+      "viewport": {
+        "id": "desktop",
+        "width": 1280,
+        "height": 900
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-desktop-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-desktop-full.png",
+      "contentBottom": 2057,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 674,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-002",
+      "subject": "ground",
+      "state": "door",
+      "page": "ground",
+      "url": "/",
+      "as": "the three grounds, one page, nobody signed in",
+      "viewport": {
+        "id": "wide",
+        "width": 1900,
+        "height": 1080
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-wide-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-wide-full.png",
+      "contentBottom": 2068,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 674,
+      "headings": [],
+      "errors": []
+    },
+    {
+      "task": "vib-002",
+      "subject": "ground",
+      "state": "door",
+      "page": "ground",
+      "url": "/",
+      "as": "the three grounds, one page, nobody signed in",
+      "viewport": {
+        "id": "phone",
+        "width": 390,
+        "height": 844
+      },
+      "viewportPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-phone-viewport.png",
+      "fullPng": "dev-docs/tasks/phase-81-the-look-is-the-product/verdicts/vib-002/2026-08-31/ground-door/ground-phone-full.png",
+      "contentBottom": 1877,
+      "canScroll": true,
+      "unreachablePx": 0,
+      "textChars": 674,
+      "headings": [],
+      "errors": []
+    }
+  ]
+}

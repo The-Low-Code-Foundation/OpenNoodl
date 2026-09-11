@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 *Describes NodeGX 0.1.0.*

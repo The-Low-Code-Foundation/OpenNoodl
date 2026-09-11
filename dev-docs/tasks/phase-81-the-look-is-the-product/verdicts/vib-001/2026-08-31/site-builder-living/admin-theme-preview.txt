@@ -1,0 +1,17 @@
+Site admin
+Pages
+Theme & settings
+Messages
+View site
+Sign out
+Theme and settings
+Site name
+Home page slug
+Save settings
+Theme
+Primary colour
+Background colour
+Text colour
+Font family
+Save theme
+Back to pages

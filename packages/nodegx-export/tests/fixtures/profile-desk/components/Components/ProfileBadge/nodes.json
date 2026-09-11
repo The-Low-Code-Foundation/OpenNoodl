@@ -1,0 +1,52 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "pr0f11e5-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "badge-root",
+      "type": "Group",
+      "label": "Badge",
+      "children": [
+        "badge-text"
+      ],
+      "parameters": {
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-md)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "badge-text",
+      "type": "Text",
+      "label": "Badge name",
+      "parent": "badge-root",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "badge-profile",
+      "type": "Model2",
+      "label": "Profile object",
+      "x": 350,
+      "y": 160,
+      "parameters": {
+        "idSource": "explicit",
+        "modelId": "profile",
+        "properties": "name"
+      }
+    }
+  ],
+  "visualRoots": [
+    "badge-root"
+  ]
+}

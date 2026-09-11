@@ -1,0 +1,217 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2b8d4e0-5a3c-4d9f-8b2e-000000000081",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "loadABtn",
+      "fromProperty": "onClick",
+      "toId": "setChunkA",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "partA",
+      "fromProperty": "savedValue",
+      "toId": "setChunkA",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "loadBBtn",
+      "fromProperty": "onClick",
+      "toId": "setChunkB",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "partB",
+      "fromProperty": "savedValue",
+      "toId": "setChunkB",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "chunkVar",
+      "fromProperty": "value",
+      "toId": "parser",
+      "toProperty": "chunk"
+    },
+    {
+      "fromId": "parseBtn",
+      "fromProperty": "onClick",
+      "toId": "parser",
+      "toProperty": "parse"
+    },
+    {
+      "fromId": "clearParserBtn",
+      "fromProperty": "onClick",
+      "toId": "parser",
+      "toProperty": "clear"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "values",
+      "toId": "valuesText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "valueCount",
+      "toId": "valueCountText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "pendingCharacters",
+      "toId": "pendingText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "isComplete",
+      "toId": "isCompleteText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "error",
+      "toId": "parserErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "parser",
+      "fromProperty": "success",
+      "toId": "setStatusParsed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "parsedConst",
+      "fromProperty": "savedValue",
+      "toId": "setStatusParsed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "loadTokABtn",
+      "fromProperty": "onClick",
+      "toId": "setTokA",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "tokA",
+      "fromProperty": "savedValue",
+      "toId": "setTokA",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "loadTokBBtn",
+      "fromProperty": "onClick",
+      "toId": "setTokB",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "tokB",
+      "fromProperty": "savedValue",
+      "toId": "setTokB",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "tokenVar",
+      "fromProperty": "value",
+      "toId": "acc",
+      "toProperty": "chunk"
+    },
+    {
+      "fromId": "addTokenBtn",
+      "fromProperty": "onClick",
+      "toId": "acc",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "acc",
+      "fromProperty": "accumulated",
+      "toId": "accumulatedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "acc",
+      "fromProperty": "messageCount",
+      "toId": "messageCountText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "acc",
+      "fromProperty": "lastMessage",
+      "toId": "lastMessageText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "acc",
+      "fromProperty": "messageReceived",
+      "toId": "setStatusMessage",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "messageConst",
+      "fromProperty": "savedValue",
+      "toId": "setStatusMessage",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "tickConst",
+      "fromProperty": "savedValue",
+      "toId": "buffer",
+      "toProperty": "data"
+    },
+    {
+      "fromId": "pushBtn",
+      "fromProperty": "onClick",
+      "toId": "buffer",
+      "toProperty": "add"
+    },
+    {
+      "fromId": "flushBtn",
+      "fromProperty": "onClick",
+      "toId": "buffer",
+      "toProperty": "flush"
+    },
+    {
+      "fromId": "buffer",
+      "fromProperty": "bufferSize",
+      "toId": "bufferSizeText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "buffer",
+      "fromProperty": "flushedData",
+      "toId": "flushedDataText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "buffer",
+      "fromProperty": "flushCount",
+      "toId": "flushCountText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "buffer",
+      "fromProperty": "droppedItems",
+      "toId": "droppedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "buffer",
+      "fromProperty": "flushed",
+      "toId": "setStatusFlushed",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "flushedConst",
+      "fromProperty": "savedValue",
+      "toId": "setStatusFlushed",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "statusVar",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    }
+  ]
+}

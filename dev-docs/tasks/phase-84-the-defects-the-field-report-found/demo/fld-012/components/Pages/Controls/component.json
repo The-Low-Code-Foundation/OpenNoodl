@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "2ae40644-dfb9-5257-8ffa-88d8f7085503",
+  "name": "Controls",
+  "path": "/Pages/Controls",
+  "type": "visual",
+  "created": "2026-09-10T00:00:00.000Z",
+  "modified": "2026-09-10T00:00:00.000Z",
+  "modifiedBy": "fld-012"
+}

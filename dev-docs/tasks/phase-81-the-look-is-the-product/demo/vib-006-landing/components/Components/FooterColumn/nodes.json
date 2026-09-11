@@ -1,0 +1,106 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e1f6ffe0-26a0-5ed5-80e1-2e4c7cb547c8",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "fc_root",
+      "type": "Group",
+      "label": "Footer column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)"
+      },
+      "children": [
+        "fc_heading",
+        "fc_a",
+        "fc_b",
+        "fc_c"
+      ]
+    },
+    {
+      "id": "fc_heading",
+      "type": "Text",
+      "label": "heading",
+      "parameters": {
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--foreground)",
+        "text": "Heading"
+      },
+      "parent": "fc_root"
+    },
+    {
+      "id": "fc_a",
+      "type": "Text",
+      "label": "a",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "text": "Link"
+      },
+      "parent": "fc_root"
+    },
+    {
+      "id": "fc_b",
+      "type": "Text",
+      "label": "b",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "text": "Link"
+      },
+      "parent": "fc_root"
+    },
+    {
+      "id": "fc_c",
+      "type": "Text",
+      "label": "c",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "text": "Link"
+      },
+      "parent": "fc_root"
+    },
+    {
+      "id": "fc_inputs",
+      "type": "Component Inputs",
+      "label": "What varies per instance",
+      "x": 40,
+      "y": 40,
+      "ports": [
+        {
+          "name": "heading",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "a",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "b",
+          "plug": "output",
+          "type": "*"
+        },
+        {
+          "name": "c",
+          "plug": "output",
+          "type": "*"
+        }
+      ]
+    }
+  ],
+  "visualRoots": [
+    "fc_root"
+  ]
+}

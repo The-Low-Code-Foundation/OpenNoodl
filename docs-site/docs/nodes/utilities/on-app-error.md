@@ -58,6 +58,12 @@ Put one in the app's root component to make failures visible at all — log them
 - Expecting one instance to consume an error so another does not see it; every instance whose Filter matches fires.
 - Using it in place of a node's own `Failure` output when the error is expected and the graph should branch on it where it happens.
 
+## Examples
+
+**Catch the errors nobody wired a Failure port for**
+
+Per-node `Failure` outputs cover the errors an author expected and wanted to branch on where they happen. This node covers everything else, which in a real app is most of them — no library will ever carry complete failure ports on every node type, and without a boundary the only record of an unwired error is a console line nobody reads in a deployed app. It subscribes as soon as it is created, so errors raised while the graph is still starting are caught rather than missed during setup, which is exactly the window where a misconfigured backend or a missing secret shows up. The ordering guarantee is what makes it usable: the value outputs — Message, Code, Node Type, Node Id, Component Name — are updated BEFORE the `error` signal fires, so reading them on the pulse always describes this error rather than the previous one. Filter is blank here, and blank is the right default for a boundary; a code prefix narrows it to one node type or one specific error, which is what you want for a second, more specific handler rather than for the catch-all. Error Object wires straight into a string input and renders as JSON, which is what to send to a logging service. Put one of these at the root of the app, not one per page: a boundary that only exists on the screen where you were debugging catches nothing on the screen where the bug actually reaches a user.
+
 ## Related nodes
 
 [Run Tasks](../data/run-tasks.md), [Expression](../custom-code/expression.md), [Function](../custom-code/java-script-function.md)

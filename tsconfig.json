@@ -34,7 +34,17 @@
       // this program) could not resolve it: 18 TS2307s in files nobody had
       // touched. Same two mappings, verbatim.
       "@noodl-versioning": ["./packages/noodl-editor/src/editor/src/versioning/index.ts"],
-      "@noodl-versioning/*": ["./packages/noodl-editor/src/editor/src/versioning/*"]
+      "@noodl-versioning/*": ["./packages/noodl-editor/src/editor/src/versioning/*"],
+      // …and the same thing a second time, for the same reason. HLS-001 made
+      // `@nodegx/export` publishable, which moved its `main`/`types` from `src/index.ts`
+      // to `dist/`, and put its subpaths behind an `exports` map. This program resolves
+      // at `moduleResolution: node`, which does not read an `exports` map at all — so
+      // `exportBadge.ts`'s `@nodegx/export/ledger` stopped resolving outright and
+      // `@nodegx/export` itself resolved only when somebody happened to have run the
+      // package's build. Two mappings, verbatim from packages/noodl-editor/tsconfig.json,
+      // which is where the editor's own program has always resolved them.
+      "@nodegx/export": ["./packages/nodegx-export/src/index.ts"],
+      "@nodegx/export/*": ["./packages/nodegx-export/src/*"]
     }
   },
   "include": [

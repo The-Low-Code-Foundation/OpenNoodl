@@ -26,6 +26,7 @@
  * the bundle fails loudly at build time (which is the good failure mode).
  */
 import path from 'path';
+import { readFile, writeFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 
 import esbuild from 'esbuild';
@@ -63,13 +64,25 @@ const shimPlugin = {
   }
 };
 
-await esbuild.build({
-  entryPoints: [path.join(HERE, 'src/cli.ts')],
+/**
+ * HLS-015 — two entry points, one configuration.
+ *
+ * `noodl-preview` renders a project in a browser and reloads it; `nodegx-deploy` writes the
+ * folder a deploy produces. They are different programs and they need **identical** shims: the
+ * deploy engine drags in the same `ProjectModel`, the same `NodeLibrary` and the same viewer node
+ * register, so a second build script would be a second copy of the four shims below, drifting
+ * from the day it was written.
+ */
+const ENTRIES = [
+  { entry: 'src/cli.ts', out: 'dist/noodl-preview.cjs' },
+  { entry: 'src/deploy-cli.ts', out: 'dist/nodegx-deploy.cjs' }
+];
+
+const shared = {
   bundle: true,
   platform: 'node',
   target: 'node18',
   format: 'cjs',
-  outfile: path.join(HERE, 'dist/noodl-preview.cjs'),
   sourcemap: false,
   // chokidar loads the optional native `fsevents` binding on macOS, which
   // cannot be bundled. It is a declared dependency, so leaving it external is
@@ -95,4 +108,46 @@ await esbuild.build({
   },
   plugins: [shimPlugin],
   logLevel: 'warning'
-});
+};
+
+for (const { entry, out } of ENTRIES) {
+  await esbuild.build({
+    ...shared,
+    entryPoints: [path.join(HERE, entry)],
+    outfile: path.join(HERE, out)
+  });
+}
+
+/**
+ * HLS-015 / register row C68 — the bundle needs a `package.json` beside it, and that is not
+ * housekeeping.
+ *
+ * `@noodl/platform-node`'s `getAppPath()` looks for a `package.json` in `process.cwd()` and then
+ * in its own `__dirname`, and **throws a bare string at module scope** when it finds neither:
+ *
+ *   [@noodl/platform] Cannot find package.json, to get the build version. (…/dist)
+ *
+ * That happens in the `PlatformNode` constructor, which runs on import, before any code in this
+ * package has a chance to catch anything — and a thrown string has no `stack`, so a caller that
+ * reports `error.stack` reports `undefined`. Running the bundle from any folder that is not itself
+ * an npm package (`/tmp`, a project directory, `~`) hits it every time, which is the normal case
+ * for a CLI. One file makes `__dirname` answer, whatever the caller's working directory is.
+ *
+ * ⚠️ It does **not** make `getAppPath()` right — `process.cwd()` still wins when the caller happens
+ * to stand in a package. That is why the deploy states its runtime folder explicitly through
+ * `setExternalFolderPath()` instead of trusting this.
+ */
+const pkg = JSON.parse(await readFile(path.join(HERE, 'package.json'), 'utf8'));
+await writeFile(
+  path.join(HERE, 'dist', 'package.json'),
+  JSON.stringify(
+    {
+      name: pkg.name,
+      version: pkg.version,
+      private: true,
+      description: 'Build metadata for the bundled CLIs. See build.mjs — @noodl/platform reads it.'
+    },
+    null,
+    2
+  ) + '\n'
+);

@@ -1,6 +1,11 @@
 import { NodeLibrary } from '@noodl-models/nodelibrary';
 import { AggregateRecordsAdapter } from '@noodl-models/NodeTypeAdapters/AggregateRecordsAdapter';
 import { CloudFunctionAdapter } from '@noodl-models/NodeTypeAdapters/CloudFunctionAdapter';
+import {
+  CloudQueryPortsAdapter,
+  CloudRecordPortsAdapter,
+  CloudScriptPortsAdapter
+} from '@noodl-models/NodeTypeAdapters/CloudDynamicPortsAdapter';
 import { FilterRecordsAdapter } from '@noodl-models/NodeTypeAdapters/FilterRecordsAdapter';
 import { NamedPortsAdapter } from '@noodl-models/NodeTypeAdapters/NamedPortsAdapter';
 import { PageInputsAdapter } from '@noodl-models/NodeTypeAdapters/PageInputsAdapter';
@@ -25,7 +30,14 @@ const _adapters = {
   // WFA-009. The key is a label; unlike its neighbours this adapter is bound to
   // no node type — it acts on whatever the node library says has a
   // `namedports/list` rule.
-  NamedPorts: () => NamedPortsAdapter
+  NamedPorts: () => NamedPortsAdapter,
+  // SB-017. Three more labels, for the same reason: these are bound to node
+  // types, but the types are already spoken for above (`DbCollection2` is
+  // `QueryRecordsAdapter`'s key) and this map is keyed by label, not by type.
+  // They act only inside cloud components — see the adapter's docblock.
+  CloudScriptPorts: () => CloudScriptPortsAdapter,
+  CloudRecordPorts: () => CloudRecordPortsAdapter,
+  CloudQueryPorts: () => CloudQueryPortsAdapter
 };
 
 const _listeners = {
@@ -36,6 +48,8 @@ const _listeners = {
   nodeAdded: [],
   nodeRemoved: [],
   parametersChanged: [],
+  connectionAdded: [],
+  connectionRemoved: [],
   projectLoaded: []
 };
 
@@ -74,6 +88,35 @@ EventDispatcher.instance.on(
   (e) => {
     _listeners.componentDuplicated.forEach((l) => {
       l(e.args);
+    });
+  },
+  null
+);
+
+/**
+ * SB-017 — wires, not just nodes and parameters.
+ *
+ * `CloudDynamicPortsAdapter` derives a Record node's `prop-*` ports partly from
+ * the wires attached to it (there is no schema to derive them from — see
+ * `cloudDynamicPorts.ts`), so drawing one has to be able to mint its port. No
+ * adapter listened to either event before, which is why they are added here
+ * rather than only subscribed to.
+ */
+EventDispatcher.instance.on(
+  'Model.connectionAdded',
+  (e) => {
+    _listeners.connectionAdded.forEach((l) => {
+      l(e);
+    });
+  },
+  null
+);
+
+EventDispatcher.instance.on(
+  'Model.connectionRemoved',
+  (e) => {
+    _listeners.connectionRemoved.forEach((l) => {
+      l(e);
     });
   },
   null

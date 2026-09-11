@@ -34,6 +34,8 @@ export type { PortTypeLookup, BuildInventoryInput } from './inventory';
 export { plan } from './plan';
 export type { TargetProject, PlanOptions } from './plan';
 export { apply } from './apply';
+export { copyPlannedModules, executableModuleNames, moduleCopyDecision } from './moduleGate';
+export type { ModuleCopyDecision, ModuleCopyOutcome } from './moduleGate';
 export * from './legacy';
 export { applyModelChanges } from './applyModel';
 export type { ImportSource, ImportTarget, PreparedComponent, ModelApplyResult } from './applyModel';

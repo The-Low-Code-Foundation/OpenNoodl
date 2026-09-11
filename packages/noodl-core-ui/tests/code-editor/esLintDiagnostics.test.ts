@@ -146,10 +146,21 @@ describe('javascriptDiagnostics', () => {
   });
 
   it('carries the rule name so the panel can show where a claim comes from', () => {
-    const state = stateFor('Outputs.x = totl;');
+    // ⚠️ The document gained a `const total` in FUN-004. It used to be
+    // `Outputs.x = totl;` alone, where `totl` is an undefined name with nothing
+    // in scope to be a misspelling *of* — so FUN-004's message 3 now claims it,
+    // offers to create the port `totl`, and re-sources it `nodegx:ports`. That is
+    // the new module working, not a regression.
+    //
+    // This row is about provenance travelling, so it now asserts on a finding
+    // FUN-004 deliberately declines: `totl` beside `total` is a typo, and
+    // "create an input port for it" would mint a real port for a slip on a click
+    // the user was invited to make. It keeps ESLint's own message and source.
+    const state = stateFor('const total = 1;\nOutputs.x = totl;');
     const [diagnostic] = javascriptDiagnostics(state, 'function');
 
     expect(diagnostic.source).toBe('eslint:no-undef');
+    expect(diagnostic.message).toContain('is not defined');
   });
 
   it('leaves JSON to the parse-tree walk', () => {

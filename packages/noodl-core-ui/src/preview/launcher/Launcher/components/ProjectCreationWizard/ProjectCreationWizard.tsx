@@ -22,7 +22,8 @@ import { ProjectBasicsStep } from './steps/ProjectBasicsStep';
 import { ReviewPlanRow, ReviewStep } from './steps/ReviewStep';
 import { ScopingMessage, ScopingStep } from './steps/ScopingStep';
 import { StylePresetStep } from './steps/StylePresetStep';
-import { WizardProvider, useWizardContext, WizardMode, WizardStep } from './WizardContext';
+import { TemplateGalleryState, TemplateStep } from './steps/TemplateStep';
+import { WizardProvider, seedWizardState, useWizardContext, WizardMode, WizardStep } from './WizardContext';
 
 // ----- Public API -----------------------------------------------------------
 
@@ -70,10 +71,23 @@ export interface ProjectCreationWizardProps {
    * CreateProjectModal.onConfirm. `mode` is appended (AIX-012) so the host can
    * tell an AI-scoped creation — which also writes docs and stashes a plan —
    * from a blank one; existing callers that ignore it behave exactly as before.
+   *
+   * FB-005 T3 appends `templateUrl`, by the same rule. 🔴 It is `''` in every mode but
+   * `'template'`, and `''` is exactly what `handleCreateProjectConfirm` has passed to
+   * `newProject` since the wizard existed — `resolveTemplateUrl` turns it into the default
+   * template. So the new argument changes nothing for the three older modes by construction,
+   * rather than by a host remembering to special-case them.
    */
-  onConfirm: (name: string, location: string, presetId: string, mode: WizardMode) => void;
+  onConfirm: (name: string, location: string, presetId: string, mode: WizardMode, templateUrl: string) => void;
   /** Open a native folder picker; returns the chosen path or null if cancelled */
   onChooseLocation?: () => Promise<string | null>;
+  /**
+   * FIX-021 — the folder the Location field starts on, read fresh each time the
+   * wizard opens. Omitted (or empty) keeps the original behaviour: an empty
+   * field, and `Browse…` the only way past the basics step. The host decides
+   * what this is — the wizard never guesses a path of its own.
+   */
+  initialLocation?: string;
   /** Style presets to show in the preset picker step */
   presets?: PresetDisplayInfo[];
   /**
@@ -84,6 +98,31 @@ export interface ProjectCreationWizardProps {
   aiAvailability?: AiAvailability;
   /** AIX-012 — the live scoping conversation. Required for the 'ai' mode. */
   scoping?: ScopingState;
+  /**
+   * FB-005 T3 — the template shelf, for the `'template'` mode's picker. The host owns the
+   * fetch: `templateRegistry` is an editor model and core-ui may not import one.
+   *
+   * ⚠️ Omitted reads as *still loading*, not as *empty*. See `TemplateStep`.
+   */
+  templates?: TemplateGalleryState;
+  /**
+   * REL-013 — open straight into template mode with this row already chosen.
+   *
+   * 🔴 **THIS IS WHAT KEEPS THE TEMPLATES TAB OFF A SECOND CREATION ROUTE.** Choosing a row on
+   * the launcher's Templates tab opens *this* wizard, seeded — so the creation still runs through
+   * `onConfirm` with `mode === 'template'`, which is the exact condition the host's
+   * `templateNeedsBackend` lookup branches on (SBR-001). A tab that created projects itself would
+   * have had to re-derive that, and the one that forgot would ship a backend-less project from a
+   * template that needs one.
+   *
+   * ⚠️ Seeds `currentStep: 'basics'` and NOT `'template'`: the name and the folder are still
+   * required, and `getStepSequence('template')` puts the picker after them — so somebody who
+   * arrived with a template chosen still walks past the picker (where they can change their
+   * mind) and Review (where the choice is named) before anything is created.
+   *
+   * Empty or omitted leaves the wizard exactly as it was: entry screen, no mode, no template.
+   */
+  initialTemplateUrl?: string;
 }
 
 // ----- Step metadata --------------------------------------------------------
@@ -92,6 +131,7 @@ const STEP_TITLES: Record<WizardStep, string> = {
   entry: 'Create New Project',
   basics: 'Project Basics',
   preset: 'Style Preset',
+  template: 'Choose a Template',
   scoping: 'What are we building?',
   review: 'Review'
 };
@@ -99,7 +139,8 @@ const STEP_TITLES: Record<WizardStep, string> = {
 const MODE_LABELS: Record<WizardMode, string> = {
   quick: 'Quick Start',
   guided: 'Guided Setup',
-  ai: 'Start with AI'
+  ai: 'Start with AI',
+  template: 'From a Template'
 };
 
 /** Steps where the Back button should be hidden (entry has no "back") */
@@ -111,10 +152,18 @@ interface WizardInnerProps extends Omit<ProjectCreationWizardProps, 'isVisible'>
   presets: PresetDisplayInfo[];
 }
 
-function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailability, scoping }: WizardInnerProps) {
+function WizardInner({
+  onClose,
+  onConfirm,
+  onChooseLocation,
+  presets,
+  aiAvailability,
+  scoping,
+  templates
+}: WizardInnerProps) {
   const { state, goNext, goBack, canProceed } = useWizardContext();
 
-  const { currentStep, mode, projectName, location, selectedPresetId } = state;
+  const { currentStep, mode, projectName, location, selectedPresetId, selectedTemplateUrl } = state;
 
   // Determine if this is the final step before creation
   const isLastStep = currentStep === 'review' || (mode === 'quick' && currentStep === 'basics');
@@ -158,7 +207,9 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
   const handleNext = () => {
     if (isLastStep) {
       // Fire creation with the wizard state values
-      onConfirm(projectName.trim(), location, selectedPresetId, mode);
+      // 🔴 `''` unless the template picker actually ran. A leftover URL from a mode the user
+      // backed out of would create a project from a template they abandoned.
+      onConfirm(projectName.trim(), location, selectedPresetId, mode, mode === 'template' ? selectedTemplateUrl : '');
     } else {
       goNext();
     }
@@ -173,6 +224,8 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
         return <ProjectBasicsStep onChooseLocation={onChooseLocation ?? (() => Promise.resolve(null))} />;
       case 'preset':
         return <StylePresetStep presets={presets} />;
+      case 'template':
+        return <TemplateStep templates={templates} />;
       case 'scoping':
         return scoping ? (
           <ScopingStep
@@ -191,6 +244,9 @@ function WizardInner({ onClose, onConfirm, onChooseLocation, presets, aiAvailabi
             presets={presets}
             scopeOutline={mode === 'ai' ? scoping?.outline : undefined}
             planRows={mode === 'ai' ? scoping?.planRows ?? [] : undefined}
+            template={
+              mode === 'template' ? templates?.items.find((t) => t.url === selectedTemplateUrl) : undefined
+            }
           />
         );
     }
@@ -269,14 +325,27 @@ export function ProjectCreationWizard({
   onChooseLocation,
   presets,
   aiAvailability,
-  scoping
+  scoping,
+  templates,
+  initialLocation,
+  initialTemplateUrl
 }: ProjectCreationWizardProps) {
   if (!isVisible) return null;
 
-  // Key the provider on `isVisible` so state fully resets each time the
-  // modal opens — no stale name/location from the previous session.
+  // `isVisible === false` unmounts this whole subtree, so state fully resets each time the modal
+  // opens — no stale name, folder or template from the previous session.
+  //
+  // FIX-021 — which is also why the seed is a prop rather than something the provider remembers:
+  // the reset is deliberate, and the fields that should survive it come back in from the host,
+  // freshly read. `seedWizardState` (in `WizardContext`) is what turns those props into the
+  // partial, including REL-013's template mode; it lives there so it can be graded without
+  // compiling this file's step components. See its own note for why it returns `undefined`
+  // rather than an empty object.
   return (
-    <WizardProvider key="project-creation-wizard">
+    <WizardProvider
+      key="project-creation-wizard"
+      initialState={seedWizardState({ initialLocation, initialTemplateUrl })}
+    >
       <WizardInner
         onClose={onClose}
         onConfirm={onConfirm}
@@ -284,6 +353,7 @@ export function ProjectCreationWizard({
         presets={presets ?? []}
         aiAvailability={aiAvailability}
         scoping={scoping}
+        templates={templates}
       />
     </WizardProvider>
   );

@@ -150,7 +150,7 @@ const SetGlobalStoreNodeDefinition: NodeDefinitionOptions = {
       type: 'string',
       displayName: 'Error',
       description: 'Why the last write failed; blank once a write succeeds',
-      group: 'Events',
+      group: 'Error',
       getter: function (this: SetGlobalStoreInstance) {
         return this._internal.error;
       }

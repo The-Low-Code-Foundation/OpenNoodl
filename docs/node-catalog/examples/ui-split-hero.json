@@ -1,0 +1,251 @@
+{
+  "id": "ui-split-hero",
+  "title": "Split hero: copy column and image, with a display headline that looks set rather than typed",
+  "description": "Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode \"explicit\" plus a width, a height and objectFit \"cover\" — without explicit sizing those three ports are inert and the photo renders at its natural size.",
+  "demonstrates": [
+    "Group",
+    "Text",
+    "Image",
+    "net.noodl.controls.button"
+  ],
+  "components": [
+    {
+      "name": "/Components/Hero",
+      "nodes": [
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Hero band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "cols"
+          ]
+        },
+        {
+          "id": "cols",
+          "type": "net.noodl.visual.columns",
+          "label": "Shell (2-up, collapses)",
+          "parameters": {
+            "layoutString": "1 1",
+            "marginX": {
+              "value": 48,
+              "unit": "px"
+            },
+            "mediumBreakpoint": {
+              "value": 900,
+              "unit": "px"
+            },
+            "mediumLayout": "1",
+            "smallBreakpoint": {
+              "value": 640,
+              "unit": "px"
+            },
+            "smallLayout": "1"
+          },
+          "parent": "shell",
+          "children": [
+            "copy",
+            "media"
+          ]
+        },
+        {
+          "id": "copy",
+          "type": "Group",
+          "label": "Copy column",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-6)"
+          },
+          "parent": "cols",
+          "children": [
+            "eyebrow",
+            "headline",
+            "lead",
+            "actions"
+          ]
+        },
+        {
+          "id": "eyebrow",
+          "type": "Text",
+          "label": "Eyebrow",
+          "parameters": {
+            "text": "Small batch · Made in Somerset",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "letterSpacing": "var(--tracking-widest)",
+            "textTransform": "uppercase",
+            "color": "var(--primary)"
+          },
+          "parent": "copy"
+        },
+        {
+          "id": "headline",
+          "type": "Text",
+          "label": "Display headline",
+          "parameters": {
+            "text": "Objects that earn their place.",
+            "fontSize": "var(--display-lg)",
+            "fontWeight": "var(--font-bold)",
+            "lineHeight": "var(--leading-none)",
+            "letterSpacing": "var(--tracking-tighter)",
+            "color": "var(--foreground)"
+          },
+          "parent": "copy"
+        },
+        {
+          "id": "lead",
+          "type": "Text",
+          "label": "Lead",
+          "parameters": {
+            "text": "One paragraph that says what this is, in the product's own voice. Concrete nouns and real numbers read as designed; adjectives do not.",
+            "fontSize": "var(--text-lg)",
+            "lineHeight": "var(--leading-relaxed)",
+            "color": "var(--muted-foreground)",
+            "maxWidth": {
+              "value": 520,
+              "unit": "px"
+            }
+          },
+          "parent": "copy"
+        },
+        {
+          "id": "actions",
+          "type": "Group",
+          "label": "Actions",
+          "parameters": {
+            "flexDirection": "row",
+            "columnGap": "var(--space-3)",
+            "sizeMode": "contentSize",
+            "paddingTop": "var(--space-2)"
+          },
+          "parent": "copy",
+          "children": [
+            "cta",
+            "secondary"
+          ]
+        },
+        {
+          "id": "cta",
+          "type": "net.noodl.controls.button",
+          "label": "Primary CTA",
+          "parameters": {
+            "label": "Shop the collection",
+            "backgroundColor": "var(--primary)",
+            "color": "var(--primary-foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "none",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "actions"
+        },
+        {
+          "id": "secondary",
+          "type": "net.noodl.controls.button",
+          "label": "Secondary CTA",
+          "parameters": {
+            "label": "Our story",
+            "backgroundColor": "transparent",
+            "color": "var(--foreground)",
+            "borderRadius": "var(--radius-full)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border-control)",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)",
+            "paddingTop": "var(--space-3)",
+            "paddingBottom": "var(--space-3)",
+            "fontSize": "var(--text-sm)",
+            "fontWeight": "var(--font-semibold)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "actions"
+        },
+        {
+          "id": "media",
+          "type": "Group",
+          "label": "Media column",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "justifyContent": "center",
+            "sizeMode": "explicit",
+            "height": {
+              "value": 100,
+              "unit": "%"
+            }
+          },
+          "parent": "cols",
+          "children": [
+            "photo"
+          ]
+        },
+        {
+          "id": "photo",
+          "type": "Image",
+          "label": "Hero photo",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "height": {
+              "value": 560,
+              "unit": "px"
+            },
+            "borderRadius": "var(--radius-2xl)",
+            "src": "noodl_modules/starter-imagery/work-potter.webp",
+            "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
+          },
+          "parent": "media"
+        }
+      ],
+      "connections": []
+    }
+  ]
+}

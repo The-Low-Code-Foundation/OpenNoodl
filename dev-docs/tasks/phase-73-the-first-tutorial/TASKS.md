@@ -1,0 +1,155 @@
+# Phase 73 — the tasks (TUT: the first tutorial)
+
+**Created:** 2026-08-19 out of [README.md](README.md).
+
+> 🔴 **Read [README §0](README.md) first.** The ruling this phase teaches — *async lives on the
+> canvas; blocks are synchronous computation* — is the tutorial's subject, and TUT-003 is graded on
+> whether a builder can act on it afterwards.
+
+> 🔴 **Read [README §1](README.md) before starting any task.** Three of its five findings make a
+> task smaller than its title suggests, and one (§1D) means **TUT-004 must not build an install
+> mechanism** — `LearningFolderModel.install` exists, is wired, and has a `platform` source arm that
+> production code has simply never constructed.
+
+**Tiers:** 1 = clearing the way · 2 = the contract · 3 = the artefact · 4 = delivery.
+
+**Effort:** S ≈ a session · M ≈ 2–3 · L ≈ a week+.
+
+| Task | One line | Surface | Tier | Effort | Depends on / must honour |
+|---|---|---|---|---|---|
+| **✅ [TUT-001](TUT-001-ONE-DATABASE-NOT-FORTY.md)** | **One database, not forty.** The Backend Services list renders every backend on the machine flat; show the attached one and put the rest behind a finder that searches the metadata already on disk | editor | **1** | S/M | ✅ **DONE 08-19.** R1 answered and **driven**; all six ACs close |
+| **✅ [TUT-002](TUT-002-A-CONDITION-THAT-CAN-SEE-DATA.md)** | **A condition that can see data.** The lesson vocabulary is entirely graph-structural, so a data tutorial cannot grade the data. Add snapshot-backed collection verbs, built-in DB only, and give the MCP the same ones | editor / noodl-mcp | **2** | M | ✅ **DONE 08-20 (session 3).** All seven ACs close; both fillers built and called; the sidecar half **driven against four real backends**. 🔴 Session 3 also found and fixed the harness defect that would have refused every data lesson as F2 |
+| **✅ [TUT-003](TUT-003-THE-TUTORIAL-ITSELF.md)** | **The tutorial itself.** A Visual Function that validates and shapes input, fans out on `send signal` to Create Record, and a Query that feeds the list back — the composition ruling, taught | content / editor | **3** | M | ✅ **DONE 2026-08-20 (session 5).** The bundle is `project-examples/lessons/log-a-thing/` — 8 steps, 6 graded, **F1–F4 all pass, `installable: true`**, and **driven end to end**: installed as `local-ai`, the wrong wiring grades 5/6 and the right one 6/6, and the data step was **observed red on a complete graph** |
+| **🟡 [TUT-004](TUT-004-ONE-CLICK-FROM-THE-PANEL.md)** | **One click from the panel.** The community panel installs a bundle; the web page keeps its download link. Build the caller, not the mechanism | editor / platform | **4** | S/M | 🟡 **BUILT + SPECCED 08-20 (s6).** ✅ **R2 answered: `curated`.** 7 of 8 ACs closed with readings; **AC1/AC8 need the drive**. 🔴 The task file's *"the same URL"* was **wrong** — `project_url` is unconstrained free text and `0011` had already ruled "Open in editor is deliberately NOT here" |
+
+---
+
+## Status
+
+- **✅ TUT-001 built 2026-08-19 (session 1).** `backendVisibility.ts` + a finder dialog; the two
+  flat `.map()`s are gone. **40 specs** in `tests-unit/tut-001/`, `test:main` **265/4249** green,
+  `typecheck:editor` clean, **five controls verified red**, `test:ci` at floor (**2849 / 10 @
+  39393**, same 10 by name). ✅ **Driven** against the seven real backends on this machine — all
+  five written-in-advance predictions held, and R1's claim end to end: the line named the hidden
+  running backend, two clicks stopped it, **and `lsof` confirmed the port dead**.
+- **R1 is answered** (README §3): the collapsed line is `1 attached · 6 others, 1 running` and the
+  finder draws the **same** `LocalBackendCard`, so Stop is two interactions away. ✅ **R3 answered
+  2026-08-20** (session 4). ✅ **R2 answered 2026-08-20** (session 6) — `curated`, and see the
+  TUT-004 entry below for why the question turned out to be smaller than it looked.
+- **🟡 TUT-002 session 2 (2026-08-20) — the CONTRACT, not the feature.** Three verbs
+  (`collectionExists` / `hasColumns` / `rowCountAtLeast`), the evaluator arms, the three-way refusal
+  (`refused` / `unavailable` / absent) and the F1 `unreachable-collection` check. **31 specs**,
+  `test:main` **270 / 4381** green, `typecheck:editor` exit 0, **6 controls verified red**.
+  🔴 The green suite was coverage of a contract no production path exercised.
+- **✅ TUT-002 session 3 (2026-08-20) — the callers.** `lessondatabase.ts` (pure core, one reading,
+  two transports) + `lessondatabase.live.ts` + `noodl-mcp`'s `lessonDatabase.ts`; `checkMyWork` and
+  the lesson layer both read a snapshot; `verifyLessonBundle` now supplies `knownCollections` from
+  both projects; the MCP brief documents the three verbs and a spec makes an undocumented verb
+  impossible. **70 specs** in `tests-unit/tut-002/` + 4 in `noodl-mcp`, **8 controls red-then-restored**,
+  `test:main` **279/280 suites · 4538/4539** (the one failure is a peer's untracked
+  `useCommunityPeople.ts`), `typecheck:editor` and `typecheck:mcp` exit 0, `noodl-mcp` jest
+  **55/648 green**, `test:ci` **2849 specs / 10 failures @ 39393** — the floor, same 10 by name.
+  🔴 **The session's own finding:** a correct data lesson was about to be refused as **F2
+  dead-on-solution** by the bundle harness, invisibly to all 31 of session 2's specs. Fixed.
+
+- **🟡 TUT-003 session 4 (2026-08-20) — R3 answered, and the gate that would have refused the answer.**
+  🔴 **R3 was not a preference; one arm was unimplemented.** A backend lives at `~/.noodl/backends/<id>`,
+  a bundle is a project directory, `LearningFolderModel.install` has no database handling and nothing
+  in `src/` seeds a backend — so a bundle **cannot** ship a collection. Richard ruled **learner
+  creates it**.
+  🔴 **The session's own finding, and it is TUT-002's shape again one layer out:** `check_lesson
+  --backend_id` hands **one** live snapshot to *both* the starter and the solution context, so any
+  step whose conditions are all data conditions read as F2′ `already-satisfied-in-starter` — which is
+  precisely AC5's step. TUT-002's 70 specs could not see it because they supply a snapshot to the
+  solution alone, and that is not the shape the only real caller has. Fixed in **`b5058f3b`**;
+  **6 specs** in `tests-unit/tut-003/`, **3 verified red** with the guard disabled, two known-firing
+  controls held. `typecheck:mcp` exit 0; `tut-002 + tut-003` **76 tests / 6 suites** green.
+  ⚠️ `typecheck:editor` (exit 2) and `test:main` (**3 suites unrun, 4463/4463 tests passed**) are red
+  on this tree from a **peer's** `736af592` — two `kind: "handoff"` errors in phase-72 community
+  files, zero in lesson files. Relayed; not this phase's to fix.
+  🔴 **Not yet authored: the bundle.** Every node type and port name it needs is now written down in
+  the task file rather than re-derivable — including that Create Record's terminal signal is **Done**
+  and the Visual Function's is **Success**.
+
+- **✅ TUT-003 session 5 (2026-08-20) — the bundle exists, and it was driven.**
+  [`project-examples/lessons/log-a-thing/`](../../../project-examples/lessons/log-a-thing/): 35 files,
+  three components (the Repeater's template names a component, so a list is never one), eight steps of
+  which six are graded, every condition addressed by `#Label` so **F3 raises not one warning**.
+  Harness on the shipped artefact: **F1 pass · F2 pass · F3 pass · F4 pass, `ok` and `installable` true**,
+  solution `valid: true, rendered: true, drawn: 5, renderDefects: []`. Two controls fired red
+  (rows deleted → `dead-on-solution` step 7; `prop-title` → `prop-titel` → `dead-on-solution` step 5).
+  Drive: install reported `Checked as local-ai: F1, F2, F3 passed`, the card renders in Learning and is
+  **absent** from the Projects picker, the lesson's own backend is a **different** one from the
+  authoring project's, and pressing **Log it** in the preview really wrote a row.
+  🔴 **The harness was run from SOURCE.** `packages/noodl-mcp/dist` was built 07:26 and `b5058f3b`
+  landed 08:58 — probed with a known-firing control, the dist has the old F2′ and not the new guard, so
+  `check_lesson` through the registered server would have refused this lesson for the defect session 4 fixed.
+  🔴 **Its own finding:** the derived starter carried the **solution's project `id`**, and so did every
+  installed copy — `findReusableBackend` matches on name plus *ownership by project id*, so that is
+  README §1B with the ownership check intact and useless. Removed from the bundle; the general fix is one
+  line inside `LearningFolderModel.install` — **TUT-004**.
+  ⚠️ Also: the lesson format's Markdown has **no blockquote** (found by looking at a screenshot, with every
+  gate green), and a **completed** task card's title fails AA in both themes (1.76:1 / 2.47:1) — the lesson
+  layer's styling, not the bundle's.
+  ⚠️ **This session changed no source.** The only repo change is the new bundle directory and these docs,
+  so no gate can have regressed from it.
+
+- **🟡 TUT-004 session 6 (2026-08-20) — built, specced, not yet driven.**
+  **✅ R2 answered — `curated`**, and the question was smaller than it looked: `articles` has **no
+  author column and no authoring UI**, so a member-authored tutorial cannot exist yet. TUT-003
+  still installs as **`local-ai`** because its manifest claims `authoredBy: "ai"` and a claim may
+  only ever tighten — measured: `Checked as local-ai: F1, F2, F3 passed; F4 not checked.`
+  🔴 **The task file's platform paragraph was wrong and a measurement says so.** `project_url` is
+  unconstrained free text on any host, and `0011`'s own migration had already ruled that *"'Open in
+  editor' is deliberately NOT here"*. So the bundle is a **new table** (`tutorial_bundles`,
+  migration `0017`) served at `/api/v1/community/tutorials/:slug/bundle`, reusing
+  `shelf_items.payload`'s jsonb transport rather than inventing a second one. **The web page is
+  untouched** (AC6).
+  **Editor:** `preflight()` extracted from `install()` so AC3's *"shown before it lands"* has **one**
+  scorer and not two; `lessonplatforminstall.ts` fetches → stages → installs → records
+  `{kind:'platform', url}`; `reset` split into `reset`/`resetFrom` so local and platform share one
+  repair. **`Tutorials.tsx` is its own file so jest can grade it** — `CommunityPanel.tsx` imports
+  `common/Icon` and cannot be loaded by this runner at all.
+  **Measured:** 79 specs in `tests-unit/tut-004/` + 31 on the platform; **7 mutations verified red**;
+  `test:main` **295 suites / 4831 tests / 0 failures, exit 0**; `typecheck:editor` and
+  `:editor-tests` exit 0; platform suite **1257 passed / 8 skipped, exit 0**, `tsc` exit 0. The **real
+  35-file bundle** installs through the **real editor code** on a **real filesystem**, and is
+  published to the local instance and served over the real route (200, 65 KB, nesting five deep).
+  🔴 **Its own finding:** `tutorial_bundle_has_files` was written as `jsonb_typeof(payload->'files')
+  = 'object'`, which is **NULL** when the key is absent — **and a CHECK constraint passes on NULL**.
+  A payload with no `files` key went through the gate named after that shape and was caught two
+  constraints later by accident. Every constraint spec now asserts the constraint **by name**.
+  🔴 **Four pre-existing gates refused to wave the new route through** — the NAT-006 contract sweep,
+  the D15 visibility inventory, the UNI-005 data census and `uni-001/session-readers`. All four are
+  answered rather than bypassed; the last one's answer is that this is **the first session reader
+  where a token can only make the editor do *less***.
+  ⚠️ **Left: the drive.** Nobody has clicked the row in a running editor. It needs the local
+  community server, `COMMUNITY_URL` repointed (**a shared-checkout source edit — announce and
+  revert it**) and a launched editor. The predictions to check are written down in TUT-004
+  §"What is left".
+  ⚠️ **Observed and not mine:** `typecheck:core-ui` exits 2 with **44 errors**, every one in
+  `AiAssistant/`, `workflow/`, `utils/` or `CanvasOverlays/` — none in a file this session touched,
+  and it is in no gate script.
+
+## The order
+
+1. ~~**TUT-001**~~ ✅ — unforked, self-contained, and it is the thing Richard is looking at every day.
+2. ~~**TUT-002**~~ ✅ — all seven ACs close, and **R3 is answered**, so TUT-003 is blocked by
+   nothing.
+3. ~~**TUT-003**~~ ✅ — the artefact. Run it through `lessonbundleverify` **before** driving it; the
+   harness refusing a bundle is cheaper than the editor doing it. ✅ Now safe to run it *with*
+   `backend_id`, which is the only route that grades the data conditions — see session 4 in Status.
+4. **TUT-004** 🟡 — built and specced; **the drive is the remainder**, and it is the only thing
+   between this phase and closed.
+
+## What this phase borrows and must not rebuild
+
+| Already built | Where | Used by |
+|---|---|---|
+| `LearningFolderModel.install / reset / recordProgress / recordGrade` | [`learningfolder.ts`](../../../packages/noodl-editor/src/editor/src/models/learningfolder.ts) | TUT-004 |
+| The F1–F4 bundle scorecard | [`lessonbundleverify.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonbundleverify.ts) | TUT-003, TUT-004 |
+| The bundle reader, incl. `solution/` | [`lessonbundleread.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonbundleread.ts) | TUT-003 |
+| The file-backed grading context | [`lessonprojectcontext.ts`](../../../packages/noodl-editor/src/editor/src/models/lessonprojectcontext.ts) | TUT-002 |
+| The pure/live evaluator split | [`lessonevalconditions.ts`](../../../packages/noodl-editor/src/editor/src/views/lessons/lessonevalconditions.ts) + `.live.ts` | TUT-002 |
+| `activeBackendId`, `boundLocalBackend`, `projectNamesByBackend` | [`BackendServicesPanel.tsx`](../../../packages/noodl-editor/src/editor/src/views/panels/BackendServicesPanel/BackendServicesPanel.tsx) | TUT-001 |
+| The `articles` table + `projectUrl` | `nodegx-community/src/db/schema.ts` | TUT-004 |

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "e010c000-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "parameters": {
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": [
+        "gauge",
+        "readout",
+        "tray",
+        "stamp",
+        "ghost"
+      ]
+    },
+    {
+      "id": "gauge",
+      "type": "qa.gauge.Dial",
+      "label": "Dial",
+      "parent": "shell",
+      "parameters": {
+        "label": "Pressure",
+        "reading": 42,
+        "maxReading": 100,
+        "dialSize": 120,
+        "showNeedle": true,
+        "retired": "left over from an older kit version"
+      }
+    },
+    {
+      "id": "readout",
+      "type": "Text",
+      "label": "Readout",
+      "parent": "shell",
+      "parameters": {
+        "text": "waiting"
+      }
+    },
+    {
+      "id": "tray",
+      "type": "qa.gauge.Tray",
+      "label": "Tray",
+      "parent": "shell",
+      "parameters": {
+        "trayTitle": "Instruments"
+      },
+      "children": [
+        "trayText"
+      ]
+    },
+    {
+      "id": "trayText",
+      "type": "Text",
+      "parent": "tray",
+      "parameters": {
+        "text": "inside the tray"
+      }
+    },
+    {
+      "id": "stamp",
+      "type": "qa.thrower.Stamp",
+      "label": "Stamp from the kit that throws",
+      "parent": "shell",
+      "parameters": {
+        "mark": "T"
+      }
+    },
+    {
+      "id": "ghost",
+      "type": "qa.gone.Ghost",
+      "label": "Node whose kit has no code at all",
+      "parent": "shell",
+      "parameters": {}
+    },
+    {
+      "id": "counter",
+      "type": "qa.gauge.Ticker",
+      "label": "A kit LOGIC node \u2014 no React component",
+      "parameters": {
+        "seed": 7
+      }
+    },
+    {
+      "id": "showPressed",
+      "type": "NavigationShowPopup",
+      "label": "Show Pressed",
+      "parameters": {
+        "target": "/Components/Pressed"
+      }
+    },
+    {
+      "id": "showSettled",
+      "type": "NavigationShowPopup",
+      "label": "Show Settled",
+      "parameters": {
+        "target": "/Components/Settled"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

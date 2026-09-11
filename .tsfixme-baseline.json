@@ -6,13 +6,22 @@
   "exclude": [
     "packages/noodl-runtime/dist-types"
   ],
-  "commit": "7493d3bb",
+  "commit": "6288f05ba",
   "max": {
-    "TSFixme": 582,
-    "any": 415,
-    "@ts-ignore": 17,
-    "@ts-nocheck": 0,
-    "@ts-expect-error": 78
+    "src": {
+      "TSFixme": 563,
+      "any": 439,
+      "@ts-ignore": 17,
+      "@ts-nocheck": 2,
+      "@ts-expect-error": 77
+    },
+    "tests": {
+      "TSFixme": 256,
+      "any": 382,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 2,
+      "@ts-expect-error": 1
+    }
   },
   "byPackage": {
     "nodegx-backend-contract": {
@@ -24,24 +33,38 @@
     },
     "nodegx-backend": {
       "TSFixme": 0,
-      "any": 25,
+      "any": 46,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "nodegx-export": {
+      "TSFixme": 0,
+      "any": 132,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 4,
+      "@ts-expect-error": 0
+    },
+    "nodegx-node-kit-types": {
+      "TSFixme": 0,
+      "any": 32,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
     "noodl-core-ui": {
       "TSFixme": 4,
-      "any": 19,
+      "any": 21,
       "@ts-ignore": 6,
       "@ts-nocheck": 0,
-      "@ts-expect-error": 11
+      "@ts-expect-error": 13
     },
     "noodl-editor": {
-      "TSFixme": 526,
-      "any": 128,
+      "TSFixme": 760,
+      "any": 180,
       "@ts-ignore": 6,
       "@ts-nocheck": 0,
-      "@ts-expect-error": 60
+      "@ts-expect-error": 58
     },
     "noodl-git": {
       "TSFixme": 0,
@@ -52,7 +75,7 @@
     },
     "noodl-mcp": {
       "TSFixme": 0,
-      "any": 2,
+      "any": 14,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -72,7 +95,7 @@
       "@ts-expect-error": 0
     },
     "noodl-preview": {
-      "TSFixme": 3,
+      "TSFixme": 6,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -80,7 +103,7 @@
     },
     "noodl-runtime": {
       "TSFixme": 0,
-      "any": 86,
+      "any": 110,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -94,21 +117,21 @@
     },
     "noodl-viewer-cloud": {
       "TSFixme": 0,
-      "any": 17,
+      "any": 42,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
     "noodl-viewer-react": {
       "TSFixme": 38,
-      "any": 105,
+      "any": 167,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 4
     },
     "scripts": {
       "TSFixme": 0,
-      "any": 2,
+      "any": 46,
       "@ts-ignore": 1,
       "@ts-nocheck": 0,
       "@ts-expect-error": 2
@@ -206,6 +229,153 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/nodegx-backend/tests/def-042-detached-emit.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-backend/tests/def005-membership.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-backend/tests/vib001-members.poverty.look.ts": {
+      "TSFixme": 0,
+      "any": 8,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-backend/tests/vib007-m3-measure.look.ts": {
+      "TSFixme": 0,
+      "any": 4,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-backend/tests/vib007-v28.look.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-backend/tests/vib007-v32.look.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/src/analyze/plan.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/src/emit/component.ts": {
+      "TSFixme": 0,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 2,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/src/parse/parseProject.ts": {
+      "TSFixme": 0,
+      "any": 12,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/animation-pair.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/filter-records.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/hls004-an-export-that-builds.test.ts": {
+      "TSFixme": 0,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 1,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/on-app-error.test.ts": {
+      "TSFixme": 0,
+      "any": 8,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/run-tasks.test.ts": {
+      "TSFixme": 0,
+      "any": 9,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/script.test.ts": {
+      "TSFixme": 0,
+      "any": 31,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 1,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/sse.test.ts": {
+      "TSFixme": 0,
+      "any": 18,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/streaming-trio.test.ts": {
+      "TSFixme": 0,
+      "any": 19,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/subscribe-to-changes.test.ts": {
+      "TSFixme": 0,
+      "any": 15,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/visual-roots.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-export/tests/websocket.test.ts": {
+      "TSFixme": 0,
+      "any": 10,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/nodegx-node-kit-types/src/index.d.ts": {
+      "TSFixme": 0,
+      "any": 32,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-core-ui/.storybook/main.ts": {
       "TSFixme": 0,
       "any": 2,
@@ -230,6 +400,13 @@
     "packages/noodl-core-ui/src/components/common/ErrorBoundary/ErrorBoundary.tsx": {
       "TSFixme": 0,
       "any": 4,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-core-ui/src/components/community/Community.stories.tsx": {
+      "TSFixme": 0,
+      "any": 2,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -281,7 +458,7 @@
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
-      "@ts-expect-error": 6
+      "@ts-expect-error": 8
     },
     "packages/noodl-core-ui/src/components/tree-view/TreeView/TreeView.tsx": {
       "TSFixme": 0,
@@ -339,6 +516,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/@include-types/global.d.ts": {
+      "TSFixme": 0,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 1
+    },
     "packages/noodl-editor/scripts/build.ts": {
       "TSFixme": 0,
       "any": 0,
@@ -352,13 +536,6 @@
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
-    },
-    "packages/noodl-editor/src/editor/index.ts": {
-      "TSFixme": 0,
-      "any": 0,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 2
     },
     "packages/noodl-editor/src/editor/src/ViewerConnection.ts": {
       "TSFixme": 1,
@@ -458,6 +635,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/CloudDynamicPortsAdapter.ts": {
+      "TSFixme": 7,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/models/NodeTypeAdapters/CloudFunctionAdapter.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -536,7 +720,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/componentmodel.ts": {
-      "TSFixme": 2,
+      "TSFixme": 3,
       "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -551,7 +735,7 @@
     },
     "packages/noodl-editor/src/editor/src/models/nodegraphmodel/NodeGraphModel.ts": {
       "TSFixme": 4,
-      "any": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -599,11 +783,11 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/nodelibrary/nodelibrary.ts": {
-      "TSFixme": 8,
+      "TSFixme": 9,
       "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
-      "@ts-expect-error": 1
+      "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/models/projectmodel.editor.ts": {
       "TSFixme": 2,
@@ -655,7 +839,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/pages/ProjectsPage/ProjectsPage.tsx": {
-      "TSFixme": 5,
+      "TSFixme": 6,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -787,6 +971,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 1
     },
+    "packages/noodl-editor/src/editor/src/utils/exporter/cloudFunctions.ts": {
+      "TSFixme": 6,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/utils/exporter/hash/wasm-hash.ts": {
       "TSFixme": 0,
       "any": 5,
@@ -815,13 +1006,6 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
-    "packages/noodl-editor/src/editor/src/utils/forge/template/providers/noodl-docs-template-provider.ts": {
-      "TSFixme": 0,
-      "any": 1,
-      "@ts-ignore": 0,
-      "@ts-nocheck": 0,
-      "@ts-expect-error": 0
-    },
     "packages/noodl-editor/src/editor/src/utils/ipc.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -843,9 +1027,30 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/utils/portGate.ts": {
+      "TSFixme": 4,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/utils/portHint.ts": {
+      "TSFixme": 5,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/utils/projectmerger.diff.ts": {
       "TSFixme": 4,
       "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/utils/provenance/explainRuntime.ts": {
+      "TSFixme": 1,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -872,6 +1077,27 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/validation/loadV2Project.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/BlocklyEditor/BlockProbes.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/BlocklyEditor/MyBlocksProjectScan.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/BlocklyEditor/readableCode.ts": {
       "TSFixme": 0,
       "any": 1,
       "@ts-ignore": 0,
@@ -1053,6 +1279,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 4
     },
+    "packages/noodl-editor/src/editor/src/views/nodegrapheditor/ExtractToComponentPopup.tsx": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/InspectJSONView/InspectPopup.tsx": {
       "TSFixme": 0,
       "any": 1,
@@ -1089,7 +1322,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/nodegrapheditor/NodeGraphEditorNodePainter.ts": {
-      "TSFixme": 1,
+      "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1194,7 +1427,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/ComponentsPanelNew/hooks/useComponentActions.ts": {
-      "TSFixme": 6,
+      "TSFixme": 7,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1285,7 +1518,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/CodeEditor/CodeEditorType.ts": {
-      "TSFixme": 5,
+      "TSFixme": 7,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1299,7 +1532,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/BasicType.ts": {
-      "TSFixme": 1,
+      "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1348,7 +1581,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/Dimension.ts": {
-      "TSFixme": 3,
+      "TSFixme": 4,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1404,7 +1637,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/NumberWithUnits.ts": {
-      "TSFixme": 2,
+      "TSFixme": 3,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1425,7 +1658,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/DataTypes/Ports.ts": {
-      "TSFixme": 11,
+      "TSFixme": 16,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1551,7 +1784,7 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/NodeLabel/NodeLabel.tsx": {
-      "TSFixme": 1,
+      "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1559,6 +1792,13 @@
     },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/PortsTab/PortsTab.tsx": {
       "TSFixme": 4,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/components/PortsTab/usePortValues.ts": {
+      "TSFixme": 1,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1683,6 +1923,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/provenance.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/src/editor/src/views/panels/propertyeditor/utils.ts": {
       "TSFixme": 6,
       "any": 0,
@@ -1734,7 +1981,105 @@
     },
     "packages/noodl-editor/src/shared/utils/projectmodules.ts": {
       "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/cn-006/testFileSystem.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/cn-014/kitDefinitionRefresh.test.ts": {
+      "TSFixme": 0,
       "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/def-001/design-token-contrast.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/el-009/page-selection.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fb-017/propertyPanelHints.test.ts": {
+      "TSFixme": 3,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fb-017/propertyPanelTiers.test.ts": {
+      "TSFixme": 5,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fb-022/scrubCommit.test.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fb-022/scrubPolicy.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fix-004/blocks.spec.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/fix-004/object-data.spec.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/lgc-003/block-probes.spec.ts": {
+      "TSFixme": 0,
+      "any": 7,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/lgc-008/canvas-remeasure.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/lgc-008/tab-workspaces.test.tsx": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/lgc-010/logic-overlay.test.ts": {
+      "TSFixme": 0,
+      "any": 8,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -1746,8 +2091,92 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/tests-unit/property-editor/portHint.test.ts": {
+      "TSFixme": 3,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/property-editor/portWireShape.test.ts": {
+      "TSFixme": 10,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/sb-017/cloud-ports-agree-with-the-runtime.test.ts": {
+      "TSFixme": 7,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/sb-017/the-browser-half-drops-every-record-field.test.ts": {
+      "TSFixme": 5,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/sb-018/every-wired-text-has-a-standing-value.test.ts": {
+      "TSFixme": 7,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/sb-018/the-contact-endpoint-answers-the-outcome.test.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/sb-018/the-list-refreshes-when-a-row-changes.test.ts": {
+      "TSFixme": 5,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/uni-010/render-harness-routes-every-page.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/vfn-009/definition-tab.spec.tsx": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/vfn-011/drift-gate.spec.ts": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests-unit/vfn-014/readable-code.spec.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/tests/ai/authoring-review.test.ts": {
       "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/ai/component-bench.test.ts": {
+      "TSFixme": 5,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1781,6 +2210,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/tests/canvas/NodeComponentMark.test.ts": {
+      "TSFixme": 4,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/tests/canvas/NodeSelector.test.ts": {
       "TSFixme": 1,
       "any": 0,
@@ -1790,6 +2226,41 @@
     },
     "packages/noodl-editor/tests/canvas/WireLabels.test.ts": {
       "TSFixme": 6,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/canvas/bench-inputs.test.ts": {
+      "TSFixme": 2,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/canvas/preview-scope.test.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/cloud/def015-cloud-component-roles.test.ts": {
+      "TSFixme": 9,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/cloud/hls013-editor-door.test.ts": {
+      "TSFixme": 10,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/cloud/sb017-deploy-connection-parity.test.ts": {
+      "TSFixme": 53,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1810,6 +2281,13 @@
       "@ts-expect-error": 0
     },
     "packages/noodl-editor/tests/index.ts": {
+      "TSFixme": 25,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/models/NodeGraphNodePortCache.test.ts": {
       "TSFixme": 2,
       "any": 0,
       "@ts-ignore": 0,
@@ -1823,8 +2301,36 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-editor/tests/nodegraph/def-028-build-determinism.spec.ts": {
+      "TSFixme": 3,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/nodegraph/def-034-warning-level-wires-survive-the-build.spec.ts": {
+      "TSFixme": 6,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/nodegraph/paste-carries-labels-and-comments.spec.ts": {
+      "TSFixme": 4,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/nodegraph/urgent-health-pass.spec.ts": {
+      "TSFixme": 3,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-editor/tests/nodepicker/NodePickerSearch.test.ts": {
-      "TSFixme": 2,
+      "TSFixme": 6,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1832,6 +2338,13 @@
     },
     "packages/noodl-editor/tests/projectpatcher/runonvaluechange-migration.test.ts": {
       "TSFixme": 12,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-editor/tests/services/ProjectStructure/projectLevelGuard.test.ts": {
+      "TSFixme": 13,
       "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
@@ -1928,7 +2441,42 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-mcp/tests/cmp009PortsPathConfidence.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-mcp/tests/d54ThemePresetIdentity.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-mcp/tests/def013SiblingResolution.test.ts": {
+      "TSFixme": 0,
+      "any": 7,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-mcp/tests/provision.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-mcp/tests/sbr012RawColourGate.test.ts": {
+      "TSFixme": 0,
+      "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-mcp/tests/vib007PovertyFindings.test.ts": {
       "TSFixme": 0,
       "any": 1,
       "@ts-ignore": 0,
@@ -1980,6 +2528,20 @@
     "packages/noodl-platform/src/utils/promise.ts": {
       "TSFixme": 0,
       "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-preview/src/deploy-cli.ts": {
+      "TSFixme": 1,
+      "any": 0,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-preview/src/deployReading.ts": {
+      "TSFixme": 2,
+      "any": 0,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2063,7 +2625,7 @@
     },
     "packages/noodl-runtime/test/backends/realtime-transports.test.ts": {
       "TSFixme": 0,
-      "any": 20,
+      "any": 23,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2071,6 +2633,41 @@
     "packages/noodl-runtime/test/corpus/nda-012-data-record-family.test.ts": {
       "TSFixme": 0,
       "any": 2,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/editorconnection.replyidentity.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/fb-019-units-default-seeding.test.ts": {
+      "TSFixme": 0,
+      "any": 9,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/logic-builder-warning-lifecycle.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/models/def-042-component-added-await.test.ts": {
+      "TSFixme": 0,
+      "any": 9,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-runtime/test/nodes/http-outcome-ports.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2124,6 +2721,13 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-viewer-cloud/src/kitModules.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-viewer-cloud/src/nodes/cloud/secret.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -2148,6 +2752,41 @@
     "packages/noodl-viewer-cloud/src/nodes/cloud/system-users.ts": {
       "TSFixme": 0,
       "any": 4,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/cn-013-cloud-kits.test.ts": {
+      "TSFixme": 0,
+      "any": 11,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/cn-013-kit-bundle-agreement.test.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/def021-send-email-fanout.test.ts": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/def022-request-origin.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-cloud/tests/def023-component-scope-lifetime.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
@@ -2313,6 +2952,20 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-viewer-react/tests/cn-006-scaffold-runs.test.ts": {
+      "TSFixme": 0,
+      "any": 11,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/cn-006-token-defaults.test.ts": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-viewer-react/tests/corpus/aaq-011-router-warning-lifecycle.test.ts": {
       "TSFixme": 4,
       "any": 0,
@@ -2348,6 +3001,76 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "packages/noodl-viewer-react/tests/corpus/p82-dropdown-looks-like-a-dropdown.test.tsx": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/def019-font-variant-numeric.test.ts": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/def027-drag-child-css-class.test.tsx": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/def029-file-drop.test.ts": {
+      "TSFixme": 0,
+      "any": 14,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/def031-text-overflow.test.tsx": {
+      "TSFixme": 0,
+      "any": 1,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/def037-styletag-rerenders.test.ts": {
+      "TSFixme": 0,
+      "any": 4,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/design-token-lengths.test.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/fld-003-advanced-columns-pointer.test.ts": {
+      "TSFixme": 0,
+      "any": 8,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/fld-004-units-port-abstains.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "packages/noodl-viewer-react/tests/fld-004-wired-dimension-becomes-grow.test.ts": {
+      "TSFixme": 0,
+      "any": 3,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "packages/noodl-viewer-react/tests/inputinjector.test.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -2376,6 +3099,41 @@
       "@ts-nocheck": 0,
       "@ts-expect-error": 0
     },
+    "scripts/def-002-corpus-preconditions.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "scripts/def-012-corpus-query-timing.ts": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "scripts/def-024-corpus-gates.ts": {
+      "TSFixme": 0,
+      "any": 5,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "scripts/def018-020-corpus-layout.ts": {
+      "TSFixme": 0,
+      "any": 6,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
+    "scripts/devtools/deploy-from-disk.entry.ts": {
+      "TSFixme": 0,
+      "any": 15,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
+    },
     "scripts/library/check.ts": {
       "TSFixme": 0,
       "any": 1,
@@ -2396,6 +3154,13 @@
       "@ts-ignore": 1,
       "@ts-nocheck": 0,
       "@ts-expect-error": 1
+    },
+    "scripts/phase80-door-corpus.ts": {
+      "TSFixme": 0,
+      "any": 7,
+      "@ts-ignore": 0,
+      "@ts-nocheck": 0,
+      "@ts-expect-error": 0
     },
     "scripts/test-editor.ts": {
       "TSFixme": 0,

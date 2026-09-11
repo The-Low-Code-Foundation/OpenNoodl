@@ -1,0 +1,115 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "acc0de5c-4e1a-4b3e-9f2a-1a2b3c4d6e03",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "usernameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "passwordInput",
+      "fromProperty": "onTextChanged",
+      "toId": "login",
+      "toProperty": "password"
+    },
+    {
+      "fromId": "loginBtn",
+      "fromProperty": "onClick",
+      "toId": "login",
+      "toProperty": "login"
+    },
+    {
+      "fromId": "login",
+      "fromProperty": "error",
+      "toId": "loginErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "me",
+      "fromProperty": "username",
+      "toId": "whoText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "newNameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "setProps",
+      "toProperty": "username"
+    },
+    {
+      "fromId": "nicknameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "setProps",
+      "toProperty": "prop-nickname"
+    },
+    {
+      "fromId": "saveBtn",
+      "fromProperty": "onClick",
+      "toId": "setProps",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "setProps",
+      "fromProperty": "done",
+      "toId": "savedSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "newNameInput",
+      "fromProperty": "onTextChanged",
+      "toId": "savedSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "savedRead",
+      "fromProperty": "value",
+      "toId": "savedText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "setProps",
+      "fromProperty": "error",
+      "toId": "saveErrorText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "magicEmailInput",
+      "fromProperty": "onTextChanged",
+      "toId": "magic",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "sendBtn",
+      "fromProperty": "onClick",
+      "toId": "magic",
+      "toProperty": "send"
+    },
+    {
+      "fromId": "magic",
+      "fromProperty": "done",
+      "toId": "sentSet",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "magicEmailInput",
+      "fromProperty": "onTextChanged",
+      "toId": "sentSet",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "sentRead",
+      "fromProperty": "value",
+      "toId": "sentText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "magic",
+      "fromProperty": "error",
+      "toId": "sendErrorText",
+      "toProperty": "text"
+    }
+  ]
+}

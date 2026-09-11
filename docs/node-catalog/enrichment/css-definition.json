@@ -6,7 +6,7 @@
   "ports": {
     "style": "The CSS source injected into the page."
   },
-  "examples": ["code-css-definition"],
+  "examples": ["code-css-definition", "community-better-markdown-comp", "community-tinymce-text-editor"],
   "antiPatterns": [
     "Recreating per-node styling (colors, margins) in CSS — you lose variants, visual states and editor visibility for no gain."
   ],

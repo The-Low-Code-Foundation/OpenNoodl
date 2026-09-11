@@ -15,15 +15,23 @@ import {
   CloudSyncType,
   LauncherProjectData
 } from '@noodl-core-ui/preview/launcher/Launcher/components/LauncherProjectCard';
+import type { LauncherLearnerPath } from '@noodl-core-ui/preview/launcher/Launcher/components/LearnerPathSection';
+import type { ShareTemplateModalProps } from '@noodl-core-ui/preview/launcher/Launcher/components/ShareTemplateModal';
+import type { TemplateGalleryState } from '@noodl-core-ui/preview/launcher/Launcher/components/ProjectCreationWizard/steps/TemplateStep';
+import type { LauncherLearningData } from '@noodl-core-ui/preview/launcher/Launcher/components/LearningSection';
 import { NoodlGitHubRepo, UseGitHubReposReturn } from '@noodl-core-ui/preview/launcher/Launcher/hooks/useGitHubRepos';
 import { usePersistentTab } from '@noodl-core-ui/preview/launcher/Launcher/hooks/usePersistentTab';
 import {
+  CommunityAccountHostState,
+  ConnectAgentHostState,
   GitHubUser,
   LauncherLessonData,
   LauncherPageId,
   LauncherProvider
 } from '@noodl-core-ui/preview/launcher/Launcher/LauncherContext';
+import { Community, type LauncherCommunityHostState } from '@noodl-core-ui/preview/launcher/Launcher/views/Community';
 import { GitHubRepos } from '@noodl-core-ui/preview/launcher/Launcher/views/GitHubRepos';
+import { Learning } from '@noodl-core-ui/preview/launcher/Launcher/views/Learning';
 import { LearningCenter } from '@noodl-core-ui/preview/launcher/Launcher/views/LearningCenter';
 import { Projects } from '@noodl-core-ui/preview/launcher/Launcher/views/Projects';
 import { Templates } from '@noodl-core-ui/preview/launcher/Launcher/views/Templates';
@@ -52,10 +60,28 @@ export interface LauncherProps {
   onMigrateProject?: (projectId: string) => void;
   onOpenReadOnly?: (projectId: string) => void;
 
+  /** FB-005 T5 — the kebab entry and the dialog it opens. See `LauncherContext` for the split. */
+  onShareAsTemplate?: (projectId: string) => void;
+  shareTemplateModal?: ShareTemplateModalProps | null;
+
   // Lessons (Learn tab)
   lessons?: LauncherLessonData[];
   onStartLesson?: (lessonId: string) => void;
   onRestartLesson?: (lessonId: string) => void;
+
+  /** UNI-007 / D5 — lessons installed on this machine. See LauncherContext for why this is not `lessons`. */
+  learning?: LauncherLearningData[];
+  /** UNI-007 AC1 — the intake and the path. See `LauncherContext` for why it is not `learning`. */
+  learnerPath?: LauncherLearnerPath;
+  onChooseIntakeAnswer?: (questionKey: string, value: string) => void;
+  onSubmitIntake?: () => void;
+  onRetakeIntake?: () => void;
+  onProjectConcept?: (concept: string) => void;
+  projectingConcept?: string | null;
+  learnerPathProjectionNote?: string | null;
+  onOpenLearningLesson?: (lessonId: string) => void;
+  onResetLearningLesson?: (lessonId: string) => void;
+  onInstallLearningLesson?: () => void;
 
   // Project organization service (optional - for Storybook compatibility)
   projectOrganizationService?: any;
@@ -68,11 +94,55 @@ export interface LauncherProps {
   onGitHubDisconnect?: () => void;
 
   // GitHub repos for clone feature (optional - for Storybook compatibility)
+  /**
+   * UNI-011 / D21 — the community TAB's data.
+   *
+   * ⚠️ **`communityMirror`, not `community`.** `community` was already taken by UNI-001's
+   * sign-in card state (`CommunityAccountHostState`), and the collision was caught by tsc
+   * rather than by review. Two different facts about the same word: one is *who you are*, the
+   * other is *what the community contains*.
+   */
+  communityMirror?: LauncherCommunityHostState;
+
   githubRepos?: UseGitHubReposReturn | null;
   onCloneRepo?: (repo: NoodlGitHubRepo) => Promise<void>;
 
   /** Open the app-wide settings dialog (theme, AI provider and key). */
   onOpenSettings?: () => void;
+
+  /** Frameless-window controls, drawn by the header on Windows and Linux. */
+  onMinimizeWindow?: () => void;
+  onMaximizeWindow?: () => void;
+  onCloseWindow?: () => void;
+
+  /** BST-003 — the connect-an-agent card. Absent in Storybook, where it does not render. */
+  connectAgent?: ConnectAgentHostState;
+
+  /** UNI-001 AC2 — the NodeGX account card and chip. Absent in Storybook, same as above. */
+  community?: CommunityAccountHostState;
+
+  /** REL-013 — the template shelf the Templates tab draws. See `LauncherContext.templates`. */
+  templates?: TemplateGalleryState;
+  /** REL-013 — start a project from a row on that tab. See `LauncherContext.onUseTemplate`. */
+  onUseTemplate?: (templateUrl: string) => void;
+
+  /**
+   * REL-013 — 🔴 **WHICH TAB IS OPEN, REPORTED TO THE HOST.**
+   *
+   * `usePersistentTab` lives in here, so `ProjectsPage` had no way of knowing which page the
+   * launcher is on — and it has to know, because the template fetch is gated on *the shelf being
+   * looked at* and the Templates tab is the second reason to look at one (the create wizard is
+   * the first). Without this the only ways to wire the tab were a hook that fetched on launcher
+   * mount — a community request on every cold start, for a screen most sessions never open,
+   * which `useProjectTemplates`' own header forbids — or a second `useProjectTemplates` instance
+   * inside core-ui, which cannot import it and which would double every request anyway.
+   *
+   * ⚠️ **Fired on mount as well as on every change**, so a deep link or an `initialTab` that
+   * lands straight on Templates is reported too. The host seeds its own copy from the same
+   * `initialTab` it passed, so the first render already agrees and this effect confirms rather
+   * than corrects.
+   */
+  onActivePageChange?: (pageId: LauncherPageId) => void;
 }
 
 // FIXME: make the mock data real
@@ -188,8 +258,9 @@ function parseDeepLink(): LauncherPageId | null {
     const pathParts = url.pathname.split('/');
     const tabPart = pathParts[pathParts.length - 1];
 
-    // POL-002: `'learn'` is no longer reachable — see HEADER_TABS.
-    if (tabPart === 'projects' || tabPart === 'templates' || tabPart === 'github') {
+    // POL-002: `'learn'` is no longer reachable — see HEADER_TABS. `'learning'`
+    // is a different page and is.
+    if (tabPart === 'projects' || tabPart === 'learning' || tabPart === 'templates' || tabPart === 'github') {
       return tabPart as LauncherPageId;
     }
   } catch (error) {
@@ -209,10 +280,24 @@ export function Launcher({
   onDeleteProject,
   onMigrateProject,
   onOpenReadOnly,
+  onShareAsTemplate,
+  shareTemplateModal,
   lessons,
   onStartLesson,
   onRestartLesson,
+  learning,
+  learnerPath,
+  onChooseIntakeAnswer,
+  onSubmitIntake,
+  onRetakeIntake,
+  onProjectConcept,
+  projectingConcept,
+  learnerPathProjectionNote,
+  onOpenLearningLesson,
+  onResetLearningLesson,
+  onInstallLearningLesson,
   projectOrganizationService,
+  communityMirror,
   githubUser,
   githubIsAuthenticated,
   githubIsConnecting,
@@ -220,7 +305,15 @@ export function Launcher({
   onGitHubDisconnect,
   githubRepos,
   onCloneRepo,
-  onOpenSettings
+  onOpenSettings,
+  onMinimizeWindow,
+  onMaximizeWindow,
+  onCloseWindow,
+  connectAgent,
+  community,
+  templates,
+  onUseTemplate,
+  onActivePageChange
 }: LauncherProps) {
   // Determine initial tab: props > deep link > persisted > default
   const deepLinkTab = parseDeepLink();
@@ -305,6 +398,12 @@ export function Launcher({
     }
   }, [activePageId]);
 
+  // REL-013 — tell the host which tab is open, so it can gate the template fetch on the tab
+  // being looked at without moving the fetch to launcher mount. See `onActivePageChange`.
+  useEffect(() => {
+    onActivePageChange?.(activePageId);
+  }, [activePageId, onActivePageChange]);
+
   // Render active view
   const renderActiveView = () => {
     switch (activePageId) {
@@ -312,12 +411,20 @@ export function Launcher({
         return <Projects />;
       case 'github':
         return <GitHubRepos />;
+      // UNI-011 / D21 — the community, natively. Richard's call on 2026-08-19: not an embedded
+      // web page, the same content in launcher chrome, over the same API the web uses.
+      case 'community':
+        return <Community />;
       // POL-002: unreachable — the Learn tab, the deep link and the persisted
       // tab id all stopped producing `'learn'`. Kept so `LearningCenter` and
       // the lesson pipeline behind it stay compiled and one line from coming
       // back when the learn phase rebuilds the content.
       case 'learn':
         return <LearningCenter />;
+      // UNI-007 / D5's Learning section, which used to render above the project
+      // grid. A different page from `'learn'` above — see `LauncherPageId`.
+      case 'learning':
+        return <Learning />;
       case 'templates':
         return <Templates />;
       default:
@@ -345,9 +452,23 @@ export function Launcher({
         onDeleteProject,
         onMigrateProject,
         onOpenReadOnly,
+        onShareAsTemplate,
+        shareTemplateModal,
         lessons,
         onStartLesson,
         onRestartLesson,
+        learning,
+        learnerPath,
+        onChooseIntakeAnswer,
+        onSubmitIntake,
+        onRetakeIntake,
+        onProjectConcept,
+        projectingConcept,
+        learnerPathProjectionNote,
+        onOpenLearningLesson,
+        onResetLearningLesson,
+        onInstallLearningLesson,
+        communityMirror,
         githubUser,
         githubIsAuthenticated,
         githubIsConnecting,
@@ -355,7 +476,14 @@ export function Launcher({
         onGitHubDisconnect,
         githubRepos,
         onCloneRepo,
-        onOpenSettings
+        onOpenSettings,
+        onMinimizeWindow,
+        onMaximizeWindow,
+        onCloseWindow,
+        connectAgent,
+        community,
+        templates,
+        onUseTemplate
       }}
     >
       <div className={css['Root']}>

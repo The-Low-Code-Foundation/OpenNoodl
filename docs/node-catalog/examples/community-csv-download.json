@@ -1,0 +1,85 @@
+{
+ "id": "community-csv-download",
+ "title": "Turn rows into a file the browser downloads",
+ "description": "Two `JavaScriptFunction` nodes in series and no backend anywhere: the first folds an array of objects into CSV text, the second wraps that text in a `Blob` and hands `URL.createObjectURL` the result, and `External Link` opens it. That URL is the whole trick \u2014 it is a real, fetchable address that exists only inside this tab, so the download never leaves the browser and nothing has to be uploaded first. \u26a0\ufe0f Compare it with `net.noodl.ToCSV` before reusing the conversion half: the built-in node handles quoting and embedded delimiters, which hand-rolled CSV usually does not. The half worth copying is the object-URL download.",
+ "demonstrates": [
+  "Component Inputs",
+  "JavaScriptFunction",
+  "net.noodl.externallink"
+ ],
+ "components": [
+  {
+   "name": "CSV Download",
+   "nodes": [
+    {
+     "id": "externallink",
+     "type": "net.noodl.externallink"
+    },
+    {
+     "id": "csv-to-downloadable-url",
+     "type": "JavaScriptFunction",
+     "label": "CSV to Downloadable URL",
+     "parameters": {
+      "functionScript": "const csvData = Inputs.CSVData || '';\nif (!csvData) throw new Error('No CSV data provided');\n\ntry {\n  // Create a Blob object from the CSV data\n  const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });\n\n  // Create a URL for the Blob object\n  const url = URL.createObjectURL(blob);\n\n  // Set the URL as the output\n  Outputs.DownloadURL = url;\n\n  // Signal success\n  Outputs.Success();\n} catch (error) {\n  // Output the error\n  Outputs.Error = error;\n\n  // Signal failure\n  Outputs.Failure();\n}\n"
+     }
+    },
+    {
+     "id": "json-to-csv-conversion",
+     "type": "JavaScriptFunction",
+     "label": "JSON to CSV Conversion",
+     "parameters": {
+      "functionScript": "const json = Inputs.JsonArray || [];\nif (!json.length) return;\n\ntry {\n  const replacer = (key, value) => value === null ? '' : value; \n  const header = Object.keys(json[0]);\n  let csv = json.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(';'));\n  csv.unshift(header.join(';'));\n  csv = csv.join('\\r\\n');\n\n  Outputs.Csv = csv;\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+     }
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "Do",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 0
+      },
+      {
+       "name": "JsonArray",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      }
+     ]
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "csv-to-downloadable-url",
+     "fromProperty": "out-DownloadURL",
+     "toId": "externallink",
+     "toProperty": "link"
+    },
+    {
+     "fromId": "json-to-csv-conversion",
+     "fromProperty": "out-Csv",
+     "toId": "csv-to-downloadable-url",
+     "toProperty": "in-CSVData"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "Do",
+     "toId": "externallink",
+     "toProperty": "do"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "JsonArray",
+     "toId": "json-to-csv-conversion",
+     "toProperty": "in-JsonArray"
+    }
+   ]
+  }
+ ]
+}

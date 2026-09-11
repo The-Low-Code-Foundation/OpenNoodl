@@ -76,8 +76,10 @@ export function McpSettingsSection() {
           runs by itself — you only have to tell it where they are, which is what these commands do.
         </Text>
         <Text size={TextSize.Medium} hasBottomSpacing>
-          Create the project here in NodeGX first, then point the agent at it. The authoring server
-          works inside a project that already exists; it will not make you one.
+          Each command below binds an agent to <em>this</em> project, so the project has to exist
+          first. The authoring server can also run with no project at all and create one for you —
+          that registration has no project path in it, which is why it is not one of the commands
+          here.
         </Text>
 
         {error && (
@@ -157,10 +159,18 @@ function McpServerRow({
             label={isCopied ? 'Copied — paste it in a terminal' : 'Copy the command'}
             onClick={onCopy}
           />
-          <p className={css.Provenance}>
-            Registers it as <strong>{row.serverName}</strong> for your user account, so it works
-            from any directory.
-          </p>
+          {/*
+            FIX-008 C — the provenance sentence comes from the row, not from here. The two rows no
+            longer register at the same scope, so a literal in this component would promise "your
+            user account, from any directory" for a command that is now project-scoped.
+          */}
+          {row.scopeNote && <p className={css.Provenance}>{row.scopeNote}</p>}
+          {/*
+            BST-004 — when the command names NodeGX's bundled runtime instead of `node`, say so.
+            A command that looks strange and is unexplained reads as a bug; and the failure this
+            whole task prevents is a substitution nobody was told about.
+          */}
+          {row.runtimeNote && <p className={css.Provenance}>{row.runtimeNote}</p>}
         </>
       ) : (
         <div className={css.Unavailable}>

@@ -23,6 +23,15 @@ import {
   AiToolCall
 } from '@noodl-models/AiAssistant/client/types';
 import { parseToolArguments, readSseData } from '@noodl-models/AiAssistant/client/providers/stream-utils';
+import {
+  AiContentBlock,
+  asText,
+  assertCacheBoundary,
+  degradeDocuments,
+  degradedDocumentText,
+  degradeImages,
+  isBlockContent
+} from '@noodl-models/AiAssistant/client/content';
 
 import { errorMessage, isAbortError } from './errors';
 import { finalizeUsage } from './usage';
@@ -71,11 +80,24 @@ export interface OpenAiModelsResponse {
   data?: { id?: string }[];
 }
 
+/**
+ * BLD-012 — OpenAI's multimodal content parts. Images ride as a data URL in
+ * `image_url`, which is the same wire shape whether the bytes came from a file
+ * or a capture.
+ */
+export type OpenAiContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
+
 /** A message in a request *we* build. */
 export interface OpenAiRequestMessage {
   role: string;
-  /** `null` on an assistant turn that is only tool calls — the API requires it. */
-  content?: string | null;
+  /**
+   * `null` on an assistant turn that is only tool calls — the API requires it.
+   * An array only when the turn carries an image; a text-only turn stays a
+   * plain string, so nothing about an existing request changes shape.
+   */
+  content?: string | OpenAiContentPart[] | null;
   tool_call_id?: string;
   tool_calls?: { id: string; type: 'function'; function: { name: string; arguments: string } }[];
 }
@@ -101,20 +123,51 @@ export function toModelsUrl(baseUrl: string): string {
   return `${trimmed}/models`;
 }
 
+/**
+ * BLD-012 — our closed block union onto OpenAI's content parts.
+ *
+ * ⚠️ BLD-013's `document` block has **no** part to map to here: this adapter
+ * speaks Chat Completions, whose only binary part is `image_url`, and a PDF is
+ * not one. It therefore never reaches this function — `buildParams` degrades it
+ * to its declared text twin first, because `documents` is absent on every model
+ * this provider resolves. The explicit branch is kept anyway so that the day
+ * someone adds the capability flag, the compiler points here rather than
+ * letting a document fall through to `block.text` and be sent as bare prose.
+ */
+function toOpenAiParts(blocks: AiContentBlock[]): OpenAiContentPart[] {
+  return blocks.map<OpenAiContentPart>((block) => {
+    if (block.type === 'image') {
+      return { type: 'image_url', image_url: { url: `data:${block.mediaType};base64,${block.data}` } };
+    }
+    if (block.type === 'document') {
+      return { type: 'text', text: degradedDocumentText(block) };
+    }
+    return { type: 'text', text: block.text };
+  });
+}
+
 export function toOpenAiMessages(messages: AiMessage[]): OpenAiRequestMessage[] {
   return messages.map((message) => {
+    // BLD-012: OpenAI has no prefix-cache breakpoint to place, so a boundary is
+    // ignored here either way — but a boundary paired with blocks is a caller
+    // bug, and it should surface on whichever provider runs first, not only on
+    // Anthropic.
+    assertCacheBoundary(message);
+
     if (message.role === 'tool') {
       return {
         role: 'tool',
         tool_call_id: message.toolCallId,
-        content: message.content
+        // A tool result is text by contract on this API.
+        content: asText(message.content)
       };
     }
 
     if (message.role === 'assistant' && message.toolCalls?.length) {
+      const text = asText(message.content);
       return {
         role: 'assistant',
-        content: message.content || null,
+        content: text || null,
         tool_calls: message.toolCalls.map((call) => ({
           id: call.id,
           type: 'function',
@@ -123,7 +176,10 @@ export function toOpenAiMessages(messages: AiMessage[]): OpenAiRequestMessage[] 
       };
     }
 
-    return { role: message.role, content: message.content };
+    return {
+      role: message.role,
+      content: isBlockContent(message.content) ? toOpenAiParts(message.content) : message.content
+    };
   });
 }
 
@@ -181,9 +237,27 @@ export class OpenAiProvider implements AiProvider {
 
     const model = resolveModel(modelId, this.id);
 
+    // BLD-012 — the capability-flagged leg. `openai-compatible` points at an
+    // arbitrary gateway (vLLM, LiteLLM, a corporate proxy) whose model may be
+    // anything, so it resolves through `unknownModel` and gets no `vision`
+    // flag: text-only by default, which is the safe direction. OpenAI proper
+    // has vision on every registered id.
+    //
+    // BLD-013 — `documents` is absent on **every** model this provider
+    // resolves, including OpenAI proper, so the second pass always fires. That
+    // is a statement about this adapter, not about OpenAI: Chat Completions has
+    // no part shape we encode for a PDF. A dropped PDF therefore reaches an
+    // OpenAI model as its declared twin — stated, never silent — and the
+    // composer says so before the send rather than after the bill.
+    const messagesIn = request.messages.map((message) => {
+      let content = model.capabilities.vision ? message.content : degradeImages(message.content);
+      if (!model.capabilities.documents) content = degradeDocuments(content);
+      return content === message.content ? message : { ...message, content };
+    });
+
     const body: Record<string, unknown> = {
       model: modelId,
-      messages: toOpenAiMessages(request.messages),
+      messages: toOpenAiMessages(messagesIn),
       max_tokens: Math.min(request.maxTokens ?? DEFAULT_MAX_TOKENS, model.maxOutputTokens),
       stream
     };

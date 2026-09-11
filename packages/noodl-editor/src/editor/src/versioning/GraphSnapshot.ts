@@ -44,8 +44,23 @@ const NODE_TRANSIENT_KEYS = new Set(['conflicts', 'annotation', 'diffData', '_pa
  * `annotation` sits on the same object and is transient (diff presentation,
  * AIX-003). Putting `label` beside it by symmetry would strip it from every
  * snapshot.
+ *
+ * ⚠️ **`route` (SIG-007) is known for a different reason, and leaving it in
+ * `rest` would have looked correct.** `rest` round-trips verbatim, so the
+ * routing would survive a snapshot; but `mergeConnectionFields` starts from
+ * `deepClone(ours)`, so *our* `rest` wins unconditionally — and a colleague's
+ * hand-drawn routing would be dropped on every merge in which we had not
+ * touched ours, quietly. Known, it gets `labelT`'s rule: whoever moved it wins.
  */
-const CONNECTION_KNOWN_KEYS = new Set(['fromId', 'fromProperty', 'toId', 'toProperty', 'label', 'labelT']);
+const CONNECTION_KNOWN_KEYS = new Set([
+  'fromId',
+  'fromProperty',
+  'toId',
+  'toProperty',
+  'label',
+  'labelT',
+  'route'
+]);
 const CONNECTION_TRANSIENT_KEYS = new Set(['annotation']);
 
 const COMMENT_KNOWN_KEYS = new Set(['id', 'text', 'x', 'y']);
@@ -109,6 +124,9 @@ function normalizeConnection(raw: Record<string, unknown>): SnapshotConnection {
   };
   if (raw.label !== undefined) connection.label = raw.label as string;
   if (raw.labelT !== undefined) connection.labelT = raw.labelT as number;
+  if (raw.route && typeof raw.route === 'object') {
+    connection.route = raw.route as { xs: number[]; ys: number[] };
+  }
   return connection;
 }
 
@@ -280,6 +298,7 @@ function denormalizeConnection(connection: SnapshotConnection): Record<string, u
   // grow the keys on its way through a merge.
   if (connection.label !== undefined) out.label = connection.label;
   if (connection.labelT !== undefined) out.labelT = connection.labelT;
+  if (connection.route) out.route = connection.route;
   return { ...out, ...connection.rest };
 }
 

@@ -65,6 +65,12 @@ Whenever a cloud function needs to decide something based on what a user is allo
 
 - Re-deriving 'is this user staff' from a cached copy of Roles taken earlier in a long-running function instead of reading it fresh — roles can change between the start of a function and a later branch inside it.
 
+## Examples
+
+**Take a privilege away, and write down that you did**
+
+Revoking is the other half of granting, and it has one behaviour that surprises people: removing a role membership does NOT end that user's existing sessions. They stay signed in; what changes is what the access rules let them do on their next request. If the requirement is 'they are out, now', revoking the role is not sufficient on its own. `unchanged` covers two different post-conditions that both mean 'they are not in it' — they were never a member, or the role does not exist at all — and Error says which. Both are wired into the same continuation here, because for a revoke, 'they are not in that role any more' is the goal and it has been reached either way; a function that failed on an already-revoked user would break every retry. Update User then stamps the account with who did it and when, and it is worth being clear why that is a different node from Set User Properties: that one writes to whoever is signed in and fails when nobody is, while this writes to the account whose id you give it with the authority of the server. `userId` is required and a blank one is a failure rather than a fallback to the caller — which is exactly the accident (editing the admin instead of the target) that the split exists to prevent. Get User Roles reads the result back through the same resolver the permission check uses, so the Response tells the screen what the access rules will actually agree to, not what this function believes it just did.
+
 ## Related nodes
 
 [Add User To Role](./noodl-cloud-addusertorole.md), [Remove User From Role](./noodl-cloud-removeuserfromrole.md)

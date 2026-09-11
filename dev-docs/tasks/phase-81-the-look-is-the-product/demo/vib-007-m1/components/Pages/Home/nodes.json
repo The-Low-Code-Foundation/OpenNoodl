@@ -1,0 +1,150 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "0667e8cd-9d35-556c-8525-2048e52218ec",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Home",
+      "parameters": {
+        "title": "VIB-007 M1 — the page nobody looked at",
+        "urlPath": "home"
+      },
+      "children": [
+        "shell"
+      ]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "scrollEnabled": true,
+        "backgroundColor": "var(--surface-1)"
+      },
+      "children": [
+        "hero",
+        "features"
+      ]
+    },
+    {
+      "id": "hero",
+      "type": "Group",
+      "label": "hero",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "backgroundColor": "var(--surface-1)"
+      },
+      "children": [
+        "hero_heading",
+        "hero_sub",
+        "hero_photo"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "hero_heading",
+      "type": "Text",
+      "label": "heading",
+      "parent": "hero",
+      "parameters": {
+        "text": "Riverside Pottery",
+        "textStyle": "h1",
+        "color": "var(--text-1)"
+      }
+    },
+    {
+      "id": "hero_sub",
+      "type": "Text",
+      "label": "subheading",
+      "parent": "hero",
+      "parameters": {
+        "textStyle": "body",
+        "color": "var(--text-2)"
+      }
+    },
+    {
+      "id": "hero_photo",
+      "type": "Image",
+      "label": "Hero photo",
+      "parent": "hero",
+      "parameters": {
+        "src": "noodl_modules/starter-imagery/work-potter.webp",
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 320,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-lg)"
+      }
+    },
+    {
+      "id": "features",
+      "type": "Group",
+      "label": "features",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "backgroundColor": "var(--surface-1)"
+      },
+      "children": [
+        "feat_one",
+        "feat_two"
+      ],
+      "parent": "shell"
+    },
+    {
+      "id": "feat_one",
+      "type": "Text",
+      "label": "feature one",
+      "parent": "features",
+      "parameters": {
+        "textStyle": "body"
+      }
+    },
+    {
+      "id": "feat_two",
+      "type": "Text",
+      "label": "feature two",
+      "parent": "features",
+      "parameters": {
+        "textStyle": "body"
+      }
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

@@ -15,7 +15,7 @@
     "completed": "Signal; fires after every attempt, whatever the outcome.",
     "error": "Value; why the last attempt failed, or (on Unchanged) which of the two non-membership cases it was."
   },
-  "examples": [],
+  "examples": ["cloud-revoke-a-role-and-record-it"],
   "patterns": [
     "Wire a lapsed-subscription webhook straight to this node's `remove`, with `done` and `unchanged` both leading to the same next step — the account ends up without the role either way, which is the only thing that response needs to be true."
   ],

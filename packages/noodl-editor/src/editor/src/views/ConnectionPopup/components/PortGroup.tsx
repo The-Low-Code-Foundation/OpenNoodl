@@ -3,6 +3,7 @@ import React from 'react';
 
 import css from '../ConnectionPopup.module.scss';
 import { PortItem } from './PortItem';
+import { RefusedPorts } from './RefusedPorts';
 
 export function PortGroup(props: TSFixme) {
   // comments in this component is to remove the group folding.
@@ -11,6 +12,21 @@ export function PortGroup(props: TSFixme) {
 
   const colors = props.colors;
 
+  /*
+   * SIG-001 §2 — this group's refused ports, closed by default.
+   *
+   * A beginner has to see that the category *exists* and was ruled out; they do
+   * not have to read forty grey lines to learn it. One line, expandable.
+   *
+   * ⚠️ Only groups that still have something connectable get one of these. A
+   * group where *everything* was refused is folded into a single block at the
+   * end of the list by `ConnectionBar` — see `RefusedPorts` for the 19-identical-
+   * summaries defect that forced the split.
+   *
+   * ⚠️ The *offer* ("connect it to Label instead") is deliberately not here
+   * either. It is a fact about the node, not about this group, and rendering it
+   * per group repeats it once per heading.
+   */
   return (
     <div>
       <div
@@ -32,6 +48,13 @@ export function PortGroup(props: TSFixme) {
           port={p}
         />
       ))}
+
+      <RefusedPorts
+        ports={props.group.refusedPorts || []}
+        colors={colors}
+        canRedirect={props.canRedirect}
+        onRefusalClicked={props.onRefusalClicked}
+      />
     </div>
   );
 }

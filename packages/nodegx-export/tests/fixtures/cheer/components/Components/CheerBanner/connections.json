@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "cb80401b-1ab0-4498-9339-3b215cc37788",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "readCheer",
+      "fromProperty": "value",
+      "toId": "cheerText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "onCheer",
+      "fromProperty": "eventReceived",
+      "toId": "storeCheer",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "onCheer",
+      "fromProperty": "message",
+      "toId": "storeCheer",
+      "toProperty": "value"
+    }
+  ]
+}

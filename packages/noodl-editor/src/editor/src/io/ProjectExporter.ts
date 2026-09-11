@@ -46,6 +46,8 @@ export interface LegacyConnection {
   label?: string;
   /** CAN-001: where that text sits along the wire. */
   labelT?: number;
+  /** SIG-007: how a square wire is routed — the positions of its runs. */
+  route?: { xs: number[]; ys: number[] };
   annotation?: 'Deleted' | 'Changed' | 'Created';
 }
 
@@ -83,6 +85,18 @@ export interface LegacyComponent {
   name: string;
   /** Optional in practice — many real/imported projects have id-less components. */
   id?: string;
+  /**
+   * LEG-006 — "one or two sentences: what this component is and does", the
+   * authoring vocabulary's own words. Authorable through `create_component`,
+   * the plan tools and `AUTHORED_PAYLOAD_FIELDS`; before LEG-006 it reached
+   * disk and was then deleted by the first editor save, because
+   * `buildComponentV2Files` wrote six keys and this was not one of them.
+   */
+  description?: string;
+  /** LEG-006 (L3) — ISO timestamp stamped once, by whoever created the component. */
+  created?: string;
+  /** LEG-006 (L3) — who last wrote it ("noodl-mcp" for an agent-authored component). */
+  modifiedBy?: string;
   metadata?: Record<string, unknown>;
   graph: LegacyGraph;
 }
@@ -307,6 +321,38 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
     modified: now
   };
 
+  // LEG-006 — authored prose and provenance, carried rather than dropped.
+  //
+  // These three keys are declared on `ComponentV2File` and written by every MCP
+  // create, and until LEG-006 none of them was written here: the file was rebuilt
+  // from six keys, so the first editor save after an agent wrote a description
+  // deleted it, silently, with the validator clean and the graph intact
+  // (measured in BEN-005, register B23, 2026-08-09).
+  //
+  // Each is added only when present. An absent description must not become an
+  // empty string: a component that never had one would then gain a key and a
+  // spurious diff on a save that changed nothing (F46), which is the same class
+  // of bug one polarity over.
+  if (typeof component.description === 'string' && component.description.length > 0) {
+    componentFile.description = component.description;
+  }
+  if (typeof component.created === 'string' && component.created.length > 0) {
+    componentFile.created = component.created;
+  }
+  // Preserved, not restamped. Restamping every editor save `modifiedBy: 'editor'`
+  // would be a defensible policy and is a different decision from "stop deleting
+  // it"; making it here would rewrite the field on every MCP-authored component
+  // the first time it is opened. See NOTES-LEG-006.md.
+  if (typeof component.modifiedBy === 'string' && component.modifiedBy.length > 0) {
+    componentFile.modifiedBy = component.modifiedBy;
+  }
+
+  // ⚠️ This carry predates LEG-006 and was deleted by it: the three blocks above
+  // replaced the body of the old `if (component.metadata …)` and reused its
+  // closing brace, so a save stopped writing `metadata` at all — canvasSize,
+  // canvasPos and the legacy `created` all gone on the first save. Which is
+  // LEG-006's own defect, one field over, and it is why the round-trip fidelity
+  // specs and SUB-003's migration self-verify went red.
   if (component.metadata && Object.keys(component.metadata).length > 0) {
     componentFile.metadata = component.metadata;
   }
@@ -338,6 +384,16 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
     componentId: component.id as string,
     version: 1,
     connections: (component.graph?.connections ?? []).map((c) => {
+      /**
+       * DEF-039 (phase 80) — the other half of the importer's carry, and a round trip is only
+       * lossless if both ends agree. A connection the loader could not read is held verbatim in
+       * the model; picking the four fields off it here would write it back as `{}` and destroy
+       * the author's file on a project they merely opened.
+       */
+      if (typeof c.fromId !== 'string' || typeof c.toId !== 'string') {
+        return { ...(c as unknown as ConnectionV2) };
+      }
+
       const conn: ConnectionV2 = {
         fromId: c.fromId,
         fromProperty: c.fromProperty,
@@ -349,6 +405,11 @@ export function buildComponentV2Files(component: LegacyComponent, now: string): 
       // diff come through this serializer — made a relabel invisible to review.
       if (c.label !== undefined) conn.label = c.label;
       if (c.labelT !== undefined) conn.labelT = c.labelT;
+      // SIG-007: hand-drawn routing is authored content too, and the way it is
+      // lost is the quiet one — a field the exporter does not know about is
+      // dropped without an error, and reappears as "my routing disappeared when
+      // I reopened the project". Written only when there is some.
+      if (c.route && Array.isArray(c.route.xs)) conn.route = c.route;
       if (c.annotation) conn.annotation = c.annotation;
       return conn;
     })
@@ -564,8 +625,13 @@ export class ProjectExporter {
         modified: now
       };
 
-      // Preserve created timestamp from metadata if available
-      if (component.metadata?.created && typeof component.metadata.created === 'string') {
+      // Preserve the created timestamp. LEG-006 made `created` a first-class
+      // field on the component (that is where MCP writes it and where
+      // component.json reads it back from); the metadata fallback stays for the
+      // projects that put it there.
+      if (typeof component.created === 'string' && component.created.length > 0) {
+        registryEntry.created = component.created;
+      } else if (component.metadata?.created && typeof component.metadata.created === 'string') {
         registryEntry.created = component.metadata.created;
       }
 

@@ -368,7 +368,7 @@ function updatePorts(
       ports.push({
         type: 'signal',
         plug: 'output',
-        group: 'Changed Events',
+        group: 'Events',
         displayName: p + ' Changed',
         name: 'changed-' + p
       });

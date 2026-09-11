@@ -1,4 +1,3 @@
-import Path from 'path';
 import { useEventListener } from '@noodl-hooks/useEventListener';
 import { useTriggerRerenderState } from '@noodl-hooks/useTriggerRerender';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -10,14 +9,18 @@ import { PrimaryButton, PrimaryButtonSize, PrimaryButtonVariant } from '@noodl-c
 import { Section } from '@noodl-core-ui/components/sidebar/Section';
 
 import View from '../../../../../shared/ListenableView';
+import { ToastLayer } from '../../ToastLayer/ToastLayer';
 import { Frame } from '../../common/Frame';
 import { Ports } from '../propertyeditor/DataTypes/Ports';
 import { HTML_TITLE_PORT, ProjectSettingsModel } from './ProjectSettingsModel';
+import { CodeExportSection } from './sections/CodeExportSection';
 import { DeploySection } from './sections/DeploySection';
 import { IdentitySection } from './sections/IdentitySection';
+import { KitsSection } from './sections/KitsSection';
 import { LibrariesSection } from './sections/LibrariesSection';
 import { PWASection } from './sections/PWASection';
 import { RuntimeSection } from './sections/RuntimeSection';
+import { SavedBlocksSection } from './sections/SavedBlocksSection';
 import { SEOSection } from './sections/SEOSection';
 import { SitemapSection } from './sections/SitemapSection';
 import { VariablesSection } from './sections/VariablesSection';
@@ -103,10 +106,37 @@ export function ProjectSettingsTab() {
     };
   }, []);
 
+  /**
+   * 🔴 **Reveals the DIRECTORY, not a file inside it.**
+   *
+   * This used to point at `<projectDir>/project.json`, and that file does not exist in a v2
+   * project: `ProjectFormatDetector` names the manifest `nodegx.project.json`, and `ProjectMigrator`
+   * *deletes* the legacy `project.json` on migration. v2 is default-on, so for practically every
+   * project the button targeted a path that was not there.
+   *
+   * ⚠️ **`showItemInFolder` returns `void` and does nothing at all when the target is missing** —
+   * no throw, no rejection, nothing to log. That is why this read as a dead button rather than as
+   * an error, and why it survived: a legacy-format project still worked.
+   *
+   * Reported by Richard, 2026-09-04. Revealing the directory itself is also format-agnostic, so
+   * there is nothing here left to go stale the next time the manifest is renamed — which is the
+   * shape `ProjectsPage.handleOpenProjectFolder` already had, and this now matches.
+   */
   function onOpenProjectFolderClicked() {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const shell = require('@electron/remote').shell;
-    shell.showItemInFolder(Path.normalize(ProjectModel.instance._retainedProjectDirectory + '/project.json'));
+    const directory = ProjectModel.instance?._retainedProjectDirectory;
+    if (!directory) {
+      ToastLayer.showError('Project folder not found');
+      return;
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const shell = require('@electron/remote').shell;
+      shell.showItemInFolder(directory);
+    } catch (error) {
+      console.error('Failed to open project folder:', error);
+      ToastLayer.showError('Could not open project folder');
+    }
   }
 
   const config = ProjectModel.instance.getAppConfig();
@@ -194,6 +224,23 @@ export function ProjectSettingsTab() {
       <LibrariesSection />
 
       {/*
+        CN-006 / ✅ D1: "New node kit" — writes the scaffold and opens its
+        index.js in the code editor. Directly after Libraries because the two
+        write to the same place (noodl_modules/) and differ only in what the
+        folder holds: somebody else's script, or your own node.
+      */}
+      <KitsSection />
+
+      {/*
+        VFN-009: the saved blocks a builder has made in this project's Visual
+        Functions, on both shelves. Beside Variables and Libraries because it is
+        the same kind of thing — app-wide project furniture with its own
+        operations — and because the engine for all of it (`myblocks/store.ts`)
+        was complete and had no way in at all before this.
+      */}
+      <SavedBlocksSection />
+
+      {/*
         The legacy imperative ports view — head code, navigation, and whatever
         settings the project's modules contribute. It stays one contiguous block
         with its own group headers rather than being interleaved with the React
@@ -211,6 +258,7 @@ export function ProjectSettingsTab() {
       <RuntimeSection />
       <SitemapSection />
       <DeploySection />
+      <CodeExportSection />
 
       <Section hasGutter hasVisibleOverflow>
         <PrimaryButton

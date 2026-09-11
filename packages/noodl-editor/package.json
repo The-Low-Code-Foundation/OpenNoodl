@@ -5,7 +5,7 @@
   "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
   "homepage": "https://thelowcodefoundation.com",
   "license": "GPL-3.0-only",
-  "version": "0.1.0",
+  "version": "0.2.3",
   "main": "src/main/main.bundle.js",
   "scripts": {
     "build": "npx ts-node -P ./tsconfig.build.json ./scripts/build.ts",
@@ -43,10 +43,14 @@
     "nsis": {
       "guid": "com.nodegx.app"
     },
+    "toolsets": {
+      "appimage": "1.0.3"
+    },
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
       "category": "Development",
       "icon": "src/assets/images/icon.png"
@@ -63,13 +67,42 @@
       "src",
       "node_modules",
       "node_modules/dugite",
+      "!node_modules/eslint-linter-browserify",
+      "!node_modules/globals",
+      "!node_modules/lodash",
       "!test.js",
       "!src/main/main.js",
       "!src/main/github-oauth-handler.js",
       "!src/main/src",
       "!src/editor/src",
       "!src/frames/viewer-frame/src",
-      "!src/shared"
+      "!src/shared",
+      "!**/*.map",
+      {
+        "from": "../../scripts/devtools",
+        "to": "render-harness",
+        "filter": [
+          "measure-from-disk.js",
+          "render-report.js",
+          "render-from-disk.js",
+          "harness-paths.js"
+        ]
+      },
+      {
+        "from": "../noodl-types/src",
+        "to": "render-harness/data",
+        "filter": [
+          "node-catalog.json",
+          "node-catalog-enriched.json"
+        ]
+      },
+      {
+        "from": "src/editor/src/models/StyleTokensModel",
+        "to": "render-harness/data",
+        "filter": [
+          "DefaultTokens.ts"
+        ]
+      }
     ],
     "publish": [
       {
@@ -86,16 +119,25 @@
         "to": "nodegx-backend/cli.js"
       },
       {
-        "from": "../nodegx-backend/dist/cli.js.map",
-        "to": "nodegx-backend/cli.js.map"
-      },
-      {
         "from": "../noodl-mcp/dist/noodl-mcp.cjs",
         "to": "noodl-mcp/noodl-mcp.cjs"
       },
       {
+        "from": "../noodl-mcp/dist/node-catalog.json",
+        "to": "noodl-mcp/node-catalog.json"
+      },
+      {
         "from": "../nodegx-observe/dist/nodegx-observe.cjs",
         "to": "nodegx-observe/nodegx-observe.cjs"
+      },
+      {
+        "from": "../../project-examples/lessons",
+        "to": "lessons",
+        "filter": [
+          "**/*",
+          "!**/.mcp.json",
+          "!**/.DS_Store"
+        ]
       },
       {
         "from": "../../PRIVACY.md",
@@ -111,10 +153,32 @@
     "@anthropic-ai/sdk": "^0.71.2",
     "@babel/parser": "^7.28.5",
     "@blockly/theme-dark": "^8.0.3",
+    "@dicebear/adventurer": "9.4.2",
+    "@dicebear/big-smile": "9.4.2",
+    "@dicebear/core": "9.4.3",
+    "@dicebear/croodles": "9.4.2",
+    "@dicebear/fun-emoji": "9.4.2",
+    "@dicebear/glass": "9.4.2",
+    "@dicebear/identicon": "9.4.2",
+    "@dicebear/lorelei": "9.4.2",
+    "@dicebear/micah": "9.4.2",
+    "@dicebear/notionists": "9.4.2",
+    "@dicebear/open-peeps": "9.4.2",
+    "@dicebear/personas": "9.4.2",
+    "@dicebear/pixel-art": "9.4.2",
+    "@dicebear/rings": "9.4.2",
+    "@dicebear/shapes": "9.4.2",
+    "@dicebear/thumbs": "9.4.2",
+    "@dicebear/toon-head": "9.4.2",
     "@electron/remote": "^2.1.3",
     "@jaames/iro": "^5.5.2",
     "@microlink/react-json-view": "^1.27.0",
     "@microsoft/fetch-event-source": "^2.0.1",
+    "@nodegx/kit-catalog": "*",
+    "@nodegx/kit-scaffold": "*",
+    "@nodegx/module-inject": "*",
+    "@nodegx/project-contract": "file:../nodegx-project-contract",
+    "@nodegx/render-measure": "*",
     "@noodl/backend-contract": "file:../nodegx-backend-contract",
     "@noodl/git": "file:../noodl-git",
     "@noodl/platform": "file:../noodl-platform",
@@ -158,6 +222,7 @@
   "devDependencies": {
     "@babel/core": "^7.28.3",
     "@babel/preset-react": "^7.27.1",
+    "@electron/notarize": "^2.5.0",
     "@svgr/webpack": "^6.5.1",
     "@types/checksum": "^0.1.35",
     "@types/dagre": "^0.7.52",
@@ -189,8 +254,7 @@
     "webpack": "^5.101.3",
     "webpack-cli": "^5.1.4",
     "webpack-dev-server": "^4.15.2",
-    "webpack-merge": "^5.10.0",
-    "@electron/notarize": "^2.5.0"
+    "webpack-merge": "^5.10.0"
   },
   "engines": {
     "npm": ">=10.0.0",

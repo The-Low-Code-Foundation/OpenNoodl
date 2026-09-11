@@ -1,0 +1,712 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "6e964606-9fc0-53d6-8af9-aa0d5027b188",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "The pictures",
+      "parameters": {
+        "title": "The pictures",
+        "urlPath": ""
+      },
+      "children": [
+        "b1_band",
+        "b2_band",
+        "b3_band",
+        "b4_band"
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "b1_band",
+      "type": "Group",
+      "label": "Hero band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "b1_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 160
+    },
+    {
+      "id": "b1_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b1_band",
+      "children": [
+        "b1_cols"
+      ],
+      "x": 120,
+      "y": 250
+    },
+    {
+      "id": "b1_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Shell (2-up, collapses)",
+      "parameters": {
+        "layoutString": "1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "mediumBreakpoint": {
+          "value": 900,
+          "unit": "px"
+        },
+        "mediumLayout": "1",
+        "smallBreakpoint": {
+          "value": 640,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b1_shell",
+      "children": [
+        "b1_copy",
+        "b1_media"
+      ],
+      "x": 180,
+      "y": 340
+    },
+    {
+      "id": "b1_copy",
+      "type": "Group",
+      "label": "Copy column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-6)"
+      },
+      "parent": "b1_cols",
+      "children": [
+        "b1_eyebrow",
+        "b1_headline",
+        "b1_lead",
+        "b1_actions"
+      ],
+      "x": 60,
+      "y": 430
+    },
+    {
+      "id": "b1_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "Shipped with every project",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "parent": "b1_copy",
+      "x": 120,
+      "y": 520
+    },
+    {
+      "id": "b1_headline",
+      "type": "Text",
+      "label": "Display headline",
+      "parameters": {
+        "text": "A page that has a picture in it.",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)"
+      },
+      "parent": "b1_copy",
+      "x": 180,
+      "y": 610
+    },
+    {
+      "id": "b1_lead",
+      "type": "Text",
+      "label": "Lead",
+      "parameters": {
+        "text": "Nothing here was downloaded. The picture is a starter asset, the glyphs below are Lucide, and both arrive in every project this editor makes — offline, with nothing to approve.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 520,
+          "unit": "px"
+        }
+      },
+      "parent": "b1_copy",
+      "x": 60,
+      "y": 700
+    },
+    {
+      "id": "b1_actions",
+      "type": "Group",
+      "label": "Actions",
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "sizeMode": "contentSize",
+        "paddingTop": "var(--space-2)"
+      },
+      "parent": "b1_copy",
+      "children": [
+        "b1_cta",
+        "b1_secondary"
+      ],
+      "x": 120,
+      "y": 790
+    },
+    {
+      "id": "b1_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Primary CTA",
+      "parameters": {
+        "label": "Shop the collection",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "b1_actions",
+      "x": 180,
+      "y": 880
+    },
+    {
+      "id": "b1_secondary",
+      "type": "net.noodl.controls.button",
+      "label": "Secondary CTA",
+      "parameters": {
+        "label": "Our story",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "b1_actions",
+      "x": 60,
+      "y": 970
+    },
+    {
+      "id": "b1_media",
+      "type": "Group",
+      "label": "Media column",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column"
+      },
+      "parent": "b1_cols",
+      "children": [
+        "b1_photo"
+      ],
+      "x": 120,
+      "y": 1060
+    },
+    {
+      "id": "b1_photo",
+      "type": "Image",
+      "label": "Hero photo",
+      "parameters": {
+        "sizeMode": "explicit",
+        "objectFit": "cover",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 560,
+          "unit": "px"
+        },
+        "borderRadius": "var(--radius-2xl)",
+        "src": "noodl_modules/starter-imagery/ground-ridge.svg",
+        "alt": "Describe the photo — it is read aloud, and it is what shows if the image fails"
+      },
+      "parent": "b1_media",
+      "x": 180,
+      "y": 1150
+    },
+    {
+      "id": "b2_band",
+      "type": "Group",
+      "label": "Strip band",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "children": [
+        "b2_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 1240
+    },
+    {
+      "id": "b2_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "b2_band",
+      "children": [
+        "b2_cols"
+      ],
+      "x": 120,
+      "y": 1330
+    },
+    {
+      "id": "b2_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Three up, collapsing",
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 48,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 700,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "parent": "b2_shell",
+      "children": [
+        "b2_i1",
+        "b2_i2",
+        "b2_i3"
+      ],
+      "x": 180,
+      "y": 1420
+    },
+    {
+      "id": "b2_i1",
+      "type": "/Components/TrustItem",
+      "label": "Delivery",
+      "parameters": {
+        "title": "Free UK delivery",
+        "body": "On every order over £75, sent next working day.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-truck",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 60,
+      "y": 1510
+    },
+    {
+      "id": "b2_i2",
+      "type": "/Components/TrustItem",
+      "label": "Small runs",
+      "parameters": {
+        "title": "Made in small runs",
+        "body": "Between 20 and 60 of a thing, then we move on.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-hammer",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 120,
+      "y": 1600
+    },
+    {
+      "id": "b2_i3",
+      "type": "/Components/TrustItem",
+      "label": "Returns",
+      "parameters": {
+        "title": "30-day returns",
+        "body": "Use it, live with it. Send it back if it is not right.",
+        "icon": {
+          "class": "lucide",
+          "code": "icon-rotate-ccw",
+          "codeAsClass": true
+        }
+      },
+      "parent": "b2_cols",
+      "x": 180,
+      "y": 1690
+    },
+    {
+      "id": "b3_band",
+      "type": "Group",
+      "label": "Cards band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--background)",
+        "paddingTop": "var(--space-20)",
+        "paddingBottom": "var(--space-20)"
+      },
+      "children": [
+        "b3_shell"
+      ],
+      "parent": "page",
+      "x": 60,
+      "y": 1780
+    },
+    {
+      "id": "b3_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "b3_band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-8)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b3_heading",
+        "b3_cols"
+      ],
+      "x": 120,
+      "y": 1870
+    },
+    {
+      "id": "b3_heading",
+      "type": "Text",
+      "label": "Section heading",
+      "parent": "b3_shell",
+      "parameters": {
+        "text": "Every card has its own picture.",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "x": 180,
+      "y": 1960
+    },
+    {
+      "id": "b3_cols",
+      "type": "net.noodl.visual.columns",
+      "label": "Three up, collapsing",
+      "parent": "b3_shell",
+      "parameters": {
+        "layoutString": "1 1 1",
+        "marginX": {
+          "value": 24,
+          "unit": "px"
+        },
+        "smallBreakpoint": {
+          "value": 800,
+          "unit": "px"
+        },
+        "smallLayout": "1"
+      },
+      "children": [
+        "b3a",
+        "b3b",
+        "b3c"
+      ],
+      "x": 60,
+      "y": 2050
+    },
+    {
+      "id": "b3a",
+      "type": "/Media Card",
+      "label": "Three pictures, not one",
+      "parent": "b3_cols",
+      "parameters": {
+        "coverUrl": "noodl_modules/starter-imagery/tile-1.svg",
+        "title": "Three pictures, not one",
+        "statusColor": "var(--primary)"
+      },
+      "x": 120,
+      "y": 2140
+    },
+    {
+      "id": "b3b",
+      "type": "/Media Card",
+      "label": "A glyph inside the card",
+      "parent": "b3_cols",
+      "parameters": {
+        "coverUrl": "noodl_modules/starter-imagery/tile-2.svg",
+        "title": "A glyph inside the card",
+        "statusColor": "var(--accent-foreground)"
+      },
+      "x": 180,
+      "y": 2230
+    },
+    {
+      "id": "b3c",
+      "type": "/Media Card",
+      "label": "Different by construction",
+      "parent": "b3_cols",
+      "parameters": {
+        "coverUrl": "noodl_modules/starter-imagery/tile-3.svg",
+        "title": "Different by construction",
+        "statusColor": "var(--muted-foreground)"
+      },
+      "x": 60,
+      "y": 2320
+    },
+    {
+      "id": "b4_band",
+      "type": "Group",
+      "label": "Empty state band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)"
+      },
+      "children": [
+        "b4_shell"
+      ],
+      "parent": "page",
+      "x": 120,
+      "y": 2410
+    },
+    {
+      "id": "b4_shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "b4_band",
+      "parameters": {
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b4_root"
+      ],
+      "x": 180,
+      "y": 2500
+    },
+    {
+      "id": "b4_root",
+      "type": "Group",
+      "label": "Empty state",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-4)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "dashed",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-strong)",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "children": [
+        "b4_disc",
+        "b4_title",
+        "b4_body",
+        "b4_action"
+      ],
+      "parent": "b4_shell",
+      "x": 60,
+      "y": 2590
+    },
+    {
+      "id": "b4_disc",
+      "type": "Group",
+      "label": "Icon disc",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)"
+      },
+      "parent": "b4_root",
+      "children": [
+        "b4_disc_icon"
+      ],
+      "x": 120,
+      "y": 2680
+    },
+    {
+      "id": "b4_disc_icon",
+      "type": "net.noodl.visual.icon",
+      "label": "Icon",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-inbox",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 24,
+          "unit": "px"
+        },
+        "iconColor": "var(--muted-foreground)"
+      },
+      "parent": "b4_disc",
+      "x": 180,
+      "y": 2770
+    },
+    {
+      "id": "b4_title",
+      "type": "Text",
+      "label": "Heading",
+      "parameters": {
+        "text": "No orders yet",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "color": "var(--foreground)",
+        "textAlignX": "center"
+      },
+      "parent": "b4_root",
+      "x": 60,
+      "y": 2860
+    },
+    {
+      "id": "b4_body",
+      "type": "Text",
+      "label": "Explanation",
+      "parameters": {
+        "text": "When someone places an order it will appear here, newest first.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 380,
+          "unit": "px"
+        },
+        "textAlignX": "center",
+        "lineHeight": "var(--leading-relaxed)"
+      },
+      "parent": "b4_root",
+      "x": 120,
+      "y": 2950
+    },
+    {
+      "id": "b4_action",
+      "type": "net.noodl.controls.button",
+      "label": "Action",
+      "parameters": {
+        "label": "Add a product",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "b4_root",
+      "x": 180,
+      "y": 3040
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

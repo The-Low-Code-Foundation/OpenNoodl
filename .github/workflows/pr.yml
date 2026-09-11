@@ -37,6 +37,39 @@ jobs:
       # backend has to a contract test for its HTTP wire, so a type written in
       # one has to mean something.
       - run: npm run typecheck:backend-tests
+      # `@nodegx/core` is not in the root program's `include` list and never will be —
+      # it is published, so it compiles under `strict` rather than under the root's
+      # legacy `noImplicitAny: false` (EXP-001). Its types are the API surface every
+      # exported project sees, so they get their own gate.
+      - run: npm run typecheck:nodegx-core
+      # `noodl-mcp` is not in the root program either, and unlike the others it
+      # had no gate at all: the package carried a `typecheck` script no CI job ever
+      # called, so its types drifted unobserved and eight errors accumulated there.
+      # Its tsconfig covers `src/` AND `tests/` deliberately (see the AAQ-011 note
+      # in it) — the specs are how the server's wire contract is stated, so a type
+      # written in one has to mean something, the same argument as the two lines above.
+      - run: npm run typecheck:mcp
+      # ✅ D17 (phase 69). The editor's own program, not the root one.
+      #
+      # ⚠️ It overlaps `npm run typecheck` above heavily and deliberately: the root
+      # program's `include` covers `packages/noodl-editor/src/**/*`, which is a
+      # SUPERSET of this config's `src/editor` + `src/shared` + `src/main`. What
+      # differs is resolution, not coverage — `packages/noodl-editor/tsconfig.json`
+      # maps `@noodl/git` to that package's TypeScript source while the root program
+      # resolves it through `node_modules` to built declarations, and it excludes
+      # `src/external` (vendored bundles) which the root program does not. So the two
+      # can disagree in both directions, and the editor is the surface where a
+      # disagreement costs the most.
+      #
+      # 🔴 It is a gate at ZERO, measured 0 on 2026-08-18 (s24 and s25 independently).
+      # `typecheck:runtime` (red at 2) and `typecheck:core-ui` (44) are deliberately
+      # NOT here — D17 rules them out until they are burnt down, and adding them now
+      # would make this job permanently red and therefore ignored.
+      - run: npm run typecheck:editor
+      # The bundle budget is a gate, not a report: the companion library's whole
+      # proposition is that an exported project carries a small dependency, and a
+      # library that grows into a second runtime would quietly retract it.
+      - run: npm run size:nodegx-core
 
   lint:
     name: Lint
@@ -75,7 +108,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
       # Electron needs a display even with a hidden window.
+      #
+      # 🔴 NOODL_TEST_TIMEOUT_MINUTES IS WHY THIS JOB USED TO BE A COIN FLIP. `test.js`
+      # caps a run at 15 minutes (`DEFAULT_TIMEOUT_MS`) and the suite needs about 15 minutes, so
+      # runner variance alone decided whether it finished. Measured over four runs: one
+      # completed (2849 specs, a real summary line) and three were killed mid-suite at 2766,
+      # 2264 and 2194 specs with no summary at all — which reads as a FAILING gate rather than
+      # an unfinished one, and `exit 1` looks identical either way.
+      #
+      # ⚠️ Raised because it was measured to be a LIMIT, not a symptom — which is the check
+      # `test.js`'s own comment asks for. Per-spec median is 0.001s and FLAT across the whole
+      # run, so nothing is degrading; the cost is 59 individually slow specs (17-20s each, all
+      # AAQ-*/AIX-*/AIB-*/BEN-001 authoring specs) that eat 12.4 of the 14.9 minutes. Fixing
+      # those is the real work and shrinks this back; until then the cap must not be the thing
+      # that decides.
       - name: Run editor suite headless
+        env:
+          NOODL_TEST_TIMEOUT_MINUTES: 30
         run: xvfb-run --auto-servernum -s "-screen 0 1280x1024x24" npm run test:ci
 
   test-platform:
@@ -147,6 +196,13 @@ jobs:
       # the committed artifact (packages/noodl-types/src/node-catalog.*)
       # doesn't match — i.e. node definitions changed without regenerating.
       - run: npm run catalog:check
+      # SIG-003: every port must declare a `group`. An ungrouped port is not
+      # filed under a category anyone chose — `ConnectionBar` renders it under
+      # `Other`, so the absence of one line in a node definition reads to a
+      # builder as a decision. Also holds the kind headings (Values / Actions /
+      # Events) to their kind and refuses the retired names. Runs after
+      # catalog:check so a stale catalog fails as staleness, not as a group bug.
+      - run: npm run catalog:groups:check
       # Enrichment (SUB-005): every example fragment must validate clean
       # against the semantic validator, and the committed enriched catalog
       # (node-catalog-enriched.*) must match the authored inputs, with every
@@ -159,6 +215,19 @@ jobs:
       # no viewer client to deliver them — so a cloud node added or renamed
       # without regenerating leaves the editor painting it as an unknown type.
       - run: npm run cloud-library:check
+      # EXP-008: every catalog node must be classified for code export in
+      # packages/nodegx-export/coverage-ledger.json. A new frontend node ships
+      # either with a deterministic translation or with an explicit exemption
+      # sentence the ledger diff puts in front of review — silent export gaps
+      # are the one thing this forbids. Runs after catalog:check so a stale
+      # catalog fails as staleness, not as a missing classification.
+      - run: npm run export-ledger:check
+      # EXP-008, part two: the number the phase is actually judged on. `export-ledger:check`
+      # only forces every node to be CLASSIFIED, and a node may ship classified `deferred`
+      # with an exemption sentence — which is how the picker drifted to 51 of 127 placeable
+      # nodes exporting while the corpus metric read a healthy 85%. This ratchets picker
+      # coverage: a fall fails, and a rise fails until the floor is raised in the same commit.
+      - run: npm run export-ledger:picker
       # SUB-012: the catalog validator's duplicate-node-id rule, against its
       # committed corrupt/clean fixture pair. A project with two nodes sharing
       # an id used to pass every gate with zero failures.
@@ -175,10 +244,87 @@ jobs:
       # the SUB-006 semantic validator reports zero errors. Warnings are
       # reported but not gated — seeded content is LIB-002/003's to repair.
       - run: npm run library:check
+      # ✅ CN-016 / D21. `library:check` grades the SOURCES; this grades the
+      # ARTEFACT — it builds library-dist/ and walks the editor's own install
+      # path against it (fetchModules' URL construction, ModuleCard's field
+      # destructuring and URL rule, isModuleCompatible, the JSZip unpack, the
+      # SUB-006 project load).
+      #
+      # 🔴 It is here because it was NOT here, and it rotted in silence.
+      # ALPHA-006 §5 split `getContentEndpoint` out of `getDocsEndpoint`
+      # (307967a5) and `fetchModules` moved to the new one; verify-dist's stub
+      # list did not follow, so every entry failed with "Cannot convert object
+      # to primitive value" and nothing reported it. That is exactly the drift
+      # between the origin and `library/` that D21 requires a gate for, and the
+      # gate's first job is to keep this script honest about itself.
+      - run: npm run library:build
+      - run: npm run library:verify-dist
+      # ✅ CN-016 / D21, the load-bearing half. `library:check` grades the
+      # sources and `library:verify-dist` grades the artefact; NEITHER looks at
+      # what users actually receive. This fetches the two indexes from the live
+      # content origin — via getContentEndpoint() itself, so a repoint is
+      # followed with no edit here — and fails when the origin and library/
+      # diverge differently than scripts/library/origin-baseline.json records.
+      #
+      # 🔴 It compares COVERAGE BY LABEL, not content: nothing publishes
+      # library/ yet (phase 65 LBR-001), so there is no published payload
+      # derived from these sources to hash against, and label is the only field
+      # the legacy published names and library/'s slugs share. The script says
+      # so in its own output — a gate that implies more than it checks is worse
+      # than no gate.
+      #
+      # ⚠️ It needs egress by construction. An unreachable origin exits 2 as
+      # UNAVAILABLE and never as a pass; "could not check" reading as "checked
+      # and fine" is the exact silence D21 exists to end.
+      - run: npm run library:verify-origin
       # POL-006: the icon set every new project starts with is generated from the
       # library module above, so it goes stale the moment that one is updated —
       # and the only symptom would be a picker quietly showing the old glyph list.
       - run: npm run starter-iconset:check
+
+  lessons:
+    name: Lesson bundles (FIX-027)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # Every bundle under project-examples/lessons/<slug>/: lesson.json parses
+      # and verifies against the node catalog, and BOTH projects — the starter
+      # at the bundle root and solution/ — load and validate clean.
+      #
+      # 🔴 It is a job of its own rather than a step on `library`, on purpose.
+      # Three times in this release a red step was hidden behind a green one
+      # earlier in the same job (nx bailing across packages, a failing assertion
+      # hiding the next, a passing step-3 hiding a red step-4). A lesson bundle
+      # is learner-facing content and should not be able to go unreported
+      # because an unrelated check ahead of it failed first.
+      #
+      # ⚠️ Warnings fail this gate, unlike `library:check`. An unknown node type
+      # arrives as a WARNING, and that is precisely how the sibling gate came to
+      # report 58/58 clean while nine shipped prefabs had no type at all. The
+      # script's header explains why the strict bar is affordable here.
+      - run: npm run lessons:check
+      # The gate's own mutation grading: it copies the real bundle, breaks it
+      # seven ways and requires every break to be caught. A content gate over a
+      # corpus of one reports "clean" whether or not it is looking, so the
+      # measurement above is only worth its exit code if this passes too.
+      - run: npm run lessons:check:self-test
+      # SYL-002 — the JOIN between lessons, which the two steps above cannot see.
+      # `derive_starter` guarantees a starter matches its OWN solution; nothing
+      # guaranteed it matches the PREVIOUS LESSON'S. Both failures look identical
+      # from inside one bundle, so a green corpus was never evidence for the chain.
+      #
+      # ⚠️ The cross-check against the community repo's curriculum.json does NOT
+      # run here — that checkout does not exist on this runner — and the script
+      # says so in its output rather than reporting silence as agreement. The
+      # chain itself IS checked here, from spine.json beside the bundles.
+      - run: npm run lessons:chain
+      # 🔴 Same reason as the self-test above, and more sharply: this gate's first
+      # run over a healthy corpus finds nothing, which is indistinguishable from a
+      # gate that is not looking. Twelve mutations, including three INVERTED arms —
+      # a canvas move must not fail, an unbuilt lesson must skip rather than pass,
+      # and the no-curriculum shape (this runner's) must still check the chain.
+      - run: npm run lessons:chain:self-test
 
   artefacts:
     name: Check build artefacts

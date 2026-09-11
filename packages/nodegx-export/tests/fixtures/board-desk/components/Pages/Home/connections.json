@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e7a1c4d2-5b3f-4e8d-9c1a-000000000100",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "drag",
+      "fromProperty": "positionX",
+      "toId": "xText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "positionY",
+      "toId": "yText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "deltaX",
+      "toId": "dxText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "deltaY",
+      "toId": "dyText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "onStart",
+      "toId": "setDragging",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "onStop",
+      "toId": "setReleased",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "drag",
+      "fromProperty": "done",
+      "toId": "setSnapped",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "status",
+      "fromProperty": "value",
+      "toId": "statusText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "targetInput",
+      "fromProperty": "onTextChanged",
+      "toId": "homeX",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "homeX",
+      "fromProperty": "value",
+      "toId": "drag",
+      "toProperty": "snapToPositionX.value"
+    },
+    {
+      "fromId": "snapBtn",
+      "fromProperty": "onClick",
+      "toId": "drag",
+      "toProperty": "snapToPositionX.do"
+    },
+    {
+      "fromId": "snapBtn",
+      "fromProperty": "onClick",
+      "toId": "drag",
+      "toProperty": "snapToPositionY.do"
+    },
+    {
+      "fromId": "draggingLabel",
+      "fromProperty": "savedValue",
+      "toId": "setDragging",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "releasedLabel",
+      "fromProperty": "savedValue",
+      "toId": "setReleased",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "snappedLabel",
+      "fromProperty": "savedValue",
+      "toId": "setSnapped",
+      "toProperty": "value"
+    }
+  ]
+}

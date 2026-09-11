@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cn001f00-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "cn001f-root-group",
+      "type": "Group",
+      "x": 0,
+      "y": 0,
+      "children": ["cn001f-kit-node"]
+    },
+    {
+      "id": "cn001f-kit-node",
+      "type": "demo.kit.Badge",
+      "x": 0,
+      "y": 0,
+      "parameters": { "label": "from the kit" }
+    }
+  ],
+  "visualRoots": ["cn001f-root-group"]
+}

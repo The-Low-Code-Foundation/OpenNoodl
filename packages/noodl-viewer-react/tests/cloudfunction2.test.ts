@@ -117,6 +117,94 @@ test('doCall with no editorConnection and no cloudServices does not throw and si
   expect(instance._internal.error).toBeTruthy();
 });
 
+/**
+ * DEF-026. A connection refusal terminates the XHR at `readyState 4, status 0,
+ * response ''` (the spec's request-error steps; jsdom and Chrome both do this).
+ * `JSON.parse('')` throws, so the error handler receives `undefined` — and the
+ * handler dereferenced `e.error`, so the one route to the `failure` outcome
+ * threw a TypeError instead of running. A graph wired correctly for failure
+ * showed nothing, which is SBR-015's defect one layer further out, met the
+ * ordinary way: the backend is not running.
+ */
+function makeTerminalXHR(terminal: { status: number; response: string }): { opened: string[] } {
+  const opened: string[] = [];
+  class FakeXHR {
+    onreadystatechange: (() => void) | null = null;
+    readyState = 0;
+    status = 0;
+    response = '';
+    open(method: string, url: string) {
+      opened.push(`${method} ${url}`);
+    }
+    setRequestHeader() {}
+    send() {
+      this.readyState = 4;
+      this.status = terminal.status;
+      this.response = terminal.response;
+      // Synchronous where the browser is asynchronous — which is exactly why the
+      // pre-fix TypeError surfaces as a throw here and as an uncaught error there.
+      this.onreadystatechange && this.onreadystatechange();
+    }
+  }
+  (globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest = FakeXHR;
+  (globalThis as { localStorage?: unknown }).localStorage = {};
+  return { opened };
+}
+
+function cleanupTerminalXHR() {
+  delete (globalThis as { XMLHttpRequest?: unknown }).XMLHttpRequest;
+  delete (globalThis as { localStorage?: unknown }).localStorage;
+}
+
+describe('DEF-026 — the call itself failing must reach the failure outcome', () => {
+  beforeEach(() => {
+    (NoodlRuntime as { instance?: unknown }).instance = {
+      getMetaData: () => ({ appId: 'app-id', endpoint: 'http://127.0.0.1:1' })
+    };
+  });
+  afterEach(cleanupTerminalXHR);
+
+  test('a connection refusal (status 0, empty body) fires failure and names the endpoint', () => {
+    makeTerminalXHR({ status: 0, response: '' });
+    const instance = makeDeployShapedInstance();
+
+    expect(() => (instance.scheduleCall as () => void)()).not.toThrow();
+    expect(instance.signalsSent).toEqual(['failure', 'completed']);
+    // The reason must say what actually happened — nothing answered — not "the
+    // function failed", which points the author at the wrong half of the wire.
+    expect(instance._internal.error).toContain('http://127.0.0.1:1');
+    expect(instance._internal.lastCallResult).toEqual({
+      status: 'failure',
+      error: instance._internal.error
+    });
+    expect(instance.raised).toEqual([{ code: 'cloud-function/call-failed', message: instance._internal.error }]);
+  });
+
+  test('an error status whose body is not JSON (a proxy HTML page) still fires failure', () => {
+    makeTerminalXHR({ status: 502, response: '<html>Bad Gateway</html>' });
+    const instance = makeDeployShapedInstance();
+
+    expect(() => (instance.scheduleCall as () => void)()).not.toThrow();
+    expect(instance.signalsSent).toEqual(['failure', 'completed']);
+    expect(instance._internal.error).toBeTruthy();
+  });
+
+  /**
+   * The known-firing control: the arm the SBR-015 drive saw work (backend up,
+   * runner refuses with a JSON body). Green before the fix — it is what makes
+   * the two arms above an absence *in the same instrument* rather than a
+   * broken harness.
+   */
+  test('control: an error status with a JSON error body fires failure with that reason', () => {
+    makeTerminalXHR({ status: 404, response: JSON.stringify({ error: "Function 'myFunction' not found" }) });
+    const instance = makeDeployShapedInstance();
+
+    expect(() => (instance.scheduleCall as () => void)()).not.toThrow();
+    expect(instance.signalsSent).toEqual(['failure', 'completed']);
+    expect(instance._internal.error).toBe("Function 'myFunction' not found");
+  });
+});
+
 test('doCall with no editorConnection but valid cloudServices reaches the request without throwing', () => {
   (NoodlRuntime as { instance?: unknown }).instance = {
     getMetaData: () => ({ appId: 'app-id', endpoint: 'https://backend.example' })

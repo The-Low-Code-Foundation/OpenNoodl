@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "5660d284-6f7d-563b-89db-f520178e829c",
+  "name": "RequestRow",
+  "path": "/Members/RequestRow",
+  "type": "visual",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

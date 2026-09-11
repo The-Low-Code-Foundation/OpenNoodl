@@ -1,19 +1,30 @@
 {
   "typeName": "Text",
   "summary": "Renders a piece of text with typography controlled by a text style or explicit font parameters.",
-  "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry.",
-  "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label).",
+  "description": "Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry. Text has no box of its own: it takes margins, but padding, background colour, border and corner radius are not ports on it — a padded, filled or rounded label is a Text inside a Group carrying those, which is what the design system's own components do.",
+  "whenToUse": "Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label). For anything with an inset, a fill or a rounded edge, wrap the Text in a Group and set padding, backgroundColor and borderRadius on the Group.",
   "ports": {
     "text": "The string to render; bind data here (e.g. a Component Inputs property or a String variable).",
     "textStyle": "Named project text style supplying font, size and color; explicit font parameters on this node override individual fields of it.",
     "sizeMode": "How the node takes its size: content-driven by default, or explicit width/height.",
-    "visible": "Boolean level; hides/shows without removing layout logic elsewhere."
+    "visible": "Boolean level; the element KEEPS ITS SPACE in the layout when hidden (visibility, not display). To remove the space, use a Condition on the parent or swap the children instead."
   },
   "runtimeBehavior": "Text's ports are conditional on parameter values (declared-port-groups): explicit width/height ports appear only in the matching size mode, and advanced text ports depend on chosen options. Treat the catalog's list as the superset the editor filters contextually.",
-  "examples": ["repeater-query-records", "validate-before-submit"],
+  "examples": [
+    "repeater-query-records",
+    "validate-before-submit",
+    "ui-page-shell-bands",
+    "ui-split-hero",
+    "ui-stat-tile-row"
+  ],
   "patterns": [
     "Bind `text` from Component Inputs inside a Repeater item component to show per-record fields.",
     "Drive `visible` from a Condition's `result`/`isfalse` for inline error or empty-state messages."
   ],
-  "relatedNodes": ["Group", "net.noodl.controls.textinput", "String Format", "Label"]
+  "relatedNodes": [
+    "Group",
+    "net.noodl.controls.textinput",
+    "String Format",
+    "Label"
+  ]
 }

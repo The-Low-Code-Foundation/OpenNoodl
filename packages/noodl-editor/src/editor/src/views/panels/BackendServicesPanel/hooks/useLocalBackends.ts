@@ -11,6 +11,9 @@
 import { getIpc } from '@noodl-utils/ipc';
 import { useCallback, useEffect, useState } from 'react';
 
+import { startLocalBackend } from '@noodl-models/BackendServices/startLocalBackend';
+import { ProjectModel } from '@noodl-models/projectmodel';
+
 import { CloudFunctionDeployer } from '../../../../services/CloudFunctionDeployer';
 
 /** Backend metadata as stored in config.json */
@@ -202,7 +205,14 @@ export function useLocalBackends(): UseLocalBackendsReturn {
       setIsOperating(true);
       setError(null);
       try {
-        await invokeIPC<{ running: boolean }>('backend:start', id, options ?? {});
+        // SB-015: the Start button starts a backend for the project that is
+        // open, which is the project whose policy it should come up enforcing.
+        await startLocalBackend<{ running: boolean }>(
+          invokeIPC,
+          id,
+          ProjectModel.instance?._retainedProjectDirectory,
+          options ?? {}
+        );
 
         /**
          * WFA-001 (finding F6): a backend loads `*.workflow.json` from its data

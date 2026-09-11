@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "cd133680-a154-5770-8e2f-5eb39e610782",
+  "name": "Chrome",
+  "path": "/Members/Chrome",
+  "type": "visual",
+  "created": "2026-08-28T00:00:00.000Z",
+  "modified": "2026-08-28T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

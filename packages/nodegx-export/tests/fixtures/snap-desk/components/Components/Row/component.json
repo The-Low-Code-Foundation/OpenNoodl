@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d1c3-6a4e-4f9b-8d2c-000000000096",
+  "name": "Row",
+  "path": "/Components/Row",
+  "type": "visual",
+  "modified": "2026-09-03T23:30:00.000Z",
+  "description": "EXP-011 §55 fixture: one row — the text and a Remove button that pulses the removed output. Used by both lists."
+}

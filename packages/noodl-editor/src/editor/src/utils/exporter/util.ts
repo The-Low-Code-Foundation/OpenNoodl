@@ -59,6 +59,27 @@ export function exportNode(node: NodeGraphNode) {
 }
 
 export function exportComponent(comp: ComponentModel) {
+  /**
+   * DEF-028 (phase 80) · P77 D13 — settle connection health before reading it.
+   *
+   * The connection loop below drops every wire `getConnectionHealth` calls
+   * unhealthy, and that verdict comes from a debounced pass that nothing forced
+   * to land. Without this, what a build contains depends on when it was taken
+   * rather than on what the project says — silently, and in both directions.
+   *
+   * 🔴 Done here, in the filter, rather than at the call sites, because there
+   * are **eight** of them across seven entry points — component bundles
+   * (`editorapi`), incremental preview updates (`ViewerConnection`), the full
+   * export and deploy (`json.ts`, `deployer.ts`), cloud functions, and the AI
+   * authoring sandbox (`sandboxExport`, `componentBench`). One of them missing
+   * the call is the defect again, so no caller is trusted to make it. Anything
+   * added later gets it by construction.
+   *
+   * ⚠️ Deliberately NOT inside `getConnectionHealth`: its other caller is
+   * `NodeGraphEditorConnection`, which asks once per wire per repaint.
+   */
+  comp.graph.flushEvaluateHealth();
+
   const json: TSFixme = { name: comp.name };
 
   json.nodes = [];
@@ -81,12 +102,25 @@ export function exportComponent(comp: ComponentModel) {
   for (const i in comp.graph.connections) {
     const c = comp.graph.connections[i];
 
-    const health = comp.graph.getConnectionHealth({
-      sourceId: c.fromId,
-      sourcePort: c.fromProperty,
-      targetId: c.toId,
-      targetPort: c.toProperty
-    });
+    /**
+     * DEF-034 (phase 80) — **only an `error` deletes a wire.**
+     *
+     * `getConnectionHealth` used to answer with any recorded warning, at any level, and this
+     * filter treated all of them as "cannot work". Two of the seven connection keys are
+     * deliberately `level: 'warning'` — `con-target-port-gated` says the wire *"is valid and its
+     * value is ignored"*, and `con-type-unconverted` says the value arrives, just unconverted.
+     * Deleting those wires is strictly worse than keeping them: a gate that flips at runtime, or
+     * a cast the author accepted, then has nothing delivering a value at all.
+     */
+    const health = comp.graph.getConnectionHealth(
+      {
+        sourceId: c.fromId,
+        sourcePort: c.fromProperty,
+        targetId: c.toId,
+        targetPort: c.toProperty
+      },
+      { levels: ['error'] }
+    );
     if (health.healthy) {
       json.connections.push(exportConnection(c));
     }

@@ -50,6 +50,12 @@ export interface RuntimeEditorConnection extends EditorConnectionLike {
   /** HUD-004. Who holds the trace, and the last `seq` written. See `tracebuffer.ts`. */
   sendTraceState(state: unknown): void;
   sendPortValues(values: unknown[]): void;
+  /** LGC-002 — the answer to one "Do It". See `logic-builder-probe.ts`. */
+  sendBlockFragmentResult(result: unknown): void;
+  /** LGC-003 — "I have the node you asked me to trace", stamped with this viewer's id. */
+  sendBlockTraceState(state: unknown): void;
+  /** LGC-003 — one run's `{blockId → value}` map. See `blockrun.ts`. */
+  sendBlockValues(frame: unknown): void;
 }
 
 /**
@@ -187,6 +193,11 @@ export interface RuntimeNode extends NodeInstance {
   model?: any;
   variant?: NodeVariant;
   nodeScope: any;
+  /**
+   * DEF-004's duplicate guard. True only while this node is raising on behalf of an outcome it
+   * is already recording a step for. See `Node.raiseRuntimeError`.
+   */
+  _raisingForOutcome?: boolean;
   context: RuntimeNodeContext;
 
   _dirty: boolean;
@@ -206,6 +217,8 @@ export interface RuntimeNode extends NodeInstance {
   _isFirstUpdate: boolean;
   _valuesFromConnections: Record<string, unknown>;
   _expressionSubscriptions: Record<string, ExpressionSubscription>;
+  /** Ports with an `expression-error-<port>` warning currently raised. Null until the first one. */
+  _expressionErrorPorts: Record<string, true> | null;
   /** NDA-017 §2. Deliberate answers only; absent reads as ticked. */
   _runOnValueChange: Record<string, boolean>;
   /**
@@ -237,6 +250,14 @@ export interface RuntimeNode extends NodeInstance {
   _getVisualStates?: () => string[];
   /** Present only on React-backed nodes. */
   _resetReactVirtualDOM?: () => void;
+  /**
+   * DEF-037. Present only on React-backed nodes: re-run render without remounting, so a
+   * component that derives properties from a style value recomputes them. Weaker than
+   * {@link _resetReactVirtualDOM}, which mints a new React key and discards DOM state.
+   */
+  _rerenderReactNode?: () => void;
+  /** DEF-037. One editor-driven re-render per update pass; see `_scheduleEditorDrivenRerender`. */
+  _editorRerenderScheduled?: boolean;
 
   /**
    * Set when the SSR server created this instance inert because its type is
@@ -254,6 +275,8 @@ export interface RuntimeNode extends NodeInstance {
   removeInputConnection(inputName: string, sourceNodeId: string, sourcePortName: string): void;
 
   _evaluateExpressionParameter(paramValue: unknown, portName: string): unknown;
+  _raiseExpressionError(portName: string, message: string): void;
+  _clearExpressionError(portName: string): void;
   _updateDependencies(): void;
   _performDirtyUpdate(): void;
   /** `causeSeq` is OBS-001's trace id for the edge that carried this value; omitted when not tracing. */
@@ -262,6 +285,8 @@ export interface RuntimeNode extends NodeInstance {
   _hasInputBeenSetFromAConnection(inputName: string): boolean;
   _onNodeDeleted(): void;
   _onNodeModelParameterUpdated(event: NodeModelParameterUpdatedEvent): void;
+  /** DEF-037. Schedules a post-input re-render when the editor changed a parameter. */
+  _scheduleEditorDrivenRerender(): void;
   _onNodeModelVariantUpdated(variant: NodeVariant): void;
   setNodeModel(nodeModel: any): void;
 }

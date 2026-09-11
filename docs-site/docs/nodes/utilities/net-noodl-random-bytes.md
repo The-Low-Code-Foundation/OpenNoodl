@@ -65,6 +65,12 @@ A nonce, a CSRF token, a PKCE verifier, an invite code, a one-time download key 
 - Treating Length as a character count. 16 bytes of hex is 32 characters.
 - Using this where a UUID is what the other system expects — the shapes are not interchangeable.
 
+## Examples
+
+**Mint an invite link nobody can guess**
+
+Two nodes that look interchangeable and are not. UUID gives a version-4 identifier — 36 characters, 122 random bits — and it is the right thing for an id you will store, log and put in a URL path, because it is a recognised format that other systems already know how to handle. Random Bytes gives raw entropy rendered as text, and it is the right thing for the SECRET half, because you choose how much of it there is. Neither is Unique Id: that node is 10 characters out of `Math.random()`, which is correct for keying a rendered list and wrong for anything an attacker might try to guess. Length counts BYTES, not characters — 32 bytes is 64 hex characters, or 43 in base64url, which is the encoding chosen here because it is the one that survives being pasted into a URL without escaping. Both nodes fail loudly rather than falling back to `Math.random()` when there is no cryptographic random source, which is the behaviour you want: a silent downgrade produces a token that looks exactly as convincing and is worthless, so the Failure wire is not decoration. Note that UUID populates its output when the node is created, so Id is never blank before the first `New` — the click here replaces it rather than filling it, which matters if you render the link before anyone has clicked.
+
 ## Related nodes
 
 [UUID](./net-noodl-uuid.md), [Hash](./net-noodl-hash.md), [Unique Id](../string-manipulation/unique-id.md)

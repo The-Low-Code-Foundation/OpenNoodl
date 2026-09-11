@@ -4,6 +4,7 @@ import { NodeLibrary } from '@noodl-models/nodelibrary/nodelibrary';
 import {
   NodeLibraryData,
   NodeLibraryDataNodeType,
+  NodeLibraryModuleFailure,
   RuntimeType,
   RuntimeTypes
 } from '@noodl-models/nodelibrary/NodeLibraryData';
@@ -27,6 +28,22 @@ const STATIC_CLOUD_CLIENT_ID = '__cloud_node_library__';
  * of them can execute.
  */
 const WORKFLOW_CLIENT_ID = '__workflow_step_kinds__';
+
+/**
+ * CN-014 — has a runtime's report of a node actually changed?
+ *
+ * `runtimeTypes` is excluded because it is the editor's own bookkeeping: it is
+ * written onto the stored node and never present on an incoming one, so a naive
+ * comparison would call every node changed on every import.
+ *
+ * Key order is stable in practice (both sides are parsed from the same
+ * generator's JSON), and the failure direction if it ever were not is a
+ * redundant library reload rather than a missed one.
+ */
+function nodeDataDiffers(existing: NodeLibraryDataNodeType, incoming: NodeLibraryDataNodeType): boolean {
+  const { runtimeTypes: _ignored, ...existingData } = existing;
+  return JSON.stringify(existingData) !== JSON.stringify(incoming);
+}
 
 /**
  * Keep track of all the clients and their nodes.
@@ -123,14 +140,35 @@ export class NodeLibraryImporter {
    *
    * Held rather than merged-and-forgotten because a workflow library is
    * *replaced*, not merged: two backends can serve different versions of the
-   * same kind, and `mergeUpdates` deliberately never updates an existing node's
-   * data (it has always been additive). Merging a second backend's catalog on
-   * top of the first would leave the first backend's params in place under the
-   * second backend's name — the exact drift the served registry exists to
-   * prevent. So the names installed last time are remembered and removed first.
+   * same kind. Merging a second backend's catalog on top of the first would
+   * leave the first backend's params in place under the second backend's name —
+   * the exact drift the served registry exists to prevent. So the names
+   * installed last time are remembered and removed first.
+   *
+   * ⚠️ **CN-014 changed the sentence this used to lean on.** `mergeUpdates` is
+   * no longer purely additive — a runtime may now replace the data of a node it
+   * owns. That does *not* make the remove-first dance redundant: a workflow
+   * library never travels through `mergeUpdates` at all (it is pushed straight
+   * into `nodetypes` by {@link applyWorkflowLibrary}), so nothing else would
+   * ever evict the previous backend's kinds.
    */
   private workflowLibrary: NodeLibraryData | null = null;
   private workflowNodeNames = new Set<string>();
+
+  /**
+   * CN-014 — which runtime's report the *data* behind each node name came from.
+   *
+   * `runtimeTypes` on a node is a union: it answers "where can this node run?",
+   * and after the generated cloud library merges, 84 of the browser library's
+   * 177 names carry both Browser and Cloud. It therefore cannot answer the
+   * question a refresh has to ask, which is "whose definition is this?".
+   *
+   * Precedence today is first-writer-wins: the browser client establishes the
+   * library and the cloud merge only ever appends a runtime type. Keeping that
+   * exactly as it is, while letting a runtime replace *its own* previous report,
+   * is what this map is for — see {@link mergeUpdates}.
+   */
+  private dataOwner = new Map<string, RuntimeType>();
 
   constructor() {
     EventDispatcher.instance.on(
@@ -141,6 +179,7 @@ export class NodeLibraryImporter {
         this.hasStaticCloudLibrary = false;
         this.workflowLibrary = null;
         this.workflowNodeNames.clear();
+        this.dataOwner.clear();
       },
       this
     );
@@ -210,6 +249,7 @@ export class NodeLibraryImporter {
     this.clients.clear();
     this.currentNodeLibrary = null;
     this.hasStaticCloudLibrary = false;
+    this.dataOwner.clear();
   }
 
   /**
@@ -219,7 +259,11 @@ export class NodeLibraryImporter {
    */
   public onClientDisconnect(clientId: string) {
     this.clients.remove(clientId);
-    this.updateIndex(false);
+    // CN-015: a failure was an observation made by *that page*. With the page
+    // gone there is nothing standing behind the claim, so it goes too.
+    const hadFailures = !!this.moduleFailures[clientId];
+    delete this.moduleFailures[clientId];
+    this.updateIndex(hadFailures);
   }
 
   /**
@@ -263,9 +307,50 @@ export class NodeLibraryImporter {
     if (this.workflowLibrary && !this.workflowNodeNames.size) this.applyWorkflowLibrary();
   }
 
+  /**
+   * CN-015 — kit load failures, **per client and replaced on every import**.
+   *
+   * 🔴 Not merged into `currentNodeLibrary`, and that is the whole point.
+   * `mergeUpdates` only ever walks `nodetypes`; a top-level field on a *second*
+   * import would be silently ignored, so a failure list stamped there would
+   * freeze at whatever the first client happened to report and go on claiming a
+   * kit was broken after the author had fixed it. Keyed by client, it is
+   * replaced when that viewer re-reports and dropped when it disconnects —
+   * which is the honest lifetime, because the fact only exists while the page
+   * that observed it is alive.
+   */
+  private moduleFailures: Record<string, NodeLibraryModuleFailure[]> = {};
+
+  /**
+   * Every connected client's kit load failures, deduplicated by kit name.
+   *
+   * ⚠️ Empty means *no connected viewer reported a failure* — which includes
+   * "no viewer is connected at all". It is not evidence that the kits are
+   * healthy, and the surfaces that render it must not say so.
+   */
+  public getModuleFailures(): NodeLibraryModuleFailure[] {
+    const byModule = new Map<string, NodeLibraryModuleFailure>();
+    for (const failures of Object.values(this.moduleFailures)) {
+      for (const failure of failures) {
+        if (failure && typeof failure.module === 'string') byModule.set(failure.module, failure);
+      }
+    }
+    return Array.from(byModule.values());
+  }
+
   /** The assign-or-merge half of {@link onClientImport}, without the reload. */
   private importLibrary(clientId: string, runtimeType: RuntimeType, library: NodeLibraryData): boolean {
     this.clients.import(clientId, runtimeType, library.nodetypes);
+
+    // CN-015. A changed failure list forces the index update on its own: a kit
+    // that registers no nodes even when healthy can break without any node
+    // appearing or disappearing, and then nothing else here would report a
+    // change and the panel would keep showing the stale answer.
+    const incomingFailures = Array.isArray(library.modulefailures) ? library.modulefailures : [];
+    const failuresChanged =
+      JSON.stringify(this.moduleFailures[clientId] || []) !== JSON.stringify(incomingFailures);
+    if (incomingFailures.length) this.moduleFailures[clientId] = incomingFailures;
+    else delete this.moduleFailures[clientId];
 
     console.debug('[nodelib] Received', runtimeType, ` (nodes: ${library.nodetypes.length})`);
 
@@ -275,7 +360,7 @@ export class NodeLibraryImporter {
       return true;
     }
 
-    return this.mergeUpdates(runtimeType, library);
+    return this.mergeUpdates(runtimeType, library) || failuresChanged;
   }
 
   private updateIndex(forceUpdate: boolean): void {
@@ -297,6 +382,77 @@ export class NodeLibraryImporter {
       return true;
     });
 
+    /*
+     * 🔴 **s29 — the picker's per-kit groups were never pruned, and the panel said so out loud.**
+     *
+     * `nodetypes` above is filtered against `nodeNames`; `nodeIndex.moduleNodes` was not, and
+     * `mergeInByName` only ever replaces-by-name or pushes. So a kit that stopped registering —
+     * a syntax error, or D20 rolling a kit back — kept its group here forever. Measured live: the
+     * node library reported **no** `nodegx.broken.*` type while this index still listed
+     * `nodegx.broken.Intact`.
+     *
+     * ⚠️ **It is not a cosmetic drift, it inverts a diagnostic.** `KitsSection` feeds these names
+     * to `kitDiagnostics` as *"what this kit registered"*, so `registeredSomething` was true for a
+     * kit that had registered nothing and Settings → Kits told the author the kit was *"only
+     * PARTIALLY registered — nodes defined before the failure are available"*. With D20 the same
+     * row then contradicted itself in one sentence: *"NONE of this kit's nodes register"* followed
+     * by *"It is only PARTIALLY registered"*. The `partial` branch is **kept**, not deleted — a
+     * script that throws after some `defineModule` calls really is half-registered, and that is
+     * the alarming case CN-015 named. What changes is that its input is now true.
+     *
+     * ✅ Pruned against **the same `nodeNames`** the node types use, deliberately: two views of one
+     * fact that *can* disagree eventually will, and this is the pair that did.
+     */
+    const removedModuleNodes: string[] = [];
+    const moduleGroups = this.currentNodeLibrary.nodeIndex && this.currentNodeLibrary.nodeIndex.moduleNodes;
+    if (moduleGroups) {
+      const kept: typeof moduleGroups = [];
+      for (const group of moduleGroups) {
+        /*
+         * ⚠️ **Only the shape the producer actually emits is judged.** `generateNodeLibrary` builds
+         * `moduleNodes` as `{ name, items: string[] }` — flat, one entry per kit, items being
+         * registered type names (`nodelibraryexport.ts`, the `moduleNodesByKit` map). `coreNodes` is
+         * the one that carries `subCategories`, and `NodeLibraryData` types `items` as `TSFixme[]`,
+         * so nothing here is guaranteed by the compiler.
+         *
+         * 🔴 A group whose `items` is not an array is therefore passed through untouched rather
+         * than normalised or dropped. `tests-unit/cn-014` builds exactly such a group — a
+         * `subCategories`-shaped `moduleNodes` entry the producer cannot emit — and a first draft of
+         * this pass crashed on it. Dropping a kit's picker group because this code did not
+         * recognise its shape would be a worse bug than the stale one being fixed.
+         */
+        if (!Array.isArray(group.items)) {
+          kept.push(group);
+          continue;
+        }
+
+        const items = group.items.filter((item) => {
+          // Same reasoning one level down: only a plain type-name string can be checked.
+          if (typeof item !== 'string' || nodeNames.has(item)) return true;
+          removedModuleNodes.push(item);
+          return false;
+        });
+
+        if (items.length === group.items.length) {
+          kept.push(group);
+        } else if (items.length > 0) {
+          kept.push({ ...group, items });
+        }
+        // else: every name this kit registered is gone, so the group goes with them. That is
+        // exactly what a kit the editor has never seen looks like, and `joinKitNodes` already
+        // renders it as "installed, not yet loaded" beside the failure diagnostic saying why.
+      }
+      this.currentNodeLibrary.nodeIndex.moduleNodes = kept;
+    }
+
+    /*
+     * ⚠️ **No extra republish trigger, and that is a measurement rather than an omission.** A group
+     * item can only be pruned when its name has left `nodeNames` — and `nodetypes` is filtered
+     * against the same set two blocks up, from a list the runtime builds from the same register
+     * (`nodelibraryexport.ts`). So a prune here always coincides with `removedNodes.length > 0`.
+     * A `|| removedModuleNodes.length > 0` clause was written first and then removed: no test could
+     * reach it, which makes it a branch that only ever passes.
+     */
     if (forceUpdate || removedNodes.length > 0) {
       // Send the node library to our NodeLibrary
       const exportJSON = JSON.parse(JSON.stringify(this.currentNodeLibrary));
@@ -312,6 +468,7 @@ export class NodeLibraryImporter {
       // another reload here.
       console.debug('[nodelib] Loaded new node library');
       if (removedNodes.length > 0) console.debug('[nodelib] Removed nodes: ', removedNodes);
+      if (removedModuleNodes.length > 0) console.debug('[nodelib] Removed kit nodes: ', removedModuleNodes);
       NodeLibrary.instance.reload();
     }
   }
@@ -323,6 +480,9 @@ export class NodeLibraryImporter {
     // Add what runtime the nodes are from.
     this.currentNodeLibrary.nodetypes.forEach((node) => {
       node.runtimeTypes = [runtimeType];
+      // CN-014: this runtime established the data, so it is the one allowed to
+      // replace it later.
+      this.dataOwner.set(node.name, runtimeType);
     });
 
     // Make sure the data structure is what we expect
@@ -345,18 +505,47 @@ export class NodeLibraryImporter {
         // Add the node, if it doesnt exist with the correct runtime
         node.runtimeTypes = [runtimeType];
         this.currentNodeLibrary.nodetypes.push(node);
+        this.dataOwner.set(node.name, runtimeType);
         updated = true;
       } else {
-        // TODO: Update the node data?
+        const existing = this.currentNodeLibrary.nodetypes[index];
 
         // Create the array if it doesnt exist
-        if (!this.currentNodeLibrary.nodetypes[index].runtimeTypes) {
-          this.currentNodeLibrary.nodetypes[index].runtimeTypes = [];
+        if (!existing.runtimeTypes) {
+          existing.runtimeTypes = [];
         }
 
         // Insert the new runtime if we dont have it.
-        if (!this.currentNodeLibrary.nodetypes[index].runtimeTypes.includes(runtimeType)) {
-          this.currentNodeLibrary.nodetypes[index].runtimeTypes.push(runtimeType);
+        if (!existing.runtimeTypes.includes(runtimeType)) {
+          existing.runtimeTypes.push(runtimeType);
+          updated = true;
+        }
+
+        /**
+         * CN-014 — a re-reporting runtime replaces its own node data.
+         *
+         * This used to be `// TODO: Update the node data?` and the answer was
+         * "never", which is what froze a kit node's definition after its first
+         * delivery: a viewer reload carries the author's edited `index.js`, but
+         * the editor already knew the type name, so it took this branch and
+         * discarded the new ports, dynamic ports and docs. A *new* node in the
+         * same file arrived immediately (the branch above), so the author sees
+         * the kit reload working and their edit ignored — which reads as "kit
+         * dynamic ports are broken" rather than "the library did not refresh".
+         *
+         * Gated on ownership rather than done unconditionally. The generated
+         * cloud library shares **all 84** of its names with the browser library
+         * (`Expression`, `REST2`, `Model2`, …), and it merges on top of the
+         * browser's report once per session — so an unconditional replace here
+         * would silently hand 84 built-ins' definitions to the cloud library and
+         * invert a precedence that has always been first-writer-wins.
+         */
+        if (this.dataOwner.get(node.name) === runtimeType && nodeDataDiffers(existing, node)) {
+          // The union is the accumulated answer to "where can this run?" and is
+          // not this report's to narrow: the cloud merge may already have added
+          // itself to a node this runtime owns.
+          node.runtimeTypes = existing.runtimeTypes;
+          this.currentNodeLibrary.nodetypes[index] = node;
           updated = true;
         }
       }
@@ -367,16 +556,30 @@ export class NodeLibraryImporter {
       inputArray.forEach((inputItem) => {
         const index = outputArray.findIndex((_t) => inputItem.name === _t.name);
         if (index !== -1) {
+          /**
+           * CN-014 — replacing here has always happened; *saying so* has not.
+           *
+           * The replacement is real (this is how a kit's picker group is kept
+           * current) but `updated` stayed false, so `updateIndex` published
+           * nothing and `NodeLibrary.instance.reload()` never ran. The fresh
+           * group sat in `currentNodeLibrary` and reached the picker only if
+           * something else in the same import happened to flip the flag — which
+           * is why adding a node to a kit refreshed its group and editing one
+           * did not.
+           *
+           * The commented-out `if (inputArray.length > 0) updated = true` this
+           * replaces was the right instinct in the wrong place: it fires on
+           * every import, including the ones that change nothing.
+           */
+          if (JSON.stringify(outputArray[index]) !== JSON.stringify(inputItem)) {
+            updated = true;
+          }
           outputArray[index] = inputItem;
         } else {
           outputArray.push(inputItem);
           updated = true;
         }
       });
-
-      // if (inputArray.length > 0) {
-      //   updated = true;
-      // }
     }
 
     if (library.nodeIndex.coreNodes) {

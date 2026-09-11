@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "a1b2c3d4-0000-4000-8000-000000000002",
+  "version": 1,
+  "connections": [
+    { "fromId": "subjectInput", "fromProperty": "onTextChanged", "toId": "subjectVar", "toProperty": "value" },
+    { "fromId": "subjectVar", "fromProperty": "value", "toId": "clip", "toProperty": "string" },
+    { "fromId": "clip", "fromProperty": "result", "toId": "clipText", "toProperty": "text" },
+    { "fromId": "subjectVar", "fromProperty": "value", "toId": "status", "toProperty": "inputString" },
+    { "fromId": "status", "fromProperty": "mappedString", "toId": "statusText", "toProperty": "text" },
+    { "fromId": "score", "fromProperty": "savedValue", "toId": "gauge", "toProperty": "inputValue" },
+    { "fromId": "gauge", "fromProperty": "remappedValue", "toId": "gaugeText", "toProperty": "text" }
+  ]
+}

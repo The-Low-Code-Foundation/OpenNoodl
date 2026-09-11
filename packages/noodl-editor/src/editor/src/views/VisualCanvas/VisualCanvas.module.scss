@@ -13,6 +13,259 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  // FIX-003 opt-out: the bench's resize grips and the chrome strip are gesture
+  // surfaces; a drag over them must not highlight the caption or size read-out.
+  // (The preview itself is a <webview> — its content is unaffected.)
+  user-select: none;
+}
+
+/* BEN-004 — the preview surface's own strip. Present in both modes and in the
+   same place in both (R4). Deliberately shallow: it is chrome the app preview
+   never had, and Richard's constraint was "without messing up the existing
+   preview display too much". */
+.Chrome {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 8px;
+  background-color: var(--theme-color-bg-2);
+  border-bottom: 1px solid var(--theme-color-bg-1);
+
+  &.is-bench {
+    /* One more at-a-glance cue that the surface below is not the app. Accent,
+       not danger — phase 23: red means danger only, and a bench is not one. */
+    box-shadow: inset 0 -2px 0 var(--theme-color-primary);
+  }
+
+  /* DES-001 — the strip is the label on the frame below it, so it carries the
+     same accent edge and joins the stage's ring into one shape. Same accent as
+     the bench for the same reason: this is a mode, not a fault. */
+  &.is-design {
+    background-color: var(--theme-color-primary-bg);
+    box-shadow: inset 0 -2px 0 var(--theme-color-primary);
+  }
+}
+
+/* DES-001 --------------------------------------------------------------------
+   Design mode, said where the pointer is. */
+
+.DesignBanner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: var(--theme-color-fg-default);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-weight: 600;
+  }
+
+  /* The sentence is the first thing to go when the panel is narrow; the words
+     "Design mode" and the way out both survive. */
+  > .DesignBannerText {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.DesignBannerIcon {
+  color: var(--theme-color-primary);
+}
+
+.DesignBannerExit {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 3px 8px;
+  font-family: var(--font-family);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--theme-color-fg-on-primary);
+  background-color: var(--theme-color-primary);
+
+  &:hover {
+    background-color: var(--theme-color-primary-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.DesignBannerKey {
+  opacity: 0.7;
+  font-weight: 500;
+  font-family: var(--font-family-code);
+  font-size: 10px;
+}
+
+.DesignToast {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--theme-color-primary);
+  background-color: var(--theme-color-bg-2);
+  box-shadow: var(--shadow-md);
+
+  /* It explains the click; it must never eat the next one. */
+  pointer-events: none;
+  animation: design-toast-in 120ms var(--easing-base);
+
+  strong {
+    color: var(--theme-color-fg-highlight);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+
+  span {
+    color: var(--theme-color-fg-muted);
+    font-size: 11px;
+    line-height: 1.3;
+  }
+}
+
+@keyframes design-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* FIX-011 / FIX-019 — the 30px strip's width budget, settled once.
+   -----------------------------------------------------------------------------
+   BEN-004's drive measured this strip clipping at 640px, and both fixes wanted
+   room in it: FIX-011 for a height field and the "set as default size" button,
+   FIX-019 for a divergence chip. The settlement is one rule, and it lives here
+   because here is where it can be read as a rule rather than inferred from four
+   files:
+
+     **The caption is the only thing that shrinks.**
+
+   Everything else in the strip is `flex-shrink: 0` — the scope chip (R4, the
+   only way out), the frame controls, the divergence chip, the size read-out. So
+   what a narrow panel costs you is the explanatory sentence, in the order a
+   reader would give it up anyway: the component's *name* is in the scope chip
+   on the left as well, so the caption is the one genuinely redundant thing in
+   the strip.
+
+   FIX-019's chip is affordable at all because it is assertive: it appears only
+   on divergence and costs zero width in the common case. */
+.BenchCaption {
+  /* The shrink zone. `1 1 auto` rather than the default `0 1 auto` so it also
+     takes the *slack* — otherwise a wide panel leaves a gap between the caption
+     and the controls, and the strip reads as two clumps rather than one row. */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--theme-color-fg-muted);
+  font-size: 11px;
+
+  strong {
+    color: var(--theme-color-fg-default);
+  }
+}
+
+/* FIX-019 — shown only when the node graph is on a different component. Styled
+   on the `DesignBannerExit` precedent: this is the same kind of thing, a way
+   back offered on the surface where the confusion happens. Quieter than that
+   one, because a divergence is a normal state to be in and not a mode you are
+   stuck in — outlined rather than filled. */
+.BenchDiverged {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 220px;
+  border: 1px solid var(--theme-color-primary);
+  border-radius: var(--radius-md);
+  padding: 2px 8px;
+  font-family: var(--font-family);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  color: var(--theme-color-primary);
+  background-color: transparent;
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &:hover {
+    color: var(--theme-color-fg-on-primary);
+    background-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: 2px;
+  }
+}
+
+.BenchSize {
+  /* No `margin-left: auto` — the caption takes the slack now (see above), and
+     an auto margin here as well would fight it for the same space. */
+  flex-shrink: 0;
+  color: var(--theme-color-fg-muted);
+  font-family: var(--font-family-code);
+  font-size: 10.5px;
+}
+
+/* R3 — both stages are absolutely positioned siblings of the same box, so the
+   inactive one keeps a real layout rectangle while hidden. That is what lets
+   the app preview survive a round trip with its zoom-to-fit arithmetic intact. */
+.Stages {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  min-height: 0;
+
+  /* DES-001 — the frame. Drawn as an overlay rather than a border so it costs
+     the preview no layout at all: `CanvasView.updateViewportSize` fits the
+     webview to this box, and a 2px border would silently change the size the
+     app is being previewed at every time the mode is toggled. */
+  &.is-design::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 2px var(--theme-color-primary);
+    pointer-events: none;
+    z-index: 1;
+  }
 }
 
 .ViewportInfo {
@@ -30,10 +283,19 @@
 }
 
 .WebviewContainer {
+  position: absolute;
+  inset: 0;
   display: flex;
-  align-self: stretch;
-  flex-grow: 1;
   overflow: auto;
+
+  /* ⚠️ `visibility`, not `display: none`: the element keeps its layout box, so
+     `CanvasView.updateViewportSize` still measures a real rectangle, and the
+     webview is hidden rather than closed — closing a webview CDP target
+     white-screens the editor (POL-012). */
+  &.is-hidden {
+    visibility: hidden;
+    pointer-events: none;
+  }
 
   &::-webkit-scrollbar-thumb {
     background: var(--base-color-grey-500);

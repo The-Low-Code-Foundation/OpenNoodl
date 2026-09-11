@@ -1,0 +1,217 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4f5c2adb-068c-5a26-863a-ab66de012c6b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "row-3",
+      "type": "Group",
+      "label": "One announcement",
+      "children": [
+        "rowLines",
+        "readButton"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border-subtle)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "columnGap": "var(--space-4)",
+        "justifyContent": "space-between"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowLines",
+      "type": "Group",
+      "label": "What it is, when, and what it says",
+      "parent": "row-3",
+      "children": [
+        "rowTitle",
+        "rowExcerpt",
+        "rowDate"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowTitle",
+      "type": "Text",
+      "label": "Title",
+      "parent": "rowLines",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-snug)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "rowExcerpt",
+      "type": "Text",
+      "label": "The first line of it",
+      "parent": "rowLines",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "rowDate",
+      "type": "Text",
+      "label": "Posted",
+      "parent": "rowLines",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "readButton",
+      "type": "net.noodl.controls.button",
+      "label": "Read",
+      "parent": "row-3",
+      "parameters": {
+        "label": "Read",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 640
+    },
+    {
+      "id": "inputs-2",
+      "type": "Component Inputs",
+      "label": "The announcement",
+      "ports": [
+        {
+          "name": "id",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "body",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "postedAt",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 410,
+      "y": 280
+    },
+    {
+      "id": "when",
+      "type": "JavaScriptFunction",
+      "label": "The date, as a person writes it",
+      "parameters": {
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.postedAt === undefined) return;\nOutputs.label = humanDay(Inputs.postedAt);"
+      },
+      "x": 410,
+      "y": 520,
+      "ports": [
+        {
+          "name": "in-postedAt",
+          "displayName": "postedAt",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-label",
+          "displayName": "label",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "firstLine",
+      "type": "JavaScriptFunction",
+      "label": "The first line of the body, and only the first",
+      "parameters": {
+        "runOnChange-in-body": false,
+        "functionScript": "if (Inputs.body === undefined) return;\nconst flat = String(Inputs.body || '').replace(/\\s+/g, ' ').trim();\nif (flat.length <= 120) {\n  Outputs.line = flat;\n  return;\n}\nconst cut = flat.slice(0, 120);\nconst lastSpace = cut.lastIndexOf(\" \");\nOutputs.line = (lastSpace > 60 ? cut.slice(0, lastSpace) : cut) + '…';"
+      },
+      "x": 410,
+      "y": 400,
+      "ports": [
+        {
+          "name": "in-body",
+          "displayName": "body",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-line",
+          "displayName": "line",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "goDetail",
+      "type": "RouterNavigate",
+      "label": "Open the announcement",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Announcement"
+      },
+      "x": 410,
+      "y": 640
+    }
+  ],
+  "visualRoots": [
+    "row-3"
+  ]
+}

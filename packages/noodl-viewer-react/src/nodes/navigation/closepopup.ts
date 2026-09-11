@@ -146,7 +146,7 @@ const ClosePopupNode: NodeDefinitionOptions = {
     error: {
       type: 'string',
       displayName: 'Error',
-      group: 'Events',
+      group: 'Error',
       description: 'Why the popup was not closed, set just before Failure fires',
       getter: function (this: ClosePopupInstance) {
         return this._internal.lastError;

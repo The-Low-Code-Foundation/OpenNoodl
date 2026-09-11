@@ -1,0 +1,153 @@
+/**
+ * BLD-011 — the attach control and its list.
+ *
+ * ⚠️ **Not a `MenuDialog`, and that is a measurement rather than a preference.**
+ * BLD-006 measured `MenuDialog.is-highlighted` failing to recolour its
+ * `EndSlot` — the selected row's text came out at **1.16:1** — and BLD-006's
+ * register also records it rendering its items twice. Both are filed as
+ * design-system traps at every call site with an end slot, and this list wants
+ * exactly that shape (a label with a size beside it). A plain list owned by this
+ * panel avoids inheriting a defect that is not this task's to fix.
+ *
+ * ⚠️ It is also **not a native `<select>`**: one opened by `.click()` never
+ * closes, which makes the whole attach path undriveable — and an undriveable
+ * control is one whose acceptance criteria become specs. Measured in
+ * PropertyPanel and carried forward.
+ *
+ * No global `box-sizing` in this repo (BLD-017 R4) — every padded, bordered box
+ * below declares it.
+ */
+
+/*
+ * 🔴 This box is deliberately **not** positioned and **not** width-100%, and
+ * the history is the point.
+ *
+ * BLD-011 drove this and found the list opening **113.8px wide** — the width of
+ * the "Add context" button — because `.List` is `left: 0; right: 0`, which
+ * resolves against the nearest positioned ancestor, and that was this box
+ * shrink-wrapping inside an `HStack`. `Library/Layout/Breadcrumbs` rendered as
+ * `Library/L…`: nothing broken, and the one control whose job is finding a
+ * component by name could not be read.
+ *
+ * The fix then was `position: relative; width: 100%` here. It was correct, and
+ * it stopped being correct the moment BLD-013 and BLD-014 put two more buttons
+ * in the same row: a full-width flex item claims the entire line, so `Attach`
+ * and `Look at it` were pushed onto a second row **at every panel width** —
+ * measured 67px tall at 248px and still 67px at 800px, where all three buttons
+ * fit in 742px with room to spare. A rule that was right about its old subject,
+ * for the sixth time this phase.
+ *
+ * So the positioning context moved **up**, to the control row itself
+ * (`AiAuthoringPanel.module.scss` → `.ComposerControls`). The list still spans
+ * the full composer — BLD-011's measurement is preserved exactly — and this box
+ * shrink-wraps to its button so its siblings can share the line.
+ *
+ * ⚠️ **`ReferencePicker` therefore requires a positioned ancestor.** Without
+ * one the list resolves against the viewport and spans the whole window. There
+ * is one call site and it is documented at both ends; a second call site must
+ * bring its own `position: relative`.
+ */
+.Picker {
+  /* No `position` — see above. The list is positioned by `.ComposerControls`. */
+  display: inline-flex;
+}
+
+.List {
+  /*
+   * Above the composer, not below: the composer sits at the bottom of the panel
+   * and a list dropping downward would open off-screen at every panel height.
+   */
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 10;
+  max-height: 260px;
+  overflow-y: auto;
+  background-color: var(--theme-color-bg-2);
+  border: 1px solid var(--theme-color-border-strong);
+  border-radius: 4px;
+  box-sizing: border-box;
+  padding: 4px;
+}
+
+.Group {
+  padding: 6px 8px 2px;
+  font-size: 10px;
+  line-height: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--theme-color-fg-default);
+}
+
+.Item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--theme-color-fg-default);
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+
+  &:hover {
+    background-color: var(--theme-color-bg-3);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-focus-ring);
+    outline-offset: -2px;
+  }
+}
+
+/*
+ * `.Item.is-attached`, not `.is-attached` — a bare module class loses to any
+ * descendant selector reaching in, and the failure mode is a state that stops
+ * painting silently (BLD-004's 1.16:1 collision, BLD-017 R-register).
+ */
+.Item.is-attached {
+  color: var(--theme-color-fg-default-shy);
+  cursor: default;
+}
+
+/*
+ * BLD-016 — the keyboard's highlight, and it is deliberately **not** `:hover`'s
+ * paint reused.
+ *
+ * A menu driven entirely by arrow keys has to say which row Enter takes, and
+ * `bg-3` alone is the same wash the mouse leaves behind — under a held arrow key
+ * the two are indistinguishable from "the pointer happens to be there". The
+ * inset ring is POL-016's, the same one the muted buttons in this row carry, so
+ * the highlight reads as a control's focus rather than as a hover.
+ *
+ * Compound (`.Item.is-active`) for the reason above it, and after `.is-attached`
+ * so an active row that is already attached still shows where the keyboard is.
+ */
+.Item.is-active {
+  background-color: var(--theme-color-bg-3);
+  box-shadow: inset 0 0 0 1px var(--theme-color-border-strong);
+}
+
+.ItemLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.ItemNote {
+  flex: none;
+  font-size: 10px;
+  line-height: 14px;
+  color: var(--theme-color-fg-default);
+}
+
+.Empty {
+  padding: 8px;
+  color: var(--theme-color-fg-default);
+}

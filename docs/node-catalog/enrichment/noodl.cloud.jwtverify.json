@@ -15,7 +15,7 @@
     "failure": "Fires when it did not, for any reason. Error says which.",
     "error": "Why the token did not verify."
   },
-  "examples": [],
+  "examples": ["cloud-check-a-webhook-and-a-token"],
   "patterns": [
     "Request receive → Secret Do → JWT Verify Do, with Failure wired to a Response that answers 401.",
     "Wire both Done and Failure. A function that only wires the happy path hangs when the token is bad."

@@ -1,0 +1,2191 @@
+{
+  "name": "CRUD Screen",
+  "components": [
+    {
+      "name": "/CRUD Screen",
+      "id": "4b1a0aa1-8317-5e22-a727-5975aacd5c9f",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "fromProperty": "Class",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "collectionName"
+          },
+          {
+            "fromId": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "fromProperty": "Class",
+            "toId": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "toProperty": "collectionName"
+          },
+          {
+            "fromId": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "fromProperty": "Class",
+            "toId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "toProperty": "collectionName"
+          },
+          {
+            "fromId": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "fromProperty": "Class",
+            "toId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "toProperty": "collectionName"
+          },
+          {
+            "fromId": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "fromProperty": "Class",
+            "toId": "31e73301-177e-53d8-8344-773402ca7c7d",
+            "toProperty": "collectionName"
+          },
+          {
+            "fromId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "fromProperty": "items",
+            "toId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "fromProperty": "fetched",
+            "toId": "c8450f4a-5d08-5b92-9b5e-7d7c3a3edc2e",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "fromProperty": "failure",
+            "toId": "c8450f4a-5d08-5b92-9b5e-7d7c3a3edc2e",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "c8450f4a-5d08-5b92-9b5e-7d7c3a3edc2e",
+            "fromProperty": "state",
+            "toId": "77132b25-d7e6-5332-8fbc-1da7d4e2190b",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "77132b25-d7e6-5332-8fbc-1da7d4e2190b",
+            "fromProperty": "result",
+            "toId": "18c29a19-bb2b-56bd-a709-090b03008769",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "fromProperty": "isEmpty",
+            "toId": "b2c6d28d-47cb-5493-8d90-5565d471627d",
+            "toProperty": "in-IsEmpty"
+          },
+          {
+            "fromId": "c8450f4a-5d08-5b92-9b5e-7d7c3a3edc2e",
+            "fromProperty": "state",
+            "toId": "b2c6d28d-47cb-5493-8d90-5565d471627d",
+            "toProperty": "in-Loaded"
+          },
+          {
+            "fromId": "b2c6d28d-47cb-5493-8d90-5565d471627d",
+            "fromProperty": "out-ShowEmpty",
+            "toId": "c386e40a-ba70-5d5b-b21f-f7ed5a8960e2",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "7182ead6-b60c-5c48-b927-8810d9915b71",
+            "fromProperty": "onTextChanged",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "search"
+          },
+          {
+            "fromId": "7182ead6-b60c-5c48-b927-8810d9915b71",
+            "fromProperty": "textChanged",
+            "toId": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "toProperty": "reset"
+          },
+          {
+            "fromId": "d29f7301-75ce-5b04-a9cc-375734a713b6",
+            "fromProperty": "onClick",
+            "toId": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "toProperty": "decrease"
+          },
+          {
+            "fromId": "a802fb46-35c9-5fbc-85b5-e1aefe44e698",
+            "fromProperty": "onClick",
+            "toId": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "toProperty": "increase"
+          },
+          {
+            "fromId": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "fromProperty": "currentCount",
+            "toId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "toProperty": "in-Page"
+          },
+          {
+            "fromId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "fromProperty": "storageTotalCount",
+            "toId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "toProperty": "in-Total"
+          },
+          {
+            "fromId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "fromProperty": "out-Limit",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageLimit"
+          },
+          {
+            "fromId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "fromProperty": "out-Skip",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageSkip"
+          },
+          {
+            "fromId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "fromProperty": "out-Label",
+            "toId": "6829fe7f-47b4-5efe-94ec-1232df3b6fea",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "fromProperty": "out-HasPrev",
+            "toId": "d29f7301-75ce-5b04-a9cc-375734a713b6",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "fromProperty": "out-HasNext",
+            "toId": "a802fb46-35c9-5fbc-85b5-e1aefe44e698",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "fromProperty": "countChanged",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "3c3ee54f-018c-5b43-af3d-e25b04f041a9",
+            "fromProperty": "onClick",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "3c3ee54f-018c-5b43-af3d-e25b04f041a9",
+            "fromProperty": "onClick",
+            "toId": "1596a264-d785-5c0c-8931-a43a64165509",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "3c3ee54f-018c-5b43-af3d-e25b04f041a9",
+            "fromProperty": "onClick",
+            "toId": "599e7c59-90be-527d-81c1-5fe96dff4105",
+            "toProperty": "clear"
+          },
+          {
+            "fromId": "3c3ee54f-018c-5b43-af3d-e25b04f041a9",
+            "fromProperty": "onClick",
+            "toId": "49ad9d5d-4782-5ad5-bc4f-8c051d39dbdb",
+            "toProperty": "clear"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemOutputSignal-Edit",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemOutputSignal-Edit",
+            "toId": "1596a264-d785-5c0c-8931-a43a64165509",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemOutputSignal-Edit",
+            "toId": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "toProperty": "fetch"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemActionItemId",
+            "toId": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemActionItemId",
+            "toId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemActionItemId",
+            "toId": "31e73301-177e-53d8-8344-773402ca7c7d",
+            "toProperty": "modelId"
+          },
+          {
+            "fromId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "fromProperty": "state",
+            "toId": "3f327de0-52c2-5951-910c-53dff99cc561",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "1596a264-d785-5c0c-8931-a43a64165509",
+            "fromProperty": "state",
+            "toId": "816804d0-4103-53e6-bc45-c76c7b614ec7",
+            "toProperty": "in-Editing"
+          },
+          {
+            "fromId": "816804d0-4103-53e6-bc45-c76c7b614ec7",
+            "fromProperty": "out-Title",
+            "toId": "16a31bf5-78c9-5492-8d81-a41a36314705",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "fromProperty": "prop-title",
+            "toId": "599e7c59-90be-527d-81c1-5fe96dff4105",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "fromProperty": "prop-notes",
+            "toId": "49ad9d5d-4782-5ad5-bc4f-8c051d39dbdb",
+            "toProperty": "startValue"
+          },
+          {
+            "fromId": "1596a264-d785-5c0c-8931-a43a64165509",
+            "fromProperty": "state",
+            "toId": "3f6a007c-09f1-5c53-b587-fbd9d77be168",
+            "toProperty": "condition"
+          },
+          {
+            "fromId": "c152b58f-2641-5a97-bdbf-4551479d2de1",
+            "fromProperty": "onClick",
+            "toId": "3f6a007c-09f1-5c53-b587-fbd9d77be168",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "3f6a007c-09f1-5c53-b587-fbd9d77be168",
+            "fromProperty": "ontrue",
+            "toId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "3f6a007c-09f1-5c53-b587-fbd9d77be168",
+            "fromProperty": "onfalse",
+            "toId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "599e7c59-90be-527d-81c1-5fe96dff4105",
+            "fromProperty": "onTextChanged",
+            "toId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "49ad9d5d-4782-5ad5-bc4f-8c051d39dbdb",
+            "fromProperty": "onTextChanged",
+            "toId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "toProperty": "prop-notes"
+          },
+          {
+            "fromId": "599e7c59-90be-527d-81c1-5fe96dff4105",
+            "fromProperty": "onTextChanged",
+            "toId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "toProperty": "prop-title"
+          },
+          {
+            "fromId": "49ad9d5d-4782-5ad5-bc4f-8c051d39dbdb",
+            "fromProperty": "onTextChanged",
+            "toId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "toProperty": "prop-notes"
+          },
+          {
+            "fromId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "fromProperty": "done",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "fromProperty": "done",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "fromProperty": "done",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "689961d1-c30f-529c-9376-519705dcab5a",
+            "fromProperty": "done",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageFetch"
+          },
+          {
+            "fromId": "882940a8-155f-5919-94dd-628382b9a5e5",
+            "fromProperty": "onClick",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemOutputSignal-Delete",
+            "toId": "31e73301-177e-53d8-8344-773402ca7c7d",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+            "fromProperty": "itemOutputSignal-Delete",
+            "toId": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "31e73301-177e-53d8-8344-773402ca7c7d",
+            "fromProperty": "done",
+            "toId": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "toProperty": "storageFetch"
+          }
+        ],
+        "roots": [
+          {
+            "id": "6a0258b9-2f58-58a4-b56a-ed4c484dea85",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "row",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "height": {
+                "value": 100,
+                "unit": "%"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "da7b6d3f-a809-5268-88d8-986d210f8c6d",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "height": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "paddingTop": {
+                    "value": 24,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 24,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 24,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 24,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "fd29fc18-79c5-5192-95b5-a6b54bf19b23",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "justifyContent": "space-between",
+                      "alignItems": "center",
+                      "marginBottom": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "3ad9f7ea-c069-500e-9cf4-8a69bc72cbf7",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Items",
+                          "sizeMode": "contentSize",
+                          "fontSize": {
+                            "value": 18,
+                            "unit": "px"
+                          },
+                          "color": "var(--foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Screen title"
+                      },
+                      {
+                        "id": "3c3ee54f-018c-5b43-af3d-e25b04f041a9",
+                        "type": "net.noodl.controls.button",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "label": "New",
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "backgroundColor": "var(--primary)",
+                          "color": "var(--primary-foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "borderStyle": "none",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingTop": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingBottom": {
+                            "value": 6,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "New button"
+                      }
+                    ],
+                    "label": "Header"
+                  },
+                  {
+                    "id": "0c6022ce-d624-522d-9b4c-5cbda6e99f3c",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "marginBottom": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "7182ead6-b60c-5c48-b927-8810d9915b71",
+                        "type": "net.noodl.controls.textinput",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "useLabel": false,
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 36,
+                            "unit": "px"
+                          },
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "borderStyle": "solid",
+                          "borderWidth": {
+                            "value": 1,
+                            "unit": "px"
+                          },
+                          "borderColor": "var(--border)",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "placeholder": "Search\u2026"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Search input"
+                      }
+                    ],
+                    "label": "Search row"
+                  },
+                  {
+                    "id": "8bf1bbf8-f7ce-5f3f-9007-02491df6b2f3",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "column",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 100,
+                        "unit": "%"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "18c29a19-bb2b-56bd-a709-090b03008769",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "alignItems": "center",
+                          "paddingTop": {
+                            "value": 24,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "4b516c0d-cb99-52b6-8059-06aa93ef24d2",
+                            "type": "Text",
+                            "x": 0,
+                            "y": 0,
+                            "parameters": {
+                              "text": "Loading\u2026",
+                              "sizeMode": "contentSize",
+                              "fontSize": {
+                                "value": 14,
+                                "unit": "px"
+                              },
+                              "color": "var(--muted-foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": [],
+                            "label": "Loading text"
+                          }
+                        ],
+                        "label": "Loading state"
+                      },
+                      {
+                        "id": "c386e40a-ba70-5d5b-b21f-f7ed5a8960e2",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "alignItems": "center",
+                          "paddingTop": {
+                            "value": 24,
+                            "unit": "px"
+                          },
+                          "mounted": false
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "24e86224-ba61-5826-ad4f-e8707c7fad9b",
+                            "type": "Text",
+                            "x": 0,
+                            "y": 0,
+                            "parameters": {
+                              "text": "Nothing here yet",
+                              "sizeMode": "contentSize",
+                              "fontSize": {
+                                "value": 16,
+                                "unit": "px"
+                              },
+                              "color": "var(--foreground)"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": [],
+                            "label": "Empty title"
+                          },
+                          {
+                            "id": "e6bf29ce-60bf-51ce-a2e8-8ac0002fb93d",
+                            "type": "Text",
+                            "x": 0,
+                            "y": 0,
+                            "parameters": {
+                              "text": "Click New to create the first record.",
+                              "sizeMode": "contentSize",
+                              "fontSize": {
+                                "value": 13,
+                                "unit": "px"
+                              },
+                              "color": "var(--muted-foreground)",
+                              "marginTop": {
+                                "value": 8,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": [],
+                            "label": "Empty hint"
+                          }
+                        ],
+                        "label": "Empty state"
+                      },
+                      {
+                        "id": "3baf51c5-00b2-56cb-a5e1-5253b3b4337e",
+                        "type": "Group",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "flexDirection": "column",
+                          "sizeMode": "contentHeight",
+                          "width": {
+                            "value": 100,
+                            "unit": "%"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "1d37ac4d-6038-5907-a92a-a189c9d4a044",
+                            "type": "For Each",
+                            "x": 0,
+                            "y": 0,
+                            "parameters": {
+                              "template": "/CRUD Screen/Item Row",
+                              "inputMappingScript": "// Maps record fields to the Item Row component's inputs.\n// Add a line here for every field you add to the row.\nmap({\n\t'Title': 'title',\n\t'Notes': 'notes',\n})\n"
+                            },
+                            "ports": [],
+                            "dynamicports": [
+                              {
+                                "name": "itemOutputSignal-Edit",
+                                "displayName": "Edit",
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Item Signals",
+                                "index": 6
+                              },
+                              {
+                                "name": "itemOutputSignal-Delete",
+                                "displayName": "Delete",
+                                "type": "signal",
+                                "plug": "output",
+                                "group": "Item Signals",
+                                "index": 7
+                              }
+                            ],
+                            "children": [],
+                            "label": "Rows"
+                          }
+                        ],
+                        "label": "List"
+                      }
+                    ],
+                    "label": "Content"
+                  },
+                  {
+                    "id": "97a036b1-5fb2-5c6d-a31a-6245c6265a65",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "columnGap": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 16,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "d29f7301-75ce-5b04-a9cc-375734a713b6",
+                        "type": "net.noodl.controls.button",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "label": "Prev",
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "backgroundColor": "transparent",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "borderStyle": "solid",
+                          "borderWidth": {
+                            "value": 1,
+                            "unit": "px"
+                          },
+                          "borderColor": "var(--border)",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingTop": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingBottom": {
+                            "value": 6,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Prev page"
+                      },
+                      {
+                        "id": "6829fe7f-47b4-5efe-94ec-1232df3b6fea",
+                        "type": "Text",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "text": "Page 1",
+                          "sizeMode": "contentSize",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "color": "var(--muted-foreground)",
+                          "alignY": "center"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Page label"
+                      },
+                      {
+                        "id": "a802fb46-35c9-5fbc-85b5-e1aefe44e698",
+                        "type": "net.noodl.controls.button",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "label": "Next",
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "backgroundColor": "transparent",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "borderStyle": "solid",
+                          "borderWidth": {
+                            "value": 1,
+                            "unit": "px"
+                          },
+                          "borderColor": "var(--border)",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingTop": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingBottom": {
+                            "value": 6,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Next page"
+                      }
+                    ],
+                    "label": "Pagination"
+                  }
+                ],
+                "label": "Main column"
+              },
+              {
+                "id": "3f327de0-52c2-5951-910c-53dff99cc561",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 320,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "paddingTop": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingBottom": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingLeft": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "rowGap": {
+                    "value": 8,
+                    "unit": "px"
+                  },
+                  "backgroundColor": "var(--surface-raised)",
+                  "borderLeftStyle": "solid",
+                  "borderLeftWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderLeftColor": "var(--border)",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "16a31bf5-78c9-5492-8d81-a41a36314705",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "New record",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 16,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)",
+                      "marginBottom": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Panel title"
+                  },
+                  {
+                    "id": "a3ee42a8-41f8-5f08-ab24-8cc007cf4c30",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Title",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Title label"
+                  },
+                  {
+                    "id": "599e7c59-90be-527d-81c1-5fe96dff4105",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": false,
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 36,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "borderColor": "var(--border)",
+                      "borderRadius": {
+                        "value": 6,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "placeholder": "Title"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Title field"
+                  },
+                  {
+                    "id": "13ee5cce-39c0-5a8b-a55b-062e6ae2aa9a",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Notes",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 8,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Notes label"
+                  },
+                  {
+                    "id": "49ad9d5d-4782-5ad5-bc4f-8c051d39dbdb",
+                    "type": "net.noodl.controls.textinput",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": false,
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 96,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "borderWidth": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "borderColor": "var(--border)",
+                      "borderRadius": {
+                        "value": 6,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "placeholder": "Notes",
+                      "type": "textArea"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Notes field"
+                  },
+                  {
+                    "id": "4c726bf1-0997-551e-bb0f-9a36ffcfd89b",
+                    "type": "Group",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "flexDirection": "row",
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "columnGap": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "marginTop": {
+                        "value": 12,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "c152b58f-2641-5a97-bdbf-4551479d2de1",
+                        "type": "net.noodl.controls.button",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "label": "Save",
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "backgroundColor": "var(--primary)",
+                          "color": "var(--primary-foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "borderStyle": "none",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingTop": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingBottom": {
+                            "value": 6,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Save button"
+                      },
+                      {
+                        "id": "882940a8-155f-5919-94dd-628382b9a5e5",
+                        "type": "net.noodl.controls.button",
+                        "x": 0,
+                        "y": 0,
+                        "parameters": {
+                          "label": "Cancel",
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "backgroundColor": "transparent",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "borderStyle": "solid",
+                          "borderWidth": {
+                            "value": 1,
+                            "unit": "px"
+                          },
+                          "borderColor": "var(--border)",
+                          "borderRadius": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingLeft": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingRight": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "paddingTop": {
+                            "value": 6,
+                            "unit": "px"
+                          },
+                          "paddingBottom": {
+                            "value": 6,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [],
+                        "label": "Cancel button"
+                      }
+                    ],
+                    "label": "Panel buttons"
+                  }
+                ],
+                "label": "Side panel"
+              }
+            ],
+            "label": "CRUD Screen"
+          },
+          {
+            "id": "69c8c290-9dde-5239-a23a-2ec2776e5fd9",
+            "type": "Component Inputs",
+            "x": -560,
+            "y": -260,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Class",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "label": "Screen inputs"
+          },
+          {
+            "id": "e50611f4-5c92-58b5-83af-2c01a45043e9",
+            "type": "DbCollection2",
+            "x": -300,
+            "y": -260,
+            "parameters": {
+              "collectionName": "Items",
+              "storageEnableLimit": true,
+              "storageLimit": 10,
+              "storageEnableCount": true
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "collectionName",
+                "displayName": "Class",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 6
+              },
+              {
+                "name": "search",
+                "displayName": "Search",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Search",
+                "index": 7
+              },
+              {
+                "name": "storageFetch",
+                "displayName": "Do",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Actions",
+                "index": 8
+              },
+              {
+                "name": "storageEnableLimit",
+                "displayName": "Use limit",
+                "plug": "input",
+                "type": "boolean",
+                "group": "Limit",
+                "index": 9
+              },
+              {
+                "name": "storageLimit",
+                "displayName": "Limit",
+                "plug": "input",
+                "type": "number",
+                "group": "Limit",
+                "index": 10
+              },
+              {
+                "name": "storageSkip",
+                "displayName": "Skip",
+                "plug": "input",
+                "type": "number",
+                "group": "Limit",
+                "index": 11
+              },
+              {
+                "name": "storageEnableCount",
+                "displayName": "Fetch total count",
+                "plug": "input",
+                "type": "boolean",
+                "group": "Limit",
+                "index": 12
+              },
+              {
+                "name": "storageTotalCount",
+                "displayName": "Total Count",
+                "plug": "output",
+                "type": "number",
+                "group": "General",
+                "index": 13
+              }
+            ],
+            "children": [],
+            "label": "Query Records"
+          },
+          {
+            "id": "03dc6af2-22ee-5936-a5fc-52af74c1588d",
+            "type": "Counter",
+            "x": -560,
+            "y": -40,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Page index"
+          },
+          {
+            "id": "203869aa-d43e-57ad-858a-7fb6bd3b83d4",
+            "type": "JavaScriptFunction",
+            "x": -300,
+            "y": -40,
+            "parameters": {
+              "functionScript": "// Paging facts derived from the current page index and the total record count.\n// PAGE_SIZE is the one place the page size lives \u2014 Limit and Skip are both wired from here.\nvar PAGE_SIZE = 10;\nvar page = typeof Inputs.Page === 'number' ? Inputs.Page : 0;\nvar total = typeof Inputs.Total === 'number' ? Inputs.Total : 0;\nif (page < 0) page = 0;\nvar pages = Math.max(1, Math.ceil(total / PAGE_SIZE));\nOutputs.Limit = PAGE_SIZE;\nOutputs.Skip = page * PAGE_SIZE;\nOutputs.Label = 'Page ' + (page + 1) + ' of ' + pages;\nOutputs.HasPrev = page > 0;\nOutputs.HasNext = page + 1 < pages;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Page",
+                "displayName": "Page",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Total",
+                "displayName": "Total",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-Limit",
+                "displayName": "Limit",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-Skip",
+                "displayName": "Skip",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Label",
+                "displayName": "Label",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 8
+              },
+              {
+                "name": "out-HasPrev",
+                "displayName": "HasPrev",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 9
+              },
+              {
+                "name": "out-HasNext",
+                "displayName": "HasNext",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 10
+              }
+            ],
+            "children": [],
+            "label": "Pager",
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "c8450f4a-5d08-5b92-9b5e-7d7c3a3edc2e",
+            "type": "Switch",
+            "x": -560,
+            "y": 120,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "First answer arrived?"
+          },
+          {
+            "id": "77132b25-d7e6-5332-8fbc-1da7d4e2190b",
+            "type": "Inverter",
+            "x": -380,
+            "y": 120,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Still loading"
+          },
+          {
+            "id": "b2c6d28d-47cb-5493-8d90-5565d471627d",
+            "type": "JavaScriptFunction",
+            "x": -200,
+            "y": 120,
+            "parameters": {
+              "functionScript": "// The empty state shows only once the first query has answered.\nOutputs.ShowEmpty = !!Inputs.IsEmpty && !!Inputs.Loaded;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-IsEmpty",
+                "displayName": "IsEmpty",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Loaded",
+                "displayName": "Loaded",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-ShowEmpty",
+                "displayName": "ShowEmpty",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              }
+            ],
+            "children": [],
+            "label": "Empty state?",
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "7271182b-621d-5a0a-bd03-4f48e99b04be",
+            "type": "Switch",
+            "x": 600,
+            "y": -260,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Panel open?"
+          },
+          {
+            "id": "1596a264-d785-5c0c-8931-a43a64165509",
+            "type": "Switch",
+            "x": 600,
+            "y": -120,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Editing? (off = new)"
+          },
+          {
+            "id": "816804d0-4103-53e6-bc45-c76c7b614ec7",
+            "type": "JavaScriptFunction",
+            "x": 780,
+            "y": -120,
+            "parameters": {
+              "functionScript": "// Panel heading follows the mode switch (on = editing an existing record).\nOutputs.Title = Inputs.Editing ? 'Edit record' : 'New record';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Editing",
+                "displayName": "Editing",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "out-Title",
+                "displayName": "Title",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 5
+              }
+            ],
+            "children": [],
+            "label": "Panel heading",
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "0046ded3-6a4e-514d-8bfb-0f3d9bc8d05b",
+            "type": "DbModel2",
+            "x": 600,
+            "y": 20,
+            "parameters": {
+              "collectionName": "Items",
+              "runOnChange-modelId": false
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "prop-title",
+                "displayName": "title",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 8
+              },
+              {
+                "name": "prop-notes",
+                "displayName": "notes",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 9
+              },
+              {
+                "name": "collectionName",
+                "displayName": "Class",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 10
+              }
+            ],
+            "children": [],
+            "label": "Record (selected)"
+          },
+          {
+            "id": "3f6a007c-09f1-5c53-b587-fbd9d77be168",
+            "type": "Condition",
+            "x": 600,
+            "y": 180,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Editing or new?"
+          },
+          {
+            "id": "77a175aa-ac14-5ce7-813c-01a3873f8418",
+            "type": "NewDbModelProperties",
+            "x": 800,
+            "y": 240,
+            "parameters": {
+              "collectionName": "Items"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "prop-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 8
+              },
+              {
+                "name": "prop-notes",
+                "displayName": "notes",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 9
+              },
+              {
+                "name": "collectionName",
+                "displayName": "Class",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 10
+              }
+            ],
+            "children": [],
+            "label": "Create Record"
+          },
+          {
+            "id": "689961d1-c30f-529c-9376-519705dcab5a",
+            "type": "SetDbModelProperties",
+            "x": 800,
+            "y": 400,
+            "parameters": {
+              "collectionName": "Items"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "prop-title",
+                "displayName": "title",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 8
+              },
+              {
+                "name": "prop-notes",
+                "displayName": "notes",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Properties",
+                "index": 9
+              },
+              {
+                "name": "collectionName",
+                "displayName": "Class",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 10
+              }
+            ],
+            "children": [],
+            "label": "Update Record"
+          },
+          {
+            "id": "31e73301-177e-53d8-8344-773402ca7c7d",
+            "type": "DeleteDbModelProperties",
+            "x": 800,
+            "y": 560,
+            "parameters": {
+              "collectionName": "Items"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "collectionName",
+                "displayName": "Class",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "label": "Delete Record"
+          }
+        ]
+      }
+    },
+    {
+      "name": "/CRUD Screen/Item Row",
+      "id": "f54a5320-ed0d-56d4-9b55-77dcb4d81927",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "0ece28b1-f45e-5273-9274-571709bf63ec",
+            "fromProperty": "Title",
+            "toId": "95d3ed5c-a013-5a09-a1c1-393e6fc22b73",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "0ece28b1-f45e-5273-9274-571709bf63ec",
+            "fromProperty": "Notes",
+            "toId": "dd6828b0-69ae-593c-b24f-9097539beaee",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "2b9b98de-9f8b-5d32-8d4b-902b1203be25",
+            "fromProperty": "onClick",
+            "toId": "ef33a2ad-5847-55de-8a28-260b478ae054",
+            "toProperty": "Edit"
+          },
+          {
+            "fromId": "fadcb552-c842-5baf-a7d5-73a9b8020d32",
+            "fromProperty": "onClick",
+            "toId": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "toProperty": "on"
+          },
+          {
+            "fromId": "5f963f2c-e043-5969-8905-d5c694a846a6",
+            "fromProperty": "onClick",
+            "toId": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "7408721a-1398-5e3b-a271-341f8e08bc7b",
+            "fromProperty": "onClick",
+            "toId": "ef33a2ad-5847-55de-8a28-260b478ae054",
+            "toProperty": "Delete"
+          },
+          {
+            "fromId": "7408721a-1398-5e3b-a271-341f8e08bc7b",
+            "fromProperty": "onClick",
+            "toId": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "toProperty": "off"
+          },
+          {
+            "fromId": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "fromProperty": "state",
+            "toId": "b2d201ed-3d2d-52de-a512-78026f6bcc37",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "fromProperty": "state",
+            "toId": "637c2ab5-182e-5691-895b-145900b443ef",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "637c2ab5-182e-5691-895b-145900b443ef",
+            "fromProperty": "result",
+            "toId": "1b3d1074-1e71-5dd0-8732-c878cfd6c18f",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "f2a6d012-88f3-5b4e-9868-b855db1dc7a9",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "flexDirection": "row",
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "alignItems": "center",
+              "columnGap": {
+                "value": 8,
+                "unit": "px"
+              },
+              "paddingTop": {
+                "value": 10,
+                "unit": "px"
+              },
+              "paddingBottom": {
+                "value": 10,
+                "unit": "px"
+              },
+              "paddingLeft": {
+                "value": 4,
+                "unit": "px"
+              },
+              "paddingRight": {
+                "value": 4,
+                "unit": "px"
+              },
+              "borderBottomStyle": "solid",
+              "borderBottomWidth": {
+                "value": 1,
+                "unit": "px"
+              },
+              "borderBottomColor": "var(--border)"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "9250fe8f-25c3-54ed-a62b-3119f26e5d8e",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "column",
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "95d3ed5c-a013-5a09-a1c1-393e6fc22b73",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Title"
+                  },
+                  {
+                    "id": "dd6828b0-69ae-593c-b24f-9097539beaee",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "color": "var(--muted-foreground)",
+                      "marginTop": {
+                        "value": 2,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Notes"
+                  }
+                ],
+                "label": "Fields"
+              },
+              {
+                "id": "1b3d1074-1e71-5dd0-8732-c878cfd6c18f",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "row",
+                  "sizeMode": "contentSize",
+                  "alignItems": "center",
+                  "columnGap": {
+                    "value": 4,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "2b9b98de-9f8b-5d32-8d4b-902b1203be25",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Edit",
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--primary)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "borderStyle": "none",
+                      "paddingLeft": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "paddingBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Edit button"
+                  },
+                  {
+                    "id": "fadcb552-c842-5baf-a7d5-73a9b8020d32",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Delete",
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--destructive)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "borderStyle": "none",
+                      "paddingLeft": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "paddingBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Delete button"
+                  }
+                ],
+                "label": "Actions"
+              },
+              {
+                "id": "b2d201ed-3d2d-52de-a512-78026f6bcc37",
+                "type": "Group",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "row",
+                  "sizeMode": "contentSize",
+                  "alignItems": "center",
+                  "columnGap": {
+                    "value": 4,
+                    "unit": "px"
+                  },
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f8e3a111-64b0-52e6-b5b7-a68fbe62cee5",
+                    "type": "Text",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Delete?",
+                      "sizeMode": "contentSize",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "color": "var(--destructive)",
+                      "alignY": "center"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Delete?"
+                  },
+                  {
+                    "id": "7408721a-1398-5e3b-a271-341f8e08bc7b",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "Yes",
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--destructive)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "borderStyle": "solid",
+                      "paddingLeft": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "paddingBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "borderWidth": {
+                        "value": 1,
+                        "unit": "px"
+                      },
+                      "borderColor": "var(--destructive)",
+                      "borderRadius": {
+                        "value": 6,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Confirm delete"
+                  },
+                  {
+                    "id": "5f963f2c-e043-5969-8905-d5c694a846a6",
+                    "type": "net.noodl.controls.button",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "label": "No",
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "backgroundColor": "transparent",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      },
+                      "borderStyle": "none",
+                      "paddingLeft": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 8,
+                        "unit": "px"
+                      },
+                      "paddingTop": {
+                        "value": 4,
+                        "unit": "px"
+                      },
+                      "paddingBottom": {
+                        "value": 4,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [],
+                    "label": "Keep record"
+                  }
+                ],
+                "label": "Inline confirm"
+              }
+            ],
+            "label": "Row"
+          },
+          {
+            "id": "0ece28b1-f45e-5273-9274-571709bf63ec",
+            "type": "Component Inputs",
+            "x": -500,
+            "y": -40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Title",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "Notes",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "label": "Row inputs"
+          },
+          {
+            "id": "ef33a2ad-5847-55de-8a28-260b478ae054",
+            "type": "Component Outputs",
+            "x": 600,
+            "y": 60,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Edit",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "Delete",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": [],
+            "label": "Row outputs"
+          },
+          {
+            "id": "0fc7d7bb-7045-5d72-95fd-fdba0f6263af",
+            "type": "Switch",
+            "x": 300,
+            "y": 220,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Confirming?"
+          },
+          {
+            "id": "637c2ab5-182e-5691-895b-145900b443ef",
+            "type": "Inverter",
+            "x": 520,
+            "y": 260,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": [],
+            "label": "Not confirming"
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": 4,
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

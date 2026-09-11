@@ -328,27 +328,70 @@ describe('NDA-012 Logic — Signal To Index updates Index before it announces', 
   /**
    * The mechanism, pinned — this is what the row above cannot say.
    *
-   * `index` is non-`undefined` at connect time, so `connectInput` (`node.ts:452`) queues it
-   * immediately and `value` becomes the first key in the receiver's per-port queue. The drain
-   * (`node.ts:531`) therefore applies it before `pulse` in every pass, whatever order the node
-   * sent them in — which is exactly why the reorder above is unobservable *for this node*.
+   * ⚠️ **Rewritten by FB-025, and what it pins is now the opposite fact.** As first written this
+   * row pinned the *mask*: `index` is non-`undefined` at connect time, so `connectInput` queued it
+   * immediately, `value` became the first key in the receiver's per-port queue, and — because the
+   * drain read `Object.keys(_inputValuesQueue)`, i.e. **first-ever-delivery** order — it kept that
+   * place for the life of the node whatever order the node sent in. The row's own closing note
+   * said what was wrong with that: *"if a future change makes `Index` abstain until a signal has
+   * actually fired, this row reddens and the ordering above stops being free"*. The ordering was
+   * an accident of `initialize`, and Richard's Visual Function is the graph where the accident
+   * fell the other way — a `Run` that had been pulsed once before its value port was ever written
+   * ran the program on the previous value, for ever.
    *
-   * If a future change makes `Index` abstain until a signal has actually fired, this row reddens
-   * and the ordering above stops being free. That is the point of pinning it.
+   * `Node.update` now orders each drain pass itself: **a pending value is applied before a pending
+   * signal**, and an emptied port lets go of its queue key so what remains is arrival order rather
+   * than history. So the guarantee no longer depends on which port happened to be queued first,
+   * and *that* is what there is to pin.
+   *
+   * The adversarial graph is the one the old code got wrong: `corpus.Trigger.value` reads
+   * `undefined` until `send`, so nothing is queued at connect (`sendValue` returns early on
+   * `undefined`) and the **pulse** port's key is created first. This row is red on the old drain.
    */
-  test('the value port is queued before the pulse, which is what masks the ordering', async () => {
-    const graph = await signalToIndexGraph();
+  test('a pending value is applied before a pending pulse, whichever port was queued first', async () => {
+    const graph = await createCorpusGraph({
+      modules: [TriggerModule, WatcherModule],
+      rootComponent: '/root',
+      data: {
+        components: [
+          {
+            name: '/root',
+            nodes: [
+              { id: 'trigger', type: 'corpus.Trigger' },
+              { id: 'watch', type: 'corpus.Watcher' }
+            ],
+            connections: [
+              { sourceId: 'trigger', sourcePort: 'go', targetId: 'watch', targetPort: 'pulse' },
+              { sourceId: 'trigger', sourcePort: 'value', targetId: 'watch', targetPort: 'value' }
+            ]
+          }
+        ]
+      } as never
+    });
     await graph.settle(3);
 
-    const watcher = graph.node('watch') as unknown as { _inputValuesQueue: Record<string, unknown[]> };
-    // Before anything has fired, only `value` has ever been queued — the connect-time push.
-    expect(Object.keys(watcher._inputValuesQueue)).toEqual(['value']);
+    // The pulse alone first: this is what created the `pulse` queue key ahead of `value`, and on
+    // the old drain it is what made every later run read one event behind.
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(6);
+    expect(graph.node<WatcherInstance>('watch').seen).toEqual([undefined]);
 
+    graph.node<TriggerInstance>('trigger').send('first');
     graph.node<TriggerInstance>('trigger').go();
     await graph.settle(6);
 
-    // `value` keeps its place at the head of the drain order for the life of the node.
-    expect(Object.keys(watcher._inputValuesQueue)).toEqual(['value', 'pulse']);
+    graph.node<TriggerInstance>('trigger').send('second');
+    graph.node<TriggerInstance>('trigger').go();
+    await graph.settle(6);
+
+    // Each pulse reads the value sent beside it, not the one before. The old drain read
+    // `[undefined, undefined, 'first']`.
+    expect(graph.node<WatcherInstance>('watch').seen).toEqual([undefined, 'first', 'second']);
+
+    // And the invariant the ordering now rests on: a drained port holds no queue at all, so the
+    // key order can only ever describe input that is actually pending.
+    const watcher = graph.node('watch') as unknown as { _inputValuesQueue: Record<string, unknown[]> };
+    expect(Object.keys(watcher._inputValuesQueue)).toEqual([]);
   });
 
   /**

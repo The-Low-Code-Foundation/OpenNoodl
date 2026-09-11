@@ -1,0 +1,299 @@
+/**
+ * Kit health diagnostics (CN-015, phase 69) — "failures name the kit".
+ *
+ * ## The promise this extends
+ *
+ * `projectmodules.ts` opens with an explicit contract: **loud, never silent** — a
+ * manifest that cannot be read is skipped *with a warning naming the module*.
+ * That promise covers the **manifest**. It stops before the thing most likely to
+ * go wrong: the **definitions**. This turns the facts the extractor already
+ * collects into diagnostics that name the kit, the node where there is one, and
+ * what to do about it.
+ *
+ * Nothing here executes a kit or reads disk. It classifies an overlay that has
+ * already been built, so both the headless/MCP route and (later) the editor can
+ * report the same things in the same words.
+ *
+ * ## Severity follows `diagnostics.ts`, it does not invent a scale
+ *
+ * *definitely wrong* → `error`; *probably wrong* → `warning`; *a check
+ * deliberately not performed* → `info`. A kit that throws is an **error** (its
+ * nodes are simply gone). A kit registering zero nodes is a **warning** — it may
+ * be an iconset, or a module whose whole job is a side effect. A kit shadowing a
+ * built-in is an **error**, because the consequence is a node behaving unlike
+ * its name.
+ *
+ * ## 🔴 Why the shadowing message says the KIT wins
+ *
+ * ⚠️ **Precedence is not one rule here. It is two rules that disagree**, and the
+ * message that shipped before this said the wrong one.
+ *
+ * - **Catalog / validation**: the *built-in* wins. `catalogNodesFromNodeLibrary`
+ *   drops the kit's node and records a collision, so every check in the editor
+ *   goes on describing the shipped type.
+ * - **Runtime**: the *kit* wins. `NodeRegister.register` is an unguarded
+ *   assignment (`this._constructors[name] = nodeDefinition`) and `viewer.jsx`
+ *   registers built-ins **before** module nodes on both its paths, so the last
+ *   writer — the kit — is what `createNode` hands back. Measured, not inferred.
+ *
+ * So the real consequence of a collision is the **worst of both**: validation
+ * checks the built-in's ports while the runtime runs the kit's code. The message
+ * below says that, because the previous wording — *"The built-in wins; the kit's
+ * node is not available"* — was false at runtime and would send an author to
+ * debug the wrong node.
+ *
+ * ⚠️ **Making the runtime agree (built-ins winning everywhere) is a behaviour
+ * change and a ruling, not a tidy-up** — an existing module may override
+ * deliberately. CN-015's scope is visibility; this reports the divergence
+ * truthfully and leaves the resolution to Richard.
+ */
+
+/** @typedef {import('./index').KitHealthDiagnostic} KitHealthDiagnostic */
+
+/**
+ * ⚠️ **There is deliberately no "nameless definition" diagnostic here, and the
+ * reason is worth keeping.**
+ *
+ * CN-015's spec expects one: *"a malformed definition — no `name`, no
+ * `getReactComponent` — `createNodeFromReactComponent` will do something."* It
+ * is true that `createNodeFromReactComponent` has no guard, and a probe that
+ * called `NodeRegister.register` **directly** did register a nameless
+ * definition under the literal type name `'undefined'`.
+ *
+ * 🔴 **That probe skipped a layer and the finding was wrong for the real path.**
+ * A kit never reaches `NodeRegister.register` directly: `registerModule` wraps
+ * every entry as `{ node }`, so `registerNode` takes its `defineNode` branch,
+ * and `NodeDefinition.defineNode` **throws `'Node must have a name'`**
+ * (`nodedefinition.ts:252-254`). The extractor catches that and it surfaces as a
+ * `kit-load-failed` — which is why a nameless node in a real kit is already
+ * reported, and why a separate check for it would be a guard that can never
+ * fire. This task's own trap list forbids exactly that.
+ *
+ * ⚠️ **What IS unreported, and wants a task:** the throw happens *mid-module*,
+ * so a kit is left **half-registered** — nodes before the bad definition are in
+ * the register, nodes after it are silently absent — and the message names the
+ * kit but not the node. See `notes/cn-015-premise-census.md`.
+ */
+
+/**
+ * Classify one project's kit overlay into diagnostics that name the kit.
+ *
+ * ⚠️ **Only meaningful on a route that actually loaded the kits.** The editor
+ * reads what a running viewer already sent (✅ D3), where a kit with no nodes is
+ * *"installed, not yet loaded"* rather than *"registered nothing"* — CN-006b's
+ * `joinKitNodes` keeps those two apart deliberately, and this must not collapse
+ * them. Pass `assumeLoaded: false` from any caller that cannot tell the
+ * difference, and the zero-node check is skipped rather than guessed.
+ *
+ * @param {{
+ *   kits?: Array<{ kitModule: string, dirPath?: string }>,
+ *   nodes?: Array<{
+ *     typeName?: string,
+ *     kitModule?: string,
+ *     dynamicPorts?: { unsupportedMechanisms?: string[] } | null
+ *   }>,
+ *   collisions?: Array<{ typeName: string, kitModule: string }>,
+ *   failures?: Array<{ kitModule: string, dirPath?: string, message: string }>
+ * }} overlay
+ * @param {{ assumeLoaded?: boolean }} [options]
+ * @returns {KitHealthDiagnostic[]}
+ */
+function kitDiagnostics(overlay, options = {}) {
+  const assumeLoaded = options.assumeLoaded !== false;
+  const out = [];
+
+  const failures = (overlay && overlay.failures) || [];
+  const collisions = (overlay && overlay.collisions) || [];
+  const nodes = (overlay && overlay.nodes) || [];
+  const kits = (overlay && overlay.kits) || [];
+
+  // Which kits got at least one node into the catalog. A collided node counts:
+  // it registered, it is simply not in `nodes` because the catalog dropped it.
+  const registeredSomething = new Set();
+  for (const node of nodes) if (node && node.kitModule) registeredSomething.add(node.kitModule);
+  for (const collision of collisions) registeredSomething.add(collision.kitModule);
+
+  // 1. The kit threw, at import or at registration. Report the message the
+  //    loader actually caught rather than a summary of it.
+  //
+  // 🔴 **"None of its nodes are available" is not always true, and saying it
+  // when it is not repeats the mistake this task exists to fix.** A definition
+  // that throws does so *mid-module*: `registerModule` loops the node list, so
+  // everything before the bad definition is already registered and everything
+  // after it is silently dropped. Observed live — a kit whose first node was
+  // `Text` and whose second had no `name` produced BOTH a load failure and a
+  // `Text` collision, which is only possible if `Text` registered. So the
+  // half-registered case gets its own sentence, and it is the more alarming one:
+  // the kit looks present and is quietly incomplete.
+  for (const failure of failures) {
+    const partial = registeredSomething.has(failure.kitModule);
+    out.push({
+      code: 'kit-load-failed',
+      severity: 'error',
+      kitModule: failure.kitModule,
+      dirPath: failure.dirPath,
+      partial,
+      message:
+        `kit "${failure.kitModule}" failed to load: ${failure.message}. ` +
+        (partial
+          ? 'It is only PARTIALLY registered — nodes defined before the failure are available and ' +
+            'every node after it is missing, so the kit looks present while being incomplete.'
+          : 'None of its nodes are available — a node from this kit will report as an unknown type.')
+    });
+  }
+
+  // 2. A type-name collision with a built-in. See the module header for why this
+  //    message names the KIT as the runtime winner.
+  for (const collision of collisions) {
+    out.push({
+      code: 'kit-shadows-builtin',
+      severity: 'error',
+      kitModule: collision.kitModule,
+      typeName: collision.typeName,
+      message:
+        `kit "${collision.kitModule}" declares "${collision.typeName}", which is a built-in type name. ` +
+        'Validation keeps describing the built-in, but at runtime the kit\'s node replaces it — ' +
+        'so the checks and the running app disagree about what this type is. Rename the kit\'s node.'
+    });
+  }
+
+  // 3. A kit that registered nothing.
+  //
+  // 🔴 A kit whose only node COLLIDED is not a kit that registered nothing —
+  // `catalogNodesFromNodeLibrary` drops collided entries from `nodes`, so
+  // counting `nodes` alone would report the same kit twice, once with a cause
+  // and once with a wrong one. Failures are excluded for the same reason: the
+  // load error is the better message and it has already been emitted.
+  if (assumeLoaded) {
+    const produced = new Set(registeredSomething);
+    for (const failure of failures) produced.add(failure.kitModule);
+
+    for (const kit of kits) {
+      if (produced.has(kit.kitModule)) continue;
+      out.push({
+        code: 'kit-registered-nothing',
+        severity: 'warning',
+        kitModule: kit.kitModule,
+        dirPath: kit.dirPath,
+        message:
+          `kit "${kit.kitModule}" loaded without error but registered no nodes. ` +
+          'If it is meant to provide nodes, check that its `main` calls `Noodl.defineModule` ' +
+          '(or `Noodl.defineNode`) at import time.'
+      });
+    }
+  }
+
+  // 4. A kit that runs in no runtime at all (CN-012).
+  //
+  // 🔴 The one case where the kit is fine and the *manifest* is the defect, and
+  // it is silent in every existing surface. `runtimes` has exactly one negative
+  // consumer — `buildInjectionTags` emits a browser script tag only for a module
+  // whose list contains `browser` — and **no positive one anywhere**: nothing
+  // loads a kit server-side, so declaring `["cloud"]` removes the kit from the
+  // one runtime that would have run it. Measured in CN-012 M4b: the page renders
+  // with every kit node missing, the console says "Can't find component model",
+  // and the author is told nothing.
+  //
+  // ⚠️ It is deliberately NOT gated on `assumeLoaded`. The other three checks ask
+  // "what did the register end up with", which a caller reading a viewer's
+  // payload cannot always answer; this one is read off the manifest and is just
+  // as true before anything loads. ⚠️ And it must not fire on a kit that is
+  // *also* broken in a louder way — a kit that threw already has its error, and
+  // two errors for one kit invites fixing the wrong one.
+  const alreadyReported = new Set(failures.map((f) => f.kitModule));
+
+  // 🔴 Read off the KIT, not off its nodes, and that is the whole difficulty of
+  // this check. A kit that runs nowhere contributes **no nodes** to a payload —
+  // so a rule keyed on node entries would be blind in exactly the case it exists
+  // for, and would have to be fed synthetic node rows, which in turn would make
+  // `kit-registered-nothing` above think the kit had registered something.
+  //
+  // ⚠️ Absent `availableIn` is NOT empty: a caller that never built the field
+  // has said nothing, and accusing it would be a guess. Every pre-CN-012 caller
+  // is in that position and must stay silent.
+  for (const kit of kits) {
+    if (!kit || !kit.kitModule || alreadyReported.has(kit.kitModule)) continue;
+    if (!kit.availableIn || kit.availableIn.length !== 0) continue;
+
+    out.push({
+      code: 'kit-loads-nowhere',
+      severity: 'error',
+      kitModule: kit.kitModule,
+      dirPath: kit.dirPath,
+      declaredRuntimes: kit.declaredRuntimes || [],
+      message:
+        `kit "${kit.kitModule}" declares runtimes [${(kit.declaredRuntimes || []).join(', ')}] in its ` +
+        'manifest, and nothing loads it. There are exactly two loaders: the browser injector, which ' +
+        'skips any module whose `runtimes` omits "browser"; and the cloud-function runtime, which ' +
+        'loads a module declaring "cloud" and registers its logic nodes only. A server render ' +
+        '(SSR/SSG) runs the browser set, so "browser" is what reaches it — there is no "ssr" ' +
+        'runtime to declare. So this kit’s nodes will be missing everywhere and a graph using them ' +
+        'will report unknown types. Add "browser" and/or "cloud" to `runtimes`, or remove the field ' +
+        '(it defaults to browser).'
+    });
+  }
+
+  // 5. A node whose `dynamicports` name a mechanism this build does not
+  //    implement — ✅ **D12**, and today that means exactly `channelPort`.
+  //
+  // 🔴 **The status quo was the worst of the three options considered and that
+  // is why this exists.** The port is erased in every surface and in every
+  // state: not in the exported `ports` (the exporter strips it deliberately,
+  // `nodelibraryexport.ts:487-492`), not in the Properties tab, not in the Ports
+  // tab — whose header promises *"every port on this node"* — not in the
+  // connection popup, and not in `getPorts()` with the runtime live and the node
+  // mounted. So an author writes a `channelPort` entry, nothing appears, nothing
+  // is said, and there is no surface anywhere that could tell them why. Reviving
+  // the editor-side manager was rejected as real work for zero non-fixture
+  // users: the census found **one occurrence in 177 library types, and it is a
+  // test fixture's own kit node**.
+  //
+  // ⚠️ **`error`, but the node is not dropped.** The rest of the node is fine —
+  // its static ports, its other dynamic entries and its component all work — so
+  // refusing to register it would cost the author more than the mechanism ever
+  // gave them. "Rejected" here means the declaration is refused and said so,
+  // not that the node is withheld.
+  //
+  // ⚠️ Not gated on `assumeLoaded`, for `kit-loads-nowhere`'s reason: this is
+  // read off metadata the payload carries either way, and is as true before
+  // anything runs as after.
+  for (const node of nodes) {
+    if (!node || !node.kitModule) continue;
+    const unsupported = node.dynamicPorts && node.dynamicPorts.unsupportedMechanisms;
+    if (!Array.isArray(unsupported) || unsupported.length === 0) continue;
+
+    out.push({
+      code: 'kit-unsupported-dynamic-port',
+      severity: 'error',
+      kitModule: node.kitModule,
+      typeName: node.typeName,
+      unsupportedMechanisms: unsupported.slice(),
+      message:
+        `kit "${node.kitModule}" node "${node.typeName}" declares a dynamic port using ` +
+        `[${unsupported.join(', ')}], which this build does not implement. The exporter removes ` +
+        'those ports expecting an editor-side manager to re-add them, and that manager is not ' +
+        'enabled — so the ports appear nowhere: not in the property panel, not in the Ports tab, ' +
+        'not in the connection popup, and not in `getPorts()` at runtime. Any parameter or ' +
+        'connection naming one of them refers to a port that does not exist. Use a conditional ' +
+        'port group (`ports`/`inputs`/`outputs` with a `condition`) instead, which is supported ' +
+        'end to end.'
+    });
+  }
+
+  return out;
+}
+
+/**
+ * Format one diagnostic as a single CLI line.
+ *
+ * Kept here rather than in the CLI so the editor and the CLI cannot drift into
+ * describing the same failure differently — the drift this phase has now found
+ * four times in four consecutive tasks (`docs`, `summary`, `dp.note`, `module`).
+ *
+ * @param {KitHealthDiagnostic} diagnostic
+ */
+function formatKitDiagnostic(diagnostic) {
+  return `${diagnostic.severity.toUpperCase()} ${diagnostic.message}`;
+}
+
+module.exports = { kitDiagnostics, formatKitDiagnostic };

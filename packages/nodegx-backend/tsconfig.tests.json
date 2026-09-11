@@ -12,7 +12,51 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node", "jest"]
+    "types": ["node", "jest"],
+
+    // 🔴 REL-020. Everything below exists because this gate did not run at all.
+    //
+    // It OOMed: 8 GB and 417 seconds on CI and locally, exit 134, before it
+    // reported a single error. The cause is NOT program size — `src` alone
+    // typechecks in 1.7s — it is `moduleResolution: "node"` in the base config
+    // meeting `@modelcontextprotocol/sdk`, which the specs reach through
+    // `tests/helpers/site-drive.ts` -> `noodl-mcp/src/server`. node10 resolution
+    // ignores the SDK's `exports` map, and the type graph it lands in instead
+    // explodes. `noodl-mcp` typechecks the same server in 5.7s under `node16`.
+    //
+    // Overridden HERE and not in the base config on purpose: `jest.config.js`
+    // points ts-jest at `<rootDir>/tsconfig.json`, so changing `module` there
+    // changes how 157 specs are transformed at runtime. This file is read by
+    // `--noEmit` and nothing else, so the blast radius is the gate itself.
+    "module": "Node16",
+    "moduleResolution": "node16",
+
+    // The specs pull noodl-editor source in transitively (`judge.ts` ->
+    // `starterAssetList`, `site-drive.ts` -> `siteTheme`), and that source is
+    // written against the editor's own `lib` and path aliases. Without these it
+    // fails to resolve rather than failing to typecheck — errors about the
+    // config, not about the code.
+    //
+    // `DOM` is a TYPE lib, not an environment: `jest.config.js` still runs these
+    // specs under `testEnvironment: node` with no DOM globals. The editor's
+    // `candidate.ts` refers to the `Crypto` type, which is declared there.
+    "lib": ["ES2022", "DOM"],
+    "paths": {
+      "@cloud-runtime": ["../noodl-viewer-cloud/src/index.ts"],
+      "@cloud-runtime/*": ["../noodl-viewer-cloud/src/*"],
+      "@noodl-models/*": ["../noodl-editor/src/editor/src/models/*"],
+      "@noodl-utils/*": ["../noodl-editor/src/editor/src/utils/*"],
+      "@noodl-constants/*": ["../noodl-editor/src/editor/src/constants/*"],
+
+      // `noodl-mcp/src` imports `@nodegx/export`, and under `node16` that
+      // resolves through the package's `exports`/`types` — which point into
+      // `dist/`, a build artefact CI does not have. It appeared to work locally
+      // only because `packages/nodegx-export/dist` happened to be built.
+      // The root tsconfig already aliases this to source; repeated here because
+      // a `paths` block REPLACES the inherited one rather than extending it.
+      "@nodegx/export": ["../nodegx-export/src/index.ts"],
+      "@nodegx/export/*": ["../nodegx-export/src/*"]
+    }
   },
   "include": ["tests/**/*.ts", "src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -1,0 +1,796 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2db49227-5ca3-54b1-8b7d-3b236081db7e",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page-6",
+      "type": "Page",
+      "label": "Meeting",
+      "children": [
+        "pageShell-5"
+      ],
+      "parameters": {
+        "title": "Meeting",
+        "urlPath": "meetings/{meetingId}"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "pageShell-5",
+      "type": "Group",
+      "label": "The page, floored at the viewport",
+      "parent": "page-6",
+      "children": [
+        "pageBody-5",
+        "pageFooter-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "minHeight": {
+          "value": 100,
+          "unit": "vh"
+        },
+        "flexDirection": "column",
+        "justifyContent": "space-between"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "pageBody-5",
+      "type": "Group",
+      "label": "Everything above the foot",
+      "parent": "pageShell-5",
+      "children": [
+        "chrome-4",
+        "pageMain-5"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "pageMain-5",
+      "type": "Group",
+      "label": "The page",
+      "parent": "pageBody-5",
+      "children": [
+        "headBand-4",
+        "ground-5"
+      ],
+      "parameters": {
+        "as": "main",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "chrome-4",
+      "type": "/Members/Chrome",
+      "label": "The band",
+      "parent": "pageBody-5",
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "headBand-4",
+      "type": "Group",
+      "label": "What this page is",
+      "parent": "pageMain-5",
+      "children": [
+        "headBandShell-4"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--accent)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-8)",
+        "paddingBottom": "var(--space-8)"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "headBandShell-4",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "headBand-4",
+      "children": [
+        "titleHeadRow-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center"
+      },
+      "x": 340,
+      "y": 760
+    },
+    {
+      "id": "pageFooter-5",
+      "type": "/Members/Footer",
+      "label": "The foot of the page",
+      "parent": "pageShell-5",
+      "x": 160,
+      "y": 3400
+    },
+    {
+      "id": "ground-5",
+      "type": "Group",
+      "label": "Page ground",
+      "parent": "pageMain-5",
+      "children": [
+        "readingBlock-2",
+        "refusal-2",
+        "removal-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "sizeMode": "contentHeight",
+        "alignX": "center",
+        "rowGap": "var(--space-5)",
+        "paddingTop": "var(--space-12)",
+        "paddingBottom": "var(--space-12)"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "titleHeadRow-2",
+      "type": "Group",
+      "label": "Title — the head, badged",
+      "parent": "headBandShell-4",
+      "children": [
+        "titleBadge-2",
+        "titleHead-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-4)"
+      },
+      "x": 400,
+      "y": 880
+    },
+    {
+      "id": "titleBadge-2",
+      "type": "Group",
+      "label": "Title — the badge",
+      "parent": "titleHeadRow-2",
+      "children": [
+        "titleGlyph-2"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 44,
+          "unit": "px"
+        },
+        "height": {
+          "value": 44,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-lg)"
+      },
+      "x": 460,
+      "y": 1000
+    },
+    {
+      "id": "titleGlyph-2",
+      "type": "net.noodl.visual.icon",
+      "label": "Title — the glyph",
+      "parent": "titleBadge-2",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-calendar-days",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "iconColor": "var(--accent-foreground)"
+      },
+      "x": 520,
+      "y": 1120
+    },
+    {
+      "id": "titleHead-2",
+      "type": "Group",
+      "label": "Title — the head",
+      "parent": "titleHeadRow-2",
+      "children": [
+        "titleEyebrow-2",
+        "title-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingBottom": "var(--space-2)"
+      },
+      "x": 460,
+      "y": 1240
+    },
+    {
+      "id": "titleEyebrow-2",
+      "type": "Text",
+      "label": "Meeting",
+      "parent": "titleHead-2",
+      "parameters": {
+        "text": "Meeting",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span"
+      },
+      "x": 520,
+      "y": 1360
+    },
+    {
+      "id": "title-2",
+      "type": "Text",
+      "label": "Title",
+      "parent": "titleHead-2",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--display-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h1"
+      },
+      "x": 520,
+      "y": 1480
+    },
+    {
+      "id": "readingBlock-2",
+      "type": "Group",
+      "label": "The meeting, at a reading measure",
+      "parent": "ground-5",
+      "children": [
+        "when-3",
+        "details"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 640,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 340,
+      "y": 1720
+    },
+    {
+      "id": "when-3",
+      "type": "Text",
+      "label": "When and where",
+      "parent": "readingBlock-2",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 400,
+      "y": 1840
+    },
+    {
+      "id": "details",
+      "type": "Text",
+      "label": "Details",
+      "parent": "readingBlock-2",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 400,
+      "y": 1960
+    },
+    {
+      "id": "refusal-2",
+      "type": "Group",
+      "label": "Not available",
+      "parent": "ground-5",
+      "children": [
+        "refusalText-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2080
+    },
+    {
+      "id": "refusalText-2",
+      "type": "Text",
+      "label": "Not available — the words",
+      "parent": "refusal-2",
+      "parameters": {
+        "text": "This meeting is not available to you.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 400,
+      "y": 2200
+    },
+    {
+      "id": "pageInputs-2",
+      "type": "PageInputs",
+      "label": "Which meeting",
+      "parameters": {
+        "pathParams": "meetingId"
+      },
+      "x": 770,
+      "y": 3280
+    },
+    {
+      "id": "hold-4",
+      "type": "JavaScriptFunction",
+      "label": "Hold the id",
+      "parameters": {
+        "runOnChange-in-meetingId": true,
+        "functionScript": "if (Inputs.meetingId === undefined || Inputs.meetingId === '') return;\nOutputs.meetingId = Inputs.meetingId;\nOutputs.ready();"
+      },
+      "ports": [
+        {
+          "name": "out-ready",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-meetingId",
+          "displayName": "meetingId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-meetingId",
+          "displayName": "meetingId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 770,
+      "y": 40
+    },
+    {
+      "id": "record-3",
+      "type": "DbModel2",
+      "label": "The meeting",
+      "parameters": {
+        "runOnChange-modelId": true,
+        "runOnChange-record": true,
+        "collectionName": "Meeting",
+        "idSource": "explicit"
+      },
+      "x": 770,
+      "y": 1480
+    },
+    {
+      "id": "whenLabel-2",
+      "type": "JavaScriptFunction",
+      "label": "When and where, as a person writes it",
+      "parameters": {
+        "functionScript": "function humanDay(raw) {\n  if (raw === undefined || raw === null) return '';\n  var s = String(raw);\n  if (s === '') return '';\n  var m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(s);\n  var at = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);\n  if (isNaN(at.getTime())) return '';\n  return at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' });\n}\nif (Inputs.when === undefined) return;\nvar day = humanDay(Inputs.when);\nvar said = day === '' ? String(Inputs.when || '') : day;\nvar where = Inputs.place === undefined || Inputs.place === null ? '' : String(Inputs.place);\nOutputs.label = where === '' ? said : said + ' · ' + where;"
+      },
+      "x": 770,
+      "y": 1840,
+      "ports": [
+        {
+          "name": "in-when",
+          "displayName": "when",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-place",
+          "displayName": "place",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-label",
+          "displayName": "label",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "refusalGate-2",
+      "type": "Condition",
+      "label": "Show the refusal",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2080
+    },
+    {
+      "id": "removal-2",
+      "type": "Group",
+      "label": "Taking it down again",
+      "parent": "ground-5",
+      "children": [
+        "removeButton-2",
+        "confirm-2",
+        "removeFailed-2"
+      ],
+      "parameters": {
+        "as": "section",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-6)",
+        "mounted": false
+      },
+      "x": 340,
+      "y": 2320
+    },
+    {
+      "id": "removeButton-2",
+      "type": "net.noodl.controls.button",
+      "label": "Remove this meeting",
+      "parent": "removal-2",
+      "parameters": {
+        "label": "Remove this meeting",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 400,
+      "y": 2440
+    },
+    {
+      "id": "confirm-2",
+      "type": "Group",
+      "label": "Are you sure",
+      "parent": "removal-2",
+      "children": [
+        "confirmText-2",
+        "confirmRow-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 2560
+    },
+    {
+      "id": "confirmText-2",
+      "type": "Text",
+      "label": "Are you sure — the words",
+      "parent": "confirm-2",
+      "parameters": {
+        "text": "This cannot be undone. Members will no longer see it.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 460,
+      "y": 2680
+    },
+    {
+      "id": "confirmRow-2",
+      "type": "Group",
+      "label": "The two answers",
+      "parent": "confirm-2",
+      "children": [
+        "confirmYes-2",
+        "confirmNo-2"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)"
+      },
+      "x": 460,
+      "y": 2800
+    },
+    {
+      "id": "confirmYes-2",
+      "type": "net.noodl.controls.button",
+      "label": "Yes, remove it",
+      "parent": "confirmRow-2",
+      "parameters": {
+        "label": "Yes, remove it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 2920
+    },
+    {
+      "id": "confirmNo-2",
+      "type": "net.noodl.controls.button",
+      "label": "Keep it",
+      "parent": "confirmRow-2",
+      "parameters": {
+        "label": "Keep it",
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 520,
+      "y": 3040
+    },
+    {
+      "id": "removeFailed-2",
+      "type": "Group",
+      "label": "It did not go",
+      "parent": "removal-2",
+      "children": [
+        "removeFailedText-2"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "mounted": false
+      },
+      "x": 400,
+      "y": 3160
+    },
+    {
+      "id": "removeFailedText-2",
+      "type": "Text",
+      "label": "It did not go — the words",
+      "parent": "removeFailed-2",
+      "parameters": {
+        "text": "That could not be removed just now. Please try again in a moment.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--destructive)"
+      },
+      "x": 460,
+      "y": 3280
+    },
+    {
+      "id": "confirmed-2",
+      "type": "JavaScriptFunction",
+      "label": "The id, and the go-ahead, from one node",
+      "parameters": {
+        "runOnChange-in-meetingId": false,
+        "functionScript": "if (Inputs.meetingId === undefined || Inputs.meetingId === '') return;\nOutputs.meetingId = Inputs.meetingId;\nOutputs.go();"
+      },
+      "ports": [
+        {
+          "name": "out-go",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "in-meetingId",
+          "displayName": "meetingId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-meetingId",
+          "displayName": "meetingId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ],
+      "x": 770,
+      "y": 2920
+    },
+    {
+      "id": "del-2",
+      "type": "DeleteDbModelProperties",
+      "label": "Remove it",
+      "parameters": {
+        "collectionName": "Meeting",
+        "idSource": "explicit"
+      },
+      "x": 770,
+      "y": 3400
+    },
+    {
+      "id": "confirmGate-2",
+      "type": "Condition",
+      "label": "Ask before doing it",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2560
+    },
+    {
+      "id": "confirmClear-2",
+      "type": "Condition",
+      "label": "Put the question away",
+      "parameters": {
+        "condition": false,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 2680
+    },
+    {
+      "id": "removeFailedGate-2",
+      "type": "Condition",
+      "label": "Say it did not go",
+      "parameters": {
+        "condition": true,
+        "runOnChange-condition": false
+      },
+      "x": 770,
+      "y": 3160
+    },
+    {
+      "id": "toList-2",
+      "type": "RouterNavigate",
+      "label": "Back to the list it came from",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Meetings"
+      },
+      "x": 770,
+      "y": 3520
+    }
+  ],
+  "visualRoots": [
+    "page-6"
+  ]
+}

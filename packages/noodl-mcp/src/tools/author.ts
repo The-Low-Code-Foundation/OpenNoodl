@@ -14,18 +14,43 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { ComponentV2File, ConnectionsV2File, ConnectionV2, NodesV2File, NodeV2 } from '../editor-deps';
-import { formatDiagnosticLine, inferComponentType } from '../editor-deps';
+import {
+  foldNodeComment,
+  planCreationDefaults,
+  formatDiagnosticLine,
+  inferComponentType,
+  layoutAuthoredNodes,
+  positionsUnchangedFrom
+} from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ComponentFiles, UpdateOperation } from '../graph';
 import { applyOperations, reconcileHierarchy } from '../graph';
-import { pathToLegacyName, validateComponentPath } from '../paths';
-import { componentIsPage, registerPages, registrationSummary } from '../project/pageRegistration';
+import { pathToLegacyName, toPathForm, validateComponentPath } from '../paths';
+import { withAuthoredScriptPorts } from '../scriptPorts';
+import {
+  componentIsPage,
+  registerPages,
+  registrationSummary,
+  unregisterPages,
+  unregistrationSummary
+} from '../project/pageRegistration';
 import type { NodeIdRemap } from '../project/nodeIds';
 import { deconflictNodeIds, remapNote } from '../project/nodeIds';
+import type { ProjectBinding } from '../project/ProjectBinding';
+import type { RenderLedger } from '../renderVerdict';
+import { drawsSomething } from '../visualRoots';
+import { completionPayload } from './completion';
 import type { ProjectStore } from '../project/ProjectStore';
+import type { ExampleBudget } from './attachments';
+import { examplesBlock } from './attachments';
+import type { ToolDisclosure } from './disclosure';
+import { backendRevealPayload } from './disclosure';
+import type { PlanRegistry } from './planTools';
 import type { WriteValidation } from '../validate';
 import { validateCandidate, validateDeletion } from '../validate';
-import { CREATE_COMPONENT_SHAPE, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
+import { CREATE_COMPONENT_SHAPE, NODE_COMMENT_ARG, connectionSchema, nodeSchema, portSchema } from '../vocabulary';
+import type { VisualTypePredicate } from '../visualRoots';
+import { catalogVisualPredicate, makeProjectVisualPredicate, resolveVisualRoots } from '../visualRoots';
 import type {
   CreateComponentResponse,
   DeletionRefusalDetails,
@@ -54,11 +79,31 @@ const operationSchema = z.discriminatedUnion('op', [
     set: z
       .object({
         label: z.string().optional(),
+        // LEG-001. The delta door needs it too: adding one sentence to one node
+        // of a 60-node page is exactly the change nobody will resend a whole
+        // graph for, and a field zod does not name is a field zod **strips** —
+        // silently, which is how `update_node.set.children` lost a hero in P58.
+        // Same words as the vocabulary row, from the vocabulary row.
+        comment: NODE_COMMENT_ARG,
         x: z.number().optional(),
         y: z.number().optional(),
         variant: z.string().optional(),
         parent: z.string().nullable().optional().describe('Reparent; null detaches from the visual tree')
       })
+      // AWP-002 A19 — strict, so an unnamed key is a refusal and not a silent
+      // strip. The comment above says a field zod does not name is a field zod
+      // strips; what it did not say is that the strip is *reported as applied*.
+      // `set: {children: [...]}` returned `applied: ["update_node band"]` with
+      // 0 errors and 0 warnings and changed nothing, which is how P58's re-replay
+      // lost its hero with every instrument green.
+      //
+      // Deliberately a refusal rather than an implementation: `children` is
+      // reconciled from `parent` by design (`AUTHORED_NODE_FIELDS` — double
+      // bookkeeping is the consistency an LLM gets wrong), so making this door
+      // accept it would re-introduce the disagreement the vocabulary removed.
+      // An agent that reaches for it gets told the supported spelling instead of
+      // being told it worked.
+      .strict()
       .optional(),
     parameters: z.record(z.unknown()).optional().describe('Shallow-merged into existing parameters'),
     unset_parameters: z.array(z.string()).optional(),
@@ -95,6 +140,79 @@ export function ensureIds(nodes: NodeInput[]): NodeV2[] {
 }
 
 /**
+ * LEG-001 — the two things every authored node needs before it is a stored node:
+ * an id, and its flat `comment` folded into `metadata.comment`.
+ *
+ * One funnel, because the mapping must not be door-dependent: `create_component`,
+ * `update_component`'s `set` branch and a staged plan operation all arrive here,
+ * and a node whose comment reached disk through one door but sat as a dead
+ * top-level key through another would be worse than not offering the field.
+ * `add_node` is folded in `normalizeOperations` and `update_node.set` in
+ * `graph.ts`, which are the two paths that do not carry a whole node list.
+ */
+/**
+ * DEF-025 — fill a newly placed node's silent parameters, and only a newly
+ * placed one's.
+ *
+ * `existingIds` is the whole discriminator. A node whose id is already in the
+ * component is being **re-sent**, not created: `update_component`'s `set` door
+ * carries the entire graph on every call, so applying a creation default there
+ * would flip `useLabel` on a checkbox a person deliberately left bare — an
+ * existing rendering moving, which is the one consequence the ruling forbids.
+ * A node with no id yet, or an id the component has never seen, is new.
+ */
+function withCreationDefaults<T extends { id?: string; type?: string; parameters?: Record<string, unknown> }>(
+  node: T,
+  existingIds?: ReadonlySet<string>
+): T {
+  if (node.id !== undefined && existingIds?.has(node.id)) return node;
+  if (typeof node.type !== 'string') return node;
+
+  const writes = planCreationDefaults(node.type, node);
+  if (writes.length === 0) return node;
+
+  const parameters = { ...(node.parameters ?? {}) };
+  for (const write of writes) parameters[write.parameter] = write.value;
+  return { ...node, parameters };
+}
+
+export function normalizeAuthoredNodes(nodes: NodeInput[], existingIds?: ReadonlySet<string>): NodeV2[] {
+  return ensureIds(nodes).map((n) => withCreationDefaults(foldNodeComment(n), existingIds));
+}
+
+/** The ids a component already holds — what makes "newly placed" answerable. */
+export function nodeIdsOf(files: ComponentFiles): ReadonlySet<string> {
+  return new Set((files.nodes.nodes ?? []).map((n) => n.id));
+}
+
+/**
+ * AWP-001 — the visual predicate with the project in hand.
+ *
+ * A node's type is either a catalog type or the legacyName of a component in
+ * this project. An instance draws exactly when the component it points at has
+ * visual roots of its own, so a page whose top-level node is `/Components/NavBar`
+ * needs the project to answer at all — the catalog has never heard of it.
+ */
+export function projectVisualPredicate(store: ProjectStore): VisualTypePredicate {
+  return makeProjectVisualPredicate((legacyName) => {
+    if (!store.resolve(legacyName)) return undefined;
+    return store.readComponent(legacyName).files.nodes.nodes ?? [];
+  });
+}
+
+/**
+ * AWP-001 §2 — what the write actually decided about rendering, for the result.
+ *
+ * `derived` distinguishes "we computed this" from "you asked for this", which is
+ * the difference between teaching the model the concept and merely echoing it.
+ */
+function visualRootsPayload(candidate: ComponentFiles, explicit: string[] | undefined) {
+  const visualRoots = candidate.nodes.visualRoots;
+  if (!visualRoots?.length) return {};
+  return { visualRoots, ...(explicit === undefined ? { visualRootsDerived: true } : {}) };
+}
+
+/**
  * Assemble the three v2 files for a brand-new component — the exact shape
  * `create_component` writes. Shared with the plan tools (AIX-011) so a staged
  * plan create and a direct create can never drift. Hierarchy must already be
@@ -109,6 +227,10 @@ export function assembleCreateFiles(args: {
   visualRoots?: string[];
   description?: string;
   modifiedBy?: string;
+  /** AWP-001 — how to tell a drawing node from a logic one. Defaults to the
+   * catalog alone, which answers `false` for a component instance; pass
+   * `projectVisualPredicate(store)` to resolve those too. */
+  isVisualType?: VisualTypePredicate;
 }): ComponentFiles {
   const now = new Date().toISOString();
   const componentId = crypto.randomUUID();
@@ -123,12 +245,27 @@ export function assembleCreateFiles(args: {
     modifiedBy: args.modifiedBy ?? 'noodl-mcp',
     ...(args.description ? { description: args.description } : {})
   };
+  // AWP-001/F43 — derive rather than require. This was
+  // `...(args.visualRoots?.length ? { visualRoots: args.visualRoots } : {})`:
+  // absent in, absent out, and a component with no `visualRoots` renders nothing
+  // because the runtime draws a component instance from `componentModel.roots`.
+  // The editor cannot produce such a file — it derives the field on every
+  // serialize — so only an agent could, and one did.
+  const isVisual = args.isVisualType ?? catalogVisualPredicate;
+  const resolved = resolveVisualRoots(args.nodes, args.visualRoots, isVisual);
+  // FIX-014 — fill the position gaps the model left and separate exact
+  // collisions. Everything here is model-emitted this turn, so nothing is
+  // locked; a node the model positioned is still never moved.
+  const laidOut = layoutAuthoredNodes(args.nodes, isVisual, { connections: args.connections ?? [] });
   const nodes: NodesV2File = {
     $schema: 'https://opennoodl.dev/schemas/nodes-v2.json',
     componentId,
     version: 1,
-    nodes: args.nodes,
-    ...(args.visualRoots?.length ? { visualRoots: args.visualRoots } : {})
+    // DEF-011 — persist the ports each Function node's script declares, so the
+    // graph on disk can run where no editor derives them (deployed backend,
+    // headless render). Author-sent ports win by (plug, name).
+    nodes: withAuthoredScriptPorts(laidOut),
+    ...(resolved.visualRoots ? { visualRoots: resolved.visualRoots } : {})
   };
   const connections: ConnectionsV2File = {
     $schema: 'https://opennoodl.dev/schemas/connections-v2.json',
@@ -146,16 +283,34 @@ export function assembleCreateFiles(args: {
  */
 export function assembleSetFiles(
   baseline: ComponentFiles,
-  set: { nodes: NodeV2[]; connections?: ConnectionV2[]; visualRoots?: string[] }
+  set: { nodes: NodeV2[]; connections?: ConnectionV2[]; visualRoots?: string[] },
+  isVisualType: VisualTypePredicate = catalogVisualPredicate
 ): ComponentFiles {
   const candidate: ComponentFiles = JSON.parse(JSON.stringify(baseline));
-  candidate.nodes.nodes = set.nodes;
-  if (set.visualRoots !== undefined) {
-    if (set.visualRoots.length > 0) candidate.nodes.visualRoots = set.visualRoots;
-    else delete candidate.nodes.visualRoots;
-  }
+  // FIX-014 — the gap-fill-and-collide-only pass, with the ruling's second
+  // half made mechanical: a position resubmitted exactly as the baseline had
+  // it is a hand arrangement carried through, locked against even the
+  // collision nudge, so `update_component` on a hand-arranged component
+  // repositions nothing unless the caller changed a coordinate itself.
+  candidate.nodes.nodes = withAuthoredScriptPorts(
+    layoutAuthoredNodes(set.nodes, isVisualType, {
+      connections: set.connections ?? baseline.connections.connections ?? [],
+      lockedIds: positionsUnchangedFrom(set.nodes, baseline.nodes.nodes ?? [])
+    })
+  );
+  // AWP-001 — always recompute unless the caller said otherwise. Leaving the
+  // baseline's list in place was the second half of F43: `set` replaces the whole
+  // graph, so the inherited ids can name nodes that no longer exist. Re-deriving
+  // is also what the editor does — `getVisualRootIds()` runs on every save — so a
+  // deliberate subset never survived an editor save either.
+  const resolved = resolveVisualRoots(set.nodes, set.visualRoots, isVisualType);
+  if (resolved.visualRoots) candidate.nodes.visualRoots = resolved.visualRoots;
+  else delete candidate.nodes.visualRoots;
   if (set.connections !== undefined) {
-    candidate.connections.connections = set.connections;
+    candidate.connections.connections = carryConnectionPresentation(
+      baseline.connections.connections ?? [],
+      set.connections
+    );
   }
   candidate.component.modified = new Date().toISOString();
   candidate.component.modifiedBy = 'noodl-mcp';
@@ -163,10 +318,72 @@ export function assembleSetFiles(
   return candidate;
 }
 
+/**
+ * Fields a connection has on disk that the authoring vocabulary deliberately
+ * does not offer — carried over from the baseline instead of being stripped.
+ *
+ * 🔴 **SIG-007 R3.** `connectionSchema` is a plain `z.object` over exactly four
+ * fields, and zod's default is *strip*, not reject. So an external agent doing
+ * read-modify-write — read the component, change one parameter, hand the graph
+ * back — returned it with every wire label and every hand-drawn route silently
+ * gone, and nothing anywhere errored. Same shape as `update_node.set.children`
+ * (P58), one object over.
+ *
+ * ⚠️ **The four-field rule is kept, not widened.** `vocabulary.ts` argues it and
+ * `vocabularyParity.test.ts` pins it, and both are still right: an agent has no
+ * business *authoring* where a wire bends, and describing an anchor array in
+ * every tool schema is paid on every call by a surface already measured at 27k
+ * tokens a turn. This is the other half of the answer the same file names for
+ * nodes — *"the editor solves the same problem the other way, by carrying those
+ * fields over from the base node; see `CARRIED_NODE_FIELDS`"*. Now connections
+ * do too.
+ *
+ * Matched on the four endpoints, which is the connection's identity everywhere
+ * else in this file. A wire the caller re-pointed is a different wire and
+ * correctly inherits nothing.
+ */
+const CARRIED_CONNECTION_FIELDS = ['label', 'labelT', 'route'] as const;
+
+export function carryConnectionPresentation(
+  baseline: readonly ConnectionV2[],
+  incoming: readonly ConnectionV2[]
+): ConnectionV2[] {
+  if (!baseline.length) return incoming as ConnectionV2[];
+
+  const previous = new Map<string, ConnectionV2>();
+  for (const c of baseline) previous.set(`${c.fromId}\u0000${c.fromProperty}\u0000${c.toId}\u0000${c.toProperty}`, c);
+
+  return incoming.map((c) => {
+    const was = previous.get(`${c.fromId}\u0000${c.fromProperty}\u0000${c.toId}\u0000${c.toProperty}`);
+    if (!was) return c;
+
+    let out = c;
+    for (const field of CARRIED_CONNECTION_FIELDS) {
+      // Only when the caller said nothing. An agent that *did* send a label is
+      // setting it, and one that sent `null` is not saying nothing either — but
+      // zod has already stripped anything it does not know, so "absent" here
+      // genuinely means the schema dropped it or the caller omitted it, and both
+      // want the baseline's value back.
+      if (out[field] === undefined && was[field] !== undefined) {
+        out = { ...out, [field]: was[field] };
+      }
+    }
+    return out;
+  });
+}
+
 function normalizeOperations(operations: OperationInput[]): UpdateOperation[] {
-  return operations.map((op) =>
-    op.op === 'add_node' && !op.node.id ? { ...op, node: { ...op.node, id: crypto.randomUUID() } } : op
-  ) as UpdateOperation[];
+  return operations.map((op) => {
+    if (op.op !== 'add_node') return op;
+    // LEG-001 — the same fold `normalizeAuthoredNodes` does for a whole graph.
+    // `add_node` carries one node through a different door; a comment written
+    // here has to land in the same place.
+    // DEF-025 — `add_node` needs no id set to consult: `applyOperations`
+    // refuses an id the component already holds, so every node arriving here
+    // is new by construction.
+    const node = withCreationDefaults(foldNodeComment(op.node.id ? op.node : { ...op.node, id: crypto.randomUUID() }));
+    return { ...op, node };
+  }) as UpdateOperation[];
 }
 
 /**
@@ -182,7 +399,7 @@ function backfillIds(files: ComponentFiles): void {
   if (!files.connections.componentId) files.connections.componentId = files.component.id;
 }
 
-function rejectWith(validation: WriteValidation, intent: string): never {
+function rejectWith(validation: WriteValidation, intent: string, budget: ExampleBudget): never {
   const lines = [
     ...validation.newErrors.map(formatDiagnosticLine),
     ...(validation.structural ?? []).flatMap((f) => f.errors.map((e) => `SCHEMA ${f.file} ${e.path}: ${e.message}`))
@@ -191,7 +408,12 @@ function rejectWith(validation: WriteValidation, intent: string): never {
     readable: lines,
     structural: validation.structural,
     newErrors: validation.newErrors,
-    allDiagnostics: validation.diagnostics
+    allDiagnostics: validation.diagnostics,
+    // LAS-007 — the recipe, in the rejection. Keyed on the errors that caused
+    // the refusal, not on every diagnostic in the candidate: the attachment
+    // answers "what do I do about this", and a warning nobody was refused for
+    // is not that question.
+    ...examplesBlock(budget.attach(validation.newErrors))
   };
   throw new ToolError('validation-failed', `${intent} rejected — nothing was written.`, { ...details });
 }
@@ -220,7 +442,32 @@ function successPayload(validation: WriteValidation): WriteValidationSummary {
 
 // ─── Registration ─────────────────────────────────────────────────────────────
 
-export function registerAuthorTools(server: McpServer, store: ProjectStore): void {
+/**
+ * LAS-006 §4 — the line a page written without a plan gets, once, in its own
+ * success payload. Deliberately about the *next* page rather than this one: the
+ * component is already written and correct, and telling someone to undo a
+ * successful write is how advice gets ignored.
+ */
+const PAGE_WITHOUT_PLAN_ADVISORY =
+  'You built this page without a plan. That is fine for one page — but a page assembled top-to-bottom in one ' +
+  'call is how a 66-node graph happens, and nothing in it can be reused or varied. For the next one, call ' +
+  'create_plan first: one operation per section and per repeated card, each declaring the `inputs` its ' +
+  'instances will set. The page operation then places them.';
+
+export function registerAuthorTools(
+  server: McpServer,
+  binding: ProjectBinding,
+  plans: PlanRegistry,
+  examples: ExampleBudget,
+  // VIB-007 M1 — see `registerPlanTools`. This door does not render (a two-node
+  // fix must not cost eight seconds), but every write it makes moves the project
+  // out from under whatever the last render said.
+  ledger: RenderLedger,
+  // AWP-006. Optional so the four existing call sites in the suite that build a
+  // registration directly keep working; when absent nothing is deferred, which
+  // is the same posture `--all-tools` gives.
+  disclosure?: ToolDisclosure
+): void {
   // Rendered from the shared vocabulary (AAQ-005), so the two doors describe a
   // node with one set of words and `update_component` cannot drift from
   // `create_component`.
@@ -252,26 +499,53 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         description?: string;
         allow_unknown_types?: boolean;
       }) => {
-        const pathError = validateComponentPath(args.path);
+        const store = binding.require();
+        // SB-001 — normalise before validating, the same door discipline
+        // `create_plan` has always had (`planTools.ts` runs every target through
+        // `toPathForm`). Before this, "#__cloud__/X" passed validation verbatim
+        // and became a registry key the editor's `legacyNameToPath` would never
+        // mint — the next editor save wrote to "__cloud__/X" and orphaned the
+        // MCP-made directory.
+        const path = toPathForm(args.path);
+        const pathError = validateComponentPath(path);
         if (pathError) throw new ToolError('invalid-argument', pathError);
-        if (store.resolve(args.path)) {
-          throw new ToolError('already-exists', `Component "${args.path}" already exists. Use update_component.`);
+        if (store.resolve(path)) {
+          throw new ToolError('already-exists', `Component "${path}" already exists. Use update_component.`);
         }
 
-        const legacyName = pathToLegacyName(args.path);
-        const reconciled = reconcileHierarchy(ensureIds(args.nodes));
+        const legacyName = pathToLegacyName(path);
+        // SB-001 — a component's runtime is its path; a `type` that disagrees
+        // writes metadata whose destiny is the other bundle. Rejected rather
+        // than silently corrected, with the repair in the message.
+        const isCloudPath = legacyName.startsWith('/#__cloud__/');
+        if (args.type === 'cloud' && !isCloudPath) {
+          throw new ToolError(
+            'invalid-argument',
+            `type "cloud" needs a path under "#__cloud__/" — "${path}" would ship in the browser bundle. ` +
+              `Create it as "#__cloud__/${path}" (or drop the type to make a browser component).`
+          );
+        }
+        if (args.type && args.type !== 'cloud' && isCloudPath) {
+          throw new ToolError(
+            'invalid-argument',
+            `"${path}" is under "#__cloud__/", which makes it a cloud component — type "${args.type}" ` +
+              'contradicts that. Drop the type or pass "cloud".'
+          );
+        }
+        const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.nodes));
         if (reconciled.errors.length > 0) {
           throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
         }
 
         const assembled = assembleCreateFiles({
-          path: args.path,
+          path,
           legacyName,
           type: args.type,
           nodes: reconciled.nodes,
           connections: args.connections,
           visualRoots: args.visual_roots,
-          description: args.description
+          description: args.description,
+          isVisualType: projectVisualPredicate(store)
         });
 
         // AAQ-011/F12: before validating, move any id this project already uses
@@ -280,29 +554,45 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         // than to detect one. See `project/nodeIds.ts`.
         const { files: candidate, remapped } = deconflictNodeIds(store, legacyName, assembled);
 
-        const validation = validateCandidate(store, args.path, candidate, undefined, {
+        const validation = validateCandidate(store, path, candidate, undefined, {
           allowUnknownTypes: args.allow_unknown_types
         });
-        if (!validation.ok) rejectWith(validation, `create_component "${args.path}"`);
+        if (!validation.ok) rejectWith(validation, `create_component "${path}"`, examples);
 
-        const { revision } = store.writeComponent(args.path, candidate, { expectNew: true });
+        const { revision } = store.writeComponent(path, candidate, { expectNew: true });
+        ledger.invalidate();
         // AAQ-005: a page component is not a page until a Router lists it. The
         // editor's apply has done this since AAQ-001; this door did not, so
         // every page Claude Code created was unreachable. After the write, so
         // "is the current start page still an empty placeholder" is asked of the
         // project as it now stands.
-        const registration = componentIsPage(legacyName, candidate)
-          ? registerPages(store, [legacyName])
-          : undefined;
+        const isPage = componentIsPage(legacyName, candidate);
+        const registration = isPage ? registerPages(store, [legacyName]) : undefined;
         const payload: CreateComponentResponse = {
-          created: args.path,
+          created: path,
           legacyName,
           type: candidate.component.type,
           revision,
           registry: 'updated',
           ...registrationSummary(registration),
           ...remapPayload(remapped),
-          ...successPayload(validation)
+          ...successPayload(validation),
+          // AWP-006 — after the write, because a rejected candidate is not
+          // evidence that anybody intends to build a data app.
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
+          ...visualRootsPayload(candidate, args.visual_roots),
+          // LAS-006 §4 — one line, on the door a page most often comes through
+          // without a plan. Advisory and not a refusal: the bag-of-nodes door
+          // stays open by decision (primitive-only, no ceremony for a two-node
+          // fix), and LAS-011 measures whether one line was enough before
+          // anything harder is considered. Silent for anyone who did use a plan.
+          ...(isPage && !plans.hasPlans() ? { planAdvisory: PAGE_WITHOUT_PLAN_ADVISORY } : {}),
+          // VIB-007 M1 — this door writes and does not render, so the only
+          // honest thing it can say about a page is that nobody has looked at
+          // it yet. Said on every visual write rather than only on pages: a
+          // section component is what the page is made of, and "I only changed
+          // a card" is how a page stops being the thing anybody renders.
+          ...(drawsSomething(candidate) ? completionPayload(ledger.state(store.projectDir)) : {})
         };
         return jsonResult(payload);
       }
@@ -344,6 +634,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         if_revision?: string;
         allow_unknown_types?: boolean;
       }) => {
+        const store = binding.require();
         if (!args.set === !args.operations) {
           throw new ToolError('invalid-argument', 'Provide exactly one of `set` or `operations`.');
         }
@@ -353,15 +644,15 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         let applied: string[] | undefined;
 
         if (args.set) {
-          const reconciled = reconcileHierarchy(ensureIds(args.set.nodes));
+          const reconciled = reconcileHierarchy(normalizeAuthoredNodes(args.set.nodes, nodeIdsOf(baseline)));
           if (reconciled.errors.length > 0) {
             throw new ToolError('invalid-argument', 'Node hierarchy is inconsistent.', { errors: reconciled.errors });
           }
-          candidate = assembleSetFiles(baseline, {
-            nodes: reconciled.nodes,
-            connections: args.set.connections,
-            visualRoots: args.set.visual_roots
-          });
+          candidate = assembleSetFiles(
+            baseline,
+            { nodes: reconciled.nodes, connections: args.set.connections, visualRoots: args.set.visual_roots },
+            projectVisualPredicate(store)
+          );
         } else {
           const result = applyOperations(baseline, normalizeOperations(args.operations!));
           if (result.errors.length > 0) {
@@ -372,6 +663,34 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           }
           candidate = result.files;
           applied = result.applied;
+          // AWP-002 A20 — the operations door has to re-derive too.
+          //
+          // AWP-001 gave `assembleSetFiles` an unconditional recompute and the
+          // `operations` branch was not in its scope, so `add_node` left the
+          // baseline's `visualRoots` untouched: a parentless visual node added
+          // here was neither parented nor a root, and therefore could never
+          // draw. That is F43's exact failure mode surviving on the door the
+          // 2026-08-10 re-replay used twenty times — and `visualRootsPayload`
+          // then reported `visualRootsDerived: true` over the stale array,
+          // which is the reporting field saying the thing is fine.
+          //
+          // `explicit` is undefined here by construction: a batch has no
+          // `visual_roots` argument, so this door only ever derives.
+          const opRoots = resolveVisualRoots(
+            candidate.nodes.nodes,
+            undefined,
+            projectVisualPredicate(store)
+          );
+          if (opRoots.visualRoots) candidate.nodes.visualRoots = opRoots.visualRoots;
+          else delete candidate.nodes.visualRoots;
+          // FIX-014 — an `add_node` without x/y used to land at the origin.
+          // Every baseline position the batch did not change is locked (a
+          // hand-arranged component is not this door's to tidy); only the
+          // nodes this batch added or explicitly repositioned participate.
+          candidate.nodes.nodes = layoutAuthoredNodes(candidate.nodes.nodes, projectVisualPredicate(store), {
+            connections: candidate.connections.connections ?? [],
+            lockedIds: positionsUnchangedFrom(candidate.nodes.nodes, baseline.nodes.nodes ?? [])
+          });
         }
         candidate.component.modified = new Date().toISOString();
         candidate.component.modifiedBy = 'noodl-mcp';
@@ -387,9 +706,10 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
         const validation = validateCandidate(store, stored.key, candidate, baseline, {
           allowUnknownTypes: args.allow_unknown_types
         });
-        if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`);
+        if (!validation.ok) rejectWith(validation, `update_component "${stored.key}"`, examples);
 
         const { revision } = store.writeComponent(stored.key, candidate, { ifRevision: args.if_revision });
+        ledger.invalidate();
         // Updates register too, exactly as the editor's apply does: a page that
         // exists but was never listed is the state this task is about, and
         // re-listing one already listed is a no-op.
@@ -402,7 +722,10 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
           ...(applied ? { applied } : {}),
           ...registrationSummary(registration),
           ...remapPayload(remapped),
-          ...successPayload(validation)
+          ...successPayload(validation),
+          ...backendRevealPayload(disclosure?.revealForNodes(candidate.nodes.nodes) ?? []),
+          ...visualRootsPayload(candidate, args.set?.visual_roots),
+          ...(drawsSomething(candidate) ? completionPayload(ledger.state(store.projectDir)) : {})
         };
         return jsonResult(payload);
       }
@@ -423,6 +746,7 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
       }
     },
     guarded((args: { path: string; force?: boolean }) => {
+      const store = binding.require();
       const stored = store.readComponent(args.path);
       const usages = store.findUsages(stored.key);
       if (usages.length > 0 && !args.force) {
@@ -435,10 +759,17 @@ export function registerAuthorTools(server: McpServer, store: ProjectStore): voi
       }
       const brokenRefs = usages.length > 0 ? validateDeletion(store, stored.key) : [];
       const { removed } = store.deleteComponent(stored.key);
+      // P79 K1 — the create side lists a page in the router; the delete side
+      // un-lists it, or every created-then-deleted page leaves a route aimed at
+      // files that are gone. Reported, because it writes a component the caller
+      // did not name.
+      const unregistered = unregisterPages(store, stored.legacyName);
+      ledger.invalidate();
       const payload: DeleteComponentResponse = {
         deleted: stored.key,
         removedFiles: removed,
         registry: 'updated',
+        ...unregistrationSummary(unregistered),
         ...(brokenRefs.length > 0 ? { brokenReferences: brokenRefs, note: 'force-deleted while still referenced' } : {})
       };
       return jsonResult(payload);

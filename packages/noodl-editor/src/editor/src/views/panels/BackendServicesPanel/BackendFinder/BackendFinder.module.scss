@@ -1,0 +1,36 @@
+/* TUT-001: the finder's two date fields side by side, wrapping rather than overflowing.
+ *
+ * Same shape as the panel's own `.ButtonRow` and for the same reason — `HStack` is one
+ * non-wrapping line, and this dialog is reachable at panel width.
+ */
+.FilterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+
+  > * {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+}
+
+/* The collapsed panel's one honest line — R1. A button, because it opens the finder, but drawn
+ * as a line of text: it is a status first and an affordance second.
+ */
+.SummaryLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover .SummaryAction {
+    text-decoration: underline;
+  }
+}

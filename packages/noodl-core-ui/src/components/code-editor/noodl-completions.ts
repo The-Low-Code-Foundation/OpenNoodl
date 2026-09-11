@@ -32,17 +32,22 @@
 import { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
 import { getCodeAuthoringContext } from './authoringContext';
-import { globalsFor, noodlMembersFor, type ApiMember } from './noodl-api-surface';
-import { completesTopLevel, isMemberPosition } from './utils/completionPosition';
+import { apiMembersAtPath, globalsFor, type ApiMember } from './noodl-api-surface';
+import { isDeclarationPosition, isMemberPosition, startsStatement } from './utils/completionPosition';
+import { modeUsesPortNotation } from './utils/declaredPorts';
+import { canExpressPort, readExpression, writeExpression } from './utils/notation';
 import { minePorts } from './utils/scriptPorts';
 import type { ValidationType } from './utils/types';
+import { unionPorts } from './utils/unionPorts';
 
 /**
  * How far back to look for the object whose members are being completed.
  *
- * `Noodl.Variables.` is the longest path this file answers for, so a bounded
- * slice is enough and keeps the cost per keystroke independent of document
- * size.
+ * `Noodl.CloudFunctions.` (21 characters) is the longest path this file answers
+ * for since FIX-017 §B, so a bounded slice is still enough and keeps the cost
+ * per keystroke independent of document size. It bounds the *match*, not the
+ * surface: a path longer than this simply goes unrecognised, so raise it here
+ * if a third level is ever added.
  */
 const MEMBER_PATH_LOOKBEHIND = 64;
 
@@ -89,26 +94,42 @@ function resolveNamespace(path: string, validationType: ValidationType): 'variab
   return null;
 }
 
-/** Members of `Inputs.` / `Outputs.`, mined from the document. */
+/**
+ * Members of `Inputs.` / `Outputs.` — from **both** routes.
+ *
+ * ⚠️ This read `minePorts` alone until FUN-008, which meant a port declared in
+ * the property panel and not yet mentioned in the code did not complete after
+ * `Inputs.` — the exact position a beginner is in the moment after adding a
+ * port, and the one place completion had a right answer and withheld it. Found
+ * by a spec written for the bare-name feature, not by the task.
+ *
+ * The `info` text still distinguishes the two, because *why* a port exists is
+ * the thing this editor is trying to teach: a mined port exists **because** the
+ * code mentions it, and deleting the mention deletes the port.
+ */
 function scriptPortCompletions(context: CompletionContext, path: string): Completion[] | null {
   if (path !== 'Inputs' && path !== 'Outputs') return null;
 
-  const ports = minePorts(context.state.doc.toString());
+  const ports = unionPorts(getCodeAuthoringContext().openNode ?? null, context.state.doc.toString());
 
   if (path === 'Inputs') {
-    return fromNames(
-      ports.inputs,
-      'variable',
-      (name) => `Input port "${name}" — created by this node because your code reads it`
-    );
+    return ports.inputs.map((port) => ({
+      label: port.name,
+      type: 'variable' as const,
+      info: port.mined
+        ? `Input port "${port.name}" — created by this node because your code reads it`
+        : `Input port "${port.name}" — declared on this node, not yet read by your code`
+    }));
   }
 
-  return ports.outputs.map((name) => ({
-    label: name,
-    type: ports.signals.has(name) ? ('function' as const) : ('variable' as const),
-    info: ports.signals.has(name)
-      ? `Signal output "${name}" — fires when your code calls it`
-      : `Output port "${name}" — created by this node because your code writes it`
+  return ports.outputs.map((port) => ({
+    label: port.name,
+    type: port.kind === 'signal' ? ('function' as const) : ('variable' as const),
+    info: port.kind === 'signal'
+      ? `Signal output "${port.name}" — fires when your code calls it`
+      : port.mined
+        ? `Output port "${port.name}" — created by this node because your code writes it`
+        : `Output port "${port.name}" — declared on this node, not yet written by your code`
   }));
 }
 
@@ -122,8 +143,10 @@ function memberCompletions(
   path: string,
   validationType: ValidationType
 ): Completion[] | null {
-  if (path === 'Noodl') return asCompletions(noodlMembersFor(validationType));
-
+  // ⚠️ The project-backed namespaces are tested **before** the static walk and
+  // have to stay that way. `Noodl.Variables` is a name in both surfaces, and
+  // only one of them has the right answer: the walk would report "no second
+  // level" for it, which is true of the static file and false of the editor.
   const namespace = resolveNamespace(path, validationType);
   if (namespace) {
     const project = getCodeAuthoringContext();
@@ -137,7 +160,25 @@ function memberCompletions(
     return fromNames(project.arrays, 'variable', (name) => `Array "${name}", used elsewhere in this project`);
   }
 
-  if (validationType !== 'expression') return scriptPortCompletions(context, path);
+  // `Noodl` itself and everything under it (FIX-017 §B). This subsumes the
+  // former `path === 'Noodl'` branch — a one-segment path walks zero steps and
+  // lands on exactly the list that branch returned.
+  const apiMembers = apiMembersAtPath(path, validationType);
+  if (apiMembers) return asCompletions(apiMembers);
+
+  /*
+   * FIX-016 — `'expression'` used to be the only mode excluded here, which let
+   * `'script'` through.
+   *
+   * 🔴 `Inputs` and `Outputs` are not bindings a Script node has: it is compiled
+   * `Function('define', 'script', 'Node', 'Component', …)`, and `no-undef`
+   * reports them — that report *is* FIX-016's message 6. Completing members of
+   * an object the editor is simultaneously underlining as undefined is the
+   * editor contradicting itself inside one popout, and the completion is the
+   * half the author is more likely to believe, because it arrives first and
+   * looks like knowledge.
+   */
+  if (modeUsesPortNotation(validationType)) return scriptPortCompletions(context, path);
 
   return null;
 }
@@ -169,15 +210,133 @@ export function createNoodlCompletionSource(
       return options && options.length > 0 ? { from: word.from, options } : null;
     }
 
-    if (!completesTopLevel(context, word)) return null;
+    // A member position stays an absolute no for top-level names: `foo.` is not
+    // the place to offer `Math.min`, whoever `foo` is.
+    if (isMemberPosition(context, word.from)) return null;
+
+    // §A. `completesTopLevel` refuses every empty position, so a fresh Function
+    // body offered nothing until the user guessed a first letter — withholding
+    // the list from the only person who needs it. It answers here instead when
+    // the cursor is starting a statement, which is true of an empty seed body
+    // and false mid-expression, so ordinary typing is not smothered.
+    //
+    // ⚠️ The shared predicate is deliberately left alone: `library-completions`
+    // uses it too, and the module note above warns that `word.from === word.to`
+    // means opposite things either side of the member check. It is read here
+    // only *after* `isMemberPosition` has ruled, where it does mean "empty".
+    const atEmptyPosition = word.from === word.to && !context.explicit;
+    if (atEmptyPosition && !startsStatement(context, word.from)) return null;
 
     const prefix = word.text.toLowerCase();
     const options = asCompletions(globalsFor(validationType)).filter((option) =>
       option.label.toLowerCase().startsWith(prefix)
     );
 
-    if (options.length === 0) return null;
+    // FUN-008. The originating user typed `Input_1`, not `Inputs.`, and nothing
+    // was listening. The instinct is not wrong, it is *unprefixed*.
+    //
+    // ✅ §A needs these to stay gated at an empty position — every port on the
+    // node would otherwise land on top of the globals, boosted to 99 — and they
+    // already are, one level down: `barePortCompletions` returns nothing without
+    // a prefix, explicit requests included. Measured, not assumed; a gate added
+    // here as well would have been dead code that read as the load-bearing one.
+    const ports = barePortCompletions(context, word, validationType);
 
-    return { from: word.from, options };
+    if (options.length === 0 && ports.length === 0) return null;
+
+    return {
+      from: word.from,
+      options: [...ports, ...options],
+      // ⚠️ Both lists above are already prefix-matched by hand, and the port
+      // labels are full expressions — `Outputs.Done()` does not begin with the
+      // `Don` that should match it, so CodeMirror's own filter would drop the
+      // very completion this task exists to offer. Filtering here is what lets
+      // the label be the notation rather than the bare name.
+      filter: false
+    };
   };
+}
+
+/**
+ * How far above everything else a port completion sorts.
+ *
+ * §4: without an explicit boost this lands under every identifier already in the
+ * document, and the highest-value completion in the mode is the one nobody
+ * scrolls to. `1` would do; `99` says it is deliberate.
+ */
+const PORT_COMPLETION_BOOST = 99;
+
+/**
+ * A bare port name, completing to its notation (FUN-008 §1).
+ *
+ * ⚠️ **This fires at a non-member position on a partial word — the mirror image
+ * of the guard that killed `Noodl.`** (FH-017 slice 1, and the module note
+ * above). Do not reach for the member sources' tests here: `word.from ===
+ * word.to` is the *normal* state after a dot and the *empty* state here, so the
+ * same expression means opposite things in the two places. `completesTopLevel`
+ * is already the right test and has been applied by the caller.
+ *
+ * The label is the whole expression, not the port name, because the expression
+ * is the thing being taught — the user sees `Inputs.Input_1` while having typed
+ * `Inp`. That is also why the result turns CodeMirror's filter off; see the
+ * caller.
+ */
+function barePortCompletions(
+  context: CompletionContext,
+  word: { from: number; to: number; text: string },
+  validationType: ValidationType
+): Completion[] {
+  // §3, first exclusion. A bare identifier in an Expression is already correct:
+  // it *becomes* the port, so prefixing it would create a port called `Inputs`.
+  //
+  // 🔴 FIX-016 — this asked `modeHasDeclaredPorts`, which is `true` for a Script
+  // node because a Script node really does have declared ports. What it does not
+  // have is this notation, so every offer here inserted `Inputs.price` /
+  // `Outputs.total = ` into a node where both throw. The question the offer turns
+  // on is *"is this how ports are written here"*, and that is a different
+  // predicate — see `declaredPorts.ts#modeUsesPortNotation`.
+  if (!modeUsesPortNotation(validationType)) return [];
+
+  // §3, third exclusion. (The second — not after a dot — is `completesTopLevel`.)
+  if (isDeclarationPosition(context, word.to)) return [];
+
+  // Nothing to offer before the user has typed anything: at an empty position
+  // this would list every port on the node ahead of every language completion,
+  // on every keystroke of whitespace.
+  const prefix = word.text;
+  if (!prefix) return [];
+
+  const lower = prefix.toLowerCase();
+  const ports = unionPorts(getCodeAuthoringContext().openNode ?? null, context.state.doc.toString());
+  const completions: Completion[] = [];
+
+  const offer = (name: string, apply: string, detail: string, info: string) => {
+    // A name with a `"` in it has no form that mines back to itself, so there is
+    // nothing safe to insert (`canExpressPort`).
+    if (!canExpressPort(name)) return;
+    if (!name.toLowerCase().startsWith(lower)) return;
+
+    completions.push({ label: apply, apply, detail, info, boost: PORT_COMPLETION_BOOST, type: 'variable' });
+  };
+
+  for (const port of ports.inputs) {
+    offer(port.name, readExpression(port.name), 'input port', `Read the input port "${port.name}" on this node.`);
+  }
+
+  for (const port of ports.outputs) {
+    const isSignal = port.kind === 'signal';
+
+    offer(
+      port.name,
+      // `writeExpression` keeps the trailing `= ` for a value, which is where the
+      // caret should land, and makes a signal a call.
+      writeExpression(port.name, port.kind),
+      isSignal ? 'output port (signal)' : 'output port (value)',
+      isSignal
+        ? `Fire the signal output "${port.name}" on this node.`
+        : `Write the output port "${port.name}" on this node.`
+    );
+  }
+
+  return completions;
 }

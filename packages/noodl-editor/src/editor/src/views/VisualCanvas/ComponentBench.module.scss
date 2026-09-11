@@ -1,0 +1,195 @@
+.Root {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background-color: var(--theme-color-bg-2);
+}
+
+/* FIX-013 — the sentence the toolbar row used to carry, with none of its
+   controls. See the mount in `ComponentBench.tsx` for why it survived the
+   deletion and why it lives here rather than in the chrome strip.
+
+   ⚠️ **Wraps, deliberately.** The `SandboxToolbar` bar this replaced was a
+   fixed 30px row with `white-space: nowrap` and `text-overflow: ellipsis`, and
+   `describe()` appends its diagnostics — the backwards-ports sentence above all
+   — to the *end* of the summary. In a nowrap row the most valuable thing the
+   bench says was the first thing cut. No height cap here, for the same reason:
+   a diagnostic that needs three lines gets three lines. */
+.Summary {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--theme-color-bg-1);
+  /* The bench's own colour, not the stage's — this is chrome, and the stage
+     below it is `bg-0`. */
+  background-color: var(--theme-color-bg-2);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+/* BEN-002 — the stage and the inputs rail, side by side. */
+.Body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  min-width: 0;
+}
+
+/* BEN-003 — the right-hand column: inputs above, what came out below. One
+   column rather than two panels, because they are one thought — you change
+   something on the left of the stage and read the consequence on the right, and
+   a layout that made you choose which to look at would defeat both. */
+.Rail {
+  flex: none;
+  width: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--theme-color-border-subtle);
+  background-color: var(--theme-color-bg-2);
+}
+
+/* R2 — the bench never renders full-bleed, and it is not the app's surface.
+   The app preview is a checkerboarded canvas (`VisualCanvas.module.scss`); this
+   is flat and darker. That difference is what makes the two modes tellable
+   apart in a screenshot with the window title cropped out, which is BEN-004's
+   acceptance criterion. Phase 23: red is danger only — a bench is not an error,
+   so nothing here is red. */
+.Stage {
+  flex: 1;
+  min-height: 0;
+  /* The stage is now a flex *item* in a row (the rail is its sibling), and a
+     flex item's default `min-width: auto` would let a wide frame push the rail
+     off the panel instead of scrolling inside the stage. */
+  min-width: 0;
+  display: flex;
+  /* ⚠️ NOT `justify-content: center`. Measured, live: with the frame at 1280 in
+     a 916 stage, centring put the frame's left edge 182px outside the scroll
+     container and `scrollLeft` could not reach it — the overflow was clipped on
+     the left and unreachable. `margin: auto` on the item centres identically
+     while it fits and pins the start edge when it does not. A frame you set to
+     1280 and can only see 1114 of is precisely the wrong-width lie this control
+     exists to catch. */
+  justify-content: flex-start;
+  align-items: stretch;
+  padding: 16px;
+  overflow: auto;
+  background-color: var(--theme-color-bg-0);
+}
+
+/* The frame edge, visible on purpose: you are looking at a box of a width you
+   chose, not at a page. `flex: none` so a frame wider than the stage scrolls
+   rather than being quietly squeezed into a width you did not ask for — a
+   silently-wrong width is the exact lie the control exists to stop. */
+.Frame {
+  flex: none;
+  display: flex;
+  min-width: 0;
+  /* Centres while it fits; keeps the left edge reachable when it does not.
+     See the note on `.Stage`.
+
+     🔴 **Horizontal only, and this is FIX-011's whole reported bug.** It was
+     `margin: auto`, and per flexbox §8.1 an `auto` cross-axis margin *cancels*
+     `align-items: stretch` — so the frame shrink-fitted to its content, nothing
+     ever gave the box a height, and the `<webview>`'s UA default
+     replaced-element height (150px) leaked through. The `768 × 150` read-out
+     was honest measurement of a box nothing had sized. Restoring the vertical
+     `auto` would silently bring the sliver back. */
+  margin: 0 auto;
+  /* The default height: fill the stage. An explicit `height` from the frame
+     control overrides it — a definite cross size wins over `stretch` — which is
+     exactly the two states `BenchFrame.height` models.
+
+     ⚠️ A pinned height is then top-aligned rather than vertically centred, and
+     that is wanted for the reason `.Stage` gives about `justify-content`: a
+     frame taller than the stage would otherwise put its top edge outside the
+     scroll container, where `scrollTop` cannot reach it. */
+  align-self: stretch;
+  /* The containing block for the resize grips below, which are absolutely
+     positioned against this box's edges. */
+  position: relative;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm), 0 0 0 1px var(--theme-color-border-default);
+  overflow: hidden;
+}
+
+/* FIX-011 — the resize gesture, as overlays rather than as chrome.
+   -----------------------------------------------------------------------------
+   🔴 **Siblings of the `<webview>`, stacked above it, and a shield during the
+   drag.** A `<webview>` is a guest view: while the pointer is over it, the
+   move and up events go to the *guest page*, not to this document — so window
+   listeners alone (the `FrameDivider` pattern) lose the drag the moment the
+   pointer crosses the component. `.DragShield` covers the whole stage for the
+   duration, which is what keeps the events in this document. */
+.ResizeHandle {
+  position: absolute;
+  z-index: 1;
+  background-color: transparent;
+
+  /* Invisible until wanted: the frame edge is the design, and six visible grips
+     would make the bench look like a dialog. */
+  &:hover,
+  &.is-dragging {
+    background-color: var(--theme-color-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--theme-color-primary);
+    outline-offset: -2px;
+  }
+}
+
+/* Each grip is 6px of hit area on the inside of its edge — outside would land
+   in the stage's padding, where a 1px miss hits nothing at all. */
+.ResizeRight {
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+}
+
+.ResizeBottom {
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.ResizeCorner {
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  z-index: 2;
+  cursor: nwse-resize;
+}
+
+/* Only while a drag is live, and it covers the whole bench rather than only the
+   stage — the pointer spends a drag *off* the grip it started on, which is what
+   a drag is. Its `cursor` is set inline, per axis, for the same reason: a
+   cursor that reverted to the arrow mid-drag reads as a drag that was dropped. */
+.DragShield {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+.Webview {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background-color: white;
+}
+
+.Empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+}

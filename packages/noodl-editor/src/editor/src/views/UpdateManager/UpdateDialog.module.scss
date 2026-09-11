@@ -1,0 +1,109 @@
+/**
+ * Release notes, rendered as markdown inside a 520px dialog.
+ *
+ * The shared `Markdown` component styles paragraphs, links, lists, blockquotes
+ * and images — and nothing else. A release body is written by whoever cut the
+ * release, so it also contains headings, tables, horizontal rules and inline
+ * code, all of which arrive here with browser default styling: a 24px `h1`
+ * above 12px body text, and an unstyled table that does not fit the width.
+ *
+ * These rules add only what is missing. Nothing here overrides a rule the
+ * shared component already sets, so there is no specificity race between two
+ * stylesheets whose load order is not guaranteed.
+ */
+.Notes {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  flex: 1 1 auto;
+
+  // FIX-003 inverted the global rule, so the notes are selectable by default
+  // now and the `user-select: text` that used to sit here is gone. The cursor
+  // stays: `body` sets `cursor: default`, and prose should read as prose.
+  cursor: auto;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    // The shared component sets weight and colour but no size, so these fall
+    // back to the UA scale, which is built for a document and not for a dialog.
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 14px 0 6px;
+  }
+
+  h1 {
+    font-size: 15px;
+  }
+
+  h2 {
+    font-size: 14px;
+  }
+
+  // The first heading sits directly under the dialog's own chrome; a top margin
+  // there reads as a gap rather than as separation.
+  > :first-child {
+    margin-top: 0;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--theme-color-border-default);
+    margin: 14px 0;
+  }
+
+  code {
+    font-family: var(--font-family-code);
+    font-size: 11px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background-color: var(--theme-color-bg-3);
+  }
+
+  pre {
+    padding: 8px;
+    border-radius: 4px;
+    background-color: var(--theme-color-bg-3);
+    // A long line in a fenced block scrolls inside the block. The alternative is
+    // the whole dialog scrolling sideways, which moves the buttons off-screen.
+    overflow-x: auto;
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+    // A markdown table is authored for a README, not for 520px. Fixed layout
+    // keeps a long cell from pushing the table wider than the dialog.
+    table-layout: fixed;
+  }
+
+  th,
+  td {
+    border: 1px solid var(--theme-color-border-default);
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: top;
+    // Without this a URL in a cell is one unbreakable word and defeats
+    // `table-layout: fixed`.
+    overflow-wrap: anywhere;
+  }
+
+  th {
+    font-weight: 600;
+    background-color: var(--theme-color-bg-2);
+  }
+
+  // A long URL in ordinary prose is the same hazard as one in a cell.
+  a {
+    overflow-wrap: anywhere;
+  }
+}

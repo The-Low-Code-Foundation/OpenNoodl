@@ -9,6 +9,10 @@
  * @module AiAssistant/client/types
  */
 
+import type { AiContent } from '@noodl-models/AiAssistant/client/content';
+
+export type { AiContent, AiContentBlock, AiImageBlock, AiTextBlock, AiImageMediaType } from '@noodl-models/AiAssistant/client/content';
+
 export type AiProviderId = 'anthropic' | 'openai' | 'openai-compatible' | 'ollama';
 
 export const AI_PROVIDER_IDS: readonly AiProviderId[] = [
@@ -20,6 +24,14 @@ export const AI_PROVIDER_IDS: readonly AiProviderId[] = [
 
 export type AiMessageRole = 'system' | 'user' | 'assistant' | 'tool';
 
+/**
+ * LAS-009 — the three jobs a build is made of, which a user may point at
+ * different models. Defined here rather than in `roles.ts` so that a request
+ * can carry one without `types.ts` and `roles.ts` importing each other;
+ * `roles.ts` re-exports it and owns everything else about roles.
+ */
+export type AiRole = 'design' | 'plan' | 'act';
+
 export interface AiToolCall {
   /** Provider-assigned id, echoed back on the matching tool result. */
   id: string;
@@ -30,7 +42,18 @@ export interface AiToolCall {
 
 export interface AiMessage {
   role: AiMessageRole;
-  content: string;
+  /**
+   * BLD-012 — a string, or a closed union of text and image blocks.
+   *
+   * String is still the overwhelmingly common case and every producer that
+   * built one keeps working. A *reader* must decide, though, and that is
+   * deliberate: `content.slice(...)` no longer typechecks, so the compiler
+   * names every place that has to say what it means for an image. Use the
+   * helpers in `./content` rather than re-deriving it — `asText` in particular
+   * is the only sanctioned way to flatten, because it substitutes the declared
+   * text twin instead of dropping the picture.
+   */
+  content: AiContent;
   /** Only on assistant messages that requested tools. */
   toolCalls?: AiToolCall[];
   /** Only on `role: 'tool'` messages — the id of the call being answered. */
@@ -47,6 +70,14 @@ export interface AiMessage {
    * Only meaningful on a message whose stable part is worth caching — the
    * opening turn. Caching is a prefix match, so a message carrying this must
    * be ordered stable-first; see `prompts/authoring.ts`.
+   *
+   * ⚠️ BLD-012 — **string content only.** A character offset says nothing about
+   * a block array, so the block form carries `cache: true` on the last stable
+   * block instead; see `cacheBlockIndex` in `./content` for why a marker beat a
+   * block index. Setting this alongside block content is a mistake the adapters
+   * cannot act on, so `assertCacheBoundary` rejects it at build time rather
+   * than letting the breakpoint quietly vanish — a lost breakpoint has no
+   * symptom except the bill.
    */
   cacheBoundary?: number;
 }
@@ -79,6 +110,23 @@ export interface AiChatRequest {
    * normally omit it, so a single settings change moves every feature.
    */
   model?: string;
+  /**
+   * LAS-009 — send this request to a provider other than the active one.
+   * Omit for everything except a per-role override, which is the only thing
+   * that should ever contradict the user's chosen provider.
+   *
+   * Set this and you almost always want `model` set too: the two are resolved
+   * together by `resolveRole`, because the active provider's model id means
+   * nothing to a different provider.
+   */
+  provider?: AiProviderId;
+  /**
+   * LAS-009 — which of design/plan/act issued this request. Purely a label:
+   * it tags the usage log and the `[ai]` console line so a split configuration
+   * can be read back, and it never affects routing. Routing is `provider` and
+   * `model`, both already resolved by the time a request is built.
+   */
+  role?: AiRole;
   temperature?: number;
   maxTokens?: number;
   tools?: AiToolDefinition[];
@@ -166,6 +214,22 @@ export interface AiStreamCallbacks {
    * that has stopped answering. `withTurnDeadline` is its consumer.
    */
   onActivity?: () => void;
+  /**
+   * BLD-004: called per reasoning delta, with the accumulated reasoning and the
+   * delta — the same shape as {@link onText}, on a channel that never touches it.
+   *
+   * ⚠️ **The separation is the entire risk of this callback.** The authoring
+   * loop parses the assistant's visible text with XML templates, so reasoning
+   * that reaches `onText`'s string corrupts authoring output rather than merely
+   * a panel. Reasoning arrives from the provider as its own block type and must
+   * be routed here without ever being appended to the accumulated text; see the
+   * `thinking_delta` case in `providers/anthropic.ts`.
+   *
+   * Providers with no reasoning channel simply never call it. Nothing here
+   * synthesises one from visible text — a "reasoning" strip fabricated out of
+   * the answer is a claim about the model's process that nobody measured.
+   */
+  onReasoning?: (fullReasoning: string, delta: string) => void;
   onEnd?: () => void;
 }
 

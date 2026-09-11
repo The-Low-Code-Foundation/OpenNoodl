@@ -1,0 +1,76 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d12bbc8f-5bf7-418a-a273-3470399fb44d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rowGroup",
+      "type": "Group",
+      "label": "Book row",
+      "children": [
+        "rowTitle",
+        "rowShelf"
+      ],
+      "parameters": {
+        "flexDirection": "row",
+        "columnGap": "var(--space-3)",
+        "alignItems": "center"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rowTitle",
+      "type": "Text",
+      "label": "Title",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rowShelf",
+      "type": "Text",
+      "label": "Shelf",
+      "parent": "rowGroup",
+      "parameters": {
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "rowInputs",
+      "type": "Component Inputs",
+      "label": "Row properties",
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string",
+          "index": 0
+        }
+      ],
+      "x": 350,
+      "y": 160
+    },
+    {
+      "id": "rowObject",
+      "type": "Model2",
+      "label": "The row",
+      "parameters": {
+        "idSource": "foreach",
+        "properties": "badge"
+      },
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "rowGroup"
+  ]
+}

@@ -42,6 +42,7 @@ The one node to read who is logged in and their properties, anywhere in the app.
 | `authenticated` | Boolean | — | True while somebody is signed in on this device; a server render always sees false |
 | `email` | String | — | Email address of the signed-in user; empty while nobody is signed in |
 | `id` | String | — | Id of the signed-in user record; empty while nobody is signed in |
+| `roles` | Array | — | Roles the signed-in user is in, resolved by the server on each session read; empty while nobody is signed in, and not set on backends that do not track roles |
 | `username` | String | — | Username of the signed-in user; empty while nobody is signed in |
 
 ### Signals

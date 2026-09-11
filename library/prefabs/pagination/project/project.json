@@ -1,1523 +1,1824 @@
 {
-    "name": "Export",
-    "components": [
-        {
-            "name": "/Pagination",
-            "id": "ea9533dc-536f-7d4c-8b1e-e7cc3e10aec1",
-            "graph": {
-                "connections": [
-                    {
-                        "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
-                        "fromProperty": "Total Count",
-                        "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "toProperty": "in-TotalCount"
+  "name": "Export",
+  "components": [
+    {
+      "name": "/Pagination",
+      "id": "ea9533dc-536f-7d4c-8b1e-e7cc3e10aec1",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Total Items",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-TotalCount"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-Pages",
+            "toId": "be753568-888c-e845-fe11-d25ed27a6d7e",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-LastPageIndex",
+            "toId": "72b5d810-30c4-f5bb-3af8-a39261749481",
+            "toProperty": "Index"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-FirstEllipsis",
+            "toId": "60f60580-e1d9-93ed-e458-4549e895cd8f",
+            "toProperty": "Mounted"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-LastEllipsis",
+            "toId": "35038621-da9b-505f-c86b-a58a5b0eb886",
+            "toProperty": "Mounted"
+          },
+          {
+            "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "fromProperty": "value-Selected Page",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-SelectedPage"
+          },
+          {
+            "fromId": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
+            "fromProperty": "onClick",
+            "toId": "d556be7c-f421-22a3-8df5-5354bb036ce2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
+            "fromProperty": "onClick",
+            "toId": "be05c249-21e0-9c6d-62e1-e336e887bda3",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
+            "fromProperty": "savedValue",
+            "toId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "toProperty": "value-Selected Page"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Current Page",
+            "toId": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
+            "fromProperty": "value-Selected Page",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Current Page"
+          },
+          {
+            "fromId": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
+            "fromProperty": "value-Skip",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Offset"
+          },
+          {
+            "fromId": "be05c249-21e0-9c6d-62e1-e336e887bda3",
+            "fromProperty": "out-Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "d556be7c-f421-22a3-8df5-5354bb036ce2",
+            "fromProperty": "out-Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "be753568-888c-e845-fe11-d25ed27a6d7e",
+            "fromProperty": "itemOutputSignal-Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-BackEnabled",
+            "toId": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-NextEnabled",
+            "toId": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "180bcc48-c79f-78b6-e428-7c8f2004def8",
+            "fromProperty": "Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "72b5d810-30c4-f5bb-3af8-a39261749481",
+            "fromProperty": "Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-LastPageVisible",
+            "toId": "72b5d810-30c4-f5bb-3af8-a39261749481",
+            "toProperty": "Mounted"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Align X",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "alignX"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Align Y",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "alignY"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Margin Top",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "marginTop"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Margin Bottom",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "marginBottom"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Margin Left",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "marginLeft"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Margin Right",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "marginRight"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Position",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "position"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Width",
+            "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "fromProperty": "boundingWidth",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-Width"
+          },
+          {
+            "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "fromProperty": "Inner Align X",
+            "toId": "ea17217a-b32b-865c-dec9-c19073133c4f",
+            "toProperty": "alignX"
+          },
+          {
+            "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "fromProperty": "value-RowsPerPage",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-PageSize"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Items Per Page",
+            "toId": "45803c1f-5f0b-44a4-8534-0fcbda859a33",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "45803c1f-5f0b-44a4-8534-0fcbda859a33",
+            "fromProperty": "savedValue",
+            "toId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "toProperty": "value-RowsPerPage"
+          },
+          {
+            "fromId": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
+            "fromProperty": "value-RowsPerPage",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Items Per Page"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Rows Per Page Options",
+            "toId": "6f235953-1531-4d1a-a2e2-176eb6d929b8",
+            "toProperty": "in-RowsPerPageOptions"
+          },
+          {
+            "fromId": "6f235953-1531-4d1a-a2e2-176eb6d929b8",
+            "fromProperty": "out-Items",
+            "toId": "6fa5f3ad-d8d1-489a-a721-5da11c20e0a6",
+            "toProperty": "items"
+          },
+          {
+            "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "fromProperty": "value-RowsPerPage",
+            "toId": "6fa5f3ad-d8d1-489a-a721-5da11c20e0a6",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "6fa5f3ad-d8d1-489a-a721-5da11c20e0a6",
+            "fromProperty": "onChange",
+            "toId": "86394d17-991c-41a7-9a67-d9c9d4fff4b2",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "6fa5f3ad-d8d1-489a-a721-5da11c20e0a6",
+            "fromProperty": "value",
+            "toId": "86394d17-991c-41a7-9a67-d9c9d4fff4b2",
+            "toProperty": "in-Value"
+          },
+          {
+            "fromId": "86394d17-991c-41a7-9a67-d9c9d4fff4b2",
+            "fromProperty": "out-Changed",
+            "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Total Items",
+            "toId": "c37c661f-2303-45b4-90dc-66fe788b9085",
+            "toProperty": "in-TotalCount"
+          },
+          {
+            "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "fromProperty": "value-RowsPerPage",
+            "toId": "c37c661f-2303-45b4-90dc-66fe788b9085",
+            "toProperty": "in-RowsPerPage"
+          },
+          {
+            "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "fromProperty": "value-Selected Page",
+            "toId": "c37c661f-2303-45b4-90dc-66fe788b9085",
+            "toProperty": "in-SelectedPage"
+          },
+          {
+            "fromId": "c37c661f-2303-45b4-90dc-66fe788b9085",
+            "fromProperty": "out-Text",
+            "toId": "3814b549-3276-4e89-a312-1c7b7b5c0853",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Show Summary",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-ShowSummary"
+          },
+          {
+            "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "fromProperty": "Show Rows Per Page",
+            "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "toProperty": "in-ShowRowsPerPage"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-ShowSummary",
+            "toId": "3814b549-3276-4e89-a312-1c7b7b5c0853",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "fromProperty": "out-ShowRowsPerPage",
+            "toId": "30070c28-91a6-4de1-b139-916574a045d8",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+            "type": "Group",
+            "x": 151,
+            "y": -14,
+            "parameters": {
+              "flexDirection": "row",
+              "sizeMode": "contentHeight",
+              "alignItems": "center"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "3814b549-3276-4e89-a312-1c7b7b5c0853",
+                "type": "Text",
+                "label": "Summary",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "text": "",
+                  "sizeMode": "contentSize",
+                  "alignY": "center",
+                  "marginRight": {
+                    "value": 24,
+                    "unit": "px"
+                  },
+                  "fontSize": {
+                    "value": 14,
+                    "unit": "px"
+                  },
+                  "color": "var(--muted-foreground)"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "30070c28-91a6-4de1-b139-916574a045d8",
+                "type": "Group",
+                "label": "Rows per page",
+                "x": 0,
+                "y": 0,
+                "parameters": {
+                  "flexDirection": "row",
+                  "sizeMode": "contentSize",
+                  "alignItems": "center",
+                  "marginRight": {
+                    "value": 24,
+                    "unit": "px"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "6c5b2def-f7ad-4c8c-ad3f-c6f713da6f41",
+                    "type": "Text",
+                    "label": "Rows per page label",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "text": "Rows per page",
+                      "sizeMode": "contentSize",
+                      "alignY": "center",
+                      "marginRight": {
+                        "value": 12,
+                        "unit": "px"
+                      },
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)"
                     },
-                    {
-                        "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
-                        "fromProperty": "Page Size",
-                        "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "toProperty": "in-PageSize"
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "6fa5f3ad-d8d1-489a-a721-5da11c20e0a6",
+                    "type": "net.noodl.controls.options",
+                    "label": "Rows per page",
+                    "x": 0,
+                    "y": 0,
+                    "parameters": {
+                      "useLabel": false,
+                      "placeholder": "",
+                      "width": {
+                        "value": 80,
+                        "unit": "px"
+                      },
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "color": "var(--foreground)",
+                      "sizeMode": "contentHeight"
                     },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-Pages",
-                        "toId": "be753568-888c-e845-fe11-d25ed27a6d7e",
-                        "toProperty": "items"
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ]
+              },
+              {
+                "id": "ea17217a-b32b-865c-dec9-c19073133c4f",
+                "type": "Group",
+                "parameters": {
+                  "sizeMode": "contentSize",
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "alignX": "center"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
+                    "type": "net.noodl.controls.button",
+                    "parameters": {
+                      "minWidth": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "useLabel": false,
+                      "useIcon": true,
+                      "iconIconSource": { "class": "lucide", "code": "icon-chevron-left", "codeAsClass": true },
+                      "iconSize": {
+                        "value": 30,
+                        "unit": "px"
+                      },
+                      "iconColor": "var(--foreground)",
+                      "backgroundColor": "transparent",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 32,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 32,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "marginRight": {
+                        "value": 30,
+                        "unit": "px"
+                      },
+                      "iconSourceType": "icon"
                     },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-LastPageIndex",
-                        "toId": "72b5d810-30c4-f5bb-3af8-a39261749481",
-                        "toProperty": "Index"
+                    "stateParameters": {
+                      "hover": {
+                        "iconColor": "Grey - 700"
+                      },
+                      "pressed": {},
+                      "disabled": {
+                        "iconColor": "Grey - 400"
+                      }
                     },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-FirstEllipsis",
-                        "toId": "60f60580-e1d9-93ed-e458-4549e895cd8f",
-                        "toProperty": "Mounted"
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "180bcc48-c79f-78b6-e428-7c8f2004def8",
+                    "type": "/Pagination/Page Item",
+                    "parameters": {
+                      "Index": "0"
                     },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-LastEllipsis",
-                        "toId": "35038621-da9b-505f-c86b-a58a5b0eb886",
-                        "toProperty": "Mounted"
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "60930150-31a9-7a40-425e-31239ac93a36",
+                    "type": "Group",
+                    "parameters": {
+                      "flexDirection": "row",
+                      "clip": true,
+                      "justifyContent": "space-around",
+                      "sizeMode": "contentHeight",
+                      "alignItems": "center"
                     },
-                    {
-                        "fromId": "6513778f-a6ec-14b9-287a-65a5ba915876",
-                        "fromProperty": "value-Selected Page",
-                        "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "toProperty": "in-SelectedPage"
-                    },
-                    {
-                        "fromId": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
-                        "fromProperty": "onClick",
-                        "toId": "d556be7c-f421-22a3-8df5-5354bb036ce2",
-                        "toProperty": "run"
-                    },
-                    {
-                        "fromId": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
-                        "fromProperty": "onClick",
-                        "toId": "be05c249-21e0-9c6d-62e1-e336e887bda3",
-                        "toProperty": "run"
-                    },
-                    {
-                        "fromId": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
-                        "fromProperty": "savedValue",
-                        "toId": "6513778f-a6ec-14b9-287a-65a5ba915876",
-                        "toProperty": "value-Selected Page"
-                    },
-                    {
-                        "fromId": "82ac560a-ac8c-6d91-33b4-c950d560f843",
-                        "fromProperty": "Selected Page",
-                        "toId": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
-                        "toProperty": "value"
-                    },
-                    {
-                        "fromId": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
-                        "fromProperty": "value-Selected Page",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Selected Page"
-                    },
-                    {
-                        "fromId": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
-                        "fromProperty": "value-Skip",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Skip"
-                    },
-                    {
-                        "fromId": "be05c249-21e0-9c6d-62e1-e336e887bda3",
-                        "fromProperty": "out-Changed",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "d556be7c-f421-22a3-8df5-5354bb036ce2",
-                        "fromProperty": "out-Changed",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "be753568-888c-e845-fe11-d25ed27a6d7e",
-                        "fromProperty": "itemOutputSignal-Changed",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-BackEnabled",
-                        "toId": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
-                        "toProperty": "enabled"
-                    },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-NextEnabled",
-                        "toId": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
-                        "toProperty": "enabled"
-                    },
-                    {
-                        "fromId": "180bcc48-c79f-78b6-e428-7c8f2004def8",
-                        "fromProperty": "Changed",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "72b5d810-30c4-f5bb-3af8-a39261749481",
-                        "fromProperty": "Changed",
-                        "toId": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "fromProperty": "out-LastPageVisible",
-                        "toId": "72b5d810-30c4-f5bb-3af8-a39261749481",
-                        "toProperty": "Mounted"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Align X",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "alignX"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Align Y",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "alignY"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Margin Top",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "marginTop"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Margin Bottom",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "marginBottom"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Margin Left",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "marginLeft"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Margin Right",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "marginRight"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Position",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "position"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Width",
-                        "toId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "toProperty": "width"
-                    },
-                    {
-                        "fromId": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
-                        "fromProperty": "boundingWidth",
-                        "toId": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "toProperty": "in-Width"
-                    },
-                    {
-                        "fromId": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "fromProperty": "Inner Align X",
-                        "toId": "ea17217a-b32b-865c-dec9-c19073133c4f",
-                        "toProperty": "alignX"
-                    }
-                ],
-                "roots": [
-                    {
-                        "id": "037c8526-32f3-eb1e-ae92-6195d9174bf9",
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "60f60580-e1d9-93ed-e458-4549e895cd8f",
+                        "type": "/Pagination/Ellipsis",
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "10274221-f25c-6017-78bf-7fd197c34617",
                         "type": "Group",
-                        "x": 151,
-                        "y": -14,
                         "parameters": {
-                            "flexDirection": "row",
-                            "sizeMode": "contentHeight",
-                            "alignItems": "center"
+                          "flexDirection": "row",
+                          "justifyContent": "space-around",
+                          "sizeMode": "contentHeight",
+                          "alignY": "center"
                         },
                         "ports": [],
                         "dynamicports": [],
                         "children": [
-                            {
-                                "id": "ea17217a-b32b-865c-dec9-c19073133c4f",
-                                "type": "Group",
-                                "parameters": {
-                                    "sizeMode": "contentSize",
-                                    "flexDirection": "row",
-                                    "alignItems": "center",
-                                    "alignX": "center"
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": [
-                                    {
-                                        "id": "0bffde63-09ad-f13e-3536-8bf9cf0228c4",
-                                        "type": "net.noodl.controls.button",
-                                        "parameters": {
-                                            "minWidth": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "useLabel": false,
-                                            "useIcon": true,
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "chevron_left"
-                                            },
-                                            "iconSize": {
-                                                "value": 30,
-                                                "unit": "px"
-                                            },
-                                            "iconColor": "Grey - 900",
-                                            "backgroundColor": "transparent",
-                                            "sizeMode": "explicit",
-                                            "width": {
-                                                "value": 32,
-                                                "unit": "px"
-                                            },
-                                            "height": {
-                                                "value": 32,
-                                                "unit": "px"
-                                            },
-                                            "paddingRight": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "paddingLeft": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "marginRight": {
-                                                "value": 30,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "stateParameters": {
-                                            "hover": {
-                                                "iconColor": "Grey - 700"
-                                            },
-                                            "pressed": {},
-                                            "disabled": {
-                                                "iconColor": "Grey - 400"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    },
-                                    {
-                                        "id": "180bcc48-c79f-78b6-e428-7c8f2004def8",
-                                        "type": "/Pagination/Page Item",
-                                        "parameters": {
-                                            "Index": "0"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    },
-                                    {
-                                        "id": "60930150-31a9-7a40-425e-31239ac93a36",
-                                        "type": "Group",
-                                        "parameters": {
-                                            "flexDirection": "row",
-                                            "clip": true,
-                                            "justifyContent": "space-around",
-                                            "sizeMode": "contentHeight",
-                                            "alignItems": "center"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": [
-                                            {
-                                                "id": "60f60580-e1d9-93ed-e458-4549e895cd8f",
-                                                "type": "/Pagination/Ellipsis",
-                                                "parameters": {},
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            },
-                                            {
-                                                "id": "10274221-f25c-6017-78bf-7fd197c34617",
-                                                "type": "Group",
-                                                "parameters": {
-                                                    "flexDirection": "row",
-                                                    "justifyContent": "space-around",
-                                                    "sizeMode": "contentHeight",
-                                                    "alignY": "center"
-                                                },
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": [
-                                                    {
-                                                        "id": "be753568-888c-e845-fe11-d25ed27a6d7e",
-                                                        "type": "For Each",
-                                                        "parameters": {
-                                                            "template": "/Pagination/Page Item"
-                                                        },
-                                                        "ports": [],
-                                                        "dynamicports": [
-                                                            {
-                                                                "name": "itemOutputSignal-Changed",
-                                                                "displayName": "Changed",
-                                                                "type": "signal",
-                                                                "plug": "output",
-                                                                "group": "Item Signals",
-                                                                "index": 6
-                                                            },
-                                                            {
-                                                                "name": "inputMappingScript",
-                                                                "type": {
-                                                                    "name": "string",
-                                                                    "codeeditor": "javascript"
-                                                                },
-                                                                "displayName": "Script",
-                                                                "group": "Input Mapping",
-                                                                "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n\t'Index': 'Index',\n\t'Mounted': 'Mounted',\n})\n",
-                                                                "plug": "input",
-                                                                "index": 7
-                                                            }
-                                                        ],
-                                                        "children": []
-                                                    }
-                                                ]
-                                            },
-                                            {
-                                                "id": "35038621-da9b-505f-c86b-a58a5b0eb886",
-                                                "type": "/Pagination/Ellipsis",
-                                                "parameters": {},
-                                                "ports": [],
-                                                "dynamicports": [],
-                                                "children": []
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        "id": "72b5d810-30c4-f5bb-3af8-a39261749481",
-                                        "type": "/Pagination/Page Item",
-                                        "parameters": {
-                                            "Index": "0"
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    },
-                                    {
-                                        "id": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
-                                        "type": "net.noodl.controls.button",
-                                        "parameters": {
-                                            "minWidth": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "paddingLeft": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "paddingRight": {
-                                                "value": 0,
-                                                "unit": "px"
-                                            },
-                                            "useLabel": false,
-                                            "useIcon": true,
-                                            "iconIconSource": {
-                                                "class": "material-icons",
-                                                "code": "chevron_right"
-                                            },
-                                            "backgroundColor": "transparent",
-                                            "iconSize": {
-                                                "value": 30,
-                                                "unit": "px"
-                                            },
-                                            "iconColor": "Grey - 900",
-                                            "sizeMode": "explicit",
-                                            "width": {
-                                                "value": 32,
-                                                "unit": "px"
-                                            },
-                                            "height": {
-                                                "value": 32,
-                                                "unit": "px"
-                                            },
-                                            "marginLeft": {
-                                                "value": 30,
-                                                "unit": "px"
-                                            }
-                                        },
-                                        "stateParameters": {
-                                            "hover": {
-                                                "iconColor": "Grey - 700"
-                                            },
-                                            "disabled": {
-                                                "iconColor": "Grey - 400"
-                                            }
-                                        },
-                                        "ports": [],
-                                        "dynamicports": [],
-                                        "children": []
-                                    }
-                                ]
-                            }
-                        ]
-                    },
-                    {
-                        "id": "82ac560a-ac8c-6d91-33b4-c950d560f843",
-                        "type": "Component Inputs",
-                        "x": -799.3480900266446,
-                        "y": -0.098793964812387,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Total Count",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
+                          {
+                            "id": "be753568-888c-e845-fe11-d25ed27a6d7e",
+                            "type": "For Each",
+                            "parameters": {
+                              "template": "/Pagination/Page Item"
                             },
-                            {
-                                "name": "Page Size",
+                            "ports": [],
+                            "dynamicports": [
+                              {
+                                "name": "itemOutputSignal-Changed",
+                                "displayName": "Changed",
+                                "type": "signal",
                                 "plug": "output",
+                                "group": "Item Signals",
+                                "index": 6
+                              },
+                              {
+                                "name": "inputMappingScript",
                                 "type": {
-                                    "name": "*"
+                                  "name": "string",
+                                  "codeeditor": "javascript"
                                 },
-                                "index": 2
-                            },
-                            {
-                                "name": "Selected Page",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 3
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
-                        "type": "JavaScriptFunction",
-                        "x": -154.5,
-                        "y": 2,
-                        "parameters": {
-                            "functionScript": "const numPages = Math.ceil(Inputs.TotalCount / Inputs.PageSize);\nconst selectedPage = Inputs.SelectedPage;\n\n// The number of direct pages that first in the control\nconst _width = Inputs.Width - 214; // Remove margin, buttons etc\nif(isNaN(_width)) return;\n\nconst numPageSlots = Math.min(Math.floor(_width / 45),numPages);\n\n\nif(numPages > 1) {\n    Outputs.LastPageIndex = numPages-1;\n    Outputs.LastPageVisible = true;\n}\nelse\n    Outputs.LastPageVisible = false;\n\n\nconst pages = [];\n\nif(numPageSlots >= (numPages-2)) {\n    // All pages fit\n    for(let p = 1; p < numPages-1; p++) pages.push({\n        id:Component.Object.id + '-' + p,\n        Index:p\n    })\n\n    Outputs.LastEllipsis = false;\n    Outputs.FirstEllipsis = false;\n}\nelse {\n    let firstIndex = selectedPage;\n    let lastIndex = selectedPage;\n    while(lastIndex - firstIndex < (numPageSlots-1)) {\n        firstIndex = Math.max(1,firstIndex-1);\n        lastIndex = Math.min(numPages-2,lastIndex+1);\n    }\n\n    let lastEllipsis = false;\n    if(lastIndex < numPages-2) { \n        // We did not reach the end of num pages, make room for ...\n        lastIndex--;\n        lastEllipsis = true;\n    }\n\n    let firstEllipsis = false;\n    if(firstIndex > 1) { \n        // We did not reach the end of num pages, make room for ...\n        firstIndex++;\n        firstEllipsis = true;\n    }\n\n    for(let p = firstIndex; p <= lastIndex; p++) pages.push({\n        id:Component.Object.id + '-' + p,\n        Index:p\n    })\n\n    Outputs.LastEllipsis = lastEllipsis;\n    Outputs.FirstEllipsis = firstEllipsis;\n}\n\nComponent.Object.NumPages = numPages;\nComponent.Object.Skip = Inputs.SelectedPage * Inputs.PageSize;\n\nOutputs.BackEnabled = Inputs.SelectedPage > 0;\nOutputs.NextEnabled = Inputs.SelectedPage < numPages-1;\n\nOutputs.Pages = pages;",
-                            "scriptInputs": [
-                                {
-                                    "id": "yuep",
-                                    "label": "TotalCount"
-                                },
-                                {
-                                    "id": "fpsy",
-                                    "label": "PageSize"
-                                },
-                                {
-                                    "id": "0k97",
-                                    "label": "SelectedPage"
-                                }
+                                "displayName": "Script",
+                                "group": "Input Mapping",
+                                "default": "// Here you add mappings between the properties of the item objects and the inputs of the components.\n// 'myComponentInput': 'myObjectProperty',\n// 'anotherComponentInput': function () { return object.get('someProperty') + ' ' + object.get('otherProp') }\n// These are the default mappings based on the selected template component.\nmap({\n\t'Index': 'Index',\n\t'Mounted': 'Mounted',\n})\n",
+                                "plug": "input",
+                                "index": 7
+                              }
                             ],
-                            "intype-TotalCount": "number",
-                            "in-TotalCount": 100,
-                            "intype-PageSize": "number",
-                            "in-PageSize": 10,
-                            "intype-SelectedPage": "number",
-                            "in-SelectedPage": 0
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "intype-TotalCount",
-                                "displayName": "Type",
-                                "editorName": "TotalCount | Type",
-                                "plug": "input",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "string",
-                                            "label": "String"
-                                        },
-                                        {
-                                            "value": "boolean",
-                                            "label": "Boolean"
-                                        },
-                                        {
-                                            "value": "number",
-                                            "label": "Number"
-                                        },
-                                        {
-                                            "value": "object",
-                                            "label": "Object"
-                                        },
-                                        {
-                                            "value": "date",
-                                            "label": "Date"
-                                        },
-                                        {
-                                            "value": "array",
-                                            "label": "Array"
-                                        },
-                                        {
-                                            "value": "color",
-                                            "label": "Color"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "default": "string",
-                                "parent": "scriptInputs",
-                                "parentItemId": "yuep",
-                                "index": 4
-                            },
-                            {
-                                "name": "in-TotalCount",
-                                "displayName": "TotalCount",
-                                "plug": "input",
-                                "type": "number",
-                                "group": "Inputs",
-                                "index": 5
-                            },
-                            {
-                                "name": "intype-PageSize",
-                                "displayName": "Type",
-                                "editorName": "PageSize | Type",
-                                "plug": "input",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "string",
-                                            "label": "String"
-                                        },
-                                        {
-                                            "value": "boolean",
-                                            "label": "Boolean"
-                                        },
-                                        {
-                                            "value": "number",
-                                            "label": "Number"
-                                        },
-                                        {
-                                            "value": "object",
-                                            "label": "Object"
-                                        },
-                                        {
-                                            "value": "date",
-                                            "label": "Date"
-                                        },
-                                        {
-                                            "value": "array",
-                                            "label": "Array"
-                                        },
-                                        {
-                                            "value": "color",
-                                            "label": "Color"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "default": "string",
-                                "parent": "scriptInputs",
-                                "parentItemId": "fpsy",
-                                "index": 6
-                            },
-                            {
-                                "name": "in-PageSize",
-                                "displayName": "PageSize",
-                                "plug": "input",
-                                "type": "number",
-                                "group": "Inputs",
-                                "index": 7
-                            },
-                            {
-                                "name": "intype-SelectedPage",
-                                "displayName": "Type",
-                                "editorName": "SelectedPage | Type",
-                                "plug": "input",
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "value": "string",
-                                            "label": "String"
-                                        },
-                                        {
-                                            "value": "boolean",
-                                            "label": "Boolean"
-                                        },
-                                        {
-                                            "value": "number",
-                                            "label": "Number"
-                                        },
-                                        {
-                                            "value": "object",
-                                            "label": "Object"
-                                        },
-                                        {
-                                            "value": "date",
-                                            "label": "Date"
-                                        },
-                                        {
-                                            "value": "array",
-                                            "label": "Array"
-                                        },
-                                        {
-                                            "value": "color",
-                                            "label": "Color"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "default": "string",
-                                "parent": "scriptInputs",
-                                "parentItemId": "0k97",
-                                "index": 8
-                            },
-                            {
-                                "name": "in-SelectedPage",
-                                "displayName": "SelectedPage",
-                                "plug": "input",
-                                "type": "number",
-                                "group": "Inputs",
-                                "index": 9
-                            },
-                            {
-                                "name": "in-Width",
-                                "displayName": "Width",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 10
-                            },
-                            {
-                                "name": "out-LastPageIndex",
-                                "displayName": "LastPageIndex",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 11
-                            },
-                            {
-                                "name": "out-LastPageVisible",
-                                "displayName": "LastPageVisible",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 12
-                            },
-                            {
-                                "name": "out-LastEllipsis",
-                                "displayName": "LastEllipsis",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 13
-                            },
-                            {
-                                "name": "out-FirstEllipsis",
-                                "displayName": "FirstEllipsis",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 14
-                            },
-                            {
-                                "name": "out-BackEnabled",
-                                "displayName": "BackEnabled",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 15
-                            },
-                            {
-                                "name": "out-NextEnabled",
-                                "displayName": "NextEnabled",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 16
-                            },
-                            {
-                                "name": "out-Pages",
-                                "displayName": "Pages",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 17
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "functionScript"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "id": "6513778f-a6ec-14b9-287a-65a5ba915876",
-                        "type": "net.noodl.ComponentObject",
-                        "x": -348.13574540370865,
-                        "y": 112.34539368520979,
-                        "parameters": {
-                            "properties": "Selected Page"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Selected Page",
-                                "displayName": "Selected Page",
-                                "index": 4
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Selected Page Changed",
-                                "name": "changed-Selected Page",
-                                "index": 5
-                            }
-                        ],
-                        "children": []
-                    },
-                    {
-                        "id": "d556be7c-f421-22a3-8df5-5354bb036ce2",
-                        "type": "JavaScriptFunction",
-                        "label": "Back",
-                        "x": 445.01985711271516,
-                        "y": 38.67956384690984,
-                        "parameters": {
-                            "functionScript": "if(Component.Object['Selected Page'] > 0)\n    Component.Object['Selected Page']--;\n\nOutputs.Changed();"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "out-Changed",
-                                "displayName": "Changed",
-                                "plug": "output",
-                                "type": "signal",
-                                "group": "Outputs",
-                                "index": 4
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "functionScript"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "id": "be05c249-21e0-9c6d-62e1-e336e887bda3",
-                        "type": "JavaScriptFunction",
-                        "label": "Next",
-                        "x": 463.176282978543,
-                        "y": 592.537084329095,
-                        "parameters": {
-                            "functionScript": "if(Component.Object['Selected Page'] < Component.Object.NumPages-1)\n    Component.Object['Selected Page']++;\n\nOutputs.Changed();"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "out-Changed",
-                                "displayName": "Changed",
-                                "plug": "output",
-                                "type": "signal",
-                                "group": "Outputs",
-                                "index": 4
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "functionScript"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "id": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
-                        "type": "Number",
-                        "x": -544.5614972963137,
-                        "y": 116.33494054496725,
-                        "parameters": {},
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "fe49662e-4c74-bb7e-9140-f84327567289",
-                        "type": "Component Outputs",
-                        "x": 717.9501153377987,
-                        "y": 345.54259834876706,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Selected Page",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            },
-                            {
-                                "name": "Skip",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 2
-                            },
-                            {
-                                "name": "Changed",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 3
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
-                        "type": "net.noodl.ComponentObject",
-                        "x": 434,
-                        "y": 282,
-                        "parameters": {
-                            "properties": "Selected Page,Skip"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Selected Page",
-                                "displayName": "Selected Page",
-                                "index": 4
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Selected Page Changed",
-                                "name": "changed-Selected Page",
-                                "index": 5
-                            },
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Skip",
-                                "displayName": "Skip",
-                                "index": 6
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Skip Changed",
-                                "name": "changed-Skip",
-                                "index": 7
-                            }
-                        ],
-                        "children": []
-                    },
-                    {
-                        "id": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
-                        "type": "Component Inputs",
-                        "x": -203,
-                        "y": -259,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Align X",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 1
-                            },
-                            {
-                                "name": "Align Y",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Alignment",
-                                "index": 0
-                            },
-                            {
-                                "name": "Position",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Layout",
-                                "index": 7
-                            },
-                            {
-                                "name": "Margin Top",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 3
-                            },
-                            {
-                                "name": "Margin Bottom",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 4
-                            },
-                            {
-                                "name": "Margin Left",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 5
-                            },
-                            {
-                                "name": "Margin Right",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Margins",
-                                "index": 6
-                            },
-                            {
-                                "name": "Width",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Dimensions",
-                                "index": 8
-                            },
-                            {
-                                "name": "Inner Align X",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "group": "Inner Alignment",
-                                "index": 2
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    }
-                ]
-            }
-        },
-        {
-            "name": "/Pagination/Ellipsis",
-            "id": "78e608e0-d2d5-8a52-1dfd-1be4c35ab7b2",
-            "graph": {
-                "connections": [
-                    {
-                        "fromId": "093297f3-2609-254e-2e3a-47bfd5259164",
-                        "fromProperty": "Mounted",
-                        "toId": "b9d74c8e-ab9a-34a1-bce7-6a4c80a34ab6",
-                        "toProperty": "mounted"
-                    }
-                ],
-                "roots": [
-                    {
-                        "id": "b9d74c8e-ab9a-34a1-bce7-6a4c80a34ab6",
-                        "type": "Group",
-                        "x": 0,
-                        "y": 0,
-                        "parameters": {
-                            "width": {
-                                "value": 45,
-                                "unit": "px"
-                            },
-                            "height": {
-                                "value": 45,
-                                "unit": "px"
-                            }
-                        },
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": [
-                            {
-                                "id": "dd272c23-5164-b889-894b-4ddc12ec9981",
-                                "type": "net.noodl.visual.icon",
-                                "parameters": {
-                                    "iconIconSource": {
-                                        "class": "material-icons",
-                                        "code": "more_horiz"
-                                    },
-                                    "iconColor": "Grey - 500",
-                                    "iconSize": {
-                                        "value": 20,
-                                        "unit": "px"
-                                    },
-                                    "alignY": "center",
-                                    "alignX": "center"
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": []
-                            }
+                            "children": []
+                          }
                         ]
-                    },
-                    {
-                        "id": "093297f3-2609-254e-2e3a-47bfd5259164",
-                        "type": "Component Inputs",
-                        "x": -247,
-                        "y": 40,
+                      },
+                      {
+                        "id": "35038621-da9b-505f-c86b-a58a5b0eb886",
+                        "type": "/Pagination/Ellipsis",
                         "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Mounted",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            }
-                        ],
+                        "ports": [],
                         "dynamicports": [],
                         "children": []
-                    }
+                      }
+                    ]
+                  },
+                  {
+                    "id": "72b5d810-30c4-f5bb-3af8-a39261749481",
+                    "type": "/Pagination/Page Item",
+                    "parameters": {
+                      "Index": "0"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "45c5cb54-c16b-9329-b9c7-0dacca5bfff6",
+                    "type": "net.noodl.controls.button",
+                    "parameters": {
+                      "minWidth": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "paddingLeft": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "paddingRight": {
+                        "value": 0,
+                        "unit": "px"
+                      },
+                      "useLabel": false,
+                      "useIcon": true,
+                      "iconIconSource": { "class": "lucide", "code": "icon-chevron-right", "codeAsClass": true },
+                      "backgroundColor": "transparent",
+                      "iconSize": {
+                        "value": 30,
+                        "unit": "px"
+                      },
+                      "iconColor": "var(--foreground)",
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 32,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 32,
+                        "unit": "px"
+                      },
+                      "marginLeft": {
+                        "value": 30,
+                        "unit": "px"
+                      },
+                      "iconSourceType": "icon"
+                    },
+                    "stateParameters": {
+                      "hover": {
+                        "iconColor": "Grey - 700"
+                      },
+                      "disabled": {
+                        "iconColor": "Grey - 400"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
                 ]
-            }
-        },
-        {
-            "name": "/Pagination/Page Item",
-            "id": "627a366c-b82a-9fac-9313-fe7e7a98d547",
-            "graph": {
-                "connections": [
+              }
+            ]
+          },
+          {
+            "id": "82ac560a-ac8c-6d91-33b4-c950d560f843",
+            "type": "Component Inputs",
+            "x": -799.3480900266446,
+            "y": -0.098793964812387,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Total Items",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Data",
+                "index": 1
+              },
+              {
+                "name": "Items Per Page",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Data",
+                "index": 2
+              },
+              {
+                "name": "Current Page",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Data",
+                "index": 3
+              },
+              {
+                "name": "Rows Per Page Options",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Rows per page",
+                "index": 4
+              },
+              {
+                "name": "Show Rows Per Page",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Parts",
+                "index": 5
+              },
+              {
+                "name": "Show Summary",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Parts",
+                "index": 6
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "4c60bfe4-03ca-46c0-a727-d083e1b3b2be",
+            "type": "JavaScriptFunction",
+            "x": -154.5,
+            "y": 2,
+            "parameters": {
+              "functionScript": "const total = Number(Inputs.TotalCount) || 0;\nconst pageSize = Math.max(1, Number(Inputs.PageSize) || 10);\nconst selectedPage = Math.max(0, Number(Inputs.SelectedPage) || 0);\nconst numPages = Math.max(1, Math.ceil(total / pageSize));\n\n// Optional parts default to visible when the input is left unconnected\nconst showSummary = Inputs.ShowSummary === undefined ? true : !!Inputs.ShowSummary;\nconst showRowsPerPage = Inputs.ShowRowsPerPage === undefined ? true : !!Inputs.ShowRowsPerPage;\nOutputs.ShowSummary = showSummary;\nOutputs.ShowRowsPerPage = showRowsPerPage;\n\n// How many direct page slots fit in the control\nlet _width = Number(Inputs.Width) - 214; // margins, prev/next buttons etc\nif (isNaN(_width)) return;\nif (showSummary) _width -= 150; // summary text\nif (showRowsPerPage) _width -= 210; // label + selector\n\nconst numPageSlots = Math.min(Math.max(0, Math.floor(_width / 45)), numPages);\n\nif (numPages > 1) {\n    Outputs.LastPageIndex = numPages - 1;\n    Outputs.LastPageVisible = true;\n} else {\n    Outputs.LastPageVisible = false;\n}\n\nconst pages = [];\n\nif (numPageSlots >= numPages - 2) {\n    // All pages fit\n    for (let p = 1; p < numPages - 1; p++) pages.push({\n        id: Component.Object.id + '-' + p,\n        Index: p\n    });\n\n    Outputs.LastEllipsis = false;\n    Outputs.FirstEllipsis = false;\n} else {\n    let firstIndex = selectedPage;\n    let lastIndex = selectedPage;\n    while (lastIndex - firstIndex < numPageSlots - 1) {\n        firstIndex = Math.max(1, firstIndex - 1);\n        lastIndex = Math.min(numPages - 2, lastIndex + 1);\n    }\n\n    let lastEllipsis = false;\n    if (lastIndex < numPages - 2) {\n        // We did not reach the last page, make room for ...\n        lastIndex--;\n        lastEllipsis = true;\n    }\n\n    let firstEllipsis = false;\n    if (firstIndex > 1) {\n        // We did not reach the first page, make room for ...\n        firstIndex++;\n        firstEllipsis = true;\n    }\n\n    for (let p = firstIndex; p <= lastIndex; p++) pages.push({\n        id: Component.Object.id + '-' + p,\n        Index: p\n    });\n\n    Outputs.LastEllipsis = lastEllipsis;\n    Outputs.FirstEllipsis = firstEllipsis;\n}\n\nComponent.Object.NumPages = numPages;\nComponent.Object.Skip = selectedPage * pageSize;\n\nOutputs.BackEnabled = selectedPage > 0;\nOutputs.NextEnabled = selectedPage < numPages - 1;\n\nOutputs.Pages = pages;",
+              "scriptInputs": [
+                {
+                  "id": "yuep",
+                  "label": "TotalCount"
+                },
+                {
+                  "id": "fpsy",
+                  "label": "PageSize"
+                },
+                {
+                  "id": "0k97",
+                  "label": "SelectedPage"
+                },
+                {
+                  "id": "wdth",
+                  "label": "Width"
+                },
+                {
+                  "id": "shsm",
+                  "label": "ShowSummary"
+                },
+                {
+                  "id": "shrp",
+                  "label": "ShowRowsPerPage"
+                }
+              ],
+              "intype-TotalCount": "number",
+              "in-TotalCount": 100,
+              "intype-PageSize": "number",
+              "in-PageSize": 10,
+              "intype-SelectedPage": "number",
+              "in-SelectedPage": 0
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "intype-TotalCount",
+                "displayName": "Type",
+                "editorName": "TotalCount | Type",
+                "plug": "input",
+                "type": {
+                  "name": "enum",
+                  "enums": [
                     {
-                        "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
-                        "fromProperty": "Index",
-                        "toId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
-                        "toProperty": "This"
+                      "value": "string",
+                      "label": "String"
                     },
                     {
-                        "fromId": "0af1c063-f805-f46b-efdd-58485a2d4e1b",
-                        "fromProperty": "value-Selected Page",
-                        "toId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
-                        "toProperty": "Selected"
+                      "value": "boolean",
+                      "label": "Boolean"
                     },
                     {
-                        "fromId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                        "fromProperty": "onClick",
-                        "toId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
-                        "toProperty": "store"
+                      "value": "number",
+                      "label": "Number"
                     },
                     {
-                        "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
-                        "fromProperty": "Index",
-                        "toId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
-                        "toProperty": "prop-Selected Page"
+                      "value": "object",
+                      "label": "Object"
                     },
                     {
-                        "fromId": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
-                        "fromProperty": "result",
-                        "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                        "toProperty": "label"
+                      "value": "date",
+                      "label": "Date"
                     },
                     {
-                        "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
-                        "fromProperty": "Index",
-                        "toId": "cc074933-a5b5-34bc-e999-7071e135b1e0",
-                        "toProperty": "value"
+                      "value": "array",
+                      "label": "Array"
                     },
                     {
-                        "fromId": "cc074933-a5b5-34bc-e999-7071e135b1e0",
-                        "fromProperty": "savedValue",
-                        "toId": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
-                        "toProperty": "Index"
-                    },
-                    {
-                        "fromId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
-                        "fromProperty": "done",
-                        "toId": "94685741-8c25-5807-a4c2-547ace07384c",
-                        "toProperty": "Changed"
-                    },
-                    {
-                        "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
-                        "fromProperty": "Mounted",
-                        "toId": "05fee91f-2381-7859-fd44-d60239e9d113",
-                        "toProperty": "mounted"
-                    },
-                    {
-                        "fromId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                        "fromProperty": "hoverState",
-                        "toId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
-                        "toProperty": "in-Hover"
-                    },
-                    {
-                        "fromId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
-                        "fromProperty": "out-BgColor",
-                        "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                        "toProperty": "backgroundColor"
-                    },
-                    {
-                        "fromId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
-                        "fromProperty": "out-TextColor",
-                        "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                        "toProperty": "color"
-                    },
-                    {
-                        "fromId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
-                        "fromProperty": "isTrue",
-                        "toId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
-                        "toProperty": "in-Selected"
+                      "value": "color",
+                      "label": "Color"
                     }
-                ],
-                "roots": [
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "string",
+                "parent": "scriptInputs",
+                "parentItemId": "yuep",
+                "index": 4
+              },
+              {
+                "name": "in-TotalCount",
+                "displayName": "TotalCount",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "intype-PageSize",
+                "displayName": "Type",
+                "editorName": "PageSize | Type",
+                "plug": "input",
+                "type": {
+                  "name": "enum",
+                  "enums": [
                     {
-                        "id": "05fee91f-2381-7859-fd44-d60239e9d113",
-                        "type": "Group",
-                        "x": 0,
-                        "y": 0,
-                        "parameters": {
-                            "width": {
-                                "value": 45,
-                                "unit": "px"
-                            },
-                            "height": {
-                                "value": 45,
-                                "unit": "px"
-                            },
-                            "sizeMode": "explicit"
-                        },
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": [
-                            {
-                                "id": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
-                                "type": "net.noodl.controls.button",
-                                "parameters": {
-                                    "paddingLeft": {
-                                        "value": 0,
-                                        "unit": "px"
-                                    },
-                                    "paddingRight": {
-                                        "value": 0,
-                                        "unit": "px"
-                                    },
-                                    "minWidth": {
-                                        "value": 0,
-                                        "unit": "px"
-                                    },
-                                    "borderRadius": {
-                                        "value": 50,
-                                        "unit": "px"
-                                    },
-                                    "height": {
-                                        "value": 32,
-                                        "unit": "px",
-                                        "isFixed": false
-                                    },
-                                    "sizeMode": "explicit",
-                                    "width": {
-                                        "value": 32,
-                                        "unit": "px"
-                                    },
-                                    "alignY": "center",
-                                    "alignX": "center"
-                                },
-                                "stateParameters": {
-                                    "hover": {
-                                        "backgroundColor": "Grey - 400"
-                                    }
-                                },
-                                "ports": [],
-                                "dynamicports": [],
-                                "children": []
-                            }
-                        ]
+                      "value": "string",
+                      "label": "String"
                     },
                     {
-                        "id": "549b8657-9e01-3b38-4438-712e127eb3f3",
-                        "type": "Component Inputs",
-                        "x": -843.5,
-                        "y": 110.5,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Index",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            },
-                            {
-                                "name": "Mounted",
-                                "plug": "output",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 2
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
+                      "value": "boolean",
+                      "label": "Boolean"
                     },
                     {
-                        "id": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
-                        "type": "Expression",
-                        "x": -603.25,
-                        "y": -61.25,
-                        "parameters": {
-                            "expression": "Selected==This"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "group": "Parameters",
-                                "name": "Selected",
-                                "type": {
-                                    "name": "*",
-                                    "editAsType": "string"
-                                },
-                                "plug": "input",
-                                "index": 7
-                            },
-                            {
-                                "group": "Parameters",
-                                "name": "This",
-                                "type": {
-                                    "name": "*",
-                                    "editAsType": "string"
-                                },
-                                "plug": "input",
-                                "index": 8
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "expression"
-                                ]
-                            }
-                        }
+                      "value": "number",
+                      "label": "Number"
                     },
                     {
-                        "id": "0af1c063-f805-f46b-efdd-58485a2d4e1b",
-                        "type": "net.noodl.ParentComponentObject",
-                        "x": -839.55,
-                        "y": -85.64999999999998,
-                        "parameters": {
-                            "properties": "Selected Page"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "*",
-                                    "allowConnectionsOnly": true
-                                },
-                                "plug": "input/output",
-                                "group": "Properties",
-                                "name": "value-Selected Page",
-                                "displayName": "Selected Page",
-                                "index": 4
-                            },
-                            {
-                                "type": "signal",
-                                "plug": "output",
-                                "group": "Changed Events",
-                                "displayName": "Selected Page Changed",
-                                "name": "changed-Selected Page",
-                                "index": 5
-                            }
-                        ],
-                        "children": []
+                      "value": "object",
+                      "label": "Object"
                     },
                     {
-                        "id": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
-                        "type": "net.noodl.SetParentComponentObjectProperties",
-                        "x": 290.18999999999994,
-                        "y": 155.07000000000005,
-                        "parameters": {
-                            "properties": "Selected Page"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "type": {
-                                    "name": "*"
-                                },
-                                "plug": "input",
-                                "group": "Property Values",
-                                "displayName": "Selected Page",
-                                "name": "prop-Selected Page",
-                                "index": 3
-                            },
-                            {
-                                "type": {
-                                    "name": "enum",
-                                    "enums": [
-                                        {
-                                            "label": "String",
-                                            "value": "string"
-                                        },
-                                        {
-                                            "label": "Boolean",
-                                            "value": "boolean"
-                                        },
-                                        {
-                                            "label": "Number",
-                                            "value": "number"
-                                        },
-                                        {
-                                            "label": "Date",
-                                            "value": "date"
-                                        },
-                                        {
-                                            "label": "Array",
-                                            "value": "array"
-                                        },
-                                        {
-                                            "label": "Object",
-                                            "value": "object"
-                                        },
-                                        {
-                                            "label": "Any",
-                                            "value": "*"
-                                        }
-                                    ],
-                                    "allowEditOnly": true
-                                },
-                                "default": "*",
-                                "plug": "input",
-                                "group": "Property Types",
-                                "displayName": "Selected Page",
-                                "name": "type-Selected Page",
-                                "index": 4
-                            }
-                        ],
-                        "children": []
+                      "value": "date",
+                      "label": "Date"
                     },
                     {
-                        "id": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
-                        "type": "Expression",
-                        "x": -301.2266666666667,
-                        "y": 231.07000000000005,
-                        "parameters": {
-                            "expression": "Index+1"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "group": "Parameters",
-                                "name": "Index",
-                                "type": {
-                                    "name": "*",
-                                    "editAsType": "string"
-                                },
-                                "plug": "input",
-                                "index": 7
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "expression"
-                                ]
-                            }
-                        }
+                      "value": "array",
+                      "label": "Array"
                     },
                     {
-                        "id": "cc074933-a5b5-34bc-e999-7071e135b1e0",
-                        "type": "Number",
-                        "x": -520.0123809523809,
-                        "y": 210.6414285714286,
-                        "parameters": {},
-                        "ports": [],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "94685741-8c25-5807-a4c2-547ace07384c",
-                        "type": "Component Outputs",
-                        "x": 576.4251190476191,
-                        "y": 193.1414285714286,
-                        "parameters": {},
-                        "ports": [
-                            {
-                                "name": "Changed",
-                                "plug": "input",
-                                "type": {
-                                    "name": "*"
-                                },
-                                "index": 1
-                            }
-                        ],
-                        "dynamicports": [],
-                        "children": []
-                    },
-                    {
-                        "id": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
-                        "type": "JavaScriptFunction",
-                        "x": -291.5,
-                        "y": -6.41796875,
-                        "parameters": {
-                            "functionScript": "if(Inputs.Selected) {\n    Outputs.BgColor = \"Primary\";\n    Outputs.TextColor = \"White\";\n}\nelse if(Inputs.Hover) {\n    Outputs.BgColor = \"Grey - 300\";\n    Outputs.TextColor = \"Grey - 900\";\n}\nelse {\n    Outputs.BgColor = \"transparent\";\n    Outputs.TextColor = \"Grey - 900\";\n}"
-                        },
-                        "ports": [],
-                        "dynamicports": [
-                            {
-                                "name": "in-Selected",
-                                "displayName": "Selected",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 4
-                            },
-                            {
-                                "name": "in-Hover",
-                                "displayName": "Hover",
-                                "plug": "input",
-                                "type": "*",
-                                "group": "Inputs",
-                                "index": 5
-                            },
-                            {
-                                "name": "out-BgColor",
-                                "displayName": "BgColor",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 6
-                            },
-                            {
-                                "name": "out-TextColor",
-                                "displayName": "TextColor",
-                                "plug": "output",
-                                "type": "*",
-                                "group": "Outputs",
-                                "index": 7
-                            }
-                        ],
-                        "children": [],
-                        "metadata": {
-                            "merge": {
-                                "soureCodePorts": [
-                                    "functionScript"
-                                ]
-                            }
-                        }
+                      "value": "color",
+                      "label": "Color"
                     }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "string",
+                "parent": "scriptInputs",
+                "parentItemId": "fpsy",
+                "index": 6
+              },
+              {
+                "name": "in-PageSize",
+                "displayName": "PageSize",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 7
+              },
+              {
+                "name": "intype-SelectedPage",
+                "displayName": "Type",
+                "editorName": "SelectedPage | Type",
+                "plug": "input",
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    {
+                      "value": "string",
+                      "label": "String"
+                    },
+                    {
+                      "value": "boolean",
+                      "label": "Boolean"
+                    },
+                    {
+                      "value": "number",
+                      "label": "Number"
+                    },
+                    {
+                      "value": "object",
+                      "label": "Object"
+                    },
+                    {
+                      "value": "date",
+                      "label": "Date"
+                    },
+                    {
+                      "value": "array",
+                      "label": "Array"
+                    },
+                    {
+                      "value": "color",
+                      "label": "Color"
+                    }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "string",
+                "parent": "scriptInputs",
+                "parentItemId": "0k97",
+                "index": 8
+              },
+              {
+                "name": "in-SelectedPage",
+                "displayName": "SelectedPage",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 9
+              },
+              {
+                "name": "in-Width",
+                "displayName": "Width",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 10
+              },
+              {
+                "name": "out-LastPageIndex",
+                "displayName": "LastPageIndex",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 11
+              },
+              {
+                "name": "out-LastPageVisible",
+                "displayName": "LastPageVisible",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 12
+              },
+              {
+                "name": "out-LastEllipsis",
+                "displayName": "LastEllipsis",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 13
+              },
+              {
+                "name": "out-FirstEllipsis",
+                "displayName": "FirstEllipsis",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 14
+              },
+              {
+                "name": "out-BackEnabled",
+                "displayName": "BackEnabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 15
+              },
+              {
+                "name": "out-NextEnabled",
+                "displayName": "NextEnabled",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 16
+              },
+              {
+                "name": "out-Pages",
+                "displayName": "Pages",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 17
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
                 ]
+              }
             }
-        }
-    ],
-    "settings": {},
-    "version": "4",
-    "metadata": {
-        "styles": {
-            "text": {},
-            "colors": {
-                "Grey - 400": "#CECECE",
-                "Grey - 500": "#A5A5A5",
-                "Grey - 700": "#4C4C4C",
-                "Grey - 900": "#1F1F1F"
+          },
+          {
+            "id": "6513778f-a6ec-14b9-287a-65a5ba915876",
+            "type": "net.noodl.ComponentObject",
+            "x": -348.13574540370865,
+            "y": 112.34539368520979,
+            "parameters": {
+              "properties": "Selected Page,RowsPerPage"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Selected Page",
+                "displayName": "Selected Page",
+                "index": 4
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Selected Page Changed",
+                "name": "changed-Selected Page",
+                "index": 5
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "d556be7c-f421-22a3-8df5-5354bb036ce2",
+            "type": "JavaScriptFunction",
+            "label": "Back",
+            "x": 445.01985711271516,
+            "y": 38.67956384690984,
+            "parameters": {
+              "functionScript": "if(Component.Object['Selected Page'] > 0)\n    Component.Object['Selected Page']--;\n\nOutputs.Changed();"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "out-Changed",
+                "displayName": "Changed",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
             }
-        }
+          },
+          {
+            "id": "be05c249-21e0-9c6d-62e1-e336e887bda3",
+            "type": "JavaScriptFunction",
+            "label": "Next",
+            "x": 463.176282978543,
+            "y": 592.537084329095,
+            "parameters": {
+              "functionScript": "if(Component.Object['Selected Page'] < Component.Object.NumPages-1)\n    Component.Object['Selected Page']++;\n\nOutputs.Changed();"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "out-Changed",
+                "displayName": "Changed",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "abdc502a-4759-c8b8-f956-ae186a7cfc94",
+            "type": "Number",
+            "x": -544.5614972963137,
+            "y": 116.33494054496725,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "fe49662e-4c74-bb7e-9140-f84327567289",
+            "type": "Component Outputs",
+            "x": 717.9501153377987,
+            "y": 345.54259834876706,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Current Page",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "Offset",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              },
+              {
+                "name": "Items Per Page",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 3
+              },
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 4
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "de7614dc-0b39-6c03-6ed8-2c659678cebd",
+            "type": "net.noodl.ComponentObject",
+            "x": 434,
+            "y": 282,
+            "parameters": {
+              "properties": "Selected Page,RowsPerPage,Skip"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Selected Page",
+                "displayName": "Selected Page",
+                "index": 4
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Selected Page Changed",
+                "name": "changed-Selected Page",
+                "index": 5
+              },
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Skip",
+                "displayName": "Skip",
+                "index": 6
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Skip Changed",
+                "name": "changed-Skip",
+                "index": 7
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "8db59cf8-27d3-b811-b54a-6a2a5eac4b57",
+            "type": "Component Inputs",
+            "x": -203,
+            "y": -259,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Align X",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 1
+              },
+              {
+                "name": "Align Y",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Alignment",
+                "index": 0
+              },
+              {
+                "name": "Position",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Layout",
+                "index": 7
+              },
+              {
+                "name": "Margin Top",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 3
+              },
+              {
+                "name": "Margin Bottom",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 4
+              },
+              {
+                "name": "Margin Left",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 5
+              },
+              {
+                "name": "Margin Right",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Margins",
+                "index": 6
+              },
+              {
+                "name": "Width",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Dimensions",
+                "index": 8
+              },
+              {
+                "name": "Inner Align X",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Inner Alignment",
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "6f235953-1531-4d1a-a2e2-176eb6d929b8",
+            "type": "JavaScriptFunction",
+            "label": "Rows options",
+            "x": -799,
+            "y": 420,
+            "parameters": {
+              "functionScript": "const raw = Inputs.RowsPerPageOptions;\nconst options = Array.isArray(raw) && raw.length > 0\n    ? raw\n    : [5, 10, 15, 20, 30, 40, 50];\n\nOutputs.Items = options.map((p) => ({\n    Label: '' + p,\n    Value: '' + p\n}));",
+              "scriptInputs": [
+                {
+                  "id": "rpo1",
+                  "label": "RowsPerPageOptions"
+                }
+              ],
+              "intype-RowsPerPageOptions": "array"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "86394d17-991c-41a7-9a67-d9c9d4fff4b2",
+            "type": "JavaScriptFunction",
+            "label": "Rows per page changed",
+            "x": -540,
+            "y": 480,
+            "parameters": {
+              "functionScript": "const rowsPerPage = parseInt(Inputs.Value, 10);\nif (!isNaN(rowsPerPage) && rowsPerPage > 0) {\n    Component.Object.RowsPerPage = rowsPerPage;\n}\n\nOutputs.Changed();"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "45803c1f-5f0b-44a4-8534-0fcbda859a33",
+            "type": "Number",
+            "label": "Items per page seed",
+            "x": -544,
+            "y": 300,
+            "parameters": {
+              "value": 10
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "c37c661f-2303-45b4-90dc-66fe788b9085",
+            "type": "JavaScriptFunction",
+            "label": "Summary",
+            "x": -260,
+            "y": 560,
+            "parameters": {
+              "functionScript": "const total = Number(Inputs.TotalCount);\nconst pageSize = Math.max(1, Number(Inputs.RowsPerPage) || 10);\nconst page = Math.max(0, Number(Inputs.SelectedPage) || 0);\n\nif (isNaN(total) || total <= 0) {\n    Outputs.Text = 'Showing 0 of 0';\n    return;\n}\n\n// Keep the selected page inside the document when the page size grows\nconst numPages = Math.max(1, Math.ceil(total / pageSize));\nif (Component.Object['Selected Page'] > numPages - 1) {\n    Component.Object['Selected Page'] = numPages - 1;\n}\n\nconst startRow = Math.min(page * pageSize, total - 1);\nconst endRow = Math.min(startRow + pageSize, total);\n\nOutputs.Text = 'Showing ' + (startRow + 1) + '\\u2013' + endRow + ' of ' + total;",
+              "scriptInputs": [
+                {
+                  "id": "sjtc",
+                  "label": "TotalCount"
+                },
+                {
+                  "id": "sjrp",
+                  "label": "RowsPerPage"
+                },
+                {
+                  "id": "sjsp",
+                  "label": "SelectedPage"
+                }
+              ],
+              "intype-TotalCount": "number",
+              "intype-RowsPerPage": "number",
+              "intype-SelectedPage": "number"
+            },
+            "ports": [],
+            "dynamicports": []
+          }
+        ]
+      }
     },
-    "variants": []
+    {
+      "name": "/Pagination/Ellipsis",
+      "id": "78e608e0-d2d5-8a52-1dfd-1be4c35ab7b2",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "093297f3-2609-254e-2e3a-47bfd5259164",
+            "fromProperty": "Mounted",
+            "toId": "b9d74c8e-ab9a-34a1-bce7-6a4c80a34ab6",
+            "toProperty": "mounted"
+          }
+        ],
+        "roots": [
+          {
+            "id": "b9d74c8e-ab9a-34a1-bce7-6a4c80a34ab6",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "width": {
+                "value": 45,
+                "unit": "px"
+              },
+              "height": {
+                "value": 45,
+                "unit": "px"
+              }
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "dd272c23-5164-b889-894b-4ddc12ec9981",
+                "type": "net.noodl.visual.icon",
+                "parameters": {
+                  "iconIconSource": { "class": "lucide", "code": "icon-more-horizontal", "codeAsClass": true },
+                  "iconColor": "var(--muted-foreground)",
+                  "iconSize": {
+                    "value": 20,
+                    "unit": "px"
+                  },
+                  "alignY": "center",
+                  "alignX": "center"
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "093297f3-2609-254e-2e3a-47bfd5259164",
+            "type": "Component Inputs",
+            "x": -247,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Mounted",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "/Pagination/Page Item",
+      "id": "627a366c-b82a-9fac-9313-fe7e7a98d547",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
+            "fromProperty": "Index",
+            "toId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
+            "toProperty": "This"
+          },
+          {
+            "fromId": "0af1c063-f805-f46b-efdd-58485a2d4e1b",
+            "fromProperty": "value-Selected Page",
+            "toId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
+            "toProperty": "Selected"
+          },
+          {
+            "fromId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+            "fromProperty": "onClick",
+            "toId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
+            "toProperty": "store"
+          },
+          {
+            "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
+            "fromProperty": "Index",
+            "toId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
+            "toProperty": "prop-Selected Page"
+          },
+          {
+            "fromId": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
+            "fromProperty": "result",
+            "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+            "toProperty": "label"
+          },
+          {
+            "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
+            "fromProperty": "Index",
+            "toId": "cc074933-a5b5-34bc-e999-7071e135b1e0",
+            "toProperty": "value"
+          },
+          {
+            "fromId": "cc074933-a5b5-34bc-e999-7071e135b1e0",
+            "fromProperty": "savedValue",
+            "toId": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
+            "toProperty": "Index"
+          },
+          {
+            "fromId": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
+            "fromProperty": "done",
+            "toId": "94685741-8c25-5807-a4c2-547ace07384c",
+            "toProperty": "Changed"
+          },
+          {
+            "fromId": "549b8657-9e01-3b38-4438-712e127eb3f3",
+            "fromProperty": "Mounted",
+            "toId": "05fee91f-2381-7859-fd44-d60239e9d113",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+            "fromProperty": "hoverState",
+            "toId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
+            "toProperty": "in-Hover"
+          },
+          {
+            "fromId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
+            "fromProperty": "out-BgColor",
+            "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
+            "fromProperty": "out-TextColor",
+            "toId": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
+            "fromProperty": "isTrue",
+            "toId": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
+            "toProperty": "in-Selected"
+          }
+        ],
+        "roots": [
+          {
+            "id": "05fee91f-2381-7859-fd44-d60239e9d113",
+            "type": "Group",
+            "x": 0,
+            "y": 0,
+            "parameters": {
+              "width": {
+                "value": 45,
+                "unit": "px"
+              },
+              "height": {
+                "value": 45,
+                "unit": "px"
+              },
+              "sizeMode": "explicit"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "5a8b38db-8f4d-eaa4-73d6-c3e106a1d4c5",
+                "type": "net.noodl.controls.button",
+                "parameters": {
+                  "paddingLeft": {
+                    "value": 0,
+                    "unit": "px"
+                  },
+                  "paddingRight": {
+                    "value": 0,
+                    "unit": "px"
+                  },
+                  "minWidth": {
+                    "value": 0,
+                    "unit": "px"
+                  },
+                  "borderRadius": {
+                    "value": 50,
+                    "unit": "px"
+                  },
+                  "height": {
+                    "value": 32,
+                    "unit": "px",
+                    "isFixed": false
+                  },
+                  "sizeMode": "explicit",
+                  "width": {
+                    "value": 32,
+                    "unit": "px"
+                  },
+                  "alignY": "center",
+                  "alignX": "center"
+                },
+                "stateParameters": {
+                  "hover": {
+                    "backgroundColor": "Grey - 400"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": []
+              }
+            ]
+          },
+          {
+            "id": "549b8657-9e01-3b38-4438-712e127eb3f3",
+            "type": "Component Inputs",
+            "x": -843.5,
+            "y": 110.5,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Index",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              },
+              {
+                "name": "Mounted",
+                "plug": "output",
+                "type": {
+                  "name": "*"
+                },
+                "index": 2
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "a59cf6ce-0bd6-54e8-8187-849b2d6790b7",
+            "type": "Expression",
+            "x": -603.25,
+            "y": -61.25,
+            "parameters": {
+              "expression": "Selected==This"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "group": "Parameters",
+                "name": "Selected",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 7
+              },
+              {
+                "group": "Parameters",
+                "name": "This",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 8
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "expression"
+                ]
+              }
+            }
+          },
+          {
+            "id": "0af1c063-f805-f46b-efdd-58485a2d4e1b",
+            "type": "net.noodl.ParentComponentObject",
+            "x": -839.55,
+            "y": -85.64999999999998,
+            "parameters": {
+              "properties": "Selected Page"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "*",
+                  "allowConnectionsOnly": true
+                },
+                "plug": "input/output",
+                "group": "Properties",
+                "name": "value-Selected Page",
+                "displayName": "Selected Page",
+                "index": 4
+              },
+              {
+                "type": "signal",
+                "plug": "output",
+                "group": "Changed Events",
+                "displayName": "Selected Page Changed",
+                "name": "changed-Selected Page",
+                "index": 5
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "adb2f7e5-46ef-597c-a56f-b0e0adbbe610",
+            "type": "net.noodl.SetParentComponentObjectProperties",
+            "x": 290.18999999999994,
+            "y": 155.07000000000005,
+            "parameters": {
+              "properties": "Selected Page"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "type": {
+                  "name": "*"
+                },
+                "plug": "input",
+                "group": "Property Values",
+                "displayName": "Selected Page",
+                "name": "prop-Selected Page",
+                "index": 3
+              },
+              {
+                "type": {
+                  "name": "enum",
+                  "enums": [
+                    {
+                      "label": "String",
+                      "value": "string"
+                    },
+                    {
+                      "label": "Boolean",
+                      "value": "boolean"
+                    },
+                    {
+                      "label": "Number",
+                      "value": "number"
+                    },
+                    {
+                      "label": "Date",
+                      "value": "date"
+                    },
+                    {
+                      "label": "Array",
+                      "value": "array"
+                    },
+                    {
+                      "label": "Object",
+                      "value": "object"
+                    },
+                    {
+                      "label": "Any",
+                      "value": "*"
+                    }
+                  ],
+                  "allowEditOnly": true
+                },
+                "default": "*",
+                "plug": "input",
+                "group": "Property Types",
+                "displayName": "Selected Page",
+                "name": "type-Selected Page",
+                "index": 4
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "ad5cf184-a6d9-5fad-ff20-f6c2e9a042d7",
+            "type": "Expression",
+            "x": -301.2266666666667,
+            "y": 231.07000000000005,
+            "parameters": {
+              "expression": "Index+1"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "group": "Parameters",
+                "name": "Index",
+                "type": {
+                  "name": "*",
+                  "editAsType": "string"
+                },
+                "plug": "input",
+                "index": 7
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "expression"
+                ]
+              }
+            }
+          },
+          {
+            "id": "cc074933-a5b5-34bc-e999-7071e135b1e0",
+            "type": "Number",
+            "x": -520.0123809523809,
+            "y": 210.6414285714286,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "94685741-8c25-5807-a4c2-547ace07384c",
+            "type": "Component Outputs",
+            "x": 576.4251190476191,
+            "y": 193.1414285714286,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Changed",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "index": 1
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "0b2c0eb8-f3d8-b8e6-ca87-00617ea8204b",
+            "type": "JavaScriptFunction",
+            "x": -291.5,
+            "y": -6.41796875,
+            "parameters": {
+              "functionScript": "if (Inputs.Selected) {\n    Outputs.BgColor = 'var(--primary)';\n    Outputs.TextColor = 'var(--primary-foreground)';\n} else if (Inputs.Hover) {\n    Outputs.BgColor = 'var(--muted)';\n    Outputs.TextColor = 'var(--foreground)';\n} else {\n    Outputs.BgColor = 'transparent';\n    Outputs.TextColor = 'var(--foreground)';\n}"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Selected",
+                "displayName": "Selected",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 4
+              },
+              {
+                "name": "in-Hover",
+                "displayName": "Hover",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 5
+              },
+              {
+                "name": "out-BgColor",
+                "displayName": "BgColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-TextColor",
+                "displayName": "TextColor",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs",
+                "index": 7
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
 }

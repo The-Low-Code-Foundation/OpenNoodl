@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2b8d4e0-5a3c-4d9f-8b2e-000000000071",
+  "name": "Home",
+  "path": "/Pages/Home",
+  "type": "page",
+  "modified": "2026-09-03T21:00:00.000Z",
+  "description": "EXP-011 §52 fixture: four Script nodes that translate — a gen-3 ticker (two signals in, an interval, one output), a gen-3 greeter (a value in, a signal in, a value and a signal out), a gen-1 define (a reactive change), a gen-2 script (signals + changed). The refused shape (a body that calls Noodl.Files.upload) is built by the spec, and by the drive copy with --uploader."
+}

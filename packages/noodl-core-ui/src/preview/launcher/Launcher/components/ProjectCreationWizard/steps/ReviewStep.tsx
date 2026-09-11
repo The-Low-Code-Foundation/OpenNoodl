@@ -9,6 +9,7 @@ import { PresetDisplayInfo } from '@noodl-core-ui/components/StylePresets';
 
 import { useWizardContext } from '../WizardContext';
 import css from './ReviewStep.module.scss';
+import type { TemplateChoice } from './TemplateStep';
 
 /** One planned operation, flattened for display. AIX-012. */
 export interface ReviewPlanRow {
@@ -33,9 +34,19 @@ export interface ReviewStepProps {
    */
   scopeOutline?: readonly string[];
   planRows?: readonly ReviewPlanRow[];
+  /**
+   * FB-005 T3 — the chosen template, in `'template'` mode only.
+   *
+   * 🔴 **The Style row is replaced by this one rather than joined by it.** Template mode does
+   * not visit the preset step, so `selectedPresetId` is still the untouched default — a Style
+   * row here would name a preset the user never chose and which will never be applied
+   * (`setPendingPresetId` maps `'modern'` to null). Showing it would make the review screen
+   * describe something that does not happen, which is the one thing this screen must not do.
+   */
+  template?: TemplateChoice;
 }
 
-export function ReviewStep({ presets, scopeOutline, planRows }: ReviewStepProps) {
+export function ReviewStep({ presets, scopeOutline, planRows, template }: ReviewStepProps) {
   const { state, update } = useWizardContext();
 
   const selectedPreset = presets.find((p) => p.id === state.selectedPresetId);
@@ -84,19 +95,41 @@ export function ReviewStep({ presets, scopeOutline, planRows }: ReviewStepProps)
           </button>
         </div>
 
-        {/* Style preset row */}
-        <div className={css['SummaryRow']}>
-          <div className={css['SummaryRow-label']}>Style</div>
-          <div className={css['SummaryRow-value']}>
-            <span className={css['SummaryRow-main']}>{selectedPreset?.name ?? state.selectedPresetId}</span>
-            {selectedPreset?.description && (
-              <span className={css['SummaryRow-secondary']}>{selectedPreset.description}</span>
-            )}
+        {/* FB-005 T3 — the template row, or the style row. Never both; see `template` above. */}
+        {state.mode === 'template' ? (
+          <div className={css['SummaryRow']}>
+            <div className={css['SummaryRow-label']}>Template</div>
+            <div className={css['SummaryRow-value']}>
+              {/* ⚠️ Falls back to the URL. A row the host could not find is a real state — the
+                  shelf can be re-read between the picker and this screen — and printing what was
+                  actually chosen beats printing "—" beside a project that will be created. */}
+              <span className={css['SummaryRow-main']}>{template?.title ?? state.selectedTemplateUrl}</span>
+              {template?.description && (
+                <span className={css['SummaryRow-secondary']}>{template.description}</span>
+              )}
+            </div>
+            <button
+              className={css['SummaryRow-edit']}
+              onClick={() => update({ currentStep: 'template' })}
+              type="button"
+            >
+              Edit
+            </button>
           </div>
-          <button className={css['SummaryRow-edit']} onClick={handleEditPreset} type="button">
-            Edit
-          </button>
-        </div>
+        ) : (
+          <div className={css['SummaryRow']}>
+            <div className={css['SummaryRow-label']}>Style</div>
+            <div className={css['SummaryRow-value']}>
+              <span className={css['SummaryRow-main']}>{selectedPreset?.name ?? state.selectedPresetId}</span>
+              {selectedPreset?.description && (
+                <span className={css['SummaryRow-secondary']}>{selectedPreset.description}</span>
+              )}
+            </div>
+            <button className={css['SummaryRow-edit']} onClick={handleEditPreset} type="button">
+              Edit
+            </button>
+          </div>
+        )}
 
         {/* AIX-012 — the agreed scope. */}
         {scopeOutline && scopeOutline.length > 0 && (

@@ -1,0 +1,1291 @@
+{
+    "name": "Export",
+    "components": [
+        {
+            "name": "/App Shell",
+            "id": "a5e17000-0000-4000-9000-000000000001",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000001",
+                        "fromProperty": "App Name",
+                        "toId": "a5e17000-1000-4000-9000-000000000014",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000001",
+                        "fromProperty": "Page Title",
+                        "toId": "a5e17000-1000-4000-9000-00000000001b",
+                        "toProperty": "text"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000001",
+                        "fromProperty": "Nav Items",
+                        "toId": "a5e17000-1000-4000-9000-000000000003",
+                        "toProperty": "in-Items"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000002",
+                        "fromProperty": "items",
+                        "toId": "a5e17000-1000-4000-9000-000000000003",
+                        "toProperty": "in-Fallback"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000004",
+                        "fromProperty": "out-PathName",
+                        "toId": "a5e17000-1000-4000-9000-000000000003",
+                        "toProperty": "in-CurrentPath"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000010",
+                        "fromProperty": "didMount",
+                        "toId": "a5e17000-1000-4000-9000-000000000004",
+                        "toProperty": "run"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000003",
+                        "fromProperty": "out-Items",
+                        "toId": "a5e17000-1000-4000-9000-000000000016",
+                        "toProperty": "items"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000005",
+                        "fromProperty": "width",
+                        "toId": "a5e17000-1000-4000-9000-000000000006",
+                        "toProperty": "in-Width"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000001",
+                        "fromProperty": "Collapse Below",
+                        "toId": "a5e17000-1000-4000-9000-000000000006",
+                        "toProperty": "in-Breakpoint"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000007",
+                        "fromProperty": "state",
+                        "toId": "a5e17000-1000-4000-9000-000000000006",
+                        "toProperty": "in-MenuOpen"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000006",
+                        "fromProperty": "out-ShowSidebar",
+                        "toId": "a5e17000-1000-4000-9000-000000000011",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000006",
+                        "fromProperty": "out-ShowHamburger",
+                        "toId": "a5e17000-1000-4000-9000-000000000019",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000019",
+                        "fromProperty": "onClick",
+                        "toId": "a5e17000-1000-4000-9000-000000000007",
+                        "toProperty": "flip"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000016",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "a5e17000-1000-4000-9000-000000000007",
+                        "toProperty": "off"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000016",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "a5e17000-1000-4000-9000-000000000009",
+                        "toProperty": "navigate"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000016",
+                        "fromProperty": "itemOutput-Target",
+                        "toId": "a5e17000-1000-4000-9000-000000000009",
+                        "toProperty": "path"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000016",
+                        "fromProperty": "itemOutputSignal-Click",
+                        "toId": "a5e17000-1000-4000-9000-000000000008",
+                        "toProperty": "Nav Click"
+                    },
+                    {
+                        "fromId": "a5e17000-1000-4000-9000-000000000016",
+                        "fromProperty": "itemOutput-Target",
+                        "toId": "a5e17000-1000-4000-9000-000000000008",
+                        "toProperty": "Nav Target"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000001",
+                        "type": "Component Inputs",
+                        "x": -700,
+                        "y": 60,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "App Name",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 0
+                            },
+                            {
+                                "name": "Page Title",
+                                "plug": "output",
+                                "type": {
+                                    "name": "string"
+                                },
+                                "group": "Content",
+                                "index": 1
+                            },
+                            {
+                                "name": "Nav Items",
+                                "plug": "output",
+                                "type": {
+                                    "name": "array"
+                                },
+                                "group": "Navigation",
+                                "index": 2
+                            },
+                            {
+                                "name": "Collapse Below",
+                                "plug": "output",
+                                "type": {
+                                    "name": "number"
+                                },
+                                "group": "Responsive",
+                                "index": 3
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000002",
+                        "type": "Static Data",
+                        "label": "Default nav items",
+                        "x": -700,
+                        "y": 260,
+                        "parameters": {
+                            "type": "json",
+                            "json": "[\n    {\n        \"Label\": \"Home\",\n        \"Icon\": \"icon-home\",\n        \"Target\": \"/\",\n        \"IsHome\": true\n    },\n    {\n        \"Label\": \"Projects\",\n        \"Icon\": \"icon-folder\",\n        \"Target\": \"/projects\"\n    },\n    {\n        \"Label\": \"Settings\",\n        \"Icon\": \"icon-settings\",\n        \"Target\": \"/settings\"\n    }\n]"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000003",
+                        "type": "JavaScriptFunction",
+                        "label": "Prepare nav items",
+                        "x": -420,
+                        "y": 160,
+                        "parameters": {
+                            "functionScript": "// Turns the raw nav items array into what each Nav Item needs,\n// computing Selected from the current path (active-route highlighting).\n// Every input is guarded: an unconnected input is undefined.\nconst asArray = (v) => Array.isArray(v) ? v : (v && Array.isArray(v.items) ? v.items : []);\nconst read = (item, key) => (item && typeof item.get === 'function') ? item.get(key) : (item ? item[key] : undefined);\n\nconst connected = asArray(Inputs.Items);\nconst source = connected.length > 0 ? connected : asArray(Inputs.Fallback);\nconst path = typeof Inputs.CurrentPath === 'string' ? Inputs.CurrentPath : undefined;\n\nOutputs.Items = source.map((item) => {\n    const rawTarget = read(item, 'Target');\n    const target = typeof rawTarget === 'string' ? rawTarget : '';\n    const isHome = read(item, 'IsHome') === true || target === '/';\n    const selected = path !== undefined && (\n        (path === '/' && isHome) ||\n        (path !== '/' && target !== '' && target !== '/' && path.startsWith(target))\n    );\n    return {\n        Label: read(item, 'Label'),\n        Icon: read(item, 'Icon'),\n        Target: target,\n        Selected: selected\n    };\n});\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Items",
+                                "displayName": "Items",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Fallback",
+                                "displayName": "Fallback",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-CurrentPath",
+                                "displayName": "CurrentPath",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-Items",
+                                "displayName": "Items",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000004",
+                        "type": "JavaScriptFunction",
+                        "label": "Track current path",
+                        "x": -700,
+                        "y": 420,
+                        "parameters": {
+                            "functionScript": "const onUrlChange = () => {\n    // Send the current pathname as an output\n    Outputs.PathName = document.location.pathname\n}\n\n// Detect a change of the pathname\nif (window.history && window.history.pushState) {\n    window.addEventListener('popstate', onUrlChange)\n} else {\n    window.addEventListener('hashchange', onUrlChange)\n}\n\nonUrlChange()\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "out-PathName",
+                                "displayName": "PathName",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 4
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000005",
+                        "type": "Screen Resolution",
+                        "x": -700,
+                        "y": 560,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000006",
+                        "type": "JavaScriptFunction",
+                        "label": "Responsive layout state",
+                        "x": -420,
+                        "y": 540,
+                        "parameters": {
+                            "functionScript": "// Responsive collapse: below the breakpoint the sidebar hides and the\n// hamburger appears; opening the mobile menu shows the sidebar again.\n// Every input is guarded: an unconnected input is undefined.\nconst bp = (typeof Inputs.Breakpoint === 'number' && Inputs.Breakpoint > 0) ? Inputs.Breakpoint : 768;\nconst width = (typeof Inputs.Width === 'number' && Inputs.Width > 0) ? Inputs.Width : bp + 1;\nconst narrow = width < bp;\nOutputs.ShowHamburger = narrow;\nOutputs.ShowSidebar = !narrow || Inputs.MenuOpen === true;\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-Width",
+                                "displayName": "Width",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "in-Breakpoint",
+                                "displayName": "Breakpoint",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "in-MenuOpen",
+                                "displayName": "MenuOpen",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 6
+                            },
+                            {
+                                "name": "out-ShowSidebar",
+                                "displayName": "ShowSidebar",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 7
+                            },
+                            {
+                                "name": "out-ShowHamburger",
+                                "displayName": "ShowHamburger",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 8
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000007",
+                        "type": "Switch",
+                        "label": "Mobile menu open?",
+                        "x": -420,
+                        "y": 760,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000008",
+                        "type": "Component Outputs",
+                        "x": 320,
+                        "y": 620,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Nav Click",
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal"
+                                },
+                                "group": "Navigation",
+                                "index": 0
+                            },
+                            {
+                                "name": "Nav Target",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "group": "Navigation",
+                                "index": 1
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000009",
+                        "type": "PageStackNavigateToPath",
+                        "x": 320,
+                        "y": 760,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-1000-4000-9000-000000000010",
+                        "type": "Group",
+                        "label": "App shell frame",
+                        "x": 20,
+                        "y": -700,
+                        "parameters": {
+                            "flexDirection": "row",
+                            "backgroundColor": "var(--background)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "a5e17000-1000-4000-9000-000000000011",
+                                "type": "Group",
+                                "label": "Sidebar",
+                                "parameters": {
+                                    "flexDirection": "column",
+                                    "width": {
+                                        "value": 240,
+                                        "unit": "px"
+                                    },
+                                    "minWidth": {
+                                        "value": 240,
+                                        "unit": "px"
+                                    },
+                                    "backgroundColor": "var(--surface-raised)",
+                                    "borderRightStyle": "solid",
+                                    "borderRightWidth": {
+                                        "value": 1,
+                                        "unit": "px"
+                                    },
+                                    "borderRightColor": "var(--border)",
+                                    "styleCss": "flex: 0 0 auto;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "a5e17000-1000-4000-9000-000000000012",
+                                        "type": "Group",
+                                        "label": "App name slot",
+                                        "parameters": {
+                                            "flexDirection": "row",
+                                            "alignItems": "center",
+                                            "height": {
+                                                "value": 56,
+                                                "unit": "px"
+                                            },
+                                            "minHeight": {
+                                                "value": 56,
+                                                "unit": "px"
+                                            },
+                                            "paddingLeft": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "paddingRight": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "borderBottomStyle": "solid",
+                                            "borderBottomWidth": {
+                                                "value": 1,
+                                                "unit": "px"
+                                            },
+                                            "borderBottomColor": "var(--border)",
+                                            "styleCss": "flex: 0 0 auto;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-000000000013",
+                                                "type": "net.noodl.visual.icon",
+                                                "label": "App logo",
+                                                "parameters": {
+                                                    "iconIconSource": { "class": "lucide", "code": "icon-layout-grid", "codeAsClass": true },
+                                                    "iconColor": "var(--primary)",
+                                                    "iconSize": {
+                                                        "value": 24,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-000000000014",
+                                                "type": "Text",
+                                                "label": "App name",
+                                                "parameters": {
+                                                    "text": "My App",
+                                                    "textStyle": "Title Medium",
+                                                    "color": "var(--foreground)",
+                                                    "marginLeft": {
+                                                        "value": 8,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "a5e17000-1000-4000-9000-000000000015",
+                                        "type": "Group",
+                                        "label": "Nav items",
+                                        "parameters": {
+                                            "flexDirection": "column",
+                                            "paddingTop": {
+                                                "value": 8,
+                                                "unit": "px"
+                                            },
+                                            "paddingLeft": {
+                                                "value": 8,
+                                                "unit": "px"
+                                            },
+                                            "paddingRight": {
+                                                "value": 8,
+                                                "unit": "px"
+                                            },
+                                            "styleCss": "flex: 1 1 auto; min-height: 0;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-000000000016",
+                                                "type": "For Each",
+                                                "parameters": {
+                                                    "template": "/App Shell/Nav Item"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [
+                                                    {
+                                                        "name": "itemOutputSignal-Click",
+                                                        "displayName": "Click",
+                                                        "type": "signal",
+                                                        "plug": "output",
+                                                        "group": "Item Signals",
+                                                        "index": 6
+                                                    },
+                                                    {
+                                                        "name": "itemOutput-Target",
+                                                        "displayName": "Target",
+                                                        "type": {
+                                                            "name": "*",
+                                                            "allowConnectionsOnly": true
+                                                        },
+                                                        "plug": "output",
+                                                        "group": "Item Outputs",
+                                                        "index": 7
+                                                    }
+                                                ],
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "id": "a5e17000-1000-4000-9000-000000000017",
+                                "type": "Group",
+                                "label": "Main column",
+                                "parameters": {
+                                    "flexDirection": "column",
+                                    "styleCss": "flex: 1 1 0%; min-width: 0;"
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": [
+                                    {
+                                        "id": "a5e17000-1000-4000-9000-000000000018",
+                                        "type": "Group",
+                                        "label": "Top bar",
+                                        "parameters": {
+                                            "flexDirection": "row",
+                                            "alignItems": "center",
+                                            "height": {
+                                                "value": 56,
+                                                "unit": "px"
+                                            },
+                                            "minHeight": {
+                                                "value": 56,
+                                                "unit": "px"
+                                            },
+                                            "paddingLeft": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "paddingRight": {
+                                                "value": 16,
+                                                "unit": "px"
+                                            },
+                                            "backgroundColor": "var(--background)",
+                                            "borderBottomStyle": "solid",
+                                            "borderBottomWidth": {
+                                                "value": 1,
+                                                "unit": "px"
+                                            },
+                                            "borderBottomColor": "var(--border)",
+                                            "styleCss": "flex: 0 0 auto;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-000000000019",
+                                                "type": "Group",
+                                                "label": "Hamburger",
+                                                "parameters": {
+                                                    "flexDirection": "row",
+                                                    "alignItems": "center",
+                                                    "justifyContent": "center",
+                                                    "width": {
+                                                        "value": 36,
+                                                        "unit": "px"
+                                                    },
+                                                    "height": {
+                                                        "value": 36,
+                                                        "unit": "px"
+                                                    },
+                                                    "minWidth": {
+                                                        "value": 36,
+                                                        "unit": "px"
+                                                    },
+                                                    "borderRadius": {
+                                                        "value": 6,
+                                                        "unit": "px"
+                                                    },
+                                                    "marginRight": {
+                                                        "value": 12,
+                                                        "unit": "px"
+                                                    },
+                                                    "mounted": false,
+                                                    "styleCss": "cursor: pointer; flex: 0 0 auto;"
+                                                },
+                                                "stateParameters": {
+                                                    "hover": {
+                                                        "backgroundColor": "var(--muted)"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": [
+                                                    {
+                                                        "id": "a5e17000-1000-4000-9000-00000000001a",
+                                                        "type": "net.noodl.visual.icon",
+                                                        "parameters": {
+                                                            "iconIconSource": { "class": "lucide", "code": "icon-menu", "codeAsClass": true },
+                                                            "iconColor": "var(--foreground)",
+                                                            "iconSize": {
+                                                                "value": 22,
+                                                                "unit": "px"
+                                                            }
+                                                        },
+                                                        "ports": [],
+                                                        "dynamicports": [],
+                                                        "children": []
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-00000000001b",
+                                                "type": "Text",
+                                                "label": "Page title",
+                                                "parameters": {
+                                                    "text": "Page Title",
+                                                    "textStyle": "Title Medium",
+                                                    "color": "var(--foreground)",
+                                                    "marginRight": {
+                                                        "value": 16,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-00000000001c",
+                                                "type": "Group",
+                                                "label": "Spacer",
+                                                "parameters": {
+                                                    "styleCss": "flex: 1 1 0%; min-width: 0;"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-00000000001d",
+                                                "type": "Group",
+                                                "label": "Actions slot",
+                                                "parameters": {
+                                                    "flexDirection": "row",
+                                                    "alignItems": "center",
+                                                    "sizeMode": "contentSize",
+                                                    "styleCss": "flex: 0 0 auto;"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            },
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-00000000001e",
+                                                "type": "Group",
+                                                "label": "User area",
+                                                "parameters": {
+                                                    "flexDirection": "row",
+                                                    "alignItems": "center",
+                                                    "sizeMode": "contentSize",
+                                                    "marginLeft": {
+                                                        "value": 16,
+                                                        "unit": "px"
+                                                    },
+                                                    "styleCss": "flex: 0 0 auto;"
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": [
+                                                    {
+                                                        "id": "a5e17000-1000-4000-9000-00000000001f",
+                                                        "type": "net.noodl.visual.icon",
+                                                        "parameters": {
+                                                            "iconIconSource": { "class": "lucide", "code": "icon-user-circle-2", "codeAsClass": true },
+                                                            "iconColor": "var(--muted-foreground)",
+                                                            "iconSize": {
+                                                                "value": 28,
+                                                                "unit": "px"
+                                                            }
+                                                        },
+                                                        "ports": [],
+                                                        "dynamicports": [],
+                                                        "children": []
+                                                    },
+                                                    {
+                                                        "id": "a5e17000-1000-4000-9000-000000000020",
+                                                        "type": "Text",
+                                                        "label": "User name placeholder",
+                                                        "parameters": {
+                                                            "text": "Signed in",
+                                                            "color": "var(--muted-foreground)",
+                                                            "marginLeft": {
+                                                                "value": 8,
+                                                                "unit": "px"
+                                                            }
+                                                        },
+                                                        "ports": [],
+                                                        "dynamicports": [],
+                                                        "children": []
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    },
+                                    {
+                                        "id": "a5e17000-1000-4000-9000-000000000021",
+                                        "type": "Group",
+                                        "label": "Content outlet",
+                                        "parameters": {
+                                            "flexDirection": "column",
+                                            "backgroundColor": "var(--background)",
+                                            "styleCss": "flex: 1 1 0%; min-height: 0;"
+                                        },
+                                        "ports": [],
+                                        "dynamicports": [],
+                                        "children": [
+                                            {
+                                                "id": "a5e17000-1000-4000-9000-000000000022",
+                                                "type": "Text",
+                                                "label": "Content placeholder",
+                                                "parameters": {
+                                                    "text": "Content outlet \u2014 replace this text with your Page Router. Pages render here, inside the shell.",
+                                                    "color": "var(--muted-foreground)",
+                                                    "marginTop": {
+                                                        "value": 24,
+                                                        "unit": "px"
+                                                    },
+                                                    "marginLeft": {
+                                                        "value": 24,
+                                                        "unit": "px"
+                                                    },
+                                                    "marginRight": {
+                                                        "value": 24,
+                                                        "unit": "px"
+                                                    }
+                                                },
+                                                "ports": [],
+                                                "dynamicports": [],
+                                                "children": []
+                                            }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 0,
+                    "y": 0
+                }
+            }
+        },
+        {
+            "name": "/App Shell/Nav Item",
+            "id": "a5e17000-0000-4000-9000-000000000002",
+            "graph": {
+                "connections": [
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000001",
+                        "fromProperty": "prop-Icon",
+                        "toId": "a5e17000-2000-4000-9000-000000000002",
+                        "toProperty": "in-IconCode"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000001",
+                        "fromProperty": "prop-Target",
+                        "toId": "a5e17000-2000-4000-9000-000000000008",
+                        "toProperty": "Target"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000001",
+                        "fromProperty": "prop-Selected",
+                        "toId": "a5e17000-2000-4000-9000-000000000003",
+                        "toProperty": "condition"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000003",
+                        "fromProperty": "ontrue",
+                        "toId": "a5e17000-2000-4000-9000-000000000004",
+                        "toProperty": "to-selected"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000003",
+                        "fromProperty": "onfalse",
+                        "toId": "a5e17000-2000-4000-9000-000000000004",
+                        "toProperty": "to-not selected"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000005",
+                        "fromProperty": "onClick",
+                        "toId": "a5e17000-2000-4000-9000-000000000008",
+                        "toProperty": "Click"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000002",
+                        "fromProperty": "out-IconSource",
+                        "toId": "a5e17000-2000-4000-9000-000000000006",
+                        "toProperty": "iconIconSource"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000002",
+                        "fromProperty": "out-HaveIcon",
+                        "toId": "a5e17000-2000-4000-9000-000000000006",
+                        "toProperty": "mounted"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000004",
+                        "fromProperty": "color",
+                        "toId": "a5e17000-2000-4000-9000-000000000006",
+                        "toProperty": "iconColor"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000004",
+                        "fromProperty": "color",
+                        "toId": "a5e17000-2000-4000-9000-000000000007",
+                        "toProperty": "color"
+                    },
+                    {
+                        "fromId": "a5e17000-2000-4000-9000-000000000001",
+                        "fromProperty": "prop-Label",
+                        "toId": "a5e17000-2000-4000-9000-000000000007",
+                        "toProperty": "text"
+                    }
+                ],
+                "roots": [
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000001",
+                        "type": "Model2",
+                        "x": -560,
+                        "y": 40,
+                        "parameters": {
+                            "idSource": "foreach",
+                            "properties": "Icon,Label,Target,Selected"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Icon",
+                                "displayName": "Icon",
+                                "index": 7
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Label",
+                                "displayName": "Label",
+                                "index": 8
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Target",
+                                "displayName": "Target",
+                                "index": 9
+                            },
+                            {
+                                "type": {
+                                    "name": "*",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "input/output",
+                                "group": "Properties",
+                                "name": "prop-Selected",
+                                "displayName": "Selected",
+                                "index": 10
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000002",
+                        "type": "JavaScriptFunction",
+                        "label": "Icon source",
+                        "x": -300,
+                        "y": -10,
+                        "parameters": {
+                            "functionScript": "Outputs.IconSource = {\n    \"class\": \"lucide\", \"codeAsClass\": true,\n    \"code\": Inputs.IconCode\n}\nOutputs.HaveIcon = Inputs.IconCode !== undefined && Inputs.IconCode !== \"\"\n"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "name": "in-IconCode",
+                                "displayName": "IconCode",
+                                "plug": "input",
+                                "type": "*",
+                                "group": "Inputs",
+                                "index": 4
+                            },
+                            {
+                                "name": "out-IconSource",
+                                "displayName": "IconSource",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 5
+                            },
+                            {
+                                "name": "out-HaveIcon",
+                                "displayName": "HaveIcon",
+                                "plug": "output",
+                                "type": "*",
+                                "group": "Outputs",
+                                "index": 6
+                            }
+                        ],
+                        "children": [],
+                        "metadata": {
+                            "merge": {
+                                "soureCodePorts": [
+                                    "functionScript"
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000003",
+                        "type": "Condition",
+                        "x": -560,
+                        "y": -200,
+                        "parameters": {},
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000004",
+                        "type": "States",
+                        "label": "Active highlight",
+                        "x": -300,
+                        "y": -200,
+                        "parameters": {
+                            "states": "selected,not selected",
+                            "values": "color",
+                            "type-color": "color",
+                            "value-selected-color": "var(--primary)",
+                            "value-not selected-color": "var(--muted-foreground)",
+                            "currentState": "not selected"
+                        },
+                        "ports": [],
+                        "dynamicports": [
+                            {
+                                "type": {
+                                    "name": "color",
+                                    "allowConnectionsOnly": true
+                                },
+                                "plug": "output",
+                                "group": "Values",
+                                "name": "color",
+                                "index": 6
+                            },
+                            {
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        {
+                                            "label": "Number",
+                                            "value": "number"
+                                        },
+                                        {
+                                            "label": "String",
+                                            "value": "string"
+                                        },
+                                        {
+                                            "label": "Boolean",
+                                            "value": "boolean"
+                                        },
+                                        {
+                                            "label": "Color",
+                                            "value": "color"
+                                        },
+                                        {
+                                            "label": "Text Style",
+                                            "value": "textStyle"
+                                        }
+                                    ],
+                                    "allowEditOnly": true
+                                },
+                                "default": "number",
+                                "plug": "input",
+                                "group": "Types",
+                                "displayName": "color",
+                                "name": "type-color",
+                                "index": 7
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "selected Values",
+                                "name": "value-selected-color",
+                                "displayName": "color",
+                                "editorName": "selected|color",
+                                "index": 8
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "selected Transitions",
+                                "name": "transitiondef-selected",
+                                "index": 9
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To selected",
+                                "name": "to-selected",
+                                "group": "Go to state",
+                                "index": 10
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At selected",
+                                "name": "at-selected",
+                                "group": "Current state",
+                                "index": 11
+                            },
+                            {
+                                "plug": "input",
+                                "type": "color",
+                                "group": "not selected Values",
+                                "name": "value-not selected-color",
+                                "displayName": "color",
+                                "editorName": "not selected|color",
+                                "index": 12
+                            },
+                            {
+                                "plug": "input",
+                                "type": "curve",
+                                "displayName": "Default",
+                                "default": {
+                                    "curve": [
+                                        0,
+                                        0,
+                                        0.58,
+                                        1
+                                    ],
+                                    "dur": 150,
+                                    "delay": 0
+                                },
+                                "group": "not selected Transitions",
+                                "name": "transitiondef-not selected",
+                                "index": 13
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "signal",
+                                    "allowConnectionsOnly": true
+                                },
+                                "displayName": "To not selected",
+                                "name": "to-not selected",
+                                "group": "Go to state",
+                                "index": 14
+                            },
+                            {
+                                "plug": "output",
+                                "type": "boolean",
+                                "displayName": "At not selected",
+                                "name": "at-not selected",
+                                "group": "Current state",
+                                "index": 15
+                            },
+                            {
+                                "plug": "input",
+                                "type": {
+                                    "name": "enum",
+                                    "enums": [
+                                        "selected",
+                                        "not selected"
+                                    ]
+                                },
+                                "group": "States",
+                                "displayName": "State",
+                                "name": "currentState",
+                                "default": "selected",
+                                "index": 16
+                            }
+                        ],
+                        "children": []
+                    },
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000005",
+                        "type": "Group",
+                        "label": "Nav item row",
+                        "x": 0,
+                        "y": -200,
+                        "parameters": {
+                            "flexDirection": "row",
+                            "alignItems": "center",
+                            "width": {
+                                "value": 100,
+                                "unit": "%"
+                            },
+                            "height": {
+                                "value": 40,
+                                "unit": "px"
+                            },
+                            "minHeight": {
+                                "value": 40,
+                                "unit": "px"
+                            },
+                            "borderRadius": {
+                                "value": 6,
+                                "unit": "px"
+                            },
+                            "paddingLeft": {
+                                "value": 12,
+                                "unit": "px"
+                            },
+                            "paddingRight": {
+                                "value": 12,
+                                "unit": "px"
+                            },
+                            "marginBottom": {
+                                "value": 4,
+                                "unit": "px"
+                            },
+                            "styleCss": "cursor: pointer;"
+                        },
+                        "stateParameters": {
+                            "hover": {
+                                "backgroundColor": "var(--muted)"
+                            }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                            {
+                                "id": "a5e17000-2000-4000-9000-000000000006",
+                                "type": "net.noodl.visual.icon",
+                                "parameters": {
+                                    "iconIconSource": { "class": "lucide", "code": "icon-circle", "codeAsClass": true },
+                                    "iconColor": "var(--muted-foreground)",
+                                    "iconSize": {
+                                        "value": 20,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            },
+                            {
+                                "id": "a5e17000-2000-4000-9000-000000000007",
+                                "type": "Text",
+                                "parameters": {
+                                    "sizeMode": "contentSize",
+                                    "color": "var(--muted-foreground)",
+                                    "marginLeft": {
+                                        "value": 10,
+                                        "unit": "px"
+                                    }
+                                },
+                                "ports": [],
+                                "dynamicports": [],
+                                "children": []
+                            }
+                        ]
+                    },
+                    {
+                        "id": "a5e17000-2000-4000-9000-000000000008",
+                        "type": "Component Outputs",
+                        "x": 320,
+                        "y": 60,
+                        "parameters": {},
+                        "ports": [
+                            {
+                                "name": "Click",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 1
+                            },
+                            {
+                                "name": "Target",
+                                "plug": "input",
+                                "type": {
+                                    "name": "*"
+                                },
+                                "index": 2
+                            }
+                        ],
+                        "dynamicports": [],
+                        "children": []
+                    }
+                ]
+            },
+            "metadata": {
+                "canvasPos": {
+                    "x": 900,
+                    "y": 0
+                }
+            }
+        }
+    ],
+    "settings": {},
+    "version": "4",
+    "metadata": {
+        "styles": {
+            "text": {
+                "Title Medium": {
+                    "fontFamily": "fonts/Inter/Inter-Medium.ttf",
+                    "fontSize": {
+                        "value": "20",
+                        "unit": "px"
+                    },
+                    "color": "#000000",
+                    "letterSpacing": "Auto",
+                    "lineHeight": {
+                        "value": "120",
+                        "unit": "%"
+                    },
+                    "textTransform": "none"
+                }
+            },
+            "colors": {}
+        }
+    },
+    "variants": []
+}

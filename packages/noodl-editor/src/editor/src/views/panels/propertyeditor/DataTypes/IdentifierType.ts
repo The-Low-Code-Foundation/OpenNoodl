@@ -1,6 +1,7 @@
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { ContentPickerItem } from '../components/ContentPicker';
+import { identifierPickerEmptyState } from '../components/pickerEmptyStates';
 import { getEditType } from '../utils';
 import { PickerTypeView } from './PickerTypeView';
 
@@ -28,9 +29,13 @@ export class IdentifierType extends PickerTypeView {
   }
 
   protected openPicker() {
+    const name = this.type.identifierDisplayName || 'Identifiers';
+    // FB-015 AC5 — not a filesystem source, but the same blank panel for the same reason: the
+    // list is built from what the project already uses, and a project that uses none drew nothing.
     const picker = this.openContentPicker({
-      title: this.type.identifierDisplayName || 'Identifiers',
-      sortMode: 'nameDesc'
+      title: name,
+      sortMode: 'nameDesc',
+      emptyState: identifierPickerEmptyState(name)
     });
 
     // Collect every value used for this identifier type across the project
@@ -50,6 +55,6 @@ export class IdentifierType extends PickerTypeView {
       name: _id,
       fullPath: _id
     }));
-    picker.addItems(items);
+    picker.setItems(items);
   }
 }

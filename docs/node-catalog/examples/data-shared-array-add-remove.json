@@ -1,7 +1,7 @@
 {
   "id": "data-shared-array-add-remove",
   "title": "Named shared array with insert, remove and clear",
-  "description": "A client-side list without a backend: an Array node (Collection2) binds to the named shared array 'todos' and feeds a Repeater. Add Item (CollectionInsert), Remove Item (CollectionRemove) and Clear (CollectionClear) mutate the same array by its `collectionId`; every node bound to that id — including the Array feeding the list — sees the change immediately. Ids on wires tie the writers to the store.",
+  "description": "A client-side list without a backend: an Array node (Collection2) binds to the named shared array 'todos' and feeds a Repeater. Add Item (CollectionInsert), Remove Item (CollectionRemove) and Clear (CollectionClear) mutate the same array by its `collectionId`; every node bound to that id — including the Array feeding the list — sees the change immediately. Ids on wires tie the writers to the store. Remove is the row\u2019s to raise: `/Todo Row` publishes a `remove` signal on its `Component Outputs`, and the Repeater re-publishes it as `itemOutputSignal-remove` while setting `itemActionItemId` to the row that fired \u2014 the trigger and the id both leave the Repeater, so they always describe the same row.",
   "demonstrates": ["Collection2", "CollectionInsert", "CollectionRemove", "CollectionClear", "Static Data"],
   "components": [
     {
@@ -53,7 +53,8 @@
         { "fromId": "todos_array", "fromProperty": "items", "toId": "list_repeater", "toProperty": "items" },
         { "fromId": "add_btn", "fromProperty": "onClick", "toId": "add_todo", "toProperty": "add" },
         { "fromId": "clear_btn", "fromProperty": "onClick", "toId": "clear_todos", "toProperty": "clear" },
-        { "fromId": "list_repeater", "fromProperty": "itemActionItemId", "toId": "remove_todo", "toProperty": "modifyId" }
+        { "fromId": "list_repeater", "fromProperty": "itemActionItemId", "toId": "remove_todo", "toProperty": "modifyId" },
+        { "fromId": "list_repeater", "fromProperty": "itemOutputSignal-remove", "toId": "remove_todo", "toProperty": "remove" }
       ]
     },
     {
@@ -63,14 +64,17 @@
           "id": "row",
           "type": "Group",
           "label": "Row",
-          "parameters": { "flexDirection": "row" },
-          "children": ["title_text"]
+          "parameters": { "flexDirection": "row", "alignItems": "center", "columnGap": "var(--space-2)" },
+          "children": ["title_text", "remove_btn"]
         },
         { "id": "title_text", "type": "Text", "label": "Title", "parent": "row" },
-        { "id": "row_inputs", "type": "Component Inputs", "label": "Item properties" }
+        { "id": "remove_btn", "type": "net.noodl.controls.button", "label": "Remove", "parent": "row", "parameters": { "label": "Remove" } },
+        { "id": "row_inputs", "type": "Component Inputs", "label": "Item properties", "ports": [{ "name": "title", "plug": "output", "type": "*" }] },
+        { "id": "row_outputs", "type": "Component Outputs", "label": "Row interface out \u2014 plugged \"input\"", "ports": [{ "name": "remove", "plug": "input", "type": "signal" }] }
       ],
       "connections": [
-        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" }
+        { "fromId": "row_inputs", "fromProperty": "title", "toId": "title_text", "toProperty": "text" },
+        { "fromId": "remove_btn", "fromProperty": "onClick", "toId": "row_outputs", "toProperty": "remove" }
       ]
     }
   ]

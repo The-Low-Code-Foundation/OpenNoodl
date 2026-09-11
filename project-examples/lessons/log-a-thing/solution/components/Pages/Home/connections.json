@@ -1,0 +1,61 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "05814355-6cda-4807-8aed-20b3aed17e4b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "entry_input",
+      "fromProperty": "onTextChanged",
+      "toId": "check_entry",
+      "toProperty": "entry"
+    },
+    {
+      "fromId": "log_button",
+      "fromProperty": "onClick",
+      "toId": "check_entry",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "check_entry",
+      "fromProperty": "ok",
+      "toId": "save_entry",
+      "toProperty": "store"
+    },
+    {
+      "fromId": "check_entry",
+      "fromProperty": "title",
+      "toId": "save_entry",
+      "toProperty": "prop-title"
+    },
+    {
+      "fromId": "check_entry",
+      "fromProperty": "message",
+      "toId": "status_text",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "check_entry",
+      "fromProperty": "bad",
+      "toId": "entry_input",
+      "toProperty": "focus"
+    },
+    {
+      "fromId": "save_entry",
+      "fromProperty": "done",
+      "toId": "entries_query",
+      "toProperty": "storageFetch"
+    },
+    {
+      "fromId": "entries_query",
+      "fromProperty": "items",
+      "toId": "log_repeater",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "page",
+      "fromProperty": "didMount",
+      "toId": "entries_query",
+      "toProperty": "storageFetch"
+    }
+  ]
+}

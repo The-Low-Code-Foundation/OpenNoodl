@@ -1,0 +1,11 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "020eb714-b11f-4e07-b709-63ad5151b6be",
+  "name": "FooterLinkColumn",
+  "path": "/Components/FooterLinkColumn",
+  "type": "visual",
+  "created": "2026-08-08T20:27:13.324Z",
+  "modified": "2026-08-08T20:27:13.324Z",
+  "modifiedBy": "noodl-mcp",
+  "description": "A column of footer links with a heading and a list of links driven by a data array."
+}

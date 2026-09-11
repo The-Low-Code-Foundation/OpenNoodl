@@ -1,0 +1,1783 @@
+{
+  "name": "Export",
+  "components": [
+    {
+      "name": "/File Upload",
+      "id": "f11e0000-0000-4000-9000-000000000001",
+      "graph": {
+        "connections": [
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Accepted File Types",
+            "toId": "f11e0000-1000-4000-9000-000000000004",
+            "toProperty": "acceptedFileTypes"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Accepted File Types",
+            "toId": "f11e0000-1000-4000-9000-000000000009",
+            "toProperty": "in-Accept"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Max Size MB",
+            "toId": "f11e0000-1000-4000-9000-000000000009",
+            "toProperty": "in-MaxMB"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Max Size MB",
+            "toId": "f11e0000-1000-4000-9000-000000000007",
+            "toProperty": "in-MaxMB"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Hint",
+            "toId": "f11e0000-1000-4000-9000-000000000009",
+            "toProperty": "in-Hint"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000001",
+            "fromProperty": "Private",
+            "toId": "f11e0000-1000-4000-9000-000000000005",
+            "toProperty": "private"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000009",
+            "fromProperty": "out-Hint",
+            "toId": "f11e0000-1000-4000-9000-000000000033",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000030",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000004",
+            "toProperty": "open"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000030",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Picking"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000043",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "file",
+            "toId": "f11e0000-1000-4000-9000-000000000007",
+            "toProperty": "in-File"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "file",
+            "toId": "f11e0000-1000-4000-9000-000000000005",
+            "toProperty": "file"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "unchanged",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Idle"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "failure",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "failure",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "error",
+            "toId": "f11e0000-1000-4000-9000-00000000000a",
+            "toProperty": "in-PickerError"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000004",
+            "fromProperty": "done",
+            "toId": "f11e0000-1000-4000-9000-00000000000c",
+            "toProperty": "eval"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-Fits",
+            "toId": "f11e0000-1000-4000-9000-00000000000c",
+            "toProperty": "condition"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000c",
+            "fromProperty": "ontrue",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Uploading"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000c",
+            "fromProperty": "ontrue",
+            "toId": "f11e0000-1000-4000-9000-000000000005",
+            "toProperty": "upload"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000c",
+            "fromProperty": "onfalse",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000c",
+            "fromProperty": "onfalse",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-Error",
+            "toId": "f11e0000-1000-4000-9000-00000000000a",
+            "toProperty": "in-LocalError"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-Name",
+            "toId": "f11e0000-1000-4000-9000-000000000055",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-Meta",
+            "toId": "f11e0000-1000-4000-9000-000000000056",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-PreviewUrl",
+            "toId": "f11e0000-1000-4000-9000-000000000052",
+            "toProperty": "src"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-IsImage",
+            "toId": "f11e0000-1000-4000-9000-000000000052",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000007",
+            "fromProperty": "out-NotImage",
+            "toId": "f11e0000-1000-4000-9000-000000000053",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "progressLoadedPercent",
+            "toId": "f11e0000-1000-4000-9000-000000000008",
+            "toProperty": "in-Percent"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "currentState",
+            "toId": "f11e0000-1000-4000-9000-000000000008",
+            "toProperty": "in-State"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000008",
+            "fromProperty": "out-Percent",
+            "toId": "f11e0000-1000-4000-9000-000000000059",
+            "toProperty": "width"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000008",
+            "fromProperty": "out-Label",
+            "toId": "f11e0000-1000-4000-9000-000000000057",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "done",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Done"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "done",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Uploaded"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "failure",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "failure",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Failed"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "error",
+            "toId": "f11e0000-1000-4000-9000-00000000000a",
+            "toProperty": "in-UploadError"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "errorStatus",
+            "toId": "f11e0000-1000-4000-9000-00000000000a",
+            "toProperty": "in-Status"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "cloudFile",
+            "toId": "f11e0000-1000-4000-9000-000000000006",
+            "toProperty": "file"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000005",
+            "fromProperty": "cloudFile",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Cloud File"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000006",
+            "fromProperty": "url",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "URL"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000006",
+            "fromProperty": "url",
+            "toId": "f11e0000-1000-4000-9000-000000000066",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000006",
+            "fromProperty": "name",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "File Name"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000006",
+            "fromProperty": "name",
+            "toId": "f11e0000-1000-4000-9000-00000000000b",
+            "toProperty": "in-Name"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000006",
+            "fromProperty": "size",
+            "toId": "f11e0000-1000-4000-9000-00000000000b",
+            "toProperty": "in-Size"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000b",
+            "fromProperty": "out-Line",
+            "toId": "f11e0000-1000-4000-9000-000000000064",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000a",
+            "fromProperty": "out-Message",
+            "toId": "f11e0000-1000-4000-9000-000000000074",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-00000000000a",
+            "fromProperty": "out-Message",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "Error"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000065",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Picking"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000065",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000004",
+            "toProperty": "open"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000076",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Uploading"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000076",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000005",
+            "toProperty": "upload"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000077",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000003",
+            "toProperty": "to-Picking"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000077",
+            "fromProperty": "onClick",
+            "toId": "f11e0000-1000-4000-9000-000000000004",
+            "toProperty": "open"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "at-Idle",
+            "toId": "f11e0000-1000-4000-9000-000000000030",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "at-Picking",
+            "toId": "f11e0000-1000-4000-9000-000000000040",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "at-Uploading",
+            "toId": "f11e0000-1000-4000-9000-000000000050",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "at-Done",
+            "toId": "f11e0000-1000-4000-9000-000000000060",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "at-Failed",
+            "toId": "f11e0000-1000-4000-9000-000000000070",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "f11e0000-1000-4000-9000-000000000003",
+            "fromProperty": "currentState",
+            "toId": "f11e0000-1000-4000-9000-000000000002",
+            "toProperty": "State"
+          }
+        ],
+        "roots": [
+          {
+            "id": "f11e0000-1000-4000-9000-000000000001",
+            "type": "Component Inputs",
+            "x": -980,
+            "y": -40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Accepted File Types",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 0
+              },
+              {
+                "name": "Max Size MB",
+                "plug": "output",
+                "type": {
+                  "name": "number"
+                },
+                "group": "General",
+                "index": 1
+              },
+              {
+                "name": "Hint",
+                "plug": "output",
+                "type": {
+                  "name": "string"
+                },
+                "group": "General",
+                "index": 2
+              },
+              {
+                "name": "Private",
+                "plug": "output",
+                "type": {
+                  "name": "boolean"
+                },
+                "group": "General",
+                "index": 3
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000002",
+            "type": "Component Outputs",
+            "x": 780,
+            "y": -40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "Uploaded",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Events",
+                "index": 0
+              },
+              {
+                "name": "Failed",
+                "plug": "input",
+                "type": {
+                  "name": "signal"
+                },
+                "group": "Events",
+                "index": 1
+              },
+              {
+                "name": "Cloud File",
+                "plug": "input",
+                "type": {
+                  "name": "*"
+                },
+                "group": "Result",
+                "index": 2
+              },
+              {
+                "name": "URL",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Result",
+                "index": 3
+              },
+              {
+                "name": "File Name",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Result",
+                "index": 4
+              },
+              {
+                "name": "State",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Status",
+                "index": 5
+              },
+              {
+                "name": "Error",
+                "plug": "input",
+                "type": {
+                  "name": "string"
+                },
+                "group": "Status",
+                "index": 6
+              }
+            ],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000003",
+            "type": "States",
+            "label": "Upload state",
+            "x": 300,
+            "y": -360,
+            "parameters": {
+              "states": "Idle,Picking,Uploading,Done,Failed",
+              "currentState": "Idle"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Idle",
+                "name": "to-Idle",
+                "group": "Go to state",
+                "index": 6
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Idle",
+                "name": "at-Idle",
+                "group": "Current state",
+                "index": 7
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Idle",
+                "name": "reached-Idle",
+                "group": "Current state",
+                "index": 8
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Picking",
+                "name": "to-Picking",
+                "group": "Go to state",
+                "index": 9
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Picking",
+                "name": "at-Picking",
+                "group": "Current state",
+                "index": 10
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Picking",
+                "name": "reached-Picking",
+                "group": "Current state",
+                "index": 11
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Uploading",
+                "name": "to-Uploading",
+                "group": "Go to state",
+                "index": 12
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Uploading",
+                "name": "at-Uploading",
+                "group": "Current state",
+                "index": 13
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Uploading",
+                "name": "reached-Uploading",
+                "group": "Current state",
+                "index": 14
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Done",
+                "name": "to-Done",
+                "group": "Go to state",
+                "index": 15
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Done",
+                "name": "at-Done",
+                "group": "Current state",
+                "index": 16
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Done",
+                "name": "reached-Done",
+                "group": "Current state",
+                "index": 17
+              },
+              {
+                "plug": "input",
+                "type": {
+                  "name": "signal",
+                  "allowConnectionsOnly": true
+                },
+                "displayName": "To Failed",
+                "name": "to-Failed",
+                "group": "Go to state",
+                "index": 18
+              },
+              {
+                "plug": "output",
+                "type": "boolean",
+                "displayName": "At Failed",
+                "name": "at-Failed",
+                "group": "Current state",
+                "index": 19
+              },
+              {
+                "plug": "output",
+                "type": "signal",
+                "displayName": "Has Reached Failed",
+                "name": "reached-Failed",
+                "group": "Current state",
+                "index": 20
+              }
+            ],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000004",
+            "type": "Open File Picker",
+            "label": "File picker",
+            "x": -700,
+            "y": -360,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000005",
+            "type": "Upload File",
+            "label": "Upload",
+            "x": -160,
+            "y": 100,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000006",
+            "type": "Cloud File",
+            "label": "Stored file",
+            "x": 300,
+            "y": 260,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-00000000000c",
+            "type": "Condition",
+            "label": "Fits the limit",
+            "x": -160,
+            "y": -180,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": [],
+            "children": []
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000007",
+            "type": "JavaScriptFunction",
+            "label": "Inspect file",
+            "x": -420,
+            "y": -180,
+            "parameters": {
+              "functionScript": "// Everything the panels need about the picked file, decided in one place, plus\n// the only check that can be made before the network is involved.\n//\n// \"Run on value change\" is unticked for Max Size MB (runOnChange-in-MaxMB) so\n// that editing the limit cannot re-answer a file that was already answered.\n// File keeps it ticked on purpose: the arriving file IS the trigger.\nconst file = Inputs.File;\nconst maxMb = Number(Inputs.MaxMB) > 0 ? Number(Inputs.MaxMB) : 10;\n\nconst bytes = (n) => {\n  const v = Number(n);\n  if (!isFinite(v) || v < 0) return '';\n  if (v < 1024) return v + ' B';\n  if (v < 1024 * 1024) return (v / 1024).toFixed(1) + ' KB';\n  return (v / (1024 * 1024)).toFixed(1) + ' MB';\n};\n\n// Every Function runs once at boot, before anybody has picked anything, and an\n// unconnected input arrives as undefined rather than as its default.\n//\n// Fits is deliberately NOT written on that run. Writing it would publish a\n// verdict on a file that does not exist, and the Condition beside this node\n// re-tests on every change of its input \u2014 so booting the page would branch the\n// component straight into its error state before anybody had touched it.\nif (!file || typeof file.name !== 'string') {\n  Outputs.Name = '';\n  Outputs.Meta = '';\n  Outputs.PreviewUrl = '';\n  Outputs.IsImage = false;\n  Outputs.NotImage = true;\n  Outputs.Error = '';\n  return;\n}\n\nconst type = String(file.type || '');\nconst isImage = type.indexOf('image/') === 0;\n\nOutputs.Name = file.name;\nOutputs.Meta = [type || 'unknown type', bytes(file.size)].filter(Boolean).join(' \\u00b7 ');\nOutputs.IsImage = isImage;\nOutputs.NotImage = !isImage;\n// The preview costs no round trip and needs no backend, which is the whole\n// reason it is worth having: you see the file before the upload can fail.\nOutputs.PreviewUrl =\n  isImage && typeof URL !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(file) : '';\n\n// The one failure that can be reported honestly without asking the server.\n//\n// The verdict is a BOOLEAN read by a Condition rather than a signal fired from\n// here, and that is load-bearing twice over. A Function's signal outputs are\n// declared in dynamicports, which a project loaded from disk does not deliver\n// to the runtime \u2014 so Outputs.Accept() is not a function outside the editor. And\n// Outputs publishes only on CHANGE, so a second acceptable file would re-write\n// `true` over `true` and reach nobody. The Condition is pulsed by the picker's\n// own Done instead, which happens once per pick whatever the answer is.\nconst fits = Number(file.size) <= maxMb * 1024 * 1024;\n\nOutputs.Error = fits\n  ? ''\n  : file.name + ' is ' + bytes(file.size) + ' \\u2014 the limit is ' + maxMb + ' MB.';\nOutputs.Fits = fits;\n",
+              "runOnChange-in-MaxMB": false
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-File",
+                "displayName": "File",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-MaxMB",
+                "displayName": "MaxMB",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "runOnChange-in-MaxMB",
+                "displayName": "MaxMB",
+                "group": "Run On Value Change",
+                "plug": "input",
+                "default": true,
+                "type": {
+                  "name": "boolean",
+                  "allowEditOnly": true
+                },
+                "index": 2
+              },
+              {
+                "name": "out-Name",
+                "displayName": "Name",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-Meta",
+                "displayName": "Meta",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              },
+              {
+                "name": "out-PreviewUrl",
+                "displayName": "PreviewUrl",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 5
+              },
+              {
+                "name": "out-IsImage",
+                "displayName": "IsImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 6
+              },
+              {
+                "name": "out-NotImage",
+                "displayName": "NotImage",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 7
+              },
+              {
+                "name": "out-Error",
+                "displayName": "Error",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 8
+              },
+              {
+                "name": "out-Fits",
+                "displayName": "Fits",
+                "plug": "output",
+                "type": "boolean",
+                "group": "Outputs",
+                "index": 9
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000008",
+            "type": "JavaScriptFunction",
+            "label": "Progress",
+            "x": 300,
+            "y": 60,
+            "parameters": {
+              "functionScript": "// The bar, and the only place that knows a transfer has just started.\n//\n// Upload File's byte counts do not reset between uploads: they hold the LAST\n// transfer's numbers until the first progress event of THIS one arrives. Wired\n// straight through, the bar therefore opens the next upload at the previous\n// file's 100% and walks backwards. State is read for exactly that reason, and\n// Seen is this node's memory of which state it last drew.\nconst state = String(Inputs.State || '');\nconst pct = Math.max(0, Math.min(100, Number(Inputs.Percent) || 0));\nconst entering = state === 'Uploading' && Outputs.Seen !== 'Uploading';\n\nOutputs.Seen = state;\n\nif (state !== 'Uploading') {\n  Outputs.Percent = 0;\n  Outputs.Label = '';\n  return;\n}\n\nif (entering) {\n  Outputs.Percent = 0;\n  Outputs.Label = 'Uploading\\u2026';\n  return;\n}\n\nOutputs.Percent = pct;\n// A backend that reports no progress at all leaves this at 0 for the whole\n// transfer, so 0 says \"working\", not \"0% done\".\nOutputs.Label = pct > 0 ? Math.round(pct) + '%' : 'Uploading\\u2026';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Percent",
+                "displayName": "Percent",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-State",
+                "displayName": "State",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "out-Percent",
+                "displayName": "Percent",
+                "plug": "output",
+                "type": "number",
+                "group": "Outputs",
+                "index": 2
+              },
+              {
+                "name": "out-Label",
+                "displayName": "Label",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 3
+              },
+              {
+                "name": "out-Seen",
+                "displayName": "Seen",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000009",
+            "type": "JavaScriptFunction",
+            "label": "Idle hint",
+            "x": -700,
+            "y": 120,
+            "parameters": {
+              "functionScript": "// The second line of the drop zone. It exists so the component states its own\n// limits before anyone hits them, rather than after.\nconst custom = String(Inputs.Hint || '').trim();\nif (custom) {\n  Outputs.Hint = custom;\n  return;\n}\n\nconst accept = String(Inputs.Accept || '').trim();\nconst max = Number(Inputs.MaxMB) > 0 ? Number(Inputs.MaxMB) : 10;\n\n// Accepted File Types is whatever <input accept> takes: \".csv, .png\" or\n// \"image/*, application/pdf\". Both are turned into words.\nconst kinds = accept\n  ? accept\n      .split(',')\n      .map((s) => s.trim())\n      .filter(Boolean)\n      .map((s) => (s.charAt(0) === '.' ? s.slice(1) : s.split('/').pop()))\n      .map((s) => (s === '*' ? 'any' : s.toUpperCase()))\n      .join(', ')\n  : 'Any file';\n\nOutputs.Hint = kinds + ' \\u00b7 up to ' + max + ' MB';\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Accept",
+                "displayName": "Accept",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-MaxMB",
+                "displayName": "MaxMB",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-Hint",
+                "displayName": "Hint",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "out-Hint",
+                "displayName": "Hint",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 3
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-00000000000a",
+            "type": "JavaScriptFunction",
+            "label": "Failure message",
+            "x": 300,
+            "y": 440,
+            "parameters": {
+              "functionScript": "// One sentence for the error panel, whichever of the three things went wrong.\n//\n// Order is not arbitrary. The local check is the only one that can be right\n// about a file the server never saw, so it wins while it stands; Upload File's\n// error comes next because it is the most recent thing to have happened; the\n// picker's error is last because the node never clears it, so leaving it first\n// would mask every later upload failure for the rest of the session.\nconst local = String(Inputs.LocalError || '').trim();\nconst upload = String(Inputs.UploadError || '').trim();\nconst picker = String(Inputs.PickerError || '').trim();\nconst status = Number(Inputs.Status || 0);\n\nlet message = local || upload || picker;\n\nif (!message) {\n  // A Failure with an empty reason is the transport failing before the request\n  // left the app. Saying so is better than an empty red panel.\n  message = 'The upload did not finish, and nothing said why. Check the backend this project is pointed at.';\n} else if (message === upload && status) {\n  message = message + ' (HTTP ' + status + ')';\n}\n\nOutputs.Message = message;\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-LocalError",
+                "displayName": "LocalError",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-UploadError",
+                "displayName": "UploadError",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "in-PickerError",
+                "displayName": "PickerError",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 2
+              },
+              {
+                "name": "in-Status",
+                "displayName": "Status",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 3
+              },
+              {
+                "name": "out-Message",
+                "displayName": "Message",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 4
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-00000000000b",
+            "type": "JavaScriptFunction",
+            "label": "Stored file line",
+            "x": 540,
+            "y": 260,
+            "parameters": {
+              "functionScript": "// What the backend actually stored. Content Type and Size are empty on a\n// backend that does not report them and on a file read back out of a record\n// property, so the line is built from what arrived rather than printing\n// \"undefined\" at the user.\nconst name = String(Inputs.Name || '').trim();\nconst size = Number(Inputs.Size);\n\nconst parts = [];\nif (name) parts.push(name);\nif (isFinite(size) && size > 0) {\n  parts.push(size < 1024 * 1024 ? (size / 1024).toFixed(1) + ' KB' : (size / (1024 * 1024)).toFixed(1) + ' MB');\n}\n\nOutputs.Line = parts.join(' \\u00b7 ');\n"
+            },
+            "ports": [],
+            "dynamicports": [
+              {
+                "name": "in-Name",
+                "displayName": "Name",
+                "plug": "input",
+                "type": "string",
+                "group": "Inputs",
+                "index": 0
+              },
+              {
+                "name": "in-Size",
+                "displayName": "Size",
+                "plug": "input",
+                "type": "number",
+                "group": "Inputs",
+                "index": 1
+              },
+              {
+                "name": "out-Line",
+                "displayName": "Line",
+                "plug": "output",
+                "type": "string",
+                "group": "Outputs",
+                "index": 2
+              }
+            ],
+            "children": [],
+            "metadata": {
+              "merge": {
+                "soureCodePorts": [
+                  "functionScript"
+                ]
+              }
+            }
+          },
+          {
+            "id": "f11e0000-1000-4000-9000-000000000020",
+            "type": "Group",
+            "label": "File Upload",
+            "x": -160,
+            "y": -760,
+            "parameters": {
+              "sizeMode": "contentHeight",
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "flexDirection": "column",
+              "styleCss": "gap: 12px;"
+            },
+            "ports": [],
+            "dynamicports": [],
+            "children": [
+              {
+                "id": "f11e0000-1000-4000-9000-000000000030",
+                "type": "Group",
+                "label": "Idle drop zone",
+                "parameters": {
+                  "mounted": true,
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "flexDirection": "column",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "paddingTop": "var(--space-8)",
+                  "paddingBottom": "var(--space-8)",
+                  "paddingLeft": "var(--space-6)",
+                  "paddingRight": "var(--space-6)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "dashed",
+                  "borderWidth": {
+                    "value": 2,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border-strong)",
+                  "borderRadius": "var(--radius-lg)",
+                  "styleCss": "cursor: pointer; gap: 8px; text-align: center;"
+                },
+                "stateParameters": {
+                  "hover": {
+                    "backgroundColor": "var(--surface-raised)",
+                    "borderColor": "var(--primary)"
+                  }
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000031",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Upload icon",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-cloud-upload",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--muted-foreground)",
+                      "iconSize": {
+                        "value": 32,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000032",
+                    "type": "Text",
+                    "label": "Idle title",
+                    "parameters": {
+                      "text": "Drop a file here, or click to browse",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 15,
+                        "unit": "px"
+                      },
+                      "styleCss": "font-weight: 600;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000033",
+                    "type": "Text",
+                    "label": "Idle hint",
+                    "parameters": {
+                      "text": "Any file \u00b7 up to 10 MB",
+                      "color": "var(--muted-foreground)",
+                      "fontSize": {
+                        "value": 13,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000034",
+                    "type": "Group",
+                    "label": "Browse pill",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "marginTop": {
+                        "value": 6,
+                        "unit": "px"
+                      },
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "backgroundColor": "var(--primary)",
+                      "borderRadius": "var(--radius-md)",
+                      "styleCss": "flex: 0 0 auto; pointer-events: none;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000035",
+                        "type": "Text",
+                        "label": "Browse label",
+                        "parameters": {
+                          "text": "Browse files",
+                          "sizeMode": "contentSize",
+                          "color": "var(--primary-foreground)",
+                          "fontSize": {
+                            "value": 13,
+                            "unit": "px"
+                          },
+                          "styleCss": "font-weight: 600;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "f11e0000-1000-4000-9000-000000000040",
+                "type": "Group",
+                "label": "Picking",
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-lg)",
+                  "styleCss": "gap: 12px;",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000041",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Picking icon",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-folder-open",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--muted-foreground)",
+                      "iconSize": {
+                        "value": 20,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000042",
+                    "type": "Text",
+                    "label": "Picking text",
+                    "parameters": {
+                      "text": "Waiting for you to choose a file\u2026",
+                      "color": "var(--foreground)",
+                      "fontSize": {
+                        "value": 14,
+                        "unit": "px"
+                      },
+                      "styleCss": "flex: 1 1 auto; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000043",
+                    "type": "net.noodl.controls.button",
+                    "label": "Cancel",
+                    "parameters": {
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer;",
+                      "label": "Cancel",
+                      "backgroundColor": "var(--secondary)",
+                      "color": "var(--secondary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "f11e0000-1000-4000-9000-000000000050",
+                "type": "Group",
+                "label": "Uploading",
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "flexDirection": "column",
+                  "alignItems": "flex-start",
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-lg)",
+                  "styleCss": "gap: 10px;",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000051",
+                    "type": "Group",
+                    "label": "File row",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "styleCss": "gap: 12px;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000052",
+                        "type": "Image",
+                        "label": "Preview",
+                        "parameters": {
+                          "mounted": false,
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 40,
+                            "unit": "px"
+                          },
+                          "height": {
+                            "value": 40,
+                            "unit": "px"
+                          },
+                          "objectFit": "cover",
+                          "borderRadius": "var(--radius-sm)",
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000053",
+                        "type": "net.noodl.visual.icon",
+                        "label": "File icon",
+                        "parameters": {
+                          "iconIconSource": {
+                            "class": "lucide",
+                            "code": "icon-file",
+                            "codeAsClass": true
+                          },
+                          "iconColor": "var(--muted-foreground)",
+                          "iconSize": {
+                            "value": 24,
+                            "unit": "px"
+                          },
+                          "mounted": false
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000054",
+                        "type": "Group",
+                        "label": "File text",
+                        "parameters": {
+                          "sizeMode": "contentHeight",
+                          "flexDirection": "column",
+                          "styleCss": "flex: 1 1 auto; min-width: 0;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": [
+                          {
+                            "id": "f11e0000-1000-4000-9000-000000000055",
+                            "type": "Text",
+                            "label": "File name",
+                            "parameters": {
+                              "text": "",
+                              "color": "var(--foreground)",
+                              "fontSize": {
+                                "value": 14,
+                                "unit": "px"
+                              },
+                              "styleCss": "font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          },
+                          {
+                            "id": "f11e0000-1000-4000-9000-000000000056",
+                            "type": "Text",
+                            "label": "File meta",
+                            "parameters": {
+                              "text": "",
+                              "color": "var(--muted-foreground)",
+                              "fontSize": {
+                                "value": 12,
+                                "unit": "px"
+                              }
+                            },
+                            "ports": [],
+                            "dynamicports": [],
+                            "children": []
+                          }
+                        ]
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000057",
+                        "type": "Text",
+                        "label": "Percent",
+                        "parameters": {
+                          "text": "Uploading\u2026",
+                          "sizeMode": "contentSize",
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 12,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000058",
+                    "type": "Group",
+                    "label": "Progress track",
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "height": {
+                        "value": 6,
+                        "unit": "px"
+                      },
+                      "flexDirection": "row",
+                      "backgroundColor": "var(--muted)",
+                      "borderRadius": {
+                        "value": 999,
+                        "unit": "px"
+                      },
+                      "clip": true,
+                      "styleCss": "flex: 0 0 auto;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000059",
+                        "type": "Group",
+                        "label": "Progress fill",
+                        "parameters": {
+                          "sizeMode": "explicit",
+                          "width": {
+                            "value": 0,
+                            "unit": "%"
+                          },
+                          "height": {
+                            "value": 100,
+                            "unit": "%"
+                          },
+                          "backgroundColor": "var(--primary)",
+                          "borderRadius": {
+                            "value": 999,
+                            "unit": "px"
+                          },
+                          "styleCss": "flex: 0 0 auto; transition: width 120ms linear;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "f11e0000-1000-4000-9000-000000000060",
+                "type": "Group",
+                "label": "Done",
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)",
+                  "backgroundColor": "var(--surface)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--border)",
+                  "borderRadius": "var(--radius-lg)",
+                  "styleCss": "gap: 12px;",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000061",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Done icon",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-circle-check",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--green-600)",
+                      "iconSize": {
+                        "value": 22,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000062",
+                    "type": "Group",
+                    "label": "Done text",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "styleCss": "flex: 1 1 auto; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000063",
+                        "type": "Text",
+                        "label": "Done title",
+                        "parameters": {
+                          "text": "Upload complete",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "styleCss": "font-weight: 600;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000064",
+                        "type": "Text",
+                        "label": "Stored line",
+                        "parameters": {
+                          "text": "",
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 12,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000066",
+                        "type": "Text",
+                        "label": "Stored URL",
+                        "parameters": {
+                          "text": "",
+                          "color": "var(--muted-foreground)",
+                          "fontSize": {
+                            "value": 11,
+                            "unit": "px"
+                          },
+                          "styleCss": "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000065",
+                    "type": "net.noodl.controls.button",
+                    "label": "Upload another",
+                    "parameters": {
+                      "useLabel": true,
+                      "sizeMode": "contentSize",
+                      "borderRadius": "var(--radius-md)",
+                      "paddingTop": "var(--space-2)",
+                      "paddingBottom": "var(--space-2)",
+                      "paddingLeft": "var(--space-4)",
+                      "paddingRight": "var(--space-4)",
+                      "styleCss": "flex: 0 0 auto; cursor: pointer;",
+                      "label": "Upload another",
+                      "backgroundColor": "var(--secondary)",
+                      "color": "var(--secondary-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "id": "f11e0000-1000-4000-9000-000000000070",
+                "type": "Group",
+                "label": "Failed",
+                "parameters": {
+                  "sizeMode": "contentHeight",
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "flexDirection": "row",
+                  "alignItems": "center",
+                  "paddingTop": "var(--space-4)",
+                  "paddingBottom": "var(--space-4)",
+                  "paddingLeft": "var(--space-4)",
+                  "paddingRight": "var(--space-4)",
+                  "backgroundColor": "var(--red-50)",
+                  "borderStyle": "solid",
+                  "borderWidth": {
+                    "value": 1,
+                    "unit": "px"
+                  },
+                  "borderColor": "var(--destructive)",
+                  "borderRadius": "var(--radius-lg)",
+                  "styleCss": "gap: 12px;",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": [],
+                "children": [
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000071",
+                    "type": "net.noodl.visual.icon",
+                    "label": "Error icon",
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-circle-alert",
+                        "codeAsClass": true
+                      },
+                      "iconColor": "var(--destructive)",
+                      "iconSize": {
+                        "value": 22,
+                        "unit": "px"
+                      }
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": []
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000072",
+                    "type": "Group",
+                    "label": "Error text",
+                    "parameters": {
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "styleCss": "flex: 1 1 auto; min-width: 0;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000073",
+                        "type": "Text",
+                        "label": "Error title",
+                        "parameters": {
+                          "text": "Upload failed",
+                          "color": "var(--destructive)",
+                          "fontSize": {
+                            "value": 14,
+                            "unit": "px"
+                          },
+                          "styleCss": "font-weight: 600;"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000074",
+                        "type": "Text",
+                        "label": "Error message",
+                        "parameters": {
+                          "text": "",
+                          "color": "var(--foreground)",
+                          "fontSize": {
+                            "value": 12,
+                            "unit": "px"
+                          }
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  },
+                  {
+                    "id": "f11e0000-1000-4000-9000-000000000075",
+                    "type": "Group",
+                    "label": "Error actions",
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "styleCss": "flex: 0 0 auto; gap: 8px;"
+                    },
+                    "ports": [],
+                    "dynamicports": [],
+                    "children": [
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000076",
+                        "type": "net.noodl.controls.button",
+                        "label": "Try again",
+                        "parameters": {
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "borderRadius": "var(--radius-md)",
+                          "paddingTop": "var(--space-2)",
+                          "paddingBottom": "var(--space-2)",
+                          "paddingLeft": "var(--space-4)",
+                          "paddingRight": "var(--space-4)",
+                          "styleCss": "flex: 0 0 auto; cursor: pointer;",
+                          "label": "Try again",
+                          "backgroundColor": "var(--primary)",
+                          "color": "var(--primary-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      },
+                      {
+                        "id": "f11e0000-1000-4000-9000-000000000077",
+                        "type": "net.noodl.controls.button",
+                        "label": "Choose another file",
+                        "parameters": {
+                          "useLabel": true,
+                          "sizeMode": "contentSize",
+                          "borderRadius": "var(--radius-md)",
+                          "paddingTop": "var(--space-2)",
+                          "paddingBottom": "var(--space-2)",
+                          "paddingLeft": "var(--space-4)",
+                          "paddingRight": "var(--space-4)",
+                          "styleCss": "flex: 0 0 auto; cursor: pointer;",
+                          "label": "Choose another file",
+                          "backgroundColor": "var(--secondary)",
+                          "color": "var(--secondary-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": [],
+                        "children": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "metadata": {
+        "canvasPos": {
+          "x": 0,
+          "y": 0
+        }
+      }
+    }
+  ],
+  "settings": {},
+  "version": "4",
+  "metadata": {
+    "styles": {
+      "text": {},
+      "colors": {}
+    }
+  },
+  "variants": []
+}

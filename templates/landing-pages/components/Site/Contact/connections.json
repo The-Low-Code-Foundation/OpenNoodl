@@ -1,0 +1,205 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e062b280-366c-5842-8655-d238ca2bf358",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "ctInputs",
+      "fromProperty": "heading",
+      "toId": "ctHeading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ctInputs",
+      "fromProperty": "line",
+      "toId": "ctLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ctInputs",
+      "fromProperty": "button",
+      "toId": "ctSend",
+      "toProperty": "label"
+    },
+    {
+      "fromId": "ctTo",
+      "fromProperty": "savedValue",
+      "toId": "ctAddress",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ctTo",
+      "fromProperty": "savedValue",
+      "toId": "ctCompose",
+      "toProperty": "in-to"
+    },
+    {
+      "fromId": "ctName",
+      "fromProperty": "text",
+      "toId": "ctCompose",
+      "toProperty": "in-name"
+    },
+    {
+      "fromId": "ctEmail",
+      "fromProperty": "text",
+      "toId": "ctCompose",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "ctMessage",
+      "fromProperty": "text",
+      "toId": "ctCompose",
+      "toProperty": "in-message"
+    },
+    {
+      "fromId": "ctSend",
+      "fromProperty": "onClick",
+      "toId": "ctCompose",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "ctName",
+      "fromProperty": "text",
+      "toId": "ctNameOk",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "ctEmail",
+      "fromProperty": "text",
+      "toId": "ctEmailCheck",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "ctMessage",
+      "fromProperty": "text",
+      "toId": "ctMsgOk",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "ctMessage",
+      "fromProperty": "text",
+      "toId": "ctMsgHelper",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "ctNameOk",
+      "fromProperty": "asBoolean",
+      "toId": "ctAnd",
+      "toProperty": "input 0"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "isValid",
+      "toId": "ctAnd",
+      "toProperty": "input 1"
+    },
+    {
+      "fromId": "ctMsgOk",
+      "fromProperty": "asBoolean",
+      "toId": "ctAnd",
+      "toProperty": "input 2"
+    },
+    {
+      "fromId": "ctAnd",
+      "fromProperty": "result",
+      "toId": "ctSend",
+      "toProperty": "enabled"
+    },
+    {
+      "fromId": "ctAnd",
+      "fromProperty": "result",
+      "toId": "ctHintText",
+      "toProperty": "ok"
+    },
+    {
+      "fromId": "ctHintText",
+      "fromProperty": "asString",
+      "toId": "ctHint",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "message",
+      "toId": "ctEmail",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "message",
+      "toId": "ctEmailEdge",
+      "toProperty": "msg"
+    },
+    {
+      "fromId": "ctEmailEdge",
+      "fromProperty": "asString",
+      "toId": "ctEmail",
+      "toProperty": "edge"
+    },
+    {
+      "fromId": "ctMsgHelper",
+      "fromProperty": "asString",
+      "toId": "ctMessage",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "ctCompose",
+      "fromProperty": "out-link",
+      "toId": "ctOpen",
+      "toProperty": "link"
+    },
+    {
+      "fromId": "ctCompose",
+      "fromProperty": "out-go",
+      "toId": "ctOpen",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "ctOpen",
+      "fromProperty": "done",
+      "toId": "ctSentGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "ctSentGate",
+      "fromProperty": "result",
+      "toId": "ctSent",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "ctCompose",
+      "fromProperty": "out-missing",
+      "toId": "ctMissingGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "ctMissingGate",
+      "fromProperty": "result",
+      "toId": "ctMissing",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "ctCompose",
+      "fromProperty": "out-go",
+      "toId": "ctMissingClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "ctMissingClear",
+      "fromProperty": "result",
+      "toId": "ctMissing",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "ctCompose",
+      "fromProperty": "out-missing",
+      "toId": "ctSentClear",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "ctSentClear",
+      "fromProperty": "result",
+      "toId": "ctSent",
+      "toProperty": "mounted"
+    }
+  ]
+}

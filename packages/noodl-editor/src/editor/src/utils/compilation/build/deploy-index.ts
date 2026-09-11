@@ -14,11 +14,41 @@ type DeployIndexItem = {
 type DeployIndex = ReadonlyArray<DeployIndexItem>;
 
 /**
+ * HLS-015 / register row C68 — where the deployed runtime files are read from.
+ *
+ * 🔴 **The default is a fact about the working directory, not about the install.**
+ * `platform.getAppPath()` is real under Electron (`app.getAppPath()`), and under
+ * `@noodl/platform-node` it is `process.cwd()` when that folder holds a `package.json`
+ * and `__dirname` otherwise. So the *same binary* deploying the *same project* finds
+ * `deploy/index.json` from `packages/noodl-editor` and throws `ENOENT` from anywhere
+ * else. The editor never notices; a headless deploy is nothing but that case.
+ *
+ * The override exists so a headless caller can state the path from its own `__dirname`
+ * — the same thing `noodl-preview`'s `DEPLOY_DIR` already does for the files it serves.
+ * It is a **function call rather than an environment variable** on purpose: an env var
+ * would let anything in the process's environment redirect where a deploy reads its
+ * runtime from, and this is the one input that decides what code the shipped app runs.
+ */
+let externalFolderOverride: string | null = null;
+
+/**
+ * Point the deploy at an explicit `src/external` folder, or pass `null` to go back to
+ * reading it off `platform.getAppPath()`.
+ *
+ * ⚠️ Process-wide, because the three call sites that read it (`loadDeployIndex`,
+ * `_writeFileToFolder`, and `deployer.ts`'s index lookup) are all reached through
+ * `deployToFolder` and none of them takes a context. A caller that sets it owns the process.
+ */
+export function setExternalFolderPath(dir: string | null): void {
+  externalFolderOverride = dir;
+}
+
+/**
  * Gives the path to the "external" folder.
  * @returns
  */
 export function getExternalFolderPath() {
-  return filesystem.join(platform.getAppPath(), 'src/external');
+  return externalFolderOverride ?? filesystem.join(platform.getAppPath(), 'src/external');
 }
 
 /**
@@ -136,9 +166,9 @@ async function writeIndexFiles({
   enableHash,
   envVariables,
   runtimeType
-}: WriteIndexFilesArgs) {
+}: WriteIndexFilesArgs): Promise<string[]> {
   //write the export-carrying files (hashed names when enabled)
-  const [indexJsPath] = await Promise.all(
+  const written = await Promise.all(
     injectExportFiles.map((file) =>
       _writeFileToFolder({
         project,
@@ -150,21 +180,25 @@ async function writeIndexFiles({
       })
     )
   );
+  const [indexJsPath] = written;
 
   if (indexHtmlFile) {
     //and write the index.html file with the correct path
-    await _writeFileToFolder({
-      project,
-      direntry,
-      url: indexHtmlFile.url,
-      exportJson: undefined,
-      injectHTML: true,
-      indexJsPath,
-      baseUrl,
-      enableHash,
-      runtimeType
-    });
+    written.push(
+      await _writeFileToFolder({
+        project,
+        direntry,
+        url: indexHtmlFile.url,
+        exportJson: undefined,
+        injectHTML: true,
+        indexJsPath,
+        baseUrl,
+        enableHash,
+        runtimeType
+      })
+    );
   }
+  return written;
 }
 
 export type CopyDeployFilesToFolderArgs = {
@@ -178,6 +212,17 @@ export type CopyDeployFilesToFolderArgs = {
   envVariables?: Record<string, string>;
 };
 
+/**
+ * Copies the runtime files into the output folder, and says which names it wrote.
+ *
+ * 🔴 **HLS-014 — the return value is the point of the function having one.** The names are
+ * content-hashed (`index-<hash>.js`), so on a second deploy into the same folder they are
+ * *different names* and the previous deploy's files stay there being served. Nothing else in this
+ * module can reconstruct that list: the caller sees a directory holding both, and a directory
+ * listing cannot say which entries this run put there. Measured, not feared — a redeploy after a
+ * one-word edit left `index-842da82…js` next to `index-b529d76…js` and a `noodl_bundles/` holding
+ * two copies of the page that changed.
+ */
 export async function copyDeployFilesToFolder({
   project,
   direntry,
@@ -186,12 +231,12 @@ export async function copyDeployFilesToFolder({
   baseUrl,
   envVariables,
   runtimeType
-}: CopyDeployFilesToFolderArgs) {
+}: CopyDeployFilesToFolderArgs): Promise<string[]> {
   const injectExportFiles = files.filter((file) => file.injectExport);
   const indexHtmlFile = files.find((file) => file.injectHTML);
   const otherFiles = files.filter((f) => !f.injectExport && f !== indexHtmlFile);
 
-  const otherFilesPromises = otherFiles.map((file) =>
+  const otherFilesWritten = otherFiles.map((file) =>
     _writeFileToFolder({
       project,
       direntry,
@@ -202,8 +247,8 @@ export async function copyDeployFilesToFolder({
     })
   );
 
-  await Promise.all([
-    ...otherFilesPromises,
+  const [others, indexes] = await Promise.all([
+    Promise.all(otherFilesWritten),
     writeIndexFiles({
       project,
       direntry,
@@ -217,4 +262,5 @@ export async function copyDeployFilesToFolder({
     })
   ]);
   // reject({ result: 'failure', message: 'Failed to copy deploy files.' });
+  return [...others, ...indexes];
 }

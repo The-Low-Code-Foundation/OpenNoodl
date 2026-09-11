@@ -1,0 +1,337 @@
+{
+  "id": "ui-card-grid-repeater",
+  "title": "Card grid: Query Records into a Repeater, in a Columns node that reflows on its own",
+  "description": "The canonical data grid, and the layout decision most often got wrong. Use a Columns node with sizing \"autoFit\" and a minWidth of 260-320px: it fits as many columns as the CONTAINER holds and reflows by itself, with no breakpoints to maintain. Columns handles a Repeater child correctly — the Repeater draws nothing and adds its items as siblings, so Columns skips it and gives each real item a column box. The card component is width 100% and lets the column size it, which is what makes the SAME card work in this grid, in a 2-up related row, and in a sidebar. Do NOT reach for a Group with flexWrap: a wrapped flex row does not shrink its children, so each item needs a hardcoded percentage track, and — the part that matters — no Group anywhere in the runtime has a breakpoint, so that layout can never collapse on a narrow screen. Record fields reach the item through Component Inputs whose names match the record properties, and wiring a field straight into a Group's visible port is conditional rendering with no logic node.",
+  "demonstrates": [
+    "net.noodl.visual.columns",
+    "For Each",
+    "DbCollection2",
+    "Component Inputs",
+    "Image",
+    "Text"
+  ],
+  "components": [
+    {
+      "name": "/Pages/Catalogue",
+      "nodes": [
+        {
+          "id": "page",
+          "type": "Page",
+          "label": "Catalogue",
+          "parameters": {
+            "title": "Catalogue",
+            "urlPath": "catalogue"
+          },
+          "children": [
+            "band"
+          ]
+        },
+        {
+          "id": "band",
+          "type": "Group",
+          "label": "Band",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "alignItems": "center",
+            "paddingTop": "var(--space-20)",
+            "paddingBottom": "var(--space-20)"
+          },
+          "parent": "page",
+          "children": [
+            "shell"
+          ]
+        },
+        {
+          "id": "shell",
+          "type": "Group",
+          "label": "Shell",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "maxWidth": {
+              "value": 1200,
+              "unit": "px"
+            },
+            "flexDirection": "column",
+            "paddingLeft": "var(--space-6)",
+            "paddingRight": "var(--space-6)"
+          },
+          "parent": "band",
+          "children": [
+            "grid"
+          ]
+        },
+        {
+          "id": "grid",
+          "type": "net.noodl.visual.columns",
+          "label": "Card grid",
+          "parameters": {
+            "sizing": "autoFit",
+            "minWidth": {
+              "value": 280,
+              "unit": "px"
+            },
+            "marginX": {
+              "value": 12,
+              "unit": "px"
+            }
+          },
+          "parent": "shell",
+          "children": [
+            "repeater"
+          ]
+        },
+        {
+          "id": "repeater",
+          "type": "For Each",
+          "label": "One card per record",
+          "parameters": {
+            "template": "/Components/ProductCard"
+          },
+          "parent": "grid"
+        },
+        {
+          "id": "query",
+          "type": "DbCollection2",
+          "label": "Fetch products",
+          "parameters": {
+            "collectionName": "Product"
+          }
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "query",
+          "fromProperty": "items",
+          "toId": "repeater",
+          "toProperty": "items"
+        }
+      ]
+    },
+    {
+      "name": "/Components/ProductCard",
+      "nodes": [
+        {
+          "id": "card",
+          "type": "Group",
+          "label": "Card",
+          "parameters": {
+            "backgroundColor": "var(--surface)",
+            "borderRadius": "var(--radius-xl)",
+            "borderStyle": "solid",
+            "borderWidth": "var(--border-1)",
+            "borderColor": "var(--border)",
+            "clip": true,
+            "flexDirection": "column",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            }
+          },
+          "children": [
+            "media",
+            "body"
+          ]
+        },
+        {
+          "id": "media",
+          "type": "Group",
+          "label": "Media",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "position": "relative",
+            "clip": true
+          },
+          "parent": "card",
+          "children": [
+            "photo",
+            "badge"
+          ]
+        },
+        {
+          "id": "photo",
+          "type": "Image",
+          "label": "Photo",
+          "parameters": {
+            "sizeMode": "explicit",
+            "objectFit": "cover",
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "height": {
+              "value": 300,
+              "unit": "px"
+            },
+            "src": "",
+            "alt": ""
+          },
+          "parent": "media"
+        },
+        {
+          "id": "badge",
+          "type": "Group",
+          "label": "Badge",
+          "parameters": {
+            "position": "absolute",
+            "alignX": "left",
+            "alignY": "top",
+            "marginTop": "var(--space-3)",
+            "marginLeft": "var(--space-3)",
+            "sizeMode": "contentSize",
+            "backgroundColor": "var(--accent)",
+            "borderRadius": "var(--radius-full)",
+            "paddingLeft": "var(--space-3)",
+            "paddingRight": "var(--space-3)",
+            "paddingTop": "var(--space-1)",
+            "paddingBottom": "var(--space-1)"
+          },
+          "parent": "media",
+          "children": [
+            "badge_text"
+          ]
+        },
+        {
+          "id": "badge_text",
+          "type": "Text",
+          "label": "Badge label",
+          "parameters": {
+            "text": "",
+            "fontSize": "var(--text-xs)",
+            "fontWeight": "var(--font-semibold)",
+            "color": "var(--accent-foreground)",
+            "sizeMode": "contentSize"
+          },
+          "parent": "badge"
+        },
+        {
+          "id": "body",
+          "type": "Group",
+          "label": "Body",
+          "parameters": {
+            "width": {
+              "value": 100,
+              "unit": "%"
+            },
+            "flexDirection": "column",
+            "rowGap": "var(--space-2)",
+            "paddingLeft": "var(--space-5)",
+            "paddingRight": "var(--space-5)",
+            "paddingTop": "var(--space-5)",
+            "paddingBottom": "var(--space-5)"
+          },
+          "parent": "card",
+          "children": [
+            "title",
+            "sub"
+          ]
+        },
+        {
+          "id": "title",
+          "type": "Text",
+          "label": "Title",
+          "parameters": {
+            "text": "Title",
+            "fontSize": "var(--text-xl)",
+            "fontWeight": "var(--font-semibold)",
+            "lineHeight": "var(--leading-snug)",
+            "color": "var(--foreground)"
+          },
+          "parent": "body"
+        },
+        {
+          "id": "sub",
+          "type": "Text",
+          "label": "Tagline",
+          "parameters": {
+            "text": "Tagline",
+            "fontSize": "var(--text-sm)",
+            "color": "var(--muted-foreground)"
+          },
+          "parent": "body"
+        },
+        {
+          "id": "card_inputs",
+          "type": "Component Inputs",
+          "label": "Record fields in",
+          "x": 40,
+          "y": 40,
+          "ports": [
+            {
+              "name": "name",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "tagline",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "image",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "imageAlt",
+              "plug": "output",
+              "type": "*"
+            },
+            {
+              "name": "badge",
+              "plug": "output",
+              "type": "*"
+            }
+          ]
+        }
+      ],
+      "connections": [
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "name",
+          "toId": "title",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "tagline",
+          "toId": "sub",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "image",
+          "toId": "photo",
+          "toProperty": "src"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "imageAlt",
+          "toId": "photo",
+          "toProperty": "alt"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "badge",
+          "toId": "badge_text",
+          "toProperty": "text"
+        },
+        {
+          "fromId": "card_inputs",
+          "fromProperty": "badge",
+          "toId": "badge",
+          "toProperty": "visible"
+        }
+      ]
+    }
+  ]
+}

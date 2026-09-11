@@ -464,6 +464,15 @@ FileSystem.instance = {
       }
     });
   },
+  /**
+   * Open the native file dialog and hand back the chosen file's path.
+   *
+   * FB-015: `options` was accepted and never read, so every caller got a JSON-only dialog whatever
+   * it asked for. It had no callers at all until the image picker's Import button, so nothing was
+   * visibly wrong — the parameter simply described a capability that was not there. `accept` takes
+   * the same syntax as the HTML attribute (".png,.jpg" or "image/*"), and the old JSON-only
+   * behaviour is still what a caller that passes nothing gets.
+   */
   chooseFile: function (callback, options) {
     const previous = document.getElementById('__hiddenFileInput__');
     previous && previous.remove();
@@ -471,7 +480,7 @@ FileSystem.instance = {
     const hiddenFileInput = document.createElement('input');
     hiddenFileInput.id = '__hiddenFileInput__';
     hiddenFileInput.type = 'file';
-    hiddenFileInput.accept = 'application/json';
+    hiddenFileInput.accept = (options && options.accept) || 'application/json';
     hiddenFileInput.style.display = 'none';
     document.body.appendChild(hiddenFileInput);
 

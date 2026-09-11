@@ -1,0 +1,284 @@
+{
+  "desktop": {
+    "requested": {
+      "width": 1280,
+      "height": 900
+    },
+    "lists": [
+      {
+        "component": "/Components/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "Product repeater",
+        "rows": 6,
+        "source": "inline items",
+        "strings": [
+          "Handmade Ceramic Bowl",
+          "Rustic ceramic serving bowl",
+          "Specialty Coffee Blend",
+          "Medium roast, single origin",
+          "Ceramic Mug",
+          "Handthrown coffee mug"
+        ],
+        "found": 0,
+        "missing": [
+          "Handmade Ceramic Bowl",
+          "Rustic ceramic serving bowl",
+          "Specialty Coffee Blend"
+        ]
+      }
+    ],
+    "layoutWidth": 1280,
+    "clientWidth": 1280,
+    "clientHeight": 900,
+    "scrollWidth": 1280,
+    "pageHeight": 900,
+    "contentBottom": 900,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 20,
+      "onScreen": 20,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 15,
+        "600": 3,
+        "700": 2
+      },
+      "fontSizes": {
+        "24px": 1,
+        "13.3333px": 6,
+        "20px": 1,
+        "14px": 4,
+        "48px": 1,
+        "18px": 4,
+        "30px": 3
+      },
+      "distinctFontSizes": 7,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 3,
+      "byText": {
+        "0": 1,
+        "Handcrafted Ceramics & Coffee": 1,
+        "Discover beautifully crafted pieces and specialty coffee blends from local artisans": 1
+      },
+      "samples": [
+        {
+          "text": "0",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Handcrafted Ceramics & Coffee",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Discover beautifully crafted pieces and specialty coffee blends from local artisans",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 3,
+        "rows": 1,
+        "itemWidth": 250,
+        "itemHeight": 117,
+        "parentWidth": 750,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 226,
+        "itemHeight": 39,
+        "parentWidth": 226,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 226,
+        "itemHeight": 39,
+        "parentWidth": 226,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 226,
+        "itemHeight": 39,
+        "parentWidth": 226,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  },
+  "phone": {
+    "requested": {
+      "width": 390,
+      "height": 844
+    },
+    "lists": [
+      {
+        "component": "/Components/FeaturedProducts",
+        "nodeId": "repeater",
+        "label": "Product repeater",
+        "rows": 6,
+        "source": "inline items",
+        "strings": [
+          "Handmade Ceramic Bowl",
+          "Rustic ceramic serving bowl",
+          "Specialty Coffee Blend",
+          "Medium roast, single origin",
+          "Ceramic Mug",
+          "Handthrown coffee mug"
+        ],
+        "found": 0,
+        "missing": [
+          "Handmade Ceramic Bowl",
+          "Rustic ceramic serving bowl",
+          "Specialty Coffee Blend"
+        ]
+      }
+    ],
+    "layoutWidth": 643,
+    "clientWidth": 390,
+    "clientHeight": 844,
+    "scrollWidth": 643,
+    "pageHeight": 1392,
+    "contentBottom": 1083,
+    "overflowing": [],
+    "overflowingCount": 0,
+    "text": {
+      "elements": 20,
+      "onScreen": 13,
+      "unreachable": 0,
+      "fontWeights": {
+        "400": 15,
+        "600": 3,
+        "700": 2
+      },
+      "fontSizes": {
+        "24px": 1,
+        "13.3333px": 6,
+        "20px": 1,
+        "14px": 4,
+        "48px": 1,
+        "18px": 4,
+        "30px": 3
+      },
+      "distinctFontSizes": 7,
+      "bodyFontFamily": "Inter, ui-sans-serif, system-ui, sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoj"
+    },
+    "placeholders": {
+      "count": 3,
+      "byText": {
+        "0": 1,
+        "Handcrafted Ceramics & Coffee": 1,
+        "Discover beautifully crafted pieces and specialty coffee blends from local artisans": 1
+      },
+      "samples": [
+        {
+          "text": "0",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Handcrafted Ceramics & Coffee",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        },
+        {
+          "text": "Discover beautifully crafted pieces and specialty coffee blends from local artisans",
+          "tag": "DIV",
+          "cls": "ndl-visual-text"
+        }
+      ]
+    },
+    "images": {
+      "total": 0,
+      "onScreen": 0,
+      "unreachable": 0,
+      "broken": 0,
+      "brokenSources": []
+    },
+    "emptyDecoratedBoxes": {
+      "count": 0,
+      "samples": []
+    },
+    "repeatedGroups": [
+      {
+        "kind": "columns",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 342,
+        "itemHeight": 117,
+        "parentWidth": 342,
+        "tag": "DIV",
+        "cls": "column-item"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 318,
+        "itemHeight": 39,
+        "parentWidth": 318,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 318,
+        "itemHeight": 39,
+        "parentWidth": 318,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      },
+      {
+        "kind": "siblings",
+        "count": 3,
+        "columns": 1,
+        "rows": 3,
+        "itemWidth": 318,
+        "itemHeight": 39,
+        "parentWidth": 318,
+        "tag": "DIV",
+        "cls": "ndl-visual-text"
+      }
+    ],
+    "consoleErrors": []
+  }
+}

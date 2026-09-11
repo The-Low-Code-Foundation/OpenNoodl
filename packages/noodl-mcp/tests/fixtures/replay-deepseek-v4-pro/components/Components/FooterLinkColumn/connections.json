@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "020eb714-b11f-4e07-b709-63ad5151b6be",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "flc-inputs",
+      "fromProperty": "heading",
+      "toId": "flc-heading",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "flc-inputs",
+      "fromProperty": "links",
+      "toId": "flc-repeater",
+      "toProperty": "items"
+    }
+  ]
+}

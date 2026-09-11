@@ -3,11 +3,11 @@ title: "Text"
 ---
 Renders a piece of text with typography controlled by a text style or explicit font parameters.
 
-Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry.
+Text displays the string on its `text` input. Typography comes either from a project-wide `textStyle` (preferred, keeps the app consistent) or from explicit `fontFamily`/`fontSize`/`color` parameters that override it. Like all visual nodes it sits in the children hierarchy, has size/margin/alignment parameters, and reports basic interaction signals (`onClick`, hover) and geometry. Text has no box of its own: it takes margins, but padding, background colour, border and corner radius are not ports on it — a padded, filled or rounded label is a Text inside a Group carrying those, which is what the design system's own components do.
 
 ## When to use it
 
-Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label).
+Any static or data-bound text: headings, labels, list-item fields, error messages. Not for user-editable text (use net.noodl.controls.textinput) and not for button captions (the Button control has its own label). For anything with an inset, a fill or a rounded edge, wrap the Text in a Group and set padding, backgroundColor and borderRadius on the Group.
 
 ## At a glance
 
@@ -25,6 +25,8 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `as` | Enum (`div`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `p`, `span`) | `div` | HTML element to render the text as, which changes nothing visually but matters for screen readers and SEO |
@@ -34,6 +36,9 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
+| `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
+| `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `letterSpacing` | Number | `Auto` | Extra space added between characters; leave as Auto to use the spacing built into the font |
 | `lineHeight` | Number | `Auto` | Vertical space each line of text occupies; leave as Auto to follow the font |
@@ -56,6 +61,7 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 | `text` | String | `Text` | The text to show; an empty value renders nothing rather than the words null or undefined |
 | `textAlignX` | Enum (`left`, `center`, `right`) | `left` | Aligns the text within its own box on the horizontal axis |
 | `textAlignY` | Enum (`top`, `center`, `bottom`) | `top` | Aligns the text within its own box on the vertical axis, which is only visible when the box is taller than the text |
+| `textOverflow` | Enum (`wrap`, `clip`, `ellipsis`) | `wrap` | What a line too long for its box does. Needs a width the text can exceed, so it has no effect while the size mode is content-sized |
 | `textStyle` | TextStyle | `None` | Applies one of the project's saved text styles; the individual font ports below override whatever it sets |
 | `textTransform` | Enum (`none`, `uppercase`, `lowercase`, `capitalize`) | `none` | Forces the text to upper case, lower case or capitalised without changing the underlying value |
 | `transformOriginX` | Number | `50` | Horizontal point the element rotates and scales around, as a fraction of its width |
@@ -79,6 +85,12 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 | `boundingHeight` | Number | — | Height this element actually ended up with after layout, in pixels |
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
 | `this` | Reference | — | A reference to this node itself, for ports that take a node rather than a value |
@@ -88,6 +100,8 @@ Any static or data-bound text: headings, labels, list-item fields, error message
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
 | `hoverStart` | Signal | — | Fires when the pointer moves over this element or any of its children |
 | `onClick` | Signal | — | Fires when this element is clicked or tapped |
@@ -107,6 +121,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | sizeMode = explicit OR sizeMode = contentHeight OR sizeMode NOT SET | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth | `height` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 
 ## Ports at runtime
 
@@ -126,6 +141,18 @@ The canonical data-list shape. Query Records (DbCollection2) fetches a database 
 **Validate an input before acting on a click**
 
 The idiomatic gate shape: a Button click does not act directly — it evaluates a Condition. The Condition's boolean comes from an Expression that checks the text input's current value, so the same click either proceeds (ontrue) or reveals an error message (isfalse drives the error Text's visibility as a level, not a pulse). Note the two kinds of flow: text/booleans are values, onClick/eval/ontrue are momentary signals.
+
+**Page spine: full-bleed bands, a centred max-width shell, an announced section**
+
+The structure every designed page shares, and the one an unstyled page is missing. Three levels: a BAND is full width and owns a background (sections alternate --background and --surface so the page reads as parts, not a scroll); inside it exactly one SHELL, width 100% with maxWidth 1200px and --space-6 side padding, centred by alignItems "center" on the band; content lives in the shell. Content that touches the viewport edge is the loudest signal nobody designed the page. A section opens with an eyebrow, a heading and one optional sub-line capped at ~560px so it wraps at a readable measure, then --space-10 of air. Band padding is --space-20.
+
+**Split hero: copy column and image, with a display headline that looks set rather than typed**
+
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+
+**Stat tile row: one tile component, four instances, collapsing to two then one**
+
+The top of an admin screen. The tile is its own component — four hand-written copies is a `repeated-sibling-subtree` warning — and the row is a Columns node that folds 4 -> 2 -> 1 as the container narrows. Inside a tile the VALUE is the only large thing: a muted uppercase label, one --text-3xl semibold number, and a small delta line. A tile whose label competes with its number reads as a form, not a dashboard. Wire each value from a Query Records count or a Cloud Function output.
 
 ## Related nodes
 

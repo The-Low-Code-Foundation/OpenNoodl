@@ -1,0 +1,6 @@
+{
+  "name": "Dynports Kit",
+  "main": "index.js",
+  "runtimes": ["browser"],
+  "dependencies": []
+}

@@ -1,0 +1,439 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "d2dd3681-f8dc-5471-84b6-8e694b85b64d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "label": "Page",
+      "parameters": {
+        "title": "Example",
+        "urlPath": "example"
+      },
+      "children": [
+        "canvas"
+      ]
+    },
+    {
+      "id": "canvas",
+      "type": "Group",
+      "label": "Page column — the sticky nav's containing block",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--background)"
+      },
+      "parent": "page",
+      "children": [
+        "nav",
+        "band_a",
+        "band_b",
+        "band_c"
+      ]
+    },
+    {
+      "id": "nav",
+      "type": "Group",
+      "label": "Nav band — sticky, opaque, above the page",
+      "parameters": {
+        "position": "sticky",
+        "alignY": "top",
+        "zIndex": 10,
+        "sizeMode": "contentHeight",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "flexDirection": "row",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "backgroundColor": "var(--surface)",
+        "borderBottomStyle": "solid",
+        "borderBottomWidth": "var(--border-1)",
+        "borderBottomColor": "var(--border)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "as": "header"
+      },
+      "parent": "canvas",
+      "children": [
+        "nav_shell"
+      ]
+    },
+    {
+      "id": "nav_shell",
+      "type": "Group",
+      "label": "Nav shell — same max-width as the page shells",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-2)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "nav",
+      "children": [
+        "brand",
+        "links",
+        "nav_cta"
+      ]
+    },
+    {
+      "id": "brand",
+      "type": "Text",
+      "label": "Brand",
+      "parameters": {
+        "text": "Northwind",
+        "fontSize": "var(--text-base)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "nav_shell"
+    },
+    {
+      "id": "links",
+      "type": "Group",
+      "label": "Links",
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)",
+        "as": "nav"
+      },
+      "parent": "nav_shell",
+      "children": [
+        "link_a",
+        "link_b",
+        "link_c"
+      ]
+    },
+    {
+      "id": "link_a",
+      "type": "Text",
+      "label": "Link — current",
+      "parameters": {
+        "text": "Overview",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "links"
+    },
+    {
+      "id": "link_b",
+      "type": "Text",
+      "label": "Link",
+      "parameters": {
+        "text": "Catalogue",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "links"
+    },
+    {
+      "id": "link_c",
+      "type": "Text",
+      "label": "Link",
+      "parameters": {
+        "text": "Pricing",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-medium)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "links"
+    },
+    {
+      "id": "nav_cta",
+      "type": "net.noodl.controls.button",
+      "label": "Nav action",
+      "parameters": {
+        "label": "Sign in",
+        "backgroundColor": "var(--primary)",
+        "color": "var(--primary-foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "none",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "parent": "nav_shell"
+    },
+    {
+      "id": "band_a",
+      "type": "Group",
+      "label": "Band A — first section, sits directly under the nav",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "parent": "canvas",
+      "children": [
+        "shell_a"
+      ]
+    },
+    {
+      "id": "shell_a",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "band_a",
+      "children": [
+        "a_eyebrow",
+        "a_heading",
+        "a_body"
+      ]
+    },
+    {
+      "id": "a_eyebrow",
+      "type": "Text",
+      "label": "Eyebrow",
+      "parameters": {
+        "text": "Scroll me",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)"
+      },
+      "parent": "shell_a"
+    },
+    {
+      "id": "a_heading",
+      "type": "Text",
+      "label": "Heading",
+      "parameters": {
+        "text": "The nav stays; this does not",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)"
+      },
+      "parent": "shell_a"
+    },
+    {
+      "id": "a_body",
+      "type": "Text",
+      "label": "Body",
+      "parameters": {
+        "text": "The band above is a plain Group with Position set to Sticky and Align Y set to Top. There is no Top port on this canvas — Align Y is what writes the inset, and setting it to Center pins the band half a screen down instead of at the edge. Everything on this page passes underneath the band, so the band has to be opaque and carry a zIndex; without one its text and this text draw on top of each other.",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        }
+      },
+      "parent": "shell_a"
+    },
+    {
+      "id": "band_b",
+      "type": "Group",
+      "label": "Band B",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "backgroundColor": "var(--surface)",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "parent": "canvas",
+      "children": [
+        "shell_b"
+      ]
+    },
+    {
+      "id": "shell_b",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "band_b",
+      "children": [
+        "b_heading",
+        "b_body"
+      ]
+    },
+    {
+      "id": "b_heading",
+      "type": "Text",
+      "label": "Heading",
+      "parameters": {
+        "text": "Clip Content anywhere above it kills it",
+        "fontSize": "var(--text-2xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "color": "var(--foreground)"
+      },
+      "parent": "shell_b"
+    },
+    {
+      "id": "b_body",
+      "type": "Text",
+      "label": "Body",
+      "parameters": {
+        "text": "A sticky node sticks inside the box of the Group it is in, and only while every ancestor between it and the thing that scrolls is unclipped. Turn on Clip Content on the page column, or wrap the nav in a Group that is only as tall as the nav, and the band scrolls away with no error anywhere. That is the failure mode to look for first when a nav that should stick does not.",
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        }
+      },
+      "parent": "shell_b"
+    },
+    {
+      "id": "band_c",
+      "type": "Group",
+      "label": "Band C",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "borderTopStyle": "solid",
+        "borderTopWidth": "var(--border-1)",
+        "borderTopColor": "var(--border)",
+        "paddingTop": "var(--space-24)",
+        "paddingBottom": "var(--space-24)"
+      },
+      "parent": "canvas",
+      "children": [
+        "shell_c"
+      ]
+    },
+    {
+      "id": "shell_c",
+      "type": "Group",
+      "label": "Shell",
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "maxWidth": {
+          "value": 1200,
+          "unit": "px"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)"
+      },
+      "parent": "band_c",
+      "children": [
+        "c_heading",
+        "c_body"
+      ]
+    },
+    {
+      "id": "c_heading",
+      "type": "Text",
+      "label": "Heading",
+      "parameters": {
+        "text": "Sticky, not Fixed",
+        "fontSize": "var(--text-2xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "color": "var(--foreground)"
+      },
+      "parent": "shell_c"
+    },
+    {
+      "id": "c_body",
+      "type": "Text",
+      "label": "Body",
+      "parameters": {
+        "text": "Position has a Fixed option too, and it is the wrong one for a page header: a fixed band takes no space in the layout, so this page measures exactly one band shorter and the first section starts underneath the nav on load. Sticky keeps its place in the column until the page scrolls past it, so nothing is ever hidden.",
+        "fontSize": "var(--text-base)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 620,
+          "unit": "px"
+        }
+      },
+      "parent": "shell_c"
+    }
+  ],
+  "visualRoots": [
+    "page"
+  ]
+}

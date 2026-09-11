@@ -32,7 +32,7 @@
       "nodes": [
         { "id": "line", "type": "Group", "label": "Line", "parameters": { "flexDirection": "row" }, "children": ["line_text"] },
         { "id": "line_text", "type": "Text", "label": "Title", "parent": "line" },
-        { "id": "line_inputs", "type": "Component Inputs", "label": "Record in" }
+        { "id": "line_inputs", "type": "Component Inputs", "label": "Record in", "ports": [{ "name": "title", "plug": "output", "type": "*" }] }
       ],
       "connections": [
         { "fromId": "line_inputs", "fromProperty": "title", "toId": "line_text", "toProperty": "text" }

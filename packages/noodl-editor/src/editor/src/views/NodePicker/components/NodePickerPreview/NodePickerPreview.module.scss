@@ -72,6 +72,77 @@
   white-space: nowrap;
 }
 
+/**
+ * LGC-001 §2 — the chooser note.
+ *
+ * `flex: none` and above `.Body`, so it is the first thing read and it never
+ * gets scrolled away by the reference prose underneath it: the whole point of
+ * the note is that it is visible at the moment of choosing.
+ *
+ * Nothing here dims text to signal hierarchy. The signal sentence is the one the
+ * NDA-017 register says must be readable — it is the only place in the product
+ * that states how the Function node's signals behave — so it is separated by a
+ * rule and the category tint rather than by dropping it to a muted grey.
+ */
+.Chooser {
+  flex: none;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--theme-color-border-default);
+}
+
+.ChooserHeadline {
+  margin: 0;
+  color: var(--theme-color-fg-highlight);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+}
+
+.ChooserDetail {
+  margin: 5px 0 0;
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.ChooserExamples {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/**
+ * `max-width: 100%` with `overflow-x: auto` rather than wrapping: an example is
+ * a line of code and a wrapped one reads as two examples. The column is 292px
+ * and `Math.ceil(subtotal / 5)` fits; anything longer scrolls in place.
+ */
+.ChooserExample {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px 6px;
+  border-radius: var(--radius-5);
+  background-color: var(--theme-color-bg-1);
+  color: var(--theme-color-fg-highlight);
+  font-family: var(--font-family-code);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.ChooserSignals {
+  margin: 10px 0 0;
+  padding-left: 9px;
+  border-left: 2px solid var(--cat);
+  color: var(--theme-color-fg-default);
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
 .Body {
   flex: 1;
   padding: 14px 16px;
@@ -192,7 +263,7 @@
   gap: 7px;
   width: 100%;
   padding: 7px 13px;
-  border: 1px solid var(--theme-color-border-default);
+  border: 1px solid var(--theme-color-border-control);
   border-radius: var(--radius-7);
   background-color: var(--theme-color-bg-1);
   color: var(--theme-color-fg-default);
@@ -202,7 +273,8 @@
   cursor: pointer;
 
   &:hover {
-    border-color: var(--theme-color-border-strong);
+    // 🔴 Same trap as the card: `border-strong` is a DIVIDER tone, so restoring a
+    // `border-color` here would drop this button's edge from 4.17 to 1.74.
     color: var(--theme-color-fg-highlight);
   }
 }

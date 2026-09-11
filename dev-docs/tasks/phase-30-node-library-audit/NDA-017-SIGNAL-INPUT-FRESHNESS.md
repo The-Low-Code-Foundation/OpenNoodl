@@ -696,6 +696,55 @@ the migration simply re-runs on every load, which is exactly what idempotency bu
 - Live QA in the running editor. The wiring is exercised through `applyPatches` in the suite; the
   panel-side reading of a migrated project has not been driven.
 
+## 🔴 A third premise that did not survive contact (2026-08-28, phase 77 SBR-004)
+
+§4 closed the "once and stamp" open question with: *"presence of the key is the marker the
+project format was said to lack, so on-every-load needs no stamp."*
+
+**That answer is sound for the projects the migration was built for, and it inverts on the
+projects built after it.** The migration reads an absent `runOnChange-<input>` as *"authored
+before §2, silence it"*. §2 made the panel read the same absence as *"the author never touched
+this box, so it is ticked"*. **Same absence, opposite meanings** — and nothing in the file the
+migration reads separates them, because the marker it relies on is the very key whose absence is
+ambiguous.
+
+The consequence is not theoretical and is not confined to old projects. Measured on a project
+the site-builder template had created **that morning** (phase 77, SBR-004 §9.2):
+
+> **37 nodes carried a migrated `runOnChange-*: false`, and not one node in the project carried
+> a `true`.** Four of those were the template's own deliberate suppressions; the other 33 were
+> this migration's, on a graph that had never seen a pre-§2 build.
+
+One of the 33 turned the site's front door into a blank page: a node whose `Run` was
+`Page.didMount` and whose value came from a query, so the guard fired once at mount and nothing
+re-ran it (SBR-004 §10.3 has the census and the property that separates that node from the
+other 32).
+
+**It bites an author, not only a template.** Wire `Run` on a graph you are authoring today,
+save, reload: the value inputs you never touched are now unticked in the panel, with no
+explanation and no diagnostic — the migration's `console.info` reports counts, not intent.
+
+### What was measured about the stamp, since §2's premise about it is also wrong
+
+§2 said "once-and-stamp needs a marker the project format does not have today", and §4 accepted
+that framing. The format does have version channels, and the migration can already see them:
+
+- `nodegx.project.json` carries **`version`** (the `ProjectModel.Upgraders` ladder, `0`→`4`) and
+  **`nodegxVersion`**. `applyPatches(content)` runs on that raw JSON —
+  `projectmodel.editor.ts:24` — and the very next lines read `content.version`.
+- ⚠️ But `version` is gated: `projectFromDirectory` refuses a project whose `version` exceeds
+  `supportedProjectVersion`, so bumping the ladder for this makes projects unopenable in older
+  builds. It is a real channel, not a free one.
+- ⚠️ And a **new** top-level key does not survive a save: `ProjectModel.toJSON` is a
+  **whitelist**, so a marker the migration added would be dropped on the next write and the
+  migration would run again. A stamp is a small deliberate format change — a field plus a
+  `toJSON` line — not a free one.
+
+So the correction is to the reasoning, not necessarily to the decision: **the choice to run on
+every load may still be right, but "presence of the key is the marker" is not the argument for
+it, because that marker cannot tell the two populations apart.** Owed as its own task — see
+phase 77's `NEXT-SESSION-PROMPT.md`.
+
 ## Out of scope
 
 - A general async/await model for the node graph. B's pending notion, if taken, is a *diagnostic*,

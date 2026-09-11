@@ -13,7 +13,7 @@
     "switchedToOn": "Signal; fires when a change leaves the state true.",
     "switchedToOff": "Signal; fires when a change leaves the state false."
   },
-  "examples": ["logic-toggle-details-panel"],
+  "examples": ["logic-toggle-details-panel", "community-simple-audio-recorde", "community-strobe-blinking-bu"],
   "patterns": [
     "Button `onClick` → `flip`, `state` → a Group's `visible`: the standard show/hide toggle.",
     "`state` → Boolean To String `input` → the toggling button's `label`: the button describes what it will do next."

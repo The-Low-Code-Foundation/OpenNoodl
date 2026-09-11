@@ -5,7 +5,11 @@
 
   a {
     font-weight: 700;
-    color: var(--theme-color-primary);
+    /* NAT-002 D10. `primary` is a FILL role: in the light theme it is 4.03:1 on
+       bg-0, 4.33 on bg-2 and 3.99 on bg-3, and those are grounds this component
+       is rendered on. `fg-accent` is the same accent chosen to be read rather
+       than filled — worst ground 5.62 dark / 4.59 light. */
+    color: var(--theme-color-fg-accent);
     text-decoration: underline;
   }
 
@@ -42,16 +46,22 @@
     color: var(--theme-color-secondary-as-fg);
   }
 
+  /* NAT-002 D11: the three status types are WORDS, so they take the text roles
+     rather than the fill roles. Measured before the split: `success` 3.81:1 on
+     bg-2 in light, `danger` 4.46:1 on bg-4 in DARK — the composer's sign-in
+     error, which is the only explanation a person gets for a post that did not
+     happen. The fill roles keep their values and their jobs (chips, rings,
+     tinted grounds); only the ink moved. */
   &-success {
-    color: var(--theme-color-success);
+    color: var(--theme-color-fg-success);
   }
 
   &-notice {
-    color: var(--theme-color-notice);
+    color: var(--theme-color-fg-notice);
   }
 
   &-danger {
-    color: var(--theme-color-danger);
+    color: var(--theme-color-fg-danger);
   }
 
   &-success,

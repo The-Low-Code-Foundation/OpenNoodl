@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "b71e4d20-3c86-4f95-a0d2-6f83e1c94a57",
+  "name": "NoteList",
+  "path": "/Components/NoteList",
+  "type": "visual",
+  "description": "A list of note rows that relays each row's Removed out of the component. Its two wires out of the repeater are the two halves of one refusal branch: one names a port the runtime registers, one names no port at all.",
+  "created": "2026-08-30T09:10:00.000Z",
+  "modified": "2026-08-30T09:10:00.000Z"
+}
