@@ -1,0 +1,16 @@
+.ScrollContainer {
+  position: absolute;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  justify-content: end;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.ScrollArea {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-y: overlay;
+}

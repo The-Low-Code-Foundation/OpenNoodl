@@ -72,7 +72,7 @@ matters because only one of them converts:
 |---|---|---|---|
 | **clipboard-JSON graphs** | 12 | 146 nodes total; real components (SEO setter 17 nodes, audio recorder 24, Tiptap 28) | COM-003 → examples; COM-004/005 → library |
 | **code snippets** | 14 | Function/Script bodies, one CSS block, one 4 KB cloud function | COM-002 → the phrasebook's code column |
-| **external links** | 3 | 2 Google Drive files, 1 GitHub repo | 🔴 COM-006 — will rot, recover now |
+| **external links** | 3 | 2 Google Drive files, 1 GitHub repo | ✅ COM-006 — **recovered 2026-09-11**, [`corpus/external-payloads/`](corpus/external-payloads/PROVENANCE.md) |
 | **the dictionary** | 94 rows | Bubble operator → NodeGX node + code; 62 answered, 32 blank | COM-001, COM-002 |
 
 ## 4. Tasks
@@ -84,7 +84,7 @@ matters because only one of them converts:
 | [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it. 5/12 measured | **OPEN** — instrument committed |
 | [COM-004](COM-004-SEO-META-TAGS.md) | SEO meta tags. No node, no prefab, runtime API already there — the biggest library gap in the export | **OPEN** |
 | [COM-005](COM-005-THE-RECORDERS-AND-THE-MASONRY.md) | Audio recorder, video recorder, masonry grid — the three remaining gaps our 74 library entries do not cover | **OPEN** |
-| [COM-006](COM-006-THE-LINKS-THAT-WILL-ROT.md) | Recover the three external payloads before they vanish; decide on Directus as the third connector | **OPEN** — 🔴 time-sensitive, nothing else here depends on a live link |
+| [COM-006](COM-006-THE-LINKS-THAT-WILL-ROT.md) | Recover the three external payloads before they vanish; decide on Directus as the third connector | ✅ **BUILT** 2026-09-11 — all three links were still alive, all three recovered; AC3 🟡 on one ask for Richard |
 | — | [`MEASURED-2026-09-10.md`](MEASURED-2026-09-10.md) | every reading this phase rests on, with the command that produced it |
 | — | [`convert-exports.py`](convert-exports.py) | the instrument: exports → candidate examples. Converts; does not certify |
 
