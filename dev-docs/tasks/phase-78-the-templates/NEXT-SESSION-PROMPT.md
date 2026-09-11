@@ -1,5 +1,36 @@
 # Phase 78 — next session
 
+> ### 🟡 2026-09-11 — TPL-004: AC1–AC7 BUILT AND GATED. **AC8 — THE CLICK-DRIVE — IS THE JOB.**
+>
+> Richard: *"improving the default landing page template we ship with the editor"*. He ruled
+> **upgrade all three pages** and **keep the placeholders**, and that is what shipped:
+> `embedded://landing-pages` now has a stylesheet on `App`, a sticky nav that scrolls by class name,
+> a form that refuses Send until it can, the freelancer's work as a filterable `Static Data` list
+> with a case study popup behind each card, disclosures on the services / the offer / the questions,
+> a stepping quote carousel on two pages and a monthly-yearly price toggle.
+> **21 → 28 components, 375 → 494 nodes, gate 40 → 50, 0 validator errors, all committed.**
+> Full record, including what the render is and is NOT evidence of:
+> [TPL-004](TPL-004-THE-LANDING-PAGES-STOP-BEING-A-FLYER.md).
+>
+> 🔴 **The next session's FIRST job is the drive, and it is one job.** A copy is already prepared at
+> `NodeGX test projects/tpl004-render-drive`. Open it, start the preview, and on each of the three
+> pages press: a nav link, a service card, a filter pill, a work card, the popup's Close, the
+> carousel's Back and Next **at both ends**, an FAQ row, the plan toggle, and Send with the fields
+> empty and then filled. **Record what did nothing.** Everything on those pages is wired and
+> statically valid and **nobody has clicked any of it** — and the one defect class this build is most
+> exposed to (a popup fed nine parameters under the wrong names) renders perfectly and says nothing.
+>
+> ⚠️ **Do NOT read the render's `flat-type-scale` / `no-display-type` findings as a verdict on the
+> look.** That path stamps `0 shipped defaults + 34 project override(s)` — the ~200 product default
+> tokens are absent, so every `var(--text-*)` and `--space-*` resolves to nothing. The control (the
+> template at `192cf8d21^`, same instrument, same directory) measures identically flat. §10.
+>
+> ⚠️ **Five suites in `packages/noodl-mcp` were ALREADY RED at HEAD and are not TPL-004's**:
+> `cmp001InterfaceDoctrine` (33 vs 37 — HEAD's own commit message names the rounding rule),
+> `tpl001Template` (the byte-for-byte regeneration, the same key-order staleness landing-pages had),
+> `nodeDocBudget`, `def018-def020-layout-drive`, `sbr009ThemeEditorDrive`. None of them import
+> anything TPL-004 touched. **Re-measure before inheriting any of them.**
+
 > ### 🟢 2026-09-05 — TPL-003, THE LANDING PAGES: BUILT, GATED, PHOTOGRAPHED, DRIVEN
 >
 > Richard asked for a third template for 0.2.2 and s4's *"the next template is blocked on the first
