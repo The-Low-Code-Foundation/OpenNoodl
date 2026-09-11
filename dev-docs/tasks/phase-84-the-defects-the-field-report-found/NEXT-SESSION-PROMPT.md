@@ -301,8 +301,12 @@ New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two rev
 
 ## 5. The next task to build
 
-🔴 **The ungated pile holds exactly one item: FLD-005.** Session 14 took FLD-004, the other one
-R4/P13 released. Everything else is behind a ruling or a Linux box:
+🔴 **THE UNGATED PILE IS EMPTY.** Session 14 took FLD-004 and session 15 took FLD-005 — the two
+that R4 and P13 released — and there is no third. **Every remaining FLD task is behind a ruling or a
+Linux box, and the two owed replies are behind rulings too.** If you came here to build an FLD task,
+the honest answer is that there is not one; the items below that a session CAN take are gate and
+register work, and the phase's own next move is to get **R2, R3, R6 and P25 answered**.
+🔴 **Re-derive those four before inheriting this** — §1 has been wrong for a day twice.
 
 0. ✅ **The push is DONE and its CI run is READ** — see §8's first block. Three jobs green, six red,
    two of which MOVED without going green. ✅ The minification runner did not OOM. 🔴 **The one thing
@@ -310,8 +314,11 @@ R4/P13 released. Everything else is behind a ruling or a Linux box:
    *Library check* stays red and `starter-iconset:check` stays SKIPPED behind it.
 1. ✅ **FLD-004 — DONE, session 14.** 🟢 6/6 ACs, #26 replied and CLOSED. It no longer gates
    FLD-003; only **R3** does.
-2. 🔴 **FLD-005 — the whole ungated pile.** P13 resolved 2026-09-11, phase 84 owns it, phase 81's V1
-   row now reads DUPLICATE. Owes **#35**. ⚠️ Do not also build phase 81's V1.
+2. ✅ **FLD-005 — DONE, session 15.** 🟢 5/5 ACs, #35 replied and CLOSED; phase 81's **V1 and V17
+   are closed in phase 81's register**. ⚠️ Do not also build phase 81's V1 — and note VIB-005 is now
+   **smaller, not gone**: V2/V14/V21/V38 remain there, and V2 (`clip: true` amputates silently) came
+   out of this with a rendered instance behind it for the first time — a `card` losing six of its
+   ten lines.
 3. **`lessons:chain:self-test`** — the one remaining red gate a session can take.
    *"A break this gate claims to catch went through it"*: 12 mutations, 2 not caught. A gate hole,
    so it needs reading, not a regenerate. ✅ **Session 13 cleared four of the six**; Lint and
