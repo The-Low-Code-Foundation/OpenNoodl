@@ -134,6 +134,39 @@ export interface EntryPlan {
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
 const TOKEN = /var\(\s*--([A-Za-z0-9_-]+)/g;
 
+/**
+ * CMP-007 — the `var(--token)` names an ENTRY's shipped graph reads, read back
+ * off the shelf rather than out of its metadata.
+ *
+ * 🔴 **This deliberately shares `TOKEN` with `planEntry` above**, and that is the
+ * whole reason it lives in this module. The export decides what counts as a
+ * token reference; the install decides which of those the host project cannot
+ * resolve. If the two ever disagreed, the install would report a SUBSET and read
+ * exactly like a clean part — an under-report is invisible, unlike a crash.
+ *
+ * Returns `[]` for an entry with no readable `project/project.json`; a module
+ * entry shipping only a code kit has no graph and honestly reads no tokens.
+ *
+ * ⚠️ **Why this derives the list instead of reading a recorded one.** CMP-007
+ * started by writing `tokens` into `library.json` at export, and the artefacts
+ * refused it twice: `scripts/library/schema.json` is `additionalProperties:
+ * false`, so `library:check` rejects the key outright, and `build.js` copies a
+ * FIXED set of fields into `index.json`, so nothing downstream would ever read
+ * it. That is the trap the schema's own `runtimeVersion` note records — *"a
+ * schema field nothing can evaluate is worse than an absent one"* — and it would
+ * have shipped a field whose only reader was the test asserting it. It becomes
+ * worth recording the day the editor's library card wants to warn before a
+ * download; until then the graph is the one source of truth, and it is also the
+ * only one that works for the 45 entries already on the shelf.
+ */
+export function entryTokens(entryDir: string): string[] {
+  const projectJson = path.join(entryDir, 'project', 'project.json');
+  if (!fs.existsSync(projectJson)) return [];
+  const found = new Set<string>();
+  for (const m of fs.readFileSync(projectJson, 'utf8').matchAll(TOKEN)) found.add(`--${m[1]}`);
+  return [...found].sort();
+}
+
 /** `library.json`'s slug rule, from `scripts/library/schema.json`'s dependency pattern. */
 export const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

@@ -4,7 +4,7 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## The board, re-derived from the task FILES on 2026-09-11 (session 8)
+## The board, re-derived from the task FILES on 2026-09-11 (session 9)
 
 | task | AC | state |
 |---|---|---|
@@ -20,6 +20,7 @@ disqualifies you from producing the baseline.
 | CMP-005 | all five | ✅ CLOSED s4 + s5 |
 | **CMP-006** | AC1 `full` relays `patterns`/`antiPatterns` · AC2 the description routes there | ✅ **CLOSED s8** — 5 specs over the wire, 4 control arms |
 | **CMP-006** | AC3 should the DEFAULT carry `antiPatterns`? | 🔴 OPEN — **needs a phase-55-style REPLAY, not a ruling.** Do not close it from the armchair |
+| **CMP-007** | AC1 `get_library_entry` relays the tokens · AC2 `install_prefab` names the unresolved ones · AC3 derived from the GRAPH | ✅ **CLOSED s9** — 9 specs, 5 control arms. A third of the fix was deleted by the schema |
 
 ## 🔴 The first job is still CMP-002, and s8 MEASURED why two sessions have bounced off it
 
@@ -54,8 +55,12 @@ you a fresh *reader* and the *same stale server*.
 - *"A repeated row publishes to the repeater"* (s7's eleventh rule)
 - *"relatedNodes, patterns, antiPatterns"* (s8's CMP-006)
 - `comp-variant-badge-states` (s6's example)
+- 🆕 *"set_project_tokens, or repoint those parameters"* (s9's CMP-007 — the newest, so it dates the
+  bundle most precisely)
 
-**So any CLI session started after 07:25:30 on 2026-09-11 gets a server that carries the work.**
+🔴 **s9 REBUILT IT AGAIN at 10:09:15 on 2026-09-11**, carrying all five. Use the s9 string: a bundle
+carrying s8's four but not this one was built between 07:25 and 10:09.
+**So any CLI session started after 10:09:15 on 2026-09-11 gets a server that carries the work.**
 
 ### 🔴 The unblock, and it is RICHARD'S action, not the next session's
 
@@ -80,6 +85,46 @@ untracked and whatever it inherits may be any age:
 (`/Applications/NodeGX.app/.../noodl-mcp.cjs`) and contains **zero** occurrences of the anchor
 strings, so it can never carry this work however recently it started. The repo-built server is
 `nodegx`, which is unbound — `create_project` is the door, and it binds ONCE per process.
+
+## What session 9 built — CMP-007, the LAST owner-NONE gap in §7
+
+s9 was a `/clear` told *"continue phase 85"*, so it is disqualified from CMP-002 by the first line of
+this file — and it MEASURED the second disqualifier rather than inheriting it: its CLI pid is
+**`89837`, started 2026-09-10 14:26:46, the same process as s7 and s8**, and
+`list_examples({query: 'badge'})` returned a CTA band instead of `comp-variant-badge-states`. A stale
+server, exactly as predicted. The CMP-006 AC3 replay needs two server variants and hits the same wall.
+
+So it took §7's remaining 🔴 owner-NONE row, and it was §2's shape for the SIXTH time: **the answer
+existed on both sides and reached neither.** `export_to_library` collected the `var(--token)` names a
+part reads and put them in its response and its README — one agent on one turn, and a human. Neither
+reaches the project that installs the part, which is the only place the answer can be acted on.
+`install_prefab` named components, styles, assets and modules and said **nothing about tokens**.
+
+🔴 **Not carrying overrides was correct and stays** — it is CMP-004 AC4's whole mechanism. The hole
+it left is a token project B never DEFINED: `var(--brand-accent)` with no such token is an unset
+property, not an error, so the part installs, reports success, and draws the wrong colour.
+
+🔴 **A THIRD OF THE FIX WAS DELETED BY THE ARTEFACTS.** The obvious first move — write `tokens` into
+`library.json` so the record outlives the response — was built, passed its spec, and then refused
+twice: `scripts/library/schema.json` is `additionalProperties: false` so `library:check` rejects the
+key, and `build.js` copies a FIXED key set into `index.json` so nothing downstream would read it. An
+inert field whose only reader was the test asserting it — **and that schema's own `runtimeVersion`
+description already records the trap in those words.** Both paths derive from the graph instead,
+which is also the only thing that works for the 45 entries already on the shelf.
+
+## 🔴 s9's trap, and it is the one worth carrying forward
+
+**The gate had to be built on an INVENTED token, because the corpus reads zero.** Counted first:
+18 of 45 shelf entries read tokens, 29 distinct names, and **0 of the 29 are outside
+`DEFAULT_TOKENS`**. A gate written against the shipped shelf reads "0 unresolved" before the fix and
+after it — both arms zero, grading nothing. The defect lives on the path CMP-004 AC4 opened, where a
+part is exported from a project that invented tokens via `set_project_tokens`. The zero is kept as a
+labelled MEASUREMENT rather than dressed as a gate, so the day a first-party prefab reads an invented
+token the number moves and somebody looks at it.
+
+⚠️ **Arm C is the arm that mattered**: an install that trusted `library.json` instead of the graph
+passes **every other spec in the file** and reports nothing for all 45 shipped entries — an absence
+indistinguishable from a pass, on exactly the entries most likely to be installed.
 
 ## What session 8 built — CMP-006, promoted from §7's owner-NONE gap
 
@@ -135,6 +180,24 @@ overturning it wants a replay, not an opinion. Arm D holds that line on purpose.
   port — do not reintroduce them), and **a session that has read this phase cannot grade a build of
   it**.
 
+## Numbers, measured 2026-09-11 at `f89f805ab` + s9's work
+
+- `npx jest` in `packages/noodl-mcp`: **5 failed / 1555 passed / 1560 total, EXIT=1.**
+  ✅ **Delta reconciles: 1540 (s8) + 11 + 9 = 1560** — the 11 are `fld011ParallelTabs.test.ts`, added
+  by **P84's `01ea605cc` AFTER s8 wrote its number**; the 9 are CMP-007's. Reds: s7/s8's two
+  pre-existing `*Drive` suites, plus **`projectOwnsBackend.test.ts`, which passes 12/12 in
+  isolation** — it provisions real backend processes and races under a full parallel run.
+- `npx tsc --noEmit -p packages/noodl-mcp`: **0 lines, EXIT=0.**
+- `npm run library:check`: **75/75 clean, EXIT=0** — the gate the deleted field would have broken.
+- `toolDisclosure.test.ts`: **18/18, 8272 / 8 under — UNCHANGED.** `install_prefab`,
+  `get_library_entry` and `export_to_library` are all in the DEFERRED `explore` group, so their
+  descriptions and responses cost **zero** resident tokens. Measured before and after.
+- Five control arms, **9 of 9 tests running in every arm**, both sources restored **md5-identical**.
+- `dist/noodl-mcp.cjs` rebuilt **10:09:15**, five anchors present (the four below plus
+  *"set_project_tokens, or repoint those parameters"*).
+- ⚠️ **`test:ci` NOT run** — s9 touched only `packages/noodl-mcp` and `dev-docs`. **NOT PUSHED** —
+  Richard's standing decision.
+
 ## Numbers, measured 2026-09-11 at `8898a7171` + s8's work
 
 - `npx jest` in `packages/noodl-mcp`: **3 failed / 1537 passed / 1540 total, EXIT=1.** The three reds
@@ -160,9 +223,14 @@ overturning it wants a replay, not an opinion. Arm D holds that line on purpose.
 3. CMP-006 AC3, **if and only if** you are willing to build the replay: same brief, two servers, one
    with `antiPatterns` on the default, graded on whether the built graph avoids the named
    anti-patterns. Not on token count.
-4. Still owner NONE, untouched: **`install_prefab` never carries design-token overrides** (§7, first
-   bullet) — a part built against a token project A invented falls back to `DEFAULT_TOKENS` in project
-   B and renders the wrong colour without reporting anything.
+4. ✅ **§7 HAS NO OWNER-NONE ROW LEFT.** s8 took the second (CMP-006), s9 took the first (CMP-007).
+   The one thing s9 left behind, and it is a NEW owner-NONE row rather than a leftover: **a person
+   clicking Install in the EDITOR still gets no token warning** — that path is
+   `views/ImportFlow`, not `install_prefab`, so CMP-007's answer stops one UI short of the human.
+   Same answer, different door; it belongs to whoever next touches that flow.
+   🔴 **So a session that cannot run CMP-002 no longer has a promotable gap to fall back on.** The
+   honest options are the editor-side row above, the CMP-006 AC3 replay (needs two servers, so it
+   needs a session whose CLI process is its own), or waiting for Richard.
 
 ### Needs Richard, not the next session
 

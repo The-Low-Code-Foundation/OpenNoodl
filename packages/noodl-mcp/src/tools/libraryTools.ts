@@ -53,12 +53,25 @@ import * as path from 'path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { buildComponentV2Files, legacyNameToPath, recordKitProvenance } from '../editor-deps';
+import {
+  buildComponentV2Files,
+  buildEffectiveTokens,
+  legacyNameToPath,
+  readStoredTokens,
+  recordKitProvenance
+} from '../editor-deps';
 import type { LegacyComponent, StylesV2File } from '../editor-deps';
 import { ToolError } from '../errors';
 import type { ComponentFiles } from '../graph';
 import { refreshProjectOverlay } from '../kitOverlay';
-import { planEntry, SLUG_PATTERN, writeEntry, type EntryPlan, type HardcodedColour } from '../libraryExport';
+import {
+  entryTokens,
+  planEntry,
+  SLUG_PATTERN,
+  writeEntry,
+  type EntryPlan,
+  type HardcodedColour
+} from '../libraryExport';
 import {
   entryModuleDirs,
   listShelf,
@@ -94,6 +107,13 @@ export interface GetLibraryEntryResponse {
   components: string[];
   /** Code module directories the entry ships under noodl_modules/. */
   modules: string[];
+  /**
+   * CMP-007 — the design tokens the entry's graph reads, so an agent can see
+   * what a part expects of a theme BEFORE installing it. Derived from the
+   * shipped graph on every call; `library.json` records nothing about tokens,
+   * deliberately — see the note on `entryTokens`.
+   */
+  tokens: string[];
   /** The entry's README — post-install configuration, when it has one (FH-023). */
   readme?: string;
   note: string;
@@ -114,6 +134,13 @@ export interface InstallPrefabResponse {
   modulesSkipped: string[];
   /** A shipped kit that failed to load in the overlay refresh — absent when none. */
   kitLoadFailures?: Array<{ module: string; message: string }>;
+  /**
+   * CMP-007 — tokens the installed graph reads that THIS project does not
+   * define. They resolve against nothing: `var(--x)` with no `--x` on `:root` is
+   * an unset property, not an error, so the part installs, reports success and
+   * draws the wrong colour. Absent when every token resolves.
+   */
+  tokensUnresolved?: string[];
   next: string;
 }
 
@@ -232,6 +259,7 @@ export function registerLibraryTools(
 
       const readmePath = path.join(entry.entryDir, 'README.md');
       const readme = fs.existsSync(readmePath) ? fs.readFileSync(readmePath, 'utf8') : undefined;
+      const graphTokens = entryTokens(entry.entryDir);
 
       const payload: GetLibraryEntryResponse = {
         slug: entry.slug,
@@ -245,6 +273,7 @@ export function registerLibraryTools(
         ...(entry.meta.runtimeVersion ? { runtimeVersion: entry.meta.runtimeVersion } : {}),
         components: sourceComponentNames(entry),
         modules: entryModuleDirs(entry),
+        tokens: graphTokens,
         ...(readme ? { readme } : {}),
         note: options.allowWrites
           ? `install_prefab({slug: "${entry.slug}"}) installs this into the bound project.`
@@ -372,6 +401,22 @@ export function registerLibraryTools(
         }
       }
 
+      // ── CMP-007 — the tokens this project cannot resolve ─────────────────────
+      //
+      // Tokens travel by NAME on purpose (CMP-004 AC4), and that is what makes an
+      // installed part adopt project B's look instead of dragging project A's
+      // palette along. The gap that mechanism leaves is a token project B has
+      // never DEFINED: it resolves against nothing, silently, and the part draws
+      // an unset colour while the install reports success.
+      //
+      // 🔴 Read from the installed GRAPH, not from `library.json` — all 45
+      // entries on the shipped shelf predate that field, so the metadata path
+      // would report "no tokens" for exactly the entries most likely to be
+      // installed. The list is a REPORT, never a refusal: a part whose tokens do
+      // not all resolve still renders, and still installs.
+      const effectiveTokens = buildEffectiveTokens(readStoredTokens(store.designTokenMetaSource()));
+      const tokensUnresolved = entryTokens(entry.entryDir).filter((name) => !effectiveTokens.has(name));
+
       const payload: InstallPrefabResponse = {
         slug: entry.slug,
         type: entry.type,
@@ -385,7 +430,8 @@ export function registerLibraryTools(
         modulesInstalled,
         modulesSkipped,
         ...(kitLoadFailures ? { kitLoadFailures } : {}),
-        next: nextGuidance(entry, componentsInstalled, modulesInstalled)
+        ...(tokensUnresolved.length > 0 ? { tokensUnresolved } : {}),
+        next: nextGuidance(entry, componentsInstalled, modulesInstalled, tokensUnresolved)
       };
       return jsonResult(payload);
     })
@@ -622,7 +668,12 @@ function writeJsonAtomic(file: string, data: unknown): void {
   fs.renameSync(tmp, file);
 }
 
-function nextGuidance(entry: ResolvedEntry, componentsInstalled: string[], modulesInstalled: string[]): string {
+function nextGuidance(
+  entry: ResolvedEntry,
+  componentsInstalled: string[],
+  modulesInstalled: string[],
+  tokensUnresolved: string[]
+): string {
   const parts: string[] = [];
   if (componentsInstalled.length > 0) {
     parts.push(
@@ -631,6 +682,18 @@ function nextGuidance(entry: ResolvedEntry, componentsInstalled: string[], modul
   }
   if (modulesInstalled.length > 0) {
     parts.push('The module\'s node types are in the catalog now — list_node_types finds them.');
+  }
+  // CMP-007. Named before the README line and before validate_project, because
+  // this is the one thing in the response that will not surface as a visible
+  // failure anywhere else — the part renders, it just renders wrong.
+  if (tokensUnresolved.length > 0) {
+    parts.push(
+      `This part reads ${tokensUnresolved.length} design ${tokensUnresolved.length === 1 ? 'token' : 'tokens'} ` +
+        `this project does not define (${tokensUnresolved.join(', ')}), so ${tokensUnresolved.length === 1 ? 'it resolves' : 'they resolve'} ` +
+        'to nothing and the part will draw the wrong colour without reporting anything. Define ' +
+        'them with set_project_tokens, or repoint those parameters at tokens this project has ' +
+        '(get_style_vocabulary lists them).'
+    );
   }
   const readme = fs.existsSync(path.join(entry.entryDir, 'README.md'));
   if (readme) {

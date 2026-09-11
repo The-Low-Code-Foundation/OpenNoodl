@@ -148,6 +148,7 @@ format set a **moment.js pattern this node cannot read** — validating clean, t
 | [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅** (step 3 of THE ORDER) · **AC4 ✅** (`export_to_library`, step 4) · **AC2 ✅ s4** — `list_library({query})` · **AC3 ✅ 2026-09-10 (s5)** — three exported parts, and `size` on every row instead of a label. **AC5 open** (graded inside CMP-002) |
 | [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | ✅ **CLOSED 2026-09-10.** AC1–AC4 (s4) — the decision, **13 new tokens**, a `Locale` port, byte-identity for the eight that shipped. **AC5 (s5)** — the exported `format-date` entry, its presets rendered through the real node, and the two date answers naming each other |
 | [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md) | The authored `patterns`/`antiPatterns` reached the editor's panel and never the agent. Relay them | **AC1 ✅ AC2 ✅ 2026-09-11 (s8)** — `detail: "full"` relays both verbatim, armed by 5 specs over the wire and 4 control arms; the resident surface came out **3 tokens cheaper** than before the work · **AC3 open** — whether the DEFAULT should carry `antiPatterns` needs a phase-55-style replay, not a ruling |
+| [CMP-007](CMP-007-THE-TOKEN-THAT-RESOLVES-TO-NOTHING.md) | A part reads a token the installing project never defined: it resolves to nothing, renders the wrong colour, and the install reports success. Say so | ✅ **CLOSED 2026-09-11 (s9).** `install_prefab` names `tokensUnresolved` and tells the agent to `set_project_tokens`; `get_library_entry` relays what a part expects before install. 9 specs, 5 control arms, **zero** resident-token cost (deferred group). 🔴 A third of the fix was DELETED — `library.json` is `additionalProperties:false` and `build.js` publishes a fixed key set, so the record would have been an inert field. 🔴 The gate is built on an INVENTED token: **0 of the 29 tokens the shipped shelf reads are outside `DEFAULT_TOKENS`** |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
 ## 6. Instruments
@@ -164,13 +165,22 @@ task file**, because the pass that produced them was never committed. One was a 
 
 ## 7. Known gaps, owner NONE
 
-- ⚠️ **`install_prefab` never carries design-token OVERRIDES, and `export_to_library` never writes
-  them.** Tokens travel by name and resolve against the installing project's theme, which is the
-  behaviour CMP-004 AC4 wants — but a part built against a token project A *invented*
-  (`nodegx.project.json → metadata.designTokens`) falls back to the shipped `DEFAULT_TOKENS` in
-  project B rather than reporting anything. It renders; it may render the wrong colour. The export
-  lists the tokens a part reads, in the response and in the generated README, which is as far as
-  either side can go without deciding whose theme wins. Found 2026-09-10 building AC4.
+- ✅ **CLOSED 2026-09-11 (s9) as [CMP-007](CMP-007-THE-TOKEN-THAT-RESOLVES-TO-NOTHING.md).** Not
+  carrying overrides was correct and stays — it is CMP-004 AC4's whole mechanism. The hole it left
+  was the **silence**: a token project B never defined resolves to nothing, so the part installed,
+  reported success and drew the wrong colour. `install_prefab` now names the tokens this project
+  cannot resolve (`tokensUnresolved` + a `next` naming `set_project_tokens`), and
+  `get_library_entry` relays what a part expects before it is installed. 🔴 **A third of the fix was
+  DELETED by the artefacts**: writing `tokens` into `library.json` fails `library:check`
+  (`additionalProperties: false`) and reaches no consumer (`build.js` publishes a fixed key set) —
+  the inert-field trap that schema's own `runtimeVersion` note already records. Both paths derive
+  from the graph instead, which is also the only thing that works for the **45 entries already on
+  the shelf, 0 of which carry such a field**. 🔴 **The defect is invisible on the first-party shelf**
+  — 18 of 45 entries read tokens, 29 distinct, **0 outside `DEFAULT_TOKENS`** — so the gate is built
+  on an invented token minted through `set_project_tokens`, not on the corpus. Found 2026-09-10
+  building AC4.
+  ⚠️ **Still open, one UI away:** a person clicking Install in the EDITOR goes through
+  `views/ImportFlow`, not this tool, and still gets no warning. Owner NONE.
 
 - ✅ **CLOSED 2026-09-11 (s8) as [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md).**
   `get_node_type` emitted neither `patterns` nor `antiPatterns` at any detail level; `detail: "full"`
