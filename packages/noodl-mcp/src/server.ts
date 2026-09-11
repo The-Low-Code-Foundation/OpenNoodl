@@ -38,6 +38,7 @@ import { registerReviewTools } from './tools/review';
 import { registerListProjectsTools } from './tools/listProjects';
 import { registerExportReactTools } from './tools/exportReact';
 import { registerOpenInEditorTools } from './tools/openInEditor';
+import { registerSessionStatusTools } from './tools/sessionStatus';
 import { registerKitTools } from './tools/kitTools';
 import { registerLibraryTools } from './tools/libraryTools';
 import { registerLessonTools } from './tools/lessonTools';
@@ -176,6 +177,13 @@ export function createServer(options: ServerOptions): CreatedServer {
   // when "put it on screen for me" is asked. It is deferred (the `project` group), so it costs
   // nothing resident; see the manifest note for why that placement and not a resident one.
   registerOpenInEditorTools(rec);
+  // FLD-010. Beside HLS-009 because it is the same transport and the same subject — the editor
+  // process, not this server's project — and registered in both modes for a stronger reason than
+  // `open_in_editor`'s: on a read-only server this is pure observation, and on a read-write one it
+  // is the call that stops an agent writing over somebody. Appended to the same deferred `project`
+  // group, so it costs **0** resident tokens; see the manifest note. Resident was not available at
+  // any price — the surface had 8 tokens of headroom and a resident tool costs its whole schema.
+  registerSessionStatusTools(rec);
   // HLS-008. Registered in BOTH modes, deliberately, and it is worth saying why on a server
   // started `--read-only`: an export writes to a folder the caller names, outside the project, and
   // reads the project without touching it. The flag protects the *project* from an agent, and

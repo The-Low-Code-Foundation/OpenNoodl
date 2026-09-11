@@ -4,6 +4,37 @@
 Read [README.md](./README.md) first — §2 carries the rulings. ✅ **All six R-rulings are
 answered.** Only **P25** (a token budget) and a **Linux box** still gate anything.
 
+✅ **SESSION 18 BUILT FLD-010 — 🟢, 5 of 5 ACs.** `session_status` — an MCP tool that asks the
+running editor whether a person has a project open and is mid-edit. Driven in the real editor
+(`attached` / `/App` / `unsavedBuffers` **true → false** naming `Site/FaqRow`, with a no-edit
+negative control reading false→false) and against the real relay in 13 spec arms; **7 mutants armed
+and all 7 caught**. Read [FLD-010-WHAT-WAS-BUILT.md](./FLD-010-WHAT-WAS-BUILT.md).
+**Board re-derived from the task FILES: 15 built / 1 partly / 1 never** — and the one never built
+is **FLD-014, gated on P25**.
+
+🔴 **THE UNGATED PILE IS NOW EMPTY, and this time it is the end of the buildable phase rather than
+an hour's gap.** FLD-014 needs **P25** (a token budget — engineering, not a call) and FLD-016 needs
+**a Linux box**. Neither is a ruling, so neither can be answered by asking.
+🔴 **And the end condition is still NOT the board: #43 is the last reply owed**, and it is
+FLD-014's.
+
+🔴 **THREE of FLD-010's own claims were wrong, and the biggest would have had the task edit the
+relay.** *"The routing is wrong for this use"* is true of **broadcast** and irrelevant: `target`
+routing matches on `clientId`, ignores peer type entirely, and **HLS-009 has carried an
+agent→editor command over exactly that branch since it shipped**. The task file never mentions
+HLS-009. Following §2 instead would have meant changing the fan-out rule `nodegx-observe` rides on
+— the change §5's own trap warns about — **to reach a door that was already open**.
+`git diff -- relay-server.js` is **empty**, which is what makes AC5 true by construction.
+§3's *"register as a `viewer`-typed client"* was also wrong (a `viewer` peer appears in the editor
+as a preview arriving and leaving, dropping its export cache on the way out; `service` is the type,
+and `openInEditor.ts` already says why). **FIFTH task in five whose own file was wrong in more than
+one place** — the phase's standing instruction has now paid every single time.
+
+✅ **The token budget was measured on BOTH arms rather than reasoned about: 8,275 / 8,280 with the
+tool and 8,275 without it — 0 tokens**, appended to the deferred `project` group. ⚠️ **The baseline
+had moved**: memory recorded 8,272 / 8 free this morning, and it reads **8,275 / 5 free** now. A
+remembered baseline would have reported this task as costing 3 tokens it did not cost.
+
 ✅ **SESSION 17 BUILT FLD-003 — 🟢, 5 of 5 ACs, #22 REPLIED and CLOSED.**
 `library/prefabs/advanced-columns` — a Columns node with **four** bands instead of two, driven by a
 States node — plus the pointer to it on the node's `Small Layout` port, which reaches the panel
@@ -152,7 +183,7 @@ its reporter's own request). **Nothing in track A is buildable and nothing in it
 |---|---|---|---|---|
 | FLD-002 | The Columns node says which breakpoint it is at | #22 | 🟢 **BUILT** `4e8ce7ab5`, AC1 driven · ✅ **replied, STAYS OPEN** | — |
 | FLD-003 | Advanced Columns, as a prefab | #22 | 🟢 **BUILT** s17 — 5/5 ACs, driven in Chrome and in the editor; 6 spec mutants + 2 drive mutants · ✅ **replied + CLOSED** | — |
-| FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built — 🔴 **UNGATED, and smaller** | FLD-009 ✅, **R6 ✅ 09-11 — `session_status` only** |
+| FLD-010 | An agent can ask whether a human has the project open | #41 | 🟢 **BUILT** s18 — 5/5 ACs, driven in the editor; 13 spec arms + 7 mutants; **0 resident tokens** · ✅ **replied, issue STAYS OPEN** (its reporter's request, FLD-009) | — |
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |

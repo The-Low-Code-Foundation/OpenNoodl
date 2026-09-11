@@ -194,6 +194,27 @@ export class ViewerConnection extends Model {
       return;
     }
 
+    /**
+     * FLD-010 — an external agent asks whether a person is in here.
+     *
+     * The second inbound branch that is not `type === 'viewer'`, and it arrives the same way as
+     * `openProject` above: from a peer registered as a `service`, addressed to this window by
+     * `clientId`. The token is the authorisation — an unauthorised socket is closed by the relay
+     * before `processRequest` ever sees it — and nothing here re-checks it, for the reason
+     * spelled out above.
+     *
+     * Transport only. `models/sessionStatus` owns the reading, because answering it needs the
+     * project, the save baselines and the node graph, and importing any of those here would grow
+     * this file into the thing it deliberately is not.
+     */
+    if (request.cmd === 'sessionStatus') {
+      EventDispatcher.instance.emit('ViewerConnection.sessionStatusRequested', {
+        requestId: request.requestId,
+        replyTo: request.clientId
+      });
+      return;
+    }
+
     // A new viewer is connected
     if (request.cmd === 'registered' && request.type === 'viewer') {
       WarningsModel.instance.clearWarningsForRefMatching((ref) => ref.isFromViewer);
@@ -632,6 +653,19 @@ export class ViewerConnection extends Model {
   sendOpenProjectResult(replyTo: string, requestId: string, result: unknown) {
     if (!replyTo) return;
     this.send({ cmd: 'openProjectResult', target: replyTo, requestId, content: JSON.stringify(result) });
+  }
+
+  /**
+   * FLD-010 — this window's answer to `sessionStatus`, addressed back to the peer that asked.
+   *
+   * ⚠️ **`target`, never a broadcast**, for the same reason as `sendOpenProjectResult`: an
+   * untargeted reply from an editor peer fans to every *preview* attached to this relay and to
+   * no agent at all. It also means the answer — which names the open project and the component
+   * the person is on — is delivered to exactly one socket rather than to every viewer.
+   */
+  sendSessionStatusResult(replyTo: string, requestId: string, result: unknown) {
+    if (!replyTo) return;
+    this.send({ cmd: 'sessionStatusResult', target: replyTo, requestId, content: JSON.stringify(result) });
   }
 
   sendGetPortValues(clientId: string, ports: Array<{ node: string; port: string; direction: 'input' | 'output' }>) {

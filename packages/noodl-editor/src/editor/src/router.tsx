@@ -13,6 +13,7 @@ import { AiAssistantModel } from '@noodl-models/AiAssistant';
 import { ProjectModel } from '@noodl-models/projectmodel';
 
 import { installExternalProjectOpen } from './models/externalProjectOpen';
+import { installSessionStatus } from './models/sessionStatus';
 import { AppRoute } from './pages/AppRoute';
 import { AppRouteOptions, AppRouter } from './pages/AppRouter';
 import { EditorPage } from './pages/EditorPage';
@@ -136,6 +137,14 @@ export default class Router
     // cannot be done from a model. Once, in the constructor, for the life of the window — the
     // subscription has no other lifetime, and there is exactly one router.
     installExternalProjectOpen(this);
+
+    // FLD-010 — and it can ask whether a person is in here and mid-edit.
+    //
+    // Beside HLS-009 rather than inside a model, for the same "once, for the life of the window"
+    // reason and no other: unlike the open request this one needs nothing from the router, so it
+    // takes no argument. If a second once-per-window install site is ever built, this belongs
+    // there and `installExternalProjectOpen` does not.
+    installSessionStatus();
 
     PopupLayer.instance = new PopupLayer();
     document.body.appendChild(PopupLayer.instance.render());

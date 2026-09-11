@@ -128,6 +128,22 @@ export class ProjectStructureService {
   private seededProjectDir: string | undefined;
 
   /**
+   * FLD-010 — which project the baselines currently describe, or `undefined` for none.
+   *
+   * 🔴 **Read this before believing a per-component dirty comparison.** The baselines are a
+   * module singleton and they are re-seeded lazily, so between opening a project and its first
+   * save they may still describe the *previous* one. A caller that diffs in-memory hashes
+   * against them without checking would report every component in the new project as unsaved —
+   * which for `session_status` is the exact failure §5 names: a status tool that lies.
+   *
+   * Exposed rather than the map itself: the guard is the directory, and a caller has no
+   * business reading or holding the hashes.
+   */
+  get baselineProjectDirectory(): string | undefined {
+    return this.seededProjectDir;
+  }
+
+  /**
    * Drops baselines that describe a different project, so a save is never diffed
    * against another project's files.
    *

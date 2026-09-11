@@ -2033,3 +2033,21 @@ export function flushPendingProjectSave(): Promise<void> {
     }
   });
 }
+
+/**
+ * FLD-010 — is there an edit in memory that has not reached disk?
+ *
+ * The same flag {@link flushPendingProjectSave} reads, exported so `session_status` can answer
+ * an agent's "is the person mid-edit?" from the editor's own state rather than from a guess.
+ *
+ * ⚠️ **Read-only, and deliberately not a lock.** R6 ruled the advisory lock out: FLD-009 already
+ * refuses to reload over a dirty buffer, so what an agent needs is the *fact*, not a protocol.
+ *
+ * ⚠️ `true` means "armed and not yet landed", which deliberately outlives the debounce timer —
+ * see the note on `savePending` itself. It is therefore the conservative answer of the two: it
+ * stays true across the second between an edit and its write, which is exactly the window an
+ * agent must not race.
+ */
+export function hasPendingProjectSave(): boolean {
+  return savePending;
+}

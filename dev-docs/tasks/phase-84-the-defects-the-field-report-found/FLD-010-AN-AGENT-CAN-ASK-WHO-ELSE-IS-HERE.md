@@ -1,5 +1,24 @@
 # FLD-010 — An agent can ask whether a human has the project open
 
+🟢 **BUILT 2026-09-11 (s18) — 5 of 5 ACs.** `session_status`, an MCP tool that asks the running
+editor whether a person has a project open and is mid-edit. Driven in the real editor (attached /
+`/App` / `unsavedBuffers true → false` naming `Site/FaqRow`, with a no-edit negative control) and
+against the real relay in 13 spec arms, 7 mutants armed and caught. **0 resident tokens**, measured
+on both arms. Read [FLD-010-WHAT-WAS-BUILT.md](./FLD-010-WHAT-WAS-BUILT.md).
+
+🔴 **THREE of this file's own claims below are WRONG — §2's routing claim, §3's peer type, and
+§2's field name — and the routing one would have had this task edit the relay to reach a door
+HLS-009 opened months ago.** They are left in place, not corrected, so the next reader can see what
+a task file cost; the measurements that replace them are in §1 of the record above. **No relay
+change was made: `git diff -- relay-server.js` is empty, which is what makes AC5 true by
+construction.**
+
+**R6 is recorded as answered, and the reason is not re-proposable:** the advisory lock in §3 was
+ruled OUT on 2026-09-11 because FLD-009 already refuses to reload over a dirty buffer and re-reads
+before autosaving. A lock the editor honours and a guard the editor applies are the same
+protection; the guard is built, cannot go stale, and needs no release. What was missing was not a
+lock but a *reading*, and that is what shipped.
+
 The feature half of #41. Gated on **R6**, because the measured answer is that the lock the issue
 asks for is largely unnecessary once FLD-009 lands.
 

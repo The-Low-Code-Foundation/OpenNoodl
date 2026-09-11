@@ -422,6 +422,17 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
     // mention exporting, so a model browsing group purposes will not meet it. The keywords are the
     // door — 'export', 'react', 'ship', 'deploy', 'host' and 'hand over' all reach it — and
     // `tests/hls008ExportReact.test.ts` opens that door rather than assuming it opens.
+    // FLD-010 — `session_status` is appended here on the same arithmetic, and this time the
+    // arithmetic was MEASURED on both arms rather than reasoned about: the resident surface reads
+    // **8,275 of 8,280 with the tool and 8,275 without it** (2026-09-11, `toolDisclosure.test.ts`'s
+    // own `[surface]` line, the manifest and the registration swapped for their `HEAD` copies and
+    // restored md5-identical). **0 tokens**, against 5 of headroom — resident would have cost its
+    // whole schema and was not available at any price.
+    //
+    // ⚠️ **Same cost as the two above, and the same thing paid for it:** `purpose` does not mention
+    // the editor or a person, so a model browsing group purposes will not meet this tool. The
+    // keywords are the door — 'session', 'who', 'unsaved', 'conflict' and 'is anyone' were added
+    // for it, and keywords are matched server-side and never sent, so they cost 0 too.
     keywords: [
       'kit',
       'custom node',
@@ -435,7 +446,12 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
       'ship',
       'deploy',
       'host',
-      'hand over'
+      'hand over',
+      'session',
+      'who',
+      'unsaved',
+      'conflict',
+      'is anyone'
     ],
     tools: [
       'list_projects',
@@ -444,7 +460,8 @@ export const TOOL_GROUPS: readonly ToolGroup[] = Object.freeze([
       'get_import_report',
       'create_node_kit',
       'open_in_editor',
-      'export_react'
+      'export_react',
+      'session_status'
     ],
     resident: false
   },
