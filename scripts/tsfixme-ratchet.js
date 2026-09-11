@@ -18,6 +18,10 @@
  * satisfied by trading one for another: swapping `TSFixme` for a bare `any` or
  * silencing the error with `@ts-ignore` fails just the same.
  *
+ * Since REL-020 the counts are also split by POPULATION — shipped source and
+ * test code ratchet against their own baselines. See `POPULATIONS` below for
+ * why, and note that neither population is exempt: both may fall, never rise.
+ *
  * Counting is done with the TypeScript parser rather than grep. Grep cannot
  * tell `any` the keyword from `any` in a comment, a string, or the middle of
  * "company", and it miscounts JSX and regex literals. The parser is exact, and
@@ -50,11 +54,80 @@ const SKIP_DIRS = new Set(['node_modules', 'dist', 'out', 'coverage', '.git', '.
 /** The kinds we count, in report order. */
 const KINDS = ['TSFixme', 'any', '@ts-ignore', '@ts-nocheck', '@ts-expect-error'];
 
+/**
+ * The two populations, ratcheted separately (REL-020).
+ *
+ * A marker in shipped source and a marker in a spec are not the same debt. In
+ * `src` a `TSFixme` is a type nobody has worked out yet and it rides into the
+ * product. In a spec it is usually a deliberately partial fixture or a stub
+ * cast to the interface it stands in for — writing the full type would make the
+ * test harder to read without making it check more.
+ *
+ * They were one number until 2026-09-11, and the consequence was that the gate
+ * could not be held: 503 of the 664 markers that had accumulated were in test
+ * files, so the honest signal about shipped source (159) was buried under drift
+ * nobody intended to pay down, and `Lint` had been red for weeks. Two baselines
+ * keep full teeth where they bite and stop a mock blocking a release.
+ *
+ * 🔴 This is NOT an exemption. `tests` is still a ratchet — it may fall, never
+ * rise — it simply starts from where the tests actually are.
+ */
+const POPULATIONS = ['src', 'tests'];
+
+/**
+ * Directory segment names that make a file part of the `tests` population.
+ *
+ * Matched as whole path SEGMENTS, never as substrings: `spec` as a substring
+ * classifies `views/InspectJSONView/…` as a test, which is how a denominator
+ * quietly shrinks. Derived from the names that actually exist under the roots
+ * (`tests`, `test`, `tests-unit`, `testfs`) rather than from a guess at the
+ * conventions a JS repo might use.
+ */
+const TEST_DIRS = new Set(['tests', 'test', 'tests-unit', 'testfs', '__tests__', '__mocks__']);
+
+/** `src` or `tests` — which ratchet a file is counted against. */
+function populationOf(relPath) {
+  const segments = relPath.split('/');
+  if (segments.slice(0, -1).some((segment) => TEST_DIRS.has(segment))) return 'tests';
+  if (/\.(test|spec)\.tsx?$/.test(segments[segments.length - 1])) return 'tests';
+  return 'src';
+}
+
 // -- discovery ---------------------------------------------------------------
 
-/** Every .ts/.tsx file under `roots`, sorted, repo-relative, POSIX separators. */
+/**
+ * The tracked `.ts`/`.tsx` files, as a Set of repo-relative POSIX paths — or
+ * `null` if git cannot answer (a tarball, a broken checkout).
+ *
+ * CI counts a fresh checkout, where every file is tracked. A developer's tree
+ * also carries untracked scratch work, and counting it means the local gate and
+ * the CI gate measure different populations — the local one failing on files
+ * that will never reach the repo. Worse, `--update` would write those markers
+ * into the baseline, which claims to describe a specific `commit`, and they
+ * would stay in the budget after the scratch directory was deleted.
+ *
+ * Modified *tracked* files are still counted: they are real edits on real
+ * files, and `dirtySources()` warns about them separately at `--update` time.
+ */
+function trackedSourceFiles() {
+  try {
+    const out = require('child_process').execSync('git ls-files -z -- "*.ts" "*.tsx"', {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    const files = out.split('\0').filter(Boolean);
+    return files.length ? new Set(files) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Every tracked .ts/.tsx file under `roots`, sorted, repo-relative, POSIX separators. */
 function findSourceFiles(roots, exclude = []) {
   const excluded = new Set(exclude);
+  const tracked = trackedSourceFiles();
   const files = [];
 
   function walk(dir) {
@@ -71,6 +144,7 @@ function findSourceFiles(roots, exclude = []) {
       if (entry.isDirectory()) {
         if (!SKIP_DIRS.has(entry.name)) walk(full);
       } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
+        if (tracked && !tracked.has(rel)) continue;
         files.push(rel);
       }
     }
@@ -135,10 +209,12 @@ function countFile(relPath) {
   return counts;
 }
 
-/** Count every file, returning totals, per-file and per-package breakdowns. */
+/** Count every file, returning per-population totals, per-file and per-package breakdowns. */
 function countAll(roots, exclude) {
   const files = findSourceFiles(roots, exclude);
-  const totals = Object.fromEntries(KINDS.map((kind) => [kind, 0]));
+  const totals = Object.fromEntries(
+    POPULATIONS.map((population) => [population, Object.fromEntries(KINDS.map((kind) => [kind, 0]))])
+  );
   const byFile = {};
   const byPackage = {};
 
@@ -148,7 +224,8 @@ function countAll(roots, exclude) {
     if (sum === 0) continue;
 
     byFile[file] = counts;
-    for (const kind of KINDS) totals[kind] += counts[kind];
+    const population = populationOf(file);
+    for (const kind of KINDS) totals[population][kind] += counts[kind];
 
     // Group by workspace package, but keep non-package roots (`scripts/`)
     // whole — splitting those on the second segment names a file, not a group.
@@ -201,8 +278,12 @@ function writeReport(result, commit) {
     '## Totals',
     '',
     formatTable(
-      KINDS.map((kind) => [`\`${kind}\``, result.totals[kind]]),
-      ['Marker', 'Count']
+      KINDS.map((kind) => [
+        `\`${kind}\``,
+        ...POPULATIONS.map((population) => result.totals[population][kind]),
+        POPULATIONS.reduce((acc, population) => acc + result.totals[population][kind], 0)
+      ]),
+      ['Marker', ...POPULATIONS, 'Total']
     ),
     '',
     '## By package',
@@ -267,14 +348,30 @@ function main() {
 
   const result = countAll(baseline.targets, baseline.exclude);
 
+  // The baseline carried one flat `max` until REL-020 split it. An old file
+  // against this script would read every budget as 0 and fail the whole repo
+  // with a number nobody could act on, so say what is wrong instead.
+  //
+  // Not on the `--update` path: that is the command this message tells you to
+  // run, and refusing it there would make the advice impossible to follow.
+  if (!update && POPULATIONS.some((population) => !baseline.max[population])) {
+    console.error(`✗ ${path.relative(ROOT, BASELINE_PATH)} predates the src/tests split (REL-020).`);
+    console.error('  Regenerate it with `npm run tsfixme:baseline` on a clean tree.\n');
+    return 1;
+  }
+
   console.log(`Scanned ${result.scanned} .ts/.tsx files under ${baseline.targets.join(', ')}\n`);
-  const rows = KINDS.map((kind) => {
-    const count = result.totals[kind];
-    const max = baseline.max[kind] ?? 0;
-    const delta = count - max;
-    return [kind, count, max, delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '='];
-  });
-  console.log(formatTable(rows, ['Marker', 'Count', 'Baseline', 'Delta']));
+  const rows = KINDS.flatMap((kind) =>
+    POPULATIONS.map((population) => {
+      const count = result.totals[population][kind];
+      // Tolerant of the pre-split shape so `--update` can still print a table
+      // on the run that migrates the file.
+      const max = (baseline.max[population] || {})[kind] ?? 0;
+      const delta = count - max;
+      return [kind, population, count, max, delta > 0 ? `+${delta}` : delta < 0 ? String(delta) : '='];
+    })
+  );
+  console.log(formatTable(rows, ['Marker', 'Population', 'Count', 'Baseline', 'Delta']));
   console.log('');
 
   if (report) writeReport(result, headCommit());
@@ -297,26 +394,40 @@ function main() {
       byFile: result.byFile
     };
     fs.writeFileSync(BASELINE_PATH, JSON.stringify(next, null, 2) + '\n');
-    console.log(`Baseline updated to ${sumOf(result.totals)} markers.`);
+    const written = POPULATIONS.map((p) => `${p} ${sumOf(result.totals[p])}`).join(', ');
+    console.log(`Baseline updated: ${written}.`);
     return 0;
   }
 
-  const risen = KINDS.filter((kind) => result.totals[kind] > (baseline.max[kind] ?? 0));
+  // A pair, not a kind: the same marker may hold in `src` and rise in `tests`,
+  // and reporting only the kind would send the reader to the wrong files.
+  const risen = POPULATIONS.flatMap((population) =>
+    KINDS.filter((kind) => result.totals[population][kind] > (baseline.max[population][kind] ?? 0)).map((kind) => ({
+      population,
+      kind
+    }))
+  );
   if (risen.length) {
-    console.error(`✗ ${risen.map((k) => `${k} rose by ${result.totals[k] - (baseline.max[k] ?? 0)}`).join(', ')}.`);
+    const described = risen
+      .map(({ population, kind }) => `${kind} rose by ${result.totals[population][kind] - (baseline.max[population][kind] ?? 0)} in ${population}`)
+      .join(', ');
+    console.error(`✗ ${described}.`);
     console.error('  These counts may go down, never up.\n');
 
+    const risenPopulations = new Set(risen.map((entry) => entry.population));
     const worse = Object.entries(result.byFile)
+      .filter(([file]) => risenPopulations.has(populationOf(file)))
       .map(([file, counts]) => {
         const before = baseline.byFile[file] || {};
-        return [file, risen.reduce((acc, kind) => acc + counts[kind] - (before[kind] ?? 0), 0)];
+        const kinds = risen.filter((entry) => entry.population === populationOf(file));
+        return [file, kinds.reduce((acc, { kind }) => acc + counts[kind] - (before[kind] ?? 0), 0)];
       })
       .filter(([, delta]) => delta > 0)
       .sort((a, b) => b[1] - a[1]);
 
     if (worse.length) {
       console.error('Files that grew since the baseline:');
-      for (const [file, delta] of worse.slice(0, 20)) console.error(`  +${delta}\t${file}`);
+      for (const [file, delta] of worse.slice(0, 20)) console.error(`  +${delta}\t${populationOf(file)}\t${file}`);
       console.error('');
     }
 
@@ -327,9 +438,16 @@ function main() {
     return 1;
   }
 
-  const fallen = KINDS.filter((kind) => result.totals[kind] < (baseline.max[kind] ?? 0));
-  if (fallen.length) {
-    const total = fallen.reduce((acc, kind) => acc + (baseline.max[kind] ?? 0) - result.totals[kind], 0);
+  const total = POPULATIONS.reduce(
+    (acc, population) =>
+      acc +
+      KINDS.reduce(
+        (inner, kind) => inner + Math.max(0, (baseline.max[population][kind] ?? 0) - result.totals[population][kind]),
+        0
+      ),
+    0
+  );
+  if (total > 0) {
     console.log(`✓ ${total} fewer marker(s) than the baseline. Lower it with \`npm run tsfixme:baseline\`.\n`);
   } else {
     console.log('✓ Holding the line.\n');
