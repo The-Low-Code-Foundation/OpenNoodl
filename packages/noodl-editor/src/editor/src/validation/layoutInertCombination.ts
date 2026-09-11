@@ -16,6 +16,15 @@
  *    at 1280×900 — and the overlap appears at *wide* viewports, where auto-fit makes narrow
  *    columns, which is the opposite of where anyone checks.
  *
+ *  - **`wired-dimension-becomes-grow`** (FLD-004, #26): a number WIRED into the `width`/`height`
+ *    that lies along the parent's own main axis. It arrives as a percentage — dimension ports
+ *    declare `defaultUnit: '%'` and `setInputValue` merges a bare number into the port's current
+ *    unit — and `layout.ts` turns a percentage on the main axis into `flexGrow`. So the number is
+ *    a ratio against growing siblings, not a length, and the box does not move. The reporter's own
+ *    sentence: *"the third state — accepted, then silently discarded — is the worst of the three."*
+ *    The SAME wire into `width` on the same node works, because a percentage on the cross axis
+ *    stays a real CSS length — which is why the discriminator is the axis and not the port.
+ *
  *  - **`justify-content-distributes-nothing`** (D32): every visual node's `width` defaults to
  *    `100%` (`node-shared-port-definitions.ts`), and `layout.ts` turns a percentage width inside
  *    a `row` parent into `flexGrow`. So growing is what a child of a row does unless something
@@ -70,6 +79,31 @@ const CONTENT_WIDTH_MODES = new Set(['contentSize', 'contentWidth']);
 
 /** `justifyContent` values that exist to distribute free space along the main axis. */
 const DISTRIBUTING = new Set(['space-between', 'space-around', 'space-evenly']);
+
+/**
+ * What a parent hands its children as `parentLayout` — the prop `layout.ts` branches on.
+ *
+ * Only these four node types set `props.layout` at all (`react-component-node.ts`'s `setLayout`
+ * and its three callers). Everything else — `Columns` above all, whose children go through
+ * `column-item` and are D28's business — leaves `parentLayout` undefined, and then `layout.ts`
+ * converts NOTHING: both percentage branches are guarded on `parentLayout === 'row'|'column'`.
+ * An unlisted parent is unknowable and is skipped, never judged.
+ */
+const PARENT_MAIN_AXIS: Record<string, 'row' | 'column' | 'fromFlexDirection'> = {
+  Group: 'fromFlexDirection',
+  Page: 'column',
+  Router: 'column',
+  'net.noodl.controls.button': 'row'
+};
+
+/** The two ports `layout.ts` converts. `maxWidth`/`minWidth`/`maxHeight`/`minHeight` are NOT converted. */
+const MAIN_AXIS_PORT = { row: 'width', column: 'height' } as const;
+
+/** `sizeMode` values in which each dimension port is actually read (`Layout.size`). */
+const SIZE_MODES_READING: Record<'width' | 'height', ReadonlySet<string>> = {
+  width: new Set(['explicit', 'contentHeight']),
+  height: new Set(['explicit', 'contentWidth'])
+};
 
 /** A node as this check reads it: parameters, plus who it parents. */
 export interface LayoutNode extends ParameterizedNode {
@@ -146,6 +180,110 @@ const D32_EXIT =
   'Give every child that should hug its content sizeMode "contentSize" (or a px width) so free space exists to ' +
   'distribute — or drop justifyContent and let one growing child fill the row.';
 
+/** FLD-004's exit, and it is the one the runtime half prints too. */
+const FLD004_EXIT =
+  'Send a {value, unit} object instead of a bare number (an Expression or Function can build one), or give this ' +
+  'port a px value in the property panel first — a bare number arriving over a wire is merged into the unit the ' +
+  'port is already holding.';
+
+/**
+ * Which axis, if any, `parent` lays its children out along — the `parentLayout` prop `layout.ts`
+ * branches on. `undefined` means this parent converts nothing, so nothing here is reportable:
+ * a `Group` set to "None" positions its children absolutely, and every type outside
+ * `PARENT_MAIN_AXIS` never sets `props.layout` at all.
+ */
+function parentAxis(parent: LayoutNode, catalog: CatalogIndex): 'row' | 'column' | undefined {
+  const declared = PARENT_MAIN_AXIS[parent.type];
+  if (declared === undefined) return undefined;
+  if (declared !== 'fromFlexDirection') return declared;
+  const resolved = resolveAgainstDefaults(parent.parameters ?? {}, catalog.inputDefaults(parent.type));
+  const flexDirection = resolved['flexDirection'];
+  if (flexDirection === 'row') return 'row';
+  if (flexDirection === 'column' || flexDirection === undefined) return 'column';
+  return undefined; // "none", or a value the enum does not define
+}
+
+/**
+ * FLD-004 (#26) — a number wired into the dimension that lies along the parent's own main axis.
+ *
+ * Reported per child, from the PARENT, because the parent is where the axis is decided and a
+ * child does not know who holds it. The abstentions, each one a case where the value is NOT
+ * turned into `flexGrow` and the author is owed no message:
+ *
+ *  - the parent lays out on the other axis, or on no axis at all (see {@link parentAxis});
+ *  - the child is out of flow — `layout.ts` requires `position: relative` for the conversion;
+ *  - the child's `sizeMode` never reads that port, which is `inert-dimension`'s sentence, not
+ *    this one's, and saying both about one port is two repairs for one mistake;
+ *  - the port carries an authored value that is NOT a percentage, because then the wire's bare
+ *    number merges into THAT unit (`setInputValue`) and arrives as a real length — this is the
+ *    exit the message names, so firing on it would contradict the advice;
+ *  - the child is a component instance: its root's sizing is not in this graph.
+ *
+ * 🔴 It fires only on a CONNECTED port. The same percentage written as a parameter is the shipped
+ * idiom — `width` and `height` both default to `100%`, and on the main axis that default is how a
+ * child fills its parent — so a rule keyed on the value alone reports the whole corpus.
+ */
+function checkWiredMainAxisDimensions(
+  parent: LayoutNode,
+  byId: Map<string, LayoutNode>,
+  component: string,
+  catalog: CatalogIndex,
+  connected: ReadonlySet<string> | undefined
+): Diagnostic[] {
+  const axis = parentAxis(parent, catalog);
+  if (!axis) return [];
+  const port = MAIN_AXIS_PORT[axis];
+  const out: Diagnostic[] = [];
+
+  for (const id of parent.children ?? []) {
+    const child = byId.get(id);
+    if (!child) continue;
+    if (isComponentRef(child.type)) continue;
+    if (!connected?.has(`${child.id}::${port}`)) continue;
+    const type = catalog.getNode(child.type);
+    if (!type?.isVisual) continue;
+
+    const resolved = resolveAgainstDefaults(child.parameters ?? {}, catalog.inputDefaults(child.type));
+
+    // Out of flow: `layout.ts` converts only `position: relative`. A wired `position` is
+    // unknowable, and unknowable abstains.
+    if (connected?.has(`${child.id}::position`)) continue;
+    const position = resolved['position'];
+    if (position !== undefined && position !== 'relative') continue;
+
+    // A `sizeMode` that never reads this port is `inert-dimension`'s report, not this one's.
+    if (connected?.has(`${child.id}::sizeMode`)) continue;
+    const sizeMode = resolved['sizeMode'];
+    if (typeof sizeMode === 'string' && !SIZE_MODES_READING[port].has(sizeMode)) continue;
+
+    // The port already holding a non-percentage value is the EXIT, not the defect: the wire's
+    // bare number merges into that unit and arrives as a real length.
+    if (widthIsPercentage(resolved[port]) === false) continue;
+
+    out.push({
+      code: DiagnosticCode.WiredDimensionBecomesGrow,
+      severity: 'warning',
+      message:
+        `"${port}" on this ${child.type} is wired, and the parent stacks its children along that same axis ` +
+        `(${axis === 'row' ? 'Layout: Horizontal' : 'Layout: Vertical'}). A bare number arriving here is read as a ` +
+        `PERCENTAGE — dimension ports default to "%" — and a percentage on the parent's main axis becomes ` +
+        `flex-grow, which is a ratio against the siblings that also grow, not a ${axis === 'row' ? 'width' : 'height'}. ` +
+        `So the value arrives, the connection is live, and the box does not move. ${FLD004_EXIT}`,
+      location: {
+        component,
+        nodeId: child.id,
+        nodeType: child.type,
+        ...(child.label ? { nodeLabel: child.label } : {}),
+        port,
+        plug: 'input' as const
+      },
+      suggestion: `${port}: { "value": 400, "unit": "px" }`
+    });
+  }
+
+  return out;
+}
+
 /**
  * DEF-018 + DEF-020 — layout combinations in which a declared parameter does nothing, silently.
  */
@@ -158,6 +296,9 @@ export function checkLayoutInertCombination(
   const byId = new Map<string, LayoutNode>(nodes.map((n) => [n.id, n]));
 
   for (const node of nodes) {
+    // ── FLD-004: a number wired into the child's main-axis dimension ────────
+    diagnostics.push(...checkWiredMainAxisDimensions(node, byId, component, catalog, connectedInputs));
+
     // ── D28: a Columns child that keeps its own width ───────────────────────
     if (node.type === COLUMNS_TYPE) {
       for (const { node: child, sizeMode } of knowableChildren(node, byId, catalog, connectedInputs)) {

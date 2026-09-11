@@ -186,7 +186,12 @@ describe('DEF-020 — justify-content-distributes-nothing', () => {
 
   it('does not count a child whose width is wired, and abstains rather than fires on the strength of it', () => {
     const nodes = rowWith('space-between', [{ id: 'a' }, { id: 'b' }]);
-    expect(run(nodes, new Set(['b::width']))).toEqual([]);
+    // Asserted by CODE, not by emptiness: FLD-004's rule fires on this very graph and is right to
+    // — `b`'s width is wired into a row parent's own main axis — so `toEqual([])` would now be
+    // grading two rules at once and would have to be weakened by whichever one moved next.
+    expect(run(nodes, new Set(['b::width'])).map((d) => d.code)).not.toContain(
+      DiagnosticCode.JustifyContentDistributesNothing
+    );
   });
 
   it('does not count a child with a maxWidth — a capped grower leaves free space, and there justifyContent works', () => {
@@ -253,5 +258,133 @@ describe('reached through the shared precondition set, and advisory on purpose',
   it('neither code blocks authored output — advisory until a calibration earns promotion, and not silently', () => {
     expect(isBlockingForAuthoredOutput({ code: DiagnosticCode.ColumnsChildKeepsOwnWidth, severity: 'warning' } as Diagnostic)).toBe(false);
     expect(isBlockingForAuthoredOutput({ code: DiagnosticCode.JustifyContentDistributesNothing, severity: 'warning' } as Diagnostic)).toBe(false);
+  });
+});
+
+describe('FLD-004 — wired-dimension-becomes-grow', () => {
+  /** A parent that stacks along `axis`, holding one child of `childType`. */
+  function stack(
+    axis: 'row' | 'column' | 'none',
+    child: { id?: string; type?: string; parameters?: Record<string, unknown> } = {},
+    parentType = 'Group'
+  ): LayoutNode[] {
+    return [
+      {
+        id: 'parent',
+        type: parentType,
+        parameters: parentType === 'Group' ? { flexDirection: axis } : {},
+        children: [child.id ?? 'box']
+      } as LayoutNode,
+      { id: child.id ?? 'box', type: child.type ?? 'Group', parameters: child.parameters ?? {} } as LayoutNode
+    ];
+  }
+
+  const WIRED_HEIGHT = new Set(['box::height']);
+  const WIRED_WIDTH = new Set(['box::width']);
+
+  it('reports #26 verbatim: a number wired into height, inside a column parent', () => {
+    const found = run(stack('column'), WIRED_HEIGHT);
+    expect(found.map((d) => d.code)).toEqual([DiagnosticCode.WiredDimensionBecomesGrow]);
+    const d = found[0];
+    expect(d.severity).toBe('warning');
+    expect(d.location.nodeId).toBe('box');
+    expect(d.location.port).toBe('height');
+    expect(d.location.plug).toBe('input');
+    // The message has to carry the mechanism, or the author reads it as "you set it wrong".
+    expect(d.message).toContain('PERCENTAGE');
+    expect(d.message).toContain('flex-grow');
+    expect(d.message).toContain('Layout: Vertical');
+    expect(d.suggestion).toContain('px');
+  });
+
+  it('🔴 THE DISCRIMINATOR — the SAME wire into width, on the same node in the same parent, is silent', () => {
+    // AC2's second arm, and the reporter's own three-way result: `width` and `paddingTop` accept
+    // the identical connection and work, because a percentage on the CROSS axis stays a real CSS
+    // length. A rule that fired on both would be reporting "this port is wired", not this defect.
+    expect(run(stack('column'), WIRED_WIDTH)).toEqual([]);
+  });
+
+  it('mirrors on a row parent: width fires, height is silent — the axis decides, not the port name', () => {
+    expect(run(stack('row'), WIRED_WIDTH).map((d) => d.location.port)).toEqual(['width']);
+    expect(run(stack('row'), WIRED_HEIGHT)).toEqual([]);
+  });
+
+  it('🔴 is silent when the port is NOT wired — a percentage height in a column IS the shipped idiom', () => {
+    // The noise arm, and the reason the rule keys on the connection. Every visual node's `width`
+    // and `height` default to 100%, and on the main axis that default is how a child fills its
+    // parent: keying on the value alone reports the whole corpus.
+    expect(run(stack('column', { parameters: { height: { value: 400, unit: '%' } } }))).toEqual([]);
+  });
+
+  it('abstains on a Group set to Layout: None — it positions its children absolutely and converts nothing', () => {
+    expect(run(stack('none'), WIRED_HEIGHT)).toEqual([]);
+  });
+
+  it('abstains under a Columns — its children never receive a parentLayout at all (D28 owns that graph)', () => {
+    const nodes: LayoutNode[] = [
+      { id: 'parent', type: COLUMNS, parameters: { sizing: 'autoFit', minWidth: 120 }, children: ['box'] } as LayoutNode,
+      { id: 'box', type: 'Group', parameters: {} } as LayoutNode
+    ];
+    expect(run(nodes, WIRED_HEIGHT)).toEqual([]);
+  });
+
+  it('abstains on an out-of-flow child — layout.ts converts only position: relative', () => {
+    expect(run(stack('column', { parameters: { position: 'absolute' } }), WIRED_HEIGHT)).toEqual([]);
+    expect(run(stack('column', { parameters: { position: 'sticky' } }), WIRED_HEIGHT)).toEqual([]);
+    expect(run(stack('column'), new Set(['box::height', 'box::position']))).toEqual([]);
+  });
+
+  it('abstains when sizeMode never reads the port — that is inert-dimension’s sentence, not this one’s', () => {
+    expect(run(stack('column', { parameters: { sizeMode: 'contentSize' } }), WIRED_HEIGHT)).toEqual([]);
+    expect(run(stack('column', { parameters: { sizeMode: 'contentHeight' } }), WIRED_HEIGHT)).toEqual([]);
+    // A Text's TYPE DEFAULT is contentHeight, so the same abstention has to survive the default
+    // being resolved rather than authored — the `resolveAgainstDefaults` mutant.
+    expect(run(stack('column', { type: 'Text' }), WIRED_HEIGHT)).toEqual([]);
+    expect(run(stack('column'), new Set(['box::height', 'box::sizeMode']))).toEqual([]);
+  });
+
+  it('🔴 abstains when the port already holds a px value — that IS the exit the message names', () => {
+    // `setInputValue` merges a bare number into the unit the port is currently holding, so with a
+    // px value in the panel the wire arrives as a real length. Firing here would contradict the
+    // advice the other arm prints.
+    expect(run(stack('column', { parameters: { height: { value: 400, unit: 'px' } } }), WIRED_HEIGHT)).toEqual([]);
+    expect(run(stack('column', { parameters: { height: { value: 50, unit: 'vh' } } }), WIRED_HEIGHT)).toEqual([]);
+    // ...and still fires when the value it holds is a percentage, which is the default.
+    expect(
+      run(stack('column', { parameters: { height: { value: 100, unit: '%' } } }), WIRED_HEIGHT).map((d) => d.code)
+    ).toEqual([DiagnosticCode.WiredDimensionBecomesGrow]);
+  });
+
+  it('abstains on a component-instance child — its root sizing is not in this graph', () => {
+    expect(run(stack('column', { type: '/Cards/Puppy' }), WIRED_HEIGHT)).toEqual([]);
+  });
+
+  it('reads a Page and a Router as column parents — both hand their children layout: column', () => {
+    expect(run(stack('column', {}, 'Page'), WIRED_HEIGHT).map((d) => d.code)).toEqual([
+      DiagnosticCode.WiredDimensionBecomesGrow
+    ]);
+    expect(run(stack('column', {}, 'Router'), WIRED_HEIGHT).map((d) => d.code)).toEqual([
+      DiagnosticCode.WiredDimensionBecomesGrow
+    ]);
+  });
+
+  it('fires once per offending child — the count is the number of edits the repair needs', () => {
+    const ids = ['a', 'b', 'c'];
+    const nodes: LayoutNode[] = [
+      { id: 'parent', type: 'Group', parameters: { flexDirection: 'column' }, children: ids } as LayoutNode,
+      ...ids.map((id) => ({ id, type: 'Group', parameters: {} }) as LayoutNode)
+    ];
+    const found = run(nodes, new Set(ids.map((id) => `${id}::height`)));
+    expect(found.map((d) => d.location.nodeId)).toEqual(ids);
+  });
+
+  it('the composed set reads real stored connections, and the code does not block authored output', () => {
+    const wired = connectedInputs([
+      { fromId: 'x', fromProperty: 'result', toId: 'box', toProperty: 'height' }
+    ] as never);
+    expect(run(stack('column'), wired).map((d) => d.code)).toEqual([DiagnosticCode.WiredDimensionBecomesGrow]);
+    expect(
+      isBlockingForAuthoredOutput({ code: DiagnosticCode.WiredDimensionBecomesGrow, severity: 'warning' } as Diagnostic)
+    ).toBe(false);
   });
 });

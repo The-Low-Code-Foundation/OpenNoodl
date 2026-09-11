@@ -712,6 +712,48 @@ export enum DiagnosticCode {
   JustifyContentDistributesNothing = 'justify-content-distributes-nothing',
 
   /**
+   * FLD-004 (P84 #26) — a number **wired** into the `width`/`height` that lies
+   * along the parent's own main axis. It arrives as a *percentage*, and
+   * `layout.ts` turns a percentage on the main axis into `flexGrow` — so the
+   * value is a **ratio against growing siblings, not a length**, and with fewer
+   * than two growers it changes nothing at all.
+   *
+   * 🔴 The reporter's sentence is the reason this code exists: *"the third
+   * state — accepted, then silently discarded — is the worst of the three."*
+   * The wire validates, the connection is live, the value arrives, and the box
+   * does not move. `width` on the same node in the same graph works, because a
+   * percentage on the CROSS axis stays a real CSS length
+   * (`layout.ts` `getSizeWithMargins`) — which is exactly why the discriminator
+   * here is the axis and not the port.
+   *
+   * The percentage is not the author's choice: dimension ports declare
+   * `defaultUnit: '%'` (`node-shared-port-definitions.ts`), and a bare number
+   * arriving over a connection is merged into the port's *current* unit
+   * (`noodl-runtime/src/node.ts` `setInputValue`). So `400` means `400%` unless
+   * the port already holds a `px` value — which is also the exit.
+   *
+   * Fires only on a **connected** port. The same percentage written as a
+   * parameter is the shipped idiom — every visual node's `width` and `height`
+   * default to `100%`, and on the main axis that default IS how a child fills
+   * its parent — so keying on the value alone would report the whole corpus.
+   *
+   * Corpus (202 projects, both corpora plus `templates` and `project-examples`,
+   * 2026-09-11): **78,162 connections, 413 landing on a `width`/`height`, of
+   * which 108 are on the parent's main axis**, 55 on the cross axis and 250 on
+   * a node with no parent inside its own component (unknowable, and skipped).
+   * The `maxWidth`/`minWidth`/`maxHeight`/`minHeight` family — 183 more
+   * connections — is **not** in the population: `layout.ts` converts neither.
+   *
+   * A **warning**, deliberately not in `AUTHORED_BLOCKING_WARNINGS` on first
+   * ship, on this file's standing convention: promotion is earned on evidence
+   * of firing correctly against authored output. See `layoutInertCombination.ts`
+   * for the abstentions, and `node-shared-port-definitions.ts` for the runtime
+   * half, which says the same sentence from inside a running graph where the
+   * unit is a fact rather than a default.
+   */
+  WiredDimensionBecomesGrow = 'wired-dimension-becomes-grow',
+
+  /**
    * DEF-024 (P78 D36) — a `mounted`/`visible` input whose every writer is a
    * constant-condition `Condition`, and the only value those writers can push
    * is `true`: the element can be shown but never put away again within a page
