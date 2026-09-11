@@ -81,7 +81,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import { getNodeTypeSummary } from './catalog';
-import { isComponentRef, reconstructLegacyComponent, refToPath } from './editor-deps';
+import { collectTokenReferences, isComponentRef, reconstructLegacyComponent, refToPath } from './editor-deps';
 import type { LegacyComponent } from './editor-deps';
 import { ToolError } from './errors';
 import type { ProjectStore } from './project/ProjectStore';
@@ -132,17 +132,18 @@ export interface EntryPlan {
 }
 
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
-const TOKEN = /var\(\s*--([A-Za-z0-9_-]+)/g;
 
 /**
  * CMP-007 — the `var(--token)` names an ENTRY's shipped graph reads, read back
  * off the shelf rather than out of its metadata.
  *
- * 🔴 **This deliberately shares `TOKEN` with `planEntry` above**, and that is the
- * whole reason it lives in this module. The export decides what counts as a
- * token reference; the install decides which of those the host project cannot
- * resolve. If the two ever disagreed, the install would report a SUBSET and read
- * exactly like a clean part — an under-report is invisible, unlike a crash.
+ * 🔴 **The matcher is no longer local.** CMP-007 kept `TOKEN` in this file and
+ * wrote down why it mattered that the export and the install agree: if the two
+ * ever disagreed, the install would report a SUBSET and read exactly like a
+ * clean part — an under-report is invisible, unlike a crash. A shared reason and
+ * two copies is the shape that drifts, so CMP-008 moved the definition to
+ * `StyleTokensModel/TokenReferences` and both sides now read it through
+ * `editor-deps`. `planEntry` below reads the same one.
  *
  * Returns `[]` for an entry with no readable `project/project.json`; a module
  * entry shipping only a code kit has no graph and honestly reads no tokens.
@@ -158,13 +159,19 @@ const TOKEN = /var\(\s*--([A-Za-z0-9_-]+)/g;
  * worth recording the day the editor's library card wants to warn before a
  * download; until then the graph is the one source of truth, and it is also the
  * only one that works for the 45 entries already on the shelf.
+ *
+ * ⚠️ **Reads `project.json`, which is right HERE and wrong elsewhere.** Every
+ * one of the 75 shipped entries is a legacy single-file project (re-measured
+ * 2026-09-11: `find library -maxdepth 4 -type d -name components` is 0), so the
+ * whole graph is in that file. A v2-format project keeps its components in
+ * `components/**` and this would read an empty list off it — which is why the
+ * editor's install side does NOT reuse this function, but scans the loaded
+ * `ProjectModel.toJSON()` instead. The two share the matcher, not the source.
  */
 export function entryTokens(entryDir: string): string[] {
   const projectJson = path.join(entryDir, 'project', 'project.json');
   if (!fs.existsSync(projectJson)) return [];
-  const found = new Set<string>();
-  for (const m of fs.readFileSync(projectJson, 'utf8').matchAll(TOKEN)) found.add(`--${m[1]}`);
-  return [...found].sort();
+  return collectTokenReferences(fs.readFileSync(projectJson, 'utf8'));
 }
 
 /** `library.json`'s slug rule, from `scripts/library/schema.json`'s dependency pattern. */
@@ -308,7 +315,7 @@ export function planEntry(store: ProjectStore, root: string): EntryPlan {
       }
 
       for (const { parameter, value } of nodeStrings(node)) {
-        for (const m of value.matchAll(TOKEN)) tokens.add(`--${m[1]}`);
+        for (const token of collectTokenReferences(value)) tokens.add(token);
 
         if (Object.prototype.hasOwnProperty.call(projectColors, value)) colors[value] = projectColors[value];
         if (Object.prototype.hasOwnProperty.call(projectTextStyles, value)) textStyles[value] = projectTextStyles[value];

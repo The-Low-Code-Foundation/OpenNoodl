@@ -4,7 +4,7 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## The board, re-derived from the task FILES on 2026-09-11 (session 9)
+## The board, re-derived from the task FILES on 2026-09-11 (session 10)
 
 | task | AC | state |
 |---|---|---|
@@ -12,15 +12,108 @@ disqualifies you from producing the baseline.
 | CMP-001 | AC2 the playbook ships as a doctrine field | ✅ s6 — `interfaceDoctrine` on `get_project_info`; s7 added an eleventh rule and 4 specs |
 | CMP-001 | AC3 four new corpus examples | 🟡 s6 built four; s7 judged the remainder and closed it as a judgement — 26% publishing, floor still FAIL, deliberately |
 | CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
-| CMP-002 | the graded baseline build | **FIRST JOB, and still the only AC-moving work.** 🔴 s7 and s8 both could not run it — see below, the reason is now fully measured |
+| CMP-002 | the graded baseline build | **FIRST JOB, and still the only AC-moving work.** 🔴 s7, s8, s9 and s10 all could not run it — the reason is measured, see below |
 | CMP-003 | AC1/AC2/AC4 | ✅ s2 / s6 / s2 |
 | CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
 | CMP-004 | AC1–AC4 | ✅ s2/s3/s4/s5 |
 | CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
 | CMP-005 | all five | ✅ CLOSED s4 + s5 |
-| **CMP-006** | AC1 `full` relays `patterns`/`antiPatterns` · AC2 the description routes there | ✅ **CLOSED s8** — 5 specs over the wire, 4 control arms |
-| **CMP-006** | AC3 should the DEFAULT carry `antiPatterns`? | 🔴 OPEN — **needs a phase-55-style REPLAY, not a ruling.** Do not close it from the armchair |
-| **CMP-007** | AC1 `get_library_entry` relays the tokens · AC2 `install_prefab` names the unresolved ones · AC3 derived from the GRAPH | ✅ **CLOSED s9** — 9 specs, 5 control arms. A third of the fix was deleted by the schema |
+| CMP-006 | AC1/AC2 | ✅ CLOSED s8 |
+| CMP-006 | AC3 should the DEFAULT carry `antiPatterns`? | 🔴 OPEN — **needs a phase-55-style REPLAY, not a ruling.** Two server variants, so it needs a session whose CLI process is its own |
+| CMP-007 | AC1/AC2/AC3 | ✅ CLOSED s9 |
+| **CMP-008** | AC1–AC5 the person's door | ✅ **CLOSED s10** — 60 specs, 5 control arms, and one of them found a hole in this task's own gate |
+
+## 🔴 s10: THERE IS NOTHING LEFT TO PROMOTE THAT DOES NOT NEED A FRESH SERVER
+
+s9 wrote: *"a session that cannot run CMP-002 no longer has a promotable gap to fall back on"*, and
+named the editor-side token row as the one exception. **s10 took that row (CMP-008).** §7 now holds
+two NEW owner-NONE rows, both filed by s10 and both honest but small:
+
+1. **`tsc -p noodl-editor/tsconfig.tests-main.json` is red at HEAD** (32 lines, EXIT=2 — measured
+   against a HEAD baseline *before* any edit). `tests-unit/` is graded file-by-file by ts-jest, so
+   the suite is green while the whole-program check is not, and the `include` list that keeps the
+   renderer out of the plain-Node runner has no gate proving it still holds.
+2. **`ResultStage`'s rendering of `summary.warnings` has no local grader** — it imports `Icon`.
+
+🔴 **Neither is an AC.** If you are session 11 and you cannot run CMP-002, read
+[[build-the-tasks-do-not-farm-the-defects]] before starting either: the honest options are the
+CMP-006 AC3 replay (which needs two servers, so it needs its own CLI process), promoting row 1 into
+a numbered task with real ACs, or **waiting for Richard**.
+
+## 🔴 s10: THE CLI PROCESS WAS `89837` FOR THE FOURTH SESSION RUNNING
+
+Measured, not inherited: `ps -o ppid -p $$` walked to CLI pid **`89837`, started
+2026-09-10 14:26:46**, with MCP children `89852` / `89857` started at that same moment — about
+**20 hours before** `dist/noodl-mcp.cjs` was last rebuilt (10:09:15 on 2026-09-11). s7, s8, s9 and
+s10 have all been the same process. `/clear` wipes the conversation and leaves the MCP children
+running; a subagent shares them. See [[an-mcp-server-is-a-child-of-the-cli-process]].
+
+⚠️ s10 did **not** need an MCP server for its work and did not probe one — the pid arithmetic above
+is sufficient and cheaper. A server started 20 hours before the bundle cannot be carrying it.
+
+## ✅ s10 built CMP-008 — and the row it came from was wrong about where the door is
+
+s9 filed the leftover as *"a person clicking Install in the EDITOR goes through `views/ImportFlow`"*.
+🔴 **It does not.** `ModuleLibraryModel._install` forks on `dryRun.hasCollisions`, and the
+no-collision branch — every install of a part into a project that does not already have it, i.e.
+the common one — calls `applyToProject` directly and **never opens the flow**. A warning hosted in
+`ImportFlow` would have been *present in the code and absent in practice*, and would have passed any
+spec that rendered `ResultStage` with a warning in its props.
+
+**The file's own CN-017 comment, twelve lines above that fork, already says this in those words.**
+CN-017 read it and put its consent gate above the fork; s9's row put its successor's warning below
+it. Seventh premise in this phase not to survive contact —
+[[measure-the-artefact-before-believing-the-task-file]].
+
+🔴 **And that branch was discarding EVERY engine warning, not just tokens** — a module that failed
+to copy, a provenance record that could not be written, CN-017's own refusal to copy an unconsented
+kit — all under a green *"Prefab X cloned"*. CN-017's words for that state are *"a kit that is
+simply absent, with nothing anywhere saying why"*.
+
+So the answer went into `apply.ts`, which is the one line every route converges on, by the argument
+CN-017 AC2 had already written there. Doors 2 and 3 came free: `summarizeResult` already lifts
+`result.warnings` into what `ResultStage` renders.
+
+## 🔴 s10's trap, and it is aimed at gate-writing itself
+
+`apply.ts` cannot be executed without Electron, so CMP-008's caller gate walks TypeScript's **AST**
+rather than the file's text — precisely because this phase's notes say a source-text `toContain`
+passes on commented-out code.
+
+**Arm B switched the whole feature off with `if (false && …)` and the AST gate passed anyway.** The
+import was still there, the call expression was still there, the spread into `warnings` was still
+there. **A static gate cannot see reachability**, and knowing about the dead-code trap is not the
+same as being immune to it.
+
+The fix was to stop asking it to: the export-staging exemption moved out of an `if` at the call site
+and into the pure `tokenWarningsFor`, where it is graded **by being run**, and `apply.ts` was left
+with one unconditional statement — a property the gate *can* assert. Arm B2 (the same subversion via
+a ternary) goes red. Generalises: **when a gate has to guess, remove the thing it is guessing
+about.**
+
+⚠️ Two smaller ones worth carrying:
+
+- **`entryTokens` cannot read a v2 project**, and it is right anyway — all **75** shelf entries are
+  legacy single-file projects (re-measured: `find library -maxdepth 4 -type d -name components` is
+  **0**). The editor could not reuse it: a project imported from elsewhere on this machine is likely
+  v2, where `project.json` holds almost nothing, so a scan of it is a **silent zero on the door most
+  likely to carry a hand-made token**. The two sides share the *matcher*, not the source. Arm E
+  (reading `project.json` in the engine) reds exactly one spec.
+- 🔴 **zsh does not word-split an unquoted `$FILES`** — `md5 -q $FILES` with a plain string read the
+  whole list as ONE filename and reported `No such file or directory` while looking like a path
+  problem. Use an array. Already in [[a-peer-may-be-doing-your-exact-task]].
+
+## ✅ s10 re-measured CMP-007's corpus number independently, and extended it
+
+| | entries | reading tokens | distinct | outside `DEFAULT_TOKENS` |
+|---|---|---|---|---|
+| `library/prefabs` | 45 | **18** | **29** | **0** |
+| `library/modules` | 30 | 6 | 10 | **0** |
+
+CMP-007's *"18 of 45, 29 distinct, 0 outside"* reproduces **exactly**, and the modules half is new.
+`DEFAULT_TOKENS` is **192** names from `@nodegx/project-contract/tokens`. ⚠️ CMP-007's *"45 entries
+on the shelf"* is the **prefab** count; the shelf is **75** (`library:check` 75/75), which is why
+s5's number and s9's look like they disagree and do not.
 
 ## 🔴 The first job is still CMP-002, and s8 MEASURED why two sessions have bounced off it
 
@@ -190,6 +283,31 @@ overturning it wants a replay, not an opinion. Arm D holds that line on purpose.
   port — do not reintroduce them), and **a session that has read this phase cannot grade a build of
   it**.
 
+## Numbers, measured 2026-09-11 at `5af046b5d` + s10's work
+
+- `noodl-editor` `npm run test:main`: **452 suites / 7428 tests, ALL PASSING, EXIT=0.** There is no
+  floor of reds on this runner. 4 suites / 56 tests are CMP-008's; the prior count is *derived*
+  (7428 − 56 = 7372), not measured — do not treat it as a baseline someone took.
+- `noodl-mcp` `npx jest`: **3 failed / 1561 passed / 1564 total, EXIT=1.** ✅ Delta reconciles:
+  s9's **1560 + 4 = 1564**. Reds are the two long-standing `*Drive` suites
+  (`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`), named and unrelated.
+  ⚠️ s9's third red, `projectOwnsBackend.test.ts`, was **GREEN** this run — which confirms s9's
+  reading of it as a flake under full parallel load rather than a real red.
+- `npx tsc --noEmit -p packages/noodl-editor`: **0 lines, EXIT=0.**
+  `npx tsc --noEmit -p packages/noodl-mcp`: **0 lines, EXIT=0.**
+- `npm run library:check`: **75/75 entries clean, EXIT=0.**
+- `toolDisclosure.test.ts`: 18/18, **8272 / 8 under — UNCHANGED.** No tool description was touched;
+  CMP-008 adds no MCP surface at all.
+- Five control arms (A, B, B2, C, D, E — B is the one that PASSED and had to be answered),
+  **56 of 56 editor specs running in every arm**. Four of six sources restored md5-identical to the
+  pre-arm snapshot; `apply.ts` and `tokenGap.ts` md5-identical to their post-redesign snapshots,
+  because those two changed by design between arm B and arm B2.
+- ⚠️ **`test:ci` NOT run.** The two webpack-resolution risks CMP-008 introduces were closed by
+  precedent instead of by a ten-minute build: `@noodl-models/StyleTokensModel/ProjectTokenCss` is
+  already imported that way by `utils/compilation/build/processors/html-processor.ts`, and
+  `@noodl-utils/import-engine/legacy/...` by `router.setup.ts`; both are plain prefix aliases in
+  `webpackconfigs/shared/webpack.shared.js`. **NOT PUSHED** — Richard's standing decision.
+
 ## Numbers, measured 2026-09-11 at `f89f805ab` + s9's work
 
 - `npx jest` in `packages/noodl-mcp`: **5 failed / 1555 passed / 1560 total, EXIT=1.**
@@ -225,26 +343,25 @@ overturning it wants a replay, not an opinion. Arm D holds that line on purpose.
 
 ## Ordered next steps
 
-1. 🔴 **CMP-002, and it needs Richard to start it** — a NEW session (not `/clear`), pointed at the
-   build brief by name, with the freshness check run first. Nothing else on §A moves until it lands.
+1. 🔴 **CMP-002, and it needs Richard to start it** — a NEW session (not `/clear`, so the MCP server
+   is a new process), pointed at `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` **by name**, with the
+   brief's own §Setup check run first. Nothing on §A of the board moves until it lands.
 2. Then grade it: `./measure-interfaces.py v2 <project>/components` against the 50/20/0.15 floors,
-   `./measure-logic-components.py` for the CMP-003 column, and run the §3 **six questions** over the
+   `./measure-logic-components.py` for the CMP-003 column, and the §3 **six questions** over the
    graph — a ledger row without the reading is three columns and no insight.
 3. CMP-006 AC3, **if and only if** you are willing to build the replay: same brief, two servers, one
    with `antiPatterns` on the default, graded on whether the built graph avoids the named
-   anti-patterns. Not on token count.
-4. ✅ **§7 HAS NO OWNER-NONE ROW LEFT.** s8 took the second (CMP-006), s9 took the first (CMP-007).
-   The one thing s9 left behind, and it is a NEW owner-NONE row rather than a leftover: **a person
-   clicking Install in the EDITOR still gets no token warning** — that path is
-   `views/ImportFlow`, not `install_prefab`, so CMP-007's answer stops one UI short of the human.
-   Same answer, different door; it belongs to whoever next touches that flow.
-   🔴 **So a session that cannot run CMP-002 no longer has a promotable gap to fall back on.** The
-   honest options are the editor-side row above, the CMP-006 AC3 replay (needs two servers, so it
-   needs a session whose CLI process is its own), or waiting for Richard.
+   anti-patterns. Not on token count. Needs a session whose CLI process is its own.
+4. 🔴 **§7's two remaining rows are NOT acceptance criteria.** s9 took the first owner-NONE row
+   (CMP-007), s8 the second (CMP-006), s10 the last leftover (CMP-008). What s10 filed in their place
+   — the red `tsconfig.tests-main.json` whole-program check, and `ResultStage` having no local
+   grader — are instrument gaps, not product gaps. **A session that cannot run CMP-002 should
+   promote row 1 into a numbered task with real ACs, or wait**; see
+   [[build-the-tasks-do-not-farm-the-defects]] and do not simply start fixing.
 
 ### Needs Richard, not the next session
 
-- **Starting the CMP-002 run** (above) — the one thing blocking every open AC on the board.
+- **Starting the CMP-002 run** (above) — the one thing blocking every open AC on the board. It has
+  now been the first job for four consecutive sessions.
 - The cadence itself: §3.1 is event-driven, *"whenever Richard gets time"*. The Friday routine
-  (`trig_01MFceQCDiZvLy7cuSyeU877`, first fire **2026-09-11**) reports where the loop stands and never
-  does the work.
+  (`trig_01MFceQCDiZvLy7cuSyeU877`) reports where the loop stands and never does the work.

@@ -80,6 +80,30 @@
     "src/editor/src/views/ConnectionPopup/searchIntent.ts",
     "src/editor/src/models/nodelibrary/cloud-node-library.json",
     "src/editor/src/utils/import-engine/legacy",
+    // CMP-008: three more of the same shape, and here the split is what makes
+    // the feature gradeable at all.
+    //
+    //  - `TokenReferences.ts` is the ONE definition of what counts as a
+    //    `var(--token)` reference, shared with `noodl-mcp` through
+    //    `editor-deps`. It imports nothing.
+    //  - `tokenGap.ts` is the decision — which of the tokens a plan lands the
+    //    target cannot resolve, and the sentence that says so. Its only imports
+    //    are `TokenReferences` and an `import type` of the engine's `types`, so
+    //    `apply.ts` (ProjectModel, the undo queue, the filesystem) does not come
+    //    with it.
+    //  - `installWarningToast.ts` is the one-click installer's half: whether
+    //    there is anything to say after an install that opened no result stage.
+    //    Import-free by requirement — `ModuleLibraryModel` around it reaches the
+    //    toast layer and ProjectModel, and this is the part that can be wrong.
+    //
+    // And `ImportFlow/model/summary.ts`, which became reachable by taking its
+    // one value import from `legacy/report` instead of the engine's barrel. It
+    // is the hop from an engine warning to the result screen, and it had no
+    // grader that did not need Electron.
+    "src/editor/src/models/StyleTokensModel/TokenReferences.ts",
+    "src/editor/src/utils/import-engine/tokenGap.ts",
+    "src/editor/src/models/installWarningToast.ts",
+    "src/editor/src/views/ImportFlow/model/summary.ts",
     "src/editor/src/validation",
     // TUT-001: `backendVisibility.ts` is the same shape once more — which backend the Backend
     // Services panel shows and which fall behind the finder, lifted out of the panel so the rule

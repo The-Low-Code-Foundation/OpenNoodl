@@ -312,6 +312,16 @@ export {
   STYLE_TOKENS_METADATA_KEY
 } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/ProjectTokenCss';
 export type { MetaDataSource } from '../../noodl-editor/src/editor/src/models/StyleTokensModel/ProjectTokenCss';
+// CMP-008 — the ONE definition of what counts as a `var(--token)` reference.
+// The export side (`libraryExport.entryTokens`) and the editor's install side
+// (`import-engine/tokenGap`) both read it, because a disagreement between them
+// would make the install report a SUBSET and a part with an unresolvable token
+// read exactly like a clean one. Import-free by the same containment rule as
+// its neighbours above.
+export {
+  collectTokenReferences,
+  collectTokenReferencesIn
+} from '../../noodl-editor/src/editor/src/models/StyleTokensModel/TokenReferences';
 export type {
   StyleTokenRecord,
   StyleTokensData,

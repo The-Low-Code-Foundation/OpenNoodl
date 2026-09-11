@@ -149,6 +149,7 @@ format set a **moment.js pattern this node cannot read** — validating clean, t
 | [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | ✅ **CLOSED 2026-09-10.** AC1–AC4 (s4) — the decision, **13 new tokens**, a `Locale` port, byte-identity for the eight that shipped. **AC5 (s5)** — the exported `format-date` entry, its presets rendered through the real node, and the two date answers naming each other |
 | [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md) | The authored `patterns`/`antiPatterns` reached the editor's panel and never the agent. Relay them | **AC1 ✅ AC2 ✅ 2026-09-11 (s8)** — `detail: "full"` relays both verbatim, armed by 5 specs over the wire and 4 control arms; the resident surface came out **3 tokens cheaper** than before the work · **AC3 open** — whether the DEFAULT should carry `antiPatterns` needs a phase-55-style replay, not a ruling |
 | [CMP-007](CMP-007-THE-TOKEN-THAT-RESOLVES-TO-NOTHING.md) | A part reads a token the installing project never defined: it resolves to nothing, renders the wrong colour, and the install reports success. Say so | ✅ **CLOSED 2026-09-11 (s9).** `install_prefab` names `tokensUnresolved` and tells the agent to `set_project_tokens`; `get_library_entry` relays what a part expects before install. 9 specs, 5 control arms, **zero** resident-token cost (deferred group). 🔴 A third of the fix was DELETED — `library.json` is `additionalProperties:false` and `build.js` publishes a fixed key set, so the record would have been an inert field. 🔴 The gate is built on an INVENTED token: **0 of the 29 tokens the shipped shelf reads are outside `DEFAULT_TOKENS`** |
+| [CMP-008](CMP-008-THE-DOOR-THE-PERSON-USES.md) | CMP-007 answered the agent. The person clicking Install still got a green tick | ✅ **CLOSED 2026-09-11 (s10).** The warning is derived in `apply.ts` — the one line every route converges on — from the loaded `ProjectModel.toJSON()`, so it is correct on a v2 source as well as a legacy one, and it is scoped to what the plan actually lands. 🔴 **The row's premise was wrong: the COMMON install never opens `ImportFlow`** — `_install` returns early when nothing collides, and that branch was discarding **every** engine warning (unresolved tokens, a module that failed to copy, CN-017's refusal to copy an unconsented kit) under a green success toast. 60 specs, 5 control arms. 🔴 **Arm B found a hole in this task's own caller gate** — an AST check cannot see reachability, so the export exemption moved into the pure core and the call site became unconditional |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
 
 ## 6. Instruments
@@ -165,6 +166,23 @@ task file**, because the pass that produced them was never committed. One was a 
 
 ## 7. Known gaps, owner NONE
 
+- 🔴 **`tsc --noEmit -p noodl-editor/tsconfig.tests-main.json` is RED at HEAD and nobody runs it.**
+  32 lines, EXIT=2, measured 2026-09-11 (s10) against a baseline copy of the config taken from HEAD,
+  before any of CMP-008's edits. The errors are in `noodl-core-ui`'s `Icon.tsx`
+  (`Property 'context' does not exist on type 'Require'`), three renderer files using
+  `import.meta.webpackHot` under `"module": "CommonJS"`, and
+  `tests-unit/erg-005/componentContract.pending.ts` — a `.pending.ts` that no `testMatch` picks up
+  and that has drifted from the module it names. ⚠️ **The consequence is a missing instrument, not a
+  broken build**: `tests-unit/` is graded by ts-jest file-by-file, so the suite is green while the
+  whole-program check is not, and the config's `include` list — the boundary that keeps the renderer
+  out of the plain-Node runner — has no gate proving it still holds. Owner NONE. Found 2026-09-11
+  adding four entries to that list (which added **zero** new lines — the baseline was taken first).
+
+- ⚠️ **`ResultStage`'s rendering of `summary.warnings` is not graded by any runner that can be run
+  locally.** CMP-008 grades the hop into `ResultSummary.warnings`; the component itself imports
+  `@noodl-core-ui`'s `Icon`, which the plain-Node runner cannot load, so the last link is shipped
+  code with a `data-test="import-flow-result-warnings"` hook and no assertion on it. Owner NONE.
+
 - ✅ **CLOSED 2026-09-11 (s9) as [CMP-007](CMP-007-THE-TOKEN-THAT-RESOLVES-TO-NOTHING.md).** Not
   carrying overrides was correct and stays — it is CMP-004 AC4's whole mechanism. The hole it left
   was the **silence**: a token project B never defined resolves to nothing, so the part installed,
@@ -179,8 +197,15 @@ task file**, because the pass that produced them was never committed. One was a 
   — 18 of 45 entries read tokens, 29 distinct, **0 outside `DEFAULT_TOKENS`** — so the gate is built
   on an invented token minted through `set_project_tokens`, not on the corpus. Found 2026-09-10
   building AC4.
-  ⚠️ **Still open, one UI away:** a person clicking Install in the EDITOR goes through
-  `views/ImportFlow`, not this tool, and still gets no warning. Owner NONE.
+  ✅ **CLOSED 2026-09-11 (s10) as [CMP-008](CMP-008-THE-DOOR-THE-PERSON-USES.md).** s9 filed this as
+  *"a person clicking Install in the EDITOR goes through `views/ImportFlow`"* — and 🔴 **that premise
+  was wrong, for the seventh time in this phase.** `ModuleLibraryModel._install` forks on collisions
+  and the no-collision branch — every install of a part into a project that does not already have it,
+  i.e. the common one — calls `applyToProject` directly and **never opens the flow**. A fix hosted in
+  `ImportFlow` would have been present in the code and absent in practice, and would have passed a
+  spec that rendered `ResultStage` with a warning in its props. The file's own CN-017 comment, twelve
+  lines above that fork, already said so in those words. The answer went into `apply.ts` instead,
+  where every route converges.
 
 - ✅ **CLOSED 2026-09-11 (s8) as [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md).**
   `get_node_type` emitted neither `patterns` nor `antiPatterns` at any detail level; `detail: "full"`

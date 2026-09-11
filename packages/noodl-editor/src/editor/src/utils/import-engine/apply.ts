@@ -17,6 +17,7 @@
 
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { projectFromDirectory } from '@noodl-models/projectmodel.editor';
+import { buildEffectiveTokens, readStoredTokens } from '@noodl-models/StyleTokensModel/ProjectTokenCss';
 import { UndoActionGroup, UndoQueue } from '@noodl-models/undo-queue-model';
 
 import { recordKitProvenance } from '../../../../shared/utils/projectmodules';
@@ -27,6 +28,7 @@ import { applyLegacyTransforms } from './legacy/transforms';
 import type { ImportReport } from './legacy/types';
 import { shouldWriteImportReport } from './legacy/verdict';
 import { copyPlannedModules } from './moduleGate';
+import { tokenWarningsFor, type SourceProjectJson } from './tokenGap';
 import type { ImportPlan, ImportResult, ItemPolicy } from './types';
 
 /** The subset of a project component the apply adapters touch. */
@@ -193,13 +195,47 @@ export function apply(plan: ImportPlan, targetProject: ProjectModel): Promise<Im
           );
         }
 
+        /*
+         * ── ✅ CMP-008: the tokens this project cannot resolve ───────────────
+         *
+         * 🔴 **Here, and before anything is detached.** `applyModelChanges`
+         * removes each imported component from the source model on its way into
+         * the target, so a scan taken after this point would read a project that
+         * has been emptied of the very components it is being asked about.
+         * Same ordering constraint LIB-006's assessment documents above, and for
+         * the same reason.
+         *
+         * 🔴 **In the engine, not in an installer** — the argument CN-017 AC2
+         * makes twenty lines below, applied to a second fact. A one-click prefab
+         * install does NOT open the import flow (`ModuleLibraryModel._install`
+         * returns early when nothing collides), so a warning hosted in
+         * `ImportFlow` would be present in the code and absent on the most
+         * common install. Every route reaches this line.
+         *
+         * ⚠️ **Unconditional, and that is load-bearing.** Export staging IS
+         * exempt — it stages into a throwaway project that defines no tokens,
+         * so every token would read unresolved — but the exemption lives inside
+         * `tokenWarningsFor`, not in an `if` here. A control arm showed why: a
+         * guard at this call site can be switched off with `if (false && …)`
+         * while the import, the call and the spread all still read as present.
+         * One unconditional statement is a property the caller gate can assert.
+         *
+         * It reports; it never refuses. A part whose tokens do not all resolve
+         * still installs, and the result is still a success.
+         */
+        const tokenWarnings = tokenWarningsFor(
+          plan,
+          importProject.toJSON() as SourceProjectJson,
+          new Set(buildEffectiveTokens(readStoredTokens(targetProject)).keys())
+        );
+
         // ── Model changes in one undo group ────────────────────────────────
         const undoGroup = new UndoActionGroup({ label: 'Import' });
         const modelResult = applyModelChanges(plan, makeSource(source), makeTarget(target, undoGroup));
         if (!undoGroup.isEmpty()) UndoQueue.instance.push(undoGroup);
 
         // ── Disk work (NOT undoable — reported separately) ─────────────────
-        const warnings = [...modelResult.warnings, ...assessmentWarnings];
+        const warnings = [...modelResult.warnings, ...assessmentWarnings, ...tokenWarnings];
         const filesCopied: string[] = [];
         const modulesCopied: string[] = [];
 

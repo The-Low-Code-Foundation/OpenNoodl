@@ -1,6 +1,7 @@
 import { platform } from '@noodl/platform';
 import { CompatibilityCandidate, describeIncompatibilityFor, Incompatibility } from './moduleCompatibility';
 import { dependencyInstallOrder, dependencyKind, IModuleDependency } from './moduleDependencies';
+import { installWarningToast } from './installWarningToast';
 
 import { addHashToUrl } from '@noodl-utils/addHashToUrl';
 import FileSystem from '@noodl-utils/filesystem';
@@ -19,6 +20,7 @@ import {
   requireDownloadConsent
 } from '../views/ImportFlow';
 import type { SelectionState } from '../views/ImportFlow/model/selection';
+import { ToastLayer } from '../views/ToastLayer/ToastLayer';
 import { ProjectModel } from './projectmodel';
 import { unzipIntoDirectory } from './projectmodel.editor';
 
@@ -384,6 +386,25 @@ export class ModuleLibraryModel extends Model {
     if (!dryRun.hasCollisions) {
       const result = await applyToProject(dryRun, project);
       if (result.result !== 'success') throw { message: result.message };
+      /*
+       * ── ✅ CMP-008: this branch used to drop every warning ────────────────
+       *
+       * 🔴 **This is the COMMON install, and it has no result stage.** The
+       * colliding branch below opens the flow, whose `ResultStage` renders
+       * `summary.warnings`; this one returned, and `ModuleCard` put a green
+       * *"Prefab X cloned"* on screen. Everything the engine had to say —
+       * CMP-008's unresolved design tokens, a module that failed to copy,
+       * CN-017's refusal to copy an unconsented kit — arrived in `result` and
+       * went nowhere.
+       *
+       * Sticky on purpose. These warnings describe things that will NOT
+       * announce themselves later: an unresolved `var(--token)` is an unset
+       * property rather than an error, and a kit that was not copied is simply
+       * absent. Six seconds is the wrong amount of time for a note whose whole
+       * point is that nothing else will ever mention it.
+       */
+      const toast = installWarningToast(result.warnings, options.label);
+      if (toast) ToastLayer.showWarning(toast.message, { title: toast.title, duration: Infinity });
       return;
     }
 
