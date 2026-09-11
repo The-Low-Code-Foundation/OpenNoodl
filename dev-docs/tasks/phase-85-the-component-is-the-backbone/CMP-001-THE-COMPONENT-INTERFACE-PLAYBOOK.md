@@ -339,12 +339,26 @@ is *"a slot component that is still a component"* rather than a second wrapper.
 
 **Measured after, with the same instrument** (`measure-interfaces.py corpus`):
 
-| | before | after s6 | after the s7 remainder | floor |
-|---|---|---|---|---|
-| components with an interface | 30 | 34 | 34 | — |
-| publishes outputs | 10% | 21% | **26%** | 50% |
-| carries a flag port | 3% | **12%** | 12% | 20% |
-| `States` per component | 0.03 | **0.06** | 0.06 | 0.15 |
+| | before | after s6 | after the s7 remainder | after P86 COM-001 | floor |
+|---|---|---|---|---|---|
+| components with an interface | 30 | 34 | 34 | **40** | — |
+| publishes outputs | 10% | 21% | 26% | **32%** | 50% |
+| carries a flag port | 3% | **12%** | 12% | 10% | 20% |
+| `States` per component | 0.03 | **0.06** | 0.06 | 0.05 | 0.15 |
+
+⚠️ **The last column was not this phase's work.** P86's COM-001 added seventeen catalog examples for
+an unrelated reason, and `cmp001InterfaceDoctrine.test.ts` went red the same session — which is what
+that spec is for. Four of the seventeen had a `Component Inputs` node and no `Component Outputs`
+while computing something a caller wants (does this booking overlap, a digest, CSV text and a row
+count, a sortable month key), so they were given outputs **because that is the display sink this
+playbook argues against**, not to move a percentage — the distinction §above insists on. The flag and
+`States` columns fell, honestly: seventeen new components dilute both, all three floors were FAIL
+before and are FAIL now, and nothing here was adjusted to flatter them.
+
+⚠️ **`measure-interfaces.py` and the spec now disagree by one point, and neither is wrong.** The count
+is 13 of 40 = 32.5%; Python's `round()` breaks the tie to even (**32**, the table above) and
+JavaScript's `Math.round` breaks it upward (**33**, which is what the spec pins and what the doctrine
+text states). Same numerator, same denominator, different tie-break.
 
 🔴 **Four examples cannot clear a corpus-wide floor of 50%, and no number of *new* examples fixes it
 cheaply.** 27 of the original 30 publish nothing; reaching 17 of 34 needs **ten more** publishing
