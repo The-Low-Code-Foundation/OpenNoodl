@@ -3,7 +3,12 @@
 **Scoped:** 2026-09-10, from the community export Richard pulled out of the old Noodl community
 site — years of shared components and a Bubble translation table, in
 `nodegx_exports/`, vendored here as [`corpus/`](corpus/).
-**Status: OPEN.** **Prefix: `COM`.**
+**Status: ✅ CLOSED 2026-09-11** — all six tasks built. **Prefix: `COM`.**
+
+> ⚠️ One thread is still open and it is **Richard's**: COM-006 AC3, the Directus author. And five
+> defects the corpus found are filed and **unowned** — see
+> [`DEFECTS-THE-COMMUNITY-CORPUS-FOUND.md`](DEFECTS-THE-COMMUNITY-CORPUS-FOUND.md), where **D1**
+> (a port rename shipped with no migration) is the one that matters.
 
 > "Following on from our conversation about looking into existing components, maybe making new
 > prefabs, more guides… let me know where you think this stuff could fit into: 1. The MCP
@@ -93,7 +98,7 @@ matters because only one of them converts:
 | [COM-002](COM-002-THE-BUBBLE-PHRASEBOOK.md) | The Bubble → NodeGX reference page, in Bubble's vocabulary. Fill the 32 blanks; re-test the Parse-era rows | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; 94 rows, 0 blank, 77 code cells executed, 18 community rows found wrong |
 | [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; **all 12** landed, 5/12 → 12/12, corpus 89 → 101, 14 snippets dispositioned |
 | [COM-004](COM-004-SEO-META-TAGS.md) | SEO meta tags — ⚠️ **the premise was wrong**: the `Page` node already ships 13 meta ports | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; enums close AC4, the chain to the served `<head>` is tested |
-| [COM-005](COM-005-THE-RECORDERS-AND-THE-MASONRY.md) | Audio recorder, video recorder, masonry grid — the three remaining gaps our 74 library entries do not cover | **OPEN** |
+| [COM-005](COM-005-THE-RECORDERS-AND-THE-MASONRY.md) | Audio recorder, video recorder, masonry grid — ⚠️ **one of the three gaps was not a gap**: `prefabs/tags` already ships the wrap | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; `modules/media-recorder`, 3 examples, a 34-check drive over both modes |
 | [COM-006](COM-006-THE-LINKS-THAT-WILL-ROT.md) | Recover the three external payloads before they vanish; decide on Directus as the third connector | ✅ **BUILT** 2026-09-11 — all three links were still alive, all three recovered; AC3 🟡 on one ask for Richard |
 | — | [`MEASURED-2026-09-10.md`](MEASURED-2026-09-10.md) | every reading this phase rests on, with the command that produced it |
 | — | [`convert-exports.py`](convert-exports.py) | the instrument: exports → candidate examples. Converts; does not certify |
