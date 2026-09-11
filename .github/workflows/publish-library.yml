@@ -138,7 +138,17 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
 
           CONTENT_DIR="$RUNNER_TEMP/nodegx-content"
-          git clone --depth 1 git@github.com:The-Low-Code-Foundation/nodegx-content.git "$CONTENT_DIR"
+
+          # Sparse and blobless, measured rather than assumed: `nodegx-content`
+          # is a docs site, and a plain `--depth 1` clone of it is 951 MB (417 MB
+          # of it .git). Restricted to the one path this job writes it is 422 MB,
+          # and 228 MB of THAT is the library payload itself — i.e. close to the
+          # floor. The working tree then holds `static/library` and the repo-root
+          # files and nothing else, which also means this job physically cannot
+          # commit something it did not mean to touch.
+          git clone --depth 1 --filter=blob:none --sparse \
+            git@github.com:The-Low-Code-Foundation/nodegx-content.git "$CONTENT_DIR"
+          git -C "$CONTENT_DIR" sparse-checkout set static/library
 
           # Copy OVER, do not mirror. This is deliberately the same semantics as
           # the manual step it replaces (library/README.md §Publish): the built
