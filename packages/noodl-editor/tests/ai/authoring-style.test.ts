@@ -47,6 +47,23 @@ function call(name: string, args: Record<string, unknown>, id = `c-${Math.random
 /**
  * A valid component (Component Inputs/Outputs + wire) with a styled Group.
  *
+ * 🔴 The three raw colours are `backgroundColor` / `borderColor` /
+ * `borderTopColor`, and the third one is load-bearing. It used to be `color`,
+ * which is NOT a `Group` input port — a Group is a container, text colour
+ * belongs to Text — so `unknown-parameter` blocked the authored output and the
+ * loop burned its turns resubmitting a candidate it would reject again, ending
+ * `exhausted`. The specs below then read `error`/`exhausted` where they expect
+ * `authored`. The blocking is correct: a parameter nothing reads should not
+ * ship, and `isBlockingForAuthoredOutput` says so deliberately.
+ *
+ * Whatever replaces it has to satisfy BOTH sides or these specs go green while
+ * measuring nothing: a real `Group` port (or validation rejects) AND a member of
+ * `COLOR_PROPERTIES` in `StyleAnalyzerCore.ts` (or the style lint never fires
+ * and the advisory turn these specs are about never happens). Measured: the four
+ * per-side `border*Color` ports satisfy both; `outlineColor`, `shadowColor` and
+ * `caretColor` are in `COLOR_PROPERTIES` but are NOT Group ports, and
+ * `boxShadowColor` is a Group port but is NOT in `COLOR_PROPERTIES`.
+ *
  * Every `componentPath` in this file is `Pages/Styled…`, so the candidate is a
  * routed page and needs a `Page` root — `page-without-page-node` blocks authored
  * output since AAQ-011 F7. The Group is the subject of the style lint and keeps
@@ -169,14 +186,14 @@ describe('AIX-006 style vocabulary', () => {
   it('offers one advisory style pass on a valid-but-raw candidate, then accepts the on-system resubmit', async () => {
     const { chat, requests } = scriptedChat([
       // Turn 1: valid, but raw colours on the Group.
-      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))] }),
+      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', borderTopColor: '#ffffff', borderColor: '#3b82f6' }))] }),
       // Turn 2: the loop should have fed back a STYLE advisory — resubmit on-system.
       (request) => {
         const last = request.messages[request.messages.length - 1];
         expect(last.role).toBe('tool');
         expect(last.content).toContain('STYLE LINT');
         expect(last.content).toContain('var(--');
-        return respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: 'var(--primary)', color: 'var(--primary-foreground)' }))] });
+        return respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: 'var(--primary)', borderTopColor: 'var(--primary-foreground)' }))] });
       }
     ]);
     const session = AuthoringSession.create(GRAPH, { description: 'a styled page', componentPath: 'Pages/StyledC' }, { chat });
@@ -194,7 +211,7 @@ describe('AIX-006 style vocabulary', () => {
   it('a style suggestion never downgrades a valid authoring: agent ignores it, still authored', async () => {
     const { chat } = scriptedChat([
       // Valid but raw.
-      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))] }),
+      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', borderTopColor: '#ffffff', borderColor: '#3b82f6' }))] }),
       // Model declines to restyle — replies with prose / no tool call.
       () => respond({ text: 'The colours are intentional.' })
     ]);
@@ -219,7 +236,7 @@ describe('AIX-006 style vocabulary', () => {
         return Promise.resolve(
           respond({
             toolCalls: [
-              call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))
+              call('submit_component', submitArgs({ backgroundColor: '#3b82f6', borderTopColor: '#ffffff', borderColor: '#3b82f6' }))
             ]
           })
         );
@@ -241,7 +258,7 @@ describe('AIX-006 style vocabulary', () => {
 
   it('with guidance off, a raw candidate is accepted immediately with no style pass', async () => {
     const { chat, requests } = scriptedChat([
-      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', color: '#ffffff', borderColor: '#3b82f6' }))] })
+      () => respond({ toolCalls: [call('submit_component', submitArgs({ backgroundColor: '#3b82f6', borderTopColor: '#ffffff', borderColor: '#3b82f6' }))] })
     ]);
     const session = AuthoringSession.create(
       GRAPH,
