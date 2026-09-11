@@ -8,7 +8,7 @@
     "items": "The parsed array; wire to a Repeater's `items` or into filters/maps."
   },
   "runtimeBehavior": "Declared-port-groups only: the `json` and `csv` text inputs swap in based on `type`. No ports depend on the data itself.",
-  "examples": ["data-shared-array-add-remove", "data-static-array-filter-repeater", "comp-repeater-set-item-object", "community-tiptap-text-editor"],
+  "examples": ["data-shared-array-add-remove", "data-static-array-filter-repeater", "comp-repeater-set-item-object", "community-tiptap-text-editor", "layout-wrap-a-row-of-content-width-items"],
   "patterns": [
     "Static Array → Array Filter/Array Map → Repeater: fixture-driven UI with real list plumbing."
   ],

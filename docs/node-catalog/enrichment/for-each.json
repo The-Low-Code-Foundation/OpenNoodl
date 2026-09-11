@@ -18,7 +18,8 @@
   "examples": [
     "repeater-query-records",
     "ui-card-grid-repeater",
-    "community-tiptap-text-editor"
+    "community-tiptap-text-editor",
+    "layout-wrap-a-row-of-content-width-items"
   ],
   "patterns": [
     "Query Records `items` → Repeater `items`: the canonical data-driven list.",

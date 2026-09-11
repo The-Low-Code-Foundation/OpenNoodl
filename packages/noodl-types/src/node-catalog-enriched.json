@@ -10698,7 +10698,8 @@
         "examples": [
           "repeater-query-records",
           "ui-card-grid-repeater",
-          "community-tiptap-text-editor"
+          "community-tiptap-text-editor",
+          "layout-wrap-a-row-of-content-width-items"
         ],
         "patterns": [
           "Query Records `items` → Repeater `items`: the canonical data-driven list.",
@@ -14214,7 +14215,8 @@
           "ui-split-hero",
           "ui-icon-feature-strip",
           "ui-stat-tile-row",
-          "ui-empty-state"
+          "ui-empty-state",
+          "layout-wrap-a-row-of-content-width-items"
         ],
         "patterns": [
           "Component root: a single Group at the top of every visual component, `flexDirection` column.",
@@ -29055,7 +29057,8 @@
           "data-shared-array-add-remove",
           "data-static-array-filter-repeater",
           "comp-repeater-set-item-object",
-          "community-tiptap-text-editor"
+          "community-tiptap-text-editor",
+          "layout-wrap-a-row-of-content-width-items"
         ],
         "patterns": [
           "Static Array → Array Filter/Array Map → Repeater: fixture-driven UI with real list plumbing."
@@ -33509,7 +33512,9 @@
         "runtimeBehavior": "A `backendId` (Backend) input is registered at runtime rather than declared, so it appears only once a project has more than one backend — the node then uploads through whichever backend the picker names instead of the project's `cloudservices` endpoint (BCN-007 step 6). A backend id naming nothing is an error, never a silent fallback. The static inputs are also **per backend, not universal**: `bucket` and `path` are Supabase Storage only, and `collection`/`recordId`/`field` are PocketBase only, because PocketBase stores a file as a field on a record rather than as an object of its own. Leave them unset on the built-in, Parse and Directus backends. BCN-010 gates the node on `files.upload`, so a backend that cannot accept an upload marks the node with the reason before it is triggered.",
         "examples": [
           "cloud-create-record-with-upload",
-          "cloud-sign-private-file-url"
+          "cloud-sign-private-file-url",
+          "media-record-audio-and-upload",
+          "media-record-video-from-a-live-preview"
         ],
         "patterns": [
           "Picker `done` → `upload`, upload `done` → record write: three nodes, each owning one step.",
@@ -35766,7 +35771,9 @@
         },
         "runtimeBehavior": "Declared-port-groups: `width`/`height` appear based on `sizeMode`, per-side border width/color ports appear once a border style is chosen, and `pointerEventsEnabled` appears when `pointerEventsMode` is 'explicit'. The playback and event ports are always present.",
         "examples": [
-          "vis-wrapper-component-children"
+          "vis-wrapper-component-children",
+          "media-record-audio-and-upload",
+          "media-record-video-from-a-live-preview"
         ],
         "patterns": [
           "Button `onClick` → `play`: user-initiated playback that satisfies browser autoplay policies.",
@@ -74058,6 +74065,115 @@
       ]
     },
     {
+      "id": "layout-wrap-a-row-of-content-width-items",
+      "title": "A wrapping row of content-width items, with no CSS",
+      "description": "Items that keep their own width and flow onto the next line when they run out of room — the layout a chip row, a filter bar or a tag list wants, and one people reach for a `CSS Definition` node to get. It needs no CSS: the container is a **Group** with `Multi Line Wrap` on, `Layout` set to row, a `Column Gap` and a `Row Gap` (the two gap ports only appear once wrapping is on) and `Align Y` at top, and each item is a **Group** at `Content Size`. ⚠️ That last part is the half that is usually missed. An item at `Content Size` gets no width of its own, and the runtime gives every node `flex-shrink: 0` and only grants `flex-grow` to a percentage width — so `Content Size` already *is* `flex: 0 0 auto`, and an item left at `100%` instead becomes `flex-grow: 100` and swallows the whole line. 🔴 This is not masonry: rows are laid out independently and nothing balances columns or packs items upward by height.",
+      "demonstrates": [
+        "Group",
+        "For Each",
+        "Static Data"
+      ],
+      "components": [
+        {
+          "name": "/Chip Row",
+          "nodes": [
+            {
+              "id": "wrap",
+              "type": "Group",
+              "label": "Wrapping row",
+              "parameters": {
+                "flexDirection": "row",
+                "flexWrap": "wrap",
+                "alignY": "top",
+                "sizeMode": "contentHeight",
+                "width": {
+                  "value": 100,
+                  "unit": "%"
+                },
+                "columnGap": "var(--space-2)",
+                "rowGap": "var(--space-2)"
+              },
+              "children": [
+                "repeat"
+              ]
+            },
+            {
+              "id": "repeat",
+              "type": "For Each",
+              "label": "One chip per item",
+              "parent": "wrap",
+              "parameters": {
+                "template": "/Chip Row/Chip"
+              }
+            },
+            {
+              "id": "items",
+              "type": "Static Data",
+              "label": "Sample labels",
+              "parameters": {
+                "type": "json",
+                "json": "[{\"Label\":\"Design\"},{\"Label\":\"Engineering\"},{\"Label\":\"Go to market\"},{\"Label\":\"Ops\"},{\"Label\":\"Research and insights\"},{\"Label\":\"QA\"}]"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "items",
+              "fromProperty": "items",
+              "toId": "repeat",
+              "toProperty": "items"
+            }
+          ]
+        },
+        {
+          "name": "/Chip Row/Chip",
+          "nodes": [
+            {
+              "id": "item",
+              "type": "net.noodl.ParentComponentObject",
+              "label": "This item"
+            },
+            {
+              "id": "pill",
+              "type": "Group",
+              "label": "Pill",
+              "parameters": {
+                "flexDirection": "row",
+                "sizeMode": "contentSize",
+                "alignY": "center",
+                "paddingTop": "var(--space-1)",
+                "paddingBottom": "var(--space-1)",
+                "paddingLeft": "var(--space-3)",
+                "paddingRight": "var(--space-3)",
+                "backgroundColor": "var(--muted)",
+                "borderRadius": 999
+              },
+              "children": [
+                "label"
+              ]
+            },
+            {
+              "id": "label",
+              "type": "Text",
+              "label": "Label",
+              "parent": "pill",
+              "parameters": {
+                "text": "Tag"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "item",
+              "fromProperty": "prop-Label",
+              "toId": "label",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "logic-autosave-after-typing",
       "title": "Debounced autosave with timestamped status",
       "description": "The debounce idiom: every keystroke fires Value Changed, whose signal restarts a 1.5-second Timer — the save only runs when the user pauses. The save Function stamps the moment; Date To String formats it, Unique Id issues a save id shortened by Substring, and String Format assembles the status line. Signals sequence the flow; values shape the display.",
@@ -74761,6 +74877,487 @@
               "fromProperty": "currentValue",
               "toId": "toggle_button",
               "toProperty": "label"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media-record-audio-and-upload",
+      "title": "Record audio in the browser and upload it as a cloud file",
+      "description": "The whole round trip in built-in nodes: **Record Media** captures from the microphone, **Upload File** stores the result, and a **Video** node plays it back. The wiring worth copying is the three-way split on the outcome — `Started` and `Stopped` drive a `States` node that owns the status text, `Recording` drives the Stop button's `enabled` so the two buttons can never both be live, and `Permission Denied` / `Device Busy` land on their own states because a refused prompt and a microphone another tab is holding need different words. ⚠️ `Blob URL` is a string and `Mounted` is a boolean, so the playback surface is gated through an `Expression` rather than wired straight across — a URL is not a truth value. The `File` output is a real `File`, which is exactly what `Upload File` expects, so nothing here converts the recording to text and back on the way.",
+      "demonstrates": [
+        "nodegx.mediarecorder",
+        "Upload File",
+        "Video",
+        "States",
+        "Expression"
+      ],
+      "requiresModules": [
+        {
+          "module": "media-recorder",
+          "nodes": [
+            "nodegx.mediarecorder"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "name": "/Voice Note",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Voice note",
+              "parameters": {
+                "flexDirection": "column",
+                "sizeMode": "contentHeight",
+                "paddingTop": "var(--space-4)",
+                "paddingBottom": "var(--space-4)",
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "rowGap": "var(--space-3)"
+              },
+              "children": [
+                "controls",
+                "player",
+                "status",
+                "error"
+              ]
+            },
+            {
+              "id": "controls",
+              "type": "Group",
+              "label": "Buttons",
+              "parent": "root",
+              "parameters": {
+                "flexDirection": "row",
+                "sizeMode": "contentSize",
+                "alignY": "center",
+                "columnGap": "var(--space-3)"
+              },
+              "children": [
+                "record_btn",
+                "stop_btn"
+              ]
+            },
+            {
+              "id": "record_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Record",
+              "parent": "controls",
+              "parameters": {
+                "label": "Record"
+              }
+            },
+            {
+              "id": "stop_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Stop",
+              "parent": "controls",
+              "parameters": {
+                "label": "Stop",
+                "enabled": false
+              }
+            },
+            {
+              "id": "player",
+              "type": "Video",
+              "label": "Playback",
+              "parent": "root",
+              "parameters": {
+                "controls": true,
+                "mounted": false
+              }
+            },
+            {
+              "id": "status",
+              "type": "Text",
+              "label": "Status",
+              "parent": "root",
+              "parameters": {
+                "text": "Ready"
+              }
+            },
+            {
+              "id": "error",
+              "type": "Text",
+              "label": "Error",
+              "parent": "root",
+              "parameters": {
+                "text": "",
+                "color": "var(--destructive)"
+              }
+            },
+            {
+              "id": "recorder",
+              "type": "nodegx.mediarecorder",
+              "label": "Record the microphone",
+              "parameters": {
+                "mode": "audio",
+                "maxDuration": 120
+              }
+            },
+            {
+              "id": "has_recording",
+              "type": "Expression",
+              "label": "Is there a recording?",
+              "parameters": {
+                "expression": "url != \"\" && url != null"
+              }
+            },
+            {
+              "id": "upload",
+              "type": "Upload File",
+              "label": "Store the voice note",
+              "parameters": {}
+            },
+            {
+              "id": "state",
+              "type": "States",
+              "label": "What the user is told",
+              "parameters": {
+                "states": "Ready,Recording,Saving,Saved,Denied,Busy",
+                "currentState": "Ready"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "record_btn",
+              "fromProperty": "onClick",
+              "toId": "recorder",
+              "toProperty": "Start"
+            },
+            {
+              "fromId": "stop_btn",
+              "fromProperty": "onClick",
+              "toId": "recorder",
+              "toProperty": "Stop"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "recording",
+              "toId": "stop_btn",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Started",
+              "toId": "state",
+              "toProperty": "to-Recording"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "PermissionDenied",
+              "toId": "state",
+              "toProperty": "to-Denied"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "DeviceBusy",
+              "toId": "state",
+              "toProperty": "to-Busy"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Error",
+              "toId": "error",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "url",
+              "toId": "player",
+              "toProperty": "src"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "url",
+              "toId": "has_recording",
+              "toProperty": "url"
+            },
+            {
+              "fromId": "has_recording",
+              "fromProperty": "result",
+              "toId": "player",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "file",
+              "toId": "upload",
+              "toProperty": "file"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Stopped",
+              "toId": "upload",
+              "toProperty": "upload"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Stopped",
+              "toId": "state",
+              "toProperty": "to-Saving"
+            },
+            {
+              "fromId": "upload",
+              "fromProperty": "done",
+              "toId": "state",
+              "toProperty": "to-Saved"
+            },
+            {
+              "fromId": "upload",
+              "fromProperty": "error",
+              "toId": "error",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "state",
+              "fromProperty": "currentState",
+              "toId": "status",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "media-record-video-from-a-live-preview",
+      "title": "Show a camera preview and record the stream you are already showing",
+      "description": "Two nodes that look like they overlap and do not. **Web Camera** opens a stream and hands it to a **Video** node's `Source Object`, which is the live preview; **Record Media** takes that same stream on its `Media Stream` input and writes it to a file. Because the stream is passed rather than re-requested, the browser asks for permission once — a recorder that calls `getUserMedia` again would prompt a second time and open a second camera handle. The ownership rule falls out of the same wire: the recorder did not open this stream, so it never stops its tracks, and `Stop` ends the recording while the preview keeps running. Stopping the camera stays the job of the node that started it, which is why `Stop Stream` is wired from its own button.",
+      "demonstrates": [
+        "nodegx.mediarecorder",
+        "Web Camera",
+        "Video",
+        "Upload File"
+      ],
+      "requiresModules": [
+        {
+          "module": "media-recorder",
+          "nodes": [
+            "nodegx.mediarecorder"
+          ]
+        },
+        {
+          "module": "web-camera",
+          "nodes": [
+            "Web Camera"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "name": "/Camera Capture",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Camera capture",
+              "parameters": {
+                "flexDirection": "column",
+                "sizeMode": "contentHeight",
+                "paddingTop": "var(--space-4)",
+                "paddingBottom": "var(--space-4)",
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "rowGap": "var(--space-3)"
+              },
+              "children": [
+                "preview",
+                "controls",
+                "status"
+              ]
+            },
+            {
+              "id": "preview",
+              "type": "Video",
+              "label": "Live preview",
+              "parent": "root",
+              "parameters": {
+                "autoplay": true,
+                "muted": true
+              }
+            },
+            {
+              "id": "controls",
+              "type": "Group",
+              "label": "Buttons",
+              "parent": "root",
+              "parameters": {
+                "flexDirection": "row",
+                "sizeMode": "contentSize",
+                "alignY": "center",
+                "columnGap": "var(--space-3)"
+              },
+              "children": [
+                "open_btn",
+                "rec_btn",
+                "stop_btn",
+                "close_btn"
+              ]
+            },
+            {
+              "id": "open_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Open camera",
+              "parent": "controls",
+              "parameters": {
+                "label": "Open camera"
+              }
+            },
+            {
+              "id": "rec_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Record",
+              "parent": "controls",
+              "parameters": {
+                "label": "Record",
+                "enabled": false
+              }
+            },
+            {
+              "id": "stop_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Stop",
+              "parent": "controls",
+              "parameters": {
+                "label": "Stop",
+                "enabled": false
+              }
+            },
+            {
+              "id": "close_btn",
+              "type": "net.noodl.controls.button",
+              "label": "Close camera",
+              "parent": "controls",
+              "parameters": {
+                "label": "Close camera",
+                "enabled": false
+              }
+            },
+            {
+              "id": "status",
+              "type": "Text",
+              "label": "Status",
+              "parent": "root",
+              "parameters": {
+                "text": ""
+              }
+            },
+            {
+              "id": "camera",
+              "type": "Web Camera",
+              "label": "The camera",
+              "parameters": {
+                "frontFacing": true
+              }
+            },
+            {
+              "id": "recorder",
+              "type": "nodegx.mediarecorder",
+              "label": "Record the preview",
+              "parameters": {
+                "mode": "video"
+              }
+            },
+            {
+              "id": "upload",
+              "type": "Upload File",
+              "label": "Store the clip",
+              "parameters": {}
+            },
+            {
+              "id": "camera_on",
+              "type": "Switch",
+              "label": "Camera is open"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "open_btn",
+              "fromProperty": "onClick",
+              "toId": "camera",
+              "toProperty": "startStream"
+            },
+            {
+              "fromId": "close_btn",
+              "fromProperty": "onClick",
+              "toId": "camera",
+              "toProperty": "stopStream"
+            },
+            {
+              "fromId": "camera",
+              "fromProperty": "stream",
+              "toId": "preview",
+              "toProperty": "srcObject"
+            },
+            {
+              "fromId": "camera",
+              "fromProperty": "stream",
+              "toId": "recorder",
+              "toProperty": "stream"
+            },
+            {
+              "fromId": "camera",
+              "fromProperty": "streamStarted",
+              "toId": "camera_on",
+              "toProperty": "on"
+            },
+            {
+              "fromId": "camera",
+              "fromProperty": "streamStopped",
+              "toId": "camera_on",
+              "toProperty": "off"
+            },
+            {
+              "fromId": "camera_on",
+              "fromProperty": "state",
+              "toId": "rec_btn",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "camera_on",
+              "fromProperty": "state",
+              "toId": "close_btn",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "rec_btn",
+              "fromProperty": "onClick",
+              "toId": "recorder",
+              "toProperty": "Start"
+            },
+            {
+              "fromId": "stop_btn",
+              "fromProperty": "onClick",
+              "toId": "recorder",
+              "toProperty": "Stop"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "recording",
+              "toId": "stop_btn",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "file",
+              "toId": "upload",
+              "toProperty": "file"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Stopped",
+              "toId": "upload",
+              "toProperty": "upload"
+            },
+            {
+              "fromId": "recorder",
+              "fromProperty": "Error",
+              "toId": "status",
+              "toProperty": "text"
             }
           ]
         }

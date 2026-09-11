@@ -58,7 +58,8 @@ function flatten(roots) {
 /**
  * Build a scratch project holding `library/prefabs/<slug>` plus a `/Drive` page.
  *
- * @param {string} slug          entry under `library/prefabs/`
+ * @param {string} slug          entry under `library/` — 'modules/media-recorder', or a bare
+ *                               name, which means `prefabs/<name>`
  * @param {object} drive         `{ nodes, connections }` for the `/Drive` page. The entry is
  *                               already placed as node id `subject`; add your probes and wire
  *                               them to its outputs.
@@ -67,7 +68,7 @@ function flatten(roots) {
  * @returns {string} the project directory
  */
 function buildDriveProject(slug, drive, stamp) {
-  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), `drive-${slug}-`)), 'p');
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), `drive-${slug.replace(/\//g, '-')}-`)), 'p');
   const comps = path.join(dir, 'components');
   fs.mkdirSync(comps, { recursive: true });
   const registry = { version: 1, components: {} };
@@ -93,7 +94,10 @@ function buildDriveProject(slug, drive, stamp) {
     };
   };
 
-  const entryDir = path.join(REPO_ROOT, 'library/prefabs', slug);
+  // A slug may name its shelf ('modules/media-recorder') or be a bare prefab
+  // name ('file-upload'), which is what every drive written before modules had
+  // one passes. Both resolve under library/.
+  const entryDir = path.join(REPO_ROOT, 'library', slug.includes('/') ? slug : path.join('prefabs', slug));
   const project = JSON.parse(fs.readFileSync(path.join(entryDir, 'project/project.json'), 'utf8'));
   const rootName = project.components[0].name;
   for (const c of project.components) {
@@ -130,11 +134,33 @@ function buildDriveProject(slug, drive, stamp) {
         id: 'router',
         type: 'Router',
         parent: 'app-root',
-        parameters: { name: 'Main', pages: { startPage: '/Drive', routes: ['/Drive'] } }
+        parameters: { name: 'Main', pages: { startPage: '/Drive', routes: ['/Drive', '/Away'] } }
       }
     ],
     [],
     'd0000000-0000-4000-8000-000000000001'
+  );
+
+  // An empty second route, so a drive can measure what NAVIGATION tears down.
+  // ⚠️ This is not the same as unmounting: a Group at `mounted: false` hides its
+  // children and leaves the component's non-visual nodes alive and running,
+  // while a route change deletes the page's whole node scope and is what fires
+  // `_onNodeDeleted`. A teardown arm that uses the first one grades nothing —
+  // the media-recorder drive measured a microphone still live for exactly that
+  // reason before this existed.
+  write(
+    '/Away',
+    [
+      {
+        id: 'away-page',
+        type: 'Page',
+        children: ['away-text'],
+        parameters: { title: 'Away', urlPath: 'away' }
+      },
+      { id: 'away-text', type: 'Text', parent: 'away-page', parameters: { text: 'Away' } }
+    ],
+    [],
+    'd0000000-0000-4000-8000-000000000003'
   );
 
   const probes = drive.nodes || [];
@@ -146,21 +172,31 @@ function buildDriveProject(slug, drive, stamp) {
   // the prefab and measured an empty page.
   const childrenOf = (id) => {
     const kids = probes.filter((n) => (n.onPage ? 'page' : n.parent) === id).map((n) => n.id);
+    if ((drive.subjectParent || 'page') === id) kids.unshift('subject');
     return kids.length ? { children: kids } : {};
   };
+  // `subjectParent` puts the entry inside a probe instead of straight on the
+  // page. An unmount arm needs it: a component instance's visual ports are
+  // per-instance, so a connection to the INSTANCE's `mounted` is refused at
+  // load ("input doesn't exist") — the port that does exist is the one on a
+  // Group the drive owns and the entry sits inside.
+  const subjectParent = drive.subjectParent || 'page';
   write(
     '/Drive',
     [
       {
         id: 'page',
         type: 'Page',
-        children: ['subject', ...probes.filter((n) => n.onPage).map((n) => n.id)],
+        children: [
+          ...(subjectParent === 'page' ? ['subject'] : []),
+          ...probes.filter((n) => n.onPage).map((n) => n.id)
+        ],
         parameters: { title: 'Drive', urlPath: '' }
       },
       {
         id: 'subject',
         type: rootName,
-        parent: 'page',
+        parent: subjectParent,
         parameters: drive.subjectParameters || {},
         ...childrenOf('subject')
       },

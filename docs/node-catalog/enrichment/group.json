@@ -20,7 +20,8 @@
     "ui-split-hero",
     "ui-icon-feature-strip",
     "ui-stat-tile-row",
-    "ui-empty-state"
+    "ui-empty-state",
+    "layout-wrap-a-row-of-content-width-items"
   ],
   "patterns": [
     "Component root: a single Group at the top of every visual component, `flexDirection` column.",

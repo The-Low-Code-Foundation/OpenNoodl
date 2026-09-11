@@ -190,6 +190,14 @@ Declared-port-groups: `width`/`height` appear based on `sizeMode`, per-side bord
 
 Component Children is a placeholder with no ports: whatever children are given to an *instance* of the component are rendered where the placeholder sits. Here '/Media Frame' is a reusable framed panel — title bar on top, content slot below — and the consumer drops a Video inside its instance. The video's play/pause wiring lives at the consumer level; the frame knows nothing about its content.
 
+**Record audio in the browser and upload it as a cloud file**
+
+The whole round trip in built-in nodes: **Record Media** captures from the microphone, **Upload File** stores the result, and a **Video** node plays it back. The wiring worth copying is the three-way split on the outcome — `Started` and `Stopped` drive a `States` node that owns the status text, `Recording` drives the Stop button's `enabled` so the two buttons can never both be live, and `Permission Denied` / `Device Busy` land on their own states because a refused prompt and a microphone another tab is holding need different words. ⚠️ `Blob URL` is a string and `Mounted` is a boolean, so the playback surface is gated through an `Expression` rather than wired straight across — a URL is not a truth value. The `File` output is a real `File`, which is exactly what `Upload File` expects, so nothing here converts the recording to text and back on the way.
+
+**Show a camera preview and record the stream you are already showing**
+
+Two nodes that look like they overlap and do not. **Web Camera** opens a stream and hands it to a **Video** node's `Source Object`, which is the live preview; **Record Media** takes that same stream on its `Media Stream` input and writes it to a file. Because the stream is passed rather than re-requested, the browser asks for permission once — a recorder that calls `getUserMedia` again would prompt a second time and open a second camera handle. The ownership rule falls out of the same wire: the recorder did not open this stream, so it never stops its tracks, and `Stop` ends the recording while the preview keeps running. Stopping the camera stays the job of the node that started it, which is why `Stop Stream` is wired from its own button.
+
 ## Related nodes
 
 [Image](./image.md), [Group](./group.md), [Button](./net-noodl-controls-button.md)

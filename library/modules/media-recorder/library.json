@@ -1,0 +1,14 @@
+{
+  "label": "Media Recorder",
+  "description": "Record audio or video in the browser and get a file you can upload. Ships a Record Media node — pick Audio or Video, fire Start and Stop, and get a File ready for Noodl.Files.upload plus a blob URL the built-in Video node plays back, with no base64 round trip. Permission denied, a device already in use and no device each fire their own signal as well as setting Error, and every track it opened is stopped on Stop, on Cancel and on unmount, so nothing leaves the camera light on. Feed it the Media Stream output of the Web Camera node to record an already-granted stream without a second permission prompt — a stream it did not open is never stopped. No dependencies, no network.",
+  "type": "module",
+  "tags": [
+    "Device",
+    "Media"
+  ],
+  "docsPath": "/library/modules/media-recorder/",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0",
+  "icon": "icon.png"
+}

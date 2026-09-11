@@ -1433,6 +1433,7 @@ function settleExpression(ceilingMs, rafs) {
  * @param {string} options.projectDir          v2 project directory.
  * @param {number} [options.backendPort]       Backend to proxy `/__backend` to.
  * @param {boolean}[options.editorTokens=false]
+ * @param {string[]}[options.chromeArgs]       Extra flags for the headless browser.
  * @param {(page: RenderedPage) => Promise<T>} fn
  * @returns {Promise<T>}
  * @template T
@@ -1656,7 +1657,7 @@ async function attachTab({ wsUrl, servePort, settles, label }) {
 }
 
 async function withRenderedPage(options, fn) {
-  const { projectDir, backendPort, editorTokens = false } = options;
+  const { projectDir, backendPort, editorTokens = false, chromeArgs = [] } = options;
 
   // Before anything else: take down what a killed drive left behind. See
   // `reapOrphanedRenderProcesses` for why this is at the start and not the end.
@@ -1699,6 +1700,11 @@ async function withRenderedPage(options, fn) {
       '--no-default-browser-check',
       '--hide-scrollbars',
       '--disable-gpu',
+      // Caller-supplied flags, for drives that need a capability this browser
+      // does not have by default — a synthetic microphone and camera
+      // (`--use-fake-device-for-media-stream`) being the case that added this.
+      // Appended last so a drive can override a default above it.
+      ...chromeArgs,
       'about:blank'
     ],
     { stdio: 'ignore' }

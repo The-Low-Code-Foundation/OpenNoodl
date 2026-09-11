@@ -1,0 +1,58 @@
+{
+  "id": "media-record-video-from-a-live-preview",
+  "title": "Show a camera preview and record the stream you are already showing",
+  "description": "Two nodes that look like they overlap and do not. **Web Camera** opens a stream and hands it to a **Video** node's `Source Object`, which is the live preview; **Record Media** takes that same stream on its `Media Stream` input and writes it to a file. Because the stream is passed rather than re-requested, the browser asks for permission once — a recorder that calls `getUserMedia` again would prompt a second time and open a second camera handle. The ownership rule falls out of the same wire: the recorder did not open this stream, so it never stops its tracks, and `Stop` ends the recording while the preview keeps running. Stopping the camera stays the job of the node that started it, which is why `Stop Stream` is wired from its own button.",
+  "demonstrates": ["nodegx.mediarecorder", "Web Camera", "Video", "Upload File"],
+  "requiresModules": [
+    { "module": "media-recorder", "nodes": ["nodegx.mediarecorder"] },
+    { "module": "web-camera", "nodes": ["Web Camera"] }
+  ],
+  "components": [
+    {
+      "name": "/Camera Capture",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "Camera capture",
+          "parameters": { "flexDirection": "column", "sizeMode": "contentHeight", "paddingTop": "var(--space-4)", "paddingBottom": "var(--space-4)", "paddingLeft": "var(--space-4)", "paddingRight": "var(--space-4)", "rowGap": "var(--space-3)" },
+          "children": ["preview", "controls", "status"]
+        },
+        { "id": "preview", "type": "Video", "label": "Live preview", "parent": "root", "parameters": { "autoplay": true, "muted": true } },
+        {
+          "id": "controls",
+          "type": "Group",
+          "label": "Buttons",
+          "parent": "root",
+          "parameters": { "flexDirection": "row", "sizeMode": "contentSize", "alignY": "center", "columnGap": "var(--space-3)" },
+          "children": ["open_btn", "rec_btn", "stop_btn", "close_btn"]
+        },
+        { "id": "open_btn", "type": "net.noodl.controls.button", "label": "Open camera", "parent": "controls", "parameters": { "label": "Open camera" } },
+        { "id": "rec_btn", "type": "net.noodl.controls.button", "label": "Record", "parent": "controls", "parameters": { "label": "Record", "enabled": false } },
+        { "id": "stop_btn", "type": "net.noodl.controls.button", "label": "Stop", "parent": "controls", "parameters": { "label": "Stop", "enabled": false } },
+        { "id": "close_btn", "type": "net.noodl.controls.button", "label": "Close camera", "parent": "controls", "parameters": { "label": "Close camera", "enabled": false } },
+        { "id": "status", "type": "Text", "label": "Status", "parent": "root", "parameters": { "text": "" } },
+        { "id": "camera", "type": "Web Camera", "label": "The camera", "parameters": { "frontFacing": true } },
+        { "id": "recorder", "type": "nodegx.mediarecorder", "label": "Record the preview", "parameters": { "mode": "video" } },
+        { "id": "upload", "type": "Upload File", "label": "Store the clip", "parameters": {} },
+        { "id": "camera_on", "type": "Switch", "label": "Camera is open" }
+      ],
+      "connections": [
+        { "fromId": "open_btn", "fromProperty": "onClick", "toId": "camera", "toProperty": "startStream" },
+        { "fromId": "close_btn", "fromProperty": "onClick", "toId": "camera", "toProperty": "stopStream" },
+        { "fromId": "camera", "fromProperty": "stream", "toId": "preview", "toProperty": "srcObject" },
+        { "fromId": "camera", "fromProperty": "stream", "toId": "recorder", "toProperty": "stream" },
+        { "fromId": "camera", "fromProperty": "streamStarted", "toId": "camera_on", "toProperty": "on" },
+        { "fromId": "camera", "fromProperty": "streamStopped", "toId": "camera_on", "toProperty": "off" },
+        { "fromId": "camera_on", "fromProperty": "state", "toId": "rec_btn", "toProperty": "enabled" },
+        { "fromId": "camera_on", "fromProperty": "state", "toId": "close_btn", "toProperty": "enabled" },
+        { "fromId": "rec_btn", "fromProperty": "onClick", "toId": "recorder", "toProperty": "Start" },
+        { "fromId": "stop_btn", "fromProperty": "onClick", "toId": "recorder", "toProperty": "Stop" },
+        { "fromId": "recorder", "fromProperty": "recording", "toId": "stop_btn", "toProperty": "enabled" },
+        { "fromId": "recorder", "fromProperty": "file", "toId": "upload", "toProperty": "file" },
+        { "fromId": "recorder", "fromProperty": "Stopped", "toId": "upload", "toProperty": "upload" },
+        { "fromId": "recorder", "fromProperty": "Error", "toId": "status", "toProperty": "text" }
+      ]
+    }
+  ]
+}

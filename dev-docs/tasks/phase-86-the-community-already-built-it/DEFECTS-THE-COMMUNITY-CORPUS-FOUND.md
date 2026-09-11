@@ -1,8 +1,12 @@
 # Defects the community corpus found
 
-**Filed 2026-09-11, COM-003 session 4.** Every row here was found by running a gate or a runtime
-over an artefact the community shipped, never by reading one. Each says who owns it, and none of
-them is owned by phase 86.
+**Filed 2026-09-11, COM-003 session 4; D5 added by COM-005 session 5.** Every row here was found by
+running a gate or a runtime over an artefact the community shipped, never by reading one. Each says
+who owns it, and none of them is owned by phase 86.
+
+⚠️ **D5 is the odd one out**: it was found by *building* the answer to a corpus gap rather than by
+replaying the corpus, and it is about the module SDK the community's own modules are written
+against — so it inherits the same fossil property.
 
 > 🔴 **The corpus finds these because it is old.** These graphs and snippets were written against
 > the product as it was years ago and have not been touched since. That makes them a fossil record:
@@ -142,3 +146,42 @@ may describe a real ordering defect, or a product that has since changed, or a m
 magic delay in the most-copied dropdown recipe in the community is worth one hour of somebody's
 attention, and because an unowned observation gets rediscovered at full price. The measurement to
 take: feed a `Dropdown`'s `items` on the same frame as its mount and see whether the options appear.
+
+---
+
+## D5 🔴 — The module SDK's own unmount hook throws at the moment it is needed
+
+**Owner: unowned — filed by COM-005, which routed around it rather than fixing it.**
+
+A hand-authored library module declares nodes through the **Noodl node-definition SDK shim** that
+`custom-html`, `chart-js`, `clipboard` and every module in `library/modules/` carries verbatim. The
+shim offers an unmount hook, and it is the one a module author would reach for:
+
+```js
+e.methods.onNodeDeleted && (e.methods._onNodeDeleted = function () {
+  this.__proto__.__proto__._onNodeDeleted.call(this);
+  e.methods.onNodeDeleted.value.call(this);   // ← `.value`
+});
+```
+
+`.value` is a **property descriptor's** field. But the shim stores methods as bare functions
+(`e.prototypeExtensions[r] = t.methods[r]`), and `nodedefinition.ts` builds its descriptors into a
+**separate** `prototypeDescriptors` map — it used to rewrite `prototypeExtensions` in place and
+deliberately stopped, because doing so made `defineNode` non-idempotent (its own comment explains
+the `Cannot redefine property` symptom that came from it).
+
+So `e.methods.onNodeDeleted` is a function, `.value` is `undefined`, and **`undefined.call(this)`
+throws a TypeError** — at exactly the moment the hook exists to release something. For a node that
+holds a camera, a socket or a timer, the cleanup does not merely fail: it throws partway through
+`_onNodeDeleted`, so anything after it in the teardown is skipped too.
+
+⚠️ **Measured, not reasoned about.** `library/modules/media-recorder` declares `_onNodeDeleted`
+directly instead — the path every built-in node uses — and its drive proves the teardown works
+that way: `navigating away mid-recording ends every track (0 live / 4)`.
+
+🔴 **Nothing in the repo uses `onNodeDeleted` today**, which is why this has never been seen: it is
+a hook that has never been called. That also makes it cheap to fix — read the bare function when it
+is not a descriptor — and it should be fixed before a module author finds it the hard way.
+
+**The measurement to take:** declare `methods: { onNodeDeleted() {…} }` in any library module, mount
+it, navigate away, and read the console.

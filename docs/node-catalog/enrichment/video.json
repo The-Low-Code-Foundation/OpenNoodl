@@ -15,7 +15,7 @@
     "onVideoElementCreated": "DOM-element reference to the underlying `video` element, for custom JavaScript integration."
   },
   "runtimeBehavior": "Declared-port-groups: `width`/`height` appear based on `sizeMode`, per-side border width/color ports appear once a border style is chosen, and `pointerEventsEnabled` appears when `pointerEventsMode` is 'explicit'. The playback and event ports are always present.",
-  "examples": ["vis-wrapper-component-children"],
+  "examples": ["vis-wrapper-component-children", "media-record-audio-and-upload", "media-record-video-from-a-live-preview"],
   "patterns": [
     "Button `onClick` → `play`: user-initiated playback that satisfies browser autoplay policies.",
     "Background hero: `autoplay` + `muted` + `loop` true, `controls` false, `objectFit` 'cover'."
