@@ -19,12 +19,16 @@
         "flexDirection": "column",
         "alignItems": "center",
         "as": "header",
+        "position": "sticky",
+        "alignY": "top",
+        "zIndex": 50,
         "backgroundColor": "var(--background)",
         "borderBottomStyle": "solid",
         "borderBottomWidth": "var(--border-1)",
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-4)",
-        "paddingBottom": "var(--space-4)"
+        "paddingBottom": "var(--space-4)",
+        "cssClassName": "site-header"
       },
       "x": 40,
       "y": 40
@@ -36,6 +40,7 @@
       "parent": "hdBand",
       "children": [
         "hdMark",
+        "hdNav",
         "hdContact"
       ],
       "parameters": {
@@ -43,6 +48,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -50,11 +56,12 @@
         "flexDirection": "row",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "alignItems": "center",
         "justifyContent": "space-between",
-        "columnGap": "var(--space-4)"
+        "flexWrap": "wrap",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-3)"
       },
       "x": 100,
       "y": 160
@@ -139,6 +146,76 @@
       "y": 640
     },
     {
+      "id": "hdNav",
+      "type": "Group",
+      "label": "The nav",
+      "parent": "hdShell",
+      "children": [
+        "hdLink1",
+        "hdLink2",
+        "hdLink3"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-2)",
+        "as": "nav"
+      },
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "hdLink1",
+      "type": "Text",
+      "label": "Nav link 1",
+      "parent": "hdNav",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize",
+        "cssClassName": "nav-link"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "hdLink2",
+      "type": "Text",
+      "label": "Nav link 2",
+      "parent": "hdNav",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize",
+        "cssClassName": "nav-link"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "hdLink3",
+      "type": "Text",
+      "label": "Nav link 3",
+      "parent": "hdNav",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize",
+        "cssClassName": "nav-link"
+      },
+      "x": 220,
+      "y": 1120
+    },
+    {
       "id": "hdContact",
       "type": "net.noodl.controls.button",
       "label": "Get in touch",
@@ -157,24 +234,81 @@
         "paddingBottom": "var(--space-3)",
         "fontSize": "var(--text-sm)",
         "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
+        "sizeMode": "contentSize",
+        "cssClassName": "pressable"
       },
       "x": 160,
-      "y": 760
+      "y": 1240
     },
     {
-      "id": "hdOutputs",
-      "type": "Component Outputs",
-      "label": "What the header asks the page to do",
+      "id": "hdGo1",
+      "type": "/Site/ScrollTo",
+      "label": "Nav link 1 — where it goes",
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "hdGo2",
+      "type": "/Site/ScrollTo",
+      "label": "Nav link 2 — where it goes",
+      "x": 530,
+      "y": 1120
+    },
+    {
+      "id": "hdGo3",
+      "type": "/Site/ScrollTo",
+      "label": "Nav link 3 — where it goes",
+      "x": 530,
+      "y": 1240
+    },
+    {
+      "id": "hdGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "Get in touch — where it goes",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 530,
+      "y": 1360
+    },
+    {
+      "id": "hdInputs",
+      "type": "Component Inputs",
+      "label": "The nav",
       "ports": [
         {
-          "name": "contact",
-          "plug": "input",
-          "type": "signal"
+          "name": "nav1",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "nav1Target",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "nav2",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "nav2Target",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "nav3",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "nav3Target",
+          "plug": "output",
+          "type": "string"
         }
       ],
       "x": 530,
-      "y": 760
+      "y": 1000
     }
   ],
   "visualRoots": [

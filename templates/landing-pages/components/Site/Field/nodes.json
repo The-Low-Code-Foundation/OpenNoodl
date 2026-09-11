@@ -9,7 +9,8 @@
       "label": "The field",
       "children": [
         "fdLabel",
-        "fdInput"
+        "fdInput",
+        "fdMessage"
       ],
       "parameters": {
         "width": {
@@ -66,6 +67,31 @@
       "y": 280
     },
     {
+      "id": "fdMessage",
+      "type": "Text",
+      "label": "What is wrong, or what is still needed",
+      "parent": "fdField",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "color": "var(--muted-foreground)",
+        "lineHeight": "var(--leading-snug)",
+        "mounted": false
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "fdHasMessage",
+      "type": "Expression",
+      "label": "Is there anything to say?",
+      "parameters": {
+        "expression": "(m || '').length > 0"
+      },
+      "x": 350,
+      "y": 400
+    },
+    {
       "id": "fdInputs",
       "type": "Component Inputs",
       "label": "The field",
@@ -79,6 +105,21 @@
           "name": "type",
           "plug": "output",
           "type": "string"
+        },
+        {
+          "name": "message",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "messageColor",
+          "plug": "output",
+          "type": "color"
+        },
+        {
+          "name": "edge",
+          "plug": "output",
+          "type": "color"
         }
       ],
       "x": 350,

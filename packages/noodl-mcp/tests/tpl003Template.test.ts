@@ -21,10 +21,12 @@ import * as path from 'path';
 
 import {
   APP_COMPONENT,
+  CONTACT_CLASS,
   CONTACT_COMPONENT,
   EDIT,
   FIELD_COMPONENT,
   FOOTER_COMPONENT,
+  HEADER_CLASS,
   HEADER_COMPONENT,
   MISSING_TEXT,
   PAGE_BUSINESS,
@@ -32,6 +34,7 @@ import {
   PAGE_LAUNCH,
   PLACEHOLDER_ADDRESS,
   ROUTER,
+  SCROLL_TO_COMPONENT,
   SENT_TEXT,
   SWITCHER_COMPONENT,
   TPL003_COMPONENTS
@@ -50,6 +53,12 @@ import { requestedCompositions, tpl003TokenEntries, USED_COMPOSITIONS } from './
 import { collectEditMarkers } from './templatePins';
 
 jest.setTimeout(600000);
+
+/**
+ * What the template declares, plus `App`. Derived so that adding a component is
+ * one edit and not two, and so this number cannot be "fixed" by typing over it.
+ */
+const EXPECTED_COMPONENTS = TPL003_COMPONENTS.length + 1;
 
 const REPO = path.join(__dirname, '..', '..', '..');
 const ARTEFACT = path.join(REPO, 'templates', TEMPLATE_ID);
@@ -205,7 +214,11 @@ describe('TPL-003 — the committed template is what the door writes today', () 
       metadata?: { designTokens?: { customTokens?: unknown[] } };
     };
     expect(content.rootComponent).toBe(`/${APP_COMPONENT}`);
-    expect(content.components).toHaveLength(21);
+    // 🔴 Counted from what the template declares, not from a number typed here.
+    // A literal that has to be bumped every time a component is added is a gate
+    // that grades whoever remembered to bump it; `TPL003_COMPONENTS` is the thing
+    // the number stands for, and it cannot be bumped without adding a component.
+    expect(content.components).toHaveLength(EXPECTED_COMPONENTS);
     expect(content.components?.map((c) => c.name).sort()).toEqual(shipped.map((c) => c.legacyName).sort());
     expect(content.settings).toMatchObject({ bodyScroll: true, navigationPathType: 'path' });
     expect((content.metadata?.designTokens?.customTokens ?? []).length).toBeGreaterThan(20);
@@ -216,10 +229,11 @@ describe('TPL-003 — the committed template is what the door writes today', () 
 
   it('control: the comparison is over a real artefact — twenty-one components, a note, no policy', () => {
     const committed = filesUnder(ARTEFACT);
-    // 21 components × 3 files, plus the registry, the project file and the note.
-    // 16 → 21 when the launch page was rebuilt: Check, MockRow, Mock, BigStat, Plan.
-    expect(committed.length).toBe(21 * 3 + 3);
-    expect(shipped).toHaveLength(21);
+    // Each component is three files, plus the registry, the project file and the
+    // note. 16 → 21 when the launch page was rebuilt (Check, MockRow, Mock,
+    // BigStat, Plan); 21 → 23 at TPL-004 (ScrollTo, IsValidEmail).
+    expect(committed.length).toBe(EXPECTED_COMPONENTS * 3 + 3);
+    expect(shipped).toHaveLength(EXPECTED_COMPONENTS);
     expect(committed).toContain('nodegx.project.json');
     expect(committed).toContain(path.join('components', '_registry.json'));
     expect(committed).toContain(path.join('docs', 'START-HERE.md'));
@@ -322,7 +336,11 @@ describe('TPL-003 — component-instance ports resolve, on disk', () => {
   it('control: there are instances to grade, and the parts declare ports', () => {
     expect(instances.length).toBeGreaterThan(30);
     expect(declaredPorts(byName(CONTACT_COMPONENT), 'inputs')).toEqual(new Set(['heading', 'line', 'button']));
-    expect(declaredPorts(byName(HEADER_COMPONENT), 'outputs')).toEqual(new Set(['contact']));
+    // TPL-004: the header scrolls itself, so it publishes nothing and takes a nav.
+    expect(declaredPorts(byName(HEADER_COMPONENT), 'outputs')).toEqual(new Set());
+    expect(declaredPorts(byName(HEADER_COMPONENT), 'inputs')).toEqual(
+      new Set(['nav1', 'nav1Target', 'nav2', 'nav2Target', 'nav3', 'nav3Target'])
+    );
     expect(declaredPorts(byName(FIELD_COMPONENT), 'outputs')).toEqual(new Set(['text']));
   });
 
@@ -437,20 +455,71 @@ describe('TPL-003 — the three pages share the frame and each has one heading',
     expect(descendants(page, main[0].id).map((n) => n.id)).toContain(h1[0].id);
   });
 
-  it.each(PAGE_NAMES)('%s wires the header and the hero to the form, and the second hero action to a band', (name) => {
+  /**
+   * TPL-004 replaced `Scroll To Element` with a class name and a `Site/ScrollTo`.
+   *
+   * 🔴 **The failure this grades cannot be photographed.** A link aimed at
+   * `section-flwork` while the band says `section-flWork` renders perfectly,
+   * scrolls nowhere, and reports nothing — `SCROLL_SCRIPT` fires `missing` into
+   * an unwired port. So the gate is not "is there a wire", it is **does every
+   * target a page names exist as a class somewhere in the project**.
+   */
+  it('no page scrolls through a Group port any more', () => {
+    const offenders = shipped.flatMap((c) =>
+      c.connections.filter((w) => String(w.toProperty).startsWith('scrollToElement')).map((w) => `${c.legacyName} › ${w.toId}.${w.toProperty}`)
+    );
+    expect(offenders).toEqual([]);
+  });
+
+  it('🔴 every scroll target names a class that exists', () => {
+    // Every class any node in the project carries.
+    const classes = new Set(
+      shipped.flatMap((c) => c.nodes.map((n) => n.parameters?.cssClassName).filter((v): v is string => typeof v === 'string'))
+    );
+    // Every target anything aims at: a ScrollTo instance's own `target`, and the
+    // three the header is handed per page.
+    const targets: string[] = [];
+    for (const c of shipped) {
+      for (const n of c.nodes) {
+        if (n.type === SCROLL_TO_COMPONENT && typeof n.parameters?.target === 'string') targets.push(`${c.legacyName} › ${n.id}: ${n.parameters.target}`);
+        if (n.type === HEADER_COMPONENT) {
+          for (const key of ['nav1Target', 'nav2Target', 'nav3Target']) {
+            const v = n.parameters?.[key];
+            if (typeof v === 'string') targets.push(`${c.legacyName} › ${n.id}.${key}: ${v}`);
+          }
+        }
+      }
+    }
+    // Control: there are targets to grade at all, and the header class the
+    // script measures its offset from is really on the header.
+    expect(targets.length).toBeGreaterThanOrEqual(3 * 3 + 3 + 3);
+    expect(classes.has(HEADER_CLASS)).toBe(true);
+    expect(classes.has(CONTACT_CLASS)).toBe(true);
+
+    const dangling = targets.filter((t) => !classes.has(t.slice(t.lastIndexOf(': ') + 2)));
+    expect(dangling).toEqual([]);
+  });
+
+  it.each(PAGE_NAMES)('%s gives the header a nav, and both hero buttons somewhere to go', (name) => {
     const page = byName(name);
     const prefix = name === PAGE_FREELANCER ? 'fl' : name === PAGE_BUSINESS ? 'bz' : 'ln';
+    const header = page.nodes.find((n) => n.id === `${prefix}Header`);
+    expect(header?.type).toBe(HEADER_COMPONENT);
+    for (const key of ['nav1', 'nav1Target', 'nav2', 'nav2Target', 'nav3', 'nav3Target']) {
+      expect(typeof header?.parameters?.[key]).toBe('string');
+    }
+    // The anchor GROUP still exists and still holds the band — it is what carries
+    // the contact class now that it no longer holds a port.
+    const anchor = page.nodes.find((n) => n.id === `${prefix}ContactAnchor`);
+    expect(anchor?.children).toEqual([`${prefix}Contact`]);
+    expect(anchor?.parameters?.cssClassName).toBe(CONTACT_CLASS);
+
     const w = page.connections;
-    expect(w).toContainEqual({ fromId: `${prefix}Header`, fromProperty: 'contact', toId: `${prefix}Ground`, toProperty: 'scrollToElement.do' });
-    // The anchor GROUP, not the instance: an instance has no `this` output, and
-    // the first render said so in the console on every page while nothing scrolled.
-    expect(w).toContainEqual({ fromId: `${prefix}ContactAnchor`, fromProperty: 'this', toId: `${prefix}Ground`, toProperty: 'scrollToElement.element' });
-    expect(page.nodes.find((n) => n.id === `${prefix}ContactAnchor`)?.children).toEqual([`${prefix}Contact`]);
-    expect(w).toContainEqual({ fromId: `${prefix}HeroPrimary`, fromProperty: 'onClick', toId: `${prefix}Ground`, toProperty: 'scrollToElement.do' });
-    expect(w).toContainEqual({ fromId: `${prefix}HeroSecondary`, fromProperty: 'onClick', toId: `${prefix}Main`, toProperty: 'scrollToElement.do' });
-    const target = w.find((x) => x.toId === `${prefix}Main` && x.toProperty === 'scrollToElement.element');
-    expect(target).toBeDefined();
-    expect(page.nodes.some((n) => n.id === target!.fromId)).toBe(true);
+    expect(w).toContainEqual({ fromId: `${prefix}HeroPrimary`, fromProperty: 'onClick', toId: `${prefix}GoContact`, toProperty: 'go' });
+    expect(w).toContainEqual({ fromId: `${prefix}HeroSecondary`, fromProperty: 'onClick', toId: `${prefix}GoSecond`, toProperty: 'go' });
+    for (const id of [`${prefix}GoContact`, `${prefix}GoSecond`]) {
+      expect(page.nodes.find((n) => n.id === id)?.type).toBe(SCROLL_TO_COMPONENT);
+    }
   });
 
   it('every photograph a page or a part names is a starter asset every project has', () => {

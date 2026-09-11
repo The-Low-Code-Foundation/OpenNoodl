@@ -75,6 +75,7 @@ export interface Tpl003Component {
 
 // ── The components' legacy names, spelled once ───────────────────────────────
 
+export const SCROLL_TO_COMPONENT = '/Site/ScrollTo';
 export const SWITCHER_COMPONENT = '/Site/Switcher';
 export const HEADER_COMPONENT = '/Site/Header';
 export const FOOTER_COMPONENT = '/Site/Footer';
@@ -91,6 +92,7 @@ export const MOCK_COMPONENT = '/Site/Mock';
 export const BIG_STAT_COMPONENT = '/Site/BigStat';
 export const PLAN_COMPONENT = '/Site/Plan';
 export const FIELD_COMPONENT = '/Site/Field';
+export const EMAIL_CHECK_COMPONENT = '/Site/IsValidEmail';
 
 export const PAGE_FREELANCER = '/Pages/Freelancer';
 export const PAGE_BUSINESS = '/Pages/Business';
@@ -102,11 +104,42 @@ export const EDIT = 'EDIT — ';
 /** The address the form sends to until somebody changes it. Obviously unfinished, on purpose. */
 export const PLACEHOLDER_ADDRESS = 'EDIT ME — you@example.com';
 
+// ── The class names the page scrolls to ──────────────────────────────────────
+
+/**
+ * TPL-004 — a scroll target is a class on a band, and **the name is derived
+ * rather than typed at both ends**. A nav link that aims at `section-flwork`
+ * while the band says `section-flWork` scrolls nowhere, silently, and a
+ * screenshot cannot see it: `sectionClass()` makes the pair impossible to
+ * mistype because there is only one spelling of it.
+ */
+export const sectionClass = (id: string) => `section-${id}`;
+
+/** The contact band, the one destination every page has. Named, because the header aims at it blind. */
+export const CONTACT_CLASS = 'site-contact';
+
+/** The sticky header. 🔴 `SCROLL_SCRIPT` measures its height to offset every scroll — renaming it here and nowhere else sends every jump a header too far. */
+export const HEADER_CLASS = 'site-header';
+
 const COLUMNS_NODE = 'net.noodl.visual.columns';
 const ICON_NODE = 'net.noodl.visual.icon';
 const BUTTON_NODE = 'net.noodl.controls.button';
 const INPUT_NODE = 'net.noodl.controls.textinput';
 const LINK_NODE = 'net.noodl.externallink';
+const CSS_NODE = 'CSS Definition';
+const FUNCTION_NODE = 'JavaScriptFunction';
+const STATES_NODE = 'States';
+const STATIC_DATA_NODE = 'Static Data';
+const FOR_EACH_NODE = 'For Each';
+const FILTER_NODE = 'Filter Collection';
+const VARIABLE_NODE = 'Variable2';
+const SET_VARIABLE_NODE = 'Set Variable';
+const EXPRESSION_NODE = 'Expression';
+const FORMAT_NODE = 'String Format';
+const AND_NODE = 'And';
+const COUNTER_NODE = 'Counter';
+const SHOW_POPUP_NODE = 'NavigationShowPopup';
+const CLOSE_POPUP_NODE = 'NavigationClosePopup';
 
 const px = (value: number) => ({ value, unit: 'px' });
 const pct = (value: number) => ({ value, unit: '%' });
@@ -245,15 +278,199 @@ function inputs(id: string, label: string, names: string[]): unknown {
   return { id, type: 'Component Inputs', label, ports: names.map((name) => ({ name, type: 'string', plug: 'output' })) };
 }
 
+/**
+ * The same, when a port is not a string. TPL-004 needs signal and array ports —
+ * a `go` a caller fires, a list a repeater walks — and a signal declared as a
+ * string is a port that accepts a value and never fires anything.
+ */
+function typedInputs(id: string, label: string, ports: Array<[string, string]>): unknown {
+  return { id, type: 'Component Inputs', label, ports: ports.map(([name, type]) => ({ name, type, plug: 'output' })) };
+}
+
+/** `Component Outputs` — what leaves a component. `plug: 'input'`, the mirror of the above. */
+function outputs(id: string, label: string, ports: Array<[string, string]>): unknown {
+  return { id, type: 'Component Outputs', label, ports: ports.map(([name, type]) => ({ name, type, plug: 'input' })) };
+}
+
+/**
+ * A node with no parent — a logic node, or an instance of a component that draws
+ * nothing. `place()` insists on a parent because everything it placed until
+ * TPL-004 was visual; a `Site/ScrollTo` has nowhere to be drawn.
+ */
+function logic(id: string, type: string, label: string, parameters?: Record<string, unknown>): unknown {
+  const node: Record<string, unknown> = { id, type, label };
+  if (parameters) node.parameters = parameters;
+  return node;
+}
+
+/** One wire, spelled the short way — TPL-004 adds about a hundred of them. */
+function wire(fromId: string, fromProperty: string, toId: string, toProperty: string): unknown {
+  return { fromId, fromProperty, toId, toProperty };
+}
+
 // ── The app shell ────────────────────────────────────────────────────────────
 
 export const APP_COMPONENT = 'App';
 
+/**
+ * TPL-004 — hover, press and the photograph that moves, in the one place a
+ * node port cannot say them.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **Why a stylesheet and not a `States` node per hoverable thing.** `Group`
+ * publishes `hoverStart`/`hoverEnd`, so the node-native route exists: a `States`
+ * per card, per pill, per link — about thirty extra nodes across nine
+ * components, every one of them a thing to keep in step, and **none of them able
+ * to say `:hover img { transform }`**, because a parent's hover cannot reach a
+ * child's parameter without another wire. `CSS Definition`'s stated job is
+ * exactly this, and it is one node.
+ *
+ * ⚠️ **Nothing here uses `var(--shadow-*)`, and that is not an oversight.** This
+ * template sets all five shadow tokens to `none` (`tpl003Theme.ts`) because its
+ * look is paper and ink. A hover written as a shadow would be invisible in the
+ * template that ships and visible only if somebody changed the tokens — a rule
+ * that appears to work and does nothing, which is the worst kind. The lift is a
+ * transform and a border, both of which this palette can show.
+ *
+ * ⚠️ **There IS a `:disabled` rule, and it is worth knowing why it works here.**
+ * The `Button` control renders a real `<button disabled>` (`Button.tsx`), so the
+ * pseudo-class matches and a disabled Send genuinely refuses the click. A
+ * `Group` does not — it is a `div`, and a Group's "disabled" look has to come
+ * from its own ports. The rule is written for the control it applies to.
+ *
+ * The last block is not decoration: a person who has asked their operating
+ * system to stop moving things gets a page that does not move.
+ */
+export const INTERACTION_CSS = `/* The landing pages — interaction states.
+   Anything a node port can express is set on the node, not here.
+   Every rule is opt-in: a node joins by setting its "cssClassName" input. */
+
+.pressable { cursor: pointer; }
+/* A real <button disabled> — the Button control renders one, so this matches.
+   It is what tells somebody the form is not finished yet. */
+button.pressable:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* A card that answers the pointer. No shadow — this template's shadow tokens
+   are all "none", so a shadow here would be a rule that does nothing. */
+.card-lift {
+  transition: transform var(--duration-200) var(--ease-out),
+              border-color var(--duration-200) var(--ease-out);
+}
+.card-lift:hover { transform: translateY(-3px); border-color: var(--border-strong); }
+.card-lift:active { transform: translateY(-1px); }
+
+/* The photograph moves inside the card's own clip box, so the cut corners stay cut. */
+.photo-zoom img { transition: transform var(--duration-500) var(--ease-out); }
+.photo-zoom:hover img { transform: scale(1.04); }
+
+.nav-link { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }
+.nav-link:hover { color: var(--primary); }
+
+/* A row that opens: the question, the service, the thing with an answer under it. */
+.disclosure { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }
+.disclosure:hover { color: var(--primary); }
+
+.pill {
+  transition: background-color var(--duration-150) var(--ease-out),
+              border-color var(--duration-150) var(--ease-out),
+              color var(--duration-150) var(--ease-out);
+}
+.pill:hover { border-color: var(--primary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card-lift, .photo-zoom img, .nav-link, .disclosure, .pill { transition: none; }
+  .card-lift:hover, .card-lift:active { transform: none; }
+  .photo-zoom:hover img { transform: none; }
+}
+`;
+
+/**
+ * 🔴 **The stylesheet lives on `App`, not on each page.** It is one node that
+ * mounts for the life of the app, beside the router every page renders into —
+ * so there is one copy to edit and no way for three copies to drift. A page is
+ * the wrong home for a rule three pages share.
+ */
 export const APP_NODES = [
   group('app_root', 'App', undefined, { sizeMode: 'explicit', width: pct(100), height: pct(100) }, ['app_router']),
-  { id: 'app_router', type: 'Router', label: 'Main router', parent: 'app_root', parameters: { name: ROUTER } }
+  { id: 'app_router', type: 'Router', label: 'Main router', parent: 'app_root', parameters: { name: ROUTER } },
+  logic('app_css', CSS_NODE, 'Hover and press — the whole site', { style: INTERACTION_CSS })
 ];
 export const APP_WIRES: unknown[] = [];
+
+// ── Site/ScrollTo — one button, one section, on any page ─────────────────────
+
+/**
+ * TPL-004 — the utility every "take me to that bit of the page" wire goes
+ * through. `target` is a **class name**; `go` is the signal that fires it.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **This replaces `Scroll To Element`, and the reason is a port count.** A
+ * `Group` holds exactly ONE `Scroll To Element - Element`. TPL-003 wired the
+ * page ground's to the contact band and the `main`'s to one other section, and
+ * that was the ceiling: two destinations per page, both of them spelled by
+ * wiring a `this` output across a component boundary. A header with three nav
+ * links needs three more, and there are no more ports.
+ *
+ * A class name has no such limit, costs one string on the section it names, and
+ * is the same mechanism a person would reach for if they wrote the page by
+ * hand.
+ *
+ * ⚠️ **`runOnChange-in-target` is off.** `Run` is ADDITIVE on a
+ * `JavaScriptFunction`: with it on, setting the target would scroll the page —
+ * so placing this node would move the reader on mount. The `go` signal is the
+ * only trigger.
+ *
+ * ⚠️ **The offset is measured, not assumed.** The header is sticky, so it
+ * covers whatever lands at the top of the viewport; the script reads the
+ * header's real height at the moment of the scroll rather than carrying a
+ * number that goes stale the first time somebody changes the padding.
+ *
+ * ⚠️ **`behavior` is chosen per reader.** Somebody who has asked their system
+ * to stop animating things gets a jump, not a glide — the same decision the
+ * stylesheet's last block makes, made again here because a `scrollTo` does not
+ * read CSS.
+ */
+export const SCROLL_SCRIPT =
+  "var target = Inputs.target;\n" +
+  "if (!target) { Outputs.missing(); return; }\n" +
+  "\n" +
+  "var section = document.querySelector('.' + target);\n" +
+  "if (!section) { Outputs.missing(); return; }\n" +
+  "\n" +
+  "// The header sticks, so it covers the top of whatever we scroll to.\n" +
+  "var header = document.querySelector('." + HEADER_CLASS + "');\n" +
+  "var headerHeight = header ? header.getBoundingClientRect().height : 0;\n" +
+  "var top = section.getBoundingClientRect().top + window.scrollY - headerHeight;\n" +
+  "\n" +
+  "var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\n" +
+  "window.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });\n" +
+  "Outputs.done();";
+
+const SCROLL_TO: Tpl003Component = {
+  path: 'Site/ScrollTo',
+  nodes: [
+    typedInputs('scInputs', 'Where to go', [
+      ['target', 'string'],
+      ['go', 'signal']
+    ]),
+    logic('scFn', FUNCTION_NODE, 'Find the section and scroll to it', {
+      functionScript: SCROLL_SCRIPT,
+      'runOnChange-in-target': false
+    }),
+    // `missing` is not decoration: a target nobody spelled right is the one way
+    // this fails, and a failure nothing reports is a failure nobody finds.
+    outputs('scOutputs', 'What happened', [
+      ['done', 'signal'],
+      ['missing', 'signal']
+    ])
+  ],
+  connections: [
+    wire('scInputs', 'target', 'scFn', 'in-target'),
+    wire('scInputs', 'go', 'scFn', 'run'),
+    wire('scFn', 'out-done', 'scOutputs', 'done'),
+    wire('scFn', 'out-missing', 'scOutputs', 'missing')
+  ]
+};
 
 // ── Site/Switcher — the strip a person deletes ───────────────────────────────
 
@@ -319,13 +536,36 @@ const SWITCHER: Tpl003Component = {
   deferred: ['swToFreelancer', 'swToBusiness', 'swToLaunch']
 };
 
-// ── Site/Header — the wordmark and the one way to the form ───────────────────
+// ── Site/Header — the wordmark, three nav links and the way to the form ──────
 
 /**
- * The header's button cannot scroll anything itself — the form is on the page
- * that places the header, and a component cannot reach a node outside itself.
- * So the click leaves through a `Component Outputs` signal and the page wires
- * it to its own ground's `Scroll To Element`.
+ * TPL-004 rebuilt this. It was a wordmark and one button whose click left
+ * through a `Component Outputs` signal for the page to wire into its own
+ * ground's `Scroll To Element`.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **Three things changed, and the first one is why the other two are
+ * possible.**
+ *
+ * 1. **The header scrolls itself.** Every destination is a `Site/ScrollTo`
+ *    instance living right here, aimed by a class name — so the page no longer
+ *    has to lend the header a port, and the header is no longer limited to the
+ *    one destination a `Group` has a `Scroll To Element - Element` for. The
+ *    `Component Outputs` signal is gone because nothing needs it.
+ * 2. **It carries a nav.** Three links, labelled and aimed per page through
+ *    `Component Inputs` — so one component serves three pages with three
+ *    different section lists, and a person renaming a section changes one
+ *    parameter on one instance.
+ * 3. **It sticks.** `position: sticky` + `alignY: 'top'` + a `zIndex`, the
+ *    shape measured in `Landing page test V2`. ⚠️ The band's background must
+ *    stay opaque — a translucent sticky header shows the page sliding through
+ *    it — and `site-header` is the class `SCROLL_SCRIPT` measures the offset
+ *    from, so renaming it silently sends every scroll a header's height too far.
+ *
+ * ⚠️ **The shell wraps rather than hiding the nav on a phone.** The obvious
+ * alternative is `display: none` under 720px, which is what most sites do and
+ * which costs the phone reader the links entirely. Wrapping puts them on a
+ * second row, where they still work.
  */
 const HEADER: Tpl003Component = {
   path: 'Site/Header',
@@ -340,12 +580,16 @@ const HEADER: Tpl003Component = {
         flexDirection: 'column',
         alignItems: 'center',
         as: 'header',
+        position: 'sticky',
+        alignY: 'top',
+        zIndex: 50,
         backgroundColor: 'var(--background)',
         borderBottomStyle: 'solid',
         borderBottomWidth: 'var(--border-1)',
         borderBottomColor: 'var(--border)',
         paddingTop: 'var(--space-4)',
-        paddingBottom: 'var(--space-4)'
+        paddingBottom: 'var(--space-4)',
+        cssClassName: HEADER_CLASS
       },
       ['hdShell']
     ),
@@ -353,8 +597,15 @@ const HEADER: Tpl003Component = {
       'hdShell',
       'Shell',
       'hdBand',
-      { ...SHELL_ROW, alignItems: 'center', justifyContent: 'space-between', columnGap: 'var(--space-4)' },
-      ['hdMark', 'hdContact']
+      {
+        ...SHELL_ROW,
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        columnGap: 'var(--space-6)',
+        rowGap: 'var(--space-3)'
+      },
+      ['hdMark', 'hdNav', 'hdContact']
     ),
     group(
       'hdMark',
@@ -372,10 +623,38 @@ const HEADER: Tpl003Component = {
       fontWeight: 'var(--font-semibold)',
       fontSize: 'var(--text-lg)'
     }),
-    button('hdContact', 'Get in touch', 'hdShell', OUTLINE),
-    { id: 'hdOutputs', type: 'Component Outputs', label: 'What the header asks the page to do', ports: [{ name: 'contact', type: 'signal', plug: 'input' }] }
+    group(
+      'hdNav',
+      'The nav',
+      'hdShell',
+      { sizeMode: 'contentSize', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 'var(--space-6)', rowGap: 'var(--space-2)', as: 'nav' },
+      ['hdLink1', 'hdLink2', 'hdLink3']
+    ),
+    ...[1, 2, 3].map((n) =>
+      text(`hdLink${n}`, `Nav link ${n}`, 'hdNav', '', {
+        ...T_BODY,
+        fontSize: 'var(--text-sm)',
+        fontWeight: 'var(--font-medium)',
+        color: 'var(--muted-foreground)',
+        sizeMode: 'contentSize',
+        cssClassName: 'nav-link'
+      })
+    ),
+    button('hdContact', 'Get in touch', 'hdShell', { ...OUTLINE, cssClassName: 'pressable' }),
+    ...[1, 2, 3].map((n) => logic(`hdGo${n}`, SCROLL_TO_COMPONENT, `Nav link ${n} — where it goes`)),
+    // The one destination that is the same on all three pages, so it is spelled
+    // here rather than asked for.
+    logic('hdGoContact', SCROLL_TO_COMPONENT, 'Get in touch — where it goes', { target: CONTACT_CLASS }),
+    inputs('hdInputs', 'The nav', ['nav1', 'nav1Target', 'nav2', 'nav2Target', 'nav3', 'nav3Target'])
   ],
-  connections: [{ fromId: 'hdContact', fromProperty: 'onClick', toId: 'hdOutputs', toProperty: 'contact' }]
+  connections: [
+    ...[1, 2, 3].flatMap((n) => [
+      wire('hdInputs', `nav${n}`, `hdLink${n}`, 'text'),
+      wire('hdInputs', `nav${n}Target`, `hdGo${n}`, 'target'),
+      wire(`hdLink${n}`, 'onClick', `hdGo${n}`, 'go')
+    ]),
+    wire('hdContact', 'onClick', 'hdGoContact', 'go')
+  ]
 };
 
 // ── Site/Footer — the foot of every page ─────────────────────────────────────
@@ -635,7 +914,25 @@ export const COMPOSE_SCRIPT =
   'Outputs.go();';
 
 export const SENT_TEXT = 'Your mail app should have opened with the message written and addressed. If it did not, write to the address on the left.';
+
+/**
+ * 🔴 **TPL-004 made this notice unreachable, and it stays anyway.**
+ *
+ * Send is now disabled until all three boxes pass, so the `Outputs.missing()`
+ * branch of `COMPOSE_SCRIPT` cannot be reached through the button. Deleting the
+ * notice would tidy four nodes away **and remove the only thing standing between
+ * a person and a silent dead end if the gate above it is ever wired wrong** —
+ * which is the exact shape of a defect that heals itself out of sight. The
+ * script keeps its guard because a script that trusts its caller is a script
+ * that breaks when somebody rewires the caller.
+ */
 export const MISSING_TEXT = 'Please fill in all three boxes first.';
+
+/** How many characters of message count as a message. One number, read by the check and by the helper. */
+export const MESSAGE_MINIMUM = 20;
+
+export const SEND_HINT_READY = 'Send opens your mail app with the message written for you.';
+export const SEND_HINT_WAITING = 'Fill in your name, your email and a few lines, and Send will light up.';
 
 const NOTICE = { ...CARD, ...CARD_BODY, sizeMode: 'contentHeight', backgroundColor: 'var(--accent)', borderColor: 'var(--accent)', mounted: false };
 
@@ -648,20 +945,106 @@ const CONDITION_GATE = { condition: true, 'runOnChange-condition': false };
  * inline in the form are *"3 sibling subtrees … structurally identical"*, and
  * the remedy it names is this. What was typed leaves through a `Component
  * Outputs` value port, so the form can read three fields from three instances.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **TPL-004 gave it a voice.** It could say a label and take a value; it
+ * could not say *that is not an address we could reply to*. Two inputs do it:
+ * `message` (a line under the control) and `edge` (the control's border), both
+ * decided by whoever placed the field, because validity is a property of the
+ * form and not of a text box.
+ *
+ * ⚠️ **The message is `mounted`, not `visible`.** `visible` sets
+ * `visibility: hidden` and **keeps the space** — sixteen dead pixels under every
+ * clean field, on every field, forever. `mounted` removes the element. The
+ * `ui-form-field` recipe measured that difference; it is not a preference.
+ *
+ * ⚠️ The `mounted` flag is computed **here**, from the message itself, rather
+ * than passed in beside it. A second input saying "and now show it" is a second
+ * statement of the same fact, and the two drift the first time one is wired and
+ * the other is not.
  */
 const FIELD_PART: Tpl003Component = {
   path: 'Site/Field',
   nodes: [
-    group('fdField', 'The field', undefined, FIELD, ['fdLabel', 'fdInput']),
+    group('fdField', 'The field', undefined, FIELD, ['fdLabel', 'fdInput', 'fdMessage']),
     text('fdLabel', 'The label', 'fdField', '', T_LABEL),
     { id: 'fdInput', type: INPUT_NODE, label: 'The control', parent: 'fdField', parameters: { ...TEXT_FIELD, placeholder: '' } },
-    inputs('fdInputs', 'The field', ['label', 'type']),
-    { id: 'fdOutputs', type: 'Component Outputs', label: 'What was typed', ports: [{ name: 'text', type: 'string', plug: 'input' }] }
+    text('fdMessage', 'What is wrong, or what is still needed', 'fdField', '', { ...T_HINT, mounted: false }),
+    logic('fdHasMessage', EXPRESSION_NODE, 'Is there anything to say?', { expression: "(m || '').length > 0" }),
+    typedInputs('fdInputs', 'The field', [
+      ['label', 'string'],
+      ['type', 'string'],
+      ['message', 'string'],
+      ['messageColor', 'color'],
+      ['edge', 'color']
+    ]),
+    outputs('fdOutputs', 'What was typed', [['text', 'string']])
   ],
   connections: [
-    { fromId: 'fdInputs', fromProperty: 'label', toId: 'fdLabel', toProperty: 'text' },
-    { fromId: 'fdInputs', fromProperty: 'type', toId: 'fdInput', toProperty: 'type' },
-    { fromId: 'fdInput', fromProperty: 'onTextChanged', toId: 'fdOutputs', toProperty: 'text' }
+    wire('fdInputs', 'label', 'fdLabel', 'text'),
+    wire('fdInputs', 'type', 'fdInput', 'type'),
+    wire('fdInputs', 'edge', 'fdInput', 'borderColor'),
+    wire('fdInputs', 'message', 'fdMessage', 'text'),
+    wire('fdInputs', 'messageColor', 'fdMessage', 'color'),
+    wire('fdInputs', 'message', 'fdHasMessage', 'm'),
+    wire('fdHasMessage', 'asBoolean', 'fdMessage', 'mounted'),
+    wire('fdInput', 'onTextChanged', 'fdOutputs', 'text')
+  ]
+};
+
+// ── Site/IsValidEmail — the rule, in one place ───────────────────────────────
+
+/**
+ * TPL-004 — *is this an address we could reply to?* A component and not four
+ * nodes inside the form, because the doctrine's rule for a named utility is that
+ * it is a component **however small it is**, and because the answer is wanted in
+ * two shapes — a boolean for the Send button and a sentence for the person.
+ *
+ * ⚠️ **An empty box is not an error.** It returns `false` (so Send stays
+ * disabled) with an **empty message** (so a form nobody has touched yet is not
+ * covered in red). Those are two different facts and the two outputs carry them
+ * separately; a single "is it ok" boolean cannot say both.
+ *
+ * ⚠️ This is deliberately not a regular expression. The address that matters is
+ * the one a person can receive mail at, and no expression decides that; this
+ * catches the four mistakes people actually make — no `@`, nothing after the
+ * dot, a space in the middle, two `@`s — and lets everything else through.
+ */
+export const EMAIL_SCRIPT =
+  "var typed = String(Inputs.email || '').trim();\n" +
+  "\n" +
+  "if (typed.length === 0) {\n" +
+  "  Outputs.isValid = false;\n" +
+  "  Outputs.message = '';\n" +
+  "  return;\n" +
+  "}\n" +
+  "\n" +
+  "var at = typed.indexOf('@');\n" +
+  "var lastDot = typed.lastIndexOf('.');\n" +
+  "var valid =\n" +
+  "  at > 0 &&\n" +
+  "  lastDot > at + 1 &&\n" +
+  "  lastDot < typed.length - 2 &&\n" +
+  "  typed.indexOf(' ') === -1 &&\n" +
+  "  typed.indexOf('@', at + 1) === -1;\n" +
+  "\n" +
+  "Outputs.isValid = valid;\n" +
+  "Outputs.message = valid ? '' : 'That is not an address we could reply to — check it over.';";
+
+const EMAIL_CHECK: Tpl003Component = {
+  path: 'Site/IsValidEmail',
+  nodes: [
+    inputs('ecInputs', 'The address', ['email']),
+    logic('ecFn', FUNCTION_NODE, 'Check the address', { functionScript: EMAIL_SCRIPT }),
+    outputs('ecOutputs', 'The verdict', [
+      ['isValid', 'boolean'],
+      ['message', 'string']
+    ])
+  ],
+  connections: [
+    wire('ecInputs', 'email', 'ecFn', 'in-email'),
+    wire('ecFn', 'out-isValid', 'ecOutputs', 'isValid'),
+    wire('ecFn', 'out-message', 'ecOutputs', 'message')
   ]
 };
 
@@ -699,11 +1082,42 @@ const CONTACT: Tpl003Component = {
       'ctSent',
       'ctMissing'
     ]),
-    place('ctName', FIELD_COMPONENT, 'Your name', 'ctCard', { label: 'Your name', type: 'text' }),
-    place('ctEmail', FIELD_COMPONENT, 'Your email', 'ctCard', { label: 'Your email', type: 'email' }),
-    place('ctMessage', FIELD_COMPONENT, 'Your message', 'ctCard', { label: 'Your message', type: 'textArea' }),
-    button('ctSend', 'Send', 'ctCard', PRIMARY),
-    text('ctHint', 'What Send does', 'ctCard', 'Send opens your mail app with the message written for you.', T_HINT),
+    place('ctName', FIELD_COMPONENT, 'Your name', 'ctCard', { label: 'Your name', type: 'text', edge: 'var(--border-control)' }),
+    place('ctEmail', FIELD_COMPONENT, 'Your email', 'ctCard', { label: 'Your email', type: 'email', messageColor: 'var(--destructive)' }),
+    place('ctMessage', FIELD_COMPONENT, 'Your message', 'ctCard', { label: 'Your message', type: 'textArea', edge: 'var(--border-control)', messageColor: 'var(--muted-foreground)' }),
+    button('ctSend', 'Send', 'ctCard', { ...PRIMARY, cssClassName: 'pressable', enabled: false }),
+    text('ctHint', 'What Send does, or what is still missing', 'ctCard', SEND_HINT_WAITING, T_HINT),
+
+    // ── TPL-004: the form answers while you type ──────────────────────────
+    //
+    // 🔴 The three checks are three nodes and not one script, and that is the
+    // node-library rule pointing the way it usually does: each of them is a
+    // question a person can read off the canvas and change without opening a
+    // code editor. The ONE thing that is a script is the address check, because
+    // "is this an address" is four rules and a sentence, and that is a
+    // component (`Site/IsValidEmail`).
+    logic('ctNameOk', EXPRESSION_NODE, 'Is there a name?', { expression: "(n || '').trim().length > 1" }),
+    logic('ctEmailCheck', EMAIL_CHECK_COMPONENT, 'Is the address one you could reply to?'),
+    logic('ctMsgOk', EXPRESSION_NODE, 'Is the message long enough?', { expression: `(m || '').trim().length >= ${MESSAGE_MINIMUM}` }),
+    logic('ctAnd', AND_NODE, 'Everything, at once'),
+    // The message field's helper counts DOWN and then reports. A field that only
+    // goes red once you stop typing tells you after the fact; this tells you
+    // while there is still something to do about it.
+    logic('ctMsgHelper', EXPRESSION_NODE, 'How much more is needed', {
+      expression: `(m || '').trim().length >= ${MESSAGE_MINIMUM} ? 'That is plenty — go ahead.' : ('About ' + (${MESSAGE_MINIMUM} - (m || '').trim().length) + ' more characters, please.')`
+    }),
+    // 🔴 The address field's border and its message are ONE fact read twice, so
+    // they are derived from the same string. A second boolean saying "and now
+    // go red" is the second statement that drifts.
+    logic('ctEmailEdge', EXPRESSION_NODE, 'The address box’s border', {
+      expression: "(msg || '').length > 0 ? 'var(--destructive)' : 'var(--border-control)'"
+    }),
+    // ⚠️ A disabled button with no explanation is a dead end. This line is the
+    // explanation, and it is the same Text that says what Send does once the
+    // form is ready — one node, two states, nothing to keep in step.
+    logic('ctHintText', EXPRESSION_NODE, 'What the line under Send says', {
+      expression: `ok ? ${JSON.stringify(SEND_HINT_READY)} : ${JSON.stringify(SEND_HINT_WAITING)}`
+    }),
     group('ctSent', 'It went', 'ctCard', NOTICE, ['ctSentText']),
     text('ctSentText', 'It went — the words', 'ctSent', SENT_TEXT, { ...T_META, color: 'var(--accent-foreground)' }),
     group('ctMissing', 'Something is empty', 'ctCard', NOTICE, ['ctMissingText']),
@@ -743,6 +1157,24 @@ const CONTACT: Tpl003Component = {
     { fromId: 'ctEmail', fromProperty: 'text', toId: 'ctCompose', toProperty: 'in-email' },
     { fromId: 'ctMessage', fromProperty: 'text', toId: 'ctCompose', toProperty: 'in-message' },
     { fromId: 'ctSend', fromProperty: 'onClick', toId: 'ctCompose', toProperty: 'run' },
+    // TPL-004 — what is typed, read as it is typed.
+    wire('ctName', 'text', 'ctNameOk', 'n'),
+    wire('ctEmail', 'text', 'ctEmailCheck', 'email'),
+    wire('ctMessage', 'text', 'ctMsgOk', 'm'),
+    wire('ctMessage', 'text', 'ctMsgHelper', 'm'),
+    // 🔴 `And.result` is FALSE while nothing is connected — which is exactly the
+    // state a form starts in, so Send is disabled before anybody has typed
+    // without a node to say so.
+    wire('ctNameOk', 'asBoolean', 'ctAnd', 'input 0'),
+    wire('ctEmailCheck', 'isValid', 'ctAnd', 'input 1'),
+    wire('ctMsgOk', 'asBoolean', 'ctAnd', 'input 2'),
+    wire('ctAnd', 'result', 'ctSend', 'enabled'),
+    wire('ctAnd', 'result', 'ctHintText', 'ok'),
+    wire('ctHintText', 'asString', 'ctHint', 'text'),
+    wire('ctEmailCheck', 'message', 'ctEmail', 'message'),
+    wire('ctEmailCheck', 'message', 'ctEmailEdge', 'msg'),
+    wire('ctEmailEdge', 'asString', 'ctEmail', 'edge'),
+    wire('ctMsgHelper', 'asString', 'ctMessage', 'message'),
     { fromId: 'ctCompose', fromProperty: 'out-link', toId: 'ctOpen', toProperty: 'link' },
     { fromId: 'ctCompose', fromProperty: 'out-go', toId: 'ctOpen', toProperty: 'do' },
     { fromId: 'ctOpen', fromProperty: 'done', toId: 'ctSentGate', toProperty: 'eval' },
@@ -974,15 +1406,31 @@ const photo = (file: string) => `noodl_modules/starter-imagery/${file}`;
  * The frame every page shares: the strip, the header, a `main`, the foot — on a
  * ground floored at the viewport.
  *
- * 🔴 **The scroll targets are two different Groups, and that is a port count,
- * not a preference.** A Group holds ONE `Scroll To Element - Element`, so the
- * ground scrolls to the form and the `main` scrolls to whatever the hero's
- * second button points at.
+ * 🔴 **TPL-004 took the `Scroll To Element` wires out of here.** They read:
+ *
+ *     ContactAnchor.this  -> Ground.scrollToElement.element
+ *     Header.contact      -> Ground.scrollToElement.do
+ *     <second target>.this -> Main.scrollToElement.element
+ *
+ * — and the second and third lines are the same mechanism used twice **because a
+ * `Group` holds exactly one `Scroll To Element - Element`**, so reaching two
+ * destinations needed two Groups. That ceiling is why the header could offer one
+ * link. Every destination is now a class name and a `Site/ScrollTo`, and a page
+ * can have as many as it has sections.
+ *
+ * ⚠️ The `ContactAnchor` Group stays. It is no longer a port-holder, but it is
+ * still what carries `site-contact` — the contact band is a component instance,
+ * and an instance cannot take a `cssClassName`.
  */
 function pageFrame(
   p: string,
-  opts: { title: string; urlPath: string; label: string; mainChildren: string[]; secondTarget?: string; contact: { heading: string; line: string; button: string } }
+  opts: { title: string; urlPath: string; label: string; mainChildren: string[]; secondTarget?: string; nav: [string, string][]; contact: { heading: string; line: string; button: string } }
 ): { nodes: unknown[]; connections: unknown[] } {
+  const navParams: Record<string, unknown> = {};
+  opts.nav.forEach(([label, target], i) => {
+    navParams[`nav${i + 1}`] = label;
+    navParams[`nav${i + 1}Target`] = target;
+  });
   const nodes: unknown[] = [
     { id: `${p}Page`, type: 'Page', label: opts.label, parameters: { title: opts.title, urlPath: opts.urlPath }, children: [`${p}Ground`] },
     group(
@@ -993,26 +1441,22 @@ function pageFrame(
       [`${p}Switcher`, `${p}Header`, `${p}Main`, `${p}Footer`]
     ),
     place(`${p}Switcher`, SWITCHER_COMPONENT, 'The look switcher', `${p}Ground`),
-    place(`${p}Header`, HEADER_COMPONENT, 'The header', `${p}Ground`),
+    place(`${p}Header`, HEADER_COMPONENT, `${EDIT}the three nav links at the top`, `${p}Ground`, navParams),
     group(`${p}Main`, 'The page', `${p}Ground`, { as: 'main', width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column' }, [
       ...opts.mainChildren,
       `${p}ContactAnchor`
     ]),
-    // 🔴 A plain Group around the instance, because a component INSTANCE has no
-    // `this` output — measured in the first render: *"Node /Site/Contact
-    // doesn't have a port named this"* on every page, and nothing scrolled.
-    group(`${p}ContactAnchor`, 'Where "Get in touch" lands', `${p}Main`, { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column' }, [`${p}Contact`]),
+    group(`${p}ContactAnchor`, 'Where "Get in touch" lands', `${p}Main`, { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', cssClassName: CONTACT_CLASS }, [`${p}Contact`]),
     place(`${p}Contact`, CONTACT_COMPONENT, 'The contact band', `${p}ContactAnchor`, opts.contact),
-    place(`${p}Footer`, FOOTER_COMPONENT, 'The foot of the page', `${p}Ground`)
-  ];
-  const connections: unknown[] = [
-    { fromId: `${p}ContactAnchor`, fromProperty: 'this', toId: `${p}Ground`, toProperty: 'scrollToElement.element' },
-    { fromId: `${p}Header`, fromProperty: 'contact', toId: `${p}Ground`, toProperty: 'scrollToElement.do' }
+    place(`${p}Footer`, FOOTER_COMPONENT, 'The foot of the page', `${p}Ground`),
+    // The page's own two destinations: the form, and whatever the hero's second
+    // button points at. Both are the same utility, aimed differently.
+    logic(`${p}GoContact`, SCROLL_TO_COMPONENT, 'To the form', { target: CONTACT_CLASS })
   ];
   if (opts.secondTarget) {
-    connections.push({ fromId: opts.secondTarget, fromProperty: 'this', toId: `${p}Main`, toProperty: 'scrollToElement.element' });
+    nodes.push(logic(`${p}GoSecond`, SCROLL_TO_COMPONENT, 'To the section the hero’s second button names', { target: sectionClass(opts.secondTarget) }));
   }
-  return { nodes, connections };
+  return { nodes, connections: [] };
 }
 
 /** A section: a band, its shell, a head with an eyebrow and a heading, then whatever follows. */
@@ -1026,7 +1470,8 @@ function section(
   const headChildren = [`${id}Eyebrow`, `${id}Heading`, ...(head.lead ? [`${id}Lead`] : [])];
   const center = head.center ? { textAlignX: 'center' } : {};
   const nodes: unknown[] = [
-    group(id, head.eyebrow, parent, ground === 'paper' ? BAND : BAND_SURFACE, [`${id}Shell`]),
+    // TPL-004 — the class is what a nav link aims at. Derived, never typed twice.
+    group(id, head.eyebrow, parent, { ...(ground === 'paper' ? BAND : BAND_SURFACE), cssClassName: sectionClass(id) }, [`${id}Shell`]),
     group(`${id}Shell`, 'Shell', id, SHELL, [`${id}Head`, ...content]),
     group(`${id}Head`, `${head.eyebrow} — head`, `${id}Shell`, head.center ? { ...SECTION_HEAD, alignItems: 'center' } : SECTION_HEAD, headChildren),
     text(`${id}Eyebrow`, `${head.eyebrow} — eyebrow`, `${id}Head`, head.eyebrow, { ...T_EYEBROW, ...center }),
@@ -1106,8 +1551,8 @@ function gradientHero(
 /** The wires every hero has: the first button to the form, the second to the page's other target. */
 function heroWires(p: string): unknown[] {
   return [
-    { fromId: `${p}HeroPrimary`, fromProperty: 'onClick', toId: `${p}Ground`, toProperty: 'scrollToElement.do' },
-    { fromId: `${p}HeroSecondary`, fromProperty: 'onClick', toId: `${p}Main`, toProperty: 'scrollToElement.do' }
+    wire(`${p}HeroPrimary`, 'onClick', `${p}GoContact`, 'go'),
+    wire(`${p}HeroSecondary`, 'onClick', `${p}GoSecond`, 'go')
   ];
 }
 
@@ -1125,6 +1570,11 @@ const FREELANCER_FRAME = pageFrame('fl', {
   label: 'Freelancer',
   mainChildren: ['flHero', 'flServices', 'flWork', 'flAbout', 'flQuotes'],
   secondTarget: 'flWork',
+  nav: [
+    ['What I do', sectionClass('flServices')],
+    ['Work', sectionClass('flWork')],
+    ['About', sectionClass('flAbout')]
+  ],
   contact: FL_CONTACT
 });
 
@@ -1154,7 +1604,9 @@ const FREELANCER: Tpl003Component = {
       { id: 'flWork3', type: PHOTO_CARD_COMPONENT, label: 'the third piece of work', parameters: { picture: photo('people-desk.webp'), alt: 'Someone working at a laptop by a window', title: 'A third piece of work', line: 'Who it was for, and what changed.' } }
     ]),
     // About — a photograph beside a short story, two-up, one column on a phone.
-    group('flAbout', 'About', 'flMain', BAND, ['flAboutShell']),
+    // 🔴 A hand-built band, so `section()` did not give it its class — and the
+    // nav link aimed at it scrolled nowhere until the target gate said so.
+    group('flAbout', 'About', 'flMain', { ...BAND, cssClassName: sectionClass('flAbout') }, ['flAboutShell']),
     group('flAboutShell', 'Shell', 'flAbout', SHELL, ['flAboutColumns']),
     { id: 'flAboutColumns', type: COLUMNS_NODE, label: 'The photograph beside the story', parent: 'flAboutShell', parameters: { ...composition('columnsTwoUp'), marginY: px(32) }, children: ['flAboutPhotoBox', 'flAboutWords'] },
     group('flAboutPhotoBox', 'The photograph, rounded', 'flAboutColumns', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', borderRadius: 'var(--radius-2xl)', clip: true }, ['flAboutPhoto']),
@@ -1200,6 +1652,11 @@ const BUSINESS_FRAME = pageFrame('bz', {
   label: 'Local business',
   mainChildren: ['bzHero', 'bzOffer', 'bzWhy', 'bzVisit', 'bzQuotes'],
   secondTarget: 'bzVisit',
+  nav: [
+    ['What we make', sectionClass('bzOffer')],
+    ['Why here', sectionClass('bzWhy')],
+    ['Visit', sectionClass('bzVisit')]
+  ],
   contact: BZ_CONTACT
 });
 
@@ -1264,7 +1721,9 @@ const BUSINESS: Tpl003Component = {
       { id: 'bzWhy3', type: FEATURE_COMPONENT, label: 'the third reason', parameters: { icon: 'truck', title: 'The third reason', line: 'Something practical: delivery, parking, a room for a party.' } }
     ]),
     // Where and when — the address and the hours beside a photograph of the street.
-    group('bzVisit', 'Visit', 'bzMain', BAND, ['bzVisitShell']),
+    // The same hole, and this one cost two links: the nav's third and the hero's
+    // "Find us".
+    group('bzVisit', 'Visit', 'bzMain', { ...BAND, cssClassName: sectionClass('bzVisit') }, ['bzVisitShell']),
     group('bzVisitShell', 'Shell', 'bzVisit', SHELL, ['bzVisitColumns']),
     { id: 'bzVisitColumns', type: COLUMNS_NODE, label: 'Where and when, beside the street', parent: 'bzVisitShell', parameters: { ...composition('columnsTwoUp'), marginY: px(32) }, children: ['bzVisitWords', 'bzVisitPhotoBox'] },
     group('bzVisitWords', 'Where and when', 'bzVisitColumns', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', rowGap: 'var(--space-3)' }, [
@@ -1314,6 +1773,11 @@ const LAUNCH_FRAME = pageFrame('ln', {
   label: 'Product launch',
   mainChildren: ['lnHero', 'lnFeatures', 'lnNumbers', 'lnSteps', 'lnPricing', 'lnFaq', 'lnCta'],
   secondTarget: 'lnSteps',
+  nav: [
+    ['What it does', sectionClass('lnFeatures')],
+    ['How it works', sectionClass('lnSteps')],
+    ['Price', sectionClass('lnPricing')]
+  ],
   contact: LN_CONTACT
 });
 
@@ -1488,17 +1952,17 @@ const LAUNCH: Tpl003Component = {
   connections: [
     ...LAUNCH_FRAME.connections,
     ...heroWires('ln'),
-    { fromId: 'lnCtaButton', fromProperty: 'onClick', toId: 'lnGround', toProperty: 'scrollToElement.do' },
+    wire('lnCtaButton', 'onClick', 'lnGoContact', 'go'),
     // Both plans lead to the form: the price is a reason to sign up, not a checkout.
-    { fromId: 'lnPlanFree', fromProperty: 'chosen', toId: 'lnGround', toProperty: 'scrollToElement.do' },
-    { fromId: 'lnPlanPaid', fromProperty: 'chosen', toId: 'lnGround', toProperty: 'scrollToElement.do' }
+    wire('lnPlanFree', 'chosen', 'lnGoContact', 'go'),
+    wire('lnPlanPaid', 'chosen', 'lnGoContact', 'go')
   ]
 };
 
 // ── Author order ─────────────────────────────────────────────────────────────
 
 /** The parts a page places, before the pages that place them. */
-export const TPL003_PARTS: Tpl003Component[] = [SWITCHER, HEADER, FOOTER, FEATURE, STEP, STAT, PHOTO_CARD, QUOTE, FAQ_ROW, HOURS_ROW, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
+export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, STEP, STAT, PHOTO_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
 
 /** The pages. 🔴 The first one written becomes the router's start page, and it must be the freelancer look at `/`. */
 export const TPL003_PAGES: Tpl003Component[] = [FREELANCER, BUSINESS, LAUNCH];

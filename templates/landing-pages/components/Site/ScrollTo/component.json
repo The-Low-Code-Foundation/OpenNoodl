@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "18b718e2-6764-56aa-8e4e-1d59fa74fff5",
+  "name": "ScrollTo",
+  "path": "/Site/ScrollTo",
+  "type": "visual",
+  "created": "2026-09-05T00:00:00.000Z",
+  "modified": "2026-09-05T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

@@ -49,11 +49,137 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "app_css",
+            "type": "CSS Definition",
+            "children": [],
+            "label": "Hover and press — the whole site",
+            "x": 350,
+            "y": 40,
+            "parameters": {
+              "style": "/* The landing pages — interaction states.\n   Anything a node port can express is set on the node, not here.\n   Every rule is opt-in: a node joins by setting its \"cssClassName\" input. */\n\n.pressable { cursor: pointer; }\n/* A real <button disabled> — the Button control renders one, so this matches.\n   It is what tells somebody the form is not finished yet. */\nbutton.pressable:disabled { opacity: 0.45; cursor: not-allowed; }\n\n/* A card that answers the pointer. No shadow — this template's shadow tokens\n   are all \"none\", so a shadow here would be a rule that does nothing. */\n.card-lift {\n  transition: transform var(--duration-200) var(--ease-out),\n              border-color var(--duration-200) var(--ease-out);\n}\n.card-lift:hover { transform: translateY(-3px); border-color: var(--border-strong); }\n.card-lift:active { transform: translateY(-1px); }\n\n/* The photograph moves inside the card's own clip box, so the cut corners stay cut. */\n.photo-zoom img { transition: transform var(--duration-500) var(--ease-out); }\n.photo-zoom:hover img { transform: scale(1.04); }\n\n.nav-link { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }\n.nav-link:hover { color: var(--primary); }\n\n/* A row that opens: the question, the service, the thing with an answer under it. */\n.disclosure { cursor: pointer; transition: color var(--duration-150) var(--ease-out); }\n.disclosure:hover { color: var(--primary); }\n\n.pill {\n  transition: background-color var(--duration-150) var(--ease-out),\n              border-color var(--duration-150) var(--ease-out),\n              color var(--duration-150) var(--ease-out);\n}\n.pill:hover { border-color: var(--primary); }\n\n@media (prefers-reduced-motion: reduce) {\n  .card-lift, .photo-zoom img, .nav-link, .disclosure, .pill { transition: none; }\n  .card-lift:hover, .card-lift:active { transform: none; }\n  .photo-zoom:hover img { transform: none; }\n}\n"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [],
         "visualRoots": [
           "app_root"
+        ]
+      }
+    },
+    {
+      "name": "/Site/ScrollTo",
+      "graph": {
+        "roots": [
+          {
+            "id": "scInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "Where to go",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "target",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "go",
+                "plug": "output",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "scFn",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Find the section and scroll to it",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "var target = Inputs.target;\nif (!target) { Outputs.missing(); return; }\n\nvar section = document.querySelector('.' + target);\nif (!section) { Outputs.missing(); return; }\n\n// The header sticks, so it covers the top of whatever we scroll to.\nvar header = document.querySelector('.site-header');\nvar headerHeight = header ? header.getBoundingClientRect().height : 0;\nvar top = section.getBoundingClientRect().top + window.scrollY - headerHeight;\n\nvar reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;\nwindow.scrollTo({ top: Math.max(0, top), behavior: reduce ? 'auto' : 'smooth' });\nOutputs.done();",
+              "runOnChange-in-target": false
+            },
+            "ports": [
+              {
+                "name": "in-target",
+                "displayName": "target",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-missing",
+                "displayName": "missing",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-done",
+                "displayName": "done",
+                "plug": "output",
+                "type": "signal",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "scOutputs",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "What happened",
+            "x": 40,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "done",
+                "plug": "input",
+                "type": "signal"
+              },
+              {
+                "name": "missing",
+                "plug": "input",
+                "type": "signal"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "scInputs",
+            "fromProperty": "target",
+            "toId": "scFn",
+            "toProperty": "in-target"
+          },
+          {
+            "fromId": "scInputs",
+            "fromProperty": "go",
+            "toId": "scFn",
+            "toProperty": "run"
+          },
+          {
+            "fromId": "scFn",
+            "fromProperty": "out-done",
+            "toId": "scOutputs",
+            "toProperty": "done"
+          },
+          {
+            "fromId": "scFn",
+            "fromProperty": "out-missing",
+            "toId": "scOutputs",
+            "toProperty": "missing"
+          }
         ]
       }
     },
@@ -196,6 +322,7 @@
                     "value": 100,
                     "unit": "%"
                   },
+                  "sizeMode": "contentHeight",
                   "maxWidth": {
                     "value": 1200,
                     "unit": "px"
@@ -203,7 +330,6 @@
                   "flexDirection": "column",
                   "paddingLeft": "var(--space-6)",
                   "paddingRight": "var(--space-6)",
-                  "sizeMode": "contentHeight",
                   "alignX": "center",
                   "rowGap": "var(--space-3)"
                 },
@@ -392,12 +518,86 @@
                     "dynamicports": []
                   },
                   {
+                    "id": "hdNav",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "hdLink1",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Nav link 1",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)",
+                          "fontWeight": "var(--font-medium)",
+                          "sizeMode": "contentSize",
+                          "cssClassName": "nav-link"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "hdLink2",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Nav link 2",
+                        "x": 220,
+                        "y": 1000,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)",
+                          "fontWeight": "var(--font-medium)",
+                          "sizeMode": "contentSize",
+                          "cssClassName": "nav-link"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "hdLink3",
+                        "type": "Text",
+                        "children": [],
+                        "label": "Nav link 3",
+                        "x": 220,
+                        "y": 1120,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--muted-foreground)",
+                          "fontWeight": "var(--font-medium)",
+                          "sizeMode": "contentSize",
+                          "cssClassName": "nav-link"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The nav",
+                    "x": 160,
+                    "y": 760,
+                    "parameters": {
+                      "sizeMode": "contentSize",
+                      "flexDirection": "row",
+                      "flexWrap": "wrap",
+                      "alignItems": "center",
+                      "columnGap": "var(--space-6)",
+                      "rowGap": "var(--space-2)",
+                      "as": "nav"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
                     "id": "hdContact",
                     "type": "net.noodl.controls.button",
                     "children": [],
                     "label": "Get in touch",
                     "x": 160,
-                    "y": 760,
+                    "y": 1240,
                     "parameters": {
                       "label": "Get in touch",
                       "backgroundColor": "transparent",
@@ -412,7 +612,8 @@
                       "paddingBottom": "var(--space-3)",
                       "fontSize": "var(--text-sm)",
                       "fontWeight": "var(--font-semibold)",
-                      "sizeMode": "contentSize"
+                      "sizeMode": "contentSize",
+                      "cssClassName": "pressable"
                     },
                     "ports": [],
                     "dynamicports": []
@@ -426,6 +627,7 @@
                     "value": 100,
                     "unit": "%"
                   },
+                  "sizeMode": "contentHeight",
                   "maxWidth": {
                     "value": 1200,
                     "unit": "px"
@@ -433,11 +635,12 @@
                   "flexDirection": "row",
                   "paddingLeft": "var(--space-6)",
                   "paddingRight": "var(--space-6)",
-                  "sizeMode": "contentHeight",
                   "alignX": "center",
                   "alignItems": "center",
                   "justifyContent": "space-between",
-                  "columnGap": "var(--space-4)"
+                  "flexWrap": "wrap",
+                  "columnGap": "var(--space-6)",
+                  "rowGap": "var(--space-3)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -455,29 +658,104 @@
               "flexDirection": "column",
               "alignItems": "center",
               "as": "header",
+              "position": "sticky",
+              "alignY": "top",
+              "zIndex": 50,
               "backgroundColor": "var(--background)",
               "borderBottomStyle": "solid",
               "borderBottomWidth": "var(--border-1)",
               "borderBottomColor": "var(--border)",
               "paddingTop": "var(--space-4)",
-              "paddingBottom": "var(--space-4)"
+              "paddingBottom": "var(--space-4)",
+              "cssClassName": "site-header"
             },
             "ports": [],
             "dynamicports": []
           },
           {
-            "id": "hdOutputs",
-            "type": "Component Outputs",
+            "id": "hdGo1",
+            "type": "/Site/ScrollTo",
             "children": [],
-            "label": "What the header asks the page to do",
+            "label": "Nav link 1 — where it goes",
             "x": 530,
-            "y": 760,
+            "y": 880,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hdGo2",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "Nav link 2 — where it goes",
+            "x": 530,
+            "y": 1120,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hdGo3",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "Nav link 3 — where it goes",
+            "x": 530,
+            "y": 1240,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hdGoContact",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "Get in touch — where it goes",
+            "x": 530,
+            "y": 1360,
+            "parameters": {
+              "target": "site-contact"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "hdInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The nav",
+            "x": 530,
+            "y": 1000,
             "parameters": {},
             "ports": [
               {
-                "name": "contact",
-                "plug": "input",
-                "type": "signal"
+                "name": "nav1",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "nav1Target",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "nav2",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "nav2Target",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "nav3",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "nav3Target",
+                "plug": "output",
+                "type": "string"
               }
             ],
             "dynamicports": []
@@ -485,10 +763,64 @@
         ],
         "connections": [
           {
+            "fromId": "hdInputs",
+            "fromProperty": "nav1",
+            "toId": "hdLink1",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "hdInputs",
+            "fromProperty": "nav1Target",
+            "toId": "hdGo1",
+            "toProperty": "target"
+          },
+          {
+            "fromId": "hdLink1",
+            "fromProperty": "onClick",
+            "toId": "hdGo1",
+            "toProperty": "go"
+          },
+          {
+            "fromId": "hdInputs",
+            "fromProperty": "nav2",
+            "toId": "hdLink2",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "hdInputs",
+            "fromProperty": "nav2Target",
+            "toId": "hdGo2",
+            "toProperty": "target"
+          },
+          {
+            "fromId": "hdLink2",
+            "fromProperty": "onClick",
+            "toId": "hdGo2",
+            "toProperty": "go"
+          },
+          {
+            "fromId": "hdInputs",
+            "fromProperty": "nav3",
+            "toId": "hdLink3",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "hdInputs",
+            "fromProperty": "nav3Target",
+            "toId": "hdGo3",
+            "toProperty": "target"
+          },
+          {
+            "fromId": "hdLink3",
+            "fromProperty": "onClick",
+            "toId": "hdGo3",
+            "toProperty": "go"
+          },
+          {
             "fromId": "hdContact",
             "fromProperty": "onClick",
-            "toId": "hdOutputs",
-            "toProperty": "contact"
+            "toId": "hdGoContact",
+            "toProperty": "go"
           }
         ],
         "visualRoots": [
@@ -603,6 +935,7 @@
                     "value": 100,
                     "unit": "%"
                   },
+                  "sizeMode": "contentHeight",
                   "maxWidth": {
                     "value": 1200,
                     "unit": "px"
@@ -610,7 +943,6 @@
                   "flexDirection": "column",
                   "paddingLeft": "var(--space-6)",
                   "paddingRight": "var(--space-6)",
-                  "sizeMode": "contentHeight",
                   "alignX": "center",
                   "rowGap": "var(--space-2)"
                 },
@@ -766,6 +1098,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "row",
               "columnGap": "var(--space-3)",
               "alignItems": "flex-start"
@@ -974,6 +1307,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "row",
               "columnGap": "var(--space-3)",
               "alignItems": "flex-start"
@@ -1231,13 +1565,13 @@
                     "value": 100,
                     "unit": "%"
                   },
+                  "sizeMode": "contentHeight",
                   "flexDirection": "column",
                   "rowGap": "var(--space-2)",
                   "paddingLeft": "var(--space-5)",
                   "paddingRight": "var(--space-5)",
                   "paddingTop": "var(--space-5)",
-                  "paddingBottom": "var(--space-5)",
-                  "sizeMode": "contentHeight"
+                  "paddingBottom": "var(--space-5)"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1251,6 +1585,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "backgroundColor": "var(--surface)",
               "borderRadius": "var(--radius-xl)",
               "borderStyle": "solid",
@@ -1643,6 +1978,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "column",
               "alignItems": "flex-start",
               "borderBottomStyle": "solid",
@@ -1747,6 +2083,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "row",
               "alignItems": "center",
               "borderBottomStyle": "solid",
@@ -1803,6 +2140,107 @@
       }
     },
     {
+      "name": "/Site/IsValidEmail",
+      "graph": {
+        "roots": [
+          {
+            "id": "ecInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The address",
+            "x": 40,
+            "y": 40,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "email",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "ecFn",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "Check the address",
+            "x": 40,
+            "y": 160,
+            "parameters": {
+              "functionScript": "var typed = String(Inputs.email || '').trim();\n\nif (typed.length === 0) {\n  Outputs.isValid = false;\n  Outputs.message = '';\n  return;\n}\n\nvar at = typed.indexOf('@');\nvar lastDot = typed.lastIndexOf('.');\nvar valid =\n  at > 0 &&\n  lastDot > at + 1 &&\n  lastDot < typed.length - 2 &&\n  typed.indexOf(' ') === -1 &&\n  typed.indexOf('@', at + 1) === -1;\n\nOutputs.isValid = valid;\nOutputs.message = valid ? '' : 'That is not an address we could reply to — check it over.';"
+            },
+            "ports": [
+              {
+                "name": "in-email",
+                "displayName": "email",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-isValid",
+                "displayName": "isValid",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              },
+              {
+                "name": "out-message",
+                "displayName": "message",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "ecOutputs",
+            "type": "Component Outputs",
+            "children": [],
+            "label": "The verdict",
+            "x": 40,
+            "y": 280,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "isValid",
+                "plug": "input",
+                "type": "boolean"
+              },
+              {
+                "name": "message",
+                "plug": "input",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "ecInputs",
+            "fromProperty": "email",
+            "toId": "ecFn",
+            "toProperty": "in-email"
+          },
+          {
+            "fromId": "ecFn",
+            "fromProperty": "out-isValid",
+            "toId": "ecOutputs",
+            "toProperty": "isValid"
+          },
+          {
+            "fromId": "ecFn",
+            "fromProperty": "out-message",
+            "toId": "ecOutputs",
+            "toProperty": "message"
+          }
+        ]
+      }
+    },
+    {
       "name": "/Site/Field",
       "graph": {
         "roots": [
@@ -1855,6 +2293,23 @@
                 },
                 "ports": [],
                 "dynamicports": []
+              },
+              {
+                "id": "fdMessage",
+                "type": "Text",
+                "children": [],
+                "label": "What is wrong, or what is still needed",
+                "x": 100,
+                "y": 400,
+                "parameters": {
+                  "text": "",
+                  "fontSize": "var(--text-xs)",
+                  "color": "var(--muted-foreground)",
+                  "lineHeight": "var(--leading-snug)",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
               }
             ],
             "label": "The field",
@@ -1868,6 +2323,19 @@
               "sizeMode": "contentHeight",
               "flexDirection": "column",
               "rowGap": "var(--space-2)"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "fdHasMessage",
+            "type": "Expression",
+            "children": [],
+            "label": "Is there anything to say?",
+            "x": 350,
+            "y": 400,
+            "parameters": {
+              "expression": "(m || '').length > 0"
             },
             "ports": [],
             "dynamicports": []
@@ -1890,6 +2358,21 @@
                 "name": "type",
                 "plug": "output",
                 "type": "string"
+              },
+              {
+                "name": "message",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "messageColor",
+                "plug": "output",
+                "type": "color"
+              },
+              {
+                "name": "edge",
+                "plug": "output",
+                "type": "color"
               }
             ],
             "dynamicports": []
@@ -1924,6 +2407,36 @@
             "fromProperty": "type",
             "toId": "fdInput",
             "toProperty": "type"
+          },
+          {
+            "fromId": "fdInputs",
+            "fromProperty": "edge",
+            "toId": "fdInput",
+            "toProperty": "borderColor"
+          },
+          {
+            "fromId": "fdInputs",
+            "fromProperty": "message",
+            "toId": "fdMessage",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "fdInputs",
+            "fromProperty": "messageColor",
+            "toId": "fdMessage",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "fdInputs",
+            "fromProperty": "message",
+            "toId": "fdHasMessage",
+            "toProperty": "m"
+          },
+          {
+            "fromId": "fdHasMessage",
+            "fromProperty": "asBoolean",
+            "toId": "fdMessage",
+            "toProperty": "mounted"
           },
           {
             "fromId": "fdInput",
@@ -2075,7 +2588,8 @@
                             "y": 1240,
                             "parameters": {
                               "label": "Your name",
-                              "type": "text"
+                              "type": "text",
+                              "edge": "var(--border-control)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2089,7 +2603,8 @@
                             "y": 1360,
                             "parameters": {
                               "label": "Your email",
-                              "type": "email"
+                              "type": "email",
+                              "messageColor": "var(--destructive)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2103,7 +2618,9 @@
                             "y": 1480,
                             "parameters": {
                               "label": "Your message",
-                              "type": "textArea"
+                              "type": "textArea",
+                              "edge": "var(--border-control)",
+                              "messageColor": "var(--muted-foreground)"
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2127,7 +2644,9 @@
                               "paddingBottom": "var(--space-3)",
                               "fontSize": "var(--text-sm)",
                               "fontWeight": "var(--font-semibold)",
-                              "sizeMode": "contentSize"
+                              "sizeMode": "contentSize",
+                              "cssClassName": "pressable",
+                              "enabled": false
                             },
                             "ports": [],
                             "dynamicports": []
@@ -2136,11 +2655,11 @@
                             "id": "ctHint",
                             "type": "Text",
                             "children": [],
-                            "label": "What Send does",
+                            "label": "What Send does, or what is still missing",
                             "x": 280,
                             "y": 1720,
                             "parameters": {
-                              "text": "Send opens your mail app with the message written for you.",
+                              "text": "Fill in your name, your email and a few lines, and Send will light up.",
                               "fontSize": "var(--text-xs)",
                               "color": "var(--muted-foreground)",
                               "lineHeight": "var(--leading-snug)"
@@ -2176,6 +2695,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "backgroundColor": "var(--accent)",
                               "borderRadius": "var(--radius-xl)",
                               "borderStyle": "solid",
@@ -2188,7 +2708,6 @@
                               "paddingRight": "var(--space-5)",
                               "paddingTop": "var(--space-5)",
                               "paddingBottom": "var(--space-5)",
-                              "sizeMode": "contentHeight",
                               "mounted": false
                             },
                             "ports": [],
@@ -2222,6 +2741,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "backgroundColor": "var(--accent)",
                               "borderRadius": "var(--radius-xl)",
                               "borderStyle": "solid",
@@ -2234,7 +2754,6 @@
                               "paddingRight": "var(--space-5)",
                               "paddingTop": "var(--space-5)",
                               "paddingBottom": "var(--space-5)",
-                              "sizeMode": "contentHeight",
                               "mounted": false
                             },
                             "ports": [],
@@ -2249,6 +2768,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "backgroundColor": "var(--surface)",
                           "borderRadius": "var(--radius-xl)",
                           "borderStyle": "solid",
@@ -2260,8 +2780,7 @@
                           "paddingLeft": "var(--space-5)",
                           "paddingRight": "var(--space-5)",
                           "paddingTop": "var(--space-5)",
-                          "paddingBottom": "var(--space-5)",
-                          "sizeMode": "contentHeight"
+                          "paddingBottom": "var(--space-5)"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -2303,6 +2822,7 @@
                     "value": 100,
                     "unit": "%"
                   },
+                  "sizeMode": "contentHeight",
                   "maxWidth": {
                     "value": 1200,
                     "unit": "px"
@@ -2310,7 +2830,6 @@
                   "flexDirection": "column",
                   "paddingLeft": "var(--space-6)",
                   "paddingRight": "var(--space-6)",
-                  "sizeMode": "contentHeight",
                   "alignX": "center",
                   "rowGap": "var(--space-6)"
                 },
@@ -2326,6 +2845,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "column",
               "alignItems": "center",
               "backgroundColor": "var(--surface)",
@@ -2337,8 +2857,94 @@
               "borderBottomColor": "var(--border)",
               "paddingTop": "var(--space-20)",
               "paddingBottom": "var(--space-20)",
-              "sizeMode": "contentHeight",
               "as": "section"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctNameOk",
+            "type": "Expression",
+            "children": [],
+            "label": "Is there a name?",
+            "x": 590,
+            "y": 1240,
+            "parameters": {
+              "expression": "(n || '').trim().length > 1"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctEmailCheck",
+            "type": "/Site/IsValidEmail",
+            "children": [],
+            "label": "Is the address one you could reply to?",
+            "x": 590,
+            "y": 1480,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctMsgOk",
+            "type": "Expression",
+            "children": [],
+            "label": "Is the message long enough?",
+            "x": 590,
+            "y": 1720,
+            "parameters": {
+              "expression": "(m || '').trim().length >= 20"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctAnd",
+            "type": "And",
+            "children": [],
+            "label": "Everything, at once",
+            "x": 590,
+            "y": 1960,
+            "parameters": {},
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctMsgHelper",
+            "type": "Expression",
+            "children": [],
+            "label": "How much more is needed",
+            "x": 590,
+            "y": 1840,
+            "parameters": {
+              "expression": "(m || '').trim().length >= 20 ? 'That is plenty — go ahead.' : ('About ' + (20 - (m || '').trim().length) + ' more characters, please.')"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctEmailEdge",
+            "type": "Expression",
+            "children": [],
+            "label": "The address box’s border",
+            "x": 590,
+            "y": 1600,
+            "parameters": {
+              "expression": "(msg || '').length > 0 ? 'var(--destructive)' : 'var(--border-control)'"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "ctHintText",
+            "type": "Expression",
+            "children": [],
+            "label": "What the line under Send says",
+            "x": 590,
+            "y": 2080,
+            "parameters": {
+              "expression": "ok ? \"Send opens your mail app with the message written for you.\" : \"Fill in your name, your email and a few lines, and Send will light up.\""
             },
             "ports": [],
             "dynamicports": []
@@ -2362,7 +2968,7 @@
             "children": [],
             "label": "Write the email",
             "x": 590,
-            "y": 1240,
+            "y": 1360,
             "parameters": {
               "runOnChange-in-name": false,
               "runOnChange-in-email": false,
@@ -2425,7 +3031,7 @@
             "children": [],
             "label": "Hand it to the mail app",
             "x": 590,
-            "y": 2320,
+            "y": 2680,
             "parameters": {
               "openInNewTab": false
             },
@@ -2438,7 +3044,7 @@
             "children": [],
             "label": "Say it went",
             "x": 590,
-            "y": 1840,
+            "y": 2200,
             "parameters": {
               "condition": true,
               "runOnChange-condition": false
@@ -2452,7 +3058,7 @@
             "children": [],
             "label": "Say something is empty",
             "x": 590,
-            "y": 2080,
+            "y": 2440,
             "parameters": {
               "condition": true,
               "runOnChange-condition": false
@@ -2466,7 +3072,7 @@
             "children": [],
             "label": "Put that away once it goes",
             "x": 590,
-            "y": 2200,
+            "y": 2560,
             "parameters": {
               "condition": false,
               "runOnChange-condition": false
@@ -2480,7 +3086,7 @@
             "children": [],
             "label": "Put \"it went\" away if the next try is empty",
             "x": 590,
-            "y": 1960,
+            "y": 2320,
             "parameters": {
               "condition": false,
               "runOnChange-condition": false
@@ -2570,6 +3176,90 @@
             "fromProperty": "onClick",
             "toId": "ctCompose",
             "toProperty": "run"
+          },
+          {
+            "fromId": "ctName",
+            "fromProperty": "text",
+            "toId": "ctNameOk",
+            "toProperty": "n"
+          },
+          {
+            "fromId": "ctEmail",
+            "fromProperty": "text",
+            "toId": "ctEmailCheck",
+            "toProperty": "email"
+          },
+          {
+            "fromId": "ctMessage",
+            "fromProperty": "text",
+            "toId": "ctMsgOk",
+            "toProperty": "m"
+          },
+          {
+            "fromId": "ctMessage",
+            "fromProperty": "text",
+            "toId": "ctMsgHelper",
+            "toProperty": "m"
+          },
+          {
+            "fromId": "ctNameOk",
+            "fromProperty": "asBoolean",
+            "toId": "ctAnd",
+            "toProperty": "input 0"
+          },
+          {
+            "fromId": "ctEmailCheck",
+            "fromProperty": "isValid",
+            "toId": "ctAnd",
+            "toProperty": "input 1"
+          },
+          {
+            "fromId": "ctMsgOk",
+            "fromProperty": "asBoolean",
+            "toId": "ctAnd",
+            "toProperty": "input 2"
+          },
+          {
+            "fromId": "ctAnd",
+            "fromProperty": "result",
+            "toId": "ctSend",
+            "toProperty": "enabled"
+          },
+          {
+            "fromId": "ctAnd",
+            "fromProperty": "result",
+            "toId": "ctHintText",
+            "toProperty": "ok"
+          },
+          {
+            "fromId": "ctHintText",
+            "fromProperty": "asString",
+            "toId": "ctHint",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "ctEmailCheck",
+            "fromProperty": "message",
+            "toId": "ctEmail",
+            "toProperty": "message"
+          },
+          {
+            "fromId": "ctEmailCheck",
+            "fromProperty": "message",
+            "toId": "ctEmailEdge",
+            "toProperty": "msg"
+          },
+          {
+            "fromId": "ctEmailEdge",
+            "fromProperty": "asString",
+            "toId": "ctEmail",
+            "toProperty": "edge"
+          },
+          {
+            "fromId": "ctMsgHelper",
+            "fromProperty": "asString",
+            "toId": "ctMessage",
+            "toProperty": "message"
           },
           {
             "fromId": "ctCompose",
@@ -2821,6 +3511,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "flexDirection": "row",
               "alignItems": "center",
               "borderBottomStyle": "solid",
@@ -3529,6 +4220,7 @@
                 "value": 100,
                 "unit": "%"
               },
+              "sizeMode": "contentHeight",
               "backgroundColor": "var(--surface)",
               "borderRadius": "var(--radius-xl)",
               "borderStyle": "solid",
@@ -3540,8 +4232,7 @@
               "paddingLeft": "var(--space-8)",
               "paddingRight": "var(--space-8)",
               "paddingTop": "var(--space-8)",
-              "paddingBottom": "var(--space-8)",
-              "sizeMode": "contentHeight"
+              "paddingBottom": "var(--space-8)"
             },
             "ports": [],
             "dynamicports": []
@@ -3750,10 +4441,17 @@
                     "id": "flHeader",
                     "type": "/Site/Header",
                     "children": [],
-                    "label": "The header",
+                    "label": "EDIT — the three nav links at the top",
                     "x": 160,
                     "y": 400,
-                    "parameters": {},
+                    "parameters": {
+                      "nav1": "What I do",
+                      "nav1Target": "section-flServices",
+                      "nav2": "Work",
+                      "nav2Target": "section-flWork",
+                      "nav3": "About",
+                      "nav3Target": "section-flAbout"
+                    },
                     "ports": [],
                     "dynamicports": []
                   },
@@ -3955,6 +4653,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -3962,7 +4661,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-5)",
                               "alignItems": "flex-start"
@@ -3979,12 +4677,12 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundGradient": "var(--gradient-deep)",
                           "paddingTop": "var(--space-24)",
-                          "paddingBottom": "var(--space-24)",
-                          "sizeMode": "contentHeight"
+                          "paddingBottom": "var(--space-24)"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4048,6 +4746,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -4192,6 +4891,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -4199,7 +4899,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -4215,12 +4914,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-flServices"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4284,6 +4984,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -4431,6 +5132,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -4438,7 +5140,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -4454,6 +5155,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -4465,8 +5167,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-flWork"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4668,6 +5370,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -4675,7 +5378,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -4691,12 +5393,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-flAbout"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4760,6 +5463,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -4874,6 +5578,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -4881,7 +5586,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -4897,6 +5601,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -4908,8 +5613,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-flQuotes"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -4943,7 +5648,8 @@
                             "unit": "%"
                           },
                           "sizeMode": "contentHeight",
-                          "flexDirection": "column"
+                          "flexDirection": "column",
+                          "cssClassName": "site-contact"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -5005,38 +5711,46 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "flGoContact",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the form",
+            "x": 710,
+            "y": 1600,
+            "parameters": {
+              "target": "site-contact"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "flGoSecond",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the section the hero’s second button names",
+            "x": 710,
+            "y": 1720,
+            "parameters": {
+              "target": "section-flWork"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
           {
-            "fromId": "flContactAnchor",
-            "fromProperty": "this",
-            "toId": "flGround",
-            "toProperty": "scrollToElement.element"
-          },
-          {
-            "fromId": "flHeader",
-            "fromProperty": "contact",
-            "toId": "flGround",
-            "toProperty": "scrollToElement.do"
-          },
-          {
-            "fromId": "flWork",
-            "fromProperty": "this",
-            "toId": "flMain",
-            "toProperty": "scrollToElement.element"
-          },
-          {
             "fromId": "flHeroPrimary",
             "fromProperty": "onClick",
-            "toId": "flGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "flGoContact",
+            "toProperty": "go"
           },
           {
             "fromId": "flHeroSecondary",
             "fromProperty": "onClick",
-            "toId": "flMain",
-            "toProperty": "scrollToElement.do"
+            "toId": "flGoSecond",
+            "toProperty": "go"
           }
         ],
         "visualRoots": [
@@ -5071,10 +5785,17 @@
                     "id": "bzHeader",
                     "type": "/Site/Header",
                     "children": [],
-                    "label": "The header",
+                    "label": "EDIT — the three nav links at the top",
                     "x": 160,
                     "y": 400,
-                    "parameters": {},
+                    "parameters": {
+                      "nav1": "What we make",
+                      "nav1Target": "section-bzOffer",
+                      "nav2": "Why here",
+                      "nav2Target": "section-bzWhy",
+                      "nav3": "Visit",
+                      "nav3Target": "section-bzVisit"
+                    },
                     "ports": [],
                     "dynamicports": []
                   },
@@ -5378,6 +6099,7 @@
                                 "x": 340,
                                 "y": 1840,
                                 "parameters": {
+                                  "sizeMode": "contentSize",
                                   "flexDirection": "row",
                                   "backgroundColor": "var(--surface-glass)",
                                   "borderStyle": "solid",
@@ -5393,7 +6115,6 @@
                                   "paddingRight": "var(--space-6)",
                                   "paddingTop": "var(--space-5)",
                                   "paddingBottom": "var(--space-5)",
-                                  "sizeMode": "contentSize",
                                   "maxWidth": {
                                     "value": 100,
                                     "unit": "%"
@@ -5413,6 +6134,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -5420,7 +6142,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-5)",
                               "alignItems": "flex-start"
@@ -5515,6 +6236,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -5662,6 +6384,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -5669,7 +6392,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -5685,12 +6407,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-bzOffer"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -5754,6 +6477,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -5898,6 +6622,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -5905,7 +6630,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -5921,6 +6645,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -5932,8 +6657,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-bzWhy"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -6161,6 +6886,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -6168,7 +6894,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -6184,12 +6909,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-bzVisit"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -6253,6 +6979,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -6367,6 +7094,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -6374,7 +7102,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -6390,6 +7117,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -6401,8 +7129,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-bzQuotes"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -6436,7 +7164,8 @@
                             "unit": "%"
                           },
                           "sizeMode": "contentHeight",
-                          "flexDirection": "column"
+                          "flexDirection": "column",
+                          "cssClassName": "site-contact"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -6498,38 +7227,46 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "bzGoContact",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the form",
+            "x": 710,
+            "y": 1600,
+            "parameters": {
+              "target": "site-contact"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "bzGoSecond",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the section the hero’s second button names",
+            "x": 710,
+            "y": 1720,
+            "parameters": {
+              "target": "section-bzVisit"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
           {
-            "fromId": "bzContactAnchor",
-            "fromProperty": "this",
-            "toId": "bzGround",
-            "toProperty": "scrollToElement.element"
-          },
-          {
-            "fromId": "bzHeader",
-            "fromProperty": "contact",
-            "toId": "bzGround",
-            "toProperty": "scrollToElement.do"
-          },
-          {
-            "fromId": "bzVisit",
-            "fromProperty": "this",
-            "toId": "bzMain",
-            "toProperty": "scrollToElement.element"
-          },
-          {
             "fromId": "bzHeroPrimary",
             "fromProperty": "onClick",
-            "toId": "bzGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "bzGoContact",
+            "toProperty": "go"
           },
           {
             "fromId": "bzHeroSecondary",
             "fromProperty": "onClick",
-            "toId": "bzMain",
-            "toProperty": "scrollToElement.do"
+            "toId": "bzGoSecond",
+            "toProperty": "go"
           }
         ],
         "visualRoots": [
@@ -6564,10 +7301,17 @@
                     "id": "lnHeader",
                     "type": "/Site/Header",
                     "children": [],
-                    "label": "The header",
+                    "label": "EDIT — the three nav links at the top",
                     "x": 160,
                     "y": 400,
-                    "parameters": {},
+                    "parameters": {
+                      "nav1": "What it does",
+                      "nav1Target": "section-lnFeatures",
+                      "nav2": "How it works",
+                      "nav2Target": "section-lnSteps",
+                      "nav3": "Price",
+                      "nav3Target": "section-lnPricing"
+                    },
                     "ports": [],
                     "dynamicports": []
                   },
@@ -6874,6 +7618,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -6881,7 +7626,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -6897,12 +7641,12 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundGradient": "var(--gradient-spotlight)",
                           "paddingTop": "var(--space-24)",
-                          "paddingBottom": "var(--space-16)",
-                          "sizeMode": "contentHeight"
+                          "paddingBottom": "var(--space-16)"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -6966,6 +7710,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -7392,6 +8137,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -7399,7 +8145,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -7415,12 +8160,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-lnFeatures"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -7484,6 +8230,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -7625,6 +8372,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -7632,7 +8380,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -7648,11 +8395,11 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
                           "as": "section",
                           "backgroundGradient": "var(--gradient-deep)"
                         },
@@ -7718,6 +8465,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -7803,6 +8551,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -7810,7 +8559,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -7826,6 +8574,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -7837,8 +8586,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-lnSteps"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -7902,6 +8651,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -8032,6 +8782,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -8039,7 +8790,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -8055,12 +8805,13 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-lnPricing"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -8124,6 +8875,7 @@
                                     "value": 100,
                                     "unit": "%"
                                   },
+                                  "sizeMode": "contentHeight",
                                   "flexDirection": "column",
                                   "rowGap": "var(--space-3)",
                                   "paddingBottom": "var(--space-10)"
@@ -8266,6 +9018,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 1200,
                                 "unit": "px"
@@ -8273,7 +9026,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-6)"
                             },
@@ -8289,6 +9041,7 @@
                             "value": 100,
                             "unit": "%"
                           },
+                          "sizeMode": "contentHeight",
                           "flexDirection": "column",
                           "alignItems": "center",
                           "backgroundColor": "var(--surface)",
@@ -8300,8 +9053,8 @@
                           "borderBottomColor": "var(--border)",
                           "paddingTop": "var(--space-20)",
                           "paddingBottom": "var(--space-20)",
-                          "sizeMode": "contentHeight",
-                          "as": "section"
+                          "as": "section",
+                          "cssClassName": "section-lnFaq"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -8388,6 +9141,7 @@
                                 "value": 100,
                                 "unit": "%"
                               },
+                              "sizeMode": "contentHeight",
                               "maxWidth": {
                                 "value": 720,
                                 "unit": "px"
@@ -8395,7 +9149,6 @@
                               "flexDirection": "column",
                               "paddingLeft": "var(--space-6)",
                               "paddingRight": "var(--space-6)",
-                              "sizeMode": "contentHeight",
                               "alignX": "center",
                               "rowGap": "var(--space-5)",
                               "alignItems": "center"
@@ -8452,7 +9205,8 @@
                             "unit": "%"
                           },
                           "sizeMode": "contentHeight",
-                          "flexDirection": "column"
+                          "flexDirection": "column",
+                          "cssClassName": "site-contact"
                         },
                         "ports": [],
                         "dynamicports": []
@@ -8514,56 +9268,64 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "lnGoContact",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the form",
+            "x": 770,
+            "y": 1840,
+            "parameters": {
+              "target": "site-contact"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "lnGoSecond",
+            "type": "/Site/ScrollTo",
+            "children": [],
+            "label": "To the section the hero’s second button names",
+            "x": 770,
+            "y": 1960,
+            "parameters": {
+              "target": "section-lnSteps"
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
           {
-            "fromId": "lnContactAnchor",
-            "fromProperty": "this",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.element"
-          },
-          {
-            "fromId": "lnHeader",
-            "fromProperty": "contact",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.do"
-          },
-          {
-            "fromId": "lnSteps",
-            "fromProperty": "this",
-            "toId": "lnMain",
-            "toProperty": "scrollToElement.element"
-          },
-          {
             "fromId": "lnHeroPrimary",
             "fromProperty": "onClick",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "lnGoContact",
+            "toProperty": "go"
           },
           {
             "fromId": "lnHeroSecondary",
             "fromProperty": "onClick",
-            "toId": "lnMain",
-            "toProperty": "scrollToElement.do"
+            "toId": "lnGoSecond",
+            "toProperty": "go"
           },
           {
             "fromId": "lnCtaButton",
             "fromProperty": "onClick",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "lnGoContact",
+            "toProperty": "go"
           },
           {
             "fromId": "lnPlanFree",
             "fromProperty": "chosen",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "lnGoContact",
+            "toProperty": "go"
           },
           {
             "fromId": "lnPlanPaid",
             "fromProperty": "chosen",
-            "toId": "lnGround",
-            "toProperty": "scrollToElement.do"
+            "toId": "lnGoContact",
+            "toProperty": "go"
           }
         ],
         "visualRoots": [

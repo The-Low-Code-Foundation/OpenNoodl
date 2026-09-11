@@ -6,8 +6,16 @@
     "App": {
       "path": "App",
       "type": "visual",
-      "nodeCount": 2,
+      "nodeCount": 3,
       "connectionCount": 0,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
+    "Site/ScrollTo": {
+      "path": "Site/ScrollTo",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 4,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -22,8 +30,8 @@
     "Site/Header": {
       "path": "Site/Header",
       "type": "visual",
-      "nodeCount": 8,
-      "connectionCount": 1,
+      "nodeCount": 16,
+      "connectionCount": 10,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -91,19 +99,27 @@
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
+    "Site/IsValidEmail": {
+      "path": "Site/IsValidEmail",
+      "type": "visual",
+      "nodeCount": 3,
+      "connectionCount": 3,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
     "Site/Field": {
       "path": "Site/Field",
       "type": "visual",
-      "nodeCount": 5,
-      "connectionCount": 3,
+      "nodeCount": 7,
+      "connectionCount": 8,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
     "Site/Contact": {
       "path": "Site/Contact",
       "type": "visual",
-      "nodeCount": 27,
-      "connectionCount": 19,
+      "nodeCount": 34,
+      "connectionCount": 33,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -150,31 +166,31 @@
     "Pages/Freelancer": {
       "path": "Pages/Freelancer",
       "type": "page",
-      "nodeCount": 63,
-      "connectionCount": 5,
+      "nodeCount": 65,
+      "connectionCount": 2,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
     "Pages/Business": {
       "path": "Pages/Business",
       "type": "page",
-      "nodeCount": 72,
-      "connectionCount": 5,
+      "nodeCount": 74,
+      "connectionCount": 2,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
     "Pages/Launch": {
       "path": "Pages/Launch",
       "type": "page",
-      "nodeCount": 98,
-      "connectionCount": 8,
+      "nodeCount": 100,
+      "connectionCount": 5,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     }
   },
   "stats": {
-    "totalComponents": 21,
-    "totalNodes": 375,
-    "totalConnections": 93
+    "totalComponents": 23,
+    "totalNodes": 405,
+    "totalConnections": 119
   }
 }

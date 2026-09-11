@@ -55,8 +55,16 @@
     {
       "id": "lnHeader",
       "type": "/Site/Header",
-      "label": "The header",
+      "label": "EDIT — the three nav links at the top",
       "parent": "lnGround",
+      "parameters": {
+        "nav1": "What it does",
+        "nav1Target": "section-lnFeatures",
+        "nav2": "How it works",
+        "nav2Target": "section-lnSteps",
+        "nav3": "Price",
+        "nav3Target": "section-lnPricing"
+      },
       "x": 160,
       "y": 400
     },
@@ -101,7 +109,8 @@
           "unit": "%"
         },
         "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "flexDirection": "column",
+        "cssClassName": "site-contact"
       },
       "x": 220,
       "y": 11440
@@ -128,6 +137,26 @@
       "y": 11680
     },
     {
+      "id": "lnGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "To the form",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 770,
+      "y": 1840
+    },
+    {
+      "id": "lnGoSecond",
+      "type": "/Site/ScrollTo",
+      "label": "To the section the hero’s second button names",
+      "parameters": {
+        "target": "section-lnSteps"
+      },
+      "x": 770,
+      "y": 1960
+    },
+    {
       "id": "lnHero",
       "type": "Group",
       "label": "The hero",
@@ -140,12 +169,12 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundGradient": "var(--gradient-spotlight)",
         "paddingTop": "var(--space-24)",
-        "paddingBottom": "var(--space-16)",
-        "sizeMode": "contentHeight"
+        "paddingBottom": "var(--space-16)"
       },
       "x": 220,
       "y": 640
@@ -163,6 +192,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -170,7 +200,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -463,12 +492,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-lnFeatures"
       },
       "x": 220,
       "y": 2440
@@ -488,6 +518,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -495,7 +526,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -516,6 +546,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -964,11 +995,11 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
         "as": "section",
         "backgroundGradient": "var(--gradient-deep)"
       },
@@ -989,6 +1020,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -996,7 +1028,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1017,6 +1048,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -1192,6 +1224,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -1203,8 +1236,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-lnSteps"
       },
       "x": 220,
       "y": 7120
@@ -1223,6 +1256,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1230,7 +1264,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1251,6 +1284,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -1370,12 +1404,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-lnPricing"
       },
       "x": 220,
       "y": 8200
@@ -1394,6 +1429,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1401,7 +1437,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1422,6 +1457,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -1587,6 +1623,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -1598,8 +1635,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-lnFaq"
       },
       "x": 220,
       "y": 9400
@@ -1618,6 +1655,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1625,7 +1663,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1646,6 +1683,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -1847,6 +1885,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 720,
           "unit": "px"
@@ -1854,7 +1893,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "alignItems": "center"

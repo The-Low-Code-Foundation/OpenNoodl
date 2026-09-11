@@ -4,34 +4,16 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "bzContactAnchor",
-      "fromProperty": "this",
-      "toId": "bzGround",
-      "toProperty": "scrollToElement.element"
-    },
-    {
-      "fromId": "bzHeader",
-      "fromProperty": "contact",
-      "toId": "bzGround",
-      "toProperty": "scrollToElement.do"
-    },
-    {
-      "fromId": "bzVisit",
-      "fromProperty": "this",
-      "toId": "bzMain",
-      "toProperty": "scrollToElement.element"
-    },
-    {
       "fromId": "bzHeroPrimary",
       "fromProperty": "onClick",
-      "toId": "bzGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "bzGoContact",
+      "toProperty": "go"
     },
     {
       "fromId": "bzHeroSecondary",
       "fromProperty": "onClick",
-      "toId": "bzMain",
-      "toProperty": "scrollToElement.do"
+      "toId": "bzGoSecond",
+      "toProperty": "go"
     }
   ]
 }

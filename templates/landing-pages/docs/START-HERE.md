@@ -64,6 +64,7 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the second thing you sell** | picture: noodl_modules/starter-imagery/food-plate.webp · alt: A plated dish · title: The second thing · line: One line on it: what it is, when it is ready, what it costs. |
 | **EDIT — the third reason** | icon: truck · title: The third reason · line: Something practical: delivery, parking, a room for a party. |
 | **EDIT — the third thing you sell** | picture: noodl_modules/starter-imagery/texture-coffee.webp · alt: Roasted coffee beans · title: The third thing · line: One line on it: what it is, when it is ready, what it costs. |
+| **EDIT — the three nav links at the top** | nav1: What we make · nav1Target: section-bzOffer · nav2: Why here · nav2Target: section-bzWhy · nav3: Visit · nav3Target: section-bzVisit |
 | **EDIT — What we make — heading** | Three things people come in for |
 | **EDIT — Why here — heading** | Three reasons this is the place |
 
@@ -88,6 +89,7 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the second service** | icon: layout-grid · title: The second service · line: One line on what it includes and what they get at the end. |
 | **EDIT — the third piece of work** | picture: noodl_modules/starter-imagery/people-desk.webp · alt: Someone working at a laptop by a window · title: A third piece of work · line: Who it was for, and what changed. |
 | **EDIT — the third service** | icon: line-chart · title: The third service · line: One line on what it includes and what they get at the end. |
+| **EDIT — the three nav links at the top** | nav1: What I do · nav1Target: section-flServices · nav2: Work · nav2Target: section-flWork · nav3: About · nav3Target: section-flAbout |
 | **EDIT — What I do — heading** | Three things I can take off your plate |
 
 ### `Pages/Launch`
@@ -129,6 +131,7 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the small line under the buttons** | Free while it is in beta · no card needed |
 | **EDIT — the third question** | question: What happens after they sign up · answer: The next thing they will hear from you, and roughly when. |
 | **EDIT — the third step** | number: 03 · title: The third step · line: What they have at the end that they did not have before. |
+| **EDIT — the three nav links at the top** | nav1: What it does · nav1Target: section-lnFeatures · nav2: How it works · nav2Target: section-lnSteps · nav3: Price · nav3Target: section-lnPricing |
 | **EDIT — What it does — heading** | Two things it does that nothing else does |
 
 ### `Site/Contact`

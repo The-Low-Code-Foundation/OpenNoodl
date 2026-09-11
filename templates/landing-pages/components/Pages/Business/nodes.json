@@ -55,8 +55,16 @@
     {
       "id": "bzHeader",
       "type": "/Site/Header",
-      "label": "The header",
+      "label": "EDIT — the three nav links at the top",
       "parent": "bzGround",
+      "parameters": {
+        "nav1": "What we make",
+        "nav1Target": "section-bzOffer",
+        "nav2": "Why here",
+        "nav2Target": "section-bzWhy",
+        "nav3": "Visit",
+        "nav3Target": "section-bzVisit"
+      },
       "x": 160,
       "y": 400
     },
@@ -99,7 +107,8 @@
           "unit": "%"
         },
         "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "flexDirection": "column",
+        "cssClassName": "site-contact"
       },
       "x": 220,
       "y": 8320
@@ -124,6 +133,26 @@
       "parent": "bzGround",
       "x": 160,
       "y": 8560
+    },
+    {
+      "id": "bzGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "To the form",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 710,
+      "y": 1600
+    },
+    {
+      "id": "bzGoSecond",
+      "type": "/Site/ScrollTo",
+      "label": "To the section the hero’s second button names",
+      "parameters": {
+        "target": "section-bzVisit"
+      },
+      "x": 710,
+      "y": 1720
     },
     {
       "id": "bzHero",
@@ -174,6 +203,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -181,7 +211,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "alignItems": "flex-start"
@@ -367,6 +396,7 @@
         "bzNumber3Cell"
       ],
       "parameters": {
+        "sizeMode": "contentSize",
         "flexDirection": "row",
         "backgroundColor": "var(--surface-glass)",
         "borderStyle": "solid",
@@ -382,7 +412,6 @@
         "paddingRight": "var(--space-6)",
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)",
-        "sizeMode": "contentSize",
         "maxWidth": {
           "value": 100,
           "unit": "%"
@@ -502,12 +531,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-bzOffer"
       },
       "x": 220,
       "y": 2680
@@ -526,6 +556,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -533,7 +564,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -554,6 +584,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -735,6 +766,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -746,8 +778,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-bzWhy"
       },
       "x": 220,
       "y": 4120
@@ -766,6 +798,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -773,7 +806,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -794,6 +826,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -972,12 +1005,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-bzVisit"
       },
       "x": 220,
       "y": 5560
@@ -995,6 +1029,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1002,7 +1037,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1219,6 +1253,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -1230,8 +1265,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-bzQuotes"
       },
       "x": 220,
       "y": 7120
@@ -1250,6 +1285,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1257,7 +1293,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1278,6 +1313,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"

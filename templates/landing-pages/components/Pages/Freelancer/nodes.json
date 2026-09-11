@@ -55,8 +55,16 @@
     {
       "id": "flHeader",
       "type": "/Site/Header",
-      "label": "The header",
+      "label": "EDIT — the three nav links at the top",
       "parent": "flGround",
+      "parameters": {
+        "nav1": "What I do",
+        "nav1Target": "section-flServices",
+        "nav2": "Work",
+        "nav2Target": "section-flWork",
+        "nav3": "About",
+        "nav3Target": "section-flAbout"
+      },
       "x": 160,
       "y": 400
     },
@@ -99,7 +107,8 @@
           "unit": "%"
         },
         "sizeMode": "contentHeight",
-        "flexDirection": "column"
+        "flexDirection": "column",
+        "cssClassName": "site-contact"
       },
       "x": 220,
       "y": 7240
@@ -126,6 +135,26 @@
       "y": 7480
     },
     {
+      "id": "flGoContact",
+      "type": "/Site/ScrollTo",
+      "label": "To the form",
+      "parameters": {
+        "target": "site-contact"
+      },
+      "x": 710,
+      "y": 1600
+    },
+    {
+      "id": "flGoSecond",
+      "type": "/Site/ScrollTo",
+      "label": "To the section the hero’s second button names",
+      "parameters": {
+        "target": "section-flWork"
+      },
+      "x": 710,
+      "y": 1720
+    },
+    {
       "id": "flHero",
       "type": "Group",
       "label": "The hero",
@@ -138,12 +167,12 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundGradient": "var(--gradient-deep)",
         "paddingTop": "var(--space-24)",
-        "paddingBottom": "var(--space-24)",
-        "sizeMode": "contentHeight"
+        "paddingBottom": "var(--space-24)"
       },
       "x": 220,
       "y": 640
@@ -164,6 +193,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -171,7 +201,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-5)",
         "alignItems": "flex-start"
@@ -359,12 +388,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-flServices"
       },
       "x": 220,
       "y": 1840
@@ -383,6 +413,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -390,7 +421,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -411,6 +441,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -589,6 +620,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -600,8 +632,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-flWork"
       },
       "x": 220,
       "y": 3280
@@ -620,6 +652,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -627,7 +660,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -648,6 +680,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"
@@ -829,12 +862,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-flAbout"
       },
       "x": 220,
       "y": 4720
@@ -852,6 +886,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -859,7 +894,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1052,6 +1086,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -1063,8 +1098,8 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
-        "as": "section"
+        "as": "section",
+        "cssClassName": "section-flQuotes"
       },
       "x": 220,
       "y": 6040
@@ -1083,6 +1118,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -1090,7 +1126,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -1111,6 +1146,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-3)",
         "paddingBottom": "var(--space-10)"

@@ -44,6 +44,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -51,7 +52,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-2)"
       },

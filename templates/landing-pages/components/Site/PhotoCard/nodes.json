@@ -16,6 +16,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "backgroundColor": "var(--surface)",
         "borderRadius": "var(--radius-xl)",
         "borderStyle": "solid",
@@ -63,13 +64,13 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "rowGap": "var(--space-2)",
         "paddingLeft": "var(--space-5)",
         "paddingRight": "var(--space-5)",
         "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)",
-        "sizeMode": "contentHeight"
+        "paddingBottom": "var(--space-5)"
       },
       "x": 100,
       "y": 280

@@ -15,6 +15,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "column",
         "alignItems": "center",
         "backgroundColor": "var(--surface)",
@@ -26,7 +27,6 @@
         "borderBottomColor": "var(--border)",
         "paddingTop": "var(--space-20)",
         "paddingBottom": "var(--space-20)",
-        "sizeMode": "contentHeight",
         "as": "section"
       },
       "x": 40,
@@ -45,6 +45,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "maxWidth": {
           "value": 1200,
           "unit": "px"
@@ -52,7 +53,6 @@
         "flexDirection": "column",
         "paddingLeft": "var(--space-6)",
         "paddingRight": "var(--space-6)",
-        "sizeMode": "contentHeight",
         "alignX": "center",
         "rowGap": "var(--space-6)"
       },
@@ -214,6 +214,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "backgroundColor": "var(--surface)",
         "borderRadius": "var(--radius-xl)",
         "borderStyle": "solid",
@@ -225,8 +226,7 @@
         "paddingLeft": "var(--space-5)",
         "paddingRight": "var(--space-5)",
         "paddingTop": "var(--space-5)",
-        "paddingBottom": "var(--space-5)",
-        "sizeMode": "contentHeight"
+        "paddingBottom": "var(--space-5)"
       },
       "x": 220,
       "y": 1120
@@ -238,7 +238,8 @@
       "parent": "ctCard",
       "parameters": {
         "label": "Your name",
-        "type": "text"
+        "type": "text",
+        "edge": "var(--border-control)"
       },
       "x": 280,
       "y": 1240
@@ -250,7 +251,8 @@
       "parent": "ctCard",
       "parameters": {
         "label": "Your email",
-        "type": "email"
+        "type": "email",
+        "messageColor": "var(--destructive)"
       },
       "x": 280,
       "y": 1360
@@ -262,7 +264,9 @@
       "parent": "ctCard",
       "parameters": {
         "label": "Your message",
-        "type": "textArea"
+        "type": "textArea",
+        "edge": "var(--border-control)",
+        "messageColor": "var(--muted-foreground)"
       },
       "x": 280,
       "y": 1480
@@ -284,7 +288,9 @@
         "paddingBottom": "var(--space-3)",
         "fontSize": "var(--text-sm)",
         "fontWeight": "var(--font-semibold)",
-        "sizeMode": "contentSize"
+        "sizeMode": "contentSize",
+        "cssClassName": "pressable",
+        "enabled": false
       },
       "x": 280,
       "y": 1600
@@ -292,16 +298,80 @@
     {
       "id": "ctHint",
       "type": "Text",
-      "label": "What Send does",
+      "label": "What Send does, or what is still missing",
       "parent": "ctCard",
       "parameters": {
-        "text": "Send opens your mail app with the message written for you.",
+        "text": "Fill in your name, your email and a few lines, and Send will light up.",
         "fontSize": "var(--text-xs)",
         "color": "var(--muted-foreground)",
         "lineHeight": "var(--leading-snug)"
       },
       "x": 280,
       "y": 1720
+    },
+    {
+      "id": "ctNameOk",
+      "type": "Expression",
+      "label": "Is there a name?",
+      "parameters": {
+        "expression": "(n || '').trim().length > 1"
+      },
+      "x": 590,
+      "y": 1240
+    },
+    {
+      "id": "ctEmailCheck",
+      "type": "/Site/IsValidEmail",
+      "label": "Is the address one you could reply to?",
+      "x": 590,
+      "y": 1480
+    },
+    {
+      "id": "ctMsgOk",
+      "type": "Expression",
+      "label": "Is the message long enough?",
+      "parameters": {
+        "expression": "(m || '').trim().length >= 20"
+      },
+      "x": 590,
+      "y": 1720
+    },
+    {
+      "id": "ctAnd",
+      "type": "And",
+      "label": "Everything, at once",
+      "x": 590,
+      "y": 1960
+    },
+    {
+      "id": "ctMsgHelper",
+      "type": "Expression",
+      "label": "How much more is needed",
+      "parameters": {
+        "expression": "(m || '').trim().length >= 20 ? 'That is plenty — go ahead.' : ('About ' + (20 - (m || '').trim().length) + ' more characters, please.')"
+      },
+      "x": 590,
+      "y": 1840
+    },
+    {
+      "id": "ctEmailEdge",
+      "type": "Expression",
+      "label": "The address box’s border",
+      "parameters": {
+        "expression": "(msg || '').length > 0 ? 'var(--destructive)' : 'var(--border-control)'"
+      },
+      "x": 590,
+      "y": 1600
+    },
+    {
+      "id": "ctHintText",
+      "type": "Expression",
+      "label": "What the line under Send says",
+      "parameters": {
+        "expression": "ok ? \"Send opens your mail app with the message written for you.\" : \"Fill in your name, your email and a few lines, and Send will light up.\""
+      },
+      "x": 590,
+      "y": 2080
     },
     {
       "id": "ctSent",
@@ -316,6 +386,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-xl)",
         "borderStyle": "solid",
@@ -328,7 +399,6 @@
         "paddingRight": "var(--space-5)",
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)",
-        "sizeMode": "contentHeight",
         "mounted": false
       },
       "x": 280,
@@ -360,6 +430,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "backgroundColor": "var(--accent)",
         "borderRadius": "var(--radius-xl)",
         "borderStyle": "solid",
@@ -372,7 +443,6 @@
         "paddingRight": "var(--space-5)",
         "paddingTop": "var(--space-5)",
         "paddingBottom": "var(--space-5)",
-        "sizeMode": "contentHeight",
         "mounted": false
       },
       "x": 280,
@@ -460,7 +530,7 @@
         }
       ],
       "x": 590,
-      "y": 1240
+      "y": 1360
     },
     {
       "id": "ctOpen",
@@ -470,7 +540,7 @@
         "openInNewTab": false
       },
       "x": 590,
-      "y": 2320
+      "y": 2680
     },
     {
       "id": "ctSentGate",
@@ -481,7 +551,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 1840
+      "y": 2200
     },
     {
       "id": "ctMissingGate",
@@ -492,7 +562,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 2080
+      "y": 2440
     },
     {
       "id": "ctMissingClear",
@@ -503,7 +573,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 2200
+      "y": 2560
     },
     {
       "id": "ctSentClear",
@@ -514,7 +584,7 @@
         "runOnChange-condition": false
       },
       "x": 590,
-      "y": 1960
+      "y": 2320
     },
     {
       "id": "ctInputs",

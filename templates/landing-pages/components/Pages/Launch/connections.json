@@ -4,52 +4,34 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "lnContactAnchor",
-      "fromProperty": "this",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.element"
-    },
-    {
-      "fromId": "lnHeader",
-      "fromProperty": "contact",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.do"
-    },
-    {
-      "fromId": "lnSteps",
-      "fromProperty": "this",
-      "toId": "lnMain",
-      "toProperty": "scrollToElement.element"
-    },
-    {
       "fromId": "lnHeroPrimary",
       "fromProperty": "onClick",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "lnGoContact",
+      "toProperty": "go"
     },
     {
       "fromId": "lnHeroSecondary",
       "fromProperty": "onClick",
-      "toId": "lnMain",
-      "toProperty": "scrollToElement.do"
+      "toId": "lnGoSecond",
+      "toProperty": "go"
     },
     {
       "fromId": "lnCtaButton",
       "fromProperty": "onClick",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "lnGoContact",
+      "toProperty": "go"
     },
     {
       "fromId": "lnPlanFree",
       "fromProperty": "chosen",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "lnGoContact",
+      "toProperty": "go"
     },
     {
       "fromId": "lnPlanPaid",
       "fromProperty": "chosen",
-      "toId": "lnGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "lnGoContact",
+      "toProperty": "go"
     }
   ]
 }

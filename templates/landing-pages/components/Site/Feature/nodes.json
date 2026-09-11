@@ -16,6 +16,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "flexDirection": "row",
         "columnGap": "var(--space-3)",
         "alignItems": "flex-start"

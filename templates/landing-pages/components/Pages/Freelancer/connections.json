@@ -4,34 +4,16 @@
   "version": 1,
   "connections": [
     {
-      "fromId": "flContactAnchor",
-      "fromProperty": "this",
-      "toId": "flGround",
-      "toProperty": "scrollToElement.element"
-    },
-    {
-      "fromId": "flHeader",
-      "fromProperty": "contact",
-      "toId": "flGround",
-      "toProperty": "scrollToElement.do"
-    },
-    {
-      "fromId": "flWork",
-      "fromProperty": "this",
-      "toId": "flMain",
-      "toProperty": "scrollToElement.element"
-    },
-    {
       "fromId": "flHeroPrimary",
       "fromProperty": "onClick",
-      "toId": "flGround",
-      "toProperty": "scrollToElement.do"
+      "toId": "flGoContact",
+      "toProperty": "go"
     },
     {
       "fromId": "flHeroSecondary",
       "fromProperty": "onClick",
-      "toId": "flMain",
-      "toProperty": "scrollToElement.do"
+      "toId": "flGoSecond",
+      "toProperty": "go"
     }
   ]
 }

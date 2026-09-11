@@ -58,6 +58,90 @@
       "toProperty": "run"
     },
     {
+      "fromId": "ctName",
+      "fromProperty": "text",
+      "toId": "ctNameOk",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "ctEmail",
+      "fromProperty": "text",
+      "toId": "ctEmailCheck",
+      "toProperty": "email"
+    },
+    {
+      "fromId": "ctMessage",
+      "fromProperty": "text",
+      "toId": "ctMsgOk",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "ctMessage",
+      "fromProperty": "text",
+      "toId": "ctMsgHelper",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "ctNameOk",
+      "fromProperty": "asBoolean",
+      "toId": "ctAnd",
+      "toProperty": "input 0"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "isValid",
+      "toId": "ctAnd",
+      "toProperty": "input 1"
+    },
+    {
+      "fromId": "ctMsgOk",
+      "fromProperty": "asBoolean",
+      "toId": "ctAnd",
+      "toProperty": "input 2"
+    },
+    {
+      "fromId": "ctAnd",
+      "fromProperty": "result",
+      "toId": "ctSend",
+      "toProperty": "enabled"
+    },
+    {
+      "fromId": "ctAnd",
+      "fromProperty": "result",
+      "toId": "ctHintText",
+      "toProperty": "ok"
+    },
+    {
+      "fromId": "ctHintText",
+      "fromProperty": "asString",
+      "toId": "ctHint",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "message",
+      "toId": "ctEmail",
+      "toProperty": "message"
+    },
+    {
+      "fromId": "ctEmailCheck",
+      "fromProperty": "message",
+      "toId": "ctEmailEdge",
+      "toProperty": "msg"
+    },
+    {
+      "fromId": "ctEmailEdge",
+      "fromProperty": "asString",
+      "toId": "ctEmail",
+      "toProperty": "edge"
+    },
+    {
+      "fromId": "ctMsgHelper",
+      "fromProperty": "asString",
+      "toId": "ctMessage",
+      "toProperty": "message"
+    },
+    {
       "fromId": "ctCompose",
       "fromProperty": "out-link",
       "toId": "ctOpen",

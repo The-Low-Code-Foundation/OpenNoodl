@@ -21,6 +21,7 @@
           "value": 100,
           "unit": "%"
         },
+        "sizeMode": "contentHeight",
         "backgroundColor": "var(--surface)",
         "borderRadius": "var(--radius-xl)",
         "borderStyle": "solid",
@@ -32,8 +33,7 @@
         "paddingLeft": "var(--space-8)",
         "paddingRight": "var(--space-8)",
         "paddingTop": "var(--space-8)",
-        "paddingBottom": "var(--space-8)",
-        "sizeMode": "contentHeight"
+        "paddingBottom": "var(--space-8)"
       },
       "x": 40,
       "y": 40

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "e26567be-b809-5c11-89ec-afc12211b0ad",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "ecInputs",
+      "fromProperty": "email",
+      "toId": "ecFn",
+      "toProperty": "in-email"
+    },
+    {
+      "fromId": "ecFn",
+      "fromProperty": "out-isValid",
+      "toId": "ecOutputs",
+      "toProperty": "isValid"
+    },
+    {
+      "fromId": "ecFn",
+      "fromProperty": "out-message",
+      "toId": "ecOutputs",
+      "toProperty": "message"
+    }
+  ]
+}

@@ -16,6 +16,36 @@
       "toProperty": "type"
     },
     {
+      "fromId": "fdInputs",
+      "fromProperty": "edge",
+      "toId": "fdInput",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "message",
+      "toId": "fdMessage",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "messageColor",
+      "toId": "fdMessage",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "fdInputs",
+      "fromProperty": "message",
+      "toId": "fdHasMessage",
+      "toProperty": "m"
+    },
+    {
+      "fromId": "fdHasMessage",
+      "fromProperty": "asBoolean",
+      "toId": "fdMessage",
+      "toProperty": "mounted"
+    },
+    {
       "fromId": "fdInput",
       "fromProperty": "onTextChanged",
       "toId": "fdOutputs",
