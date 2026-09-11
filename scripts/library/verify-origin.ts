@@ -68,10 +68,13 @@
  *
  * Usage:
  *   npm run library:verify-origin
- *   ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-origin.ts [--json] [--update-baseline]
+ *   npm run library:verify-origin -- --require-published
+ *   ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-origin.ts \
+ *     [--json] [--update-baseline] [--require-published]
  *
- * Exit codes: 0 = matches the baseline, 1 = divergence changed, 2 = origin
- * unavailable or usage/IO error.
+ * Exit codes: 0 = matches the baseline (or, under --require-published, nothing
+ * authored is unreachable), 1 = divergence changed (or something authored is
+ * unreachable), 2 = origin unavailable or usage/IO error.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -115,6 +118,32 @@ type LibraryType = (typeof TYPES)[number];
 const argv = process.argv.slice(2);
 const AS_JSON = argv.includes('--json');
 const UPDATE_BASELINE = argv.includes('--update-baseline');
+
+/**
+ * LIB-007 — the second question.
+ *
+ * The baseline above answers *"has the divergence CHANGED?"*. It does that
+ * correctly and it is not what failed. **Nothing owned *"is everything we
+ * authored actually REACHABLE?"***, which is how 0.2.3 shipped six parts that
+ * were authored, gated, rendered, drive-tested and named in the public release
+ * notes while being absent from the origin the editor fetches. Five of the six
+ * printed `known`; the run was red, and a run that has been red for days reads
+ * as furniture.
+ *
+ * A baseline that records "not published yet" cannot also be the thing that
+ * tells you to publish. So this mode **does not consult the baseline for its
+ * verdict**: any unpublished entry fails, whether or not somebody wrote it
+ * down. That is the whole point — writing it down is what made it invisible.
+ *
+ * Orphans are reported and deliberately **not** gated. A published entry with
+ * no source under `library/` is a tidiness problem; it is not a part nobody can
+ * install. Gating both would put this question back inside the first one.
+ *
+ * Run it where the claim is made: the publish workflow runs it against the
+ * served index after pushing, and the release workflow runs it before a tag is
+ * cut.
+ */
+const REQUIRE_PUBLISHED = argv.includes('--require-published');
 
 const ATTEMPTS = 3;
 const TIMEOUT_MS = 20_000;
@@ -299,11 +328,61 @@ async function main() {
     };
   }
 
+  if (REQUIRE_PUBLISHED) {
+    const missing = TYPES.flatMap((type) => divergence.unpublished[type].map((label) => ({ type, label })));
+    const orphans = TYPES.flatMap((type) => divergence.orphaned[type].map((label) => ({ type, label })));
+
+    if (AS_JSON) {
+      console.log(JSON.stringify({ endpoint, counts, missing, orphans }, null, 2));
+      process.exit(missing.length ? 1 : 0);
+    }
+
+    console.log(`Origin: ${endpoint}`);
+    console.log(`REACHABILITY — every entry under library/ must have a published counterpart.`);
+    console.log(`   ${path.relative(REPO_ROOT, BASELINE_PATH)} is NOT consulted: a divergence someone wrote down`);
+    console.log(`   is still a part nobody can install. That is LIB-007's whole finding.`);
+    console.log('');
+    for (const type of TYPES) {
+      const c = counts[type];
+      console.log(`${type}: library/ ${c.local}, origin ${c.origin}, sharing ${c.shared} labels`);
+    }
+    console.log('');
+    for (const { type, label } of orphans) {
+      console.log(`  note          [${type}] published with no source under library/: ${label}`);
+    }
+    if (missing.length) {
+      for (const { type, label } of missing) {
+        console.log(`  🔴 UNREACHABLE [${type}] ${label} — authored here, absent from the origin.`);
+      }
+      console.error(
+        `\n🔴 ${missing.length} ${missing.length === 1 ? 'entry is' : 'entries are'} authored under library/ ` +
+          `and cannot be installed by anyone.\n` +
+          `Publish them — run the "Publish library" workflow (.github/workflows/publish-library.yml),\n` +
+          `which builds library-dist/, gates it with library:verify-dist, and pushes to nodegx-content.`
+      );
+    } else {
+      console.log(`\nEvery entry under library/ is published at the origin. Nothing authored here is unreachable.`);
+      console.log(`🔴 Still COVERAGE BY LABEL — this does not say the published payload is library/'s payload.`);
+    }
+    process.exit(missing.length ? 1 : 0);
+  }
+
   if (UPDATE_BASELINE) {
     const existing: Baseline = JSON.parse(fs.readFileSync(BASELINE_PATH, 'utf8'));
-    const next: Baseline = { ...existing, unpublished: divergence.unpublished, orphaned: divergence.orphaned };
+    // `measuredOn` is stamped here rather than left for a human to remember:
+    // this file has just been rewritten from a measurement taken seconds ago, and
+    // a rewritten file carrying an older date is simply wrong. LIB-007 also needs
+    // the publish workflow to regenerate it unattended, which rules out a hand edit.
+    // The `$comment` is still the author's to write — that is the WHY, and no
+    // script can supply it.
+    const next: Baseline = {
+      ...existing,
+      measuredOn: new Date().toISOString().slice(0, 10),
+      unpublished: divergence.unpublished,
+      orphaned: divergence.orphaned
+    };
     fs.writeFileSync(BASELINE_PATH, JSON.stringify(next, null, 2) + '\n');
-    console.log(`Wrote ${path.relative(REPO_ROOT, BASELINE_PATH)}. 🔴 Update "measuredOn" and say WHY in the commit.`);
+    console.log(`Wrote ${path.relative(REPO_ROOT, BASELINE_PATH)} (measuredOn ${next.measuredOn}). 🔴 Say WHY in the commit.`);
     process.exit(0);
   }
 

@@ -1,0 +1,266 @@
+name: Publish library
+
+# LIB-007 — publishing the shelf stops being a manual copy.
+#
+# 0.2.3 shipped six parts nobody could install. They were authored, gated,
+# rendered, drive-tested and named in the public release notes — and absent
+# from the origin the editor actually fetches, because publishing was a person
+# copying `library-dist/` into a second repository by hand, and on the day the
+# release was cut that person was busy cutting the release.
+#
+# This is that copy, run from CI, by anyone with repo access, with no local
+# checkout of `nodegx-content` anywhere in the loop.
+#
+# ## The shape of the thing
+#
+#   library/**            the tracked source (46 prefabs, 32 modules)
+#     -> npm run library:build        -> library-dist/{prefabs,modules}/
+#     -> npm run library:verify-dist  -> THE GATE. Nothing is pushed past a red one.
+#     -> copied over nodegx-content's static/library/
+#     -> GitHub Pages (LEGACY build) serves that repo tree verbatim
+#     -> the editor fetches it at getContentEndpoint() + /library/<type>/index.json
+#
+# ## 🔴 The credential
+#
+# `GITHUB_TOKEN` CANNOT WRITE TO A SECOND REPOSITORY. That is the whole reason
+# this step was manual, and anything here that looks like it works with the
+# default token is writing to the wrong place. `NODEGX_CONTENT_DEPLOY_KEY` is a
+# write deploy key on `nodegx-content` and nothing else: it is bound to that one
+# repository rather than to a person, so it cannot reach anything else in the
+# org and it does not stop working when somebody's PAT expires.
+#
+# ## 🔴 The `/static` suffix, and why this workflow does not touch it
+#
+# `nodegx-content` publishes through a *legacy* Pages build (`build_type:
+# legacy`, source `main:/`), which serves the repo tree verbatim — so the
+# payloads sit one level down under `static/`, exactly where they sit in the
+# repo, and `getContentEndpoint.ts` carries the matching suffix. Read that file
+# before touching either side.
+#
+# That repo ALSO still has a `.github/workflows/pages.yaml` that would rebuild
+# it as Docusaurus and flatten `static/**` up to the site root — which would
+# 404 every URL the editor builds. It is `on: push` to main and it is ACTIVE,
+# so it already runs on every publish, manual or not. It has failed at
+# `npm run build` on every run since 2025-12-06, and that failure is the only
+# reason the suffix still resolves.
+#
+# This workflow does not attempt to dodge it — a push is a push, and no
+# cross-repo credential can suppress another repo's `on: push` trigger. It
+# does something better: the reachability assertion below fetches the SERVED
+# index through `getContentEndpoint()` itself. If that Docusaurus build is ever
+# fixed and flips the site, this job goes red on the next publish with an
+# UNAVAILABLE origin instead of quietly succeeding. The trap is armed rather
+# than avoided. A deliberate flip is ALPHA-006 B5's to make, and it moves the
+# suffix in `getContentEndpoint.ts` in the same change.
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Why publish now (goes into the nodegx-content commit message)'
+        required: true
+        type: string
+      dry_run:
+        description: 'Build and gate only — do not push. Proves the gate without spending a publish.'
+        required: false
+        type: boolean
+        default: false
+
+# Only for the baseline pull request back into THIS repo at the end. The push
+# to nodegx-content does not and cannot use this token.
+permissions:
+  contents: write
+  pull-requests: write
+
+# Two publishes racing would interleave two trees into one `static/library/`.
+# Never cancel one in flight: a cancelled run can have pushed and not yet
+# asserted, which is the one state nobody can read off the origin.
+concurrency:
+  group: publish-library
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build, gate, publish, prove
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      # ---------------------------------------------------------------------
+      # Build and gate. Both happen BEFORE the credential is ever read, so a
+      # broken build cannot reach the network with a write key in hand.
+      # ---------------------------------------------------------------------
+
+      # Grades the SOURCES: every library.json validates against the schema,
+      # every project loads, the SUB-006 semantic validator is clean.
+      - name: Check library sources
+        run: npm run library:check
+
+      - name: Build library-dist
+        run: npm run library:build
+
+      # 🔴 THE GATE. Grades the ARTEFACT by walking the editor's own install
+      # path over it headlessly — fetchModules' URL construction, ModuleCard's
+      # field destructuring and URL rule, isModuleCompatible, the JSZip unpack,
+      # the SUB-006 project load. `library:build` succeeding proves the zips
+      # were written, not that the editor could install one.
+      #
+      # It is the step this workflow exists to put in front of the push, and it
+      # has been shown to fail: an entry whose `minEditorVersion` the current
+      # editor cannot satisfy exits 1 here and names the entry.
+      - name: Gate the artefact
+        run: npm run library:verify-dist
+
+      # ---------------------------------------------------------------------
+      # Publish.
+      # ---------------------------------------------------------------------
+
+      - name: Copy library-dist over nodegx-content and push
+        if: ${{ !inputs.dry_run }}
+        env:
+          DEPLOY_KEY: ${{ secrets.NODEGX_CONTENT_DEPLOY_KEY }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEPLOY_KEY:-}" ]; then
+            echo "::error::NODEGX_CONTENT_DEPLOY_KEY is not set. GITHUB_TOKEN cannot write to nodegx-content —"
+            echo "::error::see this workflow's header for what the credential is and why it has to be a separate one."
+            exit 1
+          fi
+
+          # $RUNNER_TEMP, never the workspace: nothing under the checkout should
+          # ever be able to pick this file up.
+          KEY_FILE="$RUNNER_TEMP/nodegx_content_key"
+          install -m 600 /dev/null "$KEY_FILE"
+          printf '%s\n' "$DEPLOY_KEY" > "$KEY_FILE"
+          export GIT_SSH_COMMAND="ssh -i $KEY_FILE -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+          CONTENT_DIR="$RUNNER_TEMP/nodegx-content"
+          git clone --depth 1 git@github.com:The-Low-Code-Foundation/nodegx-content.git "$CONTENT_DIR"
+
+          # Copy OVER, do not mirror. This is deliberately the same semantics as
+          # the manual step it replaces (library/README.md §Publish): the built
+          # tree lands on top of what is there and nothing else is touched.
+          #
+          # `--delete` was considered and rejected. `static/library/` also holds
+          # `examples/` and `prefab-contributions/`, which this build does not
+          # produce, and the published fleet still carries legacy pre-LIB-001
+          # zip filenames that no `library/` entry would generate. Removing
+          # those is an orphan cleanup — a separate decision, owned by the
+          # `orphaned` list in origin-baseline.json — and doing it silently
+          # inside a publish is how a publish becomes something nobody dares run.
+          for type in prefabs modules; do
+            mkdir -p "$CONTENT_DIR/static/library/$type"
+            cp -R "library-dist/$type/." "$CONTENT_DIR/static/library/$type/"
+          done
+
+          cd "$CONTENT_DIR"
+          git config user.name "NodeGX publish bot"
+          git config user.email "ci@opennoodl.local"
+          git add -A static/library
+
+          if git diff --cached --quiet; then
+            echo "Nothing changed at the origin — library-dist/ is already what is published."
+            echo "PUBLISHED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+            echo "PUBLISH_CHANGED=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "Publishing:"
+          git diff --cached --stat | tail -20
+
+          git commit -m "library: publish from NodeGX ${GITHUB_SHA:0:9}" -m "$REASON" \
+            -m "Built by .github/workflows/publish-library.yml (LIB-007), gated by library:verify-dist."
+          git push origin HEAD:main
+
+          echo "PUBLISHED_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "PUBLISH_CHANGED=true" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------------
+      # Prove it. Not by reading this repo and not by trusting the push.
+      # ---------------------------------------------------------------------
+
+      # 🔴 This is the assertion the whole task is about, and it is deliberately
+      # made against the SERVED index — `verify-origin` calls
+      # `getContentEndpoint()` itself rather than keeping a copy of the URL, so
+      # it fetches exactly what a user's editor fetches.
+      #
+      # `--require-published` does NOT consult origin-baseline.json. The
+      # baseline answers "has the divergence changed?", which is a different
+      # question and the only one that had an owner — which is how five parts
+      # sat in it printing `known` while nobody could install them. Any entry
+      # under library/ with no published counterpart fails here.
+      #
+      # Pages needs a minute or two to serve a legacy build, so this retries
+      # rather than racing it. Both non-zero exits are worth retrying: 1 is
+      # "the new content is not served yet", 2 is "the origin did not answer".
+      # Whichever it still is at the end is printed by the last attempt.
+      - name: Prove every entry is reachable from the live origin
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -uo pipefail
+          for attempt in $(seq 1 12); do
+            echo "--- reachability attempt $attempt/12 ---"
+            if npm run library:verify-origin -- --require-published; then
+              echo "Reachable after $attempt attempt(s)."
+              exit 0
+            fi
+            echo "Not served yet (or origin did not answer). Waiting 45s."
+            sleep 45
+          done
+          echo "::error::The published content never became reachable at the live origin."
+          echo "::error::If the origin answered but the entries are missing, the push did not land what was built."
+          echo "::error::If it did not answer at all, check whether nodegx-content's Pages build flipped away from"
+          echo "::error::the legacy tree — see the /static note in getContentEndpoint.ts and this workflow's header."
+          exit 1
+
+      # ---------------------------------------------------------------------
+      # Keep the OTHER gate honest. A baseline that still records the six as
+      # unpublished after they have been published is the same gate lying in
+      # the opposite direction, and a stale baseline entry is red too.
+      # ---------------------------------------------------------------------
+      - name: Open a pull request refreshing origin-baseline.json
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          npm run library:verify-origin -- --update-baseline
+
+          if git diff --quiet -- scripts/library/origin-baseline.json; then
+            echo "Baseline already records the origin as measured. Nothing to open."
+            exit 0
+          fi
+
+          BRANCH="library-baseline/${GITHUB_RUN_ID}"
+          git config user.name "NodeGX publish bot"
+          git config user.email "ci@opennoodl.local"
+          git checkout -b "$BRANCH"
+          git commit -m "chore(library): refresh origin-baseline after a publish" \
+            -m "$REASON" \
+            -m "Regenerated by the Publish library workflow (run ${GITHUB_RUN_ID}); the origin moved, so the recorded divergence had to." \
+            -- scripts/library/origin-baseline.json
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "chore(library): refresh origin-baseline after a publish" \
+            --body "$(printf '%s\n' \
+              "The Publish library workflow pushed to \`nodegx-content\` and the recorded divergence moved with it." \
+              "" \
+              "Reason given for the publish: $REASON" \
+              "" \
+              "\`origin-baseline.json\` records the origin-vs-\`library/\` divergence AS MEASURED, so the gate fails when it *changes*. A publish changes it, which means the baseline has to be regenerated in the same breath or that gate starts failing for a reason nobody caused." \
+              "" \
+              "🔴 The \`\$comment\` in that file is still a human's to write. It is the WHY, and no script can supply it — if this diff empties \`unpublished\`, say so there." \
+              "" \
+              "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")" \
+            --head "$BRANCH" --base "${GITHUB_REF_NAME}"
+
+      - name: Dry run — nothing was published
+        if: ${{ inputs.dry_run }}
+        run: |
+          echo "Dry run: library-dist/ was built and passed library:verify-dist."
+          echo "Nothing was pushed and nothing was asserted against the live origin."

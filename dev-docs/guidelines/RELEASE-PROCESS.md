@@ -136,6 +136,38 @@ Publishing uses the workflow's built-in `GITHUB_TOKEN` (granted `contents:
 write` in `release.yml`). No secret to add. For publishing from a *fork* or a
 different repo you would need a PAT in `GH_TOKEN`.
 
+### 1e. Publishing the parts library — `NODEGX_CONTENT_DEPLOY_KEY`
+
+The parts library is served from a **second repository**, `nodegx-content`, and
+🔴 **`GITHUB_TOKEN` cannot write to a second repository.** That is the whole
+reason publishing the shelf was a person copying a folder by hand until
+LIB-007 — and why 0.2.3 shipped six parts nobody could install.
+
+The `Publish library` workflow needs one repository secret:
+
+| Secret | Value |
+|---|---|
+| `NODEGX_CONTENT_DEPLOY_KEY` | The **private** half of an ed25519 keypair whose public half is a **write deploy key** on `The-Low-Code-Foundation/nodegx-content`. |
+
+A deploy key rather than a PAT on purpose: it is bound to that one repository
+rather than to a person, so it cannot reach anything else in the org, it does
+not stop working when somebody's token expires, and it does not leave with them.
+
+To create or rotate it:
+
+```bash
+ssh-keygen -t ed25519 -N "" -C "nodegx publish-library" -f /tmp/publish_key
+gh repo deploy-key add /tmp/publish_key.pub \
+  -R The-Low-Code-Foundation/nodegx-content \
+  --title "NodeGX publish-library (LIB-007)" --allow-write
+gh secret set NODEGX_CONTENT_DEPLOY_KEY \
+  -R The-Low-Code-Foundation/NodeGX < /tmp/publish_key
+shred -u /tmp/publish_key /tmp/publish_key.pub   # or: rm -P on macOS
+```
+
+To revoke: delete the deploy key from `nodegx-content` → Settings → Deploy keys.
+Nothing else is affected.
+
 ---
 
 ## 2. What the release workflow does
@@ -304,6 +336,19 @@ machines have already trusted the app and mask signing problems.
 - **Auto-update (needs two releases):** install version N, publish version N+1,
   confirm the running app detects it, downloads it, shows the update popup, and
   that **declining** leaves N running while **accepting** restarts into N+1.
+
+**Is everything the notes name actually installable?** The tag run has a job
+called *every authored library entry is installable*. If it is **red**, parts
+that ship in this cut cannot be fetched by anyone: run the **Publish library**
+workflow, then re-run that job. Do not write a caveat into the release notes
+instead — 0.2.3 did exactly that, and the caveat outlived the release.
+
+🔴 That job exists because the gate next to it did not catch this and was never
+going to. `library:verify-origin` compares the origin against a recorded
+baseline and answers *"has the divergence changed?"*; five of the six missing
+parts were in that baseline, so they printed `known` on a run that had been red
+for days. *"Is everything we authored reachable?"* is a different question, and
+until LIB-007 nothing asked it.
 
 Only when every platform you intend to ship passes: **GitHub → Releases → the
 draft → Publish release.**

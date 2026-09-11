@@ -188,18 +188,37 @@ point is that "no icon at all" is never the reason an entry cannot ship.
 
 ## Publish
 
-Publishing = copying the contents of `library-dist/` over the docs repo's
-`library/` path:
+Publishing = copying the contents of `library-dist/` over the content repo's
+`static/library/` path:
 
 ```
-library-dist/prefabs/*  ->  <docs-repo>/library/prefabs/
-library-dist/modules/*  ->  <docs-repo>/library/modules/
+library-dist/prefabs/*  ->  nodegx-content/static/library/prefabs/
+library-dist/modules/*  ->  nodegx-content/static/library/modules/
 ```
 
-This is a manual step today (no docs-repo write access from CI here). Record
-every publish as a dated entry in
+**Run the `Publish library` workflow** — Actions → *Publish library* → *Run
+workflow*, giving a one-line reason. It builds `library-dist/`, refuses to push
+anything `library:verify-dist` rejects, copies the built tree over
+`nodegx-content`, and then proves the result by fetching the **served** index
+through the editor's own `getContentEndpoint()`. Anyone with repo access can
+run it; no local checkout of `nodegx-content` is needed by anybody.
+
+It was a person copying a folder between two repositories until LIB-007, and on
+2026-09-11 that person was busy cutting a release — so 0.2.3 shipped six parts
+that were authored, gated, rendered and named in the public release notes, and
+that nobody could install.
+
+🔴 **`GITHUB_TOKEN` cannot write to a second repository.** The workflow uses
+`NODEGX_CONTENT_DEPLOY_KEY`, a write deploy key bound to `nodegx-content` and
+nothing else. That is the one genuinely new piece; the rest was always just a
+copy.
+
+The workflow opens a pull request refreshing
+[`scripts/library/origin-baseline.json`](../scripts/library/origin-baseline.json)
+afterwards, because a publish moves the divergence that file records. Its
+`$comment` is still yours to write. Record the publish as a dated entry in
 [PROGRESS.md](../dev-docs/tasks/phase-21-library-and-import/PROGRESS.md) under
-**Log**, noting which entries changed version.
+**Log**, naming the content-repo commit and which entries changed version.
 
 For local dev, `library:build`'s output can be served at the same path the
 dev editor already knows how to point at (`useLocalDocs` → `localhost:3000`,
