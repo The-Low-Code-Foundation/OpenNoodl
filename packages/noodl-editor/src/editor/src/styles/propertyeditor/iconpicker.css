@@ -52,7 +52,7 @@
 
 .iconpicker-footer code {
   color: var(--theme-color-fg-default-contrast);
-  font-family: var(--font-mono, monospace);
+  font-family: var(--font-family-code);
   overflow-wrap: anywhere;
 }
 
