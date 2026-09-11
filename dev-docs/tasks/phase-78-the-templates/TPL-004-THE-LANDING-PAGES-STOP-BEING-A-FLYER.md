@@ -73,7 +73,8 @@ pressed it*. §9 is the drive that closes that, and it is an acceptance criterio
   `@media (prefers-reduced-motion: reduce)` block turns every transition off.
   🔴 **The lift must not use `var(--shadow-*)`** — this template sets all five shadow tokens to
   `none` on purpose, so a shadow-based hover is invisible by construction. Measured: every page
-  holds exactly one `CSS Definition`, and ≥ 20 nodes across the template carry a `cssClassName`.
+  holds exactly one `CSS Definition` — **measured: 34 nodes carry a `cssClassName`, across 20 distinct
+  class names.**
 
 - 🟢 **AC2 — The header is a nav, it sticks, and its links scroll.**
   `Site/ScrollTo` — one `JavaScriptFunction` that resolves a class name and scrolls — replaces the
@@ -127,7 +128,7 @@ pressed it*. §9 is the drive that closes that, and it is an acceptance criterio
 
 | AC | what shipped |
 |---|---|
-| AC1 | One `CSS Definition` on **`App`** — not one per page. The criterion said "placed by every page"; one node beside the router every page renders into is the same coverage with no way for three copies to drift, and that is what it does. 6 classes, 44 nodes carry one. |
+| AC1 | One `CSS Definition` on **`App`** — not one per page. The criterion said "placed by every page"; one node beside the router every page renders into is the same coverage with no way for three copies to drift, and that is what it does. 6 interaction classes (`pressable`, `card-lift`, `photo-zoom`, `nav-link`, `disclosure`, `pill`), and 34 nodes carry a class of some kind — the other 14 are scroll targets. |
 | AC2 | `Site/ScrollTo` (a `JavaScriptFunction` resolving a class name), 10 instances, 0 `scrollToElement.*` wires left, header `position: sticky` + `alignY: top` + `zIndex: 50`. |
 | AC3 | `Site/IsValidEmail`, 3 `Expression`s, an `And`. Send carries `enabled: false` until all three pass. **The opacity port in the criterion was not used** — the `Button` control renders a real `<button disabled>`, so one CSS rule (`button.pressable:disabled`) does it with no node and no wire. The criterion's reasoning was borrowed from a `Group`, which is a `div`; it does not apply to this node. |
 | AC4 | 6 rows of `Static Data` → `Filter Collection` → `For Each` → `Site/WorkCard`; 4 pills; `Site/CaseStudy`; count line; empty state. 0 hand-placed work cards. |
