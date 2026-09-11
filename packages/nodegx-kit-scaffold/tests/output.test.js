@@ -93,12 +93,17 @@ describe('✅ D8 — colour and spacing default to design tokens', () => {
     // product at all — harmless in a type-annotation fixture, fatal in a
     // scaffold, and invisible to every other assertion here because
     // `var(--anything)` is well-formed CSS that simply resolves to nothing.
-    const registry = path.resolve(
-      __dirname,
-      '../../noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts'
-    );
+    // HLS-001 (`4fd171fc7`) moved the vocabulary out of the editor into
+    // `@nodegx/project-contract/tokens`; the editor's `DefaultTokens.ts` is now a
+    // re-export and declares no token at all. This path follows it.
+    const registry = path.resolve(__dirname, '../../nodegx-project-contract/tokens.ts');
     // Fail rather than skip if the registry moves: a probe that silently
     // exonerates is worse than no probe.
+    //
+    // 🔴 But note which half of this actually caught that move: the file went on
+    // EXISTING and stopped DECLARING, so `existsSync` stayed green and the
+    // `declared.size` floor below is what went red. A path probe cannot see a
+    // file that empties out — keep the floor.
     expect(fs.existsSync(registry)).toBe(true);
 
     const declared = new Set([...fs.readFileSync(registry, 'utf8').matchAll(/name: '(--[a-z0-9-]+)'/g)].map((m) => m[1]));

@@ -217,6 +217,12 @@ export interface InputPortDefinition {
   /** Allows per-visual-state values (hover, pressed, …) for this port. */
   allowVisualStates?: boolean;
   nodeDoubleClickAction?: unknown;
+  /**
+   * Shape hint shown in the property-panel field while it is empty — for a port whose value has a
+   * *syntax* rather than just a value, such as a raw `srcset` list. It is never committed and it
+   * disappears as soon as the author types, so it is neither a `default` nor a `description`.
+   */
+  placeholder?: string;
   /** One-sentence description, read by the catalog, the validator and the AI authoring loop. */
   description?: string;
 }
@@ -907,6 +913,12 @@ export interface NodeDefinitionOptions {
   exportDynamicPorts?: boolean;
   /** The node instantiates a component, so its ports come from that component. */
   haveComponentPorts?: boolean;
+  /**
+   * Ports under this prefix are declared by the author's WIRES as well as by the node's own port
+   * set (`prop-` on the Record family). Such a port may not exist yet — the runtime mints it from
+   * the wires — and the editor reads this to stop calling the wire broken in the meantime.
+   */
+  wireDeclaredPortPrefix?: string;
 
   /**
    * Declares this node a member of the control-signal class: one
