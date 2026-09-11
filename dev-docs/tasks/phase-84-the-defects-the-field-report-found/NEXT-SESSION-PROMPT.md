@@ -272,10 +272,10 @@ New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two rev
 🔴 **The ungated pile is EMPTY. Session 12 took the last item in it.** Every remaining FLD task is
 behind a ruling or a Linux box, so the honest ranking is no longer a ranking of FLD tasks:
 
-0. ✅ **The push is DONE** — `01e510131`, 2026-09-11 08:40Z, 23 commits. Read the CI run it started
-   before anything else; it is the first to contain FLD-011, FLD-017 and s13's four gate fixes, and
-   §10(c)'s minification watch finally has a run to watch. 🔴 **Open the LOG, not the status column** —
-   a ~19s job died before the gates (register P30).
+0. ✅ **The push is DONE and its CI run is READ** — see §8's first block. Three jobs green, six red,
+   two of which MOVED without going green. ✅ The minification runner did not OOM. 🔴 **The one thing
+   left from it: register P38, three iconless prefabs, which is PHASE 85's** — and until it is fixed
+   *Library check* stays red and `starter-iconset:check` stays SKIPPED behind it.
 1. 🔴 **FLD-004 — the critical path, and the first buildable FLD task since session 12.** R4 answered
    *yes, 0.2.3* on 2026-09-11. It gates FLD-003 and owes **#26** its first reply. Track A outranks
    track B, so this outranks everything below it.
@@ -387,6 +387,45 @@ reverted arm — the one in the other direction.**
 
 ## 8. 🔴 Gates — six red, four taken by session 13, THREE left
 
+### 🔴 THE FIRST CI RUN AFTER THE PUSH — read this before the table below, which is now history
+
+`34580730977`, head `5af046b5d`, 2026-09-11. **The first run in this phase to contain FLD-011,
+FLD-017 and session 13's fixes.** Baseline for comparison is `34512521036` at `aedcc4d79`.
+
+| job | baseline `aedcc4d79` | **now `5af046b5d`** |
+|---|---|---|
+| Build (viewer + editor bundles) | 🟢 | 🟢 — ⚠️ **minification did NOT OOM the runner**; §10(c)'s watch is answered |
+| Check build artefacts | 🟢 | 🟢 |
+| Test (platform-node) | 🟢 | 🟢 |
+| **Node catalog freshness** | 🔴 | ✅ **GREEN — s13's fix, confirmed in CI** |
+| **Library check (LIB-001)** | 🔴 `starter-iconset:check` | 🔴 **but at a DIFFERENT step** — see below |
+| Lint | 🔴 `tsfixme` | 🔴 unchanged — §10(b)'s decision |
+| Typecheck | 🔴 OOM | 🔴 unchanged |
+| Test (editor) | 🔴 | 🔴 — the AIX-006 floor, read locally in §2 |
+| Lesson bundles (FIX-027) | 🔴 | 🔴 unchanged — **the one a session can take** |
+| Test (runtime, backend, viewer, mcp, preview) | 🔴 at `@nodegx/node-kit-types` | 🔴 **but four packages further on** |
+
+🔴 **Two jobs moved WITHOUT going green, and reading them as "still red" would waste a session.**
+
+**Library check** — s13's `starter-iconset:check` fix worked; that step is no longer the failure.
+The job now dies **earlier**, at `library:verify-dist`, on **three prefabs shipped with no icon** by
+phase 85's `45929d94c`, which CI had never seen. ⚠️ **`starter-iconset:check` now reports `SKIPPED`,
+which is not the same as passing** — the baseline run is where you confirm the fix, because there
+that step is the one that failed. Register **P38**; it needs three PNG assets and it is phase 85's.
+
+**Test (packages)** — lerna got past `node-kit-types` and `kit-scaffold` exactly as §2 predicted,
+ran `@noodl/noodl-core-ui` (29 suites / 560) and `@noodl/preview` (2 / 31) green, and stopped at
+**`@nodegx/export`** — *not* at `noodl-mcp`, which §2 guessed. That failure was real, reproduced
+locally, and **fixed in `052330112`**: a socket-enrolment gate reading a **gitignored** directory,
+red in CI since 2026-09-09 and invisible behind the earlier package. Register **P39**. 🔴 **So the
+next reader should expect this job to stop at `noodl-mcp` NEXT**, with its three known reds — that
+prediction has not been tested yet.
+
+✅ **What the push bought, stated plainly:** one confirmed fix, one job advanced four packages, two
+defects nobody could see (**P38**, **P39**), and an answer to the minification question that had
+been waiting since session 11. 🔴 **None of it was visible from a local run** — P39 in particular
+was GREEN locally for a machine-specific reason.
+
 **`9b3017f8b` fixed the cause** (`package-lock.json` was missing `@nodegx/project-contract`, added
 2026-09-09 in `55f657b8a`). Pushed. Run **34512521036** is the first in 34 days to reach the gates.
 **3 green / 6 red / 1 job's worth never reached.** None of the six is caused by this session's work;
@@ -477,7 +516,14 @@ and it is waiting on them.
 baseline silently is the one thing it exists to stop — so somebody has to either fund the burn-down
 or look at the raise. Per-package floors is the shape proposed to @SgtSpork on #13.
 
-**(c) ✅ R5 ANSWERED and SHIPPED — nothing owed, but read this before 0.2.3 cuts.** `app.asar` is
+**(c) ✅ ANSWERED 2026-09-11 — the minification CI watch is DONE and the runner did NOT OOM.**
+The first run after the push (`34580730977`) built *Build (viewer + editor bundles)* **green**, so
+the 58–73s → 113s renderer build fits inside the macOS runner's 2048 MB after all. That question had
+been open since session 11. ⚠️ **The other half of (c) still stands: a minified bundle with no
+shipped map is a stack trace nobody can read**, so `index.bundle.js.map` should be attached to the
+0.2.3 release as an asset. Original note follows.
+
+**(c-orig) ✅ R5 ANSWERED and SHIPPED — nothing owed, but read this before 0.2.3 cuts.** `app.asar` is
 **168,143,884 B, down 40.7% from this morning**. Two consequences to know about: the renderer build
 goes **58–73 s → 113 s** (watch the first CI run — the macOS runners are the ones that OOMed), and
 **a minified bundle with no shipped map is a stack trace nobody can read**, so
