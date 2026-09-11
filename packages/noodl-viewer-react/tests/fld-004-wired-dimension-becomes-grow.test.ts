@@ -10,10 +10,12 @@
  * length. The same wire into `width` works, because a percentage on the cross axis stays a real
  * CSS length.
  *
- * 🔴 Every arm below runs the REAL `Layout.size` first and reports off the style it produced, so
- * the coupling under test is the one that ships: `style.flexGrow` existing IS the conversion
- * having happened. An arm that hand-wrote `{ flexGrow: 400 }` would pass with `Layout.size`
- * deleted.
+ * 🔴 Every arm below drives the REAL `Layout.size` and reads what IT reported, so the coupling
+ * under test is the one that ships — both that `style.flexGrow` existing IS the conversion having
+ * happened, and that the report is actually wired into the code path a node takes. An arm that
+ * hand-wrote `{ flexGrow: 400 }`, or that called the reporter itself, passes with the real thing
+ * unreached; the second of those is exactly what happened, and driving the editor is what caught
+ * it.
  *
  * The mutant ledger:
  *  - drop the `isInputConnected` guard → the unwired arm reddens (and it is the loudest one: every
@@ -21,13 +23,14 @@
  *  - report the cross-axis port too → the discriminator arm reddens.
  *  - drop the `diagnosticsEnabled` gate → the deployed arm reddens.
  *  - drop the memo → the repeat-render arm reddens.
+ *  - unhook the call from `Layout.size` → EVERY firing arm reddens. That is the mutant the first
+ *    version of this file could not run, because it called the reporter itself.
  *  - never clear (raise only when converted) → the self-clearing arm reddens.
  */
 
 /* eslint-env jest */
 
-import Layout from '../src/layout';
-import { reportMainAxisGrow, type MainAxisGrowHost } from '../src/react-component-node';
+import Layout, { type MainAxisGrowHost } from '../src/layout';
 
 const KEY = 'dimensions/wired-dimension-becomes-grow';
 
@@ -50,17 +53,21 @@ function makeHost(connected: string[], enabled = true): MainAxisGrowHost & { cal
 }
 
 /**
- * One render of a framed node: the real `Layout.size`, then the reporter, exactly as
- * `ReactComponentNode.render` sequences them.
+ * One render of a node: `Layout.size` and NOTHING ELSE.
+ *
+ * 🔴 The reporter is deliberately never called directly here. It was first wired beside the ONE
+ * `Layout.size` call in `react-component-node`'s render — and there are twenty-two, none of which a
+ * `Group` uses — so every arm in the first version of this file passed against a report that never
+ * reached the node #26 is about. Going through `size` is what makes "correct but unreached" red.
  */
 function render(
   host: MainAxisGrowHost,
   props: Record<string, unknown>
 ): { style: Record<string, any>; props: Record<string, unknown> } {
   const style: Record<string, any> = { position: 'relative' };
-  Layout.size(style as never, props as never);
-  reportMainAxisGrow(host, style as never, props as never);
-  return { style, props };
+  const withNode = { ...props, noodlNode: host };
+  Layout.size(style as never, withNode as never);
+  return { style, props: withNode };
 }
 
 const IN_A_COLUMN = { parentLayout: 'column', sizeMode: 'explicit', width: '100%', height: '400%' };
@@ -125,8 +132,7 @@ describe('FLD-004 — the wired dimension says so', () => {
   it('says nothing for an out-of-flow node — Layout.size converts only position: relative', () => {
     const host = makeHost(['height']);
     const style: Record<string, any> = { position: 'absolute' };
-    Layout.size(style as never, IN_A_COLUMN as never);
-    reportMainAxisGrow(host, style as never, IN_A_COLUMN as never);
+    Layout.size(style as never, { ...IN_A_COLUMN, noodlNode: host } as never);
     expect(style.flexGrow).toBeUndefined();
     expect(host.calls).toEqual([]);
   });
