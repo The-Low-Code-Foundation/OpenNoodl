@@ -17,7 +17,7 @@ Re-derive the board from `TASKS.md` + the task files; do not trust this file's c
 | VIB-012 Prune On Deploy | 🟢 BUILT. 3.35 MB → 92 KB. ⚠️ full Electron deploy never run end to end |
 | **VIB-007 The Loop** | 🟡 **AC1 ✅, AC2 ✅ (all six predicates), AC3 ✅. AC4/AC5 unstarted** |
 | VIB-013 The Altitude | ⬜ startable in parallel |
-| VIB-005 The Ambush Defaults | ⬜ startable now — M2 applied to the runtime-default family |
+| VIB-005 The Ambush Defaults | ⬜ startable now, **smaller** — V1/V17 closed by phase 84's FLD-005 on 2026-09-11; **V2/V14/V21/V38 remain** |
 | VIB-008/009 | ⬜ prove it on the shipped templates. **Now also owns V45** |
 | VIB-010 The Cold Proof | ⬜ the exit exam. Waits on VIB-007 **and** VIB-013 |
 
@@ -70,9 +70,16 @@ AC5 (`catalog:merge:check` + the noodl-mcp suite in the gate table) rides along 
 **VIB-013 The Altitude** remains startable in parallel; §2's mapping says it retires M4/M5's ten rows.
 
 🔴 **Three things not to re-litigate**: instruction was measured and rejected as the lever (V17,
-V35); VIB-005 owns ~~V1~~/V2/V14/V17/V21/V38 — 🔴 **V1 was REASSIGNED to phase 84's FLD-005 on
-2026-09-11** (Richard's call on register P13; same defect, one owner, and #35 goes with it), so do
-**not** build it here; and **the poverty family is `warning` on purpose** — V42.
+V35); VIB-005 now owns **V2/V14/V21/V38 only** — 🔴 **V1 and V17 were reassigned to phase 84's
+FLD-005 on 2026-09-11** (Richard's call on register P13; same defect, one owner, and #35 went with
+it) and ✅ **FLD-005 BUILT AND CLOSED BOTH the same day** (`fed588edf` + `3ab87897e`): thirteen
+compositions now carry `sizeMode: 'contentHeight'` and `column-children-split-a-fixed-height` is the
+door diagnostic V1 asked for. Do **not** rebuild either. ⚠️ **V1's own sentence was wrong in a way
+that changes what V2 is about**: an un-`sizeMode`d Group in a column does not eat the viewport, it
+takes an equal SHARE and overwrites the content — and what makes that invisible is `clip: true`,
+which is V2. FLD-005 measured a `card` losing **six of its ten lines** to it, so V2 now has a
+rendered instance behind it instead of an argument. And **the poverty family is `warning` on
+purpose** — V42.
 
 ## 🔴 Richard has THREE questions waiting, and none blocks building
 

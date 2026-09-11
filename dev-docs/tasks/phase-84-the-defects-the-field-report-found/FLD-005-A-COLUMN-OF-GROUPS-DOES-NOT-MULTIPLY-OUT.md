@@ -1,5 +1,12 @@
 # FLD-005 — A column of Groups does not multiply out
 
+🟢 **BUILT 2026-09-11 (s15) — 5 of 5 ACs, #35 replied and CLOSED.** `fed588edf` (the diagnostic and
+the drive) + `3ab87897e` (the thirteen recipes). Read
+[FLD-005-WHAT-WAS-BUILT.md](./FLD-005-WHAT-WAS-BUILT.md) — **four of this file's own claims are
+wrong**, and the title is one of them: a column of Groups does not multiply out, it **shares**, and
+the share silently overwrites the content.
+
+
 A single-screen dashboard rendered **5231px tall** with **zero validation errors**. The default is
 defensible; the shipped vocabulary that ignores it is not.
 

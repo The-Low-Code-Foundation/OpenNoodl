@@ -4,10 +4,22 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
-✅ **SESSION 14 BUILT FLD-004 — 🟢, 6 of 6 ACs, #26 replied and CLOSED.** Five commits
-(`4bd8b77b4`, `904957606`, `1b4d263aa`, `46fd16065`, `a34d215e2`); (c) landed alone per its trap.
-Board now **11 built / 1 partly / 5 never**; replies **21 sent / 3 owed / 13 CLOSED**.
-🔴 **Start with FLD-005** — P13 resolved it on 09-11 and it is the only ungated FLD task left.
+✅ **SESSION 15 BUILT FLD-005 — 🟢, 5 of 5 ACs, #35 replied and CLOSED.** Two commits
+(`fed588edf` the diagnostic + the drive, `3ab87897e` the thirteen recipes).
+Board now **12 built / 1 partly / 4 never**; replies **22 sent / 2 owed / 14 CLOSED**.
+
+🔴 **THE PHASE HAS NO UNGATED TASK LEFT.** All four unbuilt tasks are blocked: FLD-003 (**R3**),
+FLD-010 (**R6**), FLD-014 (**P25**, 8 tokens of headroom), FLD-015 (**R2**); FLD-016 is 🟡 and needs
+a Linux box. **Re-derive the rulings before inheriting that** — §1 has been wrong for a day twice.
+🔴 **And the end condition is NOT the board: two replies are still owed.** See §5.
+
+🔴 **Read [FLD-005-WHAT-WAS-BUILT.md](./FLD-005-WHAT-WAS-BUILT.md) §1 — FOUR of that task's claims
+were wrong, including its title and one acceptance criterion.** A column of Groups does not multiply
+out, it **shares**, and `bodyScroll` is not in the loop. The one that moved an AC: *"a recipe edit is
+a data edit that reaches every project using that recipe"* — it reaches **none**, because
+`STYLE_COMPOSITIONS` has exactly one caller and no apply path, so AC4's corpus control was run
+against the **diagnostic** instead. **This is the second task running whose own file was wrong in
+three or more places. Measure before believing a task file in this phase.**
 
 🔴 **Read [FLD-004-WHAT-WAS-BUILT.md](./FLD-004-WHAT-WAS-BUILT.md) §3 before trusting any task file
 in this phase: THREE of FLD-004's own claims were wrong**, and one of them (R4's owed release-note
@@ -43,8 +55,9 @@ back with **six red gates**; session 13 took **four**. Three remain and none is 
 
 ## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13)
 
-Seventeen task files, each grepped for its own marker. **ELEVEN built, ONE partly built, five never
-built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
+Seventeen task files, each grepped for its own marker. **TWELVE built, ONE partly built, four never
+built** (re-derived 2026-09-11, end of s15). That is the file count, not a copied status. Re-derive
+it, do not inherit this table:
 
 ```sh
 cd dev-docs/tasks/phase-84-the-defects-the-field-report-found
@@ -66,17 +79,16 @@ the `elif` orders them.
 |---|---|---|---|---|
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
 | FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | 🟢 **BUILT** s14 — 6/6 ACs, driven in the editor · ✅ **replied + CLOSED** | — |
-| FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built — 🔴 **BUILD THIS FIRST**, the only ungated task left | ✅ **P13 RESOLVED 09-11: phase 84 owns it** |
+| FLD-005 | A column of Groups does not multiply out | #35 | 🟢 **BUILT** s15 — 5/5 ACs, driven in Chrome, 21 corpus firings of 4,792 eligible · ✅ **replied + CLOSED** | — |
 | FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `901280af`, AC1 driven · ✅ **replied + closed** | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-012 | The empty-box warning stops crying wolf | #32 | 🟢 **BUILT** `0df984a11`, AC1–AC5 measured · ✅ **replied + closed** | — |
 
-✅ **Track A's two gated tasks were BOTH UNBLOCKED on 2026-09-11, and session 14 took the first.**
-🔴 **FLD-005 is now the phase's only ungated task**, and it owes **#35** a reply that no build has
-been able to unlock since the phase opened. Track A outranks track B, so it outranks everything in
-§5 below.
+✅ **TRACK A IS COMPLETE.** Both of its gated tasks were unblocked on 2026-09-11 and sessions 14 and
+15 took both. Every track A issue is answered and seven of the eight are closed (#41 stays open by
+its reporter's own request). **Nothing in track A is buildable and nothing in it is owed.**
 
 **Track B — it costs too much to install and to drive**
 
@@ -96,7 +108,7 @@ been able to unlock since the phase opened. Track A outranks track B, so it outr
 but **AC1 and AC3 cannot be measured on any machine we have** — see §10. FLD-011 stopped being the
 other one in session 12.
 
-✅ **That changed on 2026-09-11.** **FLD-004 and FLD-005 are ungated and are the job.** Still gated:
+✅ **Both came unblocked on 2026-09-11 and both are now built.** 🔴 **Nothing is ungated.** Gated:
 FLD-003 (**R3**, and FLD-004), FLD-010 (**R6**), FLD-014 (**P25** — 8 tokens of headroom, measured
 again at the end of s13 and unchanged by the peer's CMP-007), FLD-015 (**R2**), FLD-016 (a Linux
 box). 🔴 **Re-derive the rulings before inheriting that list** — it has been wrong for a day twice
@@ -328,7 +340,7 @@ from 58–73 s to 113 s and the macOS runners are the ones that OOMed at 2048 MB
 (`scripts/webpackHeapCeiling.ts`) — **and `aedc51f64` is not pushed**, so there has been no first
 CI run after it to watch. That is item 0.
 
-## 6. 🔴 The reply gate — 21 sent, 3 owed, THIRTEEN closed
+## 6. 🔴 The reply gate — 22 sent, 2 owed, FOURTEEN closed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -345,13 +357,15 @@ for i in 1 5 9 12 13 14 15 21 22 25 26 27 29 30 32 33 34 35 37 39 40 41 42 43; d
 done
 ```
 
-**Re-derived from GitHub at the end of session 12, with the loop above:**
+**Re-derived from GitHub at the end of session 15, with the loop above (not by arithmetic on the
+previous count — that is the point of the loop):**
 
-**Sent (21):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 **#26** #27 #29 #30 #32 #33 #34 #37 #40 #41 #42.
-**Closed (13):** #1 #5 #9 #12 #14 #15 #21 **#26** #32 #33 #37 #40 #42.
+**Sent (22):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #26 #27 #29 #30 #32 #33 #34 **#35** #37 #40 #41 #42.
+**Closed (14):** #1 #5 #9 #12 #14 #15 #21 #26 #32 #33 **#35** #37 #40 #42.
 
-**Owed (3): #35 #39 #43.** 🔴 **#35 is the only one a BUILD can unlock** — it is FLD-005, and P13
-released it. #39 = FLD-015 (**R2**), #43 = FLD-014 (**P25**) are still behind rulings.
+**Owed (2): #39 #43.** 🔴 **NEITHER can be unlocked by a build** — #39 = FLD-015 (**R2**), #43 =
+FLD-014 (**P25**), both behind rulings. **Every issue a build could answer has been answered.** The
+phase's remaining distance is two rulings and a Linux box, not code.
 
 🔴 **EIGHT issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #41.**
 All the same shape — *the issue asked for two things, one is built, closing it would close the
