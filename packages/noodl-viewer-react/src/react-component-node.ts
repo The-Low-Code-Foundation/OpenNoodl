@@ -587,6 +587,33 @@ function isTokenReference(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('var(');
 }
 
+/**
+ * FLD-004 (b) — is `{ value, unit }` a magnitude that can be concatenated into CSS?
+ *
+ * 🔴 Found by DRIVING, not by reading, and it is a THIRD copy of the unit merge. `setInputValue`
+ * guards its merge with `isNaN`; the inputCss setter coerces a bare value into the default unit;
+ * and `Node.queueInputValue`'s first-update consolidation wraps an incoming non-object in *the
+ * unit of the value it is overwriting* — `"tall"` arriving on a port holding `{value: 120, unit:
+ * 'px'}` becomes `{value: "tall", unit: "px"}` — **with no numeric check at all**. That sailed
+ * straight past the `.value !== undefined` test above and was emitted as `"tallpx"`: invalid CSS,
+ * dropped by the browser with no error anywhere, and the authored `120px` gone with it. Exactly
+ * the same disappearance as the `delete` this branch was written to stop, one shape further out.
+ *
+ * Guarded here rather than at the three merge sites because this is where they converge, and a
+ * fourth copy of "is this a number" is how the first three came about.
+ *
+ * A unit-LESS port is left exactly as it was: `units: ['']` exists for line-height, where a bare
+ * `1.4` is the whole point and the concatenation is a no-op. Only a value that is about to have a
+ * real unit stuck on the end of it has to be a number.
+ */
+function dimensionIsUsable(value: { value?: unknown; unit?: string }): boolean {
+  if (!value.unit) return true;
+  const magnitude = value.value;
+  if (typeof magnitude === 'number') return Number.isFinite(magnitude);
+  if (typeof magnitude === 'string') return magnitude.trim() !== '' && Number.isFinite(Number(magnitude));
+  return false;
+}
+
 /** Diagnostic key namespace for an icon port that was handed something it cannot draw. */
 const ICON_SOURCE_DIAGNOSTIC = 'visual/icon-source-not-an-icon';
 
@@ -632,7 +659,7 @@ function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
       // prop was DELETED and the property fell back to its default.
       if (isTokenReference(value)) {
         props[name] = value;
-      } else if (value && (value as { value?: unknown }).value !== undefined) {
+      } else if (value && (value as { value?: unknown }).value !== undefined && dimensionIsUsable(value)) {
         props[name] = value.value + value.unit;
       } else if (value === undefined || value === null) {
         // The explicit empty, and the one the editor sends when a parameter is cleared. The

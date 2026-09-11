@@ -17,6 +17,9 @@
  *    parameter through exactly that path, and a cleared value that stays on screen is a worse
  *    defect than the one being fixed.
  *  - drop the raiseRuntimeError → the "said out loud" arm reddens; silence is the defect.
+ *  - drop `dimensionIsUsable` → the `{value: "tall", unit: "px"}` arm reddens with "tallpx", which
+ *    is the shape a live wire actually delivers and the one no reading of this file predicted.
+ *  - make `dimensionIsUsable` reject a unitless port too → the line-height arm reddens.
  */
 
 /* eslint-env jest */
@@ -126,6 +129,49 @@ describe('FLD-004 (b) — a units port abstains rather than throwing the author�
     const node = makeInstance();
     setterFor('width').call(node, 'var(--space-4)');
     expect(node.props.width).toBe('var(--space-4)');
+    expect(node.errors).toEqual([]);
+  });
+
+  it('🔴 keeps it when the magnitude is not a number but the UNIT is — the shape a live wire actually delivers', () => {
+    // Found by driving, not by reading. `Node.queueInputValue`'s first-update consolidation wraps
+    // an incoming non-object in the unit of the value it overwrites, with no numeric check, so a
+    // String node wired to `height` arrives here as `{value: "tall", unit: "px"}` — NOT as the
+    // bare string the other arms send. That passed the `.value !== undefined` test and was emitted
+    // as "tallpx": invalid CSS, dropped silently, and the authored 120px gone with it.
+    const node = makeInstance();
+    const set = setterFor('height');
+    set.call(node, { value: 300, unit: 'px' });
+    set.call(node, { value: 'tall', unit: 'px' });
+    expect(node.props.height).toBe('300px');
+    expect(node.errors.map((e) => e.code)).toEqual(['dimensions/not-a-dimension']);
+  });
+
+  it('keeps it for NaN and Infinity, which concatenate into CSS just as happily and just as uselessly', () => {
+    const node = makeInstance();
+    const set = setterFor('height');
+    set.call(node, { value: 300, unit: 'px' });
+    set.call(node, { value: NaN, unit: 'px' });
+    expect(node.props.height).toBe('300px');
+    set.call(node, { value: Infinity, unit: 'px' });
+    expect(node.props.height).toBe('300px');
+  });
+
+  it('still accepts a NUMERIC string — the property panel and older projects both write them', () => {
+    const node = makeInstance();
+    setterFor('height').call(node, { value: '250', unit: 'px' });
+    expect(node.props.height).toBe('250px');
+    expect(node.errors).toEqual([]);
+  });
+
+  it('leaves a UNITLESS port alone — `units: [\'\']` exists for line-height, where a bare 1.4 is the point', () => {
+    // Asserted on the helper rather than on a port, because no units-typed port on `Group` has an
+    // empty unit; the rule still has to hold, or the guard would break line-height the day it met it.
+    const node = makeInstance();
+    const set = setterFor('height');
+    set.call(node, { value: 300, unit: 'px' });
+    set.call(node, { value: 'inherit', unit: '' });
+    // No unit to concatenate, so nothing is nonsense and the value passes through as it always did.
+    expect(node.props.height).toBe('inherit');
     expect(node.errors).toEqual([]);
   });
 
