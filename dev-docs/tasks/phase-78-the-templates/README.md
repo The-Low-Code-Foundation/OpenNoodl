@@ -51,6 +51,17 @@ here is blocked on knowing what we are building.
     a real `mailto:`, the header scrolls to it) in one session.** Three pages — freelancer at `/`,
     local business, product launch — sharing a header, a footer, a contact band and a switcher strip
     a person deletes. Left: his look, and the publish (command in the task file).
+  - 🟡 **[TPL-004 — the landing pages stop being a flyer](TPL-004-THE-LANDING-PAGES-STOP-BEING-A-FLYER.md)**.
+    Richard's ask, 2026-09-11: *"Can we take a crack at improving the default landing page template
+    we ship with the editor?"*, after the interaction-first business landing page built through the
+    MCP door in `NodeGX test projects/Landing page test V2`. He ruled **upgrade all three pages**
+    (not a fourth page, not a second shelf row) and **keep the §E-ii placeholders**.
+    **AC1–AC7 BUILT AND GATED in one session** (s1, 2026-09-11): a stylesheet on `App`, a nav that
+    sticks and scrolls by class name, a form that refuses Send until it can, the freelancer's work as
+    a filterable list with a case study behind each card, disclosures on the services / the offer /
+    the questions, a stepping quote carousel on two pages and a monthly-yearly price toggle.
+    21 → 28 components, 375 → 494 nodes, gate 40 → 50 tests, 0 validator errors.
+    ⬜ **AC8 — the click-drive — is the only one left, and it is the one a render cannot meet.**
 - ⬜ **T3** — the **category question**: either extend the ruled vocabulary, or re-file the three
   templates that do not fit it. ⚠️ P75 already found the surface-level cost of getting this wrong —
   the card drew the machine slug `starter` at a person.

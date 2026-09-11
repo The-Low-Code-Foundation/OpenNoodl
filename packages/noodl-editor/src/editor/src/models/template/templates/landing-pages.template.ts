@@ -42,13 +42,17 @@ if (!designTokens) {
 export const landingPagesTemplate: ProjectTemplate = {
   id: 'landing-pages',
   name: 'Landing Pages',
+  // TPL-004: the shelf card is the one thing a person reads before choosing, so
+  // it says what these pages DO. The first version described three documents.
   description:
-    'Three complete landing pages with no backend — a freelancer’s, a local business’s and a product launch’s — sharing a header, a footer and a contact form that opens the visitor’s mail app. Keep one, delete the other two, publish.',
+    'Three complete landing pages with no backend — a freelancer’s, a local business’s and a product launch’s. Real pages, not flyers: a sticky nav that scrolls, services and questions that open, work you can filter with a story behind each piece, quotes that step, a price that switches monthly to yearly, and a contact form that checks itself before opening the visitor’s mail app. Keep one, delete the other two, publish.',
   // The platform's vocabulary — `site` is in `0020`'s CHECK and in
   // `EMBEDDED_TEMPLATE_CATEGORIES`. The members' area went out as `starter`;
   // this one is a website and says so.
   category: 'site',
-  version: '1.0.0',
+  // TPL-004 rebuilt what the pages do; a version that never moves is a claim
+  // that nothing did.
+  version: '1.1.0',
   thumbnail: undefined,
 
   content,
