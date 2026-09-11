@@ -8,10 +8,21 @@ still gate tasks.
 (`fed588edf` the diagnostic + the drive, `3ab87897e` the thirteen recipes).
 Board now **12 built / 1 partly / 4 never**; replies **22 sent / 2 owed / 14 CLOSED**.
 
-🔴 **THE PHASE HAS NO UNGATED TASK LEFT.** All four unbuilt tasks are blocked: FLD-003 (**R3**),
-FLD-010 (**R6**), FLD-014 (**P25**, 8 tokens of headroom), FLD-015 (**R2**); FLD-016 is 🟡 and needs
-a Linux box. **Re-derive the rulings before inheriting that** — §1 has been wrong for a day twice.
-🔴 **And the end condition is NOT the board: two replies are still owed.** See §5.
+✅ **AND THEN RICHARD ANSWERED THE LAST THREE RULINGS, so the phase is buildable again.** Session 15
+reported that nothing was ungated; he answered **R2, R3 and R6** on the spot (2026-09-11). 🔴 **THREE
+TASKS CAME UNBLOCKED: FLD-003, FLD-010 and FLD-015.** All six R-rulings are now answered — see
+[README.md](./README.md) §2, which carries what each one cost.
+
+| ruling | answer, 2026-09-11 (s15) | unblocks |
+|---|---|---|
+| **R2** — charts: a kit, or core nodes? | ✅ **A KIT** | 🔴 **FLD-015**, and it owes **#39** — one of the phase's two remaining replies |
+| **R3** — Advanced Columns: prefab or ports? | ✅ **THE PREFAB**, as originally proposed | **FLD-003** (FLD-002 ✅, FLD-004 ✅) |
+| **R6** — FLD-010: advisory lock too? | ✅ **`session_status` ONLY** — FLD-009 already refuses to clobber | **FLD-010**, and smaller than scoped |
+
+🔴 **Only two things still gate anything: P25** (FLD-014, a token budget — engineering, not a call)
+and a **Linux box** (FLD-016). **Re-derive all of this before inheriting it** — §1 has been wrong
+for a day twice.
+🔴 **And the end condition is NOT the board: two replies are still owed** (#39, #43). See §5.
 
 🔴 **Read [FLD-005-WHAT-WAS-BUILT.md](./FLD-005-WHAT-WAS-BUILT.md) §1 — FOUR of that task's claims
 were wrong, including its title and one acceptance criterion.** A column of Groups does not multiply
@@ -95,12 +106,12 @@ its reporter's own request). **Nothing in track A is buildable and nothing in it
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
 | FLD-002 | The Columns node says which breakpoint it is at | #22 | 🟢 **BUILT** `4e8ce7ab5`, AC1 driven · ✅ **replied, STAYS OPEN** | — |
-| FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built | FLD-002 ✅, FLD-004, **R3** |
-| FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built | FLD-009 ✅, **R6** |
+| FLD-003 | Advanced Columns, as a prefab | #22 | ⬜ never built — 🔴 **UNGATED** | FLD-002 ✅, FLD-004 ✅, **R3 ✅ 09-11** |
+| FLD-010 | An agent can ask whether a human has the project open | #41 | ⬜ never built — 🔴 **UNGATED, and smaller** | FLD-009 ✅, **R6 ✅ 09-11 — `session_status` only** |
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
-| FLD-015 | Charts that export | #39 | ⬜ never built | 🔴 **R2 still gates it**; ✅ P9 resolved 09-11 (phase 84 owns the table) |
+| FLD-015 | Charts that export | #39 | ⬜ never built — 🔴 **UNGATED, and it owes #39** | ✅ **R2 ✅ 09-11 — A KIT**; ✅ P9 resolved 09-11 |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
 | FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
@@ -108,7 +119,8 @@ its reporter's own request). **Nothing in track A is buildable and nothing in it
 but **AC1 and AC3 cannot be measured on any machine we have** — see §10. FLD-011 stopped being the
 other one in session 12.
 
-✅ **Both came unblocked on 2026-09-11 and both are now built.** 🔴 **Nothing is ungated.** Gated:
+✅ **Both came unblocked on 2026-09-11 and both are now built — and then R2/R3/R6 were answered the
+same day, so THREE MORE are ungated: FLD-003, FLD-010, FLD-015.** Still gated:
 FLD-003 (**R3**, and FLD-004), FLD-010 (**R6**), FLD-014 (**P25** — 8 tokens of headroom, measured
 again at the end of s13 and unchanged by the peer's CMP-007), FLD-015 (**R2**), FLD-016 (a Linux
 box). 🔴 **Re-derive the rulings before inheriting that list** — it has been wrong for a day twice
@@ -301,12 +313,22 @@ New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two rev
 
 ## 5. The next task to build
 
-🔴 **THE UNGATED PILE IS EMPTY.** Session 14 took FLD-004 and session 15 took FLD-005 — the two
-that R4 and P13 released — and there is no third. **Every remaining FLD task is behind a ruling or a
-Linux box, and the two owed replies are behind rulings too.** If you came here to build an FLD task,
-the honest answer is that there is not one; the items below that a session CAN take are gate and
-register work, and the phase's own next move is to get **R2, R3, R6 and P25 answered**.
-🔴 **Re-derive those four before inheriting this** — §1 has been wrong for a day twice.
+⚠️ **This section said "the ungated pile is empty" for about an hour and it was true for about an
+hour.** Session 15 built FLD-005, reported that nothing was left, and Richard answered **R2, R3 and
+R6** in reply. **Three tasks are ungated. Build FLD-015 first** — it is the only one of the three
+that owes a reply, and #39 is one of the two the phase's end condition is waiting on.
+
+1. 🔴 **FLD-015 — charts, AS A KIT** (R2). Ranked first because it is the only ungated task that
+   moves the reply gate. ⚠️ **The reply to #39 owes the cost of the answer, not just the fix**: a
+   kit is not in the picker by default, so *"there is no chart primitive"* stays true for anyone who
+   does not install it. Do not tell that reporter charts are done.
+2. **FLD-003 — the Advanced Columns prefab** (R3, as Richard originally proposed). #22 is replied
+   and open; this is the half that closes it.
+3. **FLD-010 — `session_status` only, no advisory lock** (R6). Smaller than it was scoped, because
+   FLD-009 already refuses to clobber. #41 is replied and stays open by its reporter's request.
+
+🔴 **Re-derive the rulings before inheriting this** — §1 has been wrong for a day twice, and this
+block is one hour old.
 
 0. ✅ **The push is DONE and its CI run is READ** — see §8's first block. Three jobs green, six red,
    two of which MOVED without going green. ✅ The minification runner did not OOM. 🔴 **The one thing

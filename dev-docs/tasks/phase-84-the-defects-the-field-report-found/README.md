@@ -38,14 +38,20 @@ worse than an expensive right one.
 
 ## 2. 🔴 Rulings needed before session 2 — do not guess these
 
+✅ **ALL SIX ARE NOW ANSWERED.** R1 and R5 on 2026-09-10, R4 on 09-11 (s13), **R2, R3 and R6 on
+2026-09-11 (s15)** — Richard, asked directly when session 15 reported that the phase had no ungated
+task left. 🔴 **Three tasks came unblocked with them: FLD-003, FLD-010 and FLD-015.** The only
+things still gating work in this phase are **P25** (a token budget, engineering not a call) and a
+**Linux box** for FLD-016.
+
 | # | question | why it changes the work |
 |---|---|---|
 | R1 | ✅ **ANSWERED 2026-09-10 — 0.2.3, not split.** Richard, when authorising the first four issue replies. That number is now in four public comments (#21, #5, #14, #41), so a change of plan has to be announced on those threads. ⚠️ 0.2.3 is the *next* cut only because 0.2.2 was cut on 09-06 and rolled back — re-derive before quoting it again | — |
-| R2 | **Charts: a kit, or core nodes?** (FLD-015) | The kit route exports **today** and is days; core nodes are weeks and duplicate arc maths across runtime and emitter. But a kit is not in the picker by default, so "there is no chart primitive" stays true for anyone who does not install it. Product call, not engineering. |
-| R3 | **The Advanced Columns prefab (FLD-003) — build it, or add ports?** | Richard proposed the prefab himself and argued against "a hundred new fields". Confirm before anyone authors library content. |
+| R2 | ✅ **ANSWERED 2026-09-11 (s15) — A KIT.** Richard, asked directly with the trade-off on the table. The original question stands as the record of what was weighed: *charts as a kit, or as core nodes?* — the kit route exports **today** and is days; core nodes are weeks and duplicate arc maths across runtime and emitter. 🔴 **The cost is real and the reply owes it plainly**: a kit is not in the picker by default, so *"there is no chart primitive"* stays true for anyone who does not install it, and [#39](https://github.com/The-Low-Code-Foundation/NodeGX/issues/39) must be told that rather than being told charts are done | 🔴 **FLD-015 is UNBLOCKED** — P9 resolved 09-11, R2 answered 09-11, nothing else gates it. Owes **#39**, one of the phase's two remaining replies |
+| R3 | ✅ **ANSWERED 2026-09-11 (s15) — THE PREFAB**, as Richard originally proposed it and against "a hundred new fields" on the node. Confirmed rather than assumed, because library content was about to be authored on it | 🔴 **FLD-003 is UNBLOCKED** — FLD-002 ✅, FLD-004 ✅ (s14), R3 ✅. #22 is already replied and stays open; this is the half that closes it |
 | R4 | ✅ **ANSWERED 2026-09-11 (s13) — YES, it ships in 0.2.3.** Richard, asked directly with the trade-off on the table. The original question stands as the record of what was weighed: *does FLD-004 ship in a patch release?* — it switches on a value coercion dead for every dynamically registered units port **since the initial commit**, so mostly it makes wrong things right, and *"mostly"* was the problem. 🔴 **FLD-004 is therefore UNBLOCKED and is the phase's critical path**: it gates FLD-003 (with R3) and owes [#26](https://github.com/The-Low-Code-Foundation/NodeGX/issues/26) its first reply. ⚠️ Shipping it in a patch means the release notes owe a line saying previously-ignored wires now take effect | — |
 | R5 | ✅ **ANSWERED 2026-09-10 (s11) — IN SCOPE for 0.2.3, with `keep_classnames`/`keep_fnames`.** Richard. Shipped `aedc51f64`. The −35 MB was an estimate; measured, the two renderer bundles go **55,600,724 → 27,036,061 B** and `app.asar` **198,017,608 → 168,143,884 B**. 🔴 The QA burden was overstated: `mode: 'production'` was already set, so tree-shaking and `sideEffects` were live all along and only terser is new; `constructor.name` has **zero** call sites, and terser leaves the `eval(fileContent)` scope in `compilation.ts` unmangled — read off the artefact. QA driven headlessly: **0 uncaught exceptions in either renderer** | — |
-| R6 | **Does FLD-010 include the advisory lock, or only `session_status`?** | The measured answer is that the lock is largely unnecessary once FLD-009 lands — the editor already refuses to clobber. Confirm before building a locking protocol. |
+| R6 | ✅ **ANSWERED 2026-09-11 (s15) — `session_status` ONLY, no advisory lock.** Richard, on the measurement: once FLD-009 landed the editor already refuses to clobber what an agent wrote, so a locking protocol duplicates protection that exists. An agent can ask whether a human has the project open, and that is the whole scope | 🔴 **FLD-010 is UNBLOCKED and SMALLER** — FLD-009 ✅, R6 ✅. #41 is already replied and stays open |
 
 🔴 **DO NOT SCOPE BY TIME** — standing rule from phase 77. Dependency order only. No estimates.
 
