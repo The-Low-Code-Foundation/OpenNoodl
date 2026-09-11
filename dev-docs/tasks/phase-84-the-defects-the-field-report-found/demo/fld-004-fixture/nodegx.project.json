@@ -1,0 +1,19 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/project-v2.json",
+  "name": "FLD-004 fixture",
+  "version": "4",
+  "nodegxVersion": "1.1.0",
+  "modified": "2026-09-11T10:42:18.218Z",
+  "structure": {
+    "componentsDir": "components",
+    "assetsDir": "assets"
+  },
+  "id": "1c9b17da-19f5-2385-2416-1c5548a3e079",
+  "runtimeVersion": "react19",
+  "rootNodeId": "router-0001",
+  "settings": {
+    "htmlTitle": "FLD-004 fixture",
+    "navigationPathType": "path"
+  },
+  "metadata": {}
+}

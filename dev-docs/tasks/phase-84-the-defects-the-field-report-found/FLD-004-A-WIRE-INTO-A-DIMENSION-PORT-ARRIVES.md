@@ -1,5 +1,10 @@
 # FLD-004 — A wire into a dimension port is honoured, or refused out loud
 
+🟢 **BUILT** — session 14, 2026-09-11. **6 of 6 ACs met.** Five commits, (c) landed on its own per
+§5's trap. Read [FLD-004-WHAT-WAS-BUILT.md](./FLD-004-WHAT-WAS-BUILT.md) before touching any of it —
+three of this task's own claims were WRONG and the build says how.
+
+
 Accepted, silently discarded, and taking the static fallback with it. The reporter's own words:
 *"the third state — accepted, then silently discarded — is the worst of the three."* Underneath it
 is a one-word typo that has been in the runtime since the initial commit.

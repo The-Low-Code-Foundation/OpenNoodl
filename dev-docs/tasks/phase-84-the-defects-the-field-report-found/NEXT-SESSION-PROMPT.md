@@ -4,8 +4,28 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
-🔴 **THE PHASE HAS BUILDABLE WORK AGAIN. Richard answered three things at the end of session 13**
-and two FLD tasks came unblocked with them. **Start with FLD-004.**
+✅ **SESSION 14 BUILT FLD-004 — 🟢, 6 of 6 ACs, #26 replied and CLOSED.** Five commits
+(`4bd8b77b4`, `904957606`, `1b4d263aa`, `46fd16065`, `a34d215e2`); (c) landed alone per its trap.
+Board now **11 built / 1 partly / 5 never**; replies **21 sent / 3 owed / 13 CLOSED**.
+🔴 **Start with FLD-005** — P13 resolved it on 09-11 and it is the only ungated FLD task left.
+
+🔴 **Read [FLD-004-WHAT-WAS-BUILT.md](./FLD-004-WHAT-WAS-BUILT.md) §3 before trusting any task file
+in this phase: THREE of FLD-004's own claims were wrong**, and one of them (R4's owed release-note
+line) was an instruction to ship a sentence describing nothing that exists.
+
+🔴 **And §4 is the lesson to carry: a spec that CALLS the function it is grading cannot tell you
+whether anything else does.** Ten arms and six mutants, all green, against a report that never fired
+on the node in the issue — `reportMainAxisGrow` was wired beside the ONE `Layout.size` call in
+`react-component-node`'s render and **there are twenty-two**; a `Group` uses `Group.tsx`'s. Driving
+the fixture in the real editor is what found it. **Grade the wiring, not the function** — the mutant
+that matters is *unhook the call*, and the specs could not express it until they went through the
+caller.
+
+⚠️ **R4's release-note line is NOT owed.** The blast-radius measurement — 272 distinct dynamic port
+registrations across three populations, **zero** units-typed — says no wire's behaviour changes.
+
+**Richard answered three things at the end of session 13** and two FLD tasks came unblocked with
+them; one of the two is now built.
 
 | decision | answer, 2026-09-11 | what it unblocks |
 |---|---|---|
@@ -23,7 +43,7 @@ back with **six red gates**; session 13 took **four**. Three remain and none is 
 
 ## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13)
 
-Seventeen task files, each grepped for its own marker. **TEN built, ONE partly built, six never
+Seventeen task files, each grepped for its own marker. **ELEVEN built, ONE partly built, five never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
 
 ```sh
@@ -45,18 +65,18 @@ the `elif` orders them.
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
-| FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built — 🔴 **BUILD THIS FIRST** | ✅ **R4 ANSWERED 09-11: 0.2.3** |
-| FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built — **buildable** | ✅ **P13 RESOLVED 09-11: phase 84 owns it** |
+| FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | 🟢 **BUILT** s14 — 6/6 ACs, driven in the editor · ✅ **replied + CLOSED** | — |
+| FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built — 🔴 **BUILD THIS FIRST**, the only ungated task left | ✅ **P13 RESOLVED 09-11: phase 84 owns it** |
 | FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `901280af`, AC1 driven · ✅ **replied + closed** | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-012 | The empty-box warning stops crying wolf | #32 | 🟢 **BUILT** `0df984a11`, AC1–AC5 measured · ✅ **replied + closed** | — |
 
-✅ **Track A's two gated tasks are BOTH UNBLOCKED as of 2026-09-11** — R4 answered *yes, 0.2.3* and
-P13 resolved *phase 84 owns it*. 🔴 **Track A outranks track B in every ordering decision, so
-FLD-004 then FLD-005 is the order**, and each owes a reply that no build has been able to unlock
-since the phase opened.
+✅ **Track A's two gated tasks were BOTH UNBLOCKED on 2026-09-11, and session 14 took the first.**
+🔴 **FLD-005 is now the phase's only ungated task**, and it owes **#35** a reply that no build has
+been able to unlock since the phase opened. Track A outranks track B, so it outranks everything in
+§5 below.
 
 **Track B — it costs too much to install and to drive**
 
@@ -269,18 +289,17 @@ New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two rev
 
 ## 5. The next task to build
 
-🔴 **The ungated pile is EMPTY. Session 12 took the last item in it.** Every remaining FLD task is
-behind a ruling or a Linux box, so the honest ranking is no longer a ranking of FLD tasks:
+🔴 **The ungated pile holds exactly one item: FLD-005.** Session 14 took FLD-004, the other one
+R4/P13 released. Everything else is behind a ruling or a Linux box:
 
 0. ✅ **The push is DONE and its CI run is READ** — see §8's first block. Three jobs green, six red,
    two of which MOVED without going green. ✅ The minification runner did not OOM. 🔴 **The one thing
    left from it: register P38, three iconless prefabs, which is PHASE 85's** — and until it is fixed
    *Library check* stays red and `starter-iconset:check` stays SKIPPED behind it.
-1. 🔴 **FLD-004 — the critical path, and the first buildable FLD task since session 12.** R4 answered
-   *yes, 0.2.3* on 2026-09-11. It gates FLD-003 and owes **#26** its first reply. Track A outranks
-   track B, so this outranks everything below it.
-2. 🔴 **FLD-005** — P13 resolved the same day, phase 84 owns it, phase 81's V1 row now reads
-   DUPLICATE. Owes **#35**. ⚠️ Do not also build phase 81's V1.
+1. ✅ **FLD-004 — DONE, session 14.** 🟢 6/6 ACs, #26 replied and CLOSED. It no longer gates
+   FLD-003; only **R3** does.
+2. 🔴 **FLD-005 — the whole ungated pile.** P13 resolved 2026-09-11, phase 84 owns it, phase 81's V1
+   row now reads DUPLICATE. Owes **#35**. ⚠️ Do not also build phase 81's V1.
 3. **`lessons:chain:self-test`** — the one remaining red gate a session can take.
    *"A break this gate claims to catch went through it"*: 12 mutations, 2 not caught. A gate hole,
    so it needs reading, not a regenerate. ✅ **Session 13 cleared four of the six**; Lint and
@@ -299,8 +318,8 @@ R4 (FLD-004, and #26's reply) has the most behind it, then R3, then P13.
 shipped in any packaged release. Found by the R5 QA drive, proved pre-existing against
 `/Applications/NodeGX.app`. Not FLD-017's; somebody should take it.
 
-🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
-FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**).
+🔴 **Gated and not to be started without the ruling:** FLD-003 (**R3**), FLD-010 (**R6**),
+FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2**).
 **FLD-016 needs a Linux box, not a ruling** — see §10.
 
 ⚠️ **§8 is where the red CI is, and the list above still puts it first.** Session 13 took four of
@@ -309,7 +328,7 @@ from 58–73 s to 113 s and the macOS runners are the ones that OOMed at 2048 MB
 (`scripts/webpackHeapCeiling.ts`) — **and `aedc51f64` is not pushed**, so there has been no first
 CI run after it to watch. That is item 0.
 
-## 6. 🔴 The reply gate — 20 sent, 4 owed, TWELVE closed
+## 6. 🔴 The reply gate — 21 sent, 3 owed, THIRTEEN closed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -328,12 +347,11 @@ done
 
 **Re-derived from GitHub at the end of session 12, with the loop above:**
 
-**Sent (20):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #27 #29 #30 #32 #33 #34 #37 #40 #41 #42.
-**Closed (12):** #1 #5 #9 #12 #14 #15 #21 #32 #33 #37 **#40** #42.
+**Sent (21):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 **#26** #27 #29 #30 #32 #33 #34 #37 #40 #41 #42.
+**Closed (13):** #1 #5 #9 #12 #14 #15 #21 **#26** #32 #33 #37 #40 #42.
 
-**Owed (4): #26 #35 #39 #43.** Every one is behind a ruling: #26 = FLD-004 (**R4**),
-#35 = FLD-005 (**P13**), #39 = FLD-015 (**R2** + **P9**), #43 = FLD-014 (**P25**). 🔴 **There are no
-replies left that a build alone can unlock** — from here the count moves only when a ruling does.
+**Owed (3): #35 #39 #43.** 🔴 **#35 is the only one a BUILD can unlock** — it is FLD-005, and P13
+released it. #39 = FLD-015 (**R2**), #43 = FLD-014 (**P25**) are still behind rulings.
 
 🔴 **EIGHT issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #41.**
 All the same shape — *the issue asked for two things, one is built, closing it would close the
