@@ -5,7 +5,7 @@
   "author": "The Low Code Foundation <contact@thelowcodefoundation.com>",
   "homepage": "https://thelowcodefoundation.com",
   "license": "GPL-3.0-only",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "main": "src/main/main.bundle.js",
   "scripts": {
     "build": "npx ts-node -P ./tsconfig.build.json ./scripts/build.ts",

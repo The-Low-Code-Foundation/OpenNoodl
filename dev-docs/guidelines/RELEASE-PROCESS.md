@@ -47,16 +47,24 @@ How to cut, verify, publish, and roll back a signed NodeGX release.
 ## 0. TL;DR
 
 ```bash
-# 1. Bump the version in packages/noodl-editor/package.json (e.g. 0.1.0 -> 0.1.1).
-# 2. Commit it.
-# 3. Tag and push:
-git tag v0.1.1
-git push origin v0.1.1
-# 4. Watch the "Release" workflow in GitHub Actions.
-# 5. Go to GitHub → Releases → the new DRAFT release.
-# 6. Download and smoke-test each platform artifact on a CLEAN machine.
-# 7. Click "Publish release". Only now can existing installs auto-update.
+# 1. Bump the version in packages/noodl-editor/package.json (e.g. 0.2.2 -> 0.2.3).
+# 2. Commit it on cline-dev and push.
+# 3. Get the six required checks GREEN, then merge cline-dev into main (PR #20).
+#    main is protected with enforce_admins, so a red check stops everyone. See §3.
+# 4. Tag on main — the branch a reader can actually clone:
+git checkout main && git pull
+git tag v0.2.3
+git push origin v0.2.3
+# 5. Watch the "Release" workflow in GitHub Actions.
+# 6. Go to GitHub → Releases → the new DRAFT release.
+# 7. Download and smoke-test each platform artifact on a CLEAN machine.
+# 8. Click "Publish release". Only now can existing installs auto-update.
+# 9. Close the issues held open for a shipped — not merely committed — fix.
 ```
+
+> ⚠️ **Releases up to v0.2.2 were tagged on `cline-dev`, not `main`.** If you are
+> comparing against an older release, that is why its tag is not on `main`.
+> §3 explains what changed and why.
 
 The tag **must** match the `version` in `packages/noodl-editor/package.json`
 prefixed with `v`. electron-builder names the release from the package version,
@@ -226,17 +234,55 @@ that arrives late and says little. Add all five macOS secrets together.
 
 ## 3. Cutting a release
 
+> ### 🔴 Changed for v0.2.3: a release is cut from `main`, not from `cline-dev`
+>
+> Every release up to and including **v0.2.2 was tagged on `cline-dev`** — the
+> tags `v0.2.0` and `v0.2.2` are reachable only from that branch, and `main` sat
+> **1920 commits behind** with its last commit dated 2026-08-07. That was
+> defensible while nothing pointed at `main`; it stopped being defensible once
+> six public issue replies named [PR #20](https://github.com/The-Low-Code-Foundation/NodeGX/pull/20)
+> as the thing that puts the exporter there, and once people started cloning the
+> repo to get what the release notes describe.
+>
+> **The rule now: when an alpha is judged stable enough to ship, it lands on
+> `main` first and the tag is cut there.** `main` is what a reader can get; a
+> release tagged off a development branch describes a tree nobody else has.
+>
+> ⚠️ **This is a gate, not a formality.** `main` is protected with
+> `enforce_admins: true` and six required checks — *Typecheck, Lint, Test
+> (editor), Test (platform-node), Build (viewer + editor bundles), Check build
+> artefacts*. **Nobody can merge past a red one, including the repository
+> owner.** If a check is red the release does not move until it is green or the
+> protection is deliberately and visibly changed. That is the point: it makes
+> "stable enough to ship" a measured claim rather than a feeling.
+
 1. Decide the new version (semver). Update `version` in
    `packages/noodl-editor/package.json`. **The version must only ever increase** —
    electron-updater compares semver and will never offer a lower version.
-2. Commit on `cline-dev` (per `.clinerules`): `chore(release): v0.1.1`.
-3. Tag and push:
+2. Commit the bump on `cline-dev` (per `.clinerules`): `chore(release): v0.2.3`.
+3. **Get the six required checks green on `cline-dev`** and push. Watch them on
+   the PR, not locally: `typecheck:backend-tests` and the editor suite behave
+   differently on a clean checkout, and the run list is not the log — read the
+   duration before believing a result.
+4. **Merge `cline-dev` into `main`** through the standing PR. Do not squash: the
+   history is the record, and a squash of 1900+ commits is not a merge anyone can
+   read afterwards.
+5. **Tag on `main`**, so the tag and the branch a reader can clone agree:
    ```bash
-   git tag v0.1.1
-   git push origin cline-dev
-   git push origin v0.1.1
+   git checkout main && git pull
+   git tag v0.2.3
+   git push origin v0.2.3
    ```
-4. Watch **Actions → Release**. All four matrix jobs must go green.
+   The tag **must** match `packages/noodl-editor/package.json`'s `version`
+   prefixed with `v` — see the note under §0.
+6. Watch **Actions → Release**. All four matrix jobs must go green.
+7. Verify per §4, publish the draft, and only then close the issues that were
+   deliberately left open waiting for a shipped fix rather than a source fix.
+
+> **If a release ever has to be cut without `main`** — a security fix that cannot
+> wait for a red gate, say — tag it on `cline-dev` as before, and say so in the
+> release notes. An undocumented exception is how the `main` of 2026-08-07
+> happened in the first place.
 
 ---
 
