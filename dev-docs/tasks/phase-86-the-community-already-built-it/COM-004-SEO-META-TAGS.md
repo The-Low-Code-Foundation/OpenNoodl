@@ -83,3 +83,70 @@ shipped broken.
 SSR/SSG rendering mode — P16 RUN-002. The site-builder's own per-page SEO description field —
 P77 SBR-007. ⚠️ Both touch SEO and neither is this: RUN-002 is *how the page is rendered*,
 SBR-007 is *one field in one editor*, and this is *meta tags as an authoring surface in any graph*.
+
+---
+
+## 7. 🔴 CORRECTION, measured 2026-09-11 (COM-003 session 4) — §2's headline is wrong
+
+**"There is no node, no prefab, and no way for a builder to reach it without writing JavaScript"
+is false.** The `Page` node already carries **13 meta-tag ports**, and they are in the catalog:
+
+```
+python3 -c "... node-catalog.json ... typeName == 'Page'"
+  Page inputs total: 26
+  meta ports: description, robots,
+              og:title, og:description, og:url, og:type, og:image, og:image:width, og:image:height,
+              twitter:card, twitter:title, twitter:description, twitter:image
+```
+
+`packages/noodl-viewer-react/src/components/navigation/Page/Page.tsx:32` declares `META_TAGS`;
+`nodes/navigation/page.ts:208` folds every entry into `inputProps` with `propPath: 'metatags'`,
+grouped as **"Experimental SEO"**, "General" and "Image". `Page.tsx` then calls
+`Noodl.SEO.setMeta(key, value)` for each.
+
+### Why §2's measurement missed it
+
+It counted **nodes**: *"catalog types matching `seo`, or display name containing `meta` — 0"*. That
+is true and it is the wrong population. The authoring surface is a **port group on a node that
+already exists**, named for the page it belongs to, not for the tags it sets. ⚠️ A census over the
+wrong noun returns zero and reads exactly like an absence.
+
+### What this does to the task
+
+**AC1's three options are not equal any more.** The third one — *extend the page metadata surface* —
+is largely **already built**, which makes "prefab or node?" a question about something the product
+mostly has. What is actually missing is smaller and sharper than a new node:
+
+| the community graph has | the `Page` node has | gap |
+|---|---|---|
+| `title` | — (the Router calls `SEO.setTitle` per page) | none, different mechanism |
+| `description`, `robots` | ✅ ports | none |
+| the 7 Open Graph fields | ✅ ports | none |
+| the 4 Twitter fields | ✅ ports | none |
+| `og:type` / `twitter:card` constrained by `States` | plain **string** ports | 🔴 **AC4 is unmet** — nonsense is settable |
+| `og:image:width`/`height` computed by loading the image | ports the author fills **by hand** | 🔴 **AC5** — the community solved this and we did not |
+| `og:url` defaulting to `location.href` | port, no default | ⚠️ a forgotten `og:url` is blank rather than right |
+
+🔴 **And the group is still called "Experimental SEO"** — for `description` and `robots` only, while
+the Open Graph and Twitter ports beside them are not marked experimental. Whatever AC1 decides, that
+label is a claim about supportedness that somebody chose once and nobody has revisited.
+
+### AC3 is in better shape than feared, and the reason is written down
+
+`Page.tsx` deliberately applies the tags **in the render body on the server** and in an effect in the
+browser, with a comment explaining that SSR runs `ReactDOMServer.renderToString`, effects never run,
+and `injectSeo` builds the served `<head>` from the buffer this fills. `static/ssr/inject-seo.js`
+exists and `tests/ssr-inject-seo.test.js` covers it.
+
+⚠️ **That is the mechanism, not the outcome.** Whether a crawler sees the tags still depends on the
+project being built in an SSR/SSG mode, which is **P16 RUN-002** — so AC3's dependency is now *named*
+rather than discovered later, which is what AC3 asked for. The client-only deploy path still writes
+the tags after load, and a crawler that does not execute JavaScript still sees nothing there.
+
+### 🔴 What the next session must NOT do
+
+**Do not build a node or a prefab before re-reading this section.** Both would duplicate 11 of 13
+ports that already ship. The live question is narrower and better: *should `og:type` and
+`twitter:card` become enums, should `og:image:width`/`height` be computed, should `og:url` default,
+and is "Experimental" still true?* — plus whether that surface is **discoverable**, which is the one
+real thing a prefab or a node would buy and the ports do not.
