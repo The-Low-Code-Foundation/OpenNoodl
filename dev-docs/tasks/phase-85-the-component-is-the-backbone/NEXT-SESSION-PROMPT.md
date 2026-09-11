@@ -70,8 +70,18 @@ reads this file and is disqualified by its first line. So the run has to be star
 > **In a NEW Claude Code session (not `/clear` — a new session, so the MCP server is a new process),
 > say exactly: `Read dev-docs/tasks/phase-85-the-component-is-the-backbone/CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md and do what it says.`**
 
-🔴 **And that session must run the freshness check FIRST**, because `dist/` is gitignored and
-untracked and whatever it inherits may be any age:
+✅ **s9 (2026-09-11) MOVED THE SETUP PRECONDITION INTO THE BRIEF ITSELF**, because it was
+unreachable: the freshness check lived here, in the file a CMP-002 session is forbidden to read by
+its own first line. The brief now carries, as its own §"Setup", (a) **use `nodegx`, never
+`nodegx-puppy-test-3`** — the second is the INSTALLED APP, already bound and advertising the full
+toolset, so it is the path of least resistance and the wrong instrument — and (b) a self-identifying
+shell check that finds *that session's own* server among the several on this box and prints
+`OK` / `STALE` / `NO SERVER` rather than two dates to compare by eye. **Both branches were exercised
+when it was written.** 🔴 It deliberately does NOT use the `list_examples({query:'badge'})` probe s7
+and s8 recommended: naming `comp-variant-badge-states` to the instrument hands it one of the very
+patterns CMP-001 grades. Zero-leak checks only.
+
+The check below is kept for anyone debugging from THIS side:
 
 1. `get_project_info` must contain *"What goes on a component's interface"* **and** *"A repeated row
    publishes to the repeater"*.

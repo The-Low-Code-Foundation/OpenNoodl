@@ -10,6 +10,70 @@ A graded baseline. We are measuring **what the NodeGX MCP server actually leads 
 build**, so that later changes to the server can be shown to have changed something. You are the
 instrument, not the author. The value of this run is entirely in its fidelity.
 
+## 🔴 Setup, before you author anything — two checks, and neither is optional
+
+Three sessions have reached this point and produced nothing, both times because of the setup below
+rather than the build. It is operational only: nothing here tells you anything about how to build,
+and nothing here is a hint.
+
+### 1. Use the `nodegx` server. Do not use `nodegx-puppy-test-3`.
+
+This machine runs **two** NodeGX MCP servers and they are different builds:
+
+| server | binary | use it? |
+|---|---|---|
+| **`nodegx`** | this repo's `packages/noodl-mcp/dist/noodl-mcp.cjs` | ✅ **this one** |
+| `nodegx-puppy-test-3` | `/Applications/NodeGX.app/…` — the INSTALLED APP | ❌ never, for this run |
+
+`nodegx` starts **unbound**, so it advertises only a handful of tools until you give it a project —
+`create_project` is the door, and it binds **once** per session. `nodegx-puppy-test-3` is already
+bound to an unrelated project and advertises the full authoring toolset immediately, which makes it
+the path of least resistance and the **wrong instrument**: it is a shipped release, not this
+checkout, and a run against it measures the wrong thing while looking completely normal.
+
+### 2. Confirm your own server is not older than the bundle it is meant to serve
+
+An MCP server is a child of the CLI process and keeps whatever bundle it loaded **at startup**. A
+rebuild after your session began does not reach you, and rebuilding mid-run does not fix it — the
+running server keeps its loaded image. 🔴 **A server serving an old bundle does not error.** It
+returns responses that are missing fields, and an absent field reads exactly like a field that has
+nothing to say.
+
+Run this. It finds *your* server specifically, not the several others on this box:
+
+Run this from the repo root. It finds *your* server specifically, not the several others on this
+box, and it returns a verdict rather than two dates to compare by eye:
+
+```sh
+BUNDLE=packages/noodl-mcp/dist/noodl-mcp.cjs
+p=$$; cli=""
+while [ -n "$p" ] && [ "$p" != "1" ]; do
+  case "$(ps -o comm= -p $p 2>/dev/null)" in *claude*) cli=$p; break;; esac
+  p=$(ps -o ppid= -p $p 2>/dev/null | tr -d ' ')
+done
+bt=$(stat -f '%m' "$BUNDLE"); found=0
+for s in $(pgrep -f "$BUNDLE"); do
+  [ "$(ps -o ppid= -p $s | tr -d ' ')" = "$cli" ] || continue
+  found=1
+  st=$(date -j -f "%a %b %e %T %Y" "$(ps -o lstart= -p $s)" +%s 2>/dev/null)
+  echo "bundle written $(date -r $bt '+%F %T') / my server pid $s started $(date -r $st '+%F %T')"
+  [ "$st" -gt "$bt" ] && echo "OK — server is newer than the bundle" \
+                      || echo "STALE — STOP, this session cannot run CMP-002"
+done
+[ "$found" = 1 ] || echo "NO SERVER — you are not talking to this repo's nodegx server. STOP."
+```
+
+**Anything but `OK` means stop and tell Richard** — say which line you got and paste the two dates.
+Do not rebuild and carry on: the running server keeps its loaded image, so it needs a new session.
+
+⚠️ Both branches of this check were exercised when it was written (2026-09-11), against a session
+that was genuinely stale and against a control with the comparison inverted — so a printed `OK` is a
+reading, not a default.
+
+⚠️ If `dist/` itself is older than the newest change under `packages/noodl-mcp/src/`, the bundle is
+stale regardless of process age. `dist/` is gitignored, so it is a local artefact of unknown
+provenance and a commit date proves nothing about it.
+
 ## What to build
 
 A **business landing page** — a single-page site for a small local business (a bakery, a garage, a
