@@ -16,7 +16,7 @@
     "error": "Value; why a check could not be made. It never contains a token.",
     "treatUnchangedAs": "Edit-only enum; set it to Failure if an invalid token should take the same path as a broken check."
   },
-  "examples": [],
+  "examples": ["cloud-check-a-session-token-from-a-client"],
   "patterns": [
     "Request `receive` → Verify Session Token `verify`, with the body's token wired into `token`; `done` → the work, `unchanged` → a Response with Status set to Failure. That is the whole shape of a token-checked endpoint."
   ],

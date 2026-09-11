@@ -13,6 +13,7 @@
     "error": "String value holding the reason the last sign-in failed.",
     "notice": "String value; non-empty only when the backend linked to an existing unverified account and revoked its password. Show it."
   },
+  "examples": ["auth-sign-in-without-a-password"],
   "patterns": [
     "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `done`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
     "`done` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",

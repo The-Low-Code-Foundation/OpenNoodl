@@ -20061,6 +20061,9 @@
           "error": "Value outputs are updated before this fires, so reading Message or Code on the pulse always describes this error.",
           "errorObject": "Wireable straight into a string input, which renders it as JSON."
         },
+        "examples": [
+          "app-catch-every-error-in-one-place"
+        ],
         "patterns": [
           "One unfiltered On App Error in the root component, with `Message` into a Text and `Error` showing a popup — the minimum that makes a deployed app's failures visible.",
           "`Error Object` into an HTTP Request body to forward failures to an error-reporting service.",
@@ -36925,7 +36928,9 @@
           "changed": "Fires after Result has been recomputed, whichever input caused it.",
           "failure": "Invalid Date — fires when a date arrived that could not be read. It does not fire while Date is simply unset."
         },
-        "examples": [],
+        "examples": [
+          "bubble-how-many-days-until"
+        ],
         "patterns": [
           "Now Date → Date Add (+14 days) → Create Record: a trial end date computed on the server."
         ],
@@ -37119,7 +37124,11 @@
           "isSame": "Fires after a comparison that came out Same.",
           "failure": "Invalid Date — fires when a date arrived that could not be read."
         },
-        "examples": [],
+        "examples": [
+          "bubble-is-this-date-overdue",
+          "bubble-do-two-date-ranges-overlap",
+          "bubble-round-a-date-down-to-the-month"
+        ],
         "patterns": [
           "Due date → Date, Now Date → Compare To, then On Before → the overdue branch."
         ],
@@ -37282,7 +37291,9 @@
           "changed": "Fires after Difference has been recomputed.",
           "failure": "Invalid Date — fires when a date arrived that could not be read."
         },
-        "examples": [],
+        "examples": [
+          "bubble-how-many-days-until"
+        ],
         "patterns": [
           "Record date → From, Now Date → To, unit Days: how old this record is."
         ],
@@ -37493,7 +37504,9 @@
           "changed": "Fires after a new Date has been taken apart.",
           "failure": "Invalid Date — fires when a date arrived that could not be read, leaving every part unset."
         },
-        "examples": [],
+        "examples": [
+          "bubble-round-a-date-down-to-the-month"
+        ],
         "patterns": [
           "Date Parts Month → String Mapper: a month name in your own wording, without a formatter."
         ],
@@ -38336,7 +38349,9 @@
           "failure": "Fires when WebCrypto is unavailable — in a browser that means the page is not in a secure context.",
           "error": "Why the digest could not be computed."
         },
-        "examples": [],
+        "examples": [
+          "bubble-hash-a-value"
+        ],
         "patterns": [
           "Do → Done → the node that consumes Digest. The digest is asynchronous, so a wire off Done is the only way to sequence it correctly."
         ],
@@ -38784,7 +38799,12 @@
           "done": "Fires once the line has been written.",
           "completed": "Fires after every write. This node has no other outcome."
         },
-        "examples": [],
+        "examples": [
+          "bubble-is-this-date-overdue",
+          "bubble-do-two-date-ranges-overlap",
+          "bubble-hash-a-value",
+          "bubble-read-a-pasted-csv"
+        ],
         "patterns": [
           "Splice it onto an existing wire: value in, value out, and the Log signal taken from whatever outcome you want to record. The graph behaves identically with the node removed.",
           "Log at `error` on a Failure branch, with the failing record's id in Data. That line carries the request id, so it lines up with the access log and the execution record."
@@ -38902,7 +38922,12 @@
           "done": "Fires once the outputs hold the freshly-read instant.",
           "completed": "Fires after every Read. This node has no other outcome."
         },
-        "examples": [],
+        "examples": [
+          "bubble-is-this-date-overdue",
+          "bubble-how-many-days-until",
+          "bubble-round-a-date-down-to-the-month",
+          "logic-date-formatting"
+        ],
         "patterns": [
           "Request receive → Now Read, then Date → Date Compare: 'is this due date in the past', answered on the server's clock.",
           "Now Date → Date Add (+30 days) → Date To String: a deadline, rendered."
@@ -39725,7 +39750,9 @@
           "failure": "Fires when the CSV could not be parsed, leaving Items and Count as they were.",
           "error": "Why the parse failed, naming the line it gave up on. Empty until a parse fails."
         },
-        "examples": [],
+        "examples": [
+          "bubble-read-a-pasted-csv"
+        ],
         "patterns": [
           "Request `pm-csv` → Parse CSV `text`; Parse CSV `items` → Array Filter → To CSV → Response: the whole 'someone sent us a spreadsheet' shape, with no Function node.",
           "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs forever when the file is malformed (CWF-018)."
@@ -40148,7 +40175,9 @@
           "failure": "Fires when there is no cryptographic random source, or Length is out of range.",
           "error": "Why no bytes were produced."
         },
-        "examples": [],
+        "examples": [
+          "bubble-mint-an-id-and-an-invite-token"
+        ],
         "patterns": [
           "New → Done → store or send. The value is replaced on every New, so read it from the Done path rather than later."
         ],
@@ -42448,7 +42477,9 @@
           "count": "How many data rows were written, not counting the header row.",
           "changed": "Fires once CSV holds the freshly written text."
         },
-        "examples": [],
+        "examples": [
+          "bubble-write-a-list-out-as-csv"
+        ],
         "patterns": [
           "Query Records `items` → To CSV `items`; To CSV `text` → Response `pm-csv`: an export endpoint in three nodes.",
           "Parse CSV → Array Filter → To CSV: read, narrow, write back. The round trip is exact, including cells containing commas, quotes and newlines."
@@ -42566,7 +42597,9 @@
           "failure": "Fires when there is no cryptographic random source here, leaving Id as it was.",
           "error": "Why no UUID could be generated."
         },
-        "examples": [],
+        "examples": [
+          "bubble-mint-an-id-and-an-invite-token"
+        ],
         "patterns": [
           "Create Record with Id wired from this node: an id minted client-side lets the same request be retried safely."
         ],
@@ -57007,6 +57040,9 @@
           "failure": "Signal; the request could not be made. Show `error`.",
           "error": "String value with the reason the request failed."
         },
+        "examples": [
+          "auth-sign-in-without-a-password"
+        ],
         "patterns": [
           "Text Input `text` → `email`, Button `onClick` → `send`, `done` → a neutral confirmation message.",
           "Put a Sign In With node on the landing page named by `redirect` so the app can react to the click's outcome."
@@ -57565,6 +57601,9 @@
           "error": "String value holding the reason the last sign-in failed.",
           "notice": "String value; non-empty only when the backend linked to an existing unverified account and revoked its password. Show it."
         },
+        "examples": [
+          "auth-sign-in-without-a-password"
+        ],
         "patterns": [
           "Put the node on both the page the user leaves from and the page they come back to — `Do` on the first, `done`/`failure` on the second. Pointing `redirect` at the same page makes one node do both.",
           "`done` → navigation, `error` → a Text node's `text`: the whole flow in three connections.",
@@ -59470,7 +59509,9 @@
           "completed": "Signal; fires after every attempt, whatever the outcome.",
           "error": "Value; why the last attempt failed."
         },
-        "examples": [],
+        "examples": [
+          "cloud-invite-a-team-member"
+        ],
         "patterns": [
           "Wire straight after Create User in a signup function to put every new account into a default role like `member` — `unchanged` and `done` both mean the account is now in that role, so wiring both to the same next step covers a re-run cleanly."
         ],
@@ -59834,7 +59875,9 @@
           "treatUnchangedAs": "Edit-only enum; set it to Failure in a project whose idiom is that a duplicate signup is a bug."
         },
         "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set is derived from that parameter alone — nothing is discovered from the backend's `_User` schema, and no editor connection or running backend is involved — so an authoring tool can compute the port list from the project file exactly as the editor does. Names are de-duplicated and blanks dropped. A `prop-` name the backend refuses (objectId, createdAt, updatedAt, ACL, password, sessionToken, or anything starting with `_`) still mints a port; the refusal happens at run time, on the `failure` branch, with the key named.",
-        "examples": [],
+        "examples": [
+          "cloud-invite-a-team-member"
+        ],
         "patterns": [
           "Request `receive` → Create User `create`, with the Request node's parameter outputs wired into `username` and `password`: the ordinary shape of a server-side provisioning function.",
           "Wire `unchanged` to the same Response as `done` when the function's job is 'make sure this account exists'. `userId` is correct on both branches.",
@@ -60005,7 +60048,9 @@
           "error": "Value; why the last attempt failed.",
           "treatUnchangedAs": "Edit-only enum; set it to Failure if 'that account was already gone' should stop the chain."
         },
-        "examples": [],
+        "examples": [
+          "cloud-delete-an-account-and-its-sessions"
+        ],
         "patterns": [
           "Wire `done` and `unchanged` to the same Response when the function's job is 'make sure this account is gone'. Both mean it is."
         ],
@@ -60171,7 +60216,9 @@
           "completed": "Signal; fires after every attempt, whatever the outcome.",
           "error": "Value; why the last attempt failed."
         },
-        "examples": [],
+        "examples": [
+          "cloud-revoke-a-role-and-record-it"
+        ],
         "patterns": [
           "Read this after Add User To Role or Remove User From Role to confirm the membership actually changed, rather than trusting the mutation's own Done — useful when a function's response needs to report the account's current role set, not just that one operation succeeded."
         ],
@@ -60359,7 +60406,9 @@
           "failure": "Fires when the signature could not be computed — most often no Key.",
           "error": "Why no signature was produced. It names the problem, never the key."
         },
-        "examples": [],
+        "examples": [
+          "cloud-check-a-webhook-and-a-token"
+        ],
         "patterns": [
           "Secret Done → HMAC Do, with Value wired from the Request node's raw body: the standard webhook-verification shape."
         ],
@@ -60535,7 +60584,9 @@
           "failure": "Fires when the token could not be signed — no Key, or claims that will not serialise.",
           "error": "Why no token was produced."
         },
-        "examples": [],
+        "examples": [
+          "cloud-sign-a-token-with-a-stored-secret"
+        ],
         "patterns": [
           "Secret Done → JWT Sign Do, then Token into a URL or a response: the whole shape of a signed link."
         ],
@@ -60723,7 +60774,9 @@
           "failure": "Fires when it did not, for any reason. Error says which.",
           "error": "Why the token did not verify."
         },
-        "examples": [],
+        "examples": [
+          "cloud-check-a-webhook-and-a-token"
+        ],
         "patterns": [
           "Request receive → Secret Do → JWT Verify Do, with Failure wired to a Response that answers 401.",
           "Wire both Done and Failure. A function that only wires the happy path hangs when the token is bad."
@@ -60939,7 +60992,9 @@
           "completed": "Signal; fires after every attempt, whatever the outcome.",
           "error": "Value; why the last attempt failed."
         },
-        "examples": [],
+        "examples": [
+          "cloud-who-is-in-this-role"
+        ],
         "patterns": [
           "Put this behind a cloud function whose call rule names the role that may see the roster — a member list is other people's account records, and a cloud function runs as system, so the function's own permission rule is the only thing deciding who may read it.",
           "Page a large role by wiring Skip from a page counter and comparing Total against the running count of rows already shown, rather than assuming one call returned everybody."
@@ -61117,7 +61172,9 @@
           "completed": "Signal; fires after every attempt, whatever the outcome.",
           "error": "Value; why the last attempt failed, or (on Unchanged) which of the two non-membership cases it was."
         },
-        "examples": [],
+        "examples": [
+          "cloud-revoke-a-role-and-record-it"
+        ],
         "patterns": [
           "Wire a lapsed-subscription webhook straight to this node's `remove`, with `done` and `unchanged` both leading to the same next step — the account ends up without the role either way, which is the only thing that response needs to be true."
         ],
@@ -61701,7 +61758,10 @@
           "failure": "Fires when the secret is not provisioned on this machine or Name is unusable.",
           "completed": "Fires after every read, whatever the outcome."
         },
-        "examples": [],
+        "examples": [
+          "cloud-sign-a-token-with-a-stored-secret",
+          "cloud-check-a-webhook-and-a-token"
+        ],
         "patterns": [
           "Request `receive` → Secret `fetch`; Secret `done` → HTTP Request `fetch`, with Value wired into the Authorization header: the ordinary shape of calling a paid API from the server.",
           "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs forever when the credential is missing (CWF-018)."
@@ -62060,7 +62120,9 @@
           "error": "Value; why the last write failed. It never contains a password or a hash."
         },
         "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set comes from that parameter alone — nothing is read from the backend's `_User` schema and no editor connection is involved — so an authoring tool can derive the port list from the project file. Names are de-duplicated and blanks dropped; a refused name still mints a port and fails at run time with the key named.",
-        "examples": [],
+        "examples": [
+          "cloud-revoke-a-role-and-record-it"
+        ],
         "patterns": [
           "Request `receive` → Update User `store`, with the target's id arriving as a request parameter: the shape of every 'admin acts on account X' function.",
           "Wire `sessionsRevoked` into the response when the function resets a password, so the caller knows the user was signed out everywhere."
@@ -62253,7 +62315,9 @@
           "error": "Value; why a check could not be made. It never contains a token.",
           "treatUnchangedAs": "Edit-only enum; set it to Failure if an invalid token should take the same path as a broken check."
         },
-        "examples": [],
+        "examples": [
+          "cloud-check-a-session-token-from-a-client"
+        ],
         "patterns": [
           "Request `receive` → Verify Session Token `verify`, with the body's token wired into `token`; `done` → the work, `unchanged` → a Response with Status set to Failure. That is the whole shape of a token-checked endpoint."
         ],
@@ -63589,6 +63653,1538 @@
       ]
     },
     {
+      "id": "app-catch-every-error-in-one-place",
+      "title": "Catch the errors nobody wired a Failure port for",
+      "description": "Per-node `Failure` outputs cover the errors an author expected and wanted to branch on where they happen. This node covers everything else, which in a real app is most of them — no library will ever carry complete failure ports on every node type, and without a boundary the only record of an unwired error is a console line nobody reads in a deployed app. It subscribes as soon as it is created, so errors raised while the graph is still starting are caught rather than missed during setup, which is exactly the window where a misconfigured backend or a missing secret shows up. The ordering guarantee is what makes it usable: the value outputs — Message, Code, Node Type, Node Id, Component Name — are updated BEFORE the `error` signal fires, so reading them on the pulse always describes this error rather than the previous one. Filter is blank here, and blank is the right default for a boundary; a code prefix narrows it to one node type or one specific error, which is what you want for a second, more specific handler rather than for the catch-all. Error Object wires straight into a string input and renders as JSON, which is what to send to a logging service. Put one of these at the root of the app, not one per page: a boundary that only exists on the screen where you were debugging catches nothing on the screen where the bug actually reaches a user.",
+      "demonstrates": [
+        "On App Error",
+        "net.noodl.Log",
+        "String Format",
+        "Text"
+      ],
+      "components": [
+        {
+          "name": "/App",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "App root",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "error_banner"
+              ]
+            },
+            {
+              "id": "error_banner",
+              "type": "Text",
+              "label": "Something went wrong",
+              "parent": "root"
+            },
+            {
+              "id": "boundary",
+              "type": "On App Error",
+              "label": "Every unhandled failure in the app"
+            },
+            {
+              "id": "where",
+              "type": "String Format",
+              "label": "Which node, in which component",
+              "parameters": {
+                "format": "{code} in {component} — {nodeType} ({nodeId})"
+              }
+            },
+            {
+              "id": "error_log",
+              "type": "net.noodl.Log",
+              "label": "Send it somewhere durable",
+              "parameters": {
+                "level": "error"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "boundary",
+              "fromProperty": "code",
+              "toId": "where",
+              "toProperty": "code"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "componentName",
+              "toId": "where",
+              "toProperty": "component"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "nodeType",
+              "toId": "where",
+              "toProperty": "nodeType"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "nodeId",
+              "toId": "where",
+              "toProperty": "nodeId"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "message",
+              "toId": "error_banner",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "message",
+              "toId": "error_log",
+              "toProperty": "message"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "errorObject",
+              "toId": "error_log",
+              "toProperty": "data"
+            },
+            {
+              "fromId": "boundary",
+              "fromProperty": "error",
+              "toId": "error_log",
+              "toProperty": "log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "auth-sign-in-without-a-password",
+      "title": "Sign in with a emailed link, or with Google",
+      "description": "Two ways past the password field, and both have a behaviour that decides how the screen around them must be built. Request Magic Link posts the address and the backend mails a single-use, short-lived link; `done` means THE REQUEST WAS ACCEPTED and never that an account exists — the endpoint answers identically either way, deliberately, because a different answer would turn the sign-in form into a way to test whether somebody has an account here. So the message on `done` has to be 'if that address has an account, a link is on its way', and a screen that says 'check your inbox' for one address and 'no such user' for another has reintroduced exactly the leak the endpoint is avoiding. Sign In With is more drastic: triggering it NAVIGATES THE BROWSER AWAY to the provider, so nothing downstream of that signal runs and the graph on this page is torn down mid-flight. Treat it as the end of the flow, not a step in it — there is no 'after' to wire, and a spinner set by the same click is a spinner nobody ever sees stop. `signingIn` is the output for the brief moment before the redirect. Both take a `redirect` that must be same-origin with the backend or on its redirect allow-list; an off-list target means no mail is sent and no provider round trip starts, which is a configuration failure that looks exactly like nothing happening. Provider ids ('google', 'github', or whatever the operator named their OIDC provider) come from the backend, not from this graph. One wiring detail that catches people: `done` is a SIGNAL, and a signal wired straight into a value input like `visible` is played as true and then false in the same pass, so the confirmation would flash and vanish. A Switch latches the pulse into remembered state, which is what 'we have sent it' actually is.",
+      "demonstrates": [
+        "net.noodl.user.RequestMagicLink",
+        "net.noodl.user.SignInWith",
+        "Switch",
+        "net.noodl.Log"
+      ],
+      "components": [
+        {
+          "name": "/Passwordless Sign In",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Sign in",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "email_input",
+                "link_button",
+                "sent_text",
+                "google_button",
+                "error_text"
+              ]
+            },
+            {
+              "id": "email_input",
+              "type": "net.noodl.controls.textinput",
+              "label": "Email",
+              "parent": "root"
+            },
+            {
+              "id": "link_button",
+              "type": "net.noodl.controls.button",
+              "label": "Email me a link",
+              "parent": "root"
+            },
+            {
+              "id": "sent_text",
+              "type": "Text",
+              "label": "If that address has an account, a link is on its way",
+              "parent": "root"
+            },
+            {
+              "id": "google_button",
+              "type": "net.noodl.controls.button",
+              "label": "Continue with Google",
+              "parent": "root"
+            },
+            {
+              "id": "error_text",
+              "type": "Text",
+              "label": "Why the request could not be made",
+              "parent": "root"
+            },
+            {
+              "id": "magic_link",
+              "type": "net.noodl.user.RequestMagicLink",
+              "label": "Ask for a sign-in link"
+            },
+            {
+              "id": "google",
+              "type": "net.noodl.user.SignInWith",
+              "label": "Leaves this page — nothing after this runs",
+              "parameters": {
+                "provider": "google"
+              }
+            },
+            {
+              "id": "provider_log",
+              "type": "net.noodl.Log",
+              "label": "The provider round trip did not start",
+              "parameters": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "link_sent",
+              "type": "Switch",
+              "label": "Remember that the request was accepted",
+              "parameters": {
+                "onFromStart": false
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "email_input",
+              "fromProperty": "onTextChanged",
+              "toId": "magic_link",
+              "toProperty": "email"
+            },
+            {
+              "fromId": "link_button",
+              "fromProperty": "onClick",
+              "toId": "magic_link",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "magic_link",
+              "fromProperty": "error",
+              "toId": "error_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "google_button",
+              "fromProperty": "onClick",
+              "toId": "google",
+              "toProperty": "signIn"
+            },
+            {
+              "fromId": "google",
+              "fromProperty": "error",
+              "toId": "provider_log",
+              "toProperty": "message"
+            },
+            {
+              "fromId": "google",
+              "fromProperty": "failure",
+              "toId": "provider_log",
+              "toProperty": "log"
+            },
+            {
+              "fromId": "magic_link",
+              "fromProperty": "done",
+              "toId": "link_sent",
+              "toProperty": "on"
+            },
+            {
+              "fromId": "link_sent",
+              "fromProperty": "state",
+              "toId": "sent_text",
+              "toProperty": "visible"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-do-two-date-ranges-overlap",
+      "title": "Do these two bookings overlap?",
+      "description": "Bubble has a date range as a first-class type, so it can write `DateRange1 overlaps with DateRange2` and be done. NodeGX has no range type, and the honest translation is not a missing feature — it is two Date Compares and one line of boolean. Two intervals overlap exactly when each one starts before the other ends, so `requestStart < bookedEnd AND bookedStart < requestEnd`; that single identity also answers Bubble's `contains point` (a point is a range of zero length), `is contained by`, `is after` and `is before` on ranges, which is why one worked example covers a dozen dictionary rows. Note what is deliberately NOT here: no test for `requestStart < requestEnd`. Comparing the two ends of one range is what `<-min->` and `<-max->` are for in Bubble, and a range whose end precedes its start makes this expression answer `false` — no clash — which is the wrong answer to a malformed request rather than the right answer to a valid one. Validate the range before you ask this question. Granularity is set to Minute rather than left at Millisecond because bookings are made in minutes: at Millisecond, a slot ending at 10:00:00.000 and one starting at 10:00:00.000 are already non-overlapping, which is correct and also not what anyone booking a room means by back-to-back. Both comparisons share one failure Log — a date that will not parse makes `Before` false on that node, and false here reads as 'no clash', so an unreported failure is an accepted double booking.",
+      "demonstrates": [
+        "net.noodl.DateCompare",
+        "Expression",
+        "net.noodl.Log",
+        "Component Inputs"
+      ],
+      "components": [
+        {
+          "name": "/Booking Request",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Booking request",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "clash_text",
+                "available_text"
+              ]
+            },
+            {
+              "id": "clash_text",
+              "type": "Text",
+              "label": "That slot is already taken",
+              "parent": "root"
+            },
+            {
+              "id": "available_text",
+              "type": "Text",
+              "label": "That slot is free",
+              "parent": "root"
+            },
+            {
+              "id": "range_inputs",
+              "type": "Component Inputs",
+              "label": "The two ranges in",
+              "ports": [
+                {
+                  "name": "requestStart",
+                  "plug": "output",
+                  "type": "date"
+                },
+                {
+                  "name": "requestEnd",
+                  "plug": "output",
+                  "type": "date"
+                },
+                {
+                  "name": "bookedStart",
+                  "plug": "output",
+                  "type": "date"
+                },
+                {
+                  "name": "bookedEnd",
+                  "plug": "output",
+                  "type": "date"
+                }
+              ]
+            },
+            {
+              "id": "request_starts_first",
+              "type": "net.noodl.DateCompare",
+              "label": "Request starts before the booking ends",
+              "parameters": {
+                "granularity": "minute"
+              }
+            },
+            {
+              "id": "booking_starts_first",
+              "type": "net.noodl.DateCompare",
+              "label": "Booking starts before the request ends",
+              "parameters": {
+                "granularity": "minute"
+              }
+            },
+            {
+              "id": "overlap",
+              "type": "Expression",
+              "label": "Each starts before the other ends",
+              "parameters": {
+                "expression": "requestStartsFirst && bookingStartsFirst"
+              }
+            },
+            {
+              "id": "unreadable_log",
+              "type": "net.noodl.Log",
+              "label": "A booking date would not parse",
+              "parameters": {
+                "level": "error",
+                "message": "Booking request: a date could not be read, so the overlap test answered 'no clash' without testing anything."
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "range_inputs",
+              "fromProperty": "requestStart",
+              "toId": "request_starts_first",
+              "toProperty": "a"
+            },
+            {
+              "fromId": "range_inputs",
+              "fromProperty": "bookedEnd",
+              "toId": "request_starts_first",
+              "toProperty": "b"
+            },
+            {
+              "fromId": "range_inputs",
+              "fromProperty": "bookedStart",
+              "toId": "booking_starts_first",
+              "toProperty": "a"
+            },
+            {
+              "fromId": "range_inputs",
+              "fromProperty": "requestEnd",
+              "toId": "booking_starts_first",
+              "toProperty": "b"
+            },
+            {
+              "fromId": "request_starts_first",
+              "fromProperty": "before",
+              "toId": "overlap",
+              "toProperty": "requestStartsFirst"
+            },
+            {
+              "fromId": "booking_starts_first",
+              "fromProperty": "before",
+              "toId": "overlap",
+              "toProperty": "bookingStartsFirst"
+            },
+            {
+              "fromId": "overlap",
+              "fromProperty": "isTrue",
+              "toId": "clash_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "overlap",
+              "fromProperty": "isFalse",
+              "toId": "available_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "request_starts_first",
+              "fromProperty": "failure",
+              "toId": "unreadable_log",
+              "toProperty": "log"
+            },
+            {
+              "fromId": "booking_starts_first",
+              "fromProperty": "failure",
+              "toId": "unreadable_log",
+              "toProperty": "log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-hash-a-value",
+      "title": "Turn an email address into a stable fingerprint",
+      "description": "The dictionary asks for `:formatted as MD5 hash` and `:formatted as SHA1 Hash`, and the honest answer is that this node offers neither — SHA-256, SHA-384 and SHA-512 only. That is a decision, not a gap: WebCrypto, which Hash runs on in both the browser and a cloud function, does not implement MD5 or SHA-1 for digesting, and hand-rolling one would mean shipping a hash that is broken for every purpose either was ever used for. If you are migrating a Bubble app that stored MD5 fingerprints, they will not reproduce here and no setting will make them; treat that as a re-hash of the source data, not a translation. Two details decide whether this works. Hash is ASYNCHRONOUS — the digest is computed off a later turn than the `Do` that started it — so Digest is wired to the Text and the button is wired to `Do`; reading Digest in the same pass as the click would read the previous answer. And hashing is exact, so the normalisation in front of it is doing real work: `Foo@Example.com ` and `foo@example.com` are different bytes and therefore entirely different digests, which is how a 'stable fingerprint' quietly stops matching. Trim and lower-case first, deliberately, and write down that you did. Failure fires only when WebCrypto is unavailable, which in a browser means the page is not on a secure origin — worth a Log, because the symptom is a blank fingerprint rather than an error.",
+      "demonstrates": [
+        "net.noodl.Hash",
+        "Expression",
+        "net.noodl.Log",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "/Fingerprint",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Fingerprint",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "hash_button",
+                "digest_text"
+              ]
+            },
+            {
+              "id": "hash_button",
+              "type": "net.noodl.controls.button",
+              "label": "Fingerprint",
+              "parent": "root"
+            },
+            {
+              "id": "digest_text",
+              "type": "Text",
+              "label": "The hex digest",
+              "parent": "root"
+            },
+            {
+              "id": "email_inputs",
+              "type": "Component Inputs",
+              "label": "Email in",
+              "ports": [
+                {
+                  "name": "email",
+                  "plug": "output",
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "id": "normalise",
+              "type": "Expression",
+              "label": "Trim and lower-case first",
+              "parameters": {
+                "expression": "(email || '').trim().toLowerCase()"
+              }
+            },
+            {
+              "id": "fingerprint",
+              "type": "net.noodl.Hash",
+              "label": "SHA-256, hex",
+              "parameters": {
+                "algorithm": "SHA-256",
+                "encoding": "hex"
+              }
+            },
+            {
+              "id": "no_crypto_log",
+              "type": "net.noodl.Log",
+              "label": "No WebCrypto here",
+              "parameters": {
+                "level": "error",
+                "message": "Fingerprint: WebCrypto was unavailable, so no digest was produced. In a browser this means the page is not on a secure origin."
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "email_inputs",
+              "fromProperty": "email",
+              "toId": "normalise",
+              "toProperty": "email"
+            },
+            {
+              "fromId": "normalise",
+              "fromProperty": "asString",
+              "toId": "fingerprint",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "hash_button",
+              "fromProperty": "onClick",
+              "toId": "fingerprint",
+              "toProperty": "hash"
+            },
+            {
+              "fromId": "fingerprint",
+              "fromProperty": "digest",
+              "toId": "digest_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "fingerprint",
+              "fromProperty": "failure",
+              "toId": "no_crypto_log",
+              "toProperty": "log"
+            },
+            {
+              "fromId": "fingerprint",
+              "fromProperty": "error",
+              "toId": "no_crypto_log",
+              "toProperty": "message"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-how-many-days-until",
+      "title": "How many days are left on this trial?",
+      "description": "Bubble's `<-range->` gives a range whose duration you then read; here the duration is the whole question, and Date Difference answers it directly as To minus From. Two things about that subtraction decide whether the banner is right. It is SIGNED — an expired trial reports a negative number, and that is the useful behaviour, because Absolute would turn 'three days overdue' into 'three days left'. And for fixed units it is NOT rounded: a trial with 36 hours to run reports 1.5 days, so a banner wired straight to Difference says '1.5 days left'. That is why the Expression is here rather than as an afterthought — `Math.max(0, Math.ceil(d))` rounds up (a trial with any part of a day left has a day left, which is what a person counting means), and clamps the expired case to zero so the banner never counts downward past the end. Date Add supplies the end date from the signup date, and its clamping rule matters if you ever change Unit to Months: 31 January plus one month is 28 February, not 2 March. The end date is rendered through Date To String rather than pasted in as a number, because Difference is a number and a date is not.",
+      "demonstrates": [
+        "net.noodl.DateDifference",
+        "net.noodl.DateAdd",
+        "net.noodl.Now",
+        "String Format"
+      ],
+      "components": [
+        {
+          "name": "/Trial Banner",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Trial banner",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "banner_text"
+              ]
+            },
+            {
+              "id": "banner_text",
+              "type": "Text",
+              "label": "9 days left — your trial ends on 25 September",
+              "parent": "root"
+            },
+            {
+              "id": "trial_inputs",
+              "type": "Component Inputs",
+              "label": "Account in",
+              "ports": [
+                {
+                  "name": "signedUpAt",
+                  "plug": "output",
+                  "type": "date"
+                }
+              ]
+            },
+            {
+              "id": "clock",
+              "type": "net.noodl.Now",
+              "label": "Now"
+            },
+            {
+              "id": "trial_end",
+              "type": "net.noodl.DateAdd",
+              "label": "Signup plus 14 days",
+              "parameters": {
+                "amount": 14,
+                "unit": "days"
+              }
+            },
+            {
+              "id": "days_left",
+              "type": "net.noodl.DateDifference",
+              "label": "Now until the trial ends",
+              "parameters": {
+                "unit": "days",
+                "absolute": false
+              }
+            },
+            {
+              "id": "whole_days",
+              "type": "Expression",
+              "label": "Round up, and never below zero",
+              "parameters": {
+                "expression": "Math.max(0, Math.ceil(d))"
+              }
+            },
+            {
+              "id": "end_label",
+              "type": "Date To String",
+              "label": "The end date, readable",
+              "parameters": {
+                "formatString": "{d} {monthName}"
+              }
+            },
+            {
+              "id": "banner",
+              "type": "String Format",
+              "label": "The sentence",
+              "parameters": {
+                "format": "{days} days left — your trial ends on {ends}"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "trial_inputs",
+              "fromProperty": "signedUpAt",
+              "toId": "trial_end",
+              "toProperty": "input"
+            },
+            {
+              "fromId": "clock",
+              "fromProperty": "date",
+              "toId": "days_left",
+              "toProperty": "from"
+            },
+            {
+              "fromId": "trial_end",
+              "fromProperty": "result",
+              "toId": "days_left",
+              "toProperty": "to"
+            },
+            {
+              "fromId": "days_left",
+              "fromProperty": "difference",
+              "toId": "whole_days",
+              "toProperty": "d"
+            },
+            {
+              "fromId": "trial_end",
+              "fromProperty": "result",
+              "toId": "end_label",
+              "toProperty": "input"
+            },
+            {
+              "fromId": "whole_days",
+              "fromProperty": "asNumber",
+              "toId": "banner",
+              "toProperty": "days"
+            },
+            {
+              "fromId": "end_label",
+              "fromProperty": "currentValue",
+              "toId": "banner",
+              "toProperty": "ends"
+            },
+            {
+              "fromId": "banner",
+              "fromProperty": "formatted",
+              "toId": "banner_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-is-this-date-overdue",
+      "title": "Is this due date in the past?",
+      "description": "Bubble writes this as `Date1 is after Current date & time`, and the literal translation is the thing that goes wrong. Date Compare answers before, after and same together, as booleans and as signals, so you do not need three nodes or an Expression — but Granularity decides whether the answer means anything. Left at Millisecond a due date is essentially never `Same` as now, so an invoice due today reports as overdue the moment the clock passes midnight-plus-one-millisecond. Set Granularity to Day and the three answers become the three a person means: `Before` is overdue, `Same` is due today, `After` is still to come. Now is not a live clock — it reads the wall clock when it is created and again on every `Read`, so a card rendered at 23:59 and left open keeps yesterday's answer until something re-reads it. Truncation to the chosen granularity happens in the host's local zone, which on a server is whatever the container's zone is; if 'today' must mean the user's today, compare on values you have already normalised. The due date arrives as a `date` — a Date Compare fed an ISO string that will not parse fires `failure` rather than silently answering `After`, which is the outcome worth wiring when the date comes from a record someone else filled in. Here it goes to a Log at warning level, because a row that silently renders as 'Upcoming' because its date was a malformed string is the kind of bug nobody reports.",
+      "demonstrates": [
+        "net.noodl.DateCompare",
+        "net.noodl.Now",
+        "net.noodl.Log",
+        "Component Inputs"
+      ],
+      "components": [
+        {
+          "name": "/Invoice Row",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Invoice row",
+              "parameters": {
+                "flexDirection": "row"
+              },
+              "children": [
+                "overdue_text",
+                "today_text",
+                "upcoming_text"
+              ]
+            },
+            {
+              "id": "overdue_text",
+              "type": "Text",
+              "label": "Overdue",
+              "parent": "root"
+            },
+            {
+              "id": "today_text",
+              "type": "Text",
+              "label": "Due today",
+              "parent": "root"
+            },
+            {
+              "id": "upcoming_text",
+              "type": "Text",
+              "label": "Upcoming",
+              "parent": "root"
+            },
+            {
+              "id": "row_inputs",
+              "type": "Component Inputs",
+              "label": "Invoice in",
+              "ports": [
+                {
+                  "name": "dueDate",
+                  "plug": "output",
+                  "type": "date"
+                }
+              ]
+            },
+            {
+              "id": "clock",
+              "type": "net.noodl.Now",
+              "label": "Now"
+            },
+            {
+              "id": "due_vs_now",
+              "type": "net.noodl.DateCompare",
+              "label": "Due date against now, by day",
+              "parameters": {
+                "granularity": "day"
+              }
+            },
+            {
+              "id": "unreadable_log",
+              "type": "net.noodl.Log",
+              "label": "Unreadable due date",
+              "parameters": {
+                "level": "warning",
+                "message": "Invoice row: the due date could not be read as a date."
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "dueDate",
+              "toId": "due_vs_now",
+              "toProperty": "a"
+            },
+            {
+              "fromId": "clock",
+              "fromProperty": "date",
+              "toId": "due_vs_now",
+              "toProperty": "b"
+            },
+            {
+              "fromId": "due_vs_now",
+              "fromProperty": "before",
+              "toId": "overdue_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "due_vs_now",
+              "fromProperty": "same",
+              "toId": "today_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "due_vs_now",
+              "fromProperty": "after",
+              "toId": "upcoming_text",
+              "toProperty": "visible"
+            },
+            {
+              "fromId": "due_vs_now",
+              "fromProperty": "failure",
+              "toId": "unreadable_log",
+              "toProperty": "log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-mint-an-id-and-an-invite-token",
+      "title": "Mint an invite link nobody can guess",
+      "description": "Two nodes that look interchangeable and are not. UUID gives a version-4 identifier — 36 characters, 122 random bits — and it is the right thing for an id you will store, log and put in a URL path, because it is a recognised format that other systems already know how to handle. Random Bytes gives raw entropy rendered as text, and it is the right thing for the SECRET half, because you choose how much of it there is. Neither is Unique Id: that node is 10 characters out of `Math.random()`, which is correct for keying a rendered list and wrong for anything an attacker might try to guess. Length counts BYTES, not characters — 32 bytes is 64 hex characters, or 43 in base64url, which is the encoding chosen here because it is the one that survives being pasted into a URL without escaping. Both nodes fail loudly rather than falling back to `Math.random()` when there is no cryptographic random source, which is the behaviour you want: a silent downgrade produces a token that looks exactly as convincing and is worthless, so the Failure wire is not decoration. Note that UUID populates its output when the node is created, so Id is never blank before the first `New` — the click here replaces it rather than filling it, which matters if you render the link before anyone has clicked.",
+      "demonstrates": [
+        "net.noodl.UUID",
+        "net.noodl.RandomBytes",
+        "String Format",
+        "net.noodl.Log"
+      ],
+      "components": [
+        {
+          "name": "/New Invite",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "New invite",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "new_button",
+                "link_text"
+              ]
+            },
+            {
+              "id": "new_button",
+              "type": "net.noodl.controls.button",
+              "label": "Create invite",
+              "parent": "root"
+            },
+            {
+              "id": "link_text",
+              "type": "Text",
+              "label": "The invite link",
+              "parent": "root"
+            },
+            {
+              "id": "invite_id",
+              "type": "net.noodl.UUID",
+              "label": "The invite's id"
+            },
+            {
+              "id": "invite_secret",
+              "type": "net.noodl.RandomBytes",
+              "label": "32 bytes, URL-safe",
+              "parameters": {
+                "length": 32,
+                "encoding": "base64url"
+              }
+            },
+            {
+              "id": "link",
+              "type": "String Format",
+              "label": "The link",
+              "parameters": {
+                "format": "https://example.com/invite/{id}?t={token}"
+              }
+            },
+            {
+              "id": "no_entropy_log",
+              "type": "net.noodl.Log",
+              "label": "No cryptographic random source",
+              "parameters": {
+                "level": "error",
+                "message": "New invite: no cryptographic random source, so no token was minted. Do not fall back to a guessable one."
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "new_button",
+              "fromProperty": "onClick",
+              "toId": "invite_id",
+              "toProperty": "generate"
+            },
+            {
+              "fromId": "new_button",
+              "fromProperty": "onClick",
+              "toId": "invite_secret",
+              "toProperty": "generate"
+            },
+            {
+              "fromId": "invite_id",
+              "fromProperty": "uuid",
+              "toId": "link",
+              "toProperty": "id"
+            },
+            {
+              "fromId": "invite_secret",
+              "fromProperty": "value",
+              "toId": "link",
+              "toProperty": "token"
+            },
+            {
+              "fromId": "link",
+              "fromProperty": "formatted",
+              "toId": "link_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "invite_secret",
+              "fromProperty": "failure",
+              "toId": "no_entropy_log",
+              "toProperty": "log"
+            },
+            {
+              "fromId": "invite_id",
+              "fromProperty": "failure",
+              "toId": "no_entropy_log",
+              "toProperty": "log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-read-a-pasted-csv",
+      "title": "Let someone paste a CSV and read it into records",
+      "description": "Parse CSV is the node for CSV that ARRIVES at runtime — pasted, uploaded or fetched — as opposed to Static Data, which is for CSV you type into the graph while building. With Has Header ticked the first row names the properties and Items is an array of records; untick it and Items is an array of rows, each an array of cells. The one thing to plan for is that every cell comes out a STRING: there is no type inference, so a column that looks numeric gives you \"42\" and not 42, and a comparison against a number will be false everywhere until you convert. That is a deliberate choice rather than an omission — guessing types is how a column of postcodes loses its leading zeros. Two more behaviours that save a support ticket each: a leading byte-order mark, which is exactly what Excel writes when it saves UTF-8, is stripped so the first column keeps its name rather than becoming a field nothing matches; and Delimiter needs changing to `;` for many European exports, where a comma is the decimal separator. Failure leaves Items and Count holding what they held before, which is why the error is logged rather than ignored — without that wire, a paste that fails to parse looks exactly like a paste that did nothing, and the person tries again with the same file.",
+      "demonstrates": [
+        "net.noodl.ParseCSV",
+        "net.noodl.Log",
+        "String Format",
+        "net.noodl.controls.textinput"
+      ],
+      "components": [
+        {
+          "name": "/Import Members",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Import",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "paste_input",
+                "count_text"
+              ]
+            },
+            {
+              "id": "paste_input",
+              "type": "net.noodl.controls.textinput",
+              "label": "Paste your CSV",
+              "parent": "root"
+            },
+            {
+              "id": "count_text",
+              "type": "Text",
+              "label": "Read 10 rows",
+              "parent": "root"
+            },
+            {
+              "id": "parse",
+              "type": "net.noodl.ParseCSV",
+              "label": "Header row, comma separated",
+              "parameters": {
+                "hasHeader": true,
+                "delimiter": ","
+              }
+            },
+            {
+              "id": "count_label",
+              "type": "String Format",
+              "label": "What was read",
+              "parameters": {
+                "format": "Read {n} rows"
+              }
+            },
+            {
+              "id": "parse_failed_log",
+              "type": "net.noodl.Log",
+              "label": "The paste would not parse",
+              "parameters": {
+                "level": "warning"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "paste_input",
+              "fromProperty": "onTextChanged",
+              "toId": "parse",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "parse",
+              "fromProperty": "count",
+              "toId": "count_label",
+              "toProperty": "n"
+            },
+            {
+              "fromId": "count_label",
+              "fromProperty": "formatted",
+              "toId": "count_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "parse",
+              "fromProperty": "error",
+              "toId": "parse_failed_log",
+              "toProperty": "message"
+            },
+            {
+              "fromId": "parse",
+              "fromProperty": "failure",
+              "toId": "parse_failed_log",
+              "toProperty": "log"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-round-a-date-down-to-the-month",
+      "title": "Group these records by month",
+      "description": "Bubble spells this `Date1 rounded down to month`, and it is really two different questions wearing one phrase. If you want a KEY to group by, that is Date To String — and it must be Date To String rather than Date Parts, because of a difference this example exists to show: Date Parts gives Month as a NUMBER 1-12, so `{year}-{month}` through String Format renders September as `2026-9`, which sorts after `2026-10` as text and quietly scrambles a grouped list. Date To String's `{month}` token is the zero-padded one, so the same key comes out `2026-09` and sorts correctly. The unpadded tokens there are `{m}` and `{d}`; the padded ones are `{month}` and `{date}`. If instead you want to COMPARE two dates rounded down — Bubble's `equals rounded down to month` — do not round at all: Date Compare's Granularity does the truncation internally, so setting it to Month answers 'same month' directly and there is no intermediate value to get wrong. Date Parts is still the right node when you want the fields themselves, and this shows that too: Day Name and ISO Week come off it, and ISO Week is genuinely ISO-8601, so 1 January 2027 is week 53 of 2026 rather than week 1 of 2027. Every field here is read in the host's local zone — on a server, whatever the container's TZ says — so when the zone is part of the answer, format through Date To String's Timezone input instead.",
+      "demonstrates": [
+        "net.noodl.DateParts",
+        "net.noodl.DateCompare",
+        "Date To String",
+        "String Format"
+      ],
+      "components": [
+        {
+          "name": "/Activity Row",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Activity row",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "key_text",
+                "weekday_text",
+                "this_month_text"
+              ]
+            },
+            {
+              "id": "key_text",
+              "type": "Text",
+              "label": "2026-09",
+              "parent": "root"
+            },
+            {
+              "id": "weekday_text",
+              "type": "Text",
+              "label": "Thursday, ISO week 37",
+              "parent": "root"
+            },
+            {
+              "id": "this_month_text",
+              "type": "Text",
+              "label": "This month",
+              "parent": "root"
+            },
+            {
+              "id": "row_inputs",
+              "type": "Component Inputs",
+              "label": "Record in",
+              "ports": [
+                {
+                  "name": "happenedAt",
+                  "plug": "output",
+                  "type": "date"
+                }
+              ]
+            },
+            {
+              "id": "clock",
+              "type": "net.noodl.Now",
+              "label": "Now"
+            },
+            {
+              "id": "month_key",
+              "type": "Date To String",
+              "label": "Sortable month key — {month} is padded",
+              "parameters": {
+                "formatString": "{year}-{month}"
+              }
+            },
+            {
+              "id": "parts",
+              "type": "net.noodl.DateParts",
+              "label": "The fields of the date"
+            },
+            {
+              "id": "weekday_label",
+              "type": "String Format",
+              "label": "Weekday and ISO week",
+              "parameters": {
+                "format": "{dayName}, ISO week {week}"
+              }
+            },
+            {
+              "id": "same_month",
+              "type": "net.noodl.DateCompare",
+              "label": "Same month as now — no rounding needed",
+              "parameters": {
+                "granularity": "month"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "happenedAt",
+              "toId": "month_key",
+              "toProperty": "input"
+            },
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "happenedAt",
+              "toId": "parts",
+              "toProperty": "input"
+            },
+            {
+              "fromId": "row_inputs",
+              "fromProperty": "happenedAt",
+              "toId": "same_month",
+              "toProperty": "a"
+            },
+            {
+              "fromId": "clock",
+              "fromProperty": "date",
+              "toId": "same_month",
+              "toProperty": "b"
+            },
+            {
+              "fromId": "month_key",
+              "fromProperty": "currentValue",
+              "toId": "key_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "parts",
+              "fromProperty": "dayName",
+              "toId": "weekday_label",
+              "toProperty": "dayName"
+            },
+            {
+              "fromId": "parts",
+              "fromProperty": "isoWeek",
+              "toId": "weekday_label",
+              "toProperty": "week"
+            },
+            {
+              "fromId": "weekday_label",
+              "fromProperty": "formatted",
+              "toId": "weekday_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "same_month",
+              "fromProperty": "same",
+              "toId": "this_month_text",
+              "toProperty": "visible"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "bubble-write-a-list-out-as-csv",
+      "title": "Write a list of records out as CSV",
+      "description": "Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10.",
+      "demonstrates": [
+        "net.noodl.ToCSV",
+        "String Format",
+        "Component Inputs",
+        "Text"
+      ],
+      "components": [
+        {
+          "name": "/Export Members",
+          "nodes": [
+            {
+              "id": "root",
+              "type": "Group",
+              "label": "Export",
+              "parameters": {
+                "flexDirection": "column"
+              },
+              "children": [
+                "count_text",
+                "csv_text"
+              ]
+            },
+            {
+              "id": "count_text",
+              "type": "Text",
+              "label": "10 rows ready to export",
+              "parent": "root"
+            },
+            {
+              "id": "csv_text",
+              "type": "Text",
+              "label": "The CSV text",
+              "parent": "root"
+            },
+            {
+              "id": "export_inputs",
+              "type": "Component Inputs",
+              "label": "Records in",
+              "ports": [
+                {
+                  "name": "members",
+                  "plug": "output",
+                  "type": "array"
+                }
+              ]
+            },
+            {
+              "id": "to_csv",
+              "type": "net.noodl.ToCSV",
+              "label": "Three named columns, in this order",
+              "parameters": {
+                "columns": "name,email,signedUpAt",
+                "includeHeader": true,
+                "delimiter": ","
+              }
+            },
+            {
+              "id": "count_label",
+              "type": "String Format",
+              "label": "Row count for the person",
+              "parameters": {
+                "format": "{n} rows ready to export"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "export_inputs",
+              "fromProperty": "members",
+              "toId": "to_csv",
+              "toProperty": "items"
+            },
+            {
+              "fromId": "to_csv",
+              "fromProperty": "text",
+              "toId": "csv_text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "to_csv",
+              "fromProperty": "count",
+              "toId": "count_label",
+              "toProperty": "n"
+            },
+            {
+              "fromId": "count_label",
+              "fromProperty": "formatted",
+              "toId": "count_text",
+              "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-check-a-session-token-from-a-client",
+      "title": "Check a session token that arrived in the request body",
+      "description": "This node is for a token that came in the BODY — from a mobile client, a partner integration, a callback — and not for the caller's own session, which the Request node has already resolved onto `auth` and `userId` before any of this runs. If you find yourself verifying the caller's own token, read those outputs instead; the lookup has already happened. It is also not JWT Verify, and the difference is whose token it is: JWT Verify checks somebody ELSE's JWT against a key you hold, while this asks our own backend about our own `_Session` rows. Token is connection-only and cannot be set as a parameter, which is deliberate — a session token typed into a parameter is a live credential committed to a project file. Nothing is read and nothing is ever written until `Do` fires. `userId` is cleared before every check and is blank on every branch except `done`, so a stale id from a previous call can never be mistaken for this one's answer; `valid` is the value form of the same branch, for wiring into a condition rather than a flow. `unchanged` is the token that is simply not a live session — expired, revoked, never ours — which is an ordinary answer rather than an error, and it is routed to the same Response so the caller gets a clear 'no' instead of a timeout. `failure` is reserved for the lookup itself going wrong.",
+      "demonstrates": [
+        "noodl.cloud.verifysessiontoken",
+        "noodl.cloud.request",
+        "noodl.cloud.response"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Check Client Session",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "sessionToken",
+                "allowNoAuth": true
+              }
+            },
+            {
+              "id": "check",
+              "type": "noodl.cloud.verifysessiontoken",
+              "label": "Is this one of ours, and whose"
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "Valid, and who",
+              "parameters": {
+                "params": "valid,userId,username"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "The lookup failed",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "sessionToken",
+              "toId": "check",
+              "toProperty": "token"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "check",
+              "toProperty": "verify"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "valid",
+              "toId": "ok_response",
+              "toProperty": "valid"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "userId",
+              "toId": "ok_response",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "username",
+              "toId": "ok_response",
+              "toProperty": "username"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "unchanged",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "check",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-check-a-webhook-and-a-token",
+      "title": "Prove an inbound request really came from who it says",
+      "description": "Two different 'is this genuine' questions, side by side, because choosing the wrong one is the common mistake. HMAC is for a webhook: the sender computed a keyed digest of the body with a shared secret and put it in a header, and you recompute it and compare. The input that decides whether this works is Value — it must be the RAW body, byte for byte, exactly as it arrived. Re-serialising the parsed object first produces a different string (key order, whitespace, number formatting) and therefore a different signature, and the symptom is every webhook failing verification with no clue why. JWT Verify is for a token somebody else ISSUED to you, and it refuses any token whose header names an algorithm other than the one you selected — which is what defeats both `alg: none` and algorithm confusion, and is why Algorithm is set here rather than read from the token. Nothing inside a token may be believed before the signature check, so Claims is left alone on failure rather than handed over unchecked; reading claims off a token you have not verified is the same bug as trusting the webhook body. Clock Tolerance exists for issuers whose clock is not quite yours and defaults to 0. Both keys come from Secret nodes by name, so neither credential is in the graph. Note what neither node is for: your own users' sessions. That is Verify Session Token, which asks this backend about its own `_Session` rows.",
+      "demonstrates": [
+        "noodl.cloud.hmac",
+        "noodl.cloud.jwtverify",
+        "noodl.cloud.secret",
+        "noodl.cloud.response"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Verify Inbound",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "rawBody,partnerToken",
+                "allowNoAuth": true
+              }
+            },
+            {
+              "id": "webhook_key",
+              "type": "noodl.cloud.secret",
+              "label": "The webhook's shared secret",
+              "parameters": {
+                "name": "WEBHOOK_SIGNING_SECRET"
+              }
+            },
+            {
+              "id": "partner_key",
+              "type": "noodl.cloud.secret",
+              "label": "The partner's JWT key",
+              "parameters": {
+                "name": "PARTNER_JWT_KEY"
+              }
+            },
+            {
+              "id": "body_signature",
+              "type": "noodl.cloud.hmac",
+              "label": "HMAC of the RAW body",
+              "parameters": {
+                "algorithm": "SHA-256",
+                "encoding": "hex"
+              }
+            },
+            {
+              "id": "check_token",
+              "type": "noodl.cloud.jwtverify",
+              "label": "HS256 only — a token claiming anything else is refused",
+              "parameters": {
+                "algorithm": "HS256",
+                "clockTolerance": 5
+              }
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "What we computed and what verified",
+              "parameters": {
+                "params": "signature,tokenValid"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "webhook_key",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "partner_key",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "rawBody",
+              "toId": "body_signature",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "webhook_key",
+              "fromProperty": "value",
+              "toId": "body_signature",
+              "toProperty": "key"
+            },
+            {
+              "fromId": "webhook_key",
+              "fromProperty": "done",
+              "toId": "body_signature",
+              "toProperty": "sign"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "partnerToken",
+              "toId": "check_token",
+              "toProperty": "token"
+            },
+            {
+              "fromId": "partner_key",
+              "fromProperty": "value",
+              "toId": "check_token",
+              "toProperty": "key"
+            },
+            {
+              "fromId": "partner_key",
+              "fromProperty": "done",
+              "toId": "check_token",
+              "toProperty": "verify"
+            },
+            {
+              "fromId": "body_signature",
+              "fromProperty": "signature",
+              "toId": "ok_response",
+              "toProperty": "signature"
+            },
+            {
+              "fromId": "check_token",
+              "fromProperty": "valid",
+              "toId": "ok_response",
+              "toProperty": "tokenValid"
+            },
+            {
+              "fromId": "check_token",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "body_signature",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "check_token",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "body_signature",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "check_token",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "cloud-create-record-with-upload",
       "title": "Create a record with an uploaded file attachment",
       "description": "The create-with-attachment flow: Open File Picker hands the picked browser file to Upload File, which stores it in cloud storage and outputs a `cloudFile`. Cloud File exposes that file's `url`, previewed in an Image (the cloudfile→image cast). When the upload succeeds, Create Record (NewDbModelProperties) writes a new 'Attachment' record whose properties — including the file — are set on the node's schema-generated inputs.",
@@ -63722,6 +65318,118 @@
               "fromProperty": "result",
               "toId": "saved_text",
               "toProperty": "visible"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-delete-an-account-and-its-sessions",
+      "title": "Delete an account, and the sessions that outlive it",
+      "description": "Deleting a user is two deletions, and the ORDER is the interesting part: the sessions go first, then the `_User` row. Reversed, there would be a window in which live session tokens resolve to a row the backend can no longer fetch — signed-in requests from an account that no longer exists. Delete User does both, in that order, with the authority of the server. `sessionsRevoked` reports how many session rows went, which is also the honest answer to 'was anybody actually signed in as them?' — a number worth returning to the caller and worth logging, because it is the difference between deleting a dormant account and cutting somebody off mid-session. `userId` is required: a blank one is a failure with a sentence saying so, and never a fallback to the caller, because the worst possible default for this node is 'delete whoever asked'. `unchanged` means the account was already gone, which is a success for a delete and is wired that way here — an offboarding job that is run twice should not fail the second time. The account id is taken from the request parameters rather than from the caller's own identity precisely so that this is an admin action on someone else; the permission rule on who may call the function is what makes that safe, and it lives on the function, not in this graph.",
+      "demonstrates": [
+        "noodl.cloud.deleteuser",
+        "noodl.cloud.request",
+        "noodl.cloud.response",
+        "net.noodl.Log"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Delete Account",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "userId"
+              }
+            },
+            {
+              "id": "purge",
+              "type": "noodl.cloud.deleteuser",
+              "label": "Sessions first, then the row"
+            },
+            {
+              "id": "audit_log",
+              "type": "net.noodl.Log",
+              "label": "How many sessions were cut",
+              "parameters": {
+                "level": "info",
+                "message": "Delete Account: the account was removed."
+              }
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "How many sessions went",
+              "parameters": {
+                "params": "sessionsRevoked"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "userId",
+              "toId": "purge",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "purge",
+              "toProperty": "remove"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "sessionsRevoked",
+              "toId": "audit_log",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "done",
+              "toId": "audit_log",
+              "toProperty": "log"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "sessionsRevoked",
+              "toId": "ok_response",
+              "toProperty": "sessionsRevoked"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "unchanged",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "purge",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
             }
           ]
         }
@@ -63984,6 +65692,156 @@
               "fromProperty": "title",
               "toId": "line_text",
               "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-invite-a-team-member",
+      "title": "Create an account and grant it a role, server-side",
+      "description": "Creating the account and granting the privilege are two writes, and they are two nodes because only the second one can fail in a way that matters. Create User writes a `_User` row with the authority of the SERVER rather than of whoever called the function, which is what makes this safe to expose as an admin action and also what makes it not Sign Up: it mints no session and returns no session token, so it cannot hand anyone a logged-in session — it creates an account somebody else will later sign in to. Add User To Role then writes the membership row, and `createRole` is deliberately left OFF here. That default is the point of the node: a mistyped role name that silently got created would be a grant that names nobody, because the permission rule that was meant to reference it still says the old, correctly-spelled name — so the account would look privileged in the admin screen and be refused by every access check. Off, a role that does not exist is a `failure` you can see. `Roles` comes back through the same resolver a permission rule's `role:` check evaluates, so what the function returns is the actual state of the access check rather than a second opinion on it. Both writes have a THIRD outcome, and wiring it is what makes re-inviting somebody harmless. `unchanged` on Create User means an account with that username already exists — and it still publishes `userId`, carrying the EXISTING account — so routing it into the grant makes the whole function idempotent in one wire rather than needing a lookup-first branch. `unchanged` on Add User To Role means they were already in it, which is a success for an invite, so it joins the success Response. Leave neither dangling: an unwired third outcome is a chain that silently stops, and the caller waits for a reply that is never sent. If a project's idiom is that a duplicate invite IS a bug, say so explicitly with Treat Unchanged As rather than by leaving the wire off. The failure Response is not optional decoration: a function whose only exit is the success path returns nothing at all when Create User fails, and the caller sees a timeout rather than 'that username is taken'.",
+      "demonstrates": [
+        "noodl.cloud.createuser",
+        "noodl.cloud.addusertorole",
+        "noodl.cloud.request",
+        "noodl.cloud.response"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Invite Team Member",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "email,role"
+              }
+            },
+            {
+              "id": "new_user",
+              "type": "noodl.cloud.createuser",
+              "label": "Create the account",
+              "parameters": {
+                "emailVerified": false
+              }
+            },
+            {
+              "id": "grant",
+              "type": "noodl.cloud.addusertorole",
+              "label": "Grant the role — createRole stays off on purpose",
+              "parameters": {
+                "createRole": false
+              }
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "Success",
+              "parameters": {
+                "params": "userId,roles"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "email",
+              "toId": "new_user",
+              "toProperty": "username"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "email",
+              "toId": "new_user",
+              "toProperty": "email"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "new_user",
+              "toProperty": "create"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "userId",
+              "toId": "grant",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "role",
+              "toId": "grant",
+              "toProperty": "role"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "done",
+              "toId": "grant",
+              "toProperty": "add"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "userId",
+              "toId": "ok_response",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "grant",
+              "fromProperty": "roles",
+              "toId": "ok_response",
+              "toProperty": "roles"
+            },
+            {
+              "fromId": "grant",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "grant",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "grant",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "new_user",
+              "fromProperty": "unchanged",
+              "toId": "grant",
+              "toProperty": "add"
+            },
+            {
+              "fromId": "grant",
+              "fromProperty": "unchanged",
+              "toId": "ok_response",
+              "toProperty": "send"
             }
           ]
         }
@@ -64504,6 +66362,297 @@
       ]
     },
     {
+      "id": "cloud-revoke-a-role-and-record-it",
+      "title": "Take a privilege away, and write down that you did",
+      "description": "Revoking is the other half of granting, and it has one behaviour that surprises people: removing a role membership does NOT end that user's existing sessions. They stay signed in; what changes is what the access rules let them do on their next request. If the requirement is 'they are out, now', revoking the role is not sufficient on its own. `unchanged` covers two different post-conditions that both mean 'they are not in it' — they were never a member, or the role does not exist at all — and Error says which. Both are wired into the same continuation here, because for a revoke, 'they are not in that role any more' is the goal and it has been reached either way; a function that failed on an already-revoked user would break every retry. Update User then stamps the account with who did it and when, and it is worth being clear why that is a different node from Set User Properties: that one writes to whoever is signed in and fails when nobody is, while this writes to the account whose id you give it with the authority of the server. `userId` is required and a blank one is a failure rather than a fallback to the caller — which is exactly the accident (editing the admin instead of the target) that the split exists to prevent. Get User Roles reads the result back through the same resolver the permission check uses, so the Response tells the screen what the access rules will actually agree to, not what this function believes it just did.",
+      "demonstrates": [
+        "noodl.cloud.removeuserfromrole",
+        "noodl.cloud.updateuser",
+        "noodl.cloud.getuserroles",
+        "noodl.cloud.request"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Revoke Role",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "userId,role,revokedBy"
+              }
+            },
+            {
+              "id": "revoke",
+              "type": "noodl.cloud.removeuserfromrole",
+              "label": "Take the role away"
+            },
+            {
+              "id": "stamp",
+              "type": "noodl.cloud.updateuser",
+              "label": "Record who revoked it",
+              "parameters": {
+                "properties": "revokedBy"
+              }
+            },
+            {
+              "id": "roles_now",
+              "type": "noodl.cloud.getuserroles",
+              "label": "What they are left with"
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "The roles that remain",
+              "parameters": {
+                "params": "roles"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "userId",
+              "toId": "revoke",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "role",
+              "toId": "revoke",
+              "toProperty": "role"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "revoke",
+              "toProperty": "remove"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "userId",
+              "toId": "stamp",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "revokedBy",
+              "toId": "stamp",
+              "toProperty": "revokedBy"
+            },
+            {
+              "fromId": "revoke",
+              "fromProperty": "done",
+              "toId": "stamp",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "revoke",
+              "fromProperty": "unchanged",
+              "toId": "stamp",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "userId",
+              "toId": "roles_now",
+              "toProperty": "userId"
+            },
+            {
+              "fromId": "stamp",
+              "fromProperty": "done",
+              "toId": "roles_now",
+              "toProperty": "read"
+            },
+            {
+              "fromId": "roles_now",
+              "fromProperty": "roles",
+              "toId": "ok_response",
+              "toProperty": "roles"
+            },
+            {
+              "fromId": "roles_now",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "roles_now",
+              "fromProperty": "unchanged",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "revoke",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "stamp",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "roles_now",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "revoke",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "stamp",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "roles_now",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-sign-a-token-with-a-stored-secret",
+      "title": "Mint a signed token for another service to check",
+      "description": "The key never appears in the graph — only the NAME of the secret does, which is what makes this function safe to commit and safe to export. Secret resolves that name against the backend's machine-local `secrets.json` and then against a `NODEGX_SECRET_<NAME>` environment variable, and it reaches the project author's own credentials only: the backend's own webhook, email, auth and admin credentials are not addressable from a graph at all. Signing is cloud-only for the obvious reason — a browser node with a key input would be a browser holding the key. Two things about the token itself. A JWT is SIGNED, NOT ENCRYPTED: everything in Claims is readable by anyone who holds the token, so it carries identifiers and never secrets, and 'nobody will look' is not a security property. And `exp` is stamped only when Expires In is set — `iat` is always stamped, `exp` is not — so a token with no expiry is something you chose rather than something that happened to you. Ten minutes is set here because this token exists to be handed to one other service for one call. The chain is Do-driven throughout: Secret publishes Value on `done`, and only then is there a key to sign with, so the signature is wired to fire from that signal rather than from the request. Failure is a single Response, because a function that cannot read its secret and a function that cannot sign look identical from the caller's side and neither should return a token-shaped blank.",
+      "demonstrates": [
+        "noodl.cloud.secret",
+        "noodl.cloud.jwtsign",
+        "noodl.cloud.request",
+        "noodl.cloud.response"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/Issue Partner Token",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "claims"
+              }
+            },
+            {
+              "id": "signing_key",
+              "type": "noodl.cloud.secret",
+              "label": "Only the NAME is in the graph",
+              "parameters": {
+                "name": "PARTNER_JWT_KEY"
+              }
+            },
+            {
+              "id": "mint",
+              "type": "noodl.cloud.jwtsign",
+              "label": "HS256, expires in ten minutes",
+              "parameters": {
+                "algorithm": "HS256",
+                "expiresIn": 600
+              }
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "The token",
+              "parameters": {
+                "params": "token"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "signing_key",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "signing_key",
+              "fromProperty": "value",
+              "toId": "mint",
+              "toProperty": "key"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "claims",
+              "toId": "mint",
+              "toProperty": "claims"
+            },
+            {
+              "fromId": "signing_key",
+              "fromProperty": "done",
+              "toId": "mint",
+              "toProperty": "sign"
+            },
+            {
+              "fromId": "mint",
+              "fromProperty": "token",
+              "toId": "ok_response",
+              "toProperty": "token"
+            },
+            {
+              "fromId": "mint",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "signing_key",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "mint",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "signing_key",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "mint",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "cloud-sign-private-file-url",
       "title": "Upload a private file and preview it with a signed URL",
       "description": "Open File Picker hands the picked file to Upload File with its `private` input set, so the backend ACLs the upload to its uploader instead of leaving it public. A private file's plain URL is not directly usable in an `<img>` — it 403s for anyone else, including an unauthenticated preview — so on the picker's `done` the resulting `cloudFile` is wired into Sign File URL, whose `sign` signal is fired from the same `done`. Sign File URL mints a short-TTL signed URL (the row-ACL check that gates it is the same one the file's own GET route uses), and THAT url — not the cloudFile's own plain url — feeds the Image's `src`. Re-signing before every render (rather than persisting the signed URL) is the idiomatic use: a stored, expired signature just 403s later.",
@@ -64748,6 +66897,126 @@
               "fromProperty": "reference",
               "toId": "reference_text",
               "toProperty": "text"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cloud-who-is-in-this-role",
+      "title": "Show the member list for a role, a page at a time",
+      "description": "Get User Roles answers 'which roles is this user in'. List Users In Role answers the other direction — 'who is in this role' — and that direction is the one an ordinary membership screen needs. Both walk the same junction, so neither can disagree with what a permission rule's `role:` check would say. Paging is done with Limit and Skip rather than by fetching everything and slicing in the browser, because the member list of a role is exactly the collection that is small in development and large in production; Skip is computed from the page number in an Expression so the arithmetic lives in one place. `Total` is the count for the WHOLE role, not the page, which is what a pager needs to know how many pages there are — a function that returns only the rows cannot render '3 of 47'. `unchanged` fires instead of `done` when the role is empty or does not exist, and it is wired to the same Response here on purpose: an empty member list is a perfectly good answer to send back, and leaving that outcome dangling would make a brand-new role look like a broken function to the caller. Read-only throughout — nothing on this path writes, so it is safe to call on every render of the screen.",
+      "demonstrates": [
+        "noodl.cloud.listusersinrole",
+        "noodl.cloud.request",
+        "noodl.cloud.response",
+        "Expression"
+      ],
+      "components": [
+        {
+          "name": "/Cloud Functions/List Role Members",
+          "nodes": [
+            {
+              "id": "fn_request",
+              "type": "noodl.cloud.request",
+              "label": "Request",
+              "parameters": {
+                "params": "role,page"
+              }
+            },
+            {
+              "id": "page_offset",
+              "type": "Expression",
+              "label": "Page number to Skip",
+              "parameters": {
+                "expression": "Math.max(0, Number(page) || 0) * 20"
+              }
+            },
+            {
+              "id": "members",
+              "type": "noodl.cloud.listusersinrole",
+              "label": "Twenty at a time",
+              "parameters": {
+                "limit": 20
+              }
+            },
+            {
+              "id": "ok_response",
+              "type": "noodl.cloud.response",
+              "label": "The page, and the total",
+              "parameters": {
+                "params": "users,total"
+              }
+            },
+            {
+              "id": "fail_response",
+              "type": "noodl.cloud.response",
+              "label": "Failure",
+              "parameters": {
+                "status": "failure"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "fn_request",
+              "fromProperty": "page",
+              "toId": "page_offset",
+              "toProperty": "page"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "role",
+              "toId": "members",
+              "toProperty": "role"
+            },
+            {
+              "fromId": "page_offset",
+              "fromProperty": "asNumber",
+              "toId": "members",
+              "toProperty": "skip"
+            },
+            {
+              "fromId": "fn_request",
+              "fromProperty": "receive",
+              "toId": "members",
+              "toProperty": "read"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "users",
+              "toId": "ok_response",
+              "toProperty": "users"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "total",
+              "toId": "ok_response",
+              "toProperty": "total"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "done",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "unchanged",
+              "toId": "ok_response",
+              "toProperty": "send"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "error",
+              "toId": "fail_response",
+              "toProperty": "errorMessage"
+            },
+            {
+              "fromId": "members",
+              "fromProperty": "failure",
+              "toId": "fail_response",
+              "toProperty": "send"
             }
           ]
         }

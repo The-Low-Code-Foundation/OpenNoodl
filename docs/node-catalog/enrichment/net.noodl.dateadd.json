@@ -11,7 +11,7 @@
     "changed": "Fires after Result has been recomputed, whichever input caused it.",
     "failure": "Invalid Date — fires when a date arrived that could not be read. It does not fire while Date is simply unset."
   },
-  "examples": [],
+  "examples": ["bubble-how-many-days-until"],
   "patterns": [
     "Now Date → Date Add (+14 days) → Create Record: a trial end date computed on the server."
   ],

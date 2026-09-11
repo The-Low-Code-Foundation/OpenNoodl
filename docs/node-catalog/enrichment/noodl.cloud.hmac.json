@@ -14,7 +14,7 @@
     "failure": "Fires when the signature could not be computed — most often no Key.",
     "error": "Why no signature was produced. It names the problem, never the key."
   },
-  "examples": [],
+  "examples": ["cloud-check-a-webhook-and-a-token"],
   "patterns": [
     "Secret Done → HMAC Do, with Value wired from the Request node's raw body: the standard webhook-verification shape."
   ],

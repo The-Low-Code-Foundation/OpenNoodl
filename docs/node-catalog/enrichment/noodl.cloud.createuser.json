@@ -19,7 +19,7 @@
     "treatUnchangedAs": "Edit-only enum; set it to Failure in a project whose idiom is that a duplicate signup is a bug."
   },
   "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set is derived from that parameter alone — nothing is discovered from the backend's `_User` schema, and no editor connection or running backend is involved — so an authoring tool can compute the port list from the project file exactly as the editor does. Names are de-duplicated and blanks dropped. A `prop-` name the backend refuses (objectId, createdAt, updatedAt, ACL, password, sessionToken, or anything starting with `_`) still mints a port; the refusal happens at run time, on the `failure` branch, with the key named.",
-  "examples": [],
+  "examples": ["cloud-invite-a-team-member"],
   "patterns": [
     "Request `receive` → Create User `create`, with the Request node's parameter outputs wired into `username` and `password`: the ordinary shape of a server-side provisioning function.",
     "Wire `unchanged` to the same Response as `done` when the function's job is 'make sure this account exists'. `userId` is correct on both branches.",

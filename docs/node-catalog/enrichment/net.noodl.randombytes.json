@@ -12,7 +12,7 @@
     "failure": "Fires when there is no cryptographic random source, or Length is out of range.",
     "error": "Why no bytes were produced."
   },
-  "examples": [],
+  "examples": ["bubble-mint-an-id-and-an-invite-token"],
   "patterns": [
     "New → Done → store or send. The value is replaced on every New, so read it from the Done path rather than later."
   ],

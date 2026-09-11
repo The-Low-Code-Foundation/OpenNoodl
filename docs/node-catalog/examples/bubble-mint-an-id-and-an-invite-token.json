@@ -1,0 +1,53 @@
+{
+  "id": "bubble-mint-an-id-and-an-invite-token",
+  "title": "Mint an invite link nobody can guess",
+  "description": "Two nodes that look interchangeable and are not. UUID gives a version-4 identifier — 36 characters, 122 random bits — and it is the right thing for an id you will store, log and put in a URL path, because it is a recognised format that other systems already know how to handle. Random Bytes gives raw entropy rendered as text, and it is the right thing for the SECRET half, because you choose how much of it there is. Neither is Unique Id: that node is 10 characters out of `Math.random()`, which is correct for keying a rendered list and wrong for anything an attacker might try to guess. Length counts BYTES, not characters — 32 bytes is 64 hex characters, or 43 in base64url, which is the encoding chosen here because it is the one that survives being pasted into a URL without escaping. Both nodes fail loudly rather than falling back to `Math.random()` when there is no cryptographic random source, which is the behaviour you want: a silent downgrade produces a token that looks exactly as convincing and is worthless, so the Failure wire is not decoration. Note that UUID populates its output when the node is created, so Id is never blank before the first `New` — the click here replaces it rather than filling it, which matters if you render the link before anyone has clicked.",
+  "demonstrates": ["net.noodl.UUID", "net.noodl.RandomBytes", "String Format", "net.noodl.Log"],
+  "components": [
+    {
+      "name": "/New Invite",
+      "nodes": [
+        {
+          "id": "root",
+          "type": "Group",
+          "label": "New invite",
+          "parameters": { "flexDirection": "column" },
+          "children": ["new_button", "link_text"]
+        },
+        { "id": "new_button", "type": "net.noodl.controls.button", "label": "Create invite", "parent": "root" },
+        { "id": "link_text", "type": "Text", "label": "The invite link", "parent": "root" },
+        { "id": "invite_id", "type": "net.noodl.UUID", "label": "The invite's id" },
+        {
+          "id": "invite_secret",
+          "type": "net.noodl.RandomBytes",
+          "label": "32 bytes, URL-safe",
+          "parameters": { "length": 32, "encoding": "base64url" }
+        },
+        {
+          "id": "link",
+          "type": "String Format",
+          "label": "The link",
+          "parameters": { "format": "https://example.com/invite/{id}?t={token}" }
+        },
+        {
+          "id": "no_entropy_log",
+          "type": "net.noodl.Log",
+          "label": "No cryptographic random source",
+          "parameters": {
+            "level": "error",
+            "message": "New invite: no cryptographic random source, so no token was minted. Do not fall back to a guessable one."
+          }
+        }
+      ],
+      "connections": [
+        { "fromId": "new_button", "fromProperty": "onClick", "toId": "invite_id", "toProperty": "generate" },
+        { "fromId": "new_button", "fromProperty": "onClick", "toId": "invite_secret", "toProperty": "generate" },
+        { "fromId": "invite_id", "fromProperty": "uuid", "toId": "link", "toProperty": "id" },
+        { "fromId": "invite_secret", "fromProperty": "value", "toId": "link", "toProperty": "token" },
+        { "fromId": "link", "fromProperty": "formatted", "toId": "link_text", "toProperty": "text" },
+        { "fromId": "invite_secret", "fromProperty": "failure", "toId": "no_entropy_log", "toProperty": "log" },
+        { "fromId": "invite_id", "fromProperty": "failure", "toId": "no_entropy_log", "toProperty": "log" }
+      ]
+    }
+  ]
+}

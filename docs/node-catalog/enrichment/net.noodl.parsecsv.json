@@ -13,7 +13,7 @@
     "failure": "Fires when the CSV could not be parsed, leaving Items and Count as they were.",
     "error": "Why the parse failed, naming the line it gave up on. Empty until a parse fails."
   },
-  "examples": [],
+  "examples": ["bubble-read-a-pasted-csv"],
   "patterns": [
     "Request `pm-csv` → Parse CSV `text`; Parse CSV `items` → Array Filter → To CSV → Response: the whole 'someone sent us a spreadsheet' shape, with no Function node.",
     "Wire `failure` somewhere that answers the caller. A function whose only wired path is the happy one hangs forever when the file is malformed (CWF-018)."

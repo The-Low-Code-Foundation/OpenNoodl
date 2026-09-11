@@ -14,7 +14,7 @@
     "completed": "Signal; fires after every attempt, whatever the outcome.",
     "error": "Value; why the last attempt failed."
   },
-  "examples": [],
+  "examples": ["cloud-revoke-a-role-and-record-it"],
   "patterns": [
     "Read this after Add User To Role or Remove User From Role to confirm the membership actually changed, rather than trusting the mutation's own Done — useful when a function's response needs to report the account's current role set, not just that one operation succeeded."
   ],

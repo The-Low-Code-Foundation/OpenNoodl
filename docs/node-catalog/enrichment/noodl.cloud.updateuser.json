@@ -15,7 +15,7 @@
     "error": "Value; why the last write failed. It never contains a password or a hash."
   },
   "runtimeBehavior": "Every name listed in the `properties` parameter mints one input port called `prop-<name>`, in the Properties group, typed `*`. The set comes from that parameter alone — nothing is read from the backend's `_User` schema and no editor connection is involved — so an authoring tool can derive the port list from the project file. Names are de-duplicated and blanks dropped; a refused name still mints a port and fails at run time with the key named.",
-  "examples": [],
+  "examples": ["cloud-revoke-a-role-and-record-it"],
   "patterns": [
     "Request `receive` → Update User `store`, with the target's id arriving as a request parameter: the shape of every 'admin acts on account X' function.",
     "Wire `sessionsRevoked` into the response when the function resets a password, so the caller knows the user was signed out everywhere."

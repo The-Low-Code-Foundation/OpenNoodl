@@ -18,7 +18,7 @@
     "completed": "Signal; fires after every attempt, whatever the outcome.",
     "error": "Value; why the last attempt failed."
   },
-  "examples": [],
+  "examples": ["cloud-who-is-in-this-role"],
   "patterns": [
     "Put this behind a cloud function whose call rule names the role that may see the roster — a member list is other people's account records, and a cloud function runs as system, so the function's own permission rule is the only thing deciding who may read it.",
     "Page a large role by wiring Skip from a page counter and comparing Total against the running count of rows already shown, rather than assuming one call returned everybody."

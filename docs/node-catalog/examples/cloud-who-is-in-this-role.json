@@ -1,0 +1,45 @@
+{
+  "id": "cloud-who-is-in-this-role",
+  "title": "Show the member list for a role, a page at a time",
+  "description": "Get User Roles answers 'which roles is this user in'. List Users In Role answers the other direction — 'who is in this role' — and that direction is the one an ordinary membership screen needs. Both walk the same junction, so neither can disagree with what a permission rule's `role:` check would say. Paging is done with Limit and Skip rather than by fetching everything and slicing in the browser, because the member list of a role is exactly the collection that is small in development and large in production; Skip is computed from the page number in an Expression so the arithmetic lives in one place. `Total` is the count for the WHOLE role, not the page, which is what a pager needs to know how many pages there are — a function that returns only the rows cannot render '3 of 47'. `unchanged` fires instead of `done` when the role is empty or does not exist, and it is wired to the same Response here on purpose: an empty member list is a perfectly good answer to send back, and leaving that outcome dangling would make a brand-new role look like a broken function to the caller. Read-only throughout — nothing on this path writes, so it is safe to call on every render of the screen.",
+  "demonstrates": ["noodl.cloud.listusersinrole", "noodl.cloud.request", "noodl.cloud.response", "Expression"],
+  "components": [
+    {
+      "name": "/Cloud Functions/List Role Members",
+      "nodes": [
+        { "id": "fn_request", "type": "noodl.cloud.request", "label": "Request", "parameters": { "params": "role,page" } },
+        {
+          "id": "page_offset",
+          "type": "Expression",
+          "label": "Page number to Skip",
+          "parameters": { "expression": "Math.max(0, Number(page) || 0) * 20" }
+        },
+        {
+          "id": "members",
+          "type": "noodl.cloud.listusersinrole",
+          "label": "Twenty at a time",
+          "parameters": { "limit": 20 }
+        },
+        {
+          "id": "ok_response",
+          "type": "noodl.cloud.response",
+          "label": "The page, and the total",
+          "parameters": { "params": "users,total" }
+        },
+        { "id": "fail_response", "type": "noodl.cloud.response", "label": "Failure", "parameters": { "status": "failure" } }
+      ],
+      "connections": [
+        { "fromId": "fn_request", "fromProperty": "page", "toId": "page_offset", "toProperty": "page" },
+        { "fromId": "fn_request", "fromProperty": "role", "toId": "members", "toProperty": "role" },
+        { "fromId": "page_offset", "fromProperty": "asNumber", "toId": "members", "toProperty": "skip" },
+        { "fromId": "fn_request", "fromProperty": "receive", "toId": "members", "toProperty": "read" },
+        { "fromId": "members", "fromProperty": "users", "toId": "ok_response", "toProperty": "users" },
+        { "fromId": "members", "fromProperty": "total", "toId": "ok_response", "toProperty": "total" },
+        { "fromId": "members", "fromProperty": "done", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "members", "fromProperty": "unchanged", "toId": "ok_response", "toProperty": "send" },
+        { "fromId": "members", "fromProperty": "error", "toId": "fail_response", "toProperty": "errorMessage" },
+        { "fromId": "members", "fromProperty": "failure", "toId": "fail_response", "toProperty": "send" }
+      ]
+    }
+  ]
+}

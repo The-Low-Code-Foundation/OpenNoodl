@@ -12,7 +12,7 @@
     "count": "How many data rows were written, not counting the header row.",
     "changed": "Fires once CSV holds the freshly written text."
   },
-  "examples": [],
+  "examples": ["bubble-write-a-list-out-as-csv"],
   "patterns": [
     "Query Records `items` → To CSV `items`; To CSV `text` → Response `pm-csv`: an export endpoint in three nodes.",
     "Parse CSV → Array Filter → To CSV: read, narrow, write back. The round trip is exact, including cells containing commas, quotes and newlines."
