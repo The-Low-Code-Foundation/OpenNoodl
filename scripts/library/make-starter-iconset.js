@@ -50,6 +50,11 @@ const TARGET_DIR = path.join(REPO_ROOT, 'packages/noodl-editor/src/assets/starte
 /**
  * The starter set. Grouped for the reader; flattened and sorted on the way out so the generated
  * manifest has a stable order regardless of how this list is edited.
+ *
+ * This list is the ONLY place a glyph is added. Editing the generated manifest instead leaves
+ * `--check` red and the next regenerate DELETES the glyph again — which is how icon-inbox,
+ * icon-recycle and icon-sprout (VIB-007, 03c327c84) came to sit in the shipped manifest and not
+ * here, and why the gate had been red ever since.
  */
 const CURATED = {
   navigation: [
@@ -85,7 +90,8 @@ const CURATED = {
   people: [
     'icon-user', 'icon-users', 'icon-user-plus', 'icon-user-check', 'icon-user-x',
     'icon-user-circle-2', 'icon-contact', 'icon-at-sign', 'icon-mail', 'icon-mail-open',
-    'icon-message-circle', 'icon-message-square', 'icon-phone', 'icon-phone-call', 'icon-video-off'
+    'icon-message-circle', 'icon-message-square', 'icon-phone', 'icon-phone-call', 'icon-video-off',
+    'icon-inbox'
   ],
   commerce: [
     'icon-shopping-cart', 'icon-shopping-bag', 'icon-credit-card', 'icon-wallet', 'icon-receipt',
@@ -115,7 +121,8 @@ const CURATED = {
     'icon-sun', 'icon-moon', 'icon-cloud-sun', 'icon-palette', 'icon-brush', 'icon-sparkles',
     'icon-zap', 'icon-flame', 'icon-lightbulb', 'icon-key', 'icon-wrench', 'icon-hammer',
     'icon-puzzle', 'icon-rocket', 'icon-award', 'icon-trophy', 'icon-target', 'icon-leaf',
-    'icon-coffee', 'icon-smile', 'icon-frown', 'icon-thermometer', 'icon-scale', 'icon-anchor'
+    'icon-coffee', 'icon-smile', 'icon-frown', 'icon-thermometer', 'icon-scale', 'icon-anchor',
+    'icon-recycle', 'icon-sprout'
   ]
 };
 

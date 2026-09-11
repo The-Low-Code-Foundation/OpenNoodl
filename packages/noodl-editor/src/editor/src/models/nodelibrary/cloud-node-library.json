@@ -1075,6 +1075,7 @@
     {
       "name": "DbModel2",
       "displayNodeName": "Record",
+      "wireDeclaredPortPrefix": "prop-",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/record",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/record-short.md",
       "category": "Cloud Services",
@@ -1251,6 +1252,7 @@
     {
       "name": "SetDbModelProperties",
       "displayNodeName": "Update Record",
+      "wireDeclaredPortPrefix": "prop-",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/set-record-properties-short.md",
       "category": "Data",
@@ -1612,6 +1614,7 @@
     {
       "name": "NewDbModelProperties",
       "displayNodeName": "Create Record",
+      "wireDeclaredPortPrefix": "prop-",
       "docs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record",
       "shortDocs": "https://docs.noodl.net/nodes/data/cloud-data/create-new-record-short.md",
       "category": "Data",
@@ -4335,7 +4338,7 @@
           "plug": "output",
           "group": "Booleans",
           "displayName": "Is True",
-          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test"
+          "description": "Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test. If Condition is a constant, every test pushes the same value — a mounted gate wired that way only ever turns on; a Switch is the two-way shape"
         },
         {
           "name": "isfalse",
@@ -4457,7 +4460,7 @@
           "plug": "input",
           "group": "Values",
           "displayName": "Format",
-          "description": "Template in which {year} {yearShort} {month} {monthShort} {date} {hours} {minutes} {seconds} are replaced and everything else is copied through",
+          "description": "Template in which these tokens are replaced and everything else is copied through. Date: {date} 09, {d} 9, {ordinal} 9th. Month: {month} 09, {m} 9, {monthShort} Sep, {monthName} September. Year: {year} 2026, {yearShort} 26. Weekday: {dayName} Thursday, {dayShort} Thu. Time: {hours} 15, {h} 15, {hours12} 03, {h12} 3, {minutes} 05, {min} 5, {seconds} 07, {s} 7, {ampm} pm, {AMPM} PM. Names follow Locale; {ordinal} is English",
           "default": "{year}-{month}-{date}"
         },
         {
@@ -4467,6 +4470,15 @@
           "group": "Values",
           "displayName": "Timezone",
           "description": "IANA zone name to render in, such as Europe/London or America/New_York. Leave empty for the host machine's zone — which on a server is whatever the container says, and is the usual reason a date is an hour out in production but right on your laptop",
+          "default": ""
+        },
+        {
+          "name": "locale",
+          "type": "string",
+          "plug": "input",
+          "group": "Values",
+          "displayName": "Locale",
+          "description": "BCP 47 language tag for the month and day names — fr-FR, de-DE, ja-JP. Leave empty for English (en-US), which is what every project rendered before this port existed. It does not change the digits, the padding or {ordinal}, only the words",
           "default": ""
         },
         {
@@ -4588,8 +4600,8 @@
           "plug": "input",
           "group": "Values",
           "displayName": "End",
-          "description": "Position to stop before; leave it unset to run to the end of the string, since setting it to 0 yields nothing",
-          "default": 0
+          "description": "Position to stop before; -1, the default, runs to the end of the string, and 0 yields an empty result",
+          "default": -1
         },
         {
           "name": "string",
@@ -5902,7 +5914,7 @@
           "plug": "output",
           "group": "Values",
           "displayName": "Current State",
-          "description": "True while the switch is on"
+          "description": "True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off"
         },
         {
           "name": "switched",
@@ -6265,6 +6277,14 @@
           "group": "Error",
           "displayName": "Error",
           "description": "Why the last read failed; empty until one does"
+        },
+        {
+          "name": "roles",
+          "type": "array",
+          "plug": "output",
+          "group": "General",
+          "displayName": "Roles",
+          "description": "Roles the signed-in user is in, resolved by the server on each session read; empty while nobody is signed in, and not set on backends that do not track roles"
         },
         {
           "name": "username",
@@ -7996,6 +8016,14 @@
           "group": "Request",
           "displayName": "User Id",
           "description": "Id of the user the session token resolved to, and blank for an unauthenticated request"
+        },
+        {
+          "name": "origin",
+          "type": "string",
+          "plug": "output",
+          "group": "Request",
+          "displayName": "Origin",
+          "description": "The address the calling app is served from — its Origin header, or this backend’s own host when the caller sent none. Blank when neither is known (a workflow step has no caller). Caller-supplied like every header: right for links sent back to whoever called, not a proof of where the request came from."
         }
       ]
     },
@@ -9626,6 +9654,152 @@
       ]
     },
     {
+      "name": "noodl.cloud.listusersinrole",
+      "displayNodeName": "List Users In Role",
+      "docs": "https://docs.noodl.net/nodes/cloud-functions/list-users-in-role",
+      "shortDocs": "https://docs.noodl.net/nodes/cloud-functions/list-users-in-role-short.md",
+      "category": "Cloud",
+      "color": "data",
+      "connectionPanel": {
+        "groupPriority": [
+          "General",
+          "Actions",
+          "Members",
+          "Events",
+          "Error"
+        ]
+      },
+      "ports": [
+        {
+          "name": "role",
+          "type": "string",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Role",
+          "description": "Name of the role to list the members of, matching the name a permission rule uses after \"role:\" — letters, digits, underscore and hyphen only"
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Limit",
+          "description": "How many members to return in one call; Total still reports the whole membership, so a clipped page is always visible as one",
+          "default": 100
+        },
+        {
+          "name": "skip",
+          "type": "number",
+          "plug": "input",
+          "group": "General",
+          "displayName": "Skip",
+          "description": "How many members to step over before this page — Skip 100 with Limit 100 is the second page",
+          "default": 0
+        },
+        {
+          "name": "treatUnchangedAs",
+          "type": {
+            "name": "enum",
+            "enums": [
+              {
+                "label": "Unchanged",
+                "value": "unchanged"
+              },
+              {
+                "label": "Done",
+                "value": "done"
+              },
+              {
+                "label": "Failure",
+                "value": "failure"
+              }
+            ],
+            "allowEditOnly": true
+          },
+          "plug": "input",
+          "group": "Advanced",
+          "displayName": "Treat Unchanged as",
+          "description": "What this node reports when the action was valid and there was nothing to do. Unchanged (the default) keeps it a third outcome of its own. Done suits a project whose chains should carry on either way; Failure suits one whose idiom is that a no-op is a bug. Completed fires whatever this is set to.",
+          "default": "unchanged"
+        },
+        {
+          "name": "read",
+          "type": {
+            "name": "signal",
+            "allowConnectionsOnly": true
+          },
+          "plug": "input",
+          "group": "Actions",
+          "displayName": "Do",
+          "description": "Reads the members of the role"
+        },
+        {
+          "name": "users",
+          "type": "array",
+          "plug": "output",
+          "group": "Members",
+          "displayName": "Users",
+          "description": "The member records for this page, shaped exactly like the account record /users/me answers with, so a For Each over them reads the same property names the User node does"
+        },
+        {
+          "name": "userIds",
+          "type": "array",
+          "plug": "output",
+          "group": "Members",
+          "displayName": "User Ids",
+          "description": "Object ids of the members in this page, in the same order as Users"
+        },
+        {
+          "name": "total",
+          "type": "number",
+          "plug": "output",
+          "group": "Members",
+          "displayName": "Total",
+          "description": "How many members the role has in total, before Limit — compare it with the length of Users to know whether there is another page"
+        },
+        {
+          "name": "done",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Done",
+          "description": "Fires once Users and User Ids hold this page of the role membership"
+        },
+        {
+          "name": "completed",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Completed",
+          "description": "Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error"
+        },
+        {
+          "name": "unchanged",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Unchanged",
+          "description": "Fires when the role exists and has no members at all — the \"nobody has joined yet\" branch"
+        },
+        {
+          "name": "failure",
+          "type": "signal",
+          "plug": "output",
+          "group": "Events",
+          "displayName": "Failure",
+          "description": "Fires when the members could not be read — a blank Role, an unusable name, or a role that does not exist"
+        },
+        {
+          "name": "error",
+          "type": "string",
+          "plug": "output",
+          "group": "Error",
+          "displayName": "Error",
+          "description": "Why the last operation could not be performed"
+        }
+      ]
+    },
+    {
       "name": "noodl.cloud.aggregate",
       "displayNodeName": "Aggregate Records",
       "docs": "https://docs.noodl.net/nodes/cloud-functions/cloud-data/aggregate-records",
@@ -10137,7 +10311,8 @@
             "items": [
               "noodl.cloud.addusertorole",
               "noodl.cloud.removeuserfromrole",
-              "noodl.cloud.getuserroles"
+              "noodl.cloud.getuserroles",
+              "noodl.cloud.listusersinrole"
             ]
           }
         ]
