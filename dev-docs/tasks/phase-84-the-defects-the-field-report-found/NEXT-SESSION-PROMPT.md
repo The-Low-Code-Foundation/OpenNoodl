@@ -4,9 +4,26 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
+✅ **SESSION 16 BUILT FLD-015 — 🟢, 4 of 4 applicable ACs, #39 REPLIED (and deliberately left
+OPEN).** A `nodegx-charts` kit — Bar Chart and Sparkline — plus **three holes in `nodegx-export`
+the task file said were not there**. Driven twice: in the real editor's preview AND in an app
+exported, `npm install`ed and `npm run build`t, with **identical bar heights on both sides**.
+Read [FLD-015-WHAT-WAS-BUILT.md](./FLD-015-WHAT-WAS-BUILT.md).
+**Board re-derived from the task FILES: 13 built / 1 partly / 3 never.** Replies **23 sent /
+1 owed (#43) / 14 CLOSED**.
+
+🔴 **#39 STAYS OPEN, on purpose.** It asks for a *first-class* family of four (Bar, Line, Arc,
+Sparkline); we shipped a **kit** with **two**. Closing it would be the overclaim §5 warned against.
+
+🔴 **FOUR of FLD-015's own claims were wrong — the THIRD task running in this phase whose own file
+was wrong in three or more places.** The one that cost most: *"`renderCustom` … emits wired inputs
+as props"* is true of `renderCustom` and false of the export, because **nothing put a binding
+there**. The one that would have shipped a defect: *"add `width` to `WIRED_STYLE_SINKS`, a handful
+of lines"* — the runtime fits the port's `defaultUnit`, which is **`%`**, so the handful of lines
+emits `width: 4` **px** where the runtime draws **4%**. Driven side by side to prove it.
+
 ✅ **SESSION 15 BUILT FLD-005 — 🟢, 5 of 5 ACs, #35 replied and CLOSED.** Two commits
 (`fed588edf` the diagnostic + the drive, `3ab87897e` the thirteen recipes).
-Board now **12 built / 1 partly / 4 never**; replies **22 sent / 2 owed / 14 CLOSED**.
 
 ✅ **AND THEN RICHARD ANSWERED THE LAST THREE RULINGS, so the phase is buildable again.** Session 15
 reported that nothing was ungated; he answered **R2, R3 and R6** on the spot (2026-09-11). 🔴 **THREE
@@ -111,7 +128,7 @@ its reporter's own request). **Nothing in track A is buildable and nothing in it
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
-| FLD-015 | Charts that export | #39 | ⬜ never built — 🔴 **UNGATED, and it owes #39** | ✅ **R2 ✅ 09-11 — A KIT**; ✅ P9 resolved 09-11 |
+| FLD-015 | Charts that export | #39 | 🟢 **BUILT** s16 — 4/4 applicable ACs, driven in the editor AND in the built export · ✅ **replied, STAYS OPEN** (2 of the 4 nodes asked for, and a kit is not in the picker) | — |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
 | FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
@@ -318,14 +335,14 @@ hour.** Session 15 built FLD-005, reported that nothing was left, and Richard an
 R6** in reply. **Three tasks are ungated. Build FLD-015 first** — it is the only one of the three
 that owes a reply, and #39 is one of the two the phase's end condition is waiting on.
 
-1. 🔴 **FLD-015 — charts, AS A KIT** (R2). Ranked first because it is the only ungated task that
-   moves the reply gate. ⚠️ **The reply to #39 owes the cost of the answer, not just the fix**: a
-   kit is not in the picker by default, so *"there is no chart primitive"* stays true for anyone who
-   does not install it. Do not tell that reporter charts are done.
-2. **FLD-003 — the Advanced Columns prefab** (R3, as Richard originally proposed). #22 is replied
-   and open; this is the half that closes it.
+1. ✅ **FLD-015 — DONE, session 16.** 🟢 4/4 applicable ACs, #39 replied and left open. The reply
+   carried the cost, as this section asked: two of four nodes, and a kit is not in the picker.
+2. 🔴 **FLD-003 — the Advanced Columns prefab** (R3, as Richard originally proposed). #22 is
+   replied and open; this is the half that closes it. **Ranked first of what is left.**
 3. **FLD-010 — `session_status` only, no advisory lock** (R6). Smaller than it was scoped, because
    FLD-009 already refuses to clobber. #41 is replied and stays open by its reporter's request.
+   ⚠️ Neither of these two moves the reply gate — **#43 (FLD-014) is the last reply owed**, and it
+   is still gated on P25.
 
 🔴 **Re-derive the rulings before inheriting this** — §1 has been wrong for a day twice, and this
 block is one hour old.
@@ -359,8 +376,8 @@ R4 (FLD-004, and #26's reply) has the most behind it, then R3, then P13.
 shipped in any packaged release. Found by the R5 QA drive, proved pre-existing against
 `/Applications/NodeGX.app`. Not FLD-017's; somebody should take it.
 
-🔴 **Gated and not to be started without the ruling:** FLD-003 (**R3**), FLD-010 (**R6**),
-FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2**).
+🔴 **Gated and not to be started without the ruling:** FLD-014 (**P25 — does not fit the
+budget**). ✅ R3 and R6 are answered, so FLD-003 and FLD-010 are buildable; FLD-015 is built.
 **FLD-016 needs a Linux box, not a ruling** — see §10.
 
 ⚠️ **§8 is where the red CI is, and the list above still puts it first.** Session 13 took four of
@@ -369,7 +386,13 @@ from 58–73 s to 113 s and the macOS runners are the ones that OOMed at 2048 MB
 (`scripts/webpackHeapCeiling.ts`) — **and `aedc51f64` is not pushed**, so there has been no first
 CI run after it to watch. That is item 0.
 
-## 6. 🔴 The reply gate — 22 sent, 2 owed, FOURTEEN closed
+## 6. 🔴 The reply gate — 23 sent, ONE owed (#43), FOURTEEN closed
+
+✅ **Session 16 sent #39** (FLD-015). 🔴 **#43 is the last reply this phase owes, and no build can
+unlock it**: it is FLD-014, gated on **P25**, a token budget with 8 tokens of headroom. So the
+phase's remaining distance to its end condition is **one engineering problem**, not a ruling.
+⚠️ #39 joins the replied-and-deliberately-open pile — it asked for four nodes and got two, as a
+kit. Re-derive the counts with the loop below rather than trusting this line.
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -392,11 +415,13 @@ previous count — that is the point of the loop):**
 **Sent (22):** #1 #5 #9 #12 #13 #14 #15 #21 #22 #25 #26 #27 #29 #30 #32 #33 #34 **#35** #37 #40 #41 #42.
 **Closed (14):** #1 #5 #9 #12 #14 #15 #21 #26 #32 #33 **#35** #37 #40 #42.
 
-**Owed (2): #39 #43.** 🔴 **NEITHER can be unlocked by a build** — #39 = FLD-015 (**R2**), #43 =
-FLD-014 (**P25**), both behind rulings. **Every issue a build could answer has been answered.** The
-phase's remaining distance is two rulings and a Linux box, not code.
+⚠️ **That block is session 15's reading. Session 16 sent #39**, so it is **23 sent** and
+**Owed (1): #43** — re-derive rather than inherit either number.
 
-🔴 **EIGHT issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #41.**
+**Owed (1): #43.** 🔴 **No build unlocks it**: FLD-014, gated on **P25**. The phase's remaining
+distance to its end condition is one token budget and a Linux box.
+
+🔴 **NINE issues stand replied-and-deliberately-open: #13, #22, #25, #27, #29, #30, #34, #39, #41.**
 All the same shape — *the issue asked for two things, one is built, closing it would close the
 other*. Say which half is which, in the reply. ✅ **#40 stopped being one of them in session 12 and
 #42 did in session 11** — that is the pattern, and it is now the phase's main way of closing an

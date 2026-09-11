@@ -1,7 +1,18 @@
 # FLD-015 — Charts that export
 
+🟢 **BUILT 2026-09-11 (s16) — 4 of 4 applicable ACs, driven in the real editor AND in the built
+export.** AC5 does not apply: it was conditional on R2 choosing core nodes and R2 chose a kit.
+
+🔴 **FOUR of this file's own claims are WRONG — read
+[FLD-015-WHAT-WAS-BUILT.md](./FLD-015-WHAT-WAS-BUILT.md) §1 before believing anything below.**
+The headline: §2's *"`renderCustom` … emits wired inputs as props"* is true of `renderCustom` and
+false of the export, because **nothing put a binding there** — the kit route needed three fixes in
+`nodegx-export`, not none. And §3's *"a handful of lines"* for `WIRED_STYLE_SINKS` would have
+shipped a **tenfold** error: the runtime fits the port's `defaultUnit`, which is `%`.
+
 *"the parts of my dashboard that were actually charts were the parts that did not survive export."*
 Gated on **R2**, because the cheap answer and the complete answer are different answers.
+✅ **R2 ANSWERED 2026-09-11 — A KIT.**
 
 ✅ **P9 RESOLVED 2026-09-11 (s13): phase 84 owns `WIRED_STYLE_SINKS`.** Richard, asked directly —
 phase 83's HLS-005 was recorded as owning that table and phase 83 is closed, so the table comes with

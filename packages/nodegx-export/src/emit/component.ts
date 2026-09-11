@@ -1600,6 +1600,9 @@ export function emitComponent(
         return expr.viaState !== undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
+      // FLD-015. A hoisted Static Data constant is a frozen module-scope literal — present from
+      // module load, written by nothing. Must agree with plan.ts maybeUndefinedExpr.
+      case 'static-rows':
       // A list is always an array — the module-scope `collection([])` exists from module load,
       // and both transforms return a fresh array. Must agree with plan.ts maybeUndefinedExpr.
       // EXP-011 §55. A minted read is `?? noArray` / `?? []` at every spelling.
@@ -2012,6 +2015,18 @@ export function emitComponent(
       }
       case 'truthy':
         return exprCode(expr.operand, mode);
+      /**
+       * FLD-015. A Static Data node's rows, read as a value: the hoisted constant by name, the
+       * same name in both modes.
+       *
+       * 🔴 **No `?? []` and no local.** Every other array in this switch needs one or the other
+       * because it is a hook local, a state row or a handle that may not have booted. This one
+       * is `const ROWS = [...]` at module scope in the file doing the reading — `sd.constName`
+       * is minted by the same pass that prints it — so a fallback would be a branch nothing can
+       * take and a local would be an alias for a name already in scope.
+       */
+      case 'static-rows':
+        return expr.constName;
       /**
        * A named array (EXP-011 Tier 1.1). In render it is the `useCollection` local, so the
        * component re-renders when the array changes; in a handler it is `.peek()`, which reads

@@ -1,0 +1,14 @@
+{
+  "label": "Charts",
+  "description": "Bar Chart and Sparkline: two visual nodes that draw from an array. Wire a Static Data node or a query result into Series, name the field that holds the number, and the chart follows the data — in the editor, in a deploy, and in a React export, from one implementation. Every colour and space is a port defaulting to a design token.",
+  "type": "module",
+  "tags": [
+    "UI",
+    "Data",
+    "Custom nodes"
+  ],
+  "icon": "icon.png",
+  "version": "1.0.0",
+  "minEditorVersion": "0.1.0",
+  "runtimeVersion": "2.7.0"
+}

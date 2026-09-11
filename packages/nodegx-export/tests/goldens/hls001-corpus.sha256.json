@@ -145,6 +145,27 @@
     "@notes": "bd16c14055e25127cacfdd7747d40b1e17d804bbd1c441605990bf5714e34a72",
     "@report": "f1936ccaf7d40b41d433369d90c35a665be62d79d1543fc559b91ee0075f125f"
   },
+  "charts": {
+    "EXPORT-REPORT.md": "86e06aaaf4659b904017c7fb7af34976942791bc370255d1822e1cc5a7e108cf",
+    "README.md": "2810337f78661d0ad92210822e2fd4377110d132b738f4d5a5f1ae7cc6588938",
+    "index.html": "e50d75bd366c4935b5307f338a9823fcdfcc7596d3ffc88982a747ef079110aa",
+    "package.json": "2c8b4029a109eb4cbe1e4da309fe52828945d87715e92eab40a72af37690e8d9",
+    "src/App.tsx": "4c325498bb21e3a755517c43c2cb6ff7cdac33ff379edce259bd89453b1d14f2",
+    "src/components/Picked.module.css": "76941de28e342402d9c91f5891812163b3c0154115fd83d3788c483234520e25",
+    "src/components/Picked.tsx": "bde8b6f9589b8e4fee643f1b55db21c1dd5f246455046c8e0bd73a53ae649cc5",
+    "src/kits/NodegxCharts.tsx": "77ca4104459e66248cbab1cf06d103a5c605188041f65c205a83a9c07c5b5bd3",
+    "src/kits/runtime.tsx": "bb2b28d7c5eeb45c10a38aff53cf9583b7efac9cc900f606928409e409fd73fd",
+    "src/main.tsx": "505969740deeb6eafacd9c9f802c287fe2dcbd3a1db237b5ebfcae8696dc4cd8",
+    "src/pages/Home.module.css": "fa1dc8efebd7292f7b4995f349e0c36b037ec16796561a543d800a66c5a12358",
+    "src/pages/Home.tsx": "41e1a3fed7f755643da49fb9b722b28134968a64aba61fb6b0de52701bb7384c",
+    "src/styles/base.css": "03df88b7b74c41cea67d52a0c715a7c329ad3ecd13b8f996566ac957bc62a0f5",
+    "src/styles/tokens.css": "ba8ea00090d7a6e36e4686a58509b2f3110f305ec31b1aa1174dbb34b3a76bb5",
+    "tsconfig.json": "806e550db96d029916e3bb987b52bdd1949070d364935879aa061247e2e68697",
+    "vite.config.ts": "5e32fff72c88e7cc96093232e933c431b6d9e09776df60da3144bd38d3d6625d",
+    "@copies": "e55ae7bad9aee275aba8fbcc55cf78c5f45467023d6fe1bd53a380b56ba85b73",
+    "@notes": "7379d9d051d80cc8ca10a823088a23f0a5fe7772fd7c711c5ce0d100dbeaebfc",
+    "@report": "968d21c72708e27c9f5cc3276b74ebee9ff40bd63805bf28b2e9d614eeb4eb3c"
+  },
   "cheer": {
     "EXPORT-REPORT.md": "5fc34705de281a3cf82cd5fcec49d19506b3b555f910d269a75740d1593b7933",
     "README.md": "b66d8c4f8d920052f186e38aa08b75209aefa1e907b619209d1dc13516eb0027",

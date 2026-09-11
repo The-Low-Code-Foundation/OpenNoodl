@@ -308,8 +308,22 @@ export function tsTypeOf(port: KitPortIR): string {
       return 'number';
     case 'boolean':
       return 'boolean';
+    /**
+     * FLD-015 — `readonly`, and it is the difference between an app that builds and one that
+     * does not.
+     *
+     * The arrays this export can hand a kit port are not all mutable. A hoisted Static Data
+     * node's rows are `readonly Row[]` (`Object.freeze`, by design — the constant is a build-time
+     * literal nothing may write), and `readonly T[]` is not assignable to `T[]`. So a chart wired
+     * to a Static Data node emitted a prop the exported app's own `tsc` rejected, with TS4104
+     * pointing at the generated page rather than at anything the author wrote.
+     *
+     * ⚠️ The widening is at the PROP position, which is the one place it costs nothing: a
+     * component may not write its own props, so nothing legitimate is lost, and every mutable
+     * array this export can produce is assignable to it.
+     */
     case 'array':
-      return 'unknown[]';
+      return 'readonly unknown[]';
     case 'object':
       return 'Record<string, unknown>';
     case 'signal':

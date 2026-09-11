@@ -1,0 +1,86 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f015c000-0000-4000-8000-000000000002",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "page",
+      "type": "Page",
+      "parameters": { "urlPath": "home" },
+      "children": ["shell"]
+    },
+    {
+      "id": "shell",
+      "type": "Group",
+      "label": "Shell",
+      "parent": "page",
+      "children": ["bars", "spark", "oldWayTrack", "readout"]
+    },
+    {
+      "id": "revenue",
+      "type": "Static Data",
+      "label": "Monthly revenue",
+      "parameters": {
+        "type": "json",
+        "json": "[{\"month\":\"Jan\",\"revenue\":32},{\"month\":\"Feb\",\"revenue\":48},{\"month\":\"Mar\",\"revenue\":41},{\"month\":\"Apr\",\"revenue\":67}]"
+      }
+    },
+    {
+      "id": "bars",
+      "type": "nodegx.charts.BarChart",
+      "label": "Revenue by month",
+      "parent": "shell",
+      "parameters": {
+        "valueKey": "revenue",
+        "labelKey": "month",
+        "autoScale": true,
+        "chartHeight": 160,
+        "showValues": true
+      }
+    },
+    {
+      "id": "spark",
+      "type": "nodegx.charts.Sparkline",
+      "label": "Revenue trend",
+      "parent": "shell",
+      "parameters": {
+        "valueKey": "revenue",
+        "chartWidth": 240,
+        "chartHeight": 48
+      }
+    },
+    {
+      "id": "oldWayTrack",
+      "type": "Group",
+      "label": "The old way - a meter track",
+      "parent": "shell",
+      "children": ["oldWayFill"]
+    },
+    {
+      "id": "oldWayFill",
+      "type": "Group",
+      "label": "The old way - the fill whose width is the data",
+      "parent": "oldWayTrack",
+      "parameters": {
+        "backgroundColor": "#3355ff",
+        "sizeMode": "explicit",
+        "width": { "value": 10, "unit": "%" },
+        "height": { "value": 24, "unit": "px" }
+      }
+    },
+    {
+      "id": "readout",
+      "type": "Text",
+      "label": "Selected month",
+      "parent": "shell",
+      "parameters": { "text": "pick a bar" }
+    },
+    {
+      "id": "showPicked",
+      "type": "NavigationShowPopup",
+      "label": "Show Picked",
+      "parameters": { "target": "/Components/Picked" }
+    }
+  ],
+  "visualRoots": ["page"]
+}

@@ -1436,6 +1436,21 @@ export type ValueExpr =
    */
   | { kind: 'collection-get'; collectionName: string }
   /**
+   * FLD-015. A `Static Data` node's `items`, read as a value rather than fed to a repeater —
+   * the hoisted module constant by name.
+   *
+   * 🔴 **Before this existed, `items` had exactly one destination: a `For Each`.** The wire was
+   * matched by target (`toNode.type === 'For Each'`), so an array going anywhere else — a chart
+   * kit's `series`, any custom node with an `array` port — reached no branch at all and left as
+   * *"has no deterministic translation"*. The rows were already hoisted, already typed and
+   * already sitting in the emitted file; nothing could say their name.
+   *
+   * The constant is module scope and frozen at build time, so this reads in every context and is
+   * never undefined — `collection-get`'s answer, for a stronger reason: there is no hook and no
+   * boot value, the array IS the literal.
+   */
+  | { kind: 'static-rows'; nodeId: string; constName: string; rowType: string }
+  /**
    * EXP-011 §55. A `Create New Array`'s array, read through an `Array` node bound to it **by wire** — the
    * handle in the minting component's state row. In render it is the `useCollection` hook local over
    * `<row> ?? noArray`; in a handler `(<row>?.peek() ?? [])`; inside the mint's own Done chain the
@@ -6631,6 +6646,14 @@ function planComponent(
    */
   const usedQueryStateNames = new Set<string>();
   const queryReaders = new Set<string>();
+  /**
+   * FLD-015. Static Data nodes whose `items` a landed read named, so the disposition pass keeps
+   * their constant. `queryReaders` one node type over, and for the identical reason: the
+   * "consumed by a rendered repeater" gate below predates there being any other way to consume
+   * an array, and a node dropped after a read resolved leaves a reference to a name the emitted
+   * file does not declare.
+   */
+  const staticRowsReadIds = new Set<string>();
   const queryPlanOf = (node: NodeIR): QueryPlan => {
     const existing = plan.queries.find((q) => q.nodeId === node.id);
     if (existing !== undefined) return existing;
@@ -8074,11 +8097,25 @@ function planComponent(
     }
     // STATIC-DATA §4.6 — the rows are known at emit, so `count` is a number literal. No new
     // machinery: the runtime's own `count` is `collection.size()` over exactly these rows.
-    if (fromNode.type === 'Static Data' && fromProperty === 'count') {
+    //
+    // FLD-015 — and `items` is the same fact one port over: the constant BY NAME. Until this
+    // arm existed `items` had exactly one destination in this file, a `For Each`'s feed, matched
+    // on the wire's TARGET; an array read into anything else (a chart kit's `series`, any custom
+    // node with an `array` port) matched no branch and left as *"no deterministic translation"*
+    // — about rows that were already hoisted, already typed and already in the emitted file.
+    if (fromNode.type === 'Static Data' && (fromProperty === 'count' || fromProperty === 'items')) {
       const sd = plan.staticData.find((s) => s.nodeId === fromNode.id);
       if (sd === undefined) {
-        ctx.defer = 'the Static Data node it counts deferred';
+        ctx.defer = `the Static Data node it ${fromProperty === 'count' ? 'counts' : 'reads'} deferred`;
         return null;
+      }
+      if (fromProperty === 'items') {
+        // 🔴 Recorded, not just returned. The disposition pass drops a Static Data node no
+        // repeater consumes, and dropping it here would take the constant out from under the
+        // expression this call just handed back — a reference to a name the file no longer
+        // declares, which is a build error rather than a missing feature.
+        staticRowsReadIds.add(fromNode.id);
+        return { kind: 'static-rows', nodeId: fromNode.id, constName: sd.constName, rowType: sd.typeName };
       }
       return { kind: 'literal', value: sd.rows.length };
     }
@@ -9134,6 +9171,10 @@ function planComponent(
         return expr.viaState !== undefined;
       case 'state-get':
         return expr.maybeUndefined === true;
+      // FLD-015. A hoisted Static Data constant is a frozen module-scope literal: it exists from
+      // module load and nothing writes it, so it is never undefined for a stronger reason than
+      // the named arrays below — there is no boot value to be before.
+      case 'static-rows':
       // A list is never undefined: a named array is a module-scope `collection([])` that exists
       // from module load, and both transforms return a fresh array on every run
       // (`Collection.create(...)` in the runtime, `.map`/`.filter` here).
@@ -9488,6 +9529,14 @@ function planComponent(
       case 'list-map':
       case 'list-filter':
         return 'any[]';
+      /**
+       * FLD-015. The rows' OWN interface, not `any[]` — the Static Data hoist already derived a
+       * row type from the authored JSON and emitted it beside the constant, so saying `any[]`
+       * here would throw away a type the file is carrying anyway. The `[]` still matters for the
+       * same reason it does above: the repeater's feed gates on `tsType.endsWith('[]')`.
+       */
+      case 'static-rows':
+        return `${expr.rowType}[]`;
       // EXP-011 §56. A query's rows carry the declared interface, and a filter selects without reshaping.
       case 'query-get':
         return `${expr.typeName}[]`;
@@ -14243,6 +14292,10 @@ function planComponent(
       case 'not':
       case 'truthy':
         return exprValidIn(expr.operand, context, invokedScope);
+      // FLD-015. A frozen module constant reads in every context for the reason below and one
+      // more: it is not a hook, not a row and not a handle, so there is no scope to be wrong in.
+      case 'static-rows':
+        return true;
       // A named array reads in every context — the `useCollection` local in render, `.peek()`
       // in a handler — so, like a store read, it constrains nothing. The transforms are valid
       // wherever their source is.
@@ -17155,7 +17208,14 @@ function planComponent(
       spec !== undefined && connection.fromProperty === spec.output && controlStateVars.has(fromNode.id);
     // STATIC-DATA §4.6 — `count` over rows known at emit, which resolves to a number literal.
     // It rides this pass because it wants exactly the same bindable discipline.
-    const isStaticCountRead = fromNode.type === 'Static Data' && connection.fromProperty === 'count';
+    //
+    // FLD-015 — `items` rides it too, for the reason the port beside it does. ⚠️ **Widened here
+    // AND in `resolveExpr`, which is the pair this file warns about four times over**: a read
+    // taught to `resolveExpr` alone resolves perfectly inside a function no pass calls, and the
+    // wire falls through to Pass 6's catch-all claiming there is no translation for something
+    // this file can translate. Both edits or neither.
+    const isStaticDataRead =
+      fromNode.type === 'Static Data' && (connection.fromProperty === 'count' || connection.fromProperty === 'items');
     // An awaited call's Error into a rendered sink (RECORD-VERBS-TARGET §4a) — the status line.
     // It rides this pass because it is a state read into a bindable sink, exactly like the two
     // above, `stateLandedKeys` included so the verdict sweeps can see the read landed.
@@ -17331,7 +17391,7 @@ function planComponent(
     if (
       !isLatchRead &&
       !isControlRead &&
-      !isStaticCountRead &&
+      !isStaticDataRead &&
       !isRecordErrorRead &&
       !isSessionRead &&
       !isValueVariableRead &&
@@ -17360,7 +17420,43 @@ function planComponent(
     if (!toNode || !rendered.has(toNode.id)) continue; // handler reads resolve at compile; the sweep names the rest
     const contentRole = (CONTENT_PARAMS[toNode.type] ?? {})[connection.toProperty];
     const truthinessSink = connection.toProperty === 'visible' || connection.toProperty === 'mounted';
+    /**
+     * FLD-015. A kit node's DECLARED input port is a sink this export honestly draws:
+     * `renderCustom` walks `plan.bindings` and prints each one as a prop on the generated
+     * wrapper, with its own sink typing and its own refusal note.
+     *
+     * 🔴 **Every `bindable` in this file enumerates DOM sinks, and a custom node has none.**
+     * `CONTENT_PARAMS` is keyed by core node type and `styleSinkOf` consults the catalog — a kit
+     * node is in neither, so every read arriving here for one failed the gate and was reported
+     * as having "no deterministic translation", whatever the source. The port the kit declares
+     * is the only authority on a kit sink, which is what `customSinkIsBindable` already says for
+     * the output side; this is that helper's other half.
+     */
+    const kitSink =
+      plan.roleOf[toNode.id] === 'custom' &&
+      customSinkIsBindable(toNode, connection.toProperty, 'custom', kits) === true;
+    /**
+     * FLD-015 / issues #39 and #23 — a wire into a **dimension** port on a rendered node.
+     *
+     * 🔴 **This admits a sink the emitter deliberately does NOT render, and that is the point.**
+     * `WIRED_STYLE_SINKS` is `opacity` and the two colours; a wired `width` is refused on purpose
+     * (`Layout.size` turns a percentage into `flexGrow` in a row parent, so an inline
+     * `style={{ width }}` would be the wrong value in the commonest case a meter is built in).
+     * What binding it buys is the REPORT: HLS-005's cardinality sweep walks `plan.bindings` for
+     * anything no builder claimed and files a named refusal plus a marker in the emitted file.
+     *
+     * Without this the wire reaches Pass 6's catch-all instead — *"no deterministic translation
+     * in step 5 (deferred to EXP-003)"*, one line in the report, **nothing in the code**. An
+     * author reading the generated page saw a plain `<div>` where their data-driven bar had been,
+     * with no marker to search for. That is #23's silence, reached by a different route than the
+     * one HLS-005 closed: it closed the path for wires that BOUND.
+     */
+    const dimensionSink =
+      (connection.toProperty === 'width' || connection.toProperty === 'height') &&
+      catalog.get(toNode.type)?.inputs?.some((input) => input.name === connection.toProperty) === true;
     const bindable =
+      kitSink ||
+      dimensionSink ||
       truthinessSink ||
       contentRole === 'children' ||
       contentRole === 'attr-not:disabled' ||
@@ -18449,7 +18545,9 @@ function planComponent(
       continue;
     }
     const consumedByRepeater = Object.values(plan.repeaters).some((r) => r.itemsStaticId === node.id);
-    if (!consumedByRepeater) {
+    // FLD-015 — or read as a value by a binding that landed (a kit node's `array` port). The
+    // DbCollection2 clause above is the precedent, and the shape is deliberately the same one.
+    if (!consumedByRepeater && !staticRowsReadIds.has(node.id)) {
       const reason = 'the authored rows are not consumed by a rendered repeater';
       plan.staticData = plan.staticData.filter((s) => s.nodeId !== node.id);
       dispositions[node.id] = { kind: 'deferred', to: 'EXP-003', reason };

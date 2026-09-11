@@ -122,7 +122,18 @@ describe('HLS-001 AC3 — emitApp over the corpus is byte-identical', () => {
     // failure: `status-rail` is issue #23's own table reconstructed as a project, added because
     // the golden's 43 already carried the defect but none of them carried it in the shape the
     // issue describes — one input reaching three sinks of which two survive.
-    expect(corpusProjects().length).toBe(44);
+    //
+    // 44 → 45 on 2026-09-11 (FLD-015), counted the same way: `charts` is issue #39's shape — a
+    // chart kit fed from a Static Data array, beside the same chart built the old way out of a
+    // Group with a wired width. None of the 44 had an array read into anything but a repeater,
+    // which is exactly why the hole was invisible.
+    //
+    // 🔴 **The regenerate was additive and that was MEASURED, not assumed.** The "different
+    // byte" row above was green before the golden was touched, and diffing the two files after
+    // said: one project added, none removed, **zero existing hashes changed**. That is what says
+    // FLD-015's widening of `bindable` and of `Static Data.items` emits nothing new for a project
+    // that had neither.
+    expect(corpusProjects().length).toBe(45);
     expect(Object.keys(golden).sort()).toEqual(corpusProjects());
   });
 

@@ -1,0 +1,6 @@
+{
+  "name": "NodeGX Charts",
+  "main": "index.js",
+  "dependencies": [],
+  "nodeKitTypes": "1.0.0"
+}
