@@ -4,18 +4,24 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
-🔴 **READ §8 BEFORE ANYTHING ELSE.** CI was blind for 34 days, session 10 restored it, and it came
-back with **six red gates**. Session 13 took **four** of them and left three, and none of that is
-FLD work. 🔴 **The phase still has NO ungated FLD task** — every remaining one is behind a ruling
-or a Linux box, and the rulings were re-derived from GitHub on 2026-09-11 with **none answered**.
+🔴 **THE PHASE HAS BUILDABLE WORK AGAIN. Richard answered three things at the end of session 13**
+and two FLD tasks came unblocked with them. **Start with FLD-004.**
 
-🔴 **NOTHING IS PUSHED.** `origin/cline-dev` is at `aedcc4d79` (2026-09-10 20:07) and local is
-**21 commits ahead**. Every reading in §8 that says "CI" was taken on a commit that does not
-contain this phase's last three sessions — including `aedc51f64`'s minification, which §10(c) asks
-someone to watch the first CI run for. **A push is the single highest-value act available**, and it
-is Richard's to authorise.
+| decision | answer, 2026-09-11 | what it unblocks |
+|---|---|---|
+| **R4** — does FLD-004 ship in a patch? | ✅ **YES, 0.2.3** | 🔴 **FLD-004 — the critical path.** It gates FLD-003 (with R3) and owes **#26** its first reply |
+| **P13** — FLD-005 or phase 81's VIB-005? | ✅ **Phase 84 owns it** | 🔴 **FLD-005, fully unblocked** — P13 was its only blocker. Owes **#35**. Phase 81's V1 row now says DUPLICATE |
+| **P9** — FLD-015 or phase 83's HLS-005? | ✅ **Phase 84 owns it** | ⚠️ **FLD-015 is still BLOCKED — R2 gates it.** Only the cheaper of its two blockers moved |
 
-## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13, UNCHANGED by it)
+✅ **PUSHED.** `origin/cline-dev` is at `01e510131` as of 2026-09-11 08:40Z — 23 commits, the first
+push in this phase to carry FLD-011, FLD-017 and session 13's gate fixes. ⚠️ The handoff said "21";
+the real count at push time was 23, because s13's own three commits and a peer's CMP-007 landed
+after that sentence was written. **Re-derive a commit count at the moment you use it.**
+
+🔴 **READ §8 BEFORE STARTING FLD-004.** CI was blind for 34 days, session 10 restored it and it came
+back with **six red gates**; session 13 took **four**. Three remain and none is a command.
+
+## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13)
 
 Seventeen task files, each grepped for its own marker. **TEN built, ONE partly built, six never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
@@ -39,16 +45,18 @@ the `elif` orders them.
 | id | task | issue | state | depends on |
 |---|---|---|---|---|
 | FLD-001 | The Columns node measures itself | #21 | 🟢 **BUILT** `3c13818d` · ✅ **replied + closed** | — |
-| FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built | 🔴 **R4** |
-| FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built | 🔴 **P13 collision** |
+| FLD-004 | A wire into a dimension port is honoured, or refused out loud | #26 | ⬜ never built — 🔴 **BUILD THIS FIRST** | ✅ **R4 ANSWERED 09-11: 0.2.3** |
+| FLD-005 | A column of Groups does not multiply out | #35 | ⬜ never built — **buildable** | ✅ **P13 RESOLVED 09-11: phase 84 owns it** |
 | FLD-006 | Fit view fits | #33 | 🟢 **BUILT** `901280af`, AC1 driven · ✅ **replied + closed** | — |
 | FLD-007 | A lesson step that can be completed | #5 | 🟢 **BUILT** `4068d139` · ✅ **replied + closed** | — |
 | FLD-008 | An aggregation that cannot answer says so | #14 | 🟢 **BUILT** `d1daabb1` · ✅ **replied + closed** | — |
 | FLD-009 | The editor does not overwrite what an agent wrote | #41 | 🟢 **BUILT** `fa227028`, driven · ✅ **replied, issue STAYS OPEN** | — |
 | FLD-012 | The empty-box warning stops crying wolf | #32 | 🟢 **BUILT** `0df984a11`, AC1–AC5 measured · ✅ **replied + closed** | — |
 
-🔴 **Track A is still exhausted except for its two gated tasks.** FLD-004 needs **R4**, FLD-005
-needs **P13**. Do not start either without the ruling.
+✅ **Track A's two gated tasks are BOTH UNBLOCKED as of 2026-09-11** — R4 answered *yes, 0.2.3* and
+P13 resolved *phase 84 owns it*. 🔴 **Track A outranks track B in every ordering decision, so
+FLD-004 then FLD-005 is the order**, and each owes a reply that no build has been able to unlock
+since the phase opened.
 
 **Track B — it costs too much to install and to drive**
 
@@ -60,7 +68,7 @@ needs **P13**. Do not start either without the ruling.
 | FLD-011 | The render report writes to disk and stops sleeping | #40 | 🟢 **BUILT** `c7f5ea794` + `01ea605cc` — 6/6 ACs, `members-area` **53.8s → 6.13s** · ✅ **replied ×2 + CLOSED** | — |
 | FLD-013 | An agent learns what will not translate before it designs | #37 | 🟢 **BUILT** `e51c8c61d`, 5/5 ACs · ✅ **replied + CLOSED** | — |
 | FLD-014 | The MCP surface stops costing a round trip | #43 | ⬜ never built | 🔴 **P25 — does not FIT the budget** |
-| FLD-015 | Charts that export | #39 | ⬜ never built | **R2**, 🔴 **P9 collision** |
+| FLD-015 | Charts that export | #39 | ⬜ never built | 🔴 **R2 still gates it**; ✅ P9 resolved 09-11 (phase 84 owns the table) |
 | FLD-016 | The Linux install works on a current distribution | #29 | 🟡 **PARTLY** `556915fa4` · ✅ **replied, STAYS OPEN** | 🔴 **needs a Linux box** |
 | FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
@@ -68,10 +76,11 @@ needs **P13**. Do not start either without the ruling.
 but **AC1 and AC3 cannot be measured on any machine we have** — see §10. FLD-011 stopped being the
 other one in session 12.
 
-🔴 **There is now NO ungated FLD work left at all.** Every remaining task is behind a ruling
-(FLD-004/R4, FLD-005/P13, FLD-014/P25, FLD-015/R2+P9, FLD-003/R3, FLD-010/R6) or behind a Linux box
-(FLD-016). The next session's first job is therefore §8's red CI or a register row, **not** an FLD
-task — unless a ruling has been answered in the meantime, in which case that ruling's task is the job.
+✅ **That changed on 2026-09-11.** **FLD-004 and FLD-005 are ungated and are the job.** Still gated:
+FLD-003 (**R3**, and FLD-004), FLD-010 (**R6**), FLD-014 (**P25** — 8 tokens of headroom, measured
+again at the end of s13 and unchanged by the peer's CMP-007), FLD-015 (**R2**), FLD-016 (a Linux
+box). 🔴 **Re-derive the rulings before inheriting that list** — it has been wrong for a day twice
+now, and it is two `gh issue view` calls.
 
 ## 2. What session 13 did — four red gates, and THREE of them were a source of truth that moved
 
@@ -263,19 +272,25 @@ New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two rev
 🔴 **The ungated pile is EMPTY. Session 12 took the last item in it.** Every remaining FLD task is
 behind a ruling or a Linux box, so the honest ranking is no longer a ranking of FLD tasks:
 
-0. 🔴 **A PUSH.** 21 commits, three sessions, none of it in CI. Every §8 reading attributed to CI
-   was taken on `aedcc4d79`. This is Richard's call and it costs one command — **ask for it first**,
-   because until it happens no CI claim in this document can be confirmed or refuted.
-1. 🔴 **`lessons:chain:self-test`** — the one remaining red gate a session can actually take.
-   *"A break this gate claims to catch went through it"*: 12 mutations, 2 not caught. It is a gate
-   hole, which means it needs reading, not a regenerate, and this phase has had good luck with
-   those. ✅ **Session 13 cleared the other four**; Lint and Typecheck are §10's decisions.
-2. **Register rows P32 and P34** — both small, both user-visible, both unowned, both proved against a
+0. ✅ **The push is DONE** — `01e510131`, 2026-09-11 08:40Z, 23 commits. Read the CI run it started
+   before anything else; it is the first to contain FLD-011, FLD-017 and s13's four gate fixes, and
+   §10(c)'s minification watch finally has a run to watch. 🔴 **Open the LOG, not the status column** —
+   a ~19s job died before the gates (register P30).
+1. 🔴 **FLD-004 — the critical path, and the first buildable FLD task since session 12.** R4 answered
+   *yes, 0.2.3* on 2026-09-11. It gates FLD-003 and owes **#26** its first reply. Track A outranks
+   track B, so this outranks everything below it.
+2. 🔴 **FLD-005** — P13 resolved the same day, phase 84 owns it, phase 81's V1 row now reads
+   DUPLICATE. Owes **#35**. ⚠️ Do not also build phase 81's V1.
+3. **`lessons:chain:self-test`** — the one remaining red gate a session can take.
+   *"A break this gate claims to catch went through it"*: 12 mutations, 2 not caught. A gate hole,
+   so it needs reading, not a regenerate. ✅ **Session 13 cleared four of the six**; Lint and
+   Typecheck are §10's decisions, and the editor job is the AIX-006 floor.
+4. **Register rows P32 and P34** — both small, both user-visible, both unowned, both proved against a
    shipped artefact rather than argued. P32: the canvas icons have never shipped in any release.
    P34: three images that 404 in `templates/members-area`.
-3. **FLD-010** (#41) — needs **R6**, and R6 can reasonably be answered *no* in public on #41. That is
+5. **FLD-010** (#41) — needs **R6**, and R6 can reasonably be answered *no* in public on #41. That is
    a ruling a session can ask for and then build the same day, which makes it the cheapest FLD task.
-4. **FLD-003** (#22) — needs **R3** and FLD-004.
+6. **FLD-003** (#22) — needs **R3**, and FLD-004 which is now buildable.
 
 🔴 **If a ruling has been answered since this was written, its task outranks all of the above** —
 R4 (FLD-004, and #26's reply) has the most behind it, then R3, then P13.
@@ -418,7 +433,7 @@ not the artefact. Register **P36**.
 - 🔴 `npx jest tests/toolDisclosure.test.ts` in `packages/noodl-mcp` prints the margin on a
   **passing** run. **8,275 of 8,280 — 5 tokens.** Check it BEFORE adding to the MCP surface. P25.
 
-## 9. 🔴 Rulings — TWO down, four still gating, NONE answered since
+## 9. 🔴 Rulings — THREE down, and two ownership collisions resolved; R2/R3/R6 still gating
 
 ✅ **R1 ANSWERED: 0.2.3, not split.** What is *published* is **0.2.2** (2026-09-07) — re-derive per
 issue with `gh release list`.
@@ -430,10 +445,17 @@ Still open: **R2** charts as a kit or core nodes · **R3** the Advanced Columns 
 the units-port fix ship in a patch · **R6** does FLD-010 include the lock (answered
 *"probably not"* in public on #41 — confirm). Full wording in [README.md](./README.md) §2.
 
-🔴 **Re-derived from GitHub 2026-09-11 (s13): NONE of the four has been answered.** #26, #35, #39
-and #43 are all OPEN and the most recent comment on each is our own automated reply. **Do not
-inherit that — re-check it**, because it is the one fact that would change the whole ranking, and
-it is two `gh issue view` calls.
+✅ **R4 ANSWERED 2026-09-11 (s13): YES, FLD-004 ships in 0.2.3.** Richard, asked directly with the
+trade-off stated. ⚠️ The release notes owe a line saying previously-ignored wires now take effect.
+
+✅ **The two ownership COLLISIONS are resolved the same day — phase 84 owns both.** These were never
+rulings in the R-sense; they were *which phase builds it* calls nobody had made. **P13 → FLD-005
+builds here** and phase 81's V1 closes as a duplicate. **P9 → FLD-015 owns `WIRED_STYLE_SINKS`**,
+phase 83 being closed. 🔴 **P9 does NOT unblock FLD-015 — R2 still gates it.**
+
+🔴 **Still open: R2, R3, R6.** Re-derived from GitHub 2026-09-11 — #39 and #43 remain OWED and
+unanswerable by a build; **#26 and #35 became answerable that day.** **Do not inherit this list**;
+it has been a day stale twice, and re-deriving it is two `gh issue view` calls.
 
 🔴 **R4 and P13 are now the phase's whole critical path.** Every remaining FLD task is behind a
 ruling, a collision or a Linux box except FLD-011's second half. **R4 has the most behind it:** it
@@ -441,10 +463,8 @@ gates FLD-004, which in turn gates FLD-003, and it owes #26 a reply.
 
 ## 10. 🔴 Things for Richard
 
-**(0) 🔴 A PUSH — this is the one that blocks everything else in this section.** `origin/cline-dev`
-is at `aedcc4d79` (2026-09-10 20:07); local is **21 commits ahead** across sessions 11, 12 and 13.
-Nothing in FLD-011, FLD-017, or session 13's four gate fixes has ever been seen by CI. (c) below
-asks someone to watch the first CI run after `aedc51f64` — **there has not been one.**
+**(0) ✅ DONE 2026-09-11 — pushed.** `origin/cline-dev` is `01e510131`, 23 commits, the first push
+carrying FLD-011, FLD-017 and s13's gate fixes. (c) below finally has a CI run to watch.
 
 **(a) FLD-016's AC1 and AC3 need a real Linux box, and AC3 has teeth.** Re-enabling Chromium's
 sandbox is a genuine behaviour change on older kernels and under restrictive AppArmor profiles.
@@ -483,21 +503,25 @@ minutes: `npm run build:bundles`, then
 ⚠️ Two stray untracked files sit at the repo root — `-d` and `2026-09-10 15:00`. Not session 11's;
 they look like the fallout of a mis-quoted command. Left alone.
 
-## 11. The end condition has not moved
+## 11. The end condition has not moved — but what BLOCKS it did
 
 The phase closes when the issues are each **fixed and closed, or answered on the thread with the
 measurement that changed our mind**. Read the count off the register's §5, not off README §6's
 "fifteen".
 
-**Twenty sent, four to go, TWELVE closed — and all four remaining are behind a RULING, not a build.**
-🔴 **Which means the phase can no longer be advanced by building.** #26 needs R4, #35 needs P13, #39
-needs R2+P9, #43 needs P25. Session 12 spent the last ungated build there was, and session 13
-confirmed it by re-deriving the board and the rulings before doing anything else.
+**Twenty sent, four to go, TWELVE closed** — re-derived from GitHub 2026-09-11 with the
+case-insensitive loop above, not copied. ✅ **TWO of the four became answerable by a BUILD that day:**
+#26 (FLD-004, R4 answered) and #35 (FLD-005, P13 resolved). #39 needs **R2** and #43 needs the
+**P25** tool-surface rework — 8 tokens of headroom, re-measured at the end of s13 at **8272/8280**
+and unchanged by the peer's CMP-007.
 
-🔴 **So what a session here is actually for, until a ruling lands: the loose work the phase
-accumulated.** Session 13 is the model — it closed four red CI gates, added two register rows, and
-built no FLD task, because there was no FLD task to build. **What is left of that pile:**
-`lessons:chain:self-test` (a gate hole, takeable), P32 and P34 (small, user-visible, unowned), and
-two decisions that are Richard's (§10(b) the tsfixme baseline, and now the AIX-006 floor that keeps
-the editor CI job red forever). When that pile is empty too, say so and stop, rather than inventing
-FLD work behind a ruling.
+🔴 **So the sentence this section carried for two sessions — "the phase can no longer be advanced by
+building" — is FALSE as of 2026-09-11, and it was only ever true because three decisions had not
+been ASKED FOR.** Two of them were not rulings at all, just *which phase owns this*. ✅ **The lesson
+for the next handoff: when the board says every remaining task is blocked, check whether anyone has
+actually put the question to Richard — a blocker nobody has asked about is not a blocker, it is an
+unasked question**, and three of them had been sitting for days.
+
+**The order now: FLD-004, then FLD-005** — track A, and each owes a reply no build could unlock
+before. After those: `lessons:chain:self-test`, then P32/P34. Two decisions remain Richard's
+(§10(b) the tsfixme baseline, and the AIX-006 floor that keeps the editor CI job red forever).

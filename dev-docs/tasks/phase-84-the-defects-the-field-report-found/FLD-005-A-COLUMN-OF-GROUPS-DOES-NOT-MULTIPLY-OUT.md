@@ -3,6 +3,12 @@
 A single-screen dashboard rendered **5231px tall** with **zero validation errors**. The default is
 defensible; the shipped vocabulary that ignores it is not.
 
+✅ **UNBLOCKED 2026-09-11 (s13). P13 was this task's ONLY blocker and it is resolved: phase 84 owns
+it.** Richard, asked directly. This defect is the same one as phase 81's **VIB-005 row V1**, which
+**closes as a duplicate pointing here** — do not build both. 🔴 With FLD-004 also unblocked by R4 the
+same day, this is one of the two buildable FLD tasks the phase has, and it owes
+[#35](https://github.com/The-Low-Code-Foundation/NodeGX/issues/35) its first reply.
+
 ## 1. The person sentence
 
 **Someone stacks five rows in a column using the style recipes the product ships, and the page is

@@ -70,7 +70,9 @@ AC5 (`catalog:merge:check` + the noodl-mcp suite in the gate table) rides along 
 **VIB-013 The Altitude** remains startable in parallel; §2's mapping says it retires M4/M5's ten rows.
 
 🔴 **Three things not to re-litigate**: instruction was measured and rejected as the lever (V17,
-V35); VIB-005 owns V1/V2/V14/V17/V21/V38; and **the poverty family is `warning` on purpose** — V42.
+V35); VIB-005 owns ~~V1~~/V2/V14/V17/V21/V38 — 🔴 **V1 was REASSIGNED to phase 84's FLD-005 on
+2026-09-11** (Richard's call on register P13; same defect, one owner, and #35 goes with it), so do
+**not** build it here; and **the poverty family is `warning` on purpose** — V42.
 
 ## 🔴 Richard has THREE questions waiting, and none blocks building
 

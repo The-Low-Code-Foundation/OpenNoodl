@@ -3,6 +3,11 @@
 *"the parts of my dashboard that were actually charts were the parts that did not survive export."*
 Gated on **R2**, because the cheap answer and the complete answer are different answers.
 
+✅ **P9 RESOLVED 2026-09-11 (s13): phase 84 owns `WIRED_STYLE_SINKS`.** Richard, asked directly —
+phase 83's HLS-005 was recorded as owning that table and phase 83 is closed, so the table comes with
+this task. ⚠️ **That does NOT unblock this task. R2 still gates it**, and P9 was only the cheaper of
+its two blockers.
+
 ## 1. The person sentence
 
 **Someone builds a dashboard with a bar chart fed from a query, exports it to React, and the bars

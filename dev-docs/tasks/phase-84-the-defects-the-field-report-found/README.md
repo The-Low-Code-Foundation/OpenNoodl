@@ -43,11 +43,25 @@ worse than an expensive right one.
 | R1 | ✅ **ANSWERED 2026-09-10 — 0.2.3, not split.** Richard, when authorising the first four issue replies. That number is now in four public comments (#21, #5, #14, #41), so a change of plan has to be announced on those threads. ⚠️ 0.2.3 is the *next* cut only because 0.2.2 was cut on 09-06 and rolled back — re-derive before quoting it again | — |
 | R2 | **Charts: a kit, or core nodes?** (FLD-015) | The kit route exports **today** and is days; core nodes are weeks and duplicate arc maths across runtime and emitter. But a kit is not in the picker by default, so "there is no chart primitive" stays true for anyone who does not install it. Product call, not engineering. |
 | R3 | **The Advanced Columns prefab (FLD-003) — build it, or add ports?** | Richard proposed the prefab himself and argued against "a hundred new fields". Confirm before anyone authors library content. |
-| R4 | **Does FLD-004 ship in a patch release?** | It switches on a value coercion that has been dead for every dynamically registered units port **since the initial commit**. Mostly it makes wrong things right. "Mostly" is the problem. |
+| R4 | ✅ **ANSWERED 2026-09-11 (s13) — YES, it ships in 0.2.3.** Richard, asked directly with the trade-off on the table. The original question stands as the record of what was weighed: *does FLD-004 ship in a patch release?* — it switches on a value coercion dead for every dynamically registered units port **since the initial commit**, so mostly it makes wrong things right, and *"mostly"* was the problem. 🔴 **FLD-004 is therefore UNBLOCKED and is the phase's critical path**: it gates FLD-003 (with R3) and owes [#26](https://github.com/The-Low-Code-Foundation/NodeGX/issues/26) its first reply. ⚠️ Shipping it in a patch means the release notes owe a line saying previously-ignored wires now take effect | — |
 | R5 | ✅ **ANSWERED 2026-09-10 (s11) — IN SCOPE for 0.2.3, with `keep_classnames`/`keep_fnames`.** Richard. Shipped `aedc51f64`. The −35 MB was an estimate; measured, the two renderer bundles go **55,600,724 → 27,036,061 B** and `app.asar` **198,017,608 → 168,143,884 B**. 🔴 The QA burden was overstated: `mode: 'production'` was already set, so tree-shaking and `sideEffects` were live all along and only terser is new; `constructor.name` has **zero** call sites, and terser leaves the `eval(fileContent)` scope in `compilation.ts` unmangled — read off the artefact. QA driven headlessly: **0 uncaught exceptions in either renderer** | — |
 | R6 | **Does FLD-010 include the advisory lock, or only `session_status`?** | The measured answer is that the lock is largely unnecessary once FLD-009 lands — the editor already refuses to clobber. Confirm before building a locking protocol. |
 
 🔴 **DO NOT SCOPE BY TIME** — standing rule from phase 77. Dependency order only. No estimates.
+
+### ✅ The two ownership collisions, resolved 2026-09-11 (s13) — **phase 84 owns both**
+
+Richard, asked directly. These were never rulings in the R-sense; they are *which phase builds it* calls that had been
+sitting unmade and blocking two replies. **The issue and the fix stay in one phase**, at the cost of editing two other
+phases' boards.
+
+- **P13 → FLD-005 builds here.** Phase 81's **VIB-005** row V1 is the same defect; it closes as a duplicate pointing at
+  FLD-005. Do not build both.
+- **P9 → FLD-015 builds here**, and it may edit `WIRED_STYLE_SINKS` (`emit/style.ts:270-274`), which phase 83's
+  **HLS-005** was recorded as owning. Phase 83 is closed; the table comes with the task.
+
+⚠️ **Resolving P9 does NOT unblock FLD-015 — R2 still gates it.** The collision was one of two blockers on that task and
+only the cheaper one has moved. FLD-005, by contrast, had P13 as its **only** blocker and is now fully unblocked.
 
 ## 3. What the re-measurement corrected in the issues
 

@@ -57,7 +57,11 @@ Three separable pieces. Land them in this order, and measure between them.
 - **(b) Stop the `delete`.** A non-conforming value on a units port should **abstain** — keep the
   current prop — per the Empty-Value Contract that `sizeMode.onChange:1159-1161` already implements.
 - **(c) The typo.** `node.ts:137` `type:` → `unit:`. One word, and it **switches on** a coercion
-  that has been dead for every dynamic units port since the initial commit. **R4 gates this.**
+  that has been dead for every dynamic units port since the initial commit. ✅ **R4 ANSWERED
+  2026-09-11: YES, it ships in 0.2.3** (Richard, s13). 🔴 **This task is UNBLOCKED and is the
+  phase's critical path** — it gates FLD-003 (with R3) and owes #26 its first reply. ⚠️ Shipping a
+  coercion fix in a patch means the release notes owe a line saying previously-ignored wires now
+  take effect.
 - Correct the `unitless-dimension` justification comment once (c) lands, or it documents a fiction.
 
 ## 4. Acceptance criteria

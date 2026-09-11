@@ -170,7 +170,7 @@ either copy of the number.
 
 | id | finding | seam | owner | status |
 |---|---|---|---|---|
-| V1 | Un-`sizeMode`d Group in a column = flexGrow:100, eats viewport; door silent | RUNTIME/GATE | VIB-005 | 🔴 open |
+| V1 | Un-`sizeMode`d Group in a column = flexGrow:100, eats viewport; door silent | RUNTIME/GATE | ~~VIB-005~~ → **phase 84 FLD-005** | ✅ **DUPLICATE, reassigned 2026-09-11** — Richard ruled phase 84 owns it (register **P13**). Same defect as [FLD-005](../phase-84-the-defects-the-field-report-found/FLD-005-A-COLUMN-OF-GROUPS-DOES-NOT-MULTIPLY-OUT.md), which also owns issue [#35](https://github.com/The-Low-Code-Foundation/NodeGX/issues/35). 🔴 **Do not build it here.** ⚠️ **V2 is NOT part of this** — the scroll/`clip` half stays with VIB-005 |
 | V2 | Nothing scrolls unless opted in; `clip:true` amputates silently; no scrolling page-ground pattern exists | RUNTIME/VOCABULARY | VIB-005 | 🔴 open |
 | V3 | Members chrome ungated; `Visitor` redirect rides `done` only — fail-open on backend absence | template | VIB-008 | 🔴 open |
 | V4 | Landing page has no state for "query never answered" — first-run renders eyebrow + buttons | template | VIB-008 | 🔴 open |
