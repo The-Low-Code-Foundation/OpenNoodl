@@ -14,7 +14,8 @@
   },
   "runtimeBehavior": "Property inputs are runtime-discovered from the `properties` parameter: each declared name p produces a value input `prop-<p>` (group Property Values) and an edit-only enum `type-<p>` (String/Boolean/Number/Date/Array/Object/Any, default Any). Only names present in `properties` are written on store. Additionally a declared port group hides `modelId` unless `idSource` is 'explicit' (or unset). Static values can be supplied as `prop-<p>` parameters instead of connections. NDA-012: an empty Id (null or an empty string) binds nothing, so `Do` fires `failure` with `set-object-properties/no-object` rather than writing into a process-wide shared record and reporting Done.",
   "examples": [
-    "comp-repeater-set-item-object"
+    "comp-repeater-set-item-object",
+    "community-tiptap-text-editor"
   ],
   "patterns": [
     "Inside a repeater item component: `idSource` = 'foreach', a button's click → `store`: edit the current row's object without passing ids around.",

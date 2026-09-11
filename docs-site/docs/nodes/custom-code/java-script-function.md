@@ -80,6 +80,14 @@ All data/signal ports are runtime-discovered from the script source: the parser 
 
 The Function node (JavaScriptFunction) runs the JavaScript in `functionScript`. Its data ports do not exist until the script mentions them, and they are named with a prefix the script does not use: reading `Inputs.amount` creates the port `in-amount`, assigning `Outputs.formatted = …` creates the port `out-formatted`, and calling `Outputs.done()` creates the signal output `out-done` — this is why the catalog marks them runtime-determined. Note the connections below: they use `in-amount` and `out-formatted`, not the bare names in the script, which are display labels only. The node's own `run` signal is a declared port and stays unprefixed. The script runs when `run` is triggered (or when connected inputs change, if `run` is unconnected). Here a button converts a text amount to a formatted price.
 
+**Turn rows into a file the browser downloads**
+
+Two `JavaScriptFunction` nodes in series and no backend anywhere: the first folds an array of objects into CSV text, the second wraps that text in a `Blob` and hands `URL.createObjectURL` the result, and `External Link` opens it. That URL is the whole trick — it is a real, fetchable address that exists only inside this tab, so the download never leaves the browser and nothing has to be uploaded first. ⚠️ Compare it with `net.noodl.ToCSV` before reusing the conversion half: the built-in node handles quoting and embedded delimiters, which hand-rolled CSV usually does not. The half worth copying is the object-URL download.
+
+**Set the meta tags a link preview reads**
+
+Seventeen nodes that exist because the runtime writes no `<meta>` tags for you: a `JavaScriptFunction` reaches `document.head` and sets title, description, canonical URL, robots, the Open Graph set and the Twitter card, each fed from its own `String` or `States` node so a page can override one without restating the rest. The `Expression` defaulting the URL to `location.href` is what stops a forgotten `og:url` pointing at the wrong page. ⚠️ Nothing here needs a node that does not exist — but nothing here is done for you either, so budget the seventeen nodes.
+
 ## Related nodes
 
 [Expression](./expression.md), [Script](./javascript2.md), [REST](../data/rest2.md), [Run Tasks](../data/run-tasks.md)

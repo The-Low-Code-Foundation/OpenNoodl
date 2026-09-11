@@ -1,0 +1,171 @@
+{
+ "id": "community-tiptap-text-editor-r",
+ "title": "One button component that drives any editor command",
+ "description": "A toolbar has a dozen buttons that differ only in a label, an icon and the name of the command they run \u2014 so this makes them one component with those three as inputs. A `States` node turns the button's type into its label, a `JavaScriptFunction` calls the matching command on the editor instance, and `Component Outputs` reports back whether the mark is currently active so the button can render as pressed. The lesson is not about Tiptap: it is that 'twelve buttons' and 'one button placed twelve times' are the same screen, and only one of them is editable later. \ud83d\udd34 A component parameter arrives ONLY through a `Component Inputs` node whose ports are plugged `output` \u2014 that inversion is what makes this work, and it is the single most common thing to get backwards.",
+ "demonstrates": [
+  "Component Inputs",
+  "Component Outputs",
+  "Group",
+  "JavaScriptFunction",
+  "States",
+  "net.noodl.controls.button"
+ ],
+ "components": [
+  {
+   "name": "Tiptap text editor r",
+   "nodes": [
+    {
+     "id": "button-container",
+     "type": "Group",
+     "label": "Button container",
+     "children": [
+      "dynamic-editor-button"
+     ]
+    },
+    {
+     "id": "dynamic-editor-button",
+     "type": "net.noodl.controls.button",
+     "label": "Dynamic editor button",
+     "parent": "button-container",
+     "parameters": {
+      "label": "Bold"
+     }
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "buttonType",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "editor",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      }
+     ]
+    },
+    {
+     "id": "switch-state-based-on-button-type",
+     "type": "JavaScriptFunction",
+     "label": "Switch state based on button type",
+     "parameters": {
+      "functionScript": "switch (Inputs.buttonType) {\n    case \"bold\":\n        Outputs.bold();\n        break;\n    case \"italics\":\n        Outputs.italics();\n        break;\n}"
+     }
+    },
+    {
+     "id": "define-label-and-function-name",
+     "type": "States",
+     "label": "Define label and function name",
+     "parameters": {
+      "states": "bold,italics,neutral",
+      "values": "buttonLabel,functionName",
+      "useTransitions": false,
+      "type-buttonLabel": "string",
+      "type-functionName": "string",
+      "value-bold-buttonLabel": "Bold",
+      "value-bold-functionName": "toggleBold",
+      "value-italics-buttonLabel": "Italics",
+      "value-italics-functionName": "toggleItalics",
+      "value-neutral-buttonLabel": "null",
+      "value-neutral-functionName": "null"
+     }
+    },
+    {
+     "id": "run-the-editor-function-with-that-name",
+     "type": "JavaScriptFunction",
+     "label": "Run the editor function with that name",
+     "parameters": {
+      "functionScript": "const editor = Inputs.Editor || null;\nconst functionName = Inputs.functionName;\n\nif (!editor) throw new Error('Invalid Editor');\n\nconst functionLookup = {\n  toggleBold: function() {\n    editor.chain().focus().toggleBold().run();\n  },\n  toggleItalics: function() {\n    editor.chain().focus().toggleItalic().run();\n  },\n  // ... add other functions as needed\n};\n\ntry {\n  if (functionLookup[functionName]) {\n    functionLookup[functionName]();\n    Outputs.Success();\n  } else {\n    throw new Error('Invalid function name');\n  }\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}"
+     }
+    },
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "Success",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 1
+      },
+      {
+       "name": "buttonClicked",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 2
+      }
+     ]
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "buttonType",
+     "toId": "switch-state-based-on-button-type",
+     "toProperty": "in-buttonType"
+    },
+    {
+     "fromId": "switch-state-based-on-button-type",
+     "fromProperty": "out-bold",
+     "toId": "define-label-and-function-name",
+     "toProperty": "to-bold"
+    },
+    {
+     "fromId": "switch-state-based-on-button-type",
+     "fromProperty": "out-italics",
+     "toId": "define-label-and-function-name",
+     "toProperty": "to-italics"
+    },
+    {
+     "fromId": "define-label-and-function-name",
+     "fromProperty": "buttonLabel",
+     "toId": "dynamic-editor-button",
+     "toProperty": "label"
+    },
+    {
+     "fromId": "define-label-and-function-name",
+     "fromProperty": "functionName",
+     "toId": "run-the-editor-function-with-that-name",
+     "toProperty": "in-functionName"
+    },
+    {
+     "fromId": "run-the-editor-function-with-that-name",
+     "fromProperty": "out-Success",
+     "toId": "component-outputs",
+     "toProperty": "Success"
+    },
+    {
+     "fromId": "dynamic-editor-button",
+     "fromProperty": "onClick",
+     "toId": "run-the-editor-function-with-that-name",
+     "toProperty": "run"
+    },
+    {
+     "fromId": "dynamic-editor-button",
+     "fromProperty": "onClick",
+     "toId": "component-outputs",
+     "toProperty": "buttonClicked"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "editor",
+     "toId": "run-the-editor-function-with-that-name",
+     "toProperty": "in-Editor"
+    }
+   ]
+  }
+ ]
+}

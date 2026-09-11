@@ -47,6 +47,11 @@ interface ExampleFile {
   id: string;
   title: string;
   demonstrates: string[];
+  /**
+   * COM-003 AC3 — the module-provided node types this example uses, and the module that
+   * registers each one. See {@link verifyModuleDeclaration} for what it buys and what it costs.
+   */
+  requiresModules?: Array<{ module: string; nodes: string[] }>;
   components: Array<{
     name: string;
     nodes: Array<{
@@ -233,6 +238,47 @@ function parameterValueDiagnostics(example: ExampleFile): Diagnostic[] {
   return diagnostics;
 }
 
+const { resolveModuleNodeTypes } = require('./node-catalog/moduleNodeTypes');
+
+/**
+ * COM-003 AC3 — an example may use a node type the catalog cannot carry, IF it says which module
+ * registers it and that module really does.
+ *
+ * ## The hole this closes, and the one it deliberately leaves open
+ *
+ * The generated catalog is **built-ins only** — `catalog.ts` says so and explains why — so every
+ * module-provided type reads as `unknown-node-type`. Under `--strict` that is fatal, which meant
+ * three community graphs using two modules THIS REPO SHIPS (`library/modules/custom-html`,
+ * `library/modules/markdown`) could not land however correct they were. The alternative on the
+ * table was to refuse them and write the reason down; this is the better half of AC3's either/or,
+ * because the types are real and we can prove it.
+ *
+ * 🔴 The resolution itself lives in {@link ../scripts/node-catalog/moduleNodeTypes} because
+ * `catalog:merge` asks the identical question about the identical files and refused the identical
+ * three examples. Two copies of one rule drift while both gates stay green about their own half.
+ *
+ * ⚠️ **What it does NOT buy: any check of the node itself.** Suppressing `unknown-node-type` says
+ * "this type exists"; it says nothing about the node's ports, parameters or wiring, and the
+ * `unknown-type-check-skipped` INFO notices are deliberately LEFT IN PLACE to keep saying so. That
+ * is CN-002's whole point — *"the checks do not soften for a custom node; they do not run"* — and
+ * an example whose module node is wired to a port that does not exist will still pass here. The
+ * honest reading of a declared example is "verified except for its module nodes", and the notices
+ * are the record of which ones.
+ */
+function verifyModuleDeclaration(example: ExampleFile): { declaredTypes: Set<string>; problems: Diagnostic[] } {
+  const component = example.components[0]?.name ?? example.id;
+  const { declaredTypes, problems } = resolveModuleNodeTypes(example);
+  return {
+    declaredTypes: declaredTypes as Set<string>,
+    problems: (problems as string[]).map((message) => ({
+      code: 'unknown-node-type' as Diagnostic['code'],
+      severity: 'error' as const,
+      message,
+      location: { component }
+    }))
+  };
+}
+
 function main(): void {
   const json = process.argv.includes('--json');
   const dirFlag = process.argv.indexOf('--dir');
@@ -267,7 +313,25 @@ function main(): void {
     }
 
     const report = validator.validate(toNormProject(example), { strict: true });
-    const interfaceFindings = [...interfaceDiagnostics(example), ...parameterValueDiagnostics(example)];
+
+    // COM-003 AC3 — drop `unknown-node-type` for types a VERIFIED declaration accounts for, and
+    // recount. The `unknown-type-check-skipped` INFO notices for the same nodes are left standing
+    // on purpose: the type is now known to exist, and its ports are still checked by nothing.
+    const { declaredTypes, problems } = verifyModuleDeclaration(example);
+    if (declaredTypes.size > 0) {
+      const kept = report.diagnostics.filter(
+        (d) => !(d.code === 'unknown-node-type' && d.location.nodeType && declaredTypes.has(d.location.nodeType))
+      );
+      const removed = report.diagnostics.length - kept.length;
+      if (removed > 0) {
+        report.diagnostics = kept;
+        report.summary.errors = kept.filter((d) => d.severity === 'error').length;
+        report.summary.warnings = kept.filter((d) => d.severity === 'warning').length;
+        report.summary.infos = kept.filter((d) => d.severity === 'info').length;
+      }
+    }
+
+    const interfaceFindings = [...interfaceDiagnostics(example), ...parameterValueDiagnostics(example), ...problems];
     const dirty = report.summary.errors > 0 || report.summary.warnings > 0 || interfaceFindings.length > 0;
     if (dirty) {
       failed++;

@@ -93,6 +93,14 @@ States is the interaction state machine: the `states` parameter names the states
 
 The component a page places three times at three sizes, without three components. `size` is a `Component Inputs` port wired straight into `States.currentState` — 🔴 that port is TWO ports sharing one name: a static string **output** that reports the current state, and, once `states` is set, a generated **enum input** that selects one by name. The input is the wire that makes a variant port work, and a chain of `Condition` nodes each setting one property is the same idea written badly. The `values` parameter (`padX,padY,labelSize`) mints one input per state per value (`value-small-padX`) and one output per value, so each state assigns the whole set at once and the graph carries no branch. `showDot` is the other half of a real interface: chrome chosen at the instance, not by making a second component. And the badge publishes `clicked`, so the page can act on a press — a component that only draws is a component the page has to work around.
 
+**Blink a button, and stop cleanly**
+
+A strobe is a good miniature of a hard problem: something that keeps running after the signal that started it, and therefore has to be stopped by something other than the thing that started it. A `Javascript2` node owns the interval, a `Switch` turns it on and off, a `States` node carries the two appearances, and a `Number` makes the period an input instead of a literal. ⚠️ The half people leave out is the reset — stopping an interval without restoring the state leaves the button frozen in whichever half of the blink it happened to be in, which looks like a different bug entirely. This one restores it.
+
+**One button component that drives any editor command**
+
+A toolbar has a dozen buttons that differ only in a label, an icon and the name of the command they run — so this makes them one component with those three as inputs. A `States` node turns the button's type into its label, a `JavaScriptFunction` calls the matching command on the editor instance, and `Component Outputs` reports back whether the mark is currently active so the button can render as pressed. The lesson is not about Tiptap: it is that 'twelve buttons' and 'one button placed twelve times' are the same screen, and only one of them is editable later. 🔴 A component parameter arrives ONLY through a `Component Inputs` node whose ports are plugged `output` — that inversion is what makes this work, and it is the single most common thing to get backwards.
+
 ## Related nodes
 
 [Animate To Value](./net-noodl-animatetovalue.md), [Color Blend](../interpolation/color-blend.md), [Condition](../logic/condition.md), [Switch](../logic/switch.md), [Group](../visual/group.md)

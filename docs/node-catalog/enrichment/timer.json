@@ -12,7 +12,7 @@
     "timerStarted": "Signal; fires when the countdown actually starts (also on each restart).",
     "timerFinished": "Signal; fires once when the countdown completes; suppressed by `stop`."
   },
-  "examples": ["logic-autosave-after-typing"],
+  "examples": ["logic-autosave-after-typing", "community-email-signup-validat", "community-tiptap-text-editor"],
   "patterns": [
     "Value Changed `valueChanged` → `restart`, act on `timerFinished`: debounce — the action runs only after the input has been quiet for `duration` ms.",
     "`timerFinished` → its own `restart`: a simple repeating tick."

@@ -96,6 +96,10 @@ Create New Object (NewModel) makes a fresh client-side object with the property 
 
 Inside a Repeater item component, Repeater Item (For Each Actions) exposes `itemId` — the id of this row's object. Wiring it into Set Object Properties (SetModelProperties) `modelId` makes the write target exactly this row: toggling the checkbox stores `done` on the row's object, and every other node bound to that object updates. The row never needs to know which list it belongs to. The title rides the checkbox's own `label` port (`useLabel` on) rather than a sibling Text, so the words are a real click target that toggles the box.
 
+**A rich-text editor with a toolbar and local drafts**
+
+The larger companion to the single-button component: a `Static Data` node holds the list of toolbar commands, a `For Each` draws one button per entry, and the editor itself is mounted by a `JavaScriptFunction` onto a `Group`'s element. Two details are worth more than the editor. The draft is saved to `localStorage` on a `Timer` and read back on mount, which is the whole of 'don't lose my work' and costs two function nodes. And `Model2` plus `SetModelProperties` keep the document in the project's own data model rather than only inside the third-party editor, so something other than the editor can read what was typed. ⚠️ The toolbar is driven by data, so adding a command is a row in the `Static Data` node — not a new button.
+
 ## Related nodes
 
 [Create New Object](./new-model.md), [Set Object Properties](./set-model-properties.md), [Array](./collection2.md), [Record](../cloud-services/db-model2.md), [Component Object](../component-utilities/net-noodl-component-object.md)

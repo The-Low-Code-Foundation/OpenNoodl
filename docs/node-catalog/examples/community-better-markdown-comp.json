@@ -1,0 +1,322 @@
+{
+ "id": "community-better-markdown-comp",
+ "title": "Markdown with a stylesheet of your own",
+ "description": "The Markdown module renders a string as a document, and this wraps it in the two things the raw node leaves to you: a `CSS Definition` scoped to the surrounding `Group`, so headings and lists inherit the project's type scale instead of the browser's defaults, and a `Component Inputs`/`Component Outputs` pair that makes the whole thing one reusable part rather than a node you re-style at every call site. The `States` node switches the stylesheet \u2014 that is how a light and a dark rendering of the same document stay one component.",
+ "demonstrates": [
+  "CSS Definition",
+  "Component Inputs",
+  "Component Outputs",
+  "Group",
+  "Markdown",
+  "States"
+ ],
+ "components": [
+  {
+   "name": "Better Markdown comp",
+   "nodes": [
+    {
+     "id": "group",
+     "type": "Group",
+     "children": [
+      "markdown"
+     ]
+    },
+    {
+     "id": "markdown",
+     "type": "Markdown",
+     "parent": "group",
+     "parameters": {
+      "source": "I have read and accept the terms & conditions of use",
+      "cssClassName": "",
+      "className": "markdown-standard"
+     }
+    },
+    {
+     "id": "component-outputs",
+     "type": "Component Outputs",
+     "ports": [
+      {
+       "name": "Clicked",
+       "plug": "input",
+       "type": {
+        "name": "*"
+       },
+       "index": 0
+      }
+     ]
+    },
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "text",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General",
+       "index": 2
+      },
+      {
+       "name": "css-class",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General",
+       "index": 1
+      },
+      {
+       "name": "padding top",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 3
+      },
+      {
+       "name": "padding bottom",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 4
+      },
+      {
+       "name": "padding left",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 5
+      },
+      {
+       "name": "padding right",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 6
+      },
+      {
+       "name": "margin top",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 7
+      },
+      {
+       "name": "margin bottom",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 8
+      },
+      {
+       "name": "margin left",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 9
+      },
+      {
+       "name": "margin right",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Margin and padding",
+       "index": 10
+      },
+      {
+       "name": "mounted",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General",
+       "index": 0
+      },
+      {
+       "name": "align horizontal",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Other",
+       "index": 11
+      },
+      {
+       "name": "align vertical",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Other",
+       "index": 12
+      },
+      {
+       "name": "position",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Other",
+       "index": 13
+      },
+      {
+       "name": "layout",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Other",
+       "index": 14
+      }
+     ]
+    },
+    {
+     "id": "states",
+     "type": "States",
+     "parameters": {
+      "states": "Standard",
+      "values": "css-class",
+      "useTransitions": false,
+      "type-css-class": "string",
+      "value-Standard-css-class": "markdown-standard"
+     }
+    },
+    {
+     "id": "css-definition",
+     "type": "CSS Definition",
+     "parameters": {
+      "style": "@font-face {\n    font-family: 'PlusJakartaSans';\n    src: url('fonts/Plus_Jakarta_Sans/static/PlusJakartaSans-Regular.ttf') format('truetype');\n}\n\n.markdown-standard {\n    font-family: 'PlusJakartaSans', sans-serif;\n    font-size: 16px;\n    color: #000;\n    text-align: left;\n    vertical-align: top;\n    padding: 0; /* This removes any padding */\n}\n\n.markdown-standard p {\n    margin: 0; /* Override default paragraph margins */\n}"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "group",
+     "fromProperty": "onClick",
+     "toId": "component-outputs",
+     "toProperty": "Clicked"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "css-class",
+     "toId": "states",
+     "toProperty": "currentState"
+    },
+    {
+     "fromId": "states",
+     "fromProperty": "css-class",
+     "toId": "markdown",
+     "toProperty": "className"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "text",
+     "toId": "markdown",
+     "toProperty": "source"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "padding top",
+     "toId": "group",
+     "toProperty": "paddingTop"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "padding bottom",
+     "toId": "group",
+     "toProperty": "paddingBottom"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "padding left",
+     "toId": "group",
+     "toProperty": "paddingLeft"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "padding right",
+     "toId": "group",
+     "toProperty": "paddingRight"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "margin top",
+     "toId": "group",
+     "toProperty": "marginTop"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "margin bottom",
+     "toId": "group",
+     "toProperty": "marginBottom"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "margin left",
+     "toId": "group",
+     "toProperty": "marginLeft"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "margin right",
+     "toId": "group",
+     "toProperty": "marginRight"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "mounted",
+     "toId": "group",
+     "toProperty": "mounted"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "align horizontal",
+     "toId": "group",
+     "toProperty": "alignX"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "align vertical",
+     "toId": "group",
+     "toProperty": "alignY"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "position",
+     "toId": "group",
+     "toProperty": "position"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "layout",
+     "toId": "group",
+     "toProperty": "flexDirection"
+    }
+   ]
+  }
+ ],
+ "requiresModules": [
+  {
+   "module": "markdown",
+   "nodes": [
+    "Markdown"
+   ]
+  }
+ ]
+}

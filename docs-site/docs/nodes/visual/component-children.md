@@ -38,6 +38,10 @@ Component Children is a placeholder with no ports: whatever children are given t
 
 `Component Children` marks where the consumer's own children land, which is what lets one panel hold a form on one page and a table on the next — the alternative is a panel per kind of content, and nobody writes the third one. But a slot is not a substitute for an interface, and that is the mistake this example exists to correct: the panel still takes `title` and `mounted`, still lets the instance decide whether the close button exists (`showClose`), and still publishes `closed` so the page can act on the request rather than guess. Note what `closed` is: the panel does NOT hide itself when the button is pressed — it says the user asked, and the page decides, which is the same contract a controlled value has. A component that unmounts itself is a component whose parent can be surprised. The page places the same panel twice with different children inside it and different chrome, and the two instances share every line of the panel's graph.
 
+**Drag a file onto the page, or click to browse**
+
+A drop target built the way the browser actually requires: a `Javascript2` node adds `dragover`/`drop` listeners to the element on `Node.Signals.DidMount` and removes them on `WillUnmount`, because a listener attached without a matching removal survives the component and fires against a node that is gone. `Component Children` means the drop zone wraps whatever you put inside it rather than dictating its own appearance, and `Open File Picker` gives the same component a click-to-browse path, so one part answers both ways a person supplies a file. ⚠️ One wire in the original had to be re-pointed to land here: it named an `Open File Picker` output called `success`, which was real when this was written and is now called `done`.
+
 ## Related nodes
 
 [Group](./group.md), [Component Inputs](../component-utilities/component-inputs.md), [Component Outputs](../component-utilities/component-outputs.md), [Repeater](./for-each.md)

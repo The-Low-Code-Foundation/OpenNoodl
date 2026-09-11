@@ -72,6 +72,10 @@ The most common shape on the shelf, and the one an authored component usually fo
 
 Almost every component in the shipped prefab library exposes the same block — `alignX`, `alignY`, the four margins, `position`, a size and `mounted` — and an authored component almost never does. The consequence is visible in any page built without it: every instance sits inside a single-child `Group` that exists for nothing but pushing it around, and the page keeps that wrapper forever. Here the avatar's own `Component Inputs` carry the box, wired into the root Group's matching inputs, so the page below places the same component at two sizes, in two alignments, with two margins, and holds **no wrapper Groups at all**. ⚠️ The honest limit: ports nobody sets are cost, and this is a component used everywhere earning them — a leaf used once does not earn a long interface by imitation. Expose what a parent would otherwise have to work around, and stop. `clicked` is on the interface for the same reason: a photograph the page cannot respond to is a decoration.
 
+**One button component that drives any editor command**
+
+A toolbar has a dozen buttons that differ only in a label, an icon and the name of the command they run — so this makes them one component with those three as inputs. A `States` node turns the button's type into its label, a `JavaScriptFunction` calls the matching command on the editor instance, and `Component Outputs` reports back whether the mark is currently active so the button can render as pressed. The lesson is not about Tiptap: it is that 'twelve buttons' and 'one button placed twelve times' are the same screen, and only one of them is editable later. 🔴 A component parameter arrives ONLY through a `Component Inputs` node whose ports are plugged `output` — that inversion is what makes this work, and it is the single most common thing to get backwards.
+
 ## Related nodes
 
 [Component Outputs](./component-outputs.md), [Repeater](../visual/for-each.md), [Component Object](./net-noodl-component-object.md), [Receive Event](../events/event-receiver.md)

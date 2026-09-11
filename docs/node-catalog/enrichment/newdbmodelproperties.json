@@ -14,7 +14,9 @@
   "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Each entry in the `accessControl` list additionally spawns `acl-<ruleId>-target` (user/everyone/role), then `acl-<ruleId>-userid` or `acl-<ruleId>-role`, plus `acl-<ruleId>-read` and `acl-<ruleId>-write` booleans. An authoring tool should set `collectionName` in parameters and drive `prop-<name>` inputs it knows from the class schema.",
   "examples": [
     "cloud-create-record-with-upload",
-    "cloud-record-crud"
+    "cloud-record-crud",
+    "community-simple-audio-recorde",
+    "community-web-rtc-video-record"
   ],
   "patterns": [
     "Text Input `text` → `prop-<name>`, Button `onClick` → `store`: the minimal create form.",

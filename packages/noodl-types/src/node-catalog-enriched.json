@@ -416,7 +416,8 @@
         },
         "runtimeBehavior": "Inputs are numbered ports named \"input 0\", \"input 1\", … counting from 0 (displayed as \"Input 0\", \"Input 1\"). The editor always offers one more port than is currently connected, so connecting to the highest port makes the next one appear. An authoring tool should connect booleans to \"input N\" names, using consecutive indices starting at 0.",
         "examples": [
-          "logic-consent-gate"
+          "logic-consent-gate",
+          "community-email-signup-validat"
         ],
         "patterns": [
           "Several `checked` outputs → \"input 0\", \"input 1\", … with `result` → a button's `enabled`: require every consent before proceeding.",
@@ -2288,7 +2289,9 @@
           "style": "The CSS source injected into the page."
         },
         "examples": [
-          "code-css-definition"
+          "code-css-definition",
+          "community-better-markdown-comp",
+          "community-tinymce-text-editor"
         ],
         "antiPatterns": [
           "Recreating per-node styling (colors, margins) in CSS — you lose variants, visual states and editor visibility for no gain."
@@ -4489,7 +4492,8 @@
           "name": "The stored file's name."
         },
         "examples": [
-          "cloud-create-record-with-upload"
+          "cloud-create-record-with-upload",
+          "community-tinymce-text-editor"
         ],
         "relatedNodes": [
           "Upload File",
@@ -5983,7 +5987,8 @@
         "whenToUse": "Whenever you build a reusable container whose content varies per use — cards, page sections, modals, styled panels: define padding, borders, headers once in the wrapper component and drop Component Children where the caller's content goes. Not for repeating data-driven content (use For Each with a template component) and not for passing values into a component (use Component Inputs).",
         "examples": [
           "vis-wrapper-component-children",
-          "comp-slot-panel-with-interface"
+          "comp-slot-panel-with-interface",
+          "community-dropzone"
         ],
         "patterns": [
           "Wrapper component: Group root with the shared styling, a Text header bound from Component Inputs, and Component Children below it — instances then supply arbitrary content children.",
@@ -6043,7 +6048,8 @@
           "comp-variant-badge-states",
           "comp-controlled-quantity-stepper",
           "comp-slot-panel-with-interface",
-          "comp-placement-contract-avatar"
+          "comp-placement-contract-avatar",
+          "community-tiptap-text-editor-r"
         ],
         "patterns": [
           "Repeater item: declare inputs named after the item object's properties and bind them straight to visuals.",
@@ -6100,7 +6106,8 @@
           "comp-variant-badge-states",
           "comp-controlled-quantity-stepper",
           "comp-slot-panel-with-interface",
-          "comp-placement-contract-avatar"
+          "comp-placement-contract-avatar",
+          "community-tiptap-text-editor-r"
         ],
         "patterns": [
           "Worker/task components report 'success'/'failure' signals through Component Outputs; Run Tasks consumes exactly that surface."
@@ -7277,7 +7284,8 @@
           "cloud-record-live-refresh",
           "cloud-record-crud",
           "cloud-subscribe-to-changes",
-          "ui-card-grid-repeater"
+          "ui-card-grid-repeater",
+          "community-email-signup-validat"
         ],
         "patterns": [
           "`items` → Repeater `items`, with record properties delivered to the item component via Component Inputs: the canonical list page.",
@@ -10677,6 +10685,7 @@
         "whenToUse": "Any repeated UI: lists, grids, menus, table rows. Its idiomatic partner is Query Records for cloud data or a Static Data/Variable2 array for local data. Not for repeating pure logic without visuals — see For Each Actions.",
         "ports": {
           "items": "The array to repeat over. Each element should be an object; its properties feed the item component's matching Component Inputs.",
+          "inputMappingScript": "Dynamic string port (JavaScript), shown once a template component is set, under \"Input Mapping\". The script is called as `map({ portName: mapping, ... })`, where a mapping is either a string naming a key on the item (`'title'`) or a function receiving the item (`() => object.get('title') + '!'` — `object` is in scope). It is pre-filled with an identity mapping for every non-signal input of the template component, so it usually needs editing only to rename, compute or hard-code a value. A script that does not compile maps NOTHING and reports `repeater/input-mapping-syntax-error`.",
           "template": "The item component (visible when `templateType` is explicit). Component names start with '/'; components in a sheet are '/#Sheet Name/Component Name'.",
           "templateScript": "JavaScript choosing a component per item (visible when `templateType` is dynamic): set `component` using the `item` variable.",
           "refresh": "Signal; tears down and rebuilds all instances. Rarely needed — the repeater tracks array changes itself.",
@@ -10688,7 +10697,8 @@
         "runtimeBehavior": "Two dynamic mechanisms: `template`/`templateScript` swap in and out based on `templateType` (declared-port-groups), and outputs named after signals sent by item components are registered on demand (runtime-discovered) — an item component's Component Outputs signal appears as an output port here so a list can bubble events up.",
         "examples": [
           "repeater-query-records",
-          "ui-card-grid-repeater"
+          "ui-card-grid-repeater",
+          "community-tiptap-text-editor"
         ],
         "patterns": [
           "Query Records `items` → Repeater `items`: the canonical data-driven list.",
@@ -16086,7 +16096,8 @@
         },
         "examples": [
           "logic-toggle-details-panel",
-          "comp-controlled-quantity-stepper"
+          "comp-controlled-quantity-stepper",
+          "community-email-signup-validat"
         ],
         "patterns": [
           "A 'is loading' boolean → Inverter → a button's `enabled`: disable actions while busy.",
@@ -16344,7 +16355,9 @@
         },
         "runtimeBehavior": "All data/signal ports are runtime-discovered from the script source: the parser (JavascriptNodeParser) mines `Inputs.x` / `Outputs.y` references and registers a port whose `name` is `in-x` / `out-y` and whose `displayName` is the bare `x` / `y`. An authoring tool must write the script first and then wire to the **prefixed** names — `toProperty: \"in-x\"`, `fromProperty: \"out-y\"` — never to the bare name the script uses, which is a display label only. Signal outputs follow the same rule and are the calls (`Outputs.y()`), not the assignments. A connection written to the bare name is accepted by every write path and every static validator (this type's ports are runtime-discovered, so the port-existence gate deliberately does not fire) and then fails on the canvas as \"Target port doesn't exist\". The node's own static ports — `run`, `done`, `success`, `failure`, `completed`, `unchanged`, `error` — are declared, not mined, and are wired unprefixed. The Script node (`Javascript2`) declares its ports and does not prefix them; the two conventions differ.",
         "examples": [
-          "function-compute-on-run"
+          "function-compute-on-run",
+          "community-csv-download",
+          "community-seo-meta-tag-setter"
         ],
         "patterns": [
           "Async action: `run` from a click → `await fetch(...)` → set value outputs → `Outputs.Success()`; wire Success onward for sequencing.",
@@ -16540,7 +16553,12 @@
         },
         "runtimeBehavior": "All data and signal ports are runtime-discovered by parsing the script (JavascriptNodeParser): the keys of the declared `inputs`/`outputs` maps become ports with the declared types, each `signals` entry (or top-level handler function named like a signal input) becomes a signal input, and entries in the `scriptInputs`/`scriptOutputs` proplist parameters add further typed ports. Nothing about the port set is static — an authoring tool must write the script first and wire only names the script (or the proplists) declares. Those names are used verbatim: unlike the Function node (`JavaScriptFunction`), whose mined ports are named `in-x` / `out-y`, the Script node adds no prefix, so a declared input `price` is wired as `toProperty: \"price\"`. When `useExternalFile` is `yes` the ports come from the downloaded file, so they are unknowable until it loads.",
         "examples": [
-          "code-http-request-with-error-handling"
+          "code-http-request-with-error-handling",
+          "community-ag-grid",
+          "community-dropzone",
+          "community-strobe-blinking-bu",
+          "community-tinymce-text-editor",
+          "community-web-rtc-video-record"
         ],
         "patterns": [
           "Wrap a stateful browser library: instantiate it in `setup`, feed it from `changed` handlers, dispose it in `destroy`.",
@@ -18813,7 +18831,8 @@
         "runtimeBehavior": "Property ports are generated from the `properties` list on the node instance (and the connected schema where one exists) — they are per-instance, not in the catalog. `idSource` swaps the id between an explicit input and the enclosing repeater item (declared-port-groups). NDA-012: an empty Id (null or an empty string) binds nothing and does not fire `fetched`, rather than minting a throwaway object; a real id still springs into existence on first use. Property values that arrive before the Id are held and written the moment an object is bound.",
         "examples": [
           "comp-create-object-on-event",
-          "comp-repeater-set-item-object"
+          "comp-repeater-set-item-object",
+          "community-tiptap-text-editor"
         ],
         "patterns": [
           "Repeater row: item id → Object → property outputs into the row's visuals.",
@@ -19367,7 +19386,9 @@
         "runtimeBehavior": "Ports are runtime-determined: `collectionName` (Class) is registered as an edit-only enum of the project's classes plus _User/_Role, and each schema property of the chosen class becomes a value input `prop-<name>` typed from the schema. Each entry in the `accessControl` list additionally spawns `acl-<ruleId>-target` (user/everyone/role), then `acl-<ruleId>-userid` or `acl-<ruleId>-role`, plus `acl-<ruleId>-read` and `acl-<ruleId>-write` booleans. An authoring tool should set `collectionName` in parameters and drive `prop-<name>` inputs it knows from the class schema.",
         "examples": [
           "cloud-create-record-with-upload",
-          "cloud-record-crud"
+          "cloud-record-crud",
+          "community-simple-audio-recorde",
+          "community-web-rtc-video-record"
         ],
         "patterns": [
           "Text Input `text` → `prop-<name>`, Button `onClick` → `store`: the minimal create form.",
@@ -20263,7 +20284,8 @@
           "path": "String value; read from the File object's path property, which standard browsers do not provide — usually undefined. Use `name` instead."
         },
         "examples": [
-          "var-avatar-picker-responsive"
+          "var-avatar-picker-responsive",
+          "community-dropzone"
         ],
         "patterns": [
           "Button `onClick` → `open`, then `file` → Upload File and `done` → the upload's trigger: the standard upload flow.",
@@ -28238,7 +28260,8 @@
         },
         "runtimeBehavior": "Property inputs are runtime-discovered from the `properties` parameter: each declared name p produces a value input `prop-<p>` (group Property Values) and an edit-only enum `type-<p>` (String/Boolean/Number/Date/Array/Object/Any, default Any). Only names present in `properties` are written on store. Additionally a declared port group hides `modelId` unless `idSource` is 'explicit' (or unset). Static values can be supplied as `prop-<p>` parameters instead of connections. NDA-012: an empty Id (null or an empty string) binds nothing, so `Do` fires `failure` with `set-object-properties/no-object` rather than writing into a process-wide shared record and reporting Done.",
         "examples": [
-          "comp-repeater-set-item-object"
+          "comp-repeater-set-item-object",
+          "community-tiptap-text-editor"
         ],
         "patterns": [
           "Inside a repeater item component: `idSource` = 'foreach', a button's click → `store`: edit the current row's object without passing ids around.",
@@ -28784,7 +28807,9 @@
         "runtimeBehavior": "All state- and value-specific ports are runtime-discovered: the viewer generates them from the `states` and `values` parameters and pushes them to the editor per instance. For each value V: an output named `V` (connections only; type chosen by a generated enum input `type-V` — number, string, boolean, color or textStyle, default number). For each state S and value V: an input `value-S-V` holding V's setting while in state S. For each state S: a signal input `to-S` (go to S), a boolean output `at-S` (true while S is active), a signal output `reached-S` (fires when the transition into S completes — immediately when there is no transition), and, while `useTransitions` is on, a curve input `transitiondef-S` (state-wide default) plus per-value overrides `transition-S-V` for number/color values. Separately, once `states` is set the node mints ONE enum input named `currentState`, sharing the name of the declared string output and defaulting to the first state; writing or wiring it moves the node to that state. An authoring tool should write `states`, `values`, `type-V` and `value-S-V` as parameters, and read `V`, `at-S` and `reached-S`. To change state it has two forms and they are not interchangeable: wire a signal to `to-S` when an event causes the change (a click, a `done`), and wire a VALUE to `currentState` when the state IS a value the component was handed (a `size`, a `tone`, a `Request Type`) — the second is one wire where the first would need one port per state plus a Condition chain. The runtime registers all of these names on demand.",
         "examples": [
           "anim-states-panel",
-          "comp-variant-badge-states"
+          "comp-variant-badge-states",
+          "community-strobe-blinking-bu",
+          "community-tiptap-text-editor-r"
         ],
         "patterns": [
           "Button `onClick` → `to-<state>` to enter a specific state; `toggle` when there are exactly two states.",
@@ -28961,7 +28986,8 @@
         "examples": [
           "data-shared-array-add-remove",
           "data-static-array-filter-repeater",
-          "comp-repeater-set-item-object"
+          "comp-repeater-set-item-object",
+          "community-tiptap-text-editor"
         ],
         "patterns": [
           "Static Array → Array Filter/Array Map → Repeater: fixture-driven UI with real list plumbing."
@@ -29966,7 +29992,9 @@
           "switchedToOff": "Signal; fires when a change leaves the state false."
         },
         "examples": [
-          "logic-toggle-details-panel"
+          "logic-toggle-details-panel",
+          "community-simple-audio-recorde",
+          "community-strobe-blinking-bu"
         ],
         "patterns": [
           "Button `onClick` → `flip`, `state` → a Group's `visible`: the standard show/hide toggle.",
@@ -32910,7 +32938,9 @@
           "timerFinished": "Signal; fires once when the countdown completes; suppressed by `stop`."
         },
         "examples": [
-          "logic-autosave-after-typing"
+          "logic-autosave-after-typing",
+          "community-email-signup-validat",
+          "community-tiptap-text-editor"
         ],
         "patterns": [
           "Value Changed `valueChanged` → `restart`, act on `timerFinished`: debounce — the action runs only after the input has been quiet for `duration` ms.",
@@ -56549,7 +56579,8 @@
         },
         "runtimeBehavior": "Declared-port-groups: `width`/`height` appear per `sizeMode`, icon ports per `useIcon`/`iconSourceType`, label styling ports when `useLabel` is true, and border/shadow ports per border-style and `boxShadowEnabled` settings. The catalog list is the superset; the editor shows the subset matching current parameters.",
         "examples": [
-          "ctl-settings-form"
+          "ctl-settings-form",
+          "community-email-signup-validat"
         ],
         "patterns": [
           "`onTextChanged` → an Expression or Condition: validate as the user types.",
@@ -56690,7 +56721,8 @@
           "link": "The absolute URL (or mailto:/tel: scheme) to open."
         },
         "examples": [
-          "nav-url-product-page"
+          "nav-url-product-page",
+          "community-csv-download"
         ],
         "antiPatterns": [
           "Pointing External Link at the app's own routes — the full page reload throws away application state that Navigate would keep."
@@ -67437,6 +67469,3446 @@
               "toId": "title_text",
               "toProperty": "text"
             }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-ag-grid",
+      "title": "Mount a third-party grid, and unmount it again",
+      "description": "The smallest complete statement of the lifecycle pair: a `Javascript2` node that reaches a DOM element belonging to a `Group`, hands it to a library that is not Noodl's, and — the half that is almost always missing — tears that library down again on `Node.Signals.WillUnmount`. Only two nodes, and the pattern generalises to every grid, chart, map and editor in the ecosystem. ⚠️ The community wrote this against AG Grid loaded separately; the graph does not bundle it, and neither the script's CDN tag nor the licence AG Grid asks for is part of what lands here. Read it for the mount/unmount shape, not as a working grid.",
+      "demonstrates": [
+        "Group",
+        "Javascript2"
+      ],
+      "components": [
+        {
+          "name": "AG Grid",
+          "nodes": [
+            {
+              "id": "group",
+              "type": "Group",
+              "parameters": {
+                "cssClassName": "ag-theme-quartz"
+              }
+            },
+            {
+              "id": "javascript2",
+              "type": "Javascript2",
+              "parameters": {
+                "code": "let api = null;\r\n\r\nScript.Signals.Setup = function () {\r\n    // Define column definitions\r\n    const columnDefs = [\r\n        { field: \"make\" },\r\n        { field: \"model\" },\r\n        { field: \"price\" },\r\n        { field: \"electric\" }\r\n    ];\r\n\r\n    // specify the data source and column definitions\r\n    gridOptions = {\r\n        columnDefs: columnDefs,\r\n        pagination: true,\r\n        paginationPageSize: 50,\r\n        rowModelType: 'infinite',\r\n    };\r\n\r\n    // initialize the grid passing in the div to use together with the columns & data we want to use\r\n    const gridDiv = Script.Inputs.Node.getDOMElement();\r\n    api = agGrid.createGrid(gridDiv, gridOptions);\r\n\r\n    // Set the data source callback\r\n    api.updateGridOptions({ datasource: { getRows: fetchData } });\r\n}\r\n\r\n// Fetch data from the server\r\nasync function fetchData(params) {\r\n    // Construct the query\r\n    const query = {};\r\n\r\n    const options = {\r\n        skip: params.startRow,\r\n        limit: params.endRow - params.startRow,\r\n        count: true,\r\n    };\r\n\r\n    try {\r\n        // Make a request to your server-side API to fetch data\r\n        const response = await Noodl.Records.query(\"TEST\", query, options);\r\n\r\n        // Provide the fetched data to AG Grid\r\n        params.successCallback({\r\n            rowData: response.results,\r\n            rowCount: response.count,\r\n        });\r\n    } catch (error) {\r\n        console.error('Error fetching data:', error);\r\n        params.failCallback();\r\n    }\r\n}\r\n"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "group",
+              "fromProperty": "didMount",
+              "toId": "javascript2",
+              "toProperty": "Setup"
+            },
+            {
+              "fromId": "group",
+              "fromProperty": "this",
+              "toId": "javascript2",
+              "toProperty": "Node"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-better-markdown-comp",
+      "title": "Markdown with a stylesheet of your own",
+      "description": "The Markdown module renders a string as a document, and this wraps it in the two things the raw node leaves to you: a `CSS Definition` scoped to the surrounding `Group`, so headings and lists inherit the project's type scale instead of the browser's defaults, and a `Component Inputs`/`Component Outputs` pair that makes the whole thing one reusable part rather than a node you re-style at every call site. The `States` node switches the stylesheet — that is how a light and a dark rendering of the same document stay one component.",
+      "demonstrates": [
+        "CSS Definition",
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "Markdown",
+        "States"
+      ],
+      "components": [
+        {
+          "name": "Better Markdown comp",
+          "nodes": [
+            {
+              "id": "group",
+              "type": "Group",
+              "children": [
+                "markdown"
+              ]
+            },
+            {
+              "id": "markdown",
+              "type": "Markdown",
+              "parent": "group",
+              "parameters": {
+                "source": "I have read and accept the terms & conditions of use",
+                "cssClassName": "",
+                "className": "markdown-standard"
+              }
+            },
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "Clicked",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 0
+                }
+              ]
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "text",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General",
+                  "index": 2
+                },
+                {
+                  "name": "css-class",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General",
+                  "index": 1
+                },
+                {
+                  "name": "padding top",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 3
+                },
+                {
+                  "name": "padding bottom",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 4
+                },
+                {
+                  "name": "padding left",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 5
+                },
+                {
+                  "name": "padding right",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 6
+                },
+                {
+                  "name": "margin top",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 7
+                },
+                {
+                  "name": "margin bottom",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 8
+                },
+                {
+                  "name": "margin left",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 9
+                },
+                {
+                  "name": "margin right",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Margin and padding",
+                  "index": 10
+                },
+                {
+                  "name": "mounted",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General",
+                  "index": 0
+                },
+                {
+                  "name": "align horizontal",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Other",
+                  "index": 11
+                },
+                {
+                  "name": "align vertical",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Other",
+                  "index": 12
+                },
+                {
+                  "name": "position",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Other",
+                  "index": 13
+                },
+                {
+                  "name": "layout",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Other",
+                  "index": 14
+                }
+              ]
+            },
+            {
+              "id": "states",
+              "type": "States",
+              "parameters": {
+                "states": "Standard",
+                "values": "css-class",
+                "useTransitions": false,
+                "type-css-class": "string",
+                "value-Standard-css-class": "markdown-standard"
+              }
+            },
+            {
+              "id": "css-definition",
+              "type": "CSS Definition",
+              "parameters": {
+                "style": "@font-face {\n    font-family: 'PlusJakartaSans';\n    src: url('fonts/Plus_Jakarta_Sans/static/PlusJakartaSans-Regular.ttf') format('truetype');\n}\n\n.markdown-standard {\n    font-family: 'PlusJakartaSans', sans-serif;\n    font-size: 16px;\n    color: #000;\n    text-align: left;\n    vertical-align: top;\n    padding: 0; /* This removes any padding */\n}\n\n.markdown-standard p {\n    margin: 0; /* Override default paragraph margins */\n}"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "group",
+              "fromProperty": "onClick",
+              "toId": "component-outputs",
+              "toProperty": "Clicked"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "css-class",
+              "toId": "states",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "states",
+              "fromProperty": "css-class",
+              "toId": "markdown",
+              "toProperty": "className"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "text",
+              "toId": "markdown",
+              "toProperty": "source"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "padding top",
+              "toId": "group",
+              "toProperty": "paddingTop"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "padding bottom",
+              "toId": "group",
+              "toProperty": "paddingBottom"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "padding left",
+              "toId": "group",
+              "toProperty": "paddingLeft"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "padding right",
+              "toId": "group",
+              "toProperty": "paddingRight"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "margin top",
+              "toId": "group",
+              "toProperty": "marginTop"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "margin bottom",
+              "toId": "group",
+              "toProperty": "marginBottom"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "margin left",
+              "toId": "group",
+              "toProperty": "marginLeft"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "margin right",
+              "toId": "group",
+              "toProperty": "marginRight"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "mounted",
+              "toId": "group",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "align horizontal",
+              "toId": "group",
+              "toProperty": "alignX"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "align vertical",
+              "toId": "group",
+              "toProperty": "alignY"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "position",
+              "toId": "group",
+              "toProperty": "position"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "layout",
+              "toId": "group",
+              "toProperty": "flexDirection"
+            }
+          ]
+        }
+      ],
+      "requiresModules": [
+        {
+          "module": "markdown",
+          "nodes": [
+            "Markdown"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-csv-download",
+      "title": "Turn rows into a file the browser downloads",
+      "description": "Two `JavaScriptFunction` nodes in series and no backend anywhere: the first folds an array of objects into CSV text, the second wraps that text in a `Blob` and hands `URL.createObjectURL` the result, and `External Link` opens it. That URL is the whole trick — it is a real, fetchable address that exists only inside this tab, so the download never leaves the browser and nothing has to be uploaded first. ⚠️ Compare it with `net.noodl.ToCSV` before reusing the conversion half: the built-in node handles quoting and embedded delimiters, which hand-rolled CSV usually does not. The half worth copying is the object-URL download.",
+      "demonstrates": [
+        "Component Inputs",
+        "JavaScriptFunction",
+        "net.noodl.externallink"
+      ],
+      "components": [
+        {
+          "name": "CSV Download",
+          "nodes": [
+            {
+              "id": "externallink",
+              "type": "net.noodl.externallink"
+            },
+            {
+              "id": "csv-to-downloadable-url",
+              "type": "JavaScriptFunction",
+              "label": "CSV to Downloadable URL",
+              "parameters": {
+                "functionScript": "const csvData = Inputs.CSVData || '';\nif (!csvData) throw new Error('No CSV data provided');\n\ntry {\n  // Create a Blob object from the CSV data\n  const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });\n\n  // Create a URL for the Blob object\n  const url = URL.createObjectURL(blob);\n\n  // Set the URL as the output\n  Outputs.DownloadURL = url;\n\n  // Signal success\n  Outputs.Success();\n} catch (error) {\n  // Output the error\n  Outputs.Error = error;\n\n  // Signal failure\n  Outputs.Failure();\n}\n"
+              }
+            },
+            {
+              "id": "json-to-csv-conversion",
+              "type": "JavaScriptFunction",
+              "label": "JSON to CSV Conversion",
+              "parameters": {
+                "functionScript": "const json = Inputs.JsonArray || [];\nif (!json.length) return;\n\ntry {\n  const replacer = (key, value) => value === null ? '' : value; \n  const header = Object.keys(json[0]);\n  let csv = json.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(';'));\n  csv.unshift(header.join(';'));\n  csv = csv.join('\\r\\n');\n\n  Outputs.Csv = csv;\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+              }
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "Do",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 0
+                },
+                {
+                  "name": "JsonArray",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "csv-to-downloadable-url",
+              "fromProperty": "out-DownloadURL",
+              "toId": "externallink",
+              "toProperty": "link"
+            },
+            {
+              "fromId": "json-to-csv-conversion",
+              "fromProperty": "out-Csv",
+              "toId": "csv-to-downloadable-url",
+              "toProperty": "in-CSVData"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Do",
+              "toId": "externallink",
+              "toProperty": "do"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "JsonArray",
+              "toId": "json-to-csv-conversion",
+              "toProperty": "in-JsonArray"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-dropzone",
+      "title": "Drag a file onto the page, or click to browse",
+      "description": "A drop target built the way the browser actually requires: a `Javascript2` node adds `dragover`/`drop` listeners to the element on `Node.Signals.DidMount` and removes them on `WillUnmount`, because a listener attached without a matching removal survives the component and fires against a node that is gone. `Component Children` means the drop zone wraps whatever you put inside it rather than dictating its own appearance, and `Open File Picker` gives the same component a click-to-browse path, so one part answers both ways a person supplies a file. ⚠️ One wire in the original had to be re-pointed to land here: it named an `Open File Picker` output called `success`, which was real when this was written and is now called `done`.",
+      "demonstrates": [
+        "Boolean",
+        "Component Children",
+        "Component Inputs",
+        "Component Outputs",
+        "Condition",
+        "Group",
+        "Javascript2",
+        "Open File Picker",
+        "States",
+        "String"
+      ],
+      "components": [
+        {
+          "name": "Dropzone",
+          "nodes": [
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "File",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General",
+                  "index": 0
+                },
+                {
+                  "name": "Path",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 1
+                },
+                {
+                  "name": "Name",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 2
+                },
+                {
+                  "name": "Size in bytes",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 3
+                },
+                {
+                  "name": "Type",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 4
+                },
+                {
+                  "name": "Success",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Events",
+                  "index": 5
+                }
+              ]
+            },
+            {
+              "id": "group",
+              "type": "Group",
+              "children": [
+                "component-children"
+              ]
+            },
+            {
+              "id": "component-children",
+              "type": "Component Children",
+              "parent": "group"
+            },
+            {
+              "id": "setup-file-drop-events",
+              "type": "Javascript2",
+              "label": "Setup File Drop Events",
+              "parameters": {
+                "code": "Script.Inputs = {\r\n    element: {\r\n        type: '*',\r\n        displayName: 'Element',\r\n        group: 'Setup',\r\n    },\r\n    acceptedFileTypes: {\r\n        type: 'string',\r\n        displayName: 'Accepted file types',\r\n        group: 'Data'\r\n    }\r\n}\r\n\r\nScript.Outputs = {\r\n    File: '*',\r\n    Path: 'string',\r\n    Name: 'string',\r\n    SizeInBytes: 'string',\r\n    Type: 'string',\r\n    Success: 'signal',\r\n    // When the mouse is dragging a file over the dropzone\r\n    OnDragOver: 'signal',\r\n    OnDragLeave: 'signal',\r\n}\r\n\r\n// Cache all the acceptedFileTypes in an array as regex expressions\r\nlet acceptedFileTypesPatterns = []\r\n\r\nScript.Setters.acceptedFileTypes = function (value) {\r\n    // Clear the array of patterns,\r\n    // since we will update them now.\r\n    acceptedFileTypesPatterns = [];\r\n\r\n    // If the value is empty we exit early,\r\n    // and we already emptied the patterns array.\r\n    if (!value) {\r\n        return;\r\n    }\r\n\r\n    // We are following the same pattern as the \"Open File Picker\" node.\r\n    // https://docs.noodl.net/2.6/nodes/utilities/open-file-picker/\r\n    const patterns = value.split(\",\");\r\n    if (patterns.length > 0) {\r\n        patterns.forEach((pattern) => {\r\n            const regExp = \".*\" + pattern.replace('*', '.*') + \".*\";\r\n            acceptedFileTypesPatterns.push(new RegExp(regExp));\r\n        });\r\n    }\r\n}\r\n\r\n/**\r\n * This will be called when a file is dropped.\r\n */\r\nfunction onFileDrop(eventObject) {\r\n    // Get the dropped file\r\n    const file = eventObject.dataTransfer.items[0];\r\n    if (!file) {\r\n        throw new Error('file is empty.');\r\n    }\r\n\r\n    // Update all the outputs\r\n    const fileObject = file.getAsFile();\r\n    Script.Outputs.File = fileObject;\r\n    Script.Outputs.Path = fileObject.path;\r\n    Script.Outputs.Name = fileObject.name;\r\n    Script.Outputs.SizeInBytes = fileObject.size;\r\n    Script.Outputs.Type = fileObject.type;\r\n\r\n    Script.Outputs.Success();\r\n}\r\n\r\n/**\r\n * \"\"\"\r\n * A listener for the dragenter and dragover events are used to\r\n * indicate valid drop targets, that is,\r\n * places where dragged items may be dropped.\r\n * \r\n * Most areas of a web page or application are not valid places\r\n * to drop data. Thus, the default handling of these events\r\n * is not to allow a drop.\r\n * \"\"\"\r\n */\r\nfunction onDragOver(eventObject) {\r\n    // Check if the user is dragging any files\r\n    if (eventObject.dataTransfer.items.length === 0) {\r\n        // Early exit; the user is not dragging any files.\r\n        return;\r\n    }\r\n\r\n    // Check if we have any custom patterns\r\n    if (acceptedFileTypesPatterns.length === 0) {\r\n        // if not then exit early allowing any pattern\r\n        return eventObject.preventDefault();\r\n    }\r\n\r\n    const file = eventObject.dataTransfer.items[0];\r\n    if (file.kind !== 'file') {\r\n        // Early exit; we don't know what this file is.\r\n        return;\r\n    }\r\n\r\n    for (var i = 0; i < acceptedFileTypesPatterns.length; i++) {\r\n        const pattern = acceptedFileTypesPatterns[i];\r\n\r\n        // Check if this file matches any of the patterns\r\n        if (pattern.test(file.type)) {\r\n            // Mark that this file can be dropped\r\n            eventObject.preventDefault();\r\n\r\n            // Indicate that the mouse is dragging over.\r\n            Script.Outputs.OnDragOver();\r\n\r\n            // Early exit; since we know the file is okay.\r\n            return;\r\n        }\r\n    }\r\n}\r\n\r\nfunction onDragLeave(_eventObject) {\r\n    Script.Outputs.OnDragLeave();\r\n}\r\n\r\n/**\r\n * \r\n */\r\nNode.Signals.DidMount = function () {\r\n    const element = Script.Inputs.element;\r\n    if (!element) throw new Error(\"Element is not connected.\");\r\n\r\n    const domElement = element.getDOMElement();\r\n    domElement.addEventListener('drop', onFileDrop, false);\r\n    domElement.addEventListener('dragover', onDragOver, false);\r\n    domElement.addEventListener('dragleave', onDragLeave, false);\r\n}\r\n\r\n/**\r\n * We need to remove the event listeners on the element,\r\n * to not leave anything behind.\r\n */\r\nNode.Signals.WillUnmount = function () {\r\n    const element = Script.Inputs.element;\r\n    if (!element) throw new Error(\"Element is not connected.\");\r\n\r\n    const domElement = element.getDOMElement();\r\n    if (domElement) {\r\n        domElement.removeEventListener('drop', onFileDrop, false);\r\n        domElement.removeEventListener('dragover', onDragOver, false);\r\n        domElement.removeEventListener('dragleave', onDragLeave, false);\r\n    }\r\n}\r\n"
+              }
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "Open File Picker",
+                  "plug": "output",
+                  "type": "*",
+                  "index": 2,
+                  "group": "Actions"
+                },
+                {
+                  "name": "Enable File Picker on click",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Dropzone",
+                  "index": 0
+                },
+                {
+                  "name": "Accepted file types",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Dropzone",
+                  "index": 1
+                }
+              ]
+            },
+            {
+              "id": "condition",
+              "type": "Condition"
+            },
+            {
+              "id": "boolean",
+              "type": "Boolean",
+              "parameters": {
+                "value": true
+              }
+            },
+            {
+              "id": "open-file-picker",
+              "type": "Open File Picker"
+            },
+            {
+              "id": "string",
+              "type": "String"
+            },
+            {
+              "id": "component-outputs-2",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "File",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General",
+                  "index": 0
+                },
+                {
+                  "name": "Path",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 1
+                },
+                {
+                  "name": "Name",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 2
+                },
+                {
+                  "name": "Size in bytes",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 3
+                },
+                {
+                  "name": "Type",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Metadata",
+                  "index": 4
+                },
+                {
+                  "name": "Success",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Events",
+                  "index": 5
+                }
+              ]
+            },
+            {
+              "id": "states",
+              "type": "States",
+              "parameters": {
+                "states": "Default,Hover",
+                "values": "Variant",
+                "type-Variant": "string",
+                "value-Default-Variant": "File Dropzone - Default",
+                "value-Hover-Variant": "File Dropzone - Hover"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "group",
+              "fromProperty": "this",
+              "toId": "setup-file-drop-events",
+              "toProperty": "element"
+            },
+            {
+              "fromId": "group",
+              "fromProperty": "didMount",
+              "toId": "setup-file-drop-events",
+              "toProperty": "DidMount"
+            },
+            {
+              "fromId": "group",
+              "fromProperty": "willUnmount",
+              "toId": "setup-file-drop-events",
+              "toProperty": "WillUnmount"
+            },
+            {
+              "fromId": "group",
+              "fromProperty": "onClick",
+              "toId": "condition",
+              "toProperty": "eval"
+            },
+            {
+              "fromId": "boolean",
+              "fromProperty": "savedValue",
+              "toId": "condition",
+              "toProperty": "condition"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Enable File Picker on click",
+              "toId": "boolean",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Open File Picker",
+              "toId": "open-file-picker",
+              "toProperty": "open"
+            },
+            {
+              "fromId": "condition",
+              "fromProperty": "ontrue",
+              "toId": "open-file-picker",
+              "toProperty": "open"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Accepted file types",
+              "toId": "string",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "string",
+              "fromProperty": "savedValue",
+              "toId": "open-file-picker",
+              "toProperty": "acceptedFileTypes"
+            },
+            {
+              "fromId": "string",
+              "fromProperty": "savedValue",
+              "toId": "setup-file-drop-events",
+              "toProperty": "acceptedFileTypes"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "path",
+              "toId": "component-outputs",
+              "toProperty": "Path"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "name",
+              "toId": "component-outputs",
+              "toProperty": "Name"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "sizeInBytes",
+              "toId": "component-outputs",
+              "toProperty": "Size in bytes"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "type",
+              "toId": "component-outputs",
+              "toProperty": "Type"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "done",
+              "toId": "component-outputs",
+              "toProperty": "Success"
+            },
+            {
+              "fromId": "open-file-picker",
+              "fromProperty": "file",
+              "toId": "component-outputs",
+              "toProperty": "File"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "File",
+              "toId": "component-outputs-2",
+              "toProperty": "File"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "Path",
+              "toId": "component-outputs-2",
+              "toProperty": "Path"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "Name",
+              "toId": "component-outputs-2",
+              "toProperty": "Name"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "SizeInBytes",
+              "toId": "component-outputs-2",
+              "toProperty": "Size in bytes"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "Type",
+              "toId": "component-outputs-2",
+              "toProperty": "Type"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "Success",
+              "toId": "component-outputs-2",
+              "toProperty": "Success"
+            },
+            {
+              "fromId": "states",
+              "fromProperty": "Variant",
+              "toId": "group",
+              "toProperty": "variant"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "OnDragOver",
+              "toId": "states",
+              "toProperty": "to-Hover"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "OnDragLeave",
+              "toId": "states",
+              "toProperty": "to-Default"
+            },
+            {
+              "fromId": "setup-file-drop-events",
+              "fromProperty": "Success",
+              "toId": "states",
+              "toProperty": "to-Default"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-email-signup-validat",
+      "title": "Check an email is well-formed and not already taken",
+      "description": "Sign-up validation as a chain of small truths rather than one function: an `Expression` says the field is non-empty, a `JavaScriptFunction` says it looks like an address, and a `DbCollection2` query says nobody has it yet — and an `And` node combines them into the one boolean the button enables on. The `Timer` in front of the query is the detail worth copying: it debounces, so the database is asked once the typing stops instead of once per keystroke. ⚠️ The two `Inverter` nodes read as clutter until you notice what they buy — 'no user came back' is the success case here, and inverting it keeps every input to the `And` meaning 'this is fine', which is what makes the combination readable at all.",
+      "demonstrates": [
+        "And",
+        "DbCollection2",
+        "Expression",
+        "Group",
+        "Inverter",
+        "JavaScriptFunction",
+        "Text",
+        "Timer",
+        "net.noodl.controls.button",
+        "net.noodl.controls.textinput"
+      ],
+      "components": [
+        {
+          "name": "Email signup validat",
+          "nodes": [
+            {
+              "id": "group",
+              "type": "Group",
+              "parameters": {
+                "paddingLeft": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "paddingTop": "var(--space-6)",
+                "paddingBottom": "var(--space-6)",
+                "rowGap": "var(--space-4)"
+              },
+              "children": [
+                "email-input",
+                "text",
+                "text-2",
+                "button"
+              ]
+            },
+            {
+              "id": "email-input",
+              "type": "net.noodl.controls.textinput",
+              "label": "Email Input",
+              "parent": "group",
+              "parameters": {
+                "type": "email"
+              }
+            },
+            {
+              "id": "text",
+              "type": "Text",
+              "parent": "group",
+              "parameters": {
+                "text": "⚠️ Please enter a valid email",
+                "textStyle": "Body Small",
+                "mounted": false
+              }
+            },
+            {
+              "id": "text-2",
+              "type": "Text",
+              "parent": "group",
+              "parameters": {
+                "text": "⚠️ An account with this email already exists",
+                "textStyle": "Body Small",
+                "mounted": false
+              }
+            },
+            {
+              "id": "button",
+              "type": "net.noodl.controls.button",
+              "parent": "group",
+              "parameters": {
+                "label": "Validate"
+              }
+            },
+            {
+              "id": "email-input-not-empty",
+              "type": "Expression",
+              "label": "Email input not empty",
+              "parameters": {
+                "expression": "emailInput != \"\" && emailInput != null"
+              }
+            },
+            {
+              "id": "check-email-is-valid",
+              "type": "JavaScriptFunction",
+              "label": "Check email is valid",
+              "parameters": {
+                "functionScript": "\nconst email = Inputs.email || '';\nconst regex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n\nif (regex.test(email)) {\n  Outputs.invalidEmail = false;\n  Outputs.ValidEmail();\n} else {\n  Outputs.invalidEmail = true;\n  Outputs.InvalidEmail();\n}\n"
+              }
+            },
+            {
+              "id": "timer",
+              "type": "Timer",
+              "parameters": {
+                "duration": 1000
+              }
+            },
+            {
+              "id": "check-if-user-exists",
+              "type": "DbCollection2",
+              "label": "Check if user exists",
+              "parameters": {
+                "collectionName": "_User",
+                "visualFilter": {
+                  "combinator": "or",
+                  "rules": [
+                    {
+                      "combinator": "and",
+                      "rules": [
+                        {
+                          "property": "username",
+                          "operator": "equal to",
+                          "input": "email"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "storageEnableLimit": true,
+                "storageLimit": 1,
+                "storageEnableCount": true
+              }
+            },
+            {
+              "id": "user-already-exists",
+              "type": "Expression",
+              "label": "User already exists?",
+              "parameters": {
+                "expression": "userCount > 0"
+              }
+            },
+            {
+              "id": "unique-user-and-valid-email",
+              "type": "And",
+              "label": "Unique user and valid email"
+            },
+            {
+              "id": "email-is-valid",
+              "type": "Inverter",
+              "label": "Email is valid"
+            },
+            {
+              "id": "user-doesn-t-exist",
+              "type": "Inverter",
+              "label": "User doesn't exist"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "email-input",
+              "fromProperty": "onTextChanged",
+              "toId": "email-input-not-empty",
+              "toProperty": "emailInput"
+            },
+            {
+              "fromId": "email-input",
+              "fromProperty": "textChanged",
+              "toId": "timer",
+              "toProperty": "restart"
+            },
+            {
+              "fromId": "timer",
+              "fromProperty": "timerFinished",
+              "toId": "email-input-not-empty",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "email-input-not-empty",
+              "fromProperty": "isTrueEv",
+              "toId": "check-email-is-valid",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "email-input",
+              "fromProperty": "onTextChanged",
+              "toId": "check-email-is-valid",
+              "toProperty": "in-email"
+            },
+            {
+              "fromId": "check-email-is-valid",
+              "fromProperty": "out-ValidEmail",
+              "toId": "check-if-user-exists",
+              "toProperty": "storageFetch"
+            },
+            {
+              "fromId": "check-email-is-valid",
+              "fromProperty": "out-invalidEmail",
+              "toId": "text",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "check-if-user-exists",
+              "fromProperty": "storageTotalCount",
+              "toId": "user-already-exists",
+              "toProperty": "userCount"
+            },
+            {
+              "fromId": "user-already-exists",
+              "fromProperty": "result",
+              "toId": "text-2",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "email-input",
+              "fromProperty": "onTextChanged",
+              "toId": "check-if-user-exists",
+              "toProperty": "qp-email"
+            },
+            {
+              "fromId": "check-email-is-valid",
+              "fromProperty": "out-invalidEmail",
+              "toId": "email-is-valid",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "email-is-valid",
+              "fromProperty": "result",
+              "toId": "unique-user-and-valid-email",
+              "toProperty": "input 0"
+            },
+            {
+              "fromId": "user-already-exists",
+              "fromProperty": "result",
+              "toId": "user-doesn-t-exist",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "user-doesn-t-exist",
+              "fromProperty": "result",
+              "toId": "unique-user-and-valid-email",
+              "toProperty": "input 1"
+            },
+            {
+              "fromId": "unique-user-and-valid-email",
+              "fromProperty": "result",
+              "toId": "button",
+              "toProperty": "enabled"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-seo-meta-tag-setter",
+      "title": "Set the meta tags a link preview reads",
+      "description": "Seventeen nodes that exist because the runtime writes no `<meta>` tags for you: a `JavaScriptFunction` reaches `document.head` and sets title, description, canonical URL, robots, the Open Graph set and the Twitter card, each fed from its own `String` or `States` node so a page can override one without restating the rest. The `Expression` defaulting the URL to `location.href` is what stops a forgotten `og:url` pointing at the wrong page. ⚠️ Nothing here needs a node that does not exist — but nothing here is done for you either, so budget the seventeen nodes.",
+      "demonstrates": [
+        "Component Inputs",
+        "Expression",
+        "JavaScriptFunction",
+        "Javascript2",
+        "Number",
+        "States",
+        "String"
+      ],
+      "components": [
+        {
+          "name": "SEO Meta Tag setter",
+          "nodes": [
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "Do",
+                  "plug": "output",
+                  "type": "*",
+                  "index": 0
+                },
+                {
+                  "name": "title",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General search engine",
+                  "index": 1
+                },
+                {
+                  "name": "description",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General search engine",
+                  "index": 2
+                },
+                {
+                  "name": "og:title",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Open Graph",
+                  "index": 4
+                },
+                {
+                  "name": "og:description",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Open Graph",
+                  "index": 5
+                },
+                {
+                  "name": "og:image",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Open Graph",
+                  "index": 6
+                },
+                {
+                  "name": "og:type",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Open Graph",
+                  "index": 9
+                },
+                {
+                  "name": "og:url (override default)",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Open Graph",
+                  "index": 10
+                },
+                {
+                  "name": "robots",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "General search engine",
+                  "index": 3
+                },
+                {
+                  "name": "twitter:title",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Twitter",
+                  "index": 11
+                },
+                {
+                  "name": "twitter:description",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Twitter",
+                  "index": 12
+                },
+                {
+                  "name": "twitter:card",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Twitter",
+                  "index": 13
+                },
+                {
+                  "name": "twitter:image",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "group": "Twitter",
+                  "index": 14
+                }
+              ]
+            },
+            {
+              "id": "set-all-meta-tags",
+              "type": "JavaScriptFunction",
+              "label": "Set all meta tags",
+              "parameters": {
+                "functionScript": "const href = window.location.href;\nconst encodedOgImagePath = encodeURIComponent(Inputs.ogImage);\nconst encodedTwitterImagePath = encodeURIComponent(Inputs.twitterImage);\n\nconst metaTags = {\n  // Basic title and description for search engines\n  'title': Inputs.title,\n  'description': Inputs.description,\n  // Open Graph values, used by Facebook, LinkedIn, etc.\n  'og:title': Inputs.ogTitle,\n  'og:description': Inputs.ogDescription,\n  'og:image': href + encodedOgImagePath,\n  // Helps social media platforms display the image correctly\n  'og:image:height': Inputs.ogImageHeight,\n  'og:image:width': Inputs.ogImageWidth,\n  // Tells the service what kind of content is on the page\n  // Possible values: website, article, book, profile, video.movie, video.episode, video.tv_show, video.other, music.song, music.album, music.playlist, music.radio_station\n  'og:type': Inputs.ogType,\n  // Used to force recognition of a specified url no matter what paths or parameters the shared URL is composed of\n  'og:url': Inputs.ogUrl,\n  // A comma separated list of values that tells crawlers how to index the site\n  // Possible values: see footnote comment below **\n  'robots': Inputs.robots,\n  // Values specifically for Twitter\n  'twitter:title': Inputs.twitterTitle,\n  'twitter:description': Inputs.twitterDescription,\n  // Type of content to tell twitter how to present the content when shared in a tweet\n  // Possible values: summary, summary_large_image, app (mobile app promotion), player (shares video or audio content directly in the tweet)\n  'twitter:card': Inputs.twitterCard,\n  'twitter:image': href + encodedTwitterImagePath\n};\n\nObject.keys(metaTags).forEach(key => {\n  Noodl.SEO.setMeta(key, metaTags[key]);\n});\n\n\n/*\n** Possible robots metatag values: \n\nindex: Allows search engines to index the page (i.e., include it in their search results). This is the default behavior even if the tag isn’t present.\n\nnoindex: Prevents search engines from indexing the page (i.e., the page will not appear in search results).\n\nfollow: Instructs search engines to follow the links on the page, potentially discovering new pages to index. Like \"index\", this is default behavior.\n\nnofollow: Prevents search engines from following any links on the page. This means that while the page itself may be indexed, the search engine won’t use the links on that page to discover new pages.\n\nnoarchive: Tells search engines not to store a cached copy of the page.\n\nnosnippet: Prevents a text snippet or video preview from being shown in the search results.\n\nnoodp: Blocks search engines from using metadata from the Open Directory Project (DMOZ) for titles or snippets for the page. Note: As the DMOZ is no longer active, this directive is essentially obsolete.\n\nnotranslate: Advises search engines not to offer a translation for this page in search results.\n\nnoimageindex: Instructs search engines not to index images on the page. Images might still appear in search results if they're linked from elsewhere.\n\nunavailable_after: Specifies a date/time after which the page should not be indexed. For example, unavailable_after: 25-Jun-2020 15:00:00 EST.\n*/"
+              }
+            },
+            {
+              "id": "title",
+              "type": "String",
+              "label": "title"
+            },
+            {
+              "id": "description",
+              "type": "String",
+              "label": "description"
+            },
+            {
+              "id": "og-title",
+              "type": "String",
+              "label": "og:title"
+            },
+            {
+              "id": "og-description",
+              "type": "String",
+              "label": "og:description"
+            },
+            {
+              "id": "og-image-height",
+              "type": "Number",
+              "label": "og:image:height",
+              "parameters": {
+                "value": 0
+              }
+            },
+            {
+              "id": "og-image-width",
+              "type": "Number",
+              "label": "og:image:width",
+              "parameters": {
+                "value": 0
+              }
+            },
+            {
+              "id": "og-type",
+              "type": "States",
+              "label": "og:type",
+              "parameters": {
+                "states": "website,article,book,profile,video.movie,video.episode,video.tv_show,video.other,music.song,music.album,music.playlist,music.radio_station"
+              }
+            },
+            {
+              "id": "og-url",
+              "type": "String",
+              "label": "og:url"
+            },
+            {
+              "id": "set-default-to-current-href",
+              "type": "Expression",
+              "label": "Set default to current href",
+              "parameters": {
+                "expression": "window.location.href"
+              }
+            },
+            {
+              "id": "choose-image-from-library",
+              "type": "Javascript2",
+              "label": "Choose image from library",
+              "parameters": {
+                "code": "Script.Inputs = {\n  image: \"image\"\n};\n\nfunction onChange() {\n  function getImageDimensions(url, callback) {\n  var img = new Image();\n\n  // Set up an event listener to execute once the image has loaded\n  img.onload = function() {\n    // The image is now loaded; dimensions are available\n    callback(this.width, this.height);\n  };\n\n  // Handle possible errors in loading the image (e.g., broken links)\n  img.onerror = function() {\n    console.log(\"There was an error loading the image.\");\n  };\n\n  // Set the source of the image\n  img.src = url;\n  }\n\n  getImageDimensions(Script.Inputs.image, (width, height) => {\n    Script.Outputs.imageWidth = width;\n    Script.Outputs.imageHeight = height;\n  });\n\n  \n  Script.Outputs.imagePath = Script.Inputs.image;\n  Script.Outputs.Done();\n}\n\nScript.Setters.image = onChange;\n\n"
+              }
+            },
+            {
+              "id": "robots",
+              "type": "String",
+              "label": "robots",
+              "parameters": {
+                "value": "index,nofollow"
+              }
+            },
+            {
+              "id": "twitter-card",
+              "type": "States",
+              "label": "twitter:card",
+              "parameters": {
+                "states": "summary,summary_large_image,app,player"
+              }
+            },
+            {
+              "id": "choose-image-from-library-2",
+              "type": "Javascript2",
+              "label": "Choose image from library",
+              "parameters": {
+                "code": "Script.Inputs = {\n  image: \"image\"\n};\n\nfunction onChange() {  \n  Script.Outputs.imagePath = Script.Inputs.image;\n  Script.Outputs.Done();\n}\n\nScript.Setters.image = onChange;\n\n"
+              }
+            },
+            {
+              "id": "twitter-title",
+              "type": "String",
+              "label": "twitter:title"
+            },
+            {
+              "id": "twitter-description",
+              "type": "String",
+              "label": "twitter:description"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "title",
+              "fromProperty": "savedValue",
+              "toId": "og-title",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "description",
+              "fromProperty": "savedValue",
+              "toId": "og-description",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "title",
+              "toId": "title",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "description",
+              "toId": "description",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "og:title",
+              "toId": "og-title",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "og:description",
+              "toId": "og-description",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "og:type",
+              "toId": "og-type",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "og-type",
+              "fromProperty": "currentState",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogType"
+            },
+            {
+              "fromId": "set-default-to-current-href",
+              "fromProperty": "result",
+              "toId": "og-url",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "og:url (override default)",
+              "toId": "og-url",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "title",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-title"
+            },
+            {
+              "fromId": "description",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-description"
+            },
+            {
+              "fromId": "og-title",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogTitle"
+            },
+            {
+              "fromId": "og-description",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogDescription"
+            },
+            {
+              "fromId": "choose-image-from-library",
+              "fromProperty": "imagePath",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogImage"
+            },
+            {
+              "fromId": "og-image-width",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogImageWidth"
+            },
+            {
+              "fromId": "og-image-height",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogImageHeight"
+            },
+            {
+              "fromId": "og-url",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-ogUrl"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "og:image",
+              "toId": "choose-image-from-library",
+              "toProperty": "image"
+            },
+            {
+              "fromId": "choose-image-from-library",
+              "fromProperty": "imageWidth",
+              "toId": "og-image-width",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "choose-image-from-library",
+              "fromProperty": "imageHeight",
+              "toId": "og-image-height",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "robots",
+              "toId": "robots",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "robots",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-robots"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "twitter:image",
+              "toId": "choose-image-from-library-2",
+              "toProperty": "image"
+            },
+            {
+              "fromId": "choose-image-from-library",
+              "fromProperty": "imagePath",
+              "toId": "choose-image-from-library-2",
+              "toProperty": "image"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "twitter:card",
+              "toId": "twitter-card",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "twitter-card",
+              "fromProperty": "currentState",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-twitterCard"
+            },
+            {
+              "fromId": "choose-image-from-library-2",
+              "fromProperty": "imagePath",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-twitterImage"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "twitter:title",
+              "toId": "twitter-title",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "twitter:description",
+              "toId": "twitter-description",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "twitter-title",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-twitterTitle"
+            },
+            {
+              "fromId": "twitter-description",
+              "fromProperty": "savedValue",
+              "toId": "set-all-meta-tags",
+              "toProperty": "in-twitterDescription"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-simple-audio-recorde",
+      "title": "Record audio in the browser and save it",
+      "description": "The full arc of a MediaRecorder capture, which is longer than it looks because three different things have to be true before a single byte is recorded. A `JavaScriptFunction` asks for microphone permission and a `Switch` gates everything on the answer; a `Javascript2` node owns the recorder itself and accumulates chunks; a second one runs the seconds counter; a third converts the finished `Blob` into the shape `NewDbModelProperties` can store. ⚠️ Permission is asynchronous and revocable, which is why the gate is a node and not an assumption — a recorder started before the user has answered produces silence rather than an error. The preview player is a Custom HTML node because an `<audio>` element with a blob URL is the shortest honest way to play back something that has no file yet.",
+      "demonstrates": [
+        "Component Outputs",
+        "Condition",
+        "Expression",
+        "Group",
+        "Inverter",
+        "JavaScriptFunction",
+        "Javascript2",
+        "NewDbModelProperties",
+        "States",
+        "Switch",
+        "Text",
+        "module.inlineHtml",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "Simple audio recorde",
+          "nodes": [
+            {
+              "id": "audio-recorder-container",
+              "type": "Group",
+              "label": "Audio recorder container",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-5)",
+                "paddingTop": "var(--space-2-5)",
+                "paddingBottom": "var(--space-2-5)",
+                "paddingRight": "var(--space-2-5)",
+                "paddingLeft": "var(--space-2-5)",
+                "sizeMode": "contentSize",
+                "clip": false,
+                "flexWrap": "wrap",
+                "rowGap": "var(--space-5)"
+              },
+              "children": [
+                "left-container-record-buttons",
+                "right-container-recording-preview"
+              ]
+            },
+            {
+              "id": "left-container-record-buttons",
+              "type": "Group",
+              "label": "Left container record buttons",
+              "parent": "audio-recorder-container",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-5)",
+                "alignY": "center",
+                "sizeMode": "contentWidth"
+              },
+              "children": [
+                "record-button",
+                "recording-timer-text",
+                "stop-button"
+              ]
+            },
+            {
+              "id": "record-button",
+              "type": "net.noodl.controls.button",
+              "label": "Record button",
+              "parent": "left-container-record-buttons",
+              "parameters": {
+                "label": "Record",
+                "alignY": "center",
+                "backgroundColor": "Resourceful red"
+              }
+            },
+            {
+              "id": "recording-timer-text",
+              "type": "Text",
+              "label": "Recording timer text",
+              "parent": "left-container-record-buttons",
+              "parameters": {
+                "alignY": "center"
+              }
+            },
+            {
+              "id": "stop-button",
+              "type": "net.noodl.controls.button",
+              "label": "Stop button",
+              "parent": "left-container-record-buttons",
+              "parameters": {
+                "label": "Stop",
+                "mounted": true,
+                "enabled": false,
+                "alignY": "center",
+                "backgroundColor": "Resourceful red",
+                "sizeMode": "contentWidth"
+              }
+            },
+            {
+              "id": "right-container-recording-preview",
+              "type": "Group",
+              "label": "Right container recording preview",
+              "parent": "audio-recorder-container",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-5)",
+                "sizeMode": "explicit",
+                "flexWrap": "wrap",
+                "rowGap": "var(--space-5)"
+              },
+              "children": [
+                "recording-preview-group",
+                "save-button"
+              ]
+            },
+            {
+              "id": "recording-preview-group",
+              "type": "Group",
+              "label": "Recording preview group",
+              "parent": "right-container-recording-preview",
+              "parameters": {
+                "backgroundColor": "Grey - 200",
+                "borderRadius": {
+                  "value": 10,
+                  "unit": "px"
+                },
+                "paddingTop": "var(--space-2-5)",
+                "sizeMode": "contentWidth"
+              },
+              "children": [
+                "text",
+                "audio-preview-player"
+              ]
+            },
+            {
+              "id": "text",
+              "type": "Text",
+              "parent": "recording-preview-group",
+              "parameters": {
+                "text": "Recording preview",
+                "marginLeft": "var(--space-5)",
+                "textStyle": "Body Small"
+              }
+            },
+            {
+              "id": "audio-preview-player",
+              "type": "module.inlineHtml",
+              "label": "Audio preview player",
+              "parent": "recording-preview-group",
+              "parameters": {
+                "html": "<audio controls>\n  <source src={{audioUrl}} type=\"audio/webm\">\n  Your browser does not support the audio element.\n</audio>\n"
+              }
+            },
+            {
+              "id": "save-button",
+              "type": "net.noodl.controls.button",
+              "label": "Save Button",
+              "parent": "right-container-recording-preview",
+              "parameters": {
+                "label": "Save",
+                "alignY": "center"
+              }
+            },
+            {
+              "id": "get-user-to-authorise-mic-in-browser",
+              "type": "JavaScriptFunction",
+              "label": "Get user to authorise mic in browser",
+              "parameters": {
+                "functionScript": "\n// Check if getUserMedia is supported by the browser\nconst getUserMediaSupported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);\n\n// If getUserMedia is not supported, send a failure signal\nif (!getUserMediaSupported) {\n  Outputs.Failure();\n  return;\n}\n\n// Request access to the microphone and camera\nnavigator.mediaDevices.getUserMedia({ audio: true, video: false })\n  .then(() => {\n    // If access is granted, send a success signal\n    Outputs.Success();\n  })\n  .catch((error) => {\n    // If access is denied or an error occurs, send a failure signal\n    Outputs.Error = error;\n    Outputs.Failure();\n  });\n"
+              }
+            },
+            {
+              "id": "audio-recorder-script",
+              "type": "Javascript2",
+              "label": "Audio recorder script",
+              "parameters": {
+                "code": "// Check if the browser supports the getUserMedia API\nconst getUserMedia = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)) \n  || (navigator.webkitGetUserMedia && navigator.webkitGetUserMedia.bind(navigator))\n  || (navigator.mozGetUserMedia && navigator.mozGetUserMedia.bind(navigator))\n  || (navigator.msGetUserMedia && navigator.msGetUserMedia.bind(navigator));\n\nif (!getUserMedia) {\n  console.log(\"getUserMedia API not supported.\");\n  Script.Outputs.Failure();\n  return;\n}\n\n// Create a new MediaRecorder instance\nlet mediaRecorder;\nlet chunks = [];\n\n// Add promise variables here\nlet resolveDataAvailable;\nlet dataAvailablePromise = new Promise(resolve => {\n  resolveDataAvailable = resolve;\n});\n\n// Start recording audio\nScript.Signals.Start = async function () {\n  try {\n    const stream = await getUserMedia({ audio: true });\n    mediaRecorder = new MediaRecorder(stream);\n    console.log(\"Started recording...\");\n\n    // Create a new Promise for each recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n\n    mediaRecorder.addEventListener('dataavailable', (event) => {\n      chunks.push(event.data);\n      console.log(\"Data available:\", event.data); // Log the data chunks\n      resolveDataAvailable(); // Resolve the promise\n    });\n\n    mediaRecorder.addEventListener('stop', () => {\n      console.log(\"Stopped recording...\");\n    });\n\n    mediaRecorder.start();\n    Script.Outputs.AudioFile = \"\";\n    Script.Outputs.Started();\n  } catch (error) {\n    console.log(\"Error:\", error); // Log the error\n    Script.Outputs.Error = error;\n    Script.Outputs.Failure();\n  }\n};\n\n\n// Stop recording audio\nScript.Signals.Stop = async function() {\n  if (mediaRecorder && mediaRecorder.state === 'recording') {\n    mediaRecorder.stop();\n    // Wait for the dataavailable event\n    await dataAvailablePromise;\n    const blob = new Blob(chunks, { type: 'audio/webm' });\n    console.log(\"Audio blob:\", blob); // Log the blob\n\n    // Convert Blob to base64 string\n    const reader = new FileReader();\n    reader.readAsDataURL(blob);\n    reader.onloadend = function() {\n      const base64data = reader.result;\n      Script.Outputs.AudioFile = base64data; // Output the base64 string\n      Script.Outputs.Success();\n    }\n\n    chunks = []; // Clear the chunks array for future recordings\n    // Reset for the next recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n  }\n};\n"
+              }
+            },
+            {
+              "id": "mic-is-authorised",
+              "type": "Switch",
+              "label": "Mic is authorised"
+            },
+            {
+              "id": "create-a-new-audio-upload",
+              "type": "NewDbModelProperties",
+              "label": "Create a new audio upload",
+              "parameters": {
+                "collectionName": "Upload"
+              }
+            },
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "uploadRecordCreated",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "absoluteFilePathCreated",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                }
+              ]
+            },
+            {
+              "id": "record-not-clicked",
+              "type": "Switch",
+              "label": "Record not clicked",
+              "parameters": {
+                "onFromStart": true
+              }
+            },
+            {
+              "id": "mic-authorised-and-record-not-clicked",
+              "type": "Condition",
+              "label": "Mic authorised AND record not clicked"
+            },
+            {
+              "id": "record-clicked-enable-stop",
+              "type": "Inverter",
+              "label": "Record clicked, enable stop"
+            },
+            {
+              "id": "convert-audio-blob-to-cloud-file",
+              "type": "Javascript2",
+              "label": "Convert audio blob to cloud file",
+              "parameters": {
+                "code": "Script.Outputs = {\n    FileUrl: 'string',\n    fileName: 'string',\n    Success: 'signal',\n    Error: 'string',\n    Failure: 'signal'\n};\n\n// Function to convert base64 data to Blob\nfunction base64ToBlob(base64, mimeType) {\n    const byteCharacters = atob(base64);\n    const byteNumbers = new Array(byteCharacters.length);\n    for (let i = 0; i < byteCharacters.length; i++) {\n        byteNumbers[i] = byteCharacters.charCodeAt(i);\n    }\n    const byteArray = new Uint8Array(byteNumbers);\n    \n    // Create blob object\n    const blob = new Blob([byteArray], {type: mimeType});\n    return blob;\n}\n\nScript.Signals.UploadAudio = async function () {\n    const audioDataUrl = Script.Inputs.AudioBlob;\n    if (!audioDataUrl) return;\n\n    const base64Data = audioDataUrl.split(',')[1];\n    const blob = base64ToBlob(base64Data, 'audio/webm'); // Convert base64 to Blob\n    const fileName = `audio_${Date.now()}.webm`;\n    const file = new File([blob], fileName, { type: 'audio/webm' }); // Create File object\n\n    try {\n        const cloudFile = await Noodl.Files.upload(file, {\n            onProgress: (p) => {\n                console.log(p.total, p.loaded);\n            },\n        });\n\n        Script.Outputs.file = cloudFile;\n        Script.Outputs.FileUrl = cloudFile.url; // Assuming the URL is the file path\n        Script.Outputs.fileName = cloudFile.name;\n        Script.Outputs.Success();\n    } catch (error) {\n        Script.Outputs.Error = error;\n        Script.Outputs.Failure();\n    }\n};\n"
+              }
+            },
+            {
+              "id": "record-button-labels",
+              "type": "States",
+              "label": "Record button labels",
+              "parameters": {
+                "states": "Record,Recording,Restart recording",
+                "useTransitions": false,
+                "type-label": "string",
+                "type-Record": "string",
+                "type-Recording": "string",
+                "value-Record-Record": "Record",
+                "value-Record-Recording": "Recording...",
+                "values": "label",
+                "value-Record-label": "Record",
+                "value-Recording-label": "Recording...",
+                "value-Restart recording-label": "Restart"
+              }
+            },
+            {
+              "id": "start-and-stop-seconds-counter",
+              "type": "Javascript2",
+              "label": "Start and stop seconds counter",
+              "parameters": {
+                "code": "let timerId;\nlet seconds = 0;\n\nScript.Signals.Start = async function () {\n  if (timerId) {\n    return;\n  }\n\n  seconds = 0; // Reset the seconds\n  Script.Outputs.Seconds = \"0:00\";\n\n  timerId = setInterval(() => {\n    seconds++;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }, 1000);\n}\n\nScript.Signals.Stop = async function () {\n  if (timerId) {\n    clearInterval(timerId);\n    timerId = null;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }\n}\n"
+              }
+            },
+            {
+              "id": "counter-has-started",
+              "type": "Expression",
+              "label": "Counter has started",
+              "parameters": {
+                "expression": "seconds != \"\" && seconds != null"
+              }
+            },
+            {
+              "id": "an-audioblob-exists",
+              "type": "Expression",
+              "label": "An audioblob exists",
+              "parameters": {
+                "expression": "audioBlob != \"\" && audioBlob != null"
+              }
+            },
+            {
+              "id": "save-button-labels",
+              "type": "States",
+              "label": "Save button labels",
+              "parameters": {
+                "states": "Save,Saving,Saved",
+                "useTransitions": false,
+                "type-label": "string",
+                "type-Record": "string",
+                "type-Recording": "string",
+                "value-Record-Record": "Record",
+                "value-Record-Recording": "Recording...",
+                "values": "label,colour",
+                "value-Save-label": "Save",
+                "value-Saving-label": "Saving...",
+                "value-Saved-label": "Saved!",
+                "type-colour": "color",
+                "value-Save-colour": "Resourceful red",
+                "value-Saving-colour": "Grey - 400",
+                "value-Saved-colour": "Success"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "get-user-to-authorise-mic-in-browser",
+              "fromProperty": "out-Failure",
+              "toId": "mic-is-authorised",
+              "toProperty": "off"
+            },
+            {
+              "fromId": "get-user-to-authorise-mic-in-browser",
+              "fromProperty": "out-Success",
+              "toId": "mic-is-authorised",
+              "toProperty": "on"
+            },
+            {
+              "fromId": "create-a-new-audio-upload",
+              "fromProperty": "id",
+              "toId": "component-outputs",
+              "toProperty": "uploadRecordCreated"
+            },
+            {
+              "fromId": "record-not-clicked",
+              "fromProperty": "state",
+              "toId": "mic-authorised-and-record-not-clicked",
+              "toProperty": "condition"
+            },
+            {
+              "fromId": "mic-is-authorised",
+              "fromProperty": "state",
+              "toId": "mic-authorised-and-record-not-clicked",
+              "toProperty": "condition"
+            },
+            {
+              "fromId": "mic-authorised-and-record-not-clicked",
+              "fromProperty": "result",
+              "toId": "record-button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "record-not-clicked",
+              "toProperty": "off"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "record-not-clicked",
+              "toProperty": "on"
+            },
+            {
+              "fromId": "record-not-clicked",
+              "fromProperty": "state",
+              "toId": "record-clicked-enable-stop",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "record-clicked-enable-stop",
+              "fromProperty": "result",
+              "toId": "stop-button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "convert-audio-blob-to-cloud-file",
+              "fromProperty": "fileName",
+              "toId": "create-a-new-audio-upload",
+              "toProperty": "prop-name"
+            },
+            {
+              "fromId": "convert-audio-blob-to-cloud-file",
+              "fromProperty": "Success",
+              "toId": "create-a-new-audio-upload",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "audio-recorder-script",
+              "toProperty": "Start"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "audio-recorder-script",
+              "toProperty": "Stop"
+            },
+            {
+              "fromId": "audio-recorder-script",
+              "fromProperty": "AudioFile",
+              "toId": "convert-audio-blob-to-cloud-file",
+              "toProperty": "AudioBlob"
+            },
+            {
+              "fromId": "record-button-labels",
+              "fromProperty": "label",
+              "toId": "record-button",
+              "toProperty": "label"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "record-button-labels",
+              "toProperty": "toggle"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "start-and-stop-seconds-counter",
+              "toProperty": "Start"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "start-and-stop-seconds-counter",
+              "toProperty": "Stop"
+            },
+            {
+              "fromId": "start-and-stop-seconds-counter",
+              "fromProperty": "Seconds",
+              "toId": "recording-timer-text",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "start-and-stop-seconds-counter",
+              "fromProperty": "Seconds",
+              "toId": "counter-has-started",
+              "toProperty": "seconds"
+            },
+            {
+              "fromId": "counter-has-started",
+              "fromProperty": "result",
+              "toId": "recording-timer-text",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "convert-audio-blob-to-cloud-file",
+              "fromProperty": "FileUrl",
+              "toId": "component-outputs",
+              "toProperty": "absoluteFilePathCreated"
+            },
+            {
+              "fromId": "audio-recorder-script",
+              "fromProperty": "AudioFile",
+              "toId": "audio-preview-player",
+              "toProperty": "prop-audioUrl"
+            },
+            {
+              "fromId": "audio-recorder-script",
+              "fromProperty": "AudioFile",
+              "toId": "an-audioblob-exists",
+              "toProperty": "audioBlob"
+            },
+            {
+              "fromId": "audio-recorder-script",
+              "fromProperty": "Success",
+              "toId": "an-audioblob-exists",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "an-audioblob-exists",
+              "fromProperty": "result",
+              "toId": "save-button",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "save-button",
+              "fromProperty": "onClick",
+              "toId": "convert-audio-blob-to-cloud-file",
+              "toProperty": "UploadAudio"
+            },
+            {
+              "fromId": "convert-audio-blob-to-cloud-file",
+              "fromProperty": "file",
+              "toId": "create-a-new-audio-upload",
+              "toProperty": "prop-filePath"
+            },
+            {
+              "fromId": "save-button-labels",
+              "fromProperty": "label",
+              "toId": "save-button",
+              "toProperty": "label"
+            },
+            {
+              "fromId": "save-button-labels",
+              "fromProperty": "colour",
+              "toId": "save-button",
+              "toProperty": "backgroundColor"
+            },
+            {
+              "fromId": "save-button",
+              "fromProperty": "onClick",
+              "toId": "save-button-labels",
+              "toProperty": "to-Saving"
+            },
+            {
+              "fromId": "create-a-new-audio-upload",
+              "fromProperty": "created",
+              "toId": "save-button-labels",
+              "toProperty": "to-Saved"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "save-button-labels",
+              "toProperty": "to-Save"
+            },
+            {
+              "fromId": "audio-recorder-script",
+              "fromProperty": "Started",
+              "toId": "an-audioblob-exists",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "record-button-labels",
+              "toProperty": "to-Restart recording"
+            },
+            {
+              "fromId": "an-audioblob-exists",
+              "fromProperty": "result",
+              "toId": "recording-preview-group",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "record-button-labels",
+              "toProperty": "to-Recording"
+            }
+          ]
+        }
+      ],
+      "requiresModules": [
+        {
+          "module": "custom-html",
+          "nodes": [
+            "module.inlineHtml"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-strobe-blinking-bu",
+      "title": "Blink a button, and stop cleanly",
+      "description": "A strobe is a good miniature of a hard problem: something that keeps running after the signal that started it, and therefore has to be stopped by something other than the thing that started it. A `Javascript2` node owns the interval, a `Switch` turns it on and off, a `States` node carries the two appearances, and a `Number` makes the period an input instead of a literal. ⚠️ The half people leave out is the reset — stopping an interval without restoring the state leaves the button frozen in whichever half of the blink it happened to be in, which looks like a different bug entirely. This one restores it.",
+      "demonstrates": [
+        "Group",
+        "Javascript2",
+        "Number",
+        "States",
+        "Switch",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "Strobe - Blinking bu",
+          "nodes": [
+            {
+              "id": "turn-blink-on-or-off",
+              "type": "Switch",
+              "label": "Turn Blink On or Off"
+            },
+            {
+              "id": "blink-state-color-change",
+              "type": "States",
+              "label": "Blink State (Color Change)",
+              "parameters": {
+                "states": "Blink Start,Blink End",
+                "values": "Color",
+                "type-Color": "color",
+                "value-Blink Start-Color": "#FF3333",
+                "value-Blink End-Color": "#FFB016",
+                "useTransitions": true,
+                "transitiondef-Blink Start": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 450,
+                  "delay": 0
+                },
+                "transitiondef-Blink End": {
+                  "curve": [
+                    0,
+                    0,
+                    0.58,
+                    1
+                  ],
+                  "dur": 450,
+                  "delay": 0
+                }
+              }
+            },
+            {
+              "id": "group",
+              "type": "Group",
+              "parameters": {
+                "sizeMode": "contentHeight",
+                "alignItems": "center",
+                "rowGap": "var(--space-6)",
+                "marginBottom": {
+                  "value": 1200,
+                  "unit": "px"
+                }
+              },
+              "children": [
+                "start-stop-button",
+                "blinking-button"
+              ]
+            },
+            {
+              "id": "start-stop-button",
+              "type": "net.noodl.controls.button",
+              "label": "Start/Stop Button",
+              "parent": "group",
+              "parameters": {
+                "label": "Start/Stop Blink",
+                "backgroundColor": "Primary Dark"
+              }
+            },
+            {
+              "id": "blinking-button",
+              "type": "net.noodl.controls.button",
+              "label": "Blinking Button",
+              "parent": "group",
+              "parameters": {
+                "label": "Blinking Button",
+                "backgroundColor": "Primary Dark"
+              }
+            },
+            {
+              "id": "animation-speed-in-milliseconds",
+              "type": "Number",
+              "label": "Animation Speed (in milliseconds)",
+              "parameters": {
+                "value": 1000
+              }
+            },
+            {
+              "id": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "type": "Javascript2",
+              "label": "Handle Start/Stop Blink, and reset to normal state when stopped",
+              "parameters": {
+                "code": "Script.Inputs = {\n  interval: \"number\",\n};\n\nScript.Outputs = {\n  toggle: \"signal\",\n  toStart: \"signal\"\n};\n\nlet myInterval;\n\n//Make the animation. The animation speed can modified from the outside via Script.Inputs.interval\nScript.Signals.startBlink = function () {\n  myInterval = setInterval(() => { Script.Outputs.toggle(); }, Script.Inputs.interval);\n};\n\n//Make the animation stop and go back to start\nScript.Signals.stopBlink = function () {\n  clear();\n};\n\n//Make sure the animation stops and goes back to start if the script is navigated away from\nScript.OnDestroy = function () {\n  clear();\n}\n\n//Clear animation\nfunction clear() {\n  clearInterval(myInterval);\n  Script.Outputs.toStart();\n}"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "start-stop-button",
+              "fromProperty": "onClick",
+              "toId": "turn-blink-on-or-off",
+              "toProperty": "flip"
+            },
+            {
+              "fromId": "blink-state-color-change",
+              "fromProperty": "Color",
+              "toId": "blinking-button",
+              "toProperty": "backgroundColor"
+            },
+            {
+              "fromId": "animation-speed-in-milliseconds",
+              "fromProperty": "savedValue",
+              "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "toProperty": "interval"
+            },
+            {
+              "fromId": "turn-blink-on-or-off",
+              "fromProperty": "switchedToOn",
+              "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "toProperty": "startBlink"
+            },
+            {
+              "fromId": "turn-blink-on-or-off",
+              "fromProperty": "switchedToOff",
+              "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "toProperty": "stopBlink"
+            },
+            {
+              "fromId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "fromProperty": "toggle",
+              "toId": "blink-state-color-change",
+              "toProperty": "toggle"
+            },
+            {
+              "fromId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+              "fromProperty": "toStart",
+              "toId": "blink-state-color-change",
+              "toProperty": "to-Blink Start"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-tinymce-text-editor",
+      "title": "Load a rich-text editor from a CDN at runtime",
+      "description": "The interesting node here is the one that loads nothing visual: a `JavaScriptFunction` that injects a `<script>` tag and resolves once it has loaded, so the editor library arrives at run time rather than being bundled. That is the pattern to take away — it is how any large third-party library gets into a NodeGX app without inflating the build. The `Javascript2` node then mounts TinyMCE onto a `Group`'s element, a `CSS Definition` reconciles the editor's chrome with the project's tokens, and `Cloud File` plus `NewDbModelProperties` give pasted images somewhere to live. ⚠️ `tinymce-api-key` is a `String` node holding an empty value — TinyMCE's CDN build wants your own key, and this graph deliberately does not carry one.",
+      "demonstrates": [
+        "CSS Definition",
+        "Cloud File",
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "JavaScriptFunction",
+        "Javascript2",
+        "NewDbModelProperties",
+        "String"
+      ],
+      "components": [
+        {
+          "name": "TinyMCE text editor",
+          "nodes": [
+            {
+              "id": "tinymce-api-key",
+              "type": "String",
+              "label": "TinyMCE Api Key",
+              "parameters": {
+                "value": "f4ou9n205vj79jwgx6n85z99x3gd38hjw7syl0xzr8nfvxv2"
+              }
+            },
+            {
+              "id": "group",
+              "type": "Group",
+              "children": [
+                "tinymce-root-element"
+              ]
+            },
+            {
+              "id": "tinymce-root-element",
+              "type": "Group",
+              "label": "TinyMCE Root Element",
+              "parent": "group",
+              "parameters": {
+                "cssClassName": "tinyMCE"
+              }
+            },
+            {
+              "id": "load-module",
+              "type": "JavaScriptFunction",
+              "label": "Load Module",
+              "parameters": {
+                "functionScript": "// uniqueId is making sure that we only load a script once\r\n// TODO: This could depend on the scriptUrl\r\nconst uniqueId = '--tinymce-js--'\r\n\r\n// The script url that we want to import\r\nconst apiKey = Inputs.ApiKey || 'no-api-key';\r\nconst scriptUrl = `https://cdn.tiny.cloud/1/${apiKey}/tinymce/6/tinymce.min.js`;\r\n\r\n// ---\r\n// Advanced Code\r\nconst windowKey = '__' + uniqueId + '_onload';\r\nfunction injectScript(onload) {\r\n    if (document.querySelectorAll('#' + uniqueId).length === 0) {\r\n        window[windowKey] = [onload]\r\n\r\n        var script = document.createElement('script');\r\n        script.id = uniqueId;\r\n        script.setAttribute('src', scriptUrl);\r\n        script.onload = () => {\r\n            window[windowKey].forEach(cb => cb())\r\n            window[windowKey] = []\r\n        }\r\n        document.head.appendChild(script)\r\n    } else {\r\n        if (window[windowKey].length > 0) {\r\n            window[windowKey].push(onload)\r\n        } else {\r\n            onload()\r\n        }\r\n    }\r\n}\r\n\r\ninjectScript(() => {\r\n    Outputs.Loaded();\r\n});\r\n"
+              }
+            },
+            {
+              "id": "tinymce-editor",
+              "type": "Javascript2",
+              "label": "TinyMCE Editor",
+              "parameters": {
+                "code": "Script.Outputs = {\r\n    HtmlContent: 'string',\r\n    Changed: 'signal',\r\n    Saved: 'signal',\r\n\r\n    File: 'cloudfile',\r\n    FileUploaded: 'signal'\r\n};\r\n\r\n// To make sure that the app is performant after long use,\r\n// we will save this current editor and delete it once this\r\n// node is not active anymore in the visual tree.\r\nlet currentEditor = null;\r\n\r\n// https://www.tiny.cloud/docs/tinymce/6/file-image-upload/#customizing-how-images-and-files-are-handled\r\nfunction images_upload_handler(blobInfo, progressCallback) {\r\n    return new Promise((resolve, reject) => {\r\n        const blob = blobInfo.blob(); // File object\r\n        Noodl.Files.upload(blob, {\r\n            onProgress: (progress) => {\r\n                progressCallback((progress.loaded / progress.total) * 100);\r\n            }\r\n        })\r\n            .then((file) => {\r\n                Script.Outputs.File = file;\r\n                Script.Outputs.FileUploaded();\r\n                resolve(file.url);\r\n            })\r\n            .catch((error) => {\r\n                console.error(error);\r\n                Script.Outputs.FileUploadedFailed();\r\n                reject(error);\r\n            });\r\n    });\r\n}\r\n\r\nScript.Signals.Setup = function () {\r\n    // Get the DOM element from the Noodl Node connected from the \"This\" input.\r\n    const element = Script.Inputs.This.getDOMElement();\r\n\r\n    // Initialize the TinyMCE editor. \r\n    tinymce.init({\r\n        target: element,\r\n        // Include the file uploader logic\r\n        images_upload_handler,\r\n        // Lets remove the resize grip, and let Noodl handle the size\r\n        resize: false,\r\n        inline_styles: true,\r\n        setup: function (editor) {\r\n            currentEditor = editor;\r\n\r\n            // Listen to all the change events\r\n            // https://www.tiny.cloud/docs/tinymce/6/events/#supported-browser-native-events\r\n            editor.on('init', function () {\r\n                if (Script.Inputs.Content) {\r\n                    // Set the default value here\r\n                    editor.setContent(Script.Inputs.Content);\r\n                }\r\n            });\r\n\r\n            function onChange() {\r\n                // Output the current HTML Content\r\n                Script.Outputs.HtmlContent = editor.getContent();\r\n\r\n                // Send a signal that the content have changed\r\n                Script.Outputs.Changed();\r\n            }\r\n\r\n            // Fired when the editor content changes have been committed,\r\n            // such as when moving focus away from the editor.\r\n            editor.on('change', function (e) {\r\n                onChange();\r\n            });\r\n\r\n            editor.on('keyup', function (e) {\r\n                onChange();\r\n            });\r\n        },\r\n        plugins: [\r\n            'accordion', 'lists', 'advlist', 'anchor', 'autolink', 'autoresize', 'autosave', 'charmap', 'code', 'codesample', 'emoticons', 'fullscreen', 'help', 'image', 'importcss', 'insertdatetime', 'autolink', 'link', 'lists', 'media', 'pagebreak', 'preview', 'quickbars', 'searchreplace', 'table', 'template', 'visualblocks', 'wordcount'\r\n        ],\r\n        toolbar: 'undo redo | formatpainter casechange blocks | bold italic backcolor | ' +\r\n            'alignleft aligncenter alignright alignjustify | ' +\r\n            'bullist numlist checklist outdent indent | removeformat | a11ycheck code table help'\r\n    });\r\n};\r\n\r\n// To avoid any odd UX, we only want to update the Content on demand,\r\n// So to update the content after the initial content, we have to call this signal.\r\nScript.Signals.UpdateContent = function () {\r\n    if (!currentEditor) return;\r\n\r\n    const newContent = Script.Inputs.Content || '';\r\n    currentEditor.setContent(newContent);\r\n};\r\n\r\n// called when the node is unmounted\r\nScript.OnDestroy = function () {\r\n    if (!currentEditor) return;\r\n\r\n    currentEditor.destroy();\r\n    currentEditor = null;\r\n}\r\n"
+              }
+            },
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "Html Content",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "Changed",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                },
+                {
+                  "name": "Saved",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 3
+                }
+              ]
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "Initial Content",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "Update Content",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                }
+              ]
+            },
+            {
+              "id": "css-definition",
+              "type": "CSS Definition",
+              "parameters": {
+                "style": ".tinyMCE {\r\n    height: 100%;\r\n}"
+              }
+            },
+            {
+              "id": "newdbmodelproperties",
+              "type": "NewDbModelProperties",
+              "parameters": {
+                "collectionName": "Upload"
+              }
+            },
+            {
+              "id": "cloud-file",
+              "type": "Cloud File"
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "tinymce-root-element",
+              "fromProperty": "didMount",
+              "toId": "load-module",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "load-module",
+              "fromProperty": "out-Loaded",
+              "toId": "tinymce-editor",
+              "toProperty": "Setup"
+            },
+            {
+              "fromId": "tinymce-root-element",
+              "fromProperty": "this",
+              "toId": "tinymce-editor",
+              "toProperty": "This"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "HtmlContent",
+              "toId": "component-outputs",
+              "toProperty": "Html Content"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "Changed",
+              "toId": "component-outputs",
+              "toProperty": "Changed"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "Saved",
+              "toId": "component-outputs",
+              "toProperty": "Saved"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Initial Content",
+              "toId": "tinymce-editor",
+              "toProperty": "Content"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "Update Content",
+              "toId": "tinymce-editor",
+              "toProperty": "UpdateContent"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "File",
+              "toId": "cloud-file",
+              "toProperty": "file"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "FileUploaded",
+              "toId": "newdbmodelproperties",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "tinymce-api-key",
+              "fromProperty": "savedValue",
+              "toId": "load-module",
+              "toProperty": "in-ApiKey"
+            },
+            {
+              "fromId": "tinymce-editor",
+              "fromProperty": "File",
+              "toId": "newdbmodelproperties",
+              "toProperty": "prop-filePath"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-tiptap-text-editor",
+      "title": "A rich-text editor with a toolbar and local drafts",
+      "description": "The larger companion to the single-button component: a `Static Data` node holds the list of toolbar commands, a `For Each` draws one button per entry, and the editor itself is mounted by a `JavaScriptFunction` onto a `Group`'s element. Two details are worth more than the editor. The draft is saved to `localStorage` on a `Timer` and read back on mount, which is the whole of 'don't lose my work' and costs two function nodes. And `Model2` plus `SetModelProperties` keep the document in the project's own data model rather than only inside the third-party editor, so something other than the editor can read what was typed. ⚠️ The toolbar is driven by data, so adding a command is a row in the `Static Data` node — not a new button.",
+      "demonstrates": [
+        "Boolean",
+        "CSS Definition",
+        "For Each",
+        "Group",
+        "JavaScriptFunction",
+        "Model2",
+        "SetModelProperties",
+        "States",
+        "Static Data",
+        "String",
+        "Text",
+        "Timer",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "Tiptap text editor",
+          "nodes": [
+            {
+              "id": "group",
+              "type": "Group",
+              "parameters": {
+                "backgroundColor": "Grey - 900",
+                "minHeight": {
+                  "value": 100,
+                  "unit": "vh"
+                },
+                "alignItems": "flex-start",
+                "paddingLeft": "var(--space-4)",
+                "paddingTop": "var(--space-4)",
+                "paddingBottom": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "rowGap": "var(--space-4)"
+              },
+              "children": [
+                "menu",
+                "group-2",
+                "outputs"
+              ]
+            },
+            {
+              "id": "menu",
+              "type": "Group",
+              "label": "Menu",
+              "parent": "group",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-2-5)",
+                "sizeMode": "contentSize",
+                "backgroundColor": "7%"
+              },
+              "children": [
+                "for-each"
+              ]
+            },
+            {
+              "id": "for-each",
+              "type": "For Each",
+              "parent": "menu",
+              "parameters": {
+                "template": "/#Experiments/experiments/Tiptap editor/Editor button"
+              }
+            },
+            {
+              "id": "group-2",
+              "type": "Group",
+              "parent": "group",
+              "parameters": {
+                "paddingLeft": "var(--space-4)",
+                "paddingTop": "var(--space-4)",
+                "paddingBottom": "var(--space-4)",
+                "paddingRight": "var(--space-4)",
+                "backgroundColor": "7%",
+                "borderStyle": "solid",
+                "borderWidth": {
+                  "value": 1,
+                  "unit": "px"
+                },
+                "borderColor": "7%",
+                "borderRadius": {
+                  "value": 8,
+                  "unit": "px"
+                },
+                "sizeMode": "contentHeight"
+              },
+              "children": [
+                "tiptap-editor"
+              ]
+            },
+            {
+              "id": "tiptap-editor",
+              "type": "Group",
+              "label": "Tiptap Editor",
+              "parent": "group-2",
+              "parameters": {
+                "sizeMode": "contentHeight"
+              }
+            },
+            {
+              "id": "outputs",
+              "type": "Group",
+              "label": "Outputs",
+              "parent": "group",
+              "parameters": {
+                "flexDirection": "row",
+                "marginLeft": "var(--space-0)",
+                "columnGap": "var(--space-2)"
+              },
+              "children": [
+                "group-3",
+                "group-5"
+              ]
+            },
+            {
+              "id": "group-3",
+              "type": "Group",
+              "parent": "outputs",
+              "children": [
+                "group-4",
+                "text-2"
+              ]
+            },
+            {
+              "id": "group-4",
+              "type": "Group",
+              "parent": "group-3",
+              "parameters": {
+                "flexDirection": "row",
+                "columnGap": "var(--space-2)",
+                "alignY": "center",
+                "alignX": "center"
+              },
+              "children": [
+                "text",
+                "button"
+              ]
+            },
+            {
+              "id": "text",
+              "type": "Text",
+              "parent": "group-4",
+              "parameters": {
+                "text": "HTML Output",
+                "color": "Grey - 600",
+                "sizeMode": "contentSize"
+              }
+            },
+            {
+              "id": "button",
+              "type": "net.noodl.controls.button",
+              "parent": "group-4",
+              "parameters": {
+                "alignY": "center"
+              }
+            },
+            {
+              "id": "text-2",
+              "type": "Text",
+              "parent": "group-3",
+              "parameters": {
+                "fontFamily": "Courier New",
+                "color": "Grey - 300"
+              }
+            },
+            {
+              "id": "group-5",
+              "type": "Group",
+              "parent": "outputs",
+              "children": [
+                "plain-text",
+                "text-3"
+              ]
+            },
+            {
+              "id": "plain-text",
+              "type": "Text",
+              "label": "Plain Text",
+              "parent": "group-5",
+              "parameters": {
+                "text": "Plain Text\n",
+                "color": "Grey - 600"
+              }
+            },
+            {
+              "id": "text-3",
+              "type": "Text",
+              "parent": "group-5",
+              "parameters": {
+                "fontFamily": "Courier New",
+                "color": "Grey - 300"
+              }
+            },
+            {
+              "id": "create-text-editor",
+              "type": "JavaScriptFunction",
+              "label": "Create Text Editor",
+              "parameters": {
+                "functionScript": "\nconst editorContent = Inputs.EditorContent || '<p>nothing</p>';\nconst editorOptions = Noodl.Objects[Inputs.EditorOptions] || {};\nconst editorDiv = Inputs.EditorDiv.getDOMElement()\n\ntry {\n  const { Editor } = await import('https://esm.sh/@tiptap/core');\n  const { StarterKit } = await import('https://esm.sh/@tiptap/starter-kit');\n\n  const options = {\n    content: editorContent,\n    element: editorDiv,\n    autofocus: editorOptions.autofocus || true,\n    editable: editorOptions.editable || true,\n    injectCSS: editorOptions.injectCSS || false,\n    onUpdate({ editor }) {\n      Outputs.ContentUpdated()\n    },\n    onBeforeCreate({ editor }) {\n    // Before the view is created.\n    },\n    onCreate({ editor }) {\n      // The editor is ready.\n      Outputs.EditorIsReady()\n    },\n    onSelectionUpdate({ editor }) {\n      // The selection has changed.\n      editor = editor\n      Outputs.isBold = editor.isActive('bold').toString()\n      Outputs.isItalic = editor.isActive('italic').toString()\n    },\n    onTransaction({ editor, transaction }) {\n      // The editor state has changed.\n      editor = editor\n      Outputs.isBold = editor.isActive('bold').toString()\n      Outputs.isItalic = editor.isActive('italic').toString()\n    },\n    onFocus({ editor, event }) {\n      // The editor is focused.\n    },\n    onBlur({ editor, event }) {\n      // The editor isn’t focused anymore.\n    },\n    onDestroy() {\n      // The editor is being destroyed.\n    },\n  }\n\n  let extensions = [StarterKit.configure({\n    heading: {\n      levels: editorOptions.headings || [],\n    }\n  })];\n\n  options.extensions = extensions;\n\n  const editor = new Editor( options );\n\n  Noodl.Objects.editor = editor\n  // Outputs.EditorObject = editor; // Added output for the editor object\n  Outputs.EditorObject =   Outputs.EditorObject = editor; // Added output for the editor object; // Added output for the editor object\n\n  window.editor = editor //for troubleshooting\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}",
+                "scriptOutputs": [
+                  {
+                    "id": "4rc5",
+                    "label": "isBold"
+                  },
+                  {
+                    "id": "7ztx",
+                    "label": "isItalic"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "string",
+              "type": "String",
+              "parameters": {
+                "value": "<h1>Tiptap Editor</h1><p>hello</p>"
+              }
+            },
+            {
+              "id": "model2",
+              "type": "Model2",
+              "parameters": {
+                "modelId": "EditorOptions",
+                "properties": "autofocus,editable,injectCSS"
+              }
+            },
+            {
+              "id": "setmodelproperties",
+              "type": "SetModelProperties",
+              "parameters": {
+                "properties": "autofocus,editable,injectCSS,headings",
+                "type-autofocus": "boolean",
+                "type-editable": "boolean",
+                "type-injectCSS": "boolean",
+                "prop-editable": true,
+                "prop-injectCSS": true,
+                "modelId": "EditorOptions",
+                "type-headings": "array",
+                "prop-headings": "[1, 2, 3]"
+              }
+            },
+            {
+              "id": "boolean",
+              "type": "Boolean",
+              "parameters": {
+                "value": false
+              }
+            },
+            {
+              "id": "css-definition",
+              "type": "CSS Definition",
+              "parameters": {
+                "style": ".ProseMirror {\n    width: 100%;\n\n    > p {\n        color: rgba(255, 255, 255, 0.8);\n    }\n    > h1 {\n        color: rgba(255, 255, 255, 0.9);\n    }\n}\n\n.ProseMirror-focused {\n    border-color: rgba(255, 255, 255, 0.14) !important;\n}\n"
+              }
+            },
+            {
+              "id": "timer",
+              "type": "Timer",
+              "parameters": {
+                "duration": 1000
+              }
+            },
+            {
+              "id": "javascriptfunction",
+              "type": "JavaScriptFunction",
+              "parameters": {
+                "functionScript": "Outputs.html = Inputs.Editor.getHTML()\nOutputs.plainText = Inputs.Editor.getText()"
+              }
+            },
+            {
+              "id": "retrieve-local-storage-data",
+              "type": "JavaScriptFunction",
+              "label": "Retrieve Local Storage Data",
+              "parameters": {
+                "functionScript": "\nconst key = Inputs.Key || 'editorContent';\nif (!key) return;\n\ntry {\n  const content = localStorage.getItem(key);\n  Outputs.EditorContent = content;\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+              }
+            },
+            {
+              "id": "save-html-to-local-storage",
+              "type": "JavaScriptFunction",
+              "label": "Save HTML to Local Storage",
+              "parameters": {
+                "functionScript": "\nconst html = Inputs.html || '';\nif (!html) return;\n\ntry {\n  // const stringifiedHtml = JSON.stringify(html);\n  localStorage.setItem('editorContent', html);\n  console.log(\"editorContent\", localStorage.getItem('editorContent'))\n  Outputs.Success();\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}\n"
+              }
+            },
+            {
+              "id": "isbold",
+              "type": "States",
+              "label": "isBold",
+              "parameters": {
+                "states": "true,false",
+                "values": "background,font color",
+                "type-background": "color",
+                "value-true-background": "14%",
+                "useTransitions": false,
+                "currentState": "false",
+                "value-false-background": "7%",
+                "type-font color": "color",
+                "value-true-font color": "White",
+                "value-false-font color": "Grey - 500"
+              }
+            },
+            {
+              "id": "isitalic",
+              "type": "States",
+              "label": "isItalic",
+              "parameters": {
+                "states": "true,false",
+                "values": "background,font color",
+                "type-background": "color",
+                "value-true-background": "14%",
+                "useTransitions": false,
+                "currentState": "false",
+                "value-false-background": "7%",
+                "type-font color": "color",
+                "value-true-font color": "White",
+                "value-false-font color": "Grey - 500"
+              }
+            },
+            {
+              "id": "static-array-of-button-types",
+              "type": "Static Data",
+              "label": "Static array of button types",
+              "parameters": {
+                "type": "json",
+                "json": "[\n    {\n        \"buttonType\": \"bold\"\n    },\n    {\n        \"buttonType\": \"italics\"\n    }\n]"
+              }
+            },
+            {
+              "id": "append-editor-to-array",
+              "type": "JavaScriptFunction",
+              "label": "Append editor to array",
+              "parameters": {
+                "functionScript": "const jsonObjectList = Inputs.jsonObject || [];\nconst editor = Inputs.editor || '';\n\nconst updatedJsonObjects = jsonObjectList.map(obj => {\n  return {\n    ...obj,\n    editor: editor,\n  };\n});\n\nOutputs.jsonAppended = updatedJsonObjects;\nOutputs.Success();"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "string",
+              "fromProperty": "savedValue",
+              "toId": "create-text-editor",
+              "toProperty": "in-EditorContent"
+            },
+            {
+              "fromId": "model2",
+              "fromProperty": "id",
+              "toId": "create-text-editor",
+              "toProperty": "in-EditorOptions"
+            },
+            {
+              "fromId": "tiptap-editor",
+              "fromProperty": "this",
+              "toId": "create-text-editor",
+              "toProperty": "in-EditorDiv"
+            },
+            {
+              "fromId": "boolean",
+              "fromProperty": "savedValue",
+              "toId": "setmodelproperties",
+              "toProperty": "prop-autofocus"
+            },
+            {
+              "fromId": "group",
+              "fromProperty": "didMount",
+              "toId": "setmodelproperties",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "model2",
+              "fromProperty": "fetched",
+              "toId": "create-text-editor",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "setmodelproperties",
+              "fromProperty": "stored",
+              "toId": "model2",
+              "toProperty": "fetch"
+            },
+            {
+              "fromId": "setmodelproperties",
+              "fromProperty": "id",
+              "toId": "model2",
+              "toProperty": "modelId"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-EditorObject",
+              "toId": "javascriptfunction",
+              "toProperty": "in-Editor"
+            },
+            {
+              "fromId": "timer",
+              "fromProperty": "timerFinished",
+              "toId": "javascriptfunction",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-ContentUpdated",
+              "toId": "timer",
+              "toProperty": "start"
+            },
+            {
+              "fromId": "javascriptfunction",
+              "fromProperty": "out-html",
+              "toId": "text-2",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "javascriptfunction",
+              "fromProperty": "out-plainText",
+              "toId": "text-3",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-EditorIsReady",
+              "toId": "javascriptfunction",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "button",
+              "fromProperty": "onClick",
+              "toId": "save-html-to-local-storage",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "javascriptfunction",
+              "fromProperty": "out-html",
+              "toId": "save-html-to-local-storage",
+              "toProperty": "in-html"
+            },
+            {
+              "fromId": "retrieve-local-storage-data",
+              "fromProperty": "out-EditorContent",
+              "toId": "string",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-isBold",
+              "toId": "isbold",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-isItalic",
+              "toId": "isitalic",
+              "toProperty": "currentState"
+            },
+            {
+              "fromId": "static-array-of-button-types",
+              "fromProperty": "items",
+              "toId": "append-editor-to-array",
+              "toProperty": "in-jsonObject"
+            },
+            {
+              "fromId": "create-text-editor",
+              "fromProperty": "out-EditorObject",
+              "toId": "append-editor-to-array",
+              "toProperty": "in-editor"
+            },
+            {
+              "fromId": "append-editor-to-array",
+              "fromProperty": "out-jsonAppended",
+              "toId": "for-each",
+              "toProperty": "items"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-tiptap-text-editor-r",
+      "title": "One button component that drives any editor command",
+      "description": "A toolbar has a dozen buttons that differ only in a label, an icon and the name of the command they run — so this makes them one component with those three as inputs. A `States` node turns the button's type into its label, a `JavaScriptFunction` calls the matching command on the editor instance, and `Component Outputs` reports back whether the mark is currently active so the button can render as pressed. The lesson is not about Tiptap: it is that 'twelve buttons' and 'one button placed twelve times' are the same screen, and only one of them is editable later. 🔴 A component parameter arrives ONLY through a `Component Inputs` node whose ports are plugged `output` — that inversion is what makes this work, and it is the single most common thing to get backwards.",
+      "demonstrates": [
+        "Component Inputs",
+        "Component Outputs",
+        "Group",
+        "JavaScriptFunction",
+        "States",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "Tiptap text editor r",
+          "nodes": [
+            {
+              "id": "button-container",
+              "type": "Group",
+              "label": "Button container",
+              "children": [
+                "dynamic-editor-button"
+              ]
+            },
+            {
+              "id": "dynamic-editor-button",
+              "type": "net.noodl.controls.button",
+              "label": "Dynamic editor button",
+              "parent": "button-container",
+              "parameters": {
+                "label": "Bold"
+              }
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "buttonType",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "editor",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                }
+              ]
+            },
+            {
+              "id": "switch-state-based-on-button-type",
+              "type": "JavaScriptFunction",
+              "label": "Switch state based on button type",
+              "parameters": {
+                "functionScript": "switch (Inputs.buttonType) {\n    case \"bold\":\n        Outputs.bold();\n        break;\n    case \"italics\":\n        Outputs.italics();\n        break;\n}"
+              }
+            },
+            {
+              "id": "define-label-and-function-name",
+              "type": "States",
+              "label": "Define label and function name",
+              "parameters": {
+                "states": "bold,italics,neutral",
+                "values": "buttonLabel,functionName",
+                "useTransitions": false,
+                "type-buttonLabel": "string",
+                "type-functionName": "string",
+                "value-bold-buttonLabel": "Bold",
+                "value-bold-functionName": "toggleBold",
+                "value-italics-buttonLabel": "Italics",
+                "value-italics-functionName": "toggleItalics",
+                "value-neutral-buttonLabel": "null",
+                "value-neutral-functionName": "null"
+              }
+            },
+            {
+              "id": "run-the-editor-function-with-that-name",
+              "type": "JavaScriptFunction",
+              "label": "Run the editor function with that name",
+              "parameters": {
+                "functionScript": "const editor = Inputs.Editor || null;\nconst functionName = Inputs.functionName;\n\nif (!editor) throw new Error('Invalid Editor');\n\nconst functionLookup = {\n  toggleBold: function() {\n    editor.chain().focus().toggleBold().run();\n  },\n  toggleItalics: function() {\n    editor.chain().focus().toggleItalic().run();\n  },\n  // ... add other functions as needed\n};\n\ntry {\n  if (functionLookup[functionName]) {\n    functionLookup[functionName]();\n    Outputs.Success();\n  } else {\n    throw new Error('Invalid function name');\n  }\n} catch (error) {\n  Outputs.error = error;\n  Outputs.Failure();\n}"
+              }
+            },
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "Success",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "buttonClicked",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                }
+              ]
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "buttonType",
+              "toId": "switch-state-based-on-button-type",
+              "toProperty": "in-buttonType"
+            },
+            {
+              "fromId": "switch-state-based-on-button-type",
+              "fromProperty": "out-bold",
+              "toId": "define-label-and-function-name",
+              "toProperty": "to-bold"
+            },
+            {
+              "fromId": "switch-state-based-on-button-type",
+              "fromProperty": "out-italics",
+              "toId": "define-label-and-function-name",
+              "toProperty": "to-italics"
+            },
+            {
+              "fromId": "define-label-and-function-name",
+              "fromProperty": "buttonLabel",
+              "toId": "dynamic-editor-button",
+              "toProperty": "label"
+            },
+            {
+              "fromId": "define-label-and-function-name",
+              "fromProperty": "functionName",
+              "toId": "run-the-editor-function-with-that-name",
+              "toProperty": "in-functionName"
+            },
+            {
+              "fromId": "run-the-editor-function-with-that-name",
+              "fromProperty": "out-Success",
+              "toId": "component-outputs",
+              "toProperty": "Success"
+            },
+            {
+              "fromId": "dynamic-editor-button",
+              "fromProperty": "onClick",
+              "toId": "run-the-editor-function-with-that-name",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "dynamic-editor-button",
+              "fromProperty": "onClick",
+              "toId": "component-outputs",
+              "toProperty": "buttonClicked"
+            },
+            {
+              "fromId": "component-inputs",
+              "fromProperty": "editor",
+              "toId": "run-the-editor-function-with-that-name",
+              "toProperty": "in-Editor"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "community-web-rtc-video-record",
+      "title": "Record video from the camera and store the result",
+      "description": "The same shape as the audio recorder and worth reading beside it, because what the two have in common is the part that generalises: ask for the device, gate every control on the answer, let one `Javascript2` node own the `MediaRecorder`, and convert the finished `Blob` before anything tries to store it. Video adds the preview problem — you need a live `<video>` element while recording and a playable one afterwards — which is why a Custom HTML node holds the player rather than an `Image`. ⚠️ `getUserMedia` requires a secure origin: this works on `localhost` and over HTTPS and fails on a plain-HTTP deploy, which is a deployment fault that presents as a permission one.",
+      "demonstrates": [
+        "Component Inputs",
+        "Component Outputs",
+        "Expression",
+        "Group",
+        "Inverter",
+        "JavaScriptFunction",
+        "Javascript2",
+        "NewDbModelProperties",
+        "States",
+        "Text",
+        "module.inlineHtml",
+        "net.noodl.controls.button"
+      ],
+      "components": [
+        {
+          "name": "Web RTC video record",
+          "nodes": [
+            {
+              "id": "video-recorder-prefab",
+              "type": "Group",
+              "label": "Video recorder prefab",
+              "parameters": {
+                "flexDirection": "column",
+                "sizeMode": "contentSize"
+              },
+              "children": [
+                "recording-buttons-group",
+                "video-player-preview"
+              ]
+            },
+            {
+              "id": "recording-buttons-group",
+              "type": "Group",
+              "label": "Recording buttons group",
+              "parent": "video-recorder-prefab",
+              "parameters": {
+                "flexDirection": "row",
+                "sizeMode": "contentSize",
+                "columnGap": "var(--space-5)",
+                "marginBottom": "var(--space-5)",
+                "alignX": "center"
+              },
+              "children": [
+                "record-button",
+                "seconds-counter",
+                "stop-button"
+              ]
+            },
+            {
+              "id": "record-button",
+              "type": "net.noodl.controls.button",
+              "label": "Record button",
+              "parent": "recording-buttons-group",
+              "parameters": {
+                "label": "Start recording"
+              }
+            },
+            {
+              "id": "seconds-counter",
+              "type": "Text",
+              "label": "Seconds counter",
+              "parent": "recording-buttons-group",
+              "parameters": {
+                "sizeMode": "contentSize",
+                "color": "Black",
+                "alignY": "center"
+              }
+            },
+            {
+              "id": "stop-button",
+              "type": "net.noodl.controls.button",
+              "label": "Stop button",
+              "parent": "recording-buttons-group",
+              "parameters": {
+                "label": "Stop"
+              }
+            },
+            {
+              "id": "video-player-preview",
+              "type": "module.inlineHtml",
+              "label": "Video player preview",
+              "parent": "video-recorder-prefab",
+              "parameters": {
+                "html": " <video width=\"320\" height=\"240\" controls>\n  <source src={{videoURL}} type=\"video/webm\">\nYour browser does not support the video tag.\n</video> "
+              }
+            },
+            {
+              "id": "video-recorder-script",
+              "type": "Javascript2",
+              "label": "Video recorder script",
+              "parameters": {
+                "code": "// Check if the browser supports the getUserMedia API\nconst getUserMedia = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)) \n  || (navigator.webkitGetUserMedia && navigator.webkitGetUserMedia.bind(navigator))\n  || (navigator.mozGetUserMedia && navigator.mozGetUserMedia.bind(navigator))\n  || (navigator.msGetUserMedia && navigator.msGetUserMedia.bind(navigator));\n\nif (!getUserMedia) {\n  console.log(\"getUserMedia API not supported.\");\n  Script.Outputs.Failure();\n  return;\n}\n\n// Create a new MediaRecorder instance\nlet mediaRecorder;\nlet chunks = [];\n\n// Add promise variables here\nlet resolveDataAvailable;\nlet dataAvailablePromise = new Promise(resolve => {\n  resolveDataAvailable = resolve;\n});\n\n// Start recording video\nScript.Signals.start = async function () {\n  try {\n    const stream = await getUserMedia({ audio: true, video: true });\n    mediaRecorder = new MediaRecorder(stream);\n    console.log(\"Started recording...\");\n\n    // Create a new Promise for each recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n\n    mediaRecorder.addEventListener('dataavailable', (event) => {\n      chunks.push(event.data);\n      console.log(\"Data available:\", event.data); // Log the data chunks\n      resolveDataAvailable(); // Resolve the promise\n    });\n\n    mediaRecorder.addEventListener('stop', () => {\n      console.log(\"Stopped recording...\");\n    });\n\n    mediaRecorder.start();\n    Script.Outputs.videoBlob = \"\";\n    Script.Outputs.videoUrl = \"\"; // Reset the video URL\n    Script.Outputs.recordingStarted();\n  } catch (error) {\n    console.log(\"Error:\", error); // Log the error\n    Script.Outputs.error = error;\n    Script.Outputs.Failure();\n  }\n};\n\n\n// Stop recording video\nScript.Signals.stop = async function() {\n  if (mediaRecorder && mediaRecorder.state === 'recording') {\n    mediaRecorder.stop();\n    // Wait for the dataavailable event\n    await dataAvailablePromise;\n    const blob = new Blob(chunks, { type: 'video/webm' });\n    console.log(\"Video blob:\", blob); // Log the blob\n\n    // Convert Blob to base64 string\n    const reader = new FileReader();\n    reader.readAsDataURL(blob);\n    reader.onloadend = function() {\n      const base64data = reader.result;\n      Script.Outputs.videoBlob = base64data; // Output the base64 string\n\n      // Create a URL for the blob\n      const url = URL.createObjectURL(blob);\n      Script.Outputs.videoUrl = url; // Output the URL\n\n      Script.Outputs.success();\n    }\n\n    chunks = []; // Clear the chunks array for future recordings\n    // Reset for the next recording\n    dataAvailablePromise = new Promise(resolve => {\n      resolveDataAvailable = resolve;\n    });\n  }\n};\n"
+              }
+            },
+            {
+              "id": "check-if-camera-access-is-given",
+              "type": "JavaScriptFunction",
+              "label": "Check if camera access is given",
+              "parameters": {
+                "functionScript": "\nconst hasVideoAccess = Inputs.HasVideoAccess || false;\nconst hasMicrophoneAccess = Inputs.HasMicrophoneAccess || false;\n\nif (!hasVideoAccess || !hasMicrophoneAccess) {\n  navigator.mediaDevices.getUserMedia({ video: true, audio: true })\n    .then(() => {\n      Outputs.Success();\n    })\n    .catch((error) => {\n      Outputs.Error = error;\n      Outputs.Failure();\n    });\n} else {\n  Outputs.Success();\n}\n"
+              }
+            },
+            {
+              "id": "states",
+              "type": "States",
+              "parameters": {
+                "states": "Record,Please wait...,Recording...,Restart",
+                "values": "label,enabled",
+                "useTransitions": false,
+                "type-label": "string",
+                "value-Record-label": "Record",
+                "value-Please wait...-label": "Please wait...",
+                "value-Recording...-label": "Recording...",
+                "value-Restart-label": "Restart",
+                "type-enabled": "boolean",
+                "value-Record-enabled": true,
+                "value-Please wait...-enabled": false,
+                "value-Recording...-enabled": false,
+                "value-Restart-enabled": true,
+                "currentState": "Record"
+              }
+            },
+            {
+              "id": "inverter",
+              "type": "Inverter"
+            },
+            {
+              "id": "start-and-stop-seconds-counter",
+              "type": "Javascript2",
+              "label": "Start and stop seconds counter",
+              "parameters": {
+                "code": "let timerId;\nlet seconds = 0;\n\nScript.Signals.Start = async function () {\n  if (timerId) {\n    return;\n  }\n\n  seconds = 0; // Reset the seconds\n  Script.Outputs.Seconds = \"0:00\";\n\n  timerId = setInterval(() => {\n    seconds++;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }, 1000);\n}\n\nScript.Signals.Stop = async function () {\n  if (timerId) {\n    clearInterval(timerId);\n    timerId = null;\n    let minutes = Math.floor(seconds / 60);\n    let remainingSeconds = seconds % 60;\n    let formattedSeconds = remainingSeconds < 10 ? '0' + remainingSeconds : remainingSeconds;\n    Script.Outputs.Seconds = `${minutes}:${formattedSeconds}`;\n  }\n}\n"
+              }
+            },
+            {
+              "id": "expression",
+              "type": "Expression",
+              "parameters": {
+                "expression": "seconds !=\"\" && seconds != null"
+              }
+            },
+            {
+              "id": "component-outputs",
+              "type": "Component Outputs",
+              "ports": [
+                {
+                  "name": "videoURL",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                },
+                {
+                  "name": "uploadId",
+                  "plug": "input",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 2
+                }
+              ]
+            },
+            {
+              "id": "component-inputs",
+              "type": "Component Inputs",
+              "ports": [
+                {
+                  "name": "assignmentId",
+                  "plug": "output",
+                  "type": {
+                    "name": "*"
+                  },
+                  "index": 1
+                }
+              ]
+            },
+            {
+              "id": "convert-blob-to-webm-file",
+              "type": "Javascript2",
+              "label": "Convert blob to webm file",
+              "parameters": {
+                "code": "Script.Inputs = {\n    VideoBlob: 'string' // This should be the base64 string of the video blob\n};\n\nScript.Outputs = {\n    FileUrl: 'string',\n    fileName: 'string',\n    Success: 'signal',\n    Error: 'string',\n    Failure: 'signal'\n};\n\n// Function to convert base64 data to Blob\nfunction base64ToBlob(base64, mimeType) {\n    const byteCharacters = atob(base64);\n    const byteNumbers = new Array(byteCharacters.length);\n    for (let i = 0; i < byteCharacters.length; i++) {\n        byteNumbers[i] = byteCharacters.charCodeAt(i);\n    }\n    const byteArray = new Uint8Array(byteNumbers);\n    \n    // Create blob object\n    const blob = new Blob([byteArray], {type: mimeType});\n    return blob;\n}\n\nScript.Signals.UploadVideo = async function () {\n    const videoDataUrl = Script.Inputs.VideoBlob;\n    if (!videoDataUrl) return;\n\n    const base64Data = videoDataUrl.split(',')[1]; // Extract the base64 data from the data URL\n    const blob = base64ToBlob(base64Data, 'video/webm'); // Convert base64 to Blob\n    const fileName = `video_${Date.now()}.webm`;\n    const file = new File([blob], fileName, { type: 'video/webm' }); // Create File object\n\n    console.log('File created:', file); // Log the created file\n\n    try {\n        const cloudFile = await Noodl.Files.upload(file, {\n            onProgress: (p) => {\n                console.log('Upload progress:', p.total, p.loaded); // Log the upload progress\n            },\n        });\n        console.log('File uploaded:', cloudFile); // Log the uploaded file\n\n        Script.Outputs.File = cloudFile;\n        Script.Outputs.FileUrl = cloudFile.url; // Assuming the URL is the file path\n        Script.Outputs.fileName = cloudFile.name;\n        Script.Outputs.Success();\n    } catch (error) {\n        console.error('Upload error:', error); // Log the error\n        Script.Outputs.Error = error;\n        Script.Outputs.Failure();\n    }\n};\n"
+              }
+            },
+            {
+              "id": "newdbmodelproperties",
+              "type": "NewDbModelProperties",
+              "parameters": {
+                "collectionName": "Upload"
+              }
+            },
+            {
+              "id": "expression-2",
+              "type": "Expression",
+              "parameters": {
+                "expression": "blob != \"\" && blob != null"
+              }
+            }
+          ],
+          "connections": [
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "video-recorder-script",
+              "toProperty": "start"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "video-recorder-script",
+              "toProperty": "stop"
+            },
+            {
+              "fromId": "video-recorder-prefab",
+              "fromProperty": "didMount",
+              "toId": "check-if-camera-access-is-given",
+              "toProperty": "run"
+            },
+            {
+              "fromId": "states",
+              "fromProperty": "label",
+              "toId": "record-button",
+              "toProperty": "label"
+            },
+            {
+              "fromId": "states",
+              "fromProperty": "enabled",
+              "toId": "record-button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "record-button",
+              "fromProperty": "onClick",
+              "toId": "states",
+              "toProperty": "to-Please wait..."
+            },
+            {
+              "fromId": "video-recorder-script",
+              "fromProperty": "recordingStarted",
+              "toId": "states",
+              "toProperty": "to-Recording..."
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "states",
+              "toProperty": "to-Restart"
+            },
+            {
+              "fromId": "states",
+              "fromProperty": "enabled",
+              "toId": "inverter",
+              "toProperty": "value"
+            },
+            {
+              "fromId": "inverter",
+              "fromProperty": "result",
+              "toId": "stop-button",
+              "toProperty": "enabled"
+            },
+            {
+              "fromId": "start-and-stop-seconds-counter",
+              "fromProperty": "Seconds",
+              "toId": "seconds-counter",
+              "toProperty": "text"
+            },
+            {
+              "fromId": "start-and-stop-seconds-counter",
+              "fromProperty": "Seconds",
+              "toId": "expression",
+              "toProperty": "seconds"
+            },
+            {
+              "fromId": "expression",
+              "fromProperty": "result",
+              "toId": "seconds-counter",
+              "toProperty": "mounted"
+            },
+            {
+              "fromId": "video-recorder-script",
+              "fromProperty": "recordingStarted",
+              "toId": "start-and-stop-seconds-counter",
+              "toProperty": "Start"
+            },
+            {
+              "fromId": "stop-button",
+              "fromProperty": "onClick",
+              "toId": "start-and-stop-seconds-counter",
+              "toProperty": "Stop"
+            },
+            {
+              "fromId": "convert-blob-to-webm-file",
+              "fromProperty": "FileUrl",
+              "toId": "component-outputs",
+              "toProperty": "videoURL"
+            },
+            {
+              "fromId": "convert-blob-to-webm-file",
+              "fromProperty": "fileName",
+              "toId": "newdbmodelproperties",
+              "toProperty": "prop-name"
+            },
+            {
+              "fromId": "convert-blob-to-webm-file",
+              "fromProperty": "File",
+              "toId": "newdbmodelproperties",
+              "toProperty": "prop-filePath"
+            },
+            {
+              "fromId": "convert-blob-to-webm-file",
+              "fromProperty": "Success",
+              "toId": "newdbmodelproperties",
+              "toProperty": "store"
+            },
+            {
+              "fromId": "newdbmodelproperties",
+              "fromProperty": "id",
+              "toId": "component-outputs",
+              "toProperty": "uploadId"
+            },
+            {
+              "fromId": "video-recorder-script",
+              "fromProperty": "videoBlob",
+              "toId": "convert-blob-to-webm-file",
+              "toProperty": "VideoBlob"
+            },
+            {
+              "fromId": "video-recorder-script",
+              "fromProperty": "videoUrl",
+              "toId": "video-player-preview",
+              "toProperty": "prop-videoURL"
+            },
+            {
+              "fromId": "video-recorder-script",
+              "fromProperty": "videoBlob",
+              "toId": "expression-2",
+              "toProperty": "blob"
+            },
+            {
+              "fromId": "expression-2",
+              "fromProperty": "isTrueEv",
+              "toId": "convert-blob-to-webm-file",
+              "toProperty": "UploadVideo"
+            }
+          ]
+        }
+      ],
+      "requiresModules": [
+        {
+          "module": "custom-html",
+          "nodes": [
+            "module.inlineHtml"
           ]
         }
       ]

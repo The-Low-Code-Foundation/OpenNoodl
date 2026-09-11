@@ -1,0 +1,442 @@
+{
+ "id": "community-seo-meta-tag-setter",
+ "title": "Set the meta tags a link preview reads",
+ "description": "Seventeen nodes that exist because the runtime writes no `<meta>` tags for you: a `JavaScriptFunction` reaches `document.head` and sets title, description, canonical URL, robots, the Open Graph set and the Twitter card, each fed from its own `String` or `States` node so a page can override one without restating the rest. The `Expression` defaulting the URL to `location.href` is what stops a forgotten `og:url` pointing at the wrong page. \u26a0\ufe0f Nothing here needs a node that does not exist \u2014 but nothing here is done for you either, so budget the seventeen nodes.",
+ "demonstrates": [
+  "Component Inputs",
+  "Expression",
+  "JavaScriptFunction",
+  "Javascript2",
+  "Number",
+  "States",
+  "String"
+ ],
+ "components": [
+  {
+   "name": "SEO Meta Tag setter",
+   "nodes": [
+    {
+     "id": "component-inputs",
+     "type": "Component Inputs",
+     "ports": [
+      {
+       "name": "Do",
+       "plug": "output",
+       "type": "*",
+       "index": 0
+      },
+      {
+       "name": "title",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General search engine",
+       "index": 1
+      },
+      {
+       "name": "description",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General search engine",
+       "index": 2
+      },
+      {
+       "name": "og:title",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Open Graph",
+       "index": 4
+      },
+      {
+       "name": "og:description",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Open Graph",
+       "index": 5
+      },
+      {
+       "name": "og:image",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Open Graph",
+       "index": 6
+      },
+      {
+       "name": "og:type",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Open Graph",
+       "index": 9
+      },
+      {
+       "name": "og:url (override default)",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Open Graph",
+       "index": 10
+      },
+      {
+       "name": "robots",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "General search engine",
+       "index": 3
+      },
+      {
+       "name": "twitter:title",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Twitter",
+       "index": 11
+      },
+      {
+       "name": "twitter:description",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Twitter",
+       "index": 12
+      },
+      {
+       "name": "twitter:card",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Twitter",
+       "index": 13
+      },
+      {
+       "name": "twitter:image",
+       "plug": "output",
+       "type": {
+        "name": "*"
+       },
+       "group": "Twitter",
+       "index": 14
+      }
+     ]
+    },
+    {
+     "id": "set-all-meta-tags",
+     "type": "JavaScriptFunction",
+     "label": "Set all meta tags",
+     "parameters": {
+      "functionScript": "const href = window.location.href;\nconst encodedOgImagePath = encodeURIComponent(Inputs.ogImage);\nconst encodedTwitterImagePath = encodeURIComponent(Inputs.twitterImage);\n\nconst metaTags = {\n  // Basic title and description for search engines\n  'title': Inputs.title,\n  'description': Inputs.description,\n  // Open Graph values, used by Facebook, LinkedIn, etc.\n  'og:title': Inputs.ogTitle,\n  'og:description': Inputs.ogDescription,\n  'og:image': href + encodedOgImagePath,\n  // Helps social media platforms display the image correctly\n  'og:image:height': Inputs.ogImageHeight,\n  'og:image:width': Inputs.ogImageWidth,\n  // Tells the service what kind of content is on the page\n  // Possible values: website, article, book, profile, video.movie, video.episode, video.tv_show, video.other, music.song, music.album, music.playlist, music.radio_station\n  'og:type': Inputs.ogType,\n  // Used to force recognition of a specified url no matter what paths or parameters the shared URL is composed of\n  'og:url': Inputs.ogUrl,\n  // A comma separated list of values that tells crawlers how to index the site\n  // Possible values: see footnote comment below **\n  'robots': Inputs.robots,\n  // Values specifically for Twitter\n  'twitter:title': Inputs.twitterTitle,\n  'twitter:description': Inputs.twitterDescription,\n  // Type of content to tell twitter how to present the content when shared in a tweet\n  // Possible values: summary, summary_large_image, app (mobile app promotion), player (shares video or audio content directly in the tweet)\n  'twitter:card': Inputs.twitterCard,\n  'twitter:image': href + encodedTwitterImagePath\n};\n\nObject.keys(metaTags).forEach(key => {\n  Noodl.SEO.setMeta(key, metaTags[key]);\n});\n\n\n/*\n** Possible robots metatag values: \n\nindex: Allows search engines to index the page (i.e., include it in their search results). This is the default behavior even if the tag isn\u2019t present.\n\nnoindex: Prevents search engines from indexing the page (i.e., the page will not appear in search results).\n\nfollow: Instructs search engines to follow the links on the page, potentially discovering new pages to index. Like \"index\", this is default behavior.\n\nnofollow: Prevents search engines from following any links on the page. This means that while the page itself may be indexed, the search engine won\u2019t use the links on that page to discover new pages.\n\nnoarchive: Tells search engines not to store a cached copy of the page.\n\nnosnippet: Prevents a text snippet or video preview from being shown in the search results.\n\nnoodp: Blocks search engines from using metadata from the Open Directory Project (DMOZ) for titles or snippets for the page. Note: As the DMOZ is no longer active, this directive is essentially obsolete.\n\nnotranslate: Advises search engines not to offer a translation for this page in search results.\n\nnoimageindex: Instructs search engines not to index images on the page. Images might still appear in search results if they're linked from elsewhere.\n\nunavailable_after: Specifies a date/time after which the page should not be indexed. For example, unavailable_after: 25-Jun-2020 15:00:00 EST.\n*/"
+     }
+    },
+    {
+     "id": "title",
+     "type": "String",
+     "label": "title"
+    },
+    {
+     "id": "description",
+     "type": "String",
+     "label": "description"
+    },
+    {
+     "id": "og-title",
+     "type": "String",
+     "label": "og:title"
+    },
+    {
+     "id": "og-description",
+     "type": "String",
+     "label": "og:description"
+    },
+    {
+     "id": "og-image-height",
+     "type": "Number",
+     "label": "og:image:height",
+     "parameters": {
+      "value": 0
+     }
+    },
+    {
+     "id": "og-image-width",
+     "type": "Number",
+     "label": "og:image:width",
+     "parameters": {
+      "value": 0
+     }
+    },
+    {
+     "id": "og-type",
+     "type": "States",
+     "label": "og:type",
+     "parameters": {
+      "states": "website,article,book,profile,video.movie,video.episode,video.tv_show,video.other,music.song,music.album,music.playlist,music.radio_station"
+     }
+    },
+    {
+     "id": "og-url",
+     "type": "String",
+     "label": "og:url"
+    },
+    {
+     "id": "set-default-to-current-href",
+     "type": "Expression",
+     "label": "Set default to current href",
+     "parameters": {
+      "expression": "window.location.href"
+     }
+    },
+    {
+     "id": "choose-image-from-library",
+     "type": "Javascript2",
+     "label": "Choose image from library",
+     "parameters": {
+      "code": "Script.Inputs = {\n  image: \"image\"\n};\n\nfunction onChange() {\n  function getImageDimensions(url, callback) {\n  var img = new Image();\n\n  // Set up an event listener to execute once the image has loaded\n  img.onload = function() {\n    // The image is now loaded; dimensions are available\n    callback(this.width, this.height);\n  };\n\n  // Handle possible errors in loading the image (e.g., broken links)\n  img.onerror = function() {\n    console.log(\"There was an error loading the image.\");\n  };\n\n  // Set the source of the image\n  img.src = url;\n  }\n\n  getImageDimensions(Script.Inputs.image, (width, height) => {\n    Script.Outputs.imageWidth = width;\n    Script.Outputs.imageHeight = height;\n  });\n\n  \n  Script.Outputs.imagePath = Script.Inputs.image;\n  Script.Outputs.Done();\n}\n\nScript.Setters.image = onChange;\n\n"
+     }
+    },
+    {
+     "id": "robots",
+     "type": "String",
+     "label": "robots",
+     "parameters": {
+      "value": "index,nofollow"
+     }
+    },
+    {
+     "id": "twitter-card",
+     "type": "States",
+     "label": "twitter:card",
+     "parameters": {
+      "states": "summary,summary_large_image,app,player"
+     }
+    },
+    {
+     "id": "choose-image-from-library-2",
+     "type": "Javascript2",
+     "label": "Choose image from library",
+     "parameters": {
+      "code": "Script.Inputs = {\n  image: \"image\"\n};\n\nfunction onChange() {  \n  Script.Outputs.imagePath = Script.Inputs.image;\n  Script.Outputs.Done();\n}\n\nScript.Setters.image = onChange;\n\n"
+     }
+    },
+    {
+     "id": "twitter-title",
+     "type": "String",
+     "label": "twitter:title"
+    },
+    {
+     "id": "twitter-description",
+     "type": "String",
+     "label": "twitter:description"
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "title",
+     "fromProperty": "savedValue",
+     "toId": "og-title",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "description",
+     "fromProperty": "savedValue",
+     "toId": "og-description",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "title",
+     "toId": "title",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "description",
+     "toId": "description",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "og:title",
+     "toId": "og-title",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "og:description",
+     "toId": "og-description",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "og:type",
+     "toId": "og-type",
+     "toProperty": "currentState"
+    },
+    {
+     "fromId": "og-type",
+     "fromProperty": "currentState",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogType"
+    },
+    {
+     "fromId": "set-default-to-current-href",
+     "fromProperty": "result",
+     "toId": "og-url",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "og:url (override default)",
+     "toId": "og-url",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "title",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-title"
+    },
+    {
+     "fromId": "description",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-description"
+    },
+    {
+     "fromId": "og-title",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogTitle"
+    },
+    {
+     "fromId": "og-description",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogDescription"
+    },
+    {
+     "fromId": "choose-image-from-library",
+     "fromProperty": "imagePath",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogImage"
+    },
+    {
+     "fromId": "og-image-width",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogImageWidth"
+    },
+    {
+     "fromId": "og-image-height",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogImageHeight"
+    },
+    {
+     "fromId": "og-url",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-ogUrl"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "og:image",
+     "toId": "choose-image-from-library",
+     "toProperty": "image"
+    },
+    {
+     "fromId": "choose-image-from-library",
+     "fromProperty": "imageWidth",
+     "toId": "og-image-width",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "choose-image-from-library",
+     "fromProperty": "imageHeight",
+     "toId": "og-image-height",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "robots",
+     "toId": "robots",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "robots",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-robots"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "twitter:image",
+     "toId": "choose-image-from-library-2",
+     "toProperty": "image"
+    },
+    {
+     "fromId": "choose-image-from-library",
+     "fromProperty": "imagePath",
+     "toId": "choose-image-from-library-2",
+     "toProperty": "image"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "twitter:card",
+     "toId": "twitter-card",
+     "toProperty": "currentState"
+    },
+    {
+     "fromId": "twitter-card",
+     "fromProperty": "currentState",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-twitterCard"
+    },
+    {
+     "fromId": "choose-image-from-library-2",
+     "fromProperty": "imagePath",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-twitterImage"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "twitter:title",
+     "toId": "twitter-title",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "component-inputs",
+     "fromProperty": "twitter:description",
+     "toId": "twitter-description",
+     "toProperty": "value"
+    },
+    {
+     "fromId": "twitter-title",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-twitterTitle"
+    },
+    {
+     "fromId": "twitter-description",
+     "fromProperty": "savedValue",
+     "toId": "set-all-meta-tags",
+     "toProperty": "in-twitterDescription"
+    }
+   ]
+  }
+ ]
+}

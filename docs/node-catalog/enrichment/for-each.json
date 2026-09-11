@@ -5,6 +5,7 @@
   "whenToUse": "Any repeated UI: lists, grids, menus, table rows. Its idiomatic partner is Query Records for cloud data or a Static Data/Variable2 array for local data. Not for repeating pure logic without visuals — see For Each Actions.",
   "ports": {
     "items": "The array to repeat over. Each element should be an object; its properties feed the item component's matching Component Inputs.",
+    "inputMappingScript": "Dynamic string port (JavaScript), shown once a template component is set, under \"Input Mapping\". The script is called as `map({ portName: mapping, ... })`, where a mapping is either a string naming a key on the item (`'title'`) or a function receiving the item (`() => object.get('title') + '!'` — `object` is in scope). It is pre-filled with an identity mapping for every non-signal input of the template component, so it usually needs editing only to rename, compute or hard-code a value. A script that does not compile maps NOTHING and reports `repeater/input-mapping-syntax-error`.",
     "template": "The item component (visible when `templateType` is explicit). Component names start with '/'; components in a sheet are '/#Sheet Name/Component Name'.",
     "templateScript": "JavaScript choosing a component per item (visible when `templateType` is dynamic): set `component` using the `item` variable.",
     "refresh": "Signal; tears down and rebuilds all instances. Rarely needed — the repeater tracks array changes itself.",
@@ -16,7 +17,8 @@
   "runtimeBehavior": "Two dynamic mechanisms: `template`/`templateScript` swap in and out based on `templateType` (declared-port-groups), and outputs named after signals sent by item components are registered on demand (runtime-discovered) — an item component's Component Outputs signal appears as an output port here so a list can bubble events up.",
   "examples": [
     "repeater-query-records",
-    "ui-card-grid-repeater"
+    "ui-card-grid-repeater",
+    "community-tiptap-text-editor"
   ],
   "patterns": [
     "Query Records `items` → Repeater `items`: the canonical data-driven list.",

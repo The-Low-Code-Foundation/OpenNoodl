@@ -270,3 +270,7 @@ dev-docs/tasks/**/notes/**/*.png
 dev-docs/tasks/**/notes/**/*.jpg
 dev-docs/tasks/**/notes/**/*.jpeg
 dev-docs/tasks/**/notes/**/*.webp
+
+# Python bytecode from the repo scripts (e.g. dev-docs/tasks/**/convert-exports.py)
+__pycache__/
+*.pyc

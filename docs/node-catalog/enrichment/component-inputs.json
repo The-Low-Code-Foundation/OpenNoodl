@@ -12,7 +12,8 @@
     "comp-variant-badge-states",
     "comp-controlled-quantity-stepper",
     "comp-slot-panel-with-interface",
-    "comp-placement-contract-avatar"
+    "comp-placement-contract-avatar",
+    "community-tiptap-text-editor-r"
   ],
   "patterns": [
     "Repeater item: declare inputs named after the item object's properties and bind them straight to visuals.",

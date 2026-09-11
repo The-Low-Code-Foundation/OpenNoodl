@@ -1,0 +1,44 @@
+{
+ "id": "community-ag-grid",
+ "title": "Mount a third-party grid, and unmount it again",
+ "description": "The smallest complete statement of the lifecycle pair: a `Javascript2` node that reaches a DOM element belonging to a `Group`, hands it to a library that is not Noodl's, and \u2014 the half that is almost always missing \u2014 tears that library down again on `Node.Signals.WillUnmount`. Only two nodes, and the pattern generalises to every grid, chart, map and editor in the ecosystem. \u26a0\ufe0f The community wrote this against AG Grid loaded separately; the graph does not bundle it, and neither the script's CDN tag nor the licence AG Grid asks for is part of what lands here. Read it for the mount/unmount shape, not as a working grid.",
+ "demonstrates": [
+  "Group",
+  "Javascript2"
+ ],
+ "components": [
+  {
+   "name": "AG Grid",
+   "nodes": [
+    {
+     "id": "group",
+     "type": "Group",
+     "parameters": {
+      "cssClassName": "ag-theme-quartz"
+     }
+    },
+    {
+     "id": "javascript2",
+     "type": "Javascript2",
+     "parameters": {
+      "code": "let api = null;\r\n\r\nScript.Signals.Setup = function () {\r\n    // Define column definitions\r\n    const columnDefs = [\r\n        { field: \"make\" },\r\n        { field: \"model\" },\r\n        { field: \"price\" },\r\n        { field: \"electric\" }\r\n    ];\r\n\r\n    // specify the data source and column definitions\r\n    gridOptions = {\r\n        columnDefs: columnDefs,\r\n        pagination: true,\r\n        paginationPageSize: 50,\r\n        rowModelType: 'infinite',\r\n    };\r\n\r\n    // initialize the grid passing in the div to use together with the columns & data we want to use\r\n    const gridDiv = Script.Inputs.Node.getDOMElement();\r\n    api = agGrid.createGrid(gridDiv, gridOptions);\r\n\r\n    // Set the data source callback\r\n    api.updateGridOptions({ datasource: { getRows: fetchData } });\r\n}\r\n\r\n// Fetch data from the server\r\nasync function fetchData(params) {\r\n    // Construct the query\r\n    const query = {};\r\n\r\n    const options = {\r\n        skip: params.startRow,\r\n        limit: params.endRow - params.startRow,\r\n        count: true,\r\n    };\r\n\r\n    try {\r\n        // Make a request to your server-side API to fetch data\r\n        const response = await Noodl.Records.query(\"TEST\", query, options);\r\n\r\n        // Provide the fetched data to AG Grid\r\n        params.successCallback({\r\n            rowData: response.results,\r\n            rowCount: response.count,\r\n        });\r\n    } catch (error) {\r\n        console.error('Error fetching data:', error);\r\n        params.failCallback();\r\n    }\r\n}\r\n"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "group",
+     "fromProperty": "didMount",
+     "toId": "javascript2",
+     "toProperty": "Setup"
+    },
+    {
+     "fromId": "group",
+     "fromProperty": "this",
+     "toId": "javascript2",
+     "toProperty": "Node"
+    }
+   ]
+  }
+ ]
+}

@@ -14,7 +14,7 @@
     "type": "Enum: text, textArea, email, number, password or url. textArea renders a multi-line editor."
   },
   "runtimeBehavior": "Declared-port-groups: `width`/`height` appear per `sizeMode`, icon ports per `useIcon`/`iconSourceType`, label styling ports when `useLabel` is true, and border/shadow ports per border-style and `boxShadowEnabled` settings. The catalog list is the superset; the editor shows the subset matching current parameters.",
-  "examples": ["ctl-settings-form"],
+  "examples": ["ctl-settings-form", "community-email-signup-validat"],
   "patterns": [
     "`onTextChanged` → an Expression or Condition: validate as the user types.",
     "`onEnter` → the same action as the submit button's `onClick`: keyboard-friendly forms.",

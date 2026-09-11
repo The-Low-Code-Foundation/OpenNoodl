@@ -1,0 +1,155 @@
+{
+ "id": "community-strobe-blinking-bu",
+ "title": "Blink a button, and stop cleanly",
+ "description": "A strobe is a good miniature of a hard problem: something that keeps running after the signal that started it, and therefore has to be stopped by something other than the thing that started it. A `Javascript2` node owns the interval, a `Switch` turns it on and off, a `States` node carries the two appearances, and a `Number` makes the period an input instead of a literal. \u26a0\ufe0f The half people leave out is the reset \u2014 stopping an interval without restoring the state leaves the button frozen in whichever half of the blink it happened to be in, which looks like a different bug entirely. This one restores it.",
+ "demonstrates": [
+  "Group",
+  "Javascript2",
+  "Number",
+  "States",
+  "Switch",
+  "net.noodl.controls.button"
+ ],
+ "components": [
+  {
+   "name": "Strobe - Blinking bu",
+   "nodes": [
+    {
+     "id": "turn-blink-on-or-off",
+     "type": "Switch",
+     "label": "Turn Blink On or Off"
+    },
+    {
+     "id": "blink-state-color-change",
+     "type": "States",
+     "label": "Blink State (Color Change)",
+     "parameters": {
+      "states": "Blink Start,Blink End",
+      "values": "Color",
+      "type-Color": "color",
+      "value-Blink Start-Color": "#FF3333",
+      "value-Blink End-Color": "#FFB016",
+      "useTransitions": true,
+      "transitiondef-Blink Start": {
+       "curve": [
+        0,
+        0,
+        0.58,
+        1
+       ],
+       "dur": 450,
+       "delay": 0
+      },
+      "transitiondef-Blink End": {
+       "curve": [
+        0,
+        0,
+        0.58,
+        1
+       ],
+       "dur": 450,
+       "delay": 0
+      }
+     }
+    },
+    {
+     "id": "group",
+     "type": "Group",
+     "parameters": {
+      "sizeMode": "contentHeight",
+      "alignItems": "center",
+      "rowGap": "var(--space-6)",
+      "marginBottom": {
+       "value": 1200,
+       "unit": "px"
+      }
+     },
+     "children": [
+      "start-stop-button",
+      "blinking-button"
+     ]
+    },
+    {
+     "id": "start-stop-button",
+     "type": "net.noodl.controls.button",
+     "label": "Start/Stop Button",
+     "parent": "group",
+     "parameters": {
+      "label": "Start/Stop Blink",
+      "backgroundColor": "Primary Dark"
+     }
+    },
+    {
+     "id": "blinking-button",
+     "type": "net.noodl.controls.button",
+     "label": "Blinking Button",
+     "parent": "group",
+     "parameters": {
+      "label": "Blinking Button",
+      "backgroundColor": "Primary Dark"
+     }
+    },
+    {
+     "id": "animation-speed-in-milliseconds",
+     "type": "Number",
+     "label": "Animation Speed (in milliseconds)",
+     "parameters": {
+      "value": 1000
+     }
+    },
+    {
+     "id": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "type": "Javascript2",
+     "label": "Handle Start/Stop Blink, and reset to normal state when stopped",
+     "parameters": {
+      "code": "Script.Inputs = {\n  interval: \"number\",\n};\n\nScript.Outputs = {\n  toggle: \"signal\",\n  toStart: \"signal\"\n};\n\nlet myInterval;\n\n//Make the animation. The animation speed can modified from the outside via Script.Inputs.interval\nScript.Signals.startBlink = function () {\n  myInterval = setInterval(() => { Script.Outputs.toggle(); }, Script.Inputs.interval);\n};\n\n//Make the animation stop and go back to start\nScript.Signals.stopBlink = function () {\n  clear();\n};\n\n//Make sure the animation stops and goes back to start if the script is navigated away from\nScript.OnDestroy = function () {\n  clear();\n}\n\n//Clear animation\nfunction clear() {\n  clearInterval(myInterval);\n  Script.Outputs.toStart();\n}"
+     }
+    }
+   ],
+   "connections": [
+    {
+     "fromId": "start-stop-button",
+     "fromProperty": "onClick",
+     "toId": "turn-blink-on-or-off",
+     "toProperty": "flip"
+    },
+    {
+     "fromId": "blink-state-color-change",
+     "fromProperty": "Color",
+     "toId": "blinking-button",
+     "toProperty": "backgroundColor"
+    },
+    {
+     "fromId": "animation-speed-in-milliseconds",
+     "fromProperty": "savedValue",
+     "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "toProperty": "interval"
+    },
+    {
+     "fromId": "turn-blink-on-or-off",
+     "fromProperty": "switchedToOn",
+     "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "toProperty": "startBlink"
+    },
+    {
+     "fromId": "turn-blink-on-or-off",
+     "fromProperty": "switchedToOff",
+     "toId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "toProperty": "stopBlink"
+    },
+    {
+     "fromId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "fromProperty": "toggle",
+     "toId": "blink-state-color-change",
+     "toProperty": "toggle"
+    },
+    {
+     "fromId": "handle-start-stop-blink-and-reset-to-normal-state-when-stopped",
+     "fromProperty": "toStart",
+     "toId": "blink-state-color-change",
+     "toProperty": "to-Blink Start"
+    }
+   ]
+  }
+ ]
+}

@@ -14,7 +14,8 @@
     "path": "String value; read from the File object's path property, which standard browsers do not provide — usually undefined. Use `name` instead."
   },
   "examples": [
-    "var-avatar-picker-responsive"
+    "var-avatar-picker-responsive",
+    "community-dropzone"
   ],
   "patterns": [
     "Button `onClick` → `open`, then `file` → Upload File and `done` → the upload's trigger: the standard upload flow.",

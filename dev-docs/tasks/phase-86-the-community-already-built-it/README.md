@@ -55,9 +55,19 @@ npm run catalog:examples -- --dir <candidates>     EXIT=1
 
 The sharpest single finding: **the Dropzone graph — shared for years — wires
 `Open File Picker.success`, and there is no such output.** The available outputs are `completed,
-done, error, failure, file, name, path, sizeInBytes, type, unchanged`. Our own `file-upload` prefab
-wires `done` and is correct, so this is the community graph being wrong (or predating a rename),
-not the product.
+done, error, failure, file, name, path, sizeInBytes, type, unchanged`.
+
+> 🔴 **CORRECTED 2026-09-11 by COM-003 AC4, which instructed a re-measurement.** The parenthetical
+> this paragraph originally hedged with — *"or predating a rename"* — **is the true branch**.
+> `success` was a real port from the initial commit until `a139a3ce5` (ERG-001 §4, **2026-08-02**)
+> renamed it to `done`. The community graph was correct when written; **our own rename, six weeks
+> ago, made it wrong** — and it shipped no alias, no migration and no warning, so every user project
+> that wired it holds the same dead wire. Filed as
+> [D1](DEFECTS-THE-COMMUNITY-CORPUS-FOUND.md#d1), owner the runtime.
+>
+> ⚠️ The standing caution below **survives**: 7 of 12 did fail the gate, and the other six failures
+> were the community's. But the example it was argued from was the product's fault, which is worth
+> more than the example was.
 
 ⚠️ **Read that as the phase's governing caution.** A component that has circulated in a community
 for years carries exactly as much authority as the gate gives it, and no more. Nothing here lands by
@@ -81,12 +91,15 @@ matters because only one of them converts:
 |---|---|---|
 | [COM-001](COM-001-THE-TWENTY-SIX-NODES-NOBODY-DEMONSTRATED.md) | Fill the 26-node example hole, using the dictionary's 32 blank rows as the authoring brief | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; 17 examples, warnings 26 → 0, corpus 72 → 89 |
 | [COM-002](COM-002-THE-BUBBLE-PHRASEBOOK.md) | The Bubble → NodeGX reference page, in Bubble's vocabulary. Fill the 32 blanks; re-test the Parse-era rows | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; 94 rows, 0 blank, 77 code cells executed, 18 community rows found wrong |
-| [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it. 5/12 measured | **NEXT** — instrument committed; COM-002 §7.4 hands it the 14 snippets and the Parse-era marker |
+| [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; **all 12** landed, 5/12 → 12/12, corpus 89 → 101, 14 snippets dispositioned |
 | [COM-004](COM-004-SEO-META-TAGS.md) | SEO meta tags. No node, no prefab, runtime API already there — the biggest library gap in the export | **OPEN** |
 | [COM-005](COM-005-THE-RECORDERS-AND-THE-MASONRY.md) | Audio recorder, video recorder, masonry grid — the three remaining gaps our 74 library entries do not cover | **OPEN** |
 | [COM-006](COM-006-THE-LINKS-THAT-WILL-ROT.md) | Recover the three external payloads before they vanish; decide on Directus as the third connector | ✅ **BUILT** 2026-09-11 — all three links were still alive, all three recovered; AC3 🟡 on one ask for Richard |
 | — | [`MEASURED-2026-09-10.md`](MEASURED-2026-09-10.md) | every reading this phase rests on, with the command that produced it |
 | — | [`convert-exports.py`](convert-exports.py) | the instrument: exports → candidate examples. Converts; does not certify |
+| — | [`graphs.py`](graphs.py) | the ledger: every authored title/description and every declared correction, each with a `why` |
+| — | [`SNIPPETS-DISPOSITIONED.md`](SNIPPETS-DISPOSITIONED.md) | COM-003 AC5 — all 14 code snippets, one disposition each |
+| — | [`DEFECTS-THE-COMMUNITY-CORPUS-FOUND.md`](DEFECTS-THE-COMMUNITY-CORPUS-FOUND.md) | four defects the corpus surfaced, none owned by this phase |
 
 ## 5. What this phase does not own
 

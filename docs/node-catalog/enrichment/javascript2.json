@@ -11,7 +11,7 @@
     "scriptOutputs": "Editor-managed list adding typed output ports alongside those declared in code."
   },
   "runtimeBehavior": "All data and signal ports are runtime-discovered by parsing the script (JavascriptNodeParser): the keys of the declared `inputs`/`outputs` maps become ports with the declared types, each `signals` entry (or top-level handler function named like a signal input) becomes a signal input, and entries in the `scriptInputs`/`scriptOutputs` proplist parameters add further typed ports. Nothing about the port set is static — an authoring tool must write the script first and wire only names the script (or the proplists) declares. Those names are used verbatim: unlike the Function node (`JavaScriptFunction`), whose mined ports are named `in-x` / `out-y`, the Script node adds no prefix, so a declared input `price` is wired as `toProperty: \"price\"`. When `useExternalFile` is `yes` the ports come from the downloaded file, so they are unknowable until it loads.",
-  "examples": ["code-http-request-with-error-handling"],
+  "examples": ["code-http-request-with-error-handling", "community-ag-grid", "community-dropzone", "community-strobe-blinking-bu", "community-tinymce-text-editor", "community-web-rtc-video-record"],
   "patterns": [
     "Wrap a stateful browser library: instantiate it in `setup`, feed it from `changed` handlers, dispose it in `destroy`.",
     "Declare `mySignal: function (inputs, outputs) {...}` and wire a Button `onClick` to the `mySignal` input for an explicit, named action entry point."

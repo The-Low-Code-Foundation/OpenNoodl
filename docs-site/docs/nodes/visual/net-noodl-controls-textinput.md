@@ -214,6 +214,10 @@ Declared-port-groups: `width`/`height` appear per `sizeMode`, icon ports per `us
 
 One of each core control: Text Input's live string comes out of `onTextChanged`, Checkbox exposes `checked` (level) plus `onChange` (edge), Dropdown (net.noodl.controls.options) takes an items list and emits the selected `value`, Slider (net.noodl.controls.range) emits a numeric `value` between `min`/`max`, and a Radio Button Group reports the `value` of whichever child Radio Button is selected. Values flow into a live summary — no submit step needed for value binding.
 
+**Check an email is well-formed and not already taken**
+
+Sign-up validation as a chain of small truths rather than one function: an `Expression` says the field is non-empty, a `JavaScriptFunction` says it looks like an address, and a `DbCollection2` query says nobody has it yet — and an `And` node combines them into the one boolean the button enables on. The `Timer` in front of the query is the detail worth copying: it debounces, so the database is asked once the typing stops instead of once per keystroke. ⚠️ The two `Inverter` nodes read as clutter until you notice what they buy — 'no user came back' is the success case here, and inverting it keeps every input to the `And` meaning 'this is fine', which is what makes the combination readable at all.
+
 ## Related nodes
 
 [Button](./net-noodl-controls-button.md), [Dropdown](./net-noodl-controls-options.md), [Condition](../logic/condition.md), [Expression](../custom-code/expression.md), [Text](./text.md)

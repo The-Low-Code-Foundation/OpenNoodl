@@ -7,7 +7,7 @@
   "ports": {
     "result": "Boolean value; true only while every connected input is true. With no inputs connected it is false."
   },
-  "examples": ["logic-consent-gate"],
+  "examples": ["logic-consent-gate", "community-email-signup-validat"],
   "patterns": [
     "Several `checked` outputs → \"input 0\", \"input 1\", … with `result` → a button's `enabled`: require every consent before proceeding.",
     "`result` → a Condition's `condition` when you need signal outputs (fired on evaluation) instead of a level."

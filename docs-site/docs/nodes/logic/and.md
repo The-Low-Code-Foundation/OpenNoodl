@@ -48,6 +48,10 @@ Inputs are numbered ports named "input 0", "input 1", … counting from 0 (displ
 
 And and Or as pure boolean-value combiners over numbered inputs. Two required checkboxes feed an And node's "input 0" and "input 1"; its `result` drives the submit button's `enabled` as a level, so the button enables the instant both are ticked and disables again if either is cleared. Two optional email checkboxes feed an Or the same way; its `result` shows an explanatory note while at least one is ticked. No signals are involved — everything here is level logic.
 
+**Check an email is well-formed and not already taken**
+
+Sign-up validation as a chain of small truths rather than one function: an `Expression` says the field is non-empty, a `JavaScriptFunction` says it looks like an address, and a `DbCollection2` query says nobody has it yet — and an `And` node combines them into the one boolean the button enables on. The `Timer` in front of the query is the detail worth copying: it debounces, so the database is asked once the typing stops instead of once per keystroke. ⚠️ The two `Inverter` nodes read as clutter until you notice what they buy — 'no user came back' is the success case here, and inverting it keeps every input to the `And` meaning 'this is fine', which is what makes the combination readable at all.
+
 ## Related nodes
 
 [Or](./or.md), [Inverter](./inverter.md), [Condition](./condition.md), [Expression](../custom-code/expression.md)
