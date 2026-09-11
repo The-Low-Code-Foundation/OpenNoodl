@@ -30,16 +30,34 @@
  * AC2 gate had its literal move twice in two sessions — so coverage is asserted
  * as a floor and equality is asserted per type.
  *
- * ## 🔴 The negative assertion is asserting a DECISION, not an oversight
+ * ## 🔴 AC3 — the negative assertion was OVERTURNED ON PURPOSE (session 11)
  *
- * `detail: "summary"` is the default and MUST NOT carry these fields. That is a
- * measured trade, not a gap: `getNodeTypeSummary`'s cheapness is AWP-005 §2's
- * contract, and `antiPatterns` alone is a median **36%** of a summary payload
- * and up to **151%** of one on a small logic node (`noodl.cloud.request`: 528
- * chars of anti-pattern against ~349 of summary). A later session may overturn
- * that with a replay measurement — if it does, it should change this assertion
- * on purpose and say what it measured, which is exactly why the assertion is
- * here rather than absent.
+ * This file used to assert that the default summary MUST NOT carry either
+ * field, and said a later session overturning it "should change this assertion
+ * on purpose and say what it measured". This is that change.
+ *
+ * What was measured, and it is traffic rather than a replay. Across every
+ * transcript on the authoring machine — all project directories, 25 files
+ * containing calls — `get_node_type` has been called **45 times**, all of them
+ * after `detail` shipped (2026-07-25, DEBT-009): **26** default, **18**
+ * `ports: [...]`, **1** `detail: "full"`. The `ports` path short-circuits above
+ * the summary, so it carries neither field either — **44 of 45 calls returned
+ * neither**. AC1 and AC2 put 203 authored warnings onto a route taken once.
+ *
+ * The cost that held the line was a budget on the wrong population: "median 36%
+ * of a summary payload, up to 151%" is unweighted over all 176 types. Against
+ * the 105 type-requests that actually happened, through `getNodeTypeSummary`
+ * itself: median **17%** weighted by call frequency, max **59%**, **+5.8%**
+ * across the whole traffic. The most-asked types are the cheap ones, because a
+ * long port list is what makes a summary long.
+ *
+ * 🔴 **This measures the cost, not the benefit.** Whether a graph built against
+ * this default avoids the anti-patterns it now names is still unmeasured, and
+ * still wants AC3's replay. The numbers killed the objection, not the question.
+ *
+ * ⚠️ `patterns` stays off the default and the negative assertion for it is
+ * still live below. AC3 asked about `antiPatterns`; `patterns` is the larger
+ * half (259 entries over 130 types) and has not been priced.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -144,26 +162,46 @@ describe('CMP-006 — full detail carries the authored patterns and anti-pattern
     expect(antiPatterns).toMatch(/One signal input per state plus a Condition or Switch chain/);
   });
 
-  it('the default summary still does NOT carry them — AWP-005 §2, asserted on purpose', async () => {
+  it('🔴 AC3 — the DEFAULT summary now carries antiPatterns, and still not patterns', async () => {
     const { isError, data } = await call<GetNodeTypeResult>(session, 'get_node_type', {
       type_names: ['States', 'noodl.cloud.request']
     });
     expect(isError).toBe(false);
+    expect(data.types.length).toBe(2);
 
     for (const row of data.types) {
-      // The control that proves the default path was actually exercised: a
-      // summary always carries its port lines, so an empty response here would
-      // satisfy the two negatives below for the wrong reason.
+      // The control that proves the default path was actually exercised, kept
+      // from the version of this spec that asserted the opposite: a summary
+      // always carries its port lines, so an empty response would satisfy the
+      // assertions below for the wrong reason. It also proves this is the
+      // summary and not `full` — `full` has no `ports` string array.
       expect((row.ports ?? []).length).toBeGreaterThan(0);
+
+      // Derived from the artefact, never a literal — same rule as the `full`
+      // equality spec above, and for the same reason: a hard-coded sentence
+      // passes on a stale corpus.
+      const expected = corpus.get(row.typeName);
+      expect(expected).toBeDefined();
+      expect(row.antiPatterns).toEqual(expected!.antiPatterns);
+
+      // Still off the default, and still asserted on purpose — see the header.
       expect(row.patterns).toBeUndefined();
-      expect(row.antiPatterns).toBeUndefined();
+    }
+
+    // 🔴 Both sampled types must actually HAVE anti-patterns, or the equality
+    // above is `undefined === undefined` and this spec grades nothing. The two
+    // are chosen because they are the expensive end of the measurement:
+    // `noodl.cloud.request` is the 151%-of-summary case the old assertion cited.
+    for (const name of ['States', 'noodl.cloud.request']) {
+      expect((corpus.get(name)?.antiPatterns ?? []).length).toBeGreaterThan(0);
     }
   });
 
-  it('🔴 the tool description routes an agent to the level that carries them', async () => {
+  it('🔴 the tool description routes an agent to the level that carries each one', async () => {
     // A field nobody is told about is a field nobody reads — the whole shape of
-    // this defect. `summary` is the default, so emitting the arrays on `full`
-    // changes nothing unless `full`'s own description says what it now buys.
+    // this defect. AC3 moved `antiPatterns` onto the default, so the description
+    // has to move it too: an agent told to pass detail:"full" for anti-patterns
+    // it already received would be paying ~11k tokens for nothing.
     const { tools } = await session.client.listTools();
     const tool = tools.find((t) => t.name === 'get_node_type');
     expect(tool).toBeDefined();
@@ -172,5 +210,14 @@ describe('CMP-006 — full detail carries the authored patterns and anti-pattern
     expect(description).toContain('antiPatterns');
     expect(description).toContain('patterns');
     expect(description).toMatch(/detail: "full"/);
+
+    // 🔴 The ORDER is the assertion: `antiPatterns` must be named in the
+    // default sentence, which ends at "enough to author from", and `patterns`
+    // after it in the full-detail list. A plain `toContain` on both names
+    // passed before this change and would pass again with them swapped back.
+    const boundary = description.indexOf('enough to author from');
+    expect(boundary).toBeGreaterThan(0);
+    expect(description.indexOf('antiPatterns')).toBeLessThan(boundary);
+    expect(description.lastIndexOf('patterns')).toBeGreaterThan(boundary);
   });
 });

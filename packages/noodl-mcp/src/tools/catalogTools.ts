@@ -15,6 +15,21 @@ import { guarded, jsonResult } from './util';
 
 const MAX_TYPES_PER_CALL = 8;
 
+/**
+ * DEBT-009 — the size at which `detail: "full"` starts degrading its tail to
+ * summaries, because seven enriched types once produced a ~126 KB response that
+ * blew the MCP host's tool-result cap.
+ *
+ * 🔴 Exported because it is also the only honest ceiling for the SUMMARY path,
+ * which has no degradation step of its own. `tools.test.ts` asserts a worst-case
+ * summary call stays under it — meaning "summary mode is safe *without* the
+ * mechanism full mode needs", which is the property that actually matters.
+ * It used to assert a round `30_000`, and by CMP-006 AC3 the worst case had
+ * reached 29,710 B: a ceiling with 290 bytes of headroom that the next
+ * enrichment would have tripped whoever happened to touch the catalog next.
+ */
+export const FULL_DETAIL_BYTE_BUDGET = 60_000;
+
 export function registerCatalogTools(server: McpServer): void {
   server.registerTool(
     'list_node_types',
@@ -65,11 +80,12 @@ export function registerCatalogTools(server: McpServer): void {
       description:
         'Up to ' +
         MAX_TYPES_PER_CALL +
-        ' named node types. By default: every port as one line with its type and allowed values, plus the ' +
-        'examples demonstrating it (fetch one with get_example — the title says which is worth the call). ' +
-        'That is enough to author from. Pass `ports` for the authored semantics of just the ports you are ' +
-        'setting; pass detail: "full" for the whole type — every port\'s prose, whenToUse, runtimeBehavior, ' +
-        'relatedNodes, patterns, antiPatterns. Full is large (Group is ~11k tokens for 111 ports) and is re-sent on every ' +
+        ' named node types. By default: every port as one line with its type and allowed values, the ' +
+        'antiPatterns to avoid, and the examples demonstrating it (fetch one with get_example — the title ' +
+        'says which is worth the call). That is enough to author from. Pass `ports` for the authored ' +
+        'semantics of just the ports you are setting; pass detail: "full" for the whole type — every ' +
+        'port\'s prose, whenToUse, runtimeBehavior, relatedNodes, patterns. ' +
+        'Full is large (Group is ~11k tokens for 111 ports) and is re-sent on every ' +
         'later turn, so spend it on choosing between types, not on setting a value. ' +
         'Unknown names return a nearest-match suggestion; an oversized full response degrades its tail to ' +
         'summaries in-band (see `summarized`).',
@@ -117,7 +133,7 @@ export function registerCatalogTools(server: McpServer): void {
       // and the host's "saved to file" overflow hint is useless to a
       // filesystem-less agent. Degrade the tail to summaries in-band instead —
       // the agent re-requests those types individually.
-      const BYTE_BUDGET = 60_000;
+      const BYTE_BUDGET = FULL_DETAIL_BYTE_BUDGET;
       let spent = 0;
       const types: GetNodeTypeResponse['types'] = [];
       const summarized: string[] = [];

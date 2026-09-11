@@ -147,7 +147,7 @@ format set a **moment.js pattern this node cannot read** — validating clean, t
 | [CMP-003](CMP-003-LOGIC-COMPONENTS.md) | Logic components: correct the "when not to" rule, and give the playbook its tenth pattern | **AC1 ✅** both doctrine copies corrected · **AC2 ✅ 2026-09-10 (s6)** — P10 travels with the playbook into `interfaceDoctrine` · **AC4 ✅** the ledger column · **AC3 open** (needs CMP-002) |
 | [CMP-004](CMP-004-THE-SHELF-NOBODY-IS-TOLD-ABOUT.md) | The shelf nobody is told about — put it in the order, make it searchable, make it two-way, seed it with parts | **AC1 ✅** (step 3 of THE ORDER) · **AC4 ✅** (`export_to_library`, step 4) · **AC2 ✅ s4** — `list_library({query})` · **AC3 ✅ 2026-09-10 (s5)** — three exported parts, and `size` on every row instead of a label. **AC5 open** (graded inside CMP-002) |
 | [CMP-005](CMP-005-THE-DATE-FORMATTER.md) | The date formatter is eight placeholders, and the docs tell you to write JavaScript. Node or part — decide, then build | ✅ **CLOSED 2026-09-10.** AC1–AC4 (s4) — the decision, **13 new tokens**, a `Locale` port, byte-identity for the eight that shipped. **AC5 (s5)** — the exported `format-date` entry, its presets rendered through the real node, and the two date answers naming each other |
-| [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md) | The authored `patterns`/`antiPatterns` reached the editor's panel and never the agent. Relay them | **AC1 ✅ AC2 ✅ 2026-09-11 (s8)** — `detail: "full"` relays both verbatim, armed by 5 specs over the wire and 4 control arms; the resident surface came out **3 tokens cheaper** than before the work · **AC3 open** — whether the DEFAULT should carry `antiPatterns` needs a phase-55-style replay, not a ruling |
+| [CMP-006](CMP-006-THE-PATTERNS-NOBODY-COULD-READ.md) | The authored `patterns`/`antiPatterns` reached the editor's panel and never the agent. Relay them | **AC1 ✅ AC2 ✅ 2026-09-11 (s8)** — `detail: "full"` relays both verbatim, armed by 5 specs over the wire and 4 control arms; the resident surface came out **3 tokens cheaper** than before the work · **AC3 ✅ 2026-09-11 (s11)** — the DEFAULT now carries `antiPatterns`. Closed by a TRAFFIC count, not a replay: `get_node_type` has been called **45 times** across every transcript on this machine and `detail: "full"` **once**, so AC1/AC2 shipped 203 warnings onto a route taken once. The cost that held the line ("median 36%, up to 151%") was unweighted over all 176 types — on the 105 real type-requests it is **median 17%, max 59%, +5.8% of traffic**. 4 control arms; surface 8272 → **8275, still 5 under** the 8280 budget |
 | [CMP-007](CMP-007-THE-TOKEN-THAT-RESOLVES-TO-NOTHING.md) | A part reads a token the installing project never defined: it resolves to nothing, renders the wrong colour, and the install reports success. Say so | ✅ **CLOSED 2026-09-11 (s9).** `install_prefab` names `tokensUnresolved` and tells the agent to `set_project_tokens`; `get_library_entry` relays what a part expects before install. 9 specs, 5 control arms, **zero** resident-token cost (deferred group). 🔴 A third of the fix was DELETED — `library.json` is `additionalProperties:false` and `build.js` publishes a fixed key set, so the record would have been an inert field. 🔴 The gate is built on an INVENTED token: **0 of the 29 tokens the shipped shelf reads are outside `DEFAULT_TOKENS`** |
 | [CMP-008](CMP-008-THE-DOOR-THE-PERSON-USES.md) | CMP-007 answered the agent. The person clicking Install still got a green tick | ✅ **CLOSED 2026-09-11 (s10).** The warning is derived in `apply.ts` — the one line every route converges on — from the loaded `ProjectModel.toJSON()`, so it is correct on a v2 source as well as a legacy one, and it is scoped to what the plan actually lands. 🔴 **The row's premise was wrong: the COMMON install never opens `ImportFlow`** — `_install` returns early when nothing collides, and that branch was discarding **every** engine warning (unresolved tokens, a module that failed to copy, CN-017's refusal to copy an unconsented kit) under a green success toast. 60 specs, 5 control arms. 🔴 **Arm B found a hole in this task's own caller gate** — an AST check cannot see reachability, so the export exemption moved into the pure core and the call site became unconditional |
 | — | [`STUDIED-APPS.md`](STUDIED-APPS.md) | the ledger, one row per cycle |
@@ -165,6 +165,27 @@ task file**, because the pass that produced them was never committed. One was a 
 0 by every whole-graph reading, 20 counting working nodes, 45 at one-or-two). See CMP-003 §2.1.
 
 ## 7. Known gaps, owner NONE
+
+- 🔴 **The `ports: [...]` path returns NO prose at all, and it is 40% of all traffic.**
+  `get_node_type({type_names, ports})` short-circuits above the summary
+  (`catalogTools.ts:95`) and returns per-port detail only — no `summary`, no `whenToUse`, no
+  `runtimeBehavior`, no `examples`, and now no `antiPatterns`. Measured 2026-09-11 (s11) over every
+  transcript on this machine: of **45** `get_node_type` calls ever made, **18 took this path** — more
+  than `detail: "full"` (1) and approaching the plain default (26). ⚠️ **It is documented as the
+  cheap path and behaves as a different tool**: the tool description calls it *"the authored
+  semantics of just the ports you are setting"*, and an agent taking it to save tokens on a type it
+  has already surveyed is fine, but an agent taking it *first* gets less than the default gives and
+  is told nothing about that. AWP-005 §2 deliberately made `ports` win over `detail`, so this is a
+  consequence of a decision rather than an oversight.
+  🔴 **But the traffic says it is a FIRST contact, not a follow-up.** Replaying the same transcripts
+  in call order and asking, for each type named on a `ports` call, whether that session had already
+  surveyed it: **26 of 27 type-requests were COLD** — one single type-request had a prior summary or
+  full call behind it. The cold types are the ordinary ones (`Text` ×6, `Group` ×5, `Page` ×3,
+  `net.noodl.controls.button` ×2). So the cheap path is not being used to top up a survey; it is
+  being used **instead of one**, and it is the only path that answers with no prose whatsoever.
+  A candidate fix that costs nothing on the follow-up case: carry `summary` (one sentence) and
+  `antiPatterns` on the `ports` response too, since the caller who already surveyed the type is
+  1 request in 27. Owner NONE. Found 2026-09-11 counting traffic for CMP-006 AC3.
 
 - 🔴 **`tsc --noEmit -p noodl-editor/tsconfig.tests-main.json` is RED at HEAD and nobody runs it.**
   32 lines, EXIT=2, measured 2026-09-11 (s10) against a baseline copy of the config taken from HEAD,

@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import type { NodeTypeDetail, NodeTypeLookupMiss, NodeTypeSummary } from '../src/catalog';
+import { FULL_DETAIL_BYTE_BUDGET } from '../src/tools/catalogTools';
 import type { ComponentV2File, ConnectionsV2File, NodesV2File, RegistryV2File } from '../src/editor-deps';
 import type {
   CreateComponentResponse,
@@ -191,7 +192,24 @@ describe('noodl-mcp tools (end to end)', () => {
       if (isMiss(t)) throw new Error(`Unexpected miss: ${t.error}`);
       expect(isSummary(t)).toBe(true);
     }
-    expect(JSON.stringify(summary.data).length).toBeLessThan(30_000);
+    // 🔴 CMP-006 AC3 — this was a round `30_000` and it had 290 bytes of
+    // headroom: the worst-case summary call had reached 29,710 B, so the next
+    // person to enrich anything in the catalog would have owned this red.
+    // The literal is now the real constraint — `FULL_DETAIL_BYTE_BUDGET` is the
+    // size at which FULL mode starts degrading its tail, and summary mode has no
+    // degradation step, so what this asserts is "summary mode stays safe WITHOUT
+    // the mechanism full mode needs". That is the property worth guarding.
+    //
+    // The margin is printed on a PASSING run, the CN-006 trick that turned
+    // "my description got longer" into "the resident surface has 5 tokens left"
+    // in CMP-006 AC2. Without it, growth is invisible until it is a failure.
+    const summaryBytes = JSON.stringify(summary.data).length;
+    // eslint-disable-next-line no-console
+    console.log(
+      `[summary] ${summaryBytes} bytes for ${heavy.length} heavy types — ` +
+        `${FULL_DETAIL_BYTE_BUDGET - summaryBytes} under the ${FULL_DETAIL_BYTE_BUDGET} full-detail budget`
+    );
+    expect(summaryBytes).toBeLessThan(FULL_DETAIL_BYTE_BUDGET);
 
     // Full mode: the byte budget degrades the tail to summaries in-band
     // rather than letting the response blow the cap.

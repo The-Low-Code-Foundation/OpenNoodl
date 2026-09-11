@@ -636,6 +636,55 @@ export interface NodeTypeSummary {
    * defect as `[object Object]` and would have been shipped as the new default.
    */
   runtimeBehavior?: string;
+  /**
+   * CMP-006 AC3 — the shapes to avoid, on the **default**.
+   *
+   * 🔴 This is the third field carried here for the same reason as `providedBy`
+   * (CN-009) and `export` (FLD-013), and the first time that reason was counted
+   * rather than asserted. Across every transcript on the authoring machine —
+   * all project directories, 25 files containing calls — `get_node_type` has
+   * been called **45 times**, every one of them after `detail` shipped
+   * (2026-07-25, DEBT-009):
+   *
+   * | shape | calls |
+   * |---|---|
+   * | default summary | 26 |
+   * | `ports: [...]` | 18 |
+   * | `detail: "full"` | **1** |
+   *
+   * `ports` short-circuits above the summary path, so it carries neither
+   * `patterns` nor `antiPatterns` either: **44 of 45 calls returned neither**.
+   * AC1 and AC2 put 203 authored warnings onto a route taken once, ever.
+   *
+   * ⚠️ AC3 held this line open on purpose, against a cost of "median 36% of a
+   * summary payload, up to 151%". That figure is unweighted across all 176
+   * types — a budget measured on the catalog, not on the traffic. Re-measured
+   * against the 105 type-requests that actually happened, through
+   * `getNodeTypeSummary` itself rather than a reconstruction of it:
+   * median **17%** weighted by call frequency, max **59%**, and **+5.8%**
+   * across the whole traffic (13,405 B added to 229,601 B). The most-asked
+   * types are the cheap ones — `Group` ×8 at 2%, `net.noodl.controls.button`
+   * ×5 at 3%, `net.noodl.controls.textinput` ×4 at 3% — because a big port
+   * list is what makes a summary big.
+   *
+   * ⚠️ AWP-005 §2's anti-correlation (DeepSeek read 4 types and shipped; Kimi
+   * read 21 and had authored nothing by turn 34) is about how **many types** an
+   * agent reads, not how big one summary is. It does not transfer to a 5.8%
+   * payload increase, and reading it as if it did is what kept this closed.
+   *
+   * 🔴 **What this measurement does NOT establish: the benefit.** Whether a
+   * graph built against this default actually avoids the named anti-patterns is
+   * unmeasured — that still wants the replay AC3 describes. What the numbers
+   * killed is the *objection*, not the open question. And the traffic above all
+   * predates AC2's routing description (last call 2026-09-10T12:28Z; AC2 shipped
+   * 2026-09-11 07:25), so it cannot say whether that description has since
+   * pulled anyone to `full`.
+   *
+   * `patterns` is deliberately NOT carried here: AC3 asked about `antiPatterns`
+   * only, and `patterns` is the larger half (259 entries over 130 types, median
+   * 208 chars against 168). A session that wants it must price it the same way.
+   */
+  antiPatterns?: string[];
   examples: ExampleCitationRow[];
   /**
    * How many further examples cite this type but were not listed, because a
@@ -737,6 +786,11 @@ export function getNodeTypeSummary(typeName: string): NodeTypeSummary | NodeType
   }
   if (full.category) s.category = full.category;
   if (full.deprecated) s.deprecated = true;
+  // CMP-006 AC3 — see `NodeTypeSummary.antiPatterns` for the traffic count that
+  // moved this off `detail: "full"`. Unconditional on purpose: a rule that emits
+  // them only for cheap types would reintroduce silence exactly where the
+  // warnings are densest (Data and Cloud carry 127 of the 203 entries, Visual 14).
+  if (full.antiPatterns?.length) s.antiPatterns = full.antiPatterns;
   if (full.providedBy) {
     s.providedBy = full.providedBy;
     s.kitModule = full.kitModule;

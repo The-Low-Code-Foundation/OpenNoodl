@@ -4,7 +4,7 @@
 `CMP-002-BUILD-BRIEF-READ-THIS-ONLY.md` and nothing else in this folder. Reading on past this line
 disqualifies you from producing the baseline.
 
-## The board, re-derived from the task FILES on 2026-09-11 (session 10)
+## The board, re-derived from the task FILES on 2026-09-11 (session 11)
 
 | task | AC | state |
 |---|---|---|
@@ -12,108 +12,111 @@ disqualifies you from producing the baseline.
 | CMP-001 | AC2 the playbook ships as a doctrine field | ✅ s6 — `interfaceDoctrine` on `get_project_info`; s7 added an eleventh rule and 4 specs |
 | CMP-001 | AC3 four new corpus examples | 🟡 s6 built four; s7 judged the remainder and closed it as a judgement — 26% publishing, floor still FAIL, deliberately |
 | CMP-001 | AC4 a built page clears the three floors | OPEN — needs CMP-002 |
-| CMP-002 | the graded baseline build | **FIRST JOB, and still the only AC-moving work.** 🔴 s7, s8, s9 and s10 all could not run it — the reason is measured, see below |
+| CMP-002 | the graded baseline build | **FIRST JOB, and now the ONLY work left in the phase.** 🔴 s7–s11 all could not run it; the reason is measured, see below |
 | CMP-003 | AC1/AC2/AC4 | ✅ s2 / s6 / s2 |
 | CMP-003 | AC3 a built page produces one | OPEN — needs CMP-002 |
 | CMP-004 | AC1–AC4 | ✅ s2/s3/s4/s5 |
 | CMP-004 | AC5 an agent reaches for it | OPEN — graded inside CMP-002 |
 | CMP-005 | all five | ✅ CLOSED s4 + s5 |
 | CMP-006 | AC1/AC2 | ✅ CLOSED s8 |
-| CMP-006 | AC3 should the DEFAULT carry `antiPatterns`? | 🔴 OPEN — **needs a phase-55-style REPLAY, not a ruling.** Two server variants, so it needs a session whose CLI process is its own |
+| **CMP-006** | **AC3 should the DEFAULT carry `antiPatterns`?** | ✅ **CLOSED s11 — YES.** Closed by a traffic count, not the replay it asked for |
 | CMP-007 | AC1/AC2/AC3 | ✅ CLOSED s9 |
-| **CMP-008** | AC1–AC5 the person's door | ✅ **CLOSED s10** — 60 specs, 5 control arms, and one of them found a hole in this task's own gate |
+| CMP-008 | AC1–AC5 the person's door | ✅ CLOSED s10 |
 
-## 🔴 s10: THERE IS NOTHING LEFT TO PROMOTE THAT DOES NOT NEED A FRESH SERVER
+## 🔴 s11: EVERY TASK EXCEPT CMP-002 IS NOW CLOSED
 
-s9 wrote: *"a session that cannot run CMP-002 no longer has a promotable gap to fall back on"*, and
-named the editor-side token row as the one exception. **s10 took that row (CMP-008).** §7 now holds
-two NEW owner-NONE rows, both filed by s10 and both honest but small:
+CMP-006 AC3 was **the last acceptance criterion in this phase that did not need CMP-002**. The three
+that remain — CMP-001 AC4, CMP-003 AC3, CMP-004 AC5 — are all graded *inside* the CMP-002 build.
 
-1. **`tsc -p noodl-editor/tsconfig.tests-main.json` is red at HEAD** (32 lines, EXIT=2 — measured
-   against a HEAD baseline *before* any edit). `tests-unit/` is graded file-by-file by ts-jest, so
-   the suite is green while the whole-program check is not, and the `include` list that keeps the
-   renderer out of the plain-Node runner has no gate proving it still holds.
-2. **`ResultStage`'s rendering of `summary.warnings` has no local grader** — it imports `Icon`.
+🔴 **So a session that cannot run CMP-002 has no AC to take.** Its honest options, in order:
 
-🔴 **Neither is an AC.** If you are session 11 and you cannot run CMP-002, read
-[[build-the-tasks-do-not-farm-the-defects]] before starting either: the honest options are the
-CMP-006 AC3 replay (which needs two servers, so it needs its own CLI process), promoting row 1 into
-a numbered task with real ACs, or **waiting for Richard**.
+1. **Promote §7's `ports` row into a numbered task.** s11 filed it and it is the strongest
+   promotable row this phase has had: a measured product defect, on 40% of real traffic, with a
+   candidate fix that costs nothing on the case it would slow down. See below.
+2. Promote §7's `tsc -p noodl-editor/tsconfig.tests-main.json` row (s10's) — an instrument gap.
+3. **Wait for Richard.** Read [[build-the-tasks-do-not-farm-the-defects]] before choosing 1 or 2.
 
-## 🔴 s10: THE CLI PROCESS WAS `89837` FOR THE FOURTH SESSION RUNNING
+## ✅ s11 closed CMP-006 AC3 — and the replay it asked for was never needed
 
-Measured, not inherited: `ps -o ppid -p $$` walked to CLI pid **`89837`, started
-2026-09-10 14:26:46**, with MCP children `89852` / `89857` started at that same moment — about
-**20 hours before** `dist/noodl-mcp.cjs` was last rebuilt (10:09:15 on 2026-09-11). s7, s8, s9 and
-s10 have all been the same process. `/clear` wipes the conversation and leaves the MCP children
-running; a subagent shares them. See [[an-mcp-server-is-a-child-of-the-cli-process]].
+AC3 wanted *"a phase-55-style replay — the same brief against a server with and without
+`antiPatterns` on the default"*. **A free measurement settled it first.** Counted over every
+transcript on this machine (all project directories, 25 files containing calls), with every call
+post-dating `detail` shipping (2026-07-25):
 
-⚠️ s10 did **not** need an MCP server for its work and did not probe one — the pid arithmetic above
-is sufficient and cheaper. A server started 20 hours before the bundle cannot be carrying it.
+| shape | calls |
+|---|---|
+| default summary | 26 |
+| `ports: [...]` | 18 |
+| **`detail: "full"`** | **1** |
+| | **45 total — 44 of 45 returned neither field** |
 
-## ✅ s10 built CMP-008 — and the row it came from was wrong about where the door is
+🔴 **AC1 and AC2 put 203 authored warnings onto a route taken once, ever.** And the cost that held
+the line — *"median 36% of a summary payload, up to 151%"* — is **unweighted over all 176 types**, a
+budget measured on the catalog rather than on the traffic. Against the 105 type-requests that
+actually happened: **median 17%, max 59%, +5.8% across the whole traffic.** The most-asked types are
+the cheap ones, because a long port list is what makes a summary long.
 
-s9 filed the leftover as *"a person clicking Install in the EDITOR goes through `views/ImportFlow`"*.
-🔴 **It does not.** `ModuleLibraryModel._install` forks on `dryRun.hasCollisions`, and the
-no-collision branch — every install of a part into a project that does not already have it, i.e.
-the common one — calls `applyToProject` directly and **never opens the flow**. A warning hosted in
-`ImportFlow` would have been *present in the code and absent in practice*, and would have passed any
-spec that rendered `ResultStage` with a warning in its props.
+⚠️ **AWP-005 §2's anti-correlation does not transfer.** *"DeepSeek read 4 types and shipped; Kimi
+read 21 and had authored nothing by turn 34"* is a finding about **how many types an agent reads**,
+not how big one summary is. Carrying it onto a 5.8% payload increase is what kept AC3 closed for
+three sessions. Filed as [[a-budget-measured-on-a-fixture-is-a-budget-on-the-fixture]].
 
-**The file's own CN-017 comment, twelve lines above that fork, already says this in those words.**
-CN-017 read it and put its consent gate above the fork; s9's row put its successor's warning below
-it. Seventh premise in this phase not to survive contact —
-[[measure-the-artefact-before-believing-the-task-file]].
+✅ **This is the third field carried onto the summary for this reason** — `providedBy` (CN-009) and
+`export` (FLD-013) both argued it in their own doc comments. **It is the first time it was counted
+rather than asserted**, and the count now lives beside them in `catalog.ts`.
 
-🔴 **And that branch was discarding EVERY engine warning, not just tokens** — a module that failed
-to copy, a provenance record that could not be written, CN-017's own refusal to copy an unconsented
-kit — all under a green *"Prefab X cloned"*. CN-017's words for that state are *"a kit that is
-simply absent, with nothing anywhere saying why"*.
+🔴 **What it does NOT establish: the benefit.** Whether a graph built against this default avoids
+the anti-patterns it now names is unmeasured and still wants the replay. The numbers killed the
+objection, not the question. The traffic also all predates AC2's routing description, so it cannot
+say whether that has since pulled anyone to `full`.
 
-So the answer went into `apply.ts`, which is the one line every route converges on, by the argument
-CN-017 AC2 had already written there. Doors 2 and 3 came free: `summarizeResult` already lifts
-`result.warnings` into what `ResultStage` renders.
+## 🔴 s11's trap — THE GATE THAT TRIPPED HAD 290 BYTES OF HEADROOM
 
-## 🔴 s10's trap, and it is aimed at gate-writing itself
+`tools.test.ts` asserted a worst-case 8-type summary call stays under a round **`30_000`** bytes.
+The true figure had already reached **29,710 B**. `antiPatterns` added **909 B (3.1%)** and tipped
+it to 30,638 — so the red arrived on the session that happened to touch the catalog next, and would
+have arrived on whoever did, having done nothing wrong.
 
-`apply.ts` cannot be executed without Electron, so CMP-008's caller gate walks TypeScript's **AST**
-rather than the file's text — precisely because this phase's notes say a source-text `toContain`
-passes on commented-out code.
+✅ **The literal was not bumped; it was replaced by the constraint it stood in for.**
+`FULL_DETAIL_BYTE_BUDGET` (60,000) is where **full** mode starts degrading its tail, and summary
+mode has no degradation step — so the assertion now says *"summary mode stays safe WITHOUT the
+mechanism full mode needs"*. It prints its own margin on a passing run, the CN-006 trick:
+`[summary] 30638 bytes for 8 heavy types — 29362 under the 60000 full-detail budget`.
 
-**Arm B switched the whole feature off with `if (false && …)` and the AST gate passed anyway.** The
-import was still there, the call expression was still there, the spread into `warnings` was still
-there. **A static gate cannot see reachability**, and knowing about the dead-code trap is not the
-same as being immune to it.
+⚠️ **Look for the other round numbers.** A ceiling with 1% headroom is indistinguishable from a
+ceiling with 50% until it fires, and the only reason this one was legible is that AC2 had already
+taught the phase to print margins.
 
-The fix was to stop asking it to: the export-staging exemption moved out of an `if` at the call site
-and into the pure `tokenWarningsFor`, where it is graded **by being run**, and `apply.ts` was left
-with one unconditional statement — a property the gate *can* assert. Arm B2 (the same subversion via
-a ternary) goes red. Generalises: **when a gate has to guess, remove the thing it is guessing
-about.**
+## 🔴 s11 filed a NEW §7 row, and it is bigger than it looks
 
-⚠️ Two smaller ones worth carrying:
+**`get_node_type({ports: [...]})` returns no prose at all** — no `summary`, no `whenToUse`, no
+`runtimeBehavior`, no examples, and now no `antiPatterns`. It short-circuits above the summary path
+at `catalogTools.ts:95`. It is **18 of 45 calls**, more than `detail: "full"`.
 
-- **`entryTokens` cannot read a v2 project**, and it is right anyway — all **75** shelf entries are
-  legacy single-file projects (re-measured: `find library -maxdepth 4 -type d -name components` is
-  **0**). The editor could not reuse it: a project imported from elsewhere on this machine is likely
-  v2, where `project.json` holds almost nothing, so a scan of it is a **silent zero on the door most
-  likely to carry a hand-made token**. The two sides share the *matcher*, not the source. Arm E
-  (reading `project.json` in the engine) reds exactly one spec.
-- 🔴 **zsh does not word-split an unquoted `$FILES`** — `md5 -q $FILES` with a plain string read the
-  whole list as ONE filename and reported `No such file or directory` while looking like a path
-  problem. Use an array. Already in [[a-peer-may-be-doing-your-exact-task]].
+🔴 **And replaying the transcripts in call order says it is a FIRST contact, not a follow-up: 26 of
+27 type-requests on that path were COLD** — the session had never surveyed that type. Only one had a
+prior summary behind it. The cold types are the ordinary ones (`Text` ×6, `Group` ×5, `Page` ×3).
+So the cheap path is being used **instead of** a survey, not to top one up.
 
-## ✅ s10 re-measured CMP-007's corpus number independently, and extended it
+A candidate fix that costs nothing on the case it would slow down: carry `summary` and
+`antiPatterns` on the `ports` response too, since the caller who already surveyed the type is
+1 request in 27. ⚠️ Price it against `toolDisclosure`'s budget first — **5 tokens of headroom.**
 
-| | entries | reading tokens | distinct | outside `DEFAULT_TOKENS` |
-|---|---|---|---|---|
-| `library/prefabs` | 45 | **18** | **29** | **0** |
-| `library/modules` | 30 | 6 | 10 | **0** |
+## 🔴 THE CLI PROCESS WAS `89837` FOR THE FIFTH SESSION RUNNING
 
-CMP-007's *"18 of 45, 29 distinct, 0 outside"* reproduces **exactly**, and the modules half is new.
-`DEFAULT_TOKENS` is **192** names from `@nodegx/project-contract/tokens`. ⚠️ CMP-007's *"45 entries
-on the shelf"* is the **prefab** count; the shelf is **75** (`library:check` 75/75), which is why
-s5's number and s9's look like they disagree and do not.
+Measured again, not inherited: `ps -o ppid -p $$` walked to CLI pid **`89837`, started
+2026-09-10 14:26:46**, MCP children `89852` / `89857` at that same moment — **19h43m before**
+`dist/noodl-mcp.cjs` was rebuilt. s7, s8, s9, s10 and s11 have all been one process, and `89852` is
+the **installed app**, which can never carry repo work however new it is.
+
+✅ **s11 rebuilt `dist` at 12:43:21**, carrying five anchors now. Use the newest to date a bundle:
+**`"antiPatterns to avoid, and the examples"`** (s11's). A `get_node_type` summary that carries
+`antiPatterns` is the same check from the other end.
+
+⚠️ **s11 also checked for the session that could run CMP-002 and it was not one**: peer CLI `36713`
+started 10:49:53 with fresh servers, but `lsof -d cwd` puts it in `vscode_projects/comcoi-v2`. The
+NodeGX MCP servers are **user-scoped, so they start for every session on this machine** — their
+presence says nothing about what a session is working on. Check the cwd, not the children.
 
 ## 🔴 The first job is still CMP-002, and s8 MEASURED why two sessions have bounced off it
 
