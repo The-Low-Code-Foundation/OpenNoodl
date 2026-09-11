@@ -64,9 +64,10 @@ Any tap/click affordance with a caption. For a custom-drawn clickable area, a Gr
 | `fontFamily` | Font | — | Typeface to render the text in, either a web-safe family name or a font file added to the project |
 | `fontSize` | Number | — | Height of the text, in pixels |
 | `fontStyle` | Enum (`normal`, `italic`) | `normal` | Renders the text upright or italic |
+| `fontVariantNumeric` | Enum (`normal`, `tabular-nums`) | `normal` | Tabular draws every digit at the same width so columns of numbers align; Normal follows the font |
 | `fontWeight` | Number | `Auto` | How heavy the text is drawn, from 100 (thin) to 900 (black); leave as Auto to use the weight the font family sets |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
-| `iconColor` | Color | `#FFFFFF` | Colour of the icon |
+| `iconColor` | Color | — | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
 | `iconImageSource` | Image | — | Image file to show instead of an icon-set glyph |
 | `iconPlacement` | Enum (`left`, `right`) | `left` | Which side of the label the icon sits on, with Icon Spacing as the gap between them |
@@ -151,7 +152,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 |---|---|---|
 | sizeMode = explicit OR sizeMode = contentHeight | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth | `height` | — |
-| useLabel = true OR useLabel NOT SET | `label`, `textStyle`, `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `color`, `letterSpacing`, `lineHeight`, `textTransform` | — |
+| useLabel = true OR useLabel NOT SET | `label`, `textStyle`, `fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `color`, `letterSpacing`, `lineHeight`, `textTransform`, `fontVariantNumeric` | — |
 | useIcon = true | `iconSourceType`, `iconSize`, `iconPlacement`, `iconSpacing` | — |
 | useIcon = true AND iconSourceType = image | `iconImageSource` | — |
 | useIcon = true AND iconSourceType = icon | `iconIconSource`, `iconColor` | — |
@@ -188,7 +189,7 @@ URL-style navigation: a Router hosts the app's pages (each page is a component, 
 
 **Split hero: copy column and image, with a display headline that looks set rather than typed**
 
-Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
 
 **Empty state: what a list shows when it has no rows**
 

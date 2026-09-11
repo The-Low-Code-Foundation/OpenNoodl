@@ -65,7 +65,7 @@ Do not use in new graphs — use net.noodl.controls.textinput instead.
 | `paddingLeft` | Number | `0` | Space inside the element's left edge, between it and its content |
 | `paddingRight` | Number | `0` | Space inside the element's right edge, between it and its content |
 | `paddingTop` | Number | `0` | Space inside the element's top edge, between it and its content |
-| `placeholder` | String | `Type here...` | — |
+| `placeholder` | String | `` | — |
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
 | `sizeMode` | Enum (`explicit`, `contentWidth`, `contentHeight`, `contentSize`) | `contentSize` | Whether Width and Height are used as given, or the element sizes itself to fit its contents |
 | `startValue` | String | — | — |

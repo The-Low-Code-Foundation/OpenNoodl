@@ -66,6 +66,12 @@ In a cloud function that closes accounts: a moderation action, an account-deleti
 - Wiring a request parameter straight into `userId` on a function anyone may call. That is 'delete any account by id' with an HTTP endpoint in front of it — give the function a `call` rule (CWF-017) and check inside the graph that the caller is entitled to delete that particular account.
 - Expecting a blank `userId` to delete the caller's own account. It is a failure; read the caller's id from the Request node's `userId` output and wire it in explicitly, so the graph says what it does.
 
+## Examples
+
+**Delete an account, and the sessions that outlive it**
+
+Deleting a user is two deletions, and the ORDER is the interesting part: the sessions go first, then the `_User` row. Reversed, there would be a window in which live session tokens resolve to a row the backend can no longer fetch — signed-in requests from an account that no longer exists. Delete User does both, in that order, with the authority of the server. `sessionsRevoked` reports how many session rows went, which is also the honest answer to 'was anybody actually signed in as them?' — a number worth returning to the caller and worth logging, because it is the difference between deleting a dormant account and cutting somebody off mid-session. `userId` is required: a blank one is a failure with a sentence saying so, and never a fallback to the caller, because the worst possible default for this node is 'delete whoever asked'. `unchanged` means the account was already gone, which is a success for a delete and is wired that way here — an offboarding job that is run twice should not fail the second time. The account id is taken from the request parameters rather than from the caller's own identity precisely so that this is an admin action on someone else; the permission rule on who may call the function is what makes that safe, and it lives on the function, not in this graph.
+
 ## Related nodes
 
 [Create User](./noodl-cloud-createuser.md), [Update User](./noodl-cloud-updateuser.md), [Verify Session Token](./noodl-cloud-verifysessiontoken.md), [Request](./noodl-cloud-request.md)

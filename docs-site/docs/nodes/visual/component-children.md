@@ -34,6 +34,10 @@ Whenever you build a reusable container whose content varies per use — cards, 
 
 Component Children is a placeholder with no ports: whatever children are given to an *instance* of the component are rendered where the placeholder sits. Here '/Media Frame' is a reusable framed panel — title bar on top, content slot below — and the consumer drops a Video inside its instance. The video's play/pause wiring lives at the consumer level; the frame knows nothing about its content.
 
+**A slot component that is still a component: Component Children plus a real interface**
+
+`Component Children` marks where the consumer's own children land, which is what lets one panel hold a form on one page and a table on the next — the alternative is a panel per kind of content, and nobody writes the third one. But a slot is not a substitute for an interface, and that is the mistake this example exists to correct: the panel still takes `title` and `mounted`, still lets the instance decide whether the close button exists (`showClose`), and still publishes `closed` so the page can act on the request rather than guess. Note what `closed` is: the panel does NOT hide itself when the button is pressed — it says the user asked, and the page decides, which is the same contract a controlled value has. A component that unmounts itself is a component whose parent can be surprised. The page places the same panel twice with different children inside it and different chrome, and the two instances share every line of the panel's graph.
+
 ## Related nodes
 
 [Group](./group.md), [Component Inputs](../component-utilities/component-inputs.md), [Component Outputs](../component-utilities/component-outputs.md), [Repeater](./for-each.md)

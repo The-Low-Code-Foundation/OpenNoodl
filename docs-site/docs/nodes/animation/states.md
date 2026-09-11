@@ -89,6 +89,10 @@ All state- and value-specific ports are runtime-discovered: the viewer generates
 
 States is the interaction state machine: the `states` parameter names the states ('collapsed,expanded'), the `values` parameter names the outputs each state assigns ('panelHeight'), and with `useTransitions` on, changing state tweens each value. `toggle` flips between two states; the per-value output drives the layout input (number→dimension cast gives pixels). Signal outputs per state and `stateChanged` are registered from the same configuration — this is the current replacement for the deprecated Animation node.
 
+**One size port, three sizes: a variant selector wired into States**
+
+The component a page places three times at three sizes, without three components. `size` is a `Component Inputs` port wired straight into `States.currentState` — 🔴 that port is TWO ports sharing one name: a static string **output** that reports the current state, and, once `states` is set, a generated **enum input** that selects one by name. The input is the wire that makes a variant port work, and a chain of `Condition` nodes each setting one property is the same idea written badly. The `values` parameter (`padX,padY,labelSize`) mints one input per state per value (`value-small-padX`) and one output per value, so each state assigns the whole set at once and the graph carries no branch. `showDot` is the other half of a real interface: chrome chosen at the instance, not by making a second component. And the badge publishes `clicked`, so the page can act on a press — a component that only draws is a component the page has to work around.
+
 ## Related nodes
 
 [Animate To Value](./net-noodl-animatetovalue.md), [Color Blend](../interpolation/color-blend.md), [Condition](../logic/condition.md), [Switch](../logic/switch.md), [Group](../visual/group.md)

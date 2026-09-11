@@ -55,6 +55,12 @@ Answering with a spreadsheet: a cloud function replying to an export request, a 
 - Building CSV by joining strings in an Expression or Function node. That is the quoting rule reimplemented, and it is wrong the first time a cell contains a comma.
 - Passing an array of arrays and expecting a header row. There are no column names to write; use records if you want one.
 
+## Examples
+
+**Write a list of records out as CSV**
+
+Bubble's `:format as text` joins a list with a delimiter, and for a CSV export that is the version that breaks: a name containing a comma, or a note containing a newline, silently produces a file with the wrong number of columns and no error anywhere. To CSV is a real writer — any cell holding the delimiter, a quote or a newline is wrapped in quotes with its own quotes doubled, so the output reads back through Parse CSV unchanged. Columns is the input worth setting deliberately. Left empty, every property found on the records is written in the order it was first seen, which means the file's shape follows whatever the first record happened to contain — add a field to one record upstream and the export changes silently. Naming the columns fixes the order AND drops everything else, which is how you keep an internal field out of a file a customer opens. The record `id` the runtime mints is never written unless you name it, because it is not a column of your data. Count reports DATA rows, not counting the header, so it is the number to put in front of a person; a list of ten with Include Header ticked produces eleven lines and Count says 10. Both the text and the row count are published, because the thing that wants the CSV is whatever hands it to a download or a request — not this component.
+
 ## Related nodes
 
 [Parse CSV](./net-noodl-parse-csv.md), [Static Array](./static-data.md), [Array Filter](./filter-collection.md), [Array Map](./map-collection.md)

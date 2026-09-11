@@ -25,12 +25,19 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignContent` | Enum (`flex-start`, `flex-end`, `center`, `space-between`, `space-around`, `space-evenly`) | — | Where the wrapped lines sit as a group; only applies once Multi Line Wrap is on |
 | `alignItems` | Enum (`flex-start`, `flex-end`, `center`, `stretch`) | `flex-start` | Where children sit across the layout direction |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `as` | Enum (`div`, `section`, `article`, `aside`, `nav`, `header`, `footer`, `main`, `span`) | `div` | HTML element to render as, which changes nothing visually but matters for screen readers and SEO |
+| `backdropBlur` | Number | `0` | Blurs whatever is painted BEHIND this element, so a translucent panel reads as frosted glass over the ground it sits on. Needs a see-through Background Color to show at all |
 | `backgroundColor` | Color | `transparent` | Fill colour behind the children |
+| `backgroundGradient` | String | — | A CSS gradient painted as the ground — normally a design token such as "var(--gradient-brand)". It is drawn ON TOP of Background Image, which is what makes it usable as a legibility scrim |
+| `backgroundImage` | Image | — | A picture painted behind the children. Combine it with Background Gradient to lay a scrim over the picture so text on top stays readable |
+| `backgroundPosition` | Enum (`center`, `top center`, `bottom center`, `center left`, `center right`) | `center` | Which part of the picture stays in view when Cover crops it |
+| `backgroundSize` | Enum (`cover`, `contain`, `auto`) | `cover` | How the background picture fills the box. Cover crops it to fill; contain fits it whole |
 | `blockTouch` | Boolean | — | Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in |
 | `borderBottomColor` | Color | — | Colour of the bottom edge only, overriding Border Color |
 | `borderBottomLeftRadius` | Number | — | Rounds the bottom-left corner only, overriding Corner Radius |
@@ -128,6 +135,12 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
 | `childrenCount` | Number | — | How many child elements are currently mounted inside this one |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `onScrollPositionChanged` | Number | — | How far the content is scrolled, in pixels from the start |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
@@ -140,6 +153,8 @@ Reach for Group whenever you need structure: rows, columns, cards, overlays, scr
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
 | `done` | Signal | — | Fires once Focus, Scroll To Element or Scroll To Index has been carried out |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `focusLost` | Signal | — | Fires when keyboard focus leaves this group |
 | `focused` | Signal | — | Fires when this group takes keyboard focus |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
@@ -177,6 +192,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | sizeMode = explicit OR sizeMode = contentHeight OR sizeMode NOT SET | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth OR sizeMode NOT SET | `height` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |
@@ -217,7 +233,7 @@ The canonical data grid, and the layout decision most often got wrong. Use a Col
 
 **Split hero: copy column and image, with a display headline that looks set rather than typed**
 
-Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--text-6xl, --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
+Two columns inside the shell, each width 100% so an UNWRAPPED row shrinks them to half each — this is why a plain row works where a wrapped grid does not. The copy column carries the page's one display headline (--display-lg — a fluid clamp() that is 44px on a phone and 96px on a wide desktop — with --font-bold, --leading-none and --tracking-tighter; tight tracking is what makes a large heading look set), an eyebrow above it, a lead paragraph capped at ~520px, and two buttons whose concrete parameters are copied from the style vocabulary because `variant` is a connection-only port. The image gets sizeMode "explicit" plus a width, a height and objectFit "cover" — without explicit sizing those three ports are inert and the photo renders at its natural size.
 
 **Icon feature strip: one item component, instantiated three times inside a Columns**
 

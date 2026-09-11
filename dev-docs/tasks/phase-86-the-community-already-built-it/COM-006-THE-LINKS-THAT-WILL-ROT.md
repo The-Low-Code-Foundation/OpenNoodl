@@ -133,6 +133,19 @@ builds against today's `@noodl/noodl-sdk` is unmeasured. The recovered source is
 
 #### Directus prefab → **WANTED. The licence permits it; the courtesy ask does not.**
 
+> 🔴 **Session 3 correction, found while building COM-002 — read this before acting on the paragraph
+> below.** We do not start from nothing on Directus, and the case for copying a community prefab is
+> much weaker than this task assumed. `packages/nodegx-backend-contract/src/descriptors/directus.ts`
+> already exists and its own header calls Directus **"the best-evidenced third-party descriptor,
+> because Directus is the backend this repo has actually stood up and driven"** — introspection and
+> runtime CRUD probed against a live Directus 11 in RUN-003, aggregation, distinct and search in
+> BCN-001. So Directus is not a missing connector; it is a backend we already speak, with better
+> evidence behind it than Parse. **What the community prefab adds is a Noodl-era project-level
+> connector and some UI, which may be entirely superseded.** Measure that before asking its author
+> for anything — the courteous question is a different one if the answer is "thank you, we already
+> have this".
+
+
 Confirmed as the obvious third connector beside `supabase` and `xano` — `library/prefabs/` has no
 Directus entry. **BSD 3-Clause**, `Copyright (c) 2024, arladmin`, organisation-owned, last pushed
 2024-10-10, not archived. BSD-3 permits redistribution and derivatives on the standard terms, so

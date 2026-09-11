@@ -25,9 +25,11 @@ Embedded video content, background/hero loops, and camera previews (wire a media
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
-| `autoplay` | Boolean | — | Starts playing as soon as the video can; most browsers only allow this while Muted is on |
+| `autoplay` | Boolean | — | Starts playing as soon as the video can; most browsers only allow this while Muted is on. On a YouTube or Vimeo link it is muted automatically for that reason, because an embedded player cannot report that the browser refused |
 | `blockTouch` | Boolean | — | Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in |
 | `borderBottomColor` | Color | — | Colour of the bottom edge only, overriding Border Color |
 | `borderBottomLeftRadius` | Number | — | Rounds the bottom-left corner only, overriding Corner Radius |
@@ -52,6 +54,7 @@ Embedded video content, background/hero loops, and camera previews (wire a media
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all |
 | `controls` | Boolean | — | Shows the browser's own play, seek and volume controls |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
+| `endTime` | Number | — | Seconds at which to stop; leave blank to play to the end. Ignored if it is not later than Start Time, and browsers vary in how strictly they honour it while Loop is on. ⚠️ Approximate on YouTube, and ignored entirely on Vimeo, whose embedded player has no end setting |
 | `height` | Dimension | `100` | Height of the element; how the value is read depends on Size Mode |
 | `loop` | Boolean | — | Restarts the video automatically when it reaches the end |
 | `marginBottom` | Number | — | Space outside the element's bottom edge, between it and its neighbours |
@@ -74,8 +77,9 @@ Embedded video content, background/hero loops, and camera previews (wire a media
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
 | `poster` | Image | — | Still image shown until the video has enough data to play; leave blank to show nothing |
 | `sizeMode` | Enum (`explicit`, `contentWidth`, `contentHeight`, `contentSize`) | `contentSize` | Whether Width and Height are used as given, or the element sizes itself to fit its contents |
-| `src` | String | — | URL or project file to play; leave blank to load nothing rather than fail on a missing source |
+| `src` | String | — | What to play: an mp4, webm or ogg URL, a file in your project, or a YouTube or Vimeo link. A YouTube or Vimeo link is recognised automatically and plays in an embedded player, where Play, Pause, Reset and the failure outputs do not apply. Leave blank to load nothing rather than fail on a missing source |
 | `srcObject` | Mediastream | `null` | A live MediaStream to play, from a camera or screen capture, instead of a URL |
+| `startTime` | Number | — | Seconds into the video to begin at; leave blank to start at the beginning. Works for a video file, for YouTube and for Vimeo |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
 | `transformOriginX` | Number | `50` | Horizontal point the element rotates and scales around, as a fraction of its width |
 | `transformOriginY` | Number | `50` | Vertical point the element rotates and scales around, as a fraction of its height |
@@ -107,6 +111,12 @@ Embedded video content, background/hero loops, and camera previews (wire a media
 | `boundingHeight` | Number | — | Height this element actually ended up with after layout, in pixels |
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `onTimeUpdate` | Number | — | How far into the video playback has reached, in seconds |
 | `onVideoElementCreated` | Domelement | — | The underlying video element, for a Group to scroll to or a script to reach |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
@@ -122,6 +132,8 @@ Embedded video content, background/hero loops, and camera previews (wire a media
 | `completed` | Signal | — | Fires after every invocation, whatever the outcome — wire this to carry on regardless. Failure still fires and still carries its reason, so this cannot hide an error |
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
 | `done` | Signal | — | Fires once a Video Action has been carried out by the element |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
 | `hoverStart` | Signal | — | Fires when the pointer moves over this element or any of its children |
 | `onCanPlay` | Signal | — | Fires once enough of the video has loaded to start playing |
@@ -152,6 +164,7 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 | sizeMode = explicit OR sizeMode = contentHeight | `width` | — |
 | sizeMode = explicit OR sizeMode = contentWidth | `height` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 | borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderWidth`, `borderColor` | — |
 | borderLeftStyle = solid OR borderLeftStyle = dashed OR borderLeftStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderLeftWidth`, `borderLeftColor` | — |
 | borderTopStyle = solid OR borderTopStyle = dashed OR borderTopStyle = dotted OR borderStyle = solid OR borderStyle = dashed OR borderStyle = dotted  | `borderTopWidth`, `borderTopColor` | — |

@@ -2,7 +2,7 @@
 title: Node reference
 ---
 
-Every node in the catalog — 175 in total — generated from the same
+Every node in the catalog — 176 in total — generated from the same
 enriched catalog the editor reads for its own in-editor help. Grouped by picker category.
 
 :::info Generated
@@ -26,6 +26,7 @@ This page is generated from `node-catalog-enriched.json`. Do not edit it by hand
 - [HMAC](./cloud/noodl-cloud-hmac.md)
 - [JWT Sign](./cloud/noodl-cloud-jwtsign.md)
 - [JWT Verify](./cloud/noodl-cloud-jwtverify.md)
+- [List Users In Role](./cloud/noodl-cloud-listusersinrole.md)
 - [Remove User From Role](./cloud/noodl-cloud-removeuserfromrole.md)
 - [Request](./cloud/noodl-cloud-request.md)
 - [Response](./cloud/noodl-cloud-response.md)
@@ -210,7 +211,6 @@ This page is generated from `node-catalog-enriched.json`. Do not edit it by hand
 - [Button](./visual/net-noodl-controls-button.md)
 - [Checkbox](./visual/checkbox.md) _(deprecated)_
 - [Checkbox](./visual/net-noodl-controls-checkbox.md)
-- [Circle](./visual/circle.md)
 - [Columns](./visual/net-noodl-visual-columns.md)
 - [Component Children](./visual/component-children.md)
 - [Component Stack](./visual/page-stack.md)
@@ -230,6 +230,7 @@ This page is generated from `node-catalog-enriched.json`. Do not edit it by hand
 - [Radio Button Group](./visual/radio-button-group.md)
 - [Range](./visual/range.md) _(deprecated)_
 - [Repeater](./visual/for-each.md)
+- [Shape](./visual/circle.md)
 - [Slider](./visual/net-noodl-controls-range.md)
 - [Text](./visual/text.md)
 - [Text Input](./visual/text-input.md) _(deprecated)_

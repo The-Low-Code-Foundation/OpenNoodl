@@ -41,7 +41,7 @@ Use it to branch signal flow ('when clicked, proceed only if valid') or to deriv
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `isfalse` | Boolean | — | The opposite of Is True, so a false branch needs no Inverter; null until the first test |
-| `result` | Boolean | — | Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test |
+| `result` | Boolean | — | Whether the last test found Condition true, for wiring into a value rather than branching on a signal; null until the first test. If Condition is a constant, every test pushes the same value — a mounted gate wired that way only ever turns on; a Switch is the two-way shape |
 
 ### Signals
 

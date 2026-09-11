@@ -69,6 +69,12 @@ When a cloud function receives a token it did not get as its own caller's creden
 - Using it to re-check the caller's own token. The Request node has already resolved it; a second lookup is a database round trip that answers a question already answered.
 - Confusing it with JWT Verify. Verifying our own session token as if it were a JWT will never succeed, and verifying somebody else's JWT here will always answer `unchanged`.
 
+## Examples
+
+**Check a session token that arrived in the request body**
+
+This node is for a token that came in the BODY — from a mobile client, a partner integration, a callback — and not for the caller's own session, which the Request node has already resolved onto `auth` and `userId` before any of this runs. If you find yourself verifying the caller's own token, read those outputs instead; the lookup has already happened. It is also not JWT Verify, and the difference is whose token it is: JWT Verify checks somebody ELSE's JWT against a key you hold, while this asks our own backend about our own `_Session` rows. Token is connection-only and cannot be set as a parameter, which is deliberate — a session token typed into a parameter is a live credential committed to a project file. Nothing is read and nothing is ever written until `Do` fires. `userId` is cleared before every check and is blank on every branch except `done`, so a stale id from a previous call can never be mistaken for this one's answer; `valid` is the value form of the same branch, for wiring into a condition rather than a flow. `unchanged` is the token that is simply not a live session — expired, revoked, never ours — which is an ordinary answer rather than an error, and it is routed to the same Response so the caller gets a clear 'no' instead of a timeout. `failure` is reserved for the lookup itself going wrong.
+
 ## Related nodes
 
 [JWT Verify](./noodl-cloud-jwtverify.md), [Create User](./noodl-cloud-createuser.md), [Update User](./noodl-cloud-updateuser.md), [Request](./noodl-cloud-request.md)

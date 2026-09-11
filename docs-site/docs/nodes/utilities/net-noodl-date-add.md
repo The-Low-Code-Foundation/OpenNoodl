@@ -57,6 +57,12 @@ Deadlines, trial expiry, renewal dates, 'thirty days from now', 'the same day ne
 
 - Using Days where Months was meant, to avoid thinking about clamping. 30 days and 1 month are different dates in eleven months of the year.
 
+## Examples
+
+**How many days are left on this trial?**
+
+Bubble's `<-range->` gives a range whose duration you then read; here the duration is the whole question, and Date Difference answers it directly as To minus From. Two things about that subtraction decide whether the banner is right. It is SIGNED — an expired trial reports a negative number, and that is the useful behaviour, because Absolute would turn 'three days overdue' into 'three days left'. And for fixed units it is NOT rounded: a trial with 36 hours to run reports 1.5 days, so a banner wired straight to Difference says '1.5 days left'. That is why the Expression is here rather than as an afterthought — `Math.max(0, Math.ceil(d))` rounds up (a trial with any part of a day left has a day left, which is what a person counting means), and clamps the expired case to zero so the banner never counts downward past the end. Date Add supplies the end date from the signup date, and its clamping rule matters if you ever change Unit to Months: 31 January plus one month is 28 February, not 2 March. The end date is rendered through Date To String rather than pasted in as a number, because Difference is a number and a date is not.
+
 ## Related nodes
 
 [Now](./net-noodl-now.md), [Date Difference](./net-noodl-date-difference.md), [Date To String](./date-to-string.md)

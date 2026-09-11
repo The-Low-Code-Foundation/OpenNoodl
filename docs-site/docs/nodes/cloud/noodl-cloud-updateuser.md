@@ -81,6 +81,12 @@ Every name listed in the `properties` parameter mints one input port called `pro
 - Leaving `userId` unwired and expecting it to mean 'the current user'. It does not, and it never will — that node is Set User Properties, in the browser.
 - Putting this node in a function with no `call` rule. A function that can change any account's password is a function that must name who may call it (CWF-017).
 
+## Examples
+
+**Take a privilege away, and write down that you did**
+
+Revoking is the other half of granting, and it has one behaviour that surprises people: removing a role membership does NOT end that user's existing sessions. They stay signed in; what changes is what the access rules let them do on their next request. If the requirement is 'they are out, now', revoking the role is not sufficient on its own. `unchanged` covers two different post-conditions that both mean 'they are not in it' — they were never a member, or the role does not exist at all — and Error says which. Both are wired into the same continuation here, because for a revoke, 'they are not in that role any more' is the goal and it has been reached either way; a function that failed on an already-revoked user would break every retry. Update User then stamps the account with who did it and when, and it is worth being clear why that is a different node from Set User Properties: that one writes to whoever is signed in and fails when nobody is, while this writes to the account whose id you give it with the authority of the server. `userId` is required and a blank one is a failure rather than a fallback to the caller — which is exactly the accident (editing the admin instead of the target) that the split exists to prevent. Get User Roles reads the result back through the same resolver the permission check uses, so the Response tells the screen what the access rules will actually agree to, not what this function believes it just did.
+
 ## Related nodes
 
 [Create User](./noodl-cloud-createuser.md), [Delete User](./noodl-cloud-deleteuser.md), [Verify Session Token](./noodl-cloud-verifysessiontoken.md), [Set User Properties](../cloud-services/net-noodl-user-set-user-properties.md), [Request](./noodl-cloud-request.md)

@@ -29,7 +29,7 @@ Decorative or informative glyphs next to text, in cards, headers and list rows. 
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `boxSizing` | Enum (`border-box`, `content-box`) | `border-box` | Whether Width and Height include this element's padding and border, or only its content |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
-| `iconColor` | Color | `#FFFFFF` | Colour of the icon |
+| `iconColor` | Color | `#000000` | Colour of the icon |
 | `iconIconSource` | Icon | — | Which glyph to show, picked from an installed icon set |
 | `iconImageSource` | Image | — | Image file to show instead of an icon-set glyph |
 | `iconSize` | Number | `16` | Height of the icon |
@@ -114,7 +114,7 @@ A list with nothing in it should say what it is and what to do, not render nothi
 
 ## Related nodes
 
-[Image](./image.md), [Text](./text.md), [Circle](./circle.md), [Button](./net-noodl-controls-button.md)
+[Image](./image.md), [Text](./text.md), [Shape](./circle.md), [Button](./net-noodl-controls-button.md)
 
 
 :::info Generated

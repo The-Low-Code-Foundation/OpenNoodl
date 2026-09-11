@@ -1,5 +1,5 @@
 ---
-title: "Circle"
+title: "Shape"
 ---
 An SVG circle or arc with fill, stroke and start/end angles — the quick way to dots, rings and progress arcs.
 
@@ -25,10 +25,13 @@ Status dots, avatars' presence badges, decorative shapes, and progress rings/pie
 
 | Name | Type | Default | Description |
 |---|---|---|---|
+| `acceptFileDrops` | Boolean | `false` | Lets a file dragged from the desktop be dropped onto this element, which reveals the File Drop outputs below |
+| `acceptedFileTypes` | String | — | Comma-separated extensions or MIME types this element will take — ".png, .jpg" or "image/*"; leave blank to accept every file. A drop of nothing but rejected files fires Files Rejected instead of Files Dropped |
 | `alignX` | Enum (`left`, `center`, `right`) | — | Horizontal alignment of this element within the space its parent gives it |
 | `alignY` | Enum (`top`, `center`, `bottom`) | — | Vertical alignment of this element within the space its parent gives it |
 | `blockTouch` | Boolean | — | Stops every pointer event that lands here from reaching the nodes this one sits inside. Blunt: it takes hover and pointer-down with it, so reach for Click Bubbling first if it is only clicks you want to keep in |
 | `clickBubbling` | Enum (`auto`, `always`, `never`) | `auto` | Whether a click here also fires Click on the nodes this one sits inside. Automatic keeps it here as soon as this node's own Click is connected, so a button inside a clickable card runs the button and not the card; Always is the older behaviour where both run; Never keeps every click here, wired or not. Note that an element at zero opacity takes no pointer events at all |
+| `cornerRadius` | Number | `0` | Rounds the corners of the straight-edged shapes, in pixels; it stops at the roundest the shape can be |
 | `cssClassName` | String | `` | Extra CSS class names to put on this element, for styling from a stylesheet you supply |
 | `endAngle` | Number | `360` | Where the arc ends, in degrees clockwise from the top; 360 is a full circle |
 | `fillColor` | Color | `red` | Colour of the inside of the circle, which has no effect while Fill is off |
@@ -42,7 +45,9 @@ Status dots, avatars' presence badges, decorative shapes, and progress rings/pie
 | `opacity` | Number | `1` | How opaque this element is, from 0 for invisible to 1 for solid |
 | `pointerEventsEnabled` | Boolean | `true` | When disabled, mouse and touch events pass through to whatever is behind this element |
 | `pointerEventsMode` | Enum (`inherit`, `explicit`) | `inherit` | Whether pointer handling is inherited from the parent or set explicitly on this element |
+| `points` | Number | `5` | How many sides a Polygon has, or how many points a Star has; the minimum is 3 |
 | `position` | Enum (`relative`, `absolute`, `sticky`, `fixed`) | `relative` | How the element is placed: In Layout follows its siblings, Absolute ignores them, Sticky pins to the parent edge on overflow, Fixed stays put and takes no space |
+| `shape` | Enum (`circle`, `square`, `triangle`, `polygon`, `star`, `svg`) | `circle` | Which outline this element draws inside its Size × Size box |
 | `size` | Number | `100` | Diameter of the circle in pixels; it sets both width and height |
 | `startAngle` | Number | `0` | Where the arc begins, in degrees clockwise from the top |
 | `strokeColor` | Color | `black` | Colour of the outline |
@@ -50,6 +55,7 @@ Status dots, avatars' presence badges, decorative shapes, and progress rings/pie
 | `strokeLineCap` | Enum (`butt`, `round`) | `butt` | Shape of the outline ends when Start and End Angle make an arc rather than a full circle |
 | `strokeWidth` | Number | `10` | Thickness of the outline in pixels, drawn centred on the circle edge |
 | `styleCss` | String | `/* background-color: red; */` | Raw CSS declarations applied to this element, overriding the styling ports above |
+| `svgSource` | String | `` | Your own SVG markup, drawn inside the Size box. Script, event handlers, styles, animation and remote references are removed before it renders |
 | `transformOriginX` | Number | `50` | Horizontal point the element rotates and scales around, as a fraction of its width |
 | `transformOriginY` | Number | `50` | Vertical point the element rotates and scales around, as a fraction of its height |
 | `transformRotation` | Number | `0` | Rotates the element clockwise in degrees, without affecting the layout |
@@ -69,6 +75,12 @@ Status dots, avatars' presence badges, decorative shapes, and progress rings/pie
 | `boundingHeight` | Number | — | Height this element actually ended up with after layout, in pixels |
 | `boundingWidth` | Number | — | Width this element actually ended up with after layout, in pixels |
 | `childIndex` | Number | — | This element's position among its parent's children, counting from 0 |
+| `droppedFile` | * | — | The first accepted file, in the form an Upload File node takes |
+| `droppedFileName` | String | — | Name of the first accepted file, extension included |
+| `droppedFileSizeInBytes` | Number | — | Size of the first accepted file, in bytes |
+| `droppedFileType` | String | — | MIME type the browser reports for the first accepted file, blank for one it does not recognise |
+| `droppedFiles` | Array | — | Every accepted file in the drop, as an array — a drop can carry more than one |
+| `isDragOver` | Boolean | — | True while a file is being dragged over this element — wire it to a border or background so the drop zone reacts |
 | `screenPositionX` | Number | — | Distance in pixels from the left edge of the window to this element's left edge |
 | `screenPositionY` | Number | — | Distance in pixels from the top edge of the window to this element's top edge |
 | `this` | Reference | — | A reference to this node itself, for ports that take a node rather than a value |
@@ -78,6 +90,8 @@ Status dots, avatars' presence badges, decorative shapes, and progress rings/pie
 | Name | Type | Default | Description |
 |---|---|---|---|
 | `didMount` | Signal | — | Fires once this element has been added to the page and can be measured |
+| `filesDropped` | Signal | — | Fires when one or more accepted files are dropped here, after every File Drop output is up to date |
+| `filesRejected` | Signal | — | Fires when a drop landed here but every file in it was excluded by Accepted file types |
 | `hoverEnd` | Signal | — | Fires when the pointer leaves this element |
 | `hoverStart` | Signal | — | Fires when the pointer moves over this element or any of its children |
 | `onClick` | Signal | — | Fires when this element is clicked or tapped |
@@ -94,7 +108,12 @@ Declares conditional/expandable port groups whose visibility depends on paramete
 
 | Condition | Inputs shown | Outputs shown |
 |---|---|---|
+| shape = circle OR shape NOT SET | `startAngle`, `endAngle`, `strokeLineCap` | — |
+| shape = polygon OR shape = star | `points` | — |
+| shape = square OR shape = triangle OR shape = polygon OR shape = star | `cornerRadius` | — |
+| shape = svg | `svgSource` | — |
 | pointerEventsMode = explicit | `pointerEventsEnabled` | — |
+| acceptFileDrops = true | `acceptedFileTypes` | `filesDropped`, `filesRejected`, `droppedFile`, `droppedFiles`, `droppedFileName`, `droppedFileType`, `droppedFileSizeInBytes`, `isDragOver` |
 
 ## Ports at runtime
 

@@ -80,8 +80,8 @@ matters because only one of them converts:
 | id | what | status |
 |---|---|---|
 | [COM-001](COM-001-THE-TWENTY-SIX-NODES-NOBODY-DEMONSTRATED.md) | Fill the 26-node example hole, using the dictionary's 32 blank rows as the authoring brief | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; 17 examples, warnings 26 → 0, corpus 72 → 89 |
-| [COM-002](COM-002-THE-BUBBLE-PHRASEBOOK.md) | The Bubble → NodeGX reference page, in Bubble's vocabulary. Fill the 32 blanks; re-test the Parse-era rows | **NEXT** — COM-001 built its answers; 3 rows have none and COM-001 §7.2 nominates this task to record them |
-| [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it. 5/12 measured | **OPEN** — instrument committed |
+| [COM-002](COM-002-THE-BUBBLE-PHRASEBOOK.md) | The Bubble → NodeGX reference page, in Bubble's vocabulary. Fill the 32 blanks; re-test the Parse-era rows | ✅ **BUILT** 2026-09-11 — 5 of 5 ACs; 94 rows, 0 blank, 77 code cells executed, 18 community rows found wrong |
+| [COM-003](COM-003-THE-COMMUNITY-GRAPHS-LAND-OR-DO-NOT.md) | Land the community graphs as examples — through the gate, not around it. 5/12 measured | **NEXT** — instrument committed; COM-002 §7.4 hands it the 14 snippets and the Parse-era marker |
 | [COM-004](COM-004-SEO-META-TAGS.md) | SEO meta tags. No node, no prefab, runtime API already there — the biggest library gap in the export | **OPEN** |
 | [COM-005](COM-005-THE-RECORDERS-AND-THE-MASONRY.md) | Audio recorder, video recorder, masonry grid — the three remaining gaps our 74 library entries do not cover | **OPEN** |
 | [COM-006](COM-006-THE-LINKS-THAT-WILL-ROT.md) | Recover the three external payloads before they vanish; decide on Directus as the third connector | ✅ **BUILT** 2026-09-11 — all three links were still alive, all three recovered; AC3 🟡 on one ask for Richard |

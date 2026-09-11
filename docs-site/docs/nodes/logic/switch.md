@@ -41,7 +41,7 @@ The idiomatic node for anything a user toggles: expand/collapse, mute, edit mode
 
 | Name | Type | Default | Description |
 |---|---|---|---|
-| `state` | Boolean | — | True while the switch is on |
+| `state` | Boolean | — | True while the switch is on — wire it into a mounted or visible port for a gate that turns on AND off |
 
 ### Signals
 

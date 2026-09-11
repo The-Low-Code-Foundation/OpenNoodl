@@ -66,6 +66,12 @@ Content addressing, a cache key, an integrity check, or comparing a value agains
 - Reading Digest immediately after pulsing Do, in the same frame. It is still the previous value.
 - Hashing a password with this node. Use your backend's password flow; a bare SHA-2 is not a password hash.
 
+## Examples
+
+**Turn an email address into a stable fingerprint**
+
+The dictionary asks for `:formatted as MD5 hash` and `:formatted as SHA1 Hash`, and the honest answer is that this node offers neither — SHA-256, SHA-384 and SHA-512 only. That is a decision, not a gap: WebCrypto, which Hash runs on in both the browser and a cloud function, does not implement MD5 or SHA-1 for digesting, and hand-rolling one would mean shipping a hash that is broken for every purpose either was ever used for. If you are migrating a Bubble app that stored MD5 fingerprints, they will not reproduce here and no setting will make them; treat that as a re-hash of the source data, not a translation. Two details decide whether this works. Hash is ASYNCHRONOUS — the digest is computed off a later turn than the `Do` that started it — so Digest is wired to the Text and the button is wired to `Do`; reading Digest in the same pass as the click would read the previous answer. And hashing is exact, so the normalisation in front of it is doing real work: `Foo@Example.com ` and `foo@example.com` are different bytes and therefore entirely different digests, which is how a 'stable fingerprint' quietly stops matching. Trim and lower-case first, deliberately, and write down that you did. Failure fires only when WebCrypto is unavailable, which in a browser means the page is not on a secure origin — worth a Log, because the symptom is a blank fingerprint rather than an error. The digest is published as well as rendered: a fingerprint that only ever reaches a Text is a fingerprint nothing can be compared against.
+
 ## Related nodes
 
 [HMAC](../cloud/noodl-cloud-hmac.md), [Random Bytes](./net-noodl-random-bytes.md), [UUID](./net-noodl-uuid.md)

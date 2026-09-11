@@ -67,6 +67,12 @@ Issuing a short-lived token your own system will check later — a download link
 - Putting a secret in Claims. The payload is base64, not encryption — anyone with the token can read it.
 - Leaving Expires In empty for a token that reaches a user's browser. A token with no expiry is valid until the key changes.
 
+## Examples
+
+**Mint a signed token for another service to check**
+
+The key never appears in the graph — only the NAME of the secret does, which is what makes this function safe to commit and safe to export. Secret resolves that name against the backend's machine-local `secrets.json` and then against a `NODEGX_SECRET_<NAME>` environment variable, and it reaches the project author's own credentials only: the backend's own webhook, email, auth and admin credentials are not addressable from a graph at all. Signing is cloud-only for the obvious reason — a browser node with a key input would be a browser holding the key. Two things about the token itself. A JWT is SIGNED, NOT ENCRYPTED: everything in Claims is readable by anyone who holds the token, so it carries identifiers and never secrets, and 'nobody will look' is not a security property. And `exp` is stamped only when Expires In is set — `iat` is always stamped, `exp` is not — so a token with no expiry is something you chose rather than something that happened to you. Ten minutes is set here because this token exists to be handed to one other service for one call. The chain is Do-driven throughout: Secret publishes Value on `done`, and only then is there a key to sign with, so the signature is wired to fire from that signal rather than from the request. Failure is a single Response, because a function that cannot read its secret and a function that cannot sign look identical from the caller's side and neither should return a token-shaped blank.
+
 ## Related nodes
 
 [JWT Verify](./noodl-cloud-jwtverify.md), [Secret](./noodl-cloud-secret.md), [HMAC](./noodl-cloud-hmac.md)
