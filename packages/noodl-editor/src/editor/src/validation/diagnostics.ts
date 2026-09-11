@@ -356,6 +356,26 @@ export enum DiagnosticCode {
    * `setInputValue` merges it into the port's current unit. It is nonetheless
    * blocking for *authored* output, where `width: 228` meaning 228px produced an
    * image 228% wide.
+   *
+   * ⚠️ FLD-004 (#26) checked that justification rather than inheriting it, and it
+   * holds — but for a narrower reason than it reads. The merge is gated on
+   * `_inputValues[name].unit`, and only `nodedefinition.ts`'s
+   * `initializeDefaultValues` ever wrote that key: `Node.registerInput` seeded a
+   * units port under `type` instead, so the merge was dead for every
+   * DYNAMICALLY registered units port from the initial commit until FLD-004 (c)
+   * corrected the key. The reason nobody ever hit it is that there are no such
+   * ports — **272 distinct dynamic registrations measured across the runtime
+   * suite, the viewer suite and a 20-project render corpus, and not one carries
+   * a units type**; all 110 `units:` declarations in the shipped library sit in
+   * static `inputs`/`inputCss` blocks, which never reach `registerInput` at all.
+   * So this sentence was true of everything that exists, and is now true by
+   * construction.
+   *
+   * 🔴 What it does NOT cover is the axis. A bare number on a dimension port
+   * that lies along the parent's main axis merges correctly into `%` and is
+   * then turned into `flexGrow` by `layout.ts` — arriving, and moving nothing.
+   * That is {@link WiredDimensionBecomesGrow}, which is a different sentence
+   * about the same value.
    */
   UnitlessDimension = 'unitless-dimension',
   /**

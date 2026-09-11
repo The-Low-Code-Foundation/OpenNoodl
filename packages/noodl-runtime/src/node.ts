@@ -132,9 +132,23 @@ Node.prototype.registerInput = function (name, input) {
 
   if (type && type.units) {
     const defaultUnit = type.defaultUnit || type.units[0];
+    // FLD-004 (c), #26 — `unit`, not `type`. `setInputValue` tests
+    // `currentInputValue.unit` to decide whether a bare number arriving over a wire should be
+    // merged into the unit the port is already holding, so seeding the key under a different
+    // name meant that test could never pass for a port registered through here, and the
+    // coercion has been dead since the initial commit (`b9c60b07d`).
+    //
+    // 🔴 Library ports were never affected and the fix changes nothing that ships today:
+    // `nodedefinition.ts` assigns `node._inputs = Object.create(inputs)` directly and seeds
+    // `_inputValues` through `initializeDefaultValues`, which has always written `unit`. This
+    // function is reached only by DYNAMIC registration, and the blast-radius measurement found
+    // **272 distinct dynamic registrations across three populations — the runtime suite, the
+    // viewer suite and a 20-project render corpus — and not one of them carries a units type.**
+    // So this is a latent defect being closed, not a behaviour change: it costs nothing now and
+    // stops the first dynamic units port anyone adds from silently not merging.
     this._inputValues[name] = {
       value: input.default,
-      type: defaultUnit
+      unit: defaultUnit
     };
   } else if (input.hasOwnProperty('default')) {
     this._inputValues[name] = input.default;
