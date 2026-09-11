@@ -17,7 +17,13 @@
  * which is not hypothetical: `deployToFolder` logs its copy report with `console.log`, so stdout
  * is captured and redirected for the duration of the run.
  */
-import { deployProject, type DeployOutcome } from './deploy';
+import {
+  ALLOW_DEV_ENGINE_FLAG,
+  DevelopmentEngineError,
+  deployProject,
+  type DeployOutcome,
+  type ViewerBuildReading
+} from './deploy';
 
 /** What the caller reads. One object, one line, nothing else on stdout. */
 export type EngineResult =
@@ -30,12 +36,20 @@ export type EngineResult =
        *
        * - `usage`   — the arguments are wrong.
        * - `runtime` — this installation has no deployable viewer runtime.
+       * - `engine`  — EXP-017: the viewer runtime it has is a DEVELOPMENT build. Nothing was
+       *               written. Its own word, and not `runtime`, because the two have opposite
+       *               fixes: one installation has no viewer at all and this one has the wrong
+       *               build of it, and a pipeline told "no deploy engine here" will go looking
+       *               for a missing file that is sitting right there.
        * - `project` — the project could not be read, validated, or has no root.
        * - `target`  — the output folder was refused (a project folder, most often).
        * - `write`   — it failed part-way through writing.
        */
-      stage: 'usage' | 'runtime' | 'project' | 'target' | 'write';
+      stage: 'usage' | 'runtime' | 'engine' | 'project' | 'target' | 'write';
       message: string;
+      /** EXP-017 — present on `engine`: what was read, so the front door prints it rather than
+       *  re-deriving it from the sentence. */
+      engine?: ViewerBuildReading;
     };
 
 const RUNTIME_MARKER = 'The deployed viewer runtime is missing';
@@ -70,9 +84,14 @@ function emit(result: EngineResult): void {
 async function main(): Promise<void> {
   const [projectDir, outDir, ...rest] = process.argv.slice(2);
   let baseUrl: string | undefined;
+  let allowDevelopmentEngine = false;
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--base-url' && rest[i + 1] !== undefined) {
       baseUrl = rest[++i];
+      continue;
+    }
+    if (rest[i] === ALLOW_DEV_ENGINE_FLAG) {
+      allowDevelopmentEngine = true;
       continue;
     }
     emit({ ok: false, stage: 'usage', message: `nodegx-deploy: unexpected argument ${rest[i]}` });
@@ -83,7 +102,7 @@ async function main(): Promise<void> {
     emit({
       ok: false,
       stage: 'usage',
-      message: 'Usage: nodegx-deploy <project-dir> <out-dir> [--base-url /path]'
+      message: `Usage: nodegx-deploy <project-dir> <out-dir> [--base-url /path] [${ALLOW_DEV_ENGINE_FLAG}]`
     });
     process.exitCode = 1;
     return;
@@ -99,11 +118,17 @@ async function main(): Promise<void> {
 
   let result: EngineResult;
   try {
-    const outcome = await deployProject({ projectDir, outDir, baseUrl });
+    const outcome = await deployProject({ projectDir, outDir, baseUrl, allowDevelopmentEngine });
     result = { ok: true, ...outcome };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    result = { ok: false, stage: classify(message), message };
+    // 🔴 EXP-017 — a TYPE, not a sentence match. The two text matches in `classify` exist because
+    // their causes leave no other signal; this one throws a class this module owns and carries the
+    // reading with it, so it is classified by what it is rather than by how it reads.
+    result =
+      error instanceof DevelopmentEngineError
+        ? { ok: false, stage: 'engine', message, engine: error.engine }
+        : { ok: false, stage: classify(message), message };
   } finally {
     process.stdout.write = realWrite;
   }

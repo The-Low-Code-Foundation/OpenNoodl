@@ -29,6 +29,7 @@ import { filesystem, FileInfo } from '@noodl/platform';
 
 import { ProjectFormatDetector } from '../../../io/ProjectFormatDetector';
 import { clearFolders } from './cleanup';
+import { planDuplicateAssetPrune, survivorOf, type DuplicatePair } from './duplicateAssets';
 import { buildIgnoreMatcher, getDefaultReason, IgnoreMatcher, IgnoreRule, IgnoreRuleSource } from './ignore';
 import { ALWAYS_KEPT, planStarterImageryPrune, STARTER_IMAGERY_DIR } from './starterImagery';
 
@@ -41,7 +42,7 @@ export interface ExcludedFile {
   /** The pattern that excluded it, as written. */
   rule: string;
   /** Where that pattern came from. */
-  source: IgnoreRuleSource | 'unreferenced-imagery';
+  source: IgnoreRuleSource | 'unreferenced-imagery' | 'duplicate-asset';
   /**
    * Why the default exists, when the rule is a default. Undefined for user
    * rules — the user knows why they wrote it.
@@ -75,6 +76,13 @@ export interface ProjectCopyReport {
    * omission. A silent "no savings" and a refusal look identical without this.
    */
   imageryPruneRefused?: string;
+  /**
+   * EXP-017 AC4 — byte-identical copies that had to ship twice anyway, because the project refers
+   * to both. One sentence each, and the count is what a person acts on.
+   *
+   * 🔴 Present is the interesting case. A silent duplicate is the defect; a named one is a job.
+   */
+  duplicatesKept: { path: string; keep: string; bytes: number; reason: string }[];
   /** Whether the project has a `.noodlignore`. */
   hasIgnoreFile: boolean;
   /**
@@ -177,6 +185,8 @@ interface ProjectScan extends WalkResult {
   hasIgnoreFile: boolean;
   /** VIB-012 — set when the stock-imagery prune declined. */
   imageryPruneRefused?: string;
+  /** EXP-017 — duplicates that had to ship anyway. */
+  duplicatesKept: ProjectCopyReport['duplicatesKept'];
 }
 
 /**
@@ -238,15 +248,29 @@ async function readProjectSourceText(root: string): Promise<string> {
   return chunks.join('\n');
 }
 
+/**
+ * The project's readable text, read once per deploy.
+ *
+ * Two prunes need it now — VIB-012's photographs and EXP-017's duplicates — and it is a full walk
+ * of the project reading every `.json`, `.js` and `.css` in it. Reading it twice was free in
+ * correctness and not in seconds, and the memo keeps the two prunes reading **the same text**,
+ * which is a property worth having on its own: a reference the first one honours and the second
+ * cannot see would be a difference with no cause.
+ */
+function projectSourceTextReader(root: string): () => Promise<string> {
+  let pending: Promise<string> | null = null;
+  return () => (pending ??= readProjectSourceText(root));
+}
+
 /** Moves unreferenced stock photographs out of the copy set and into the report. */
-async function pruneStarterImagery(scan: ProjectScan): Promise<ProjectScan> {
+async function pruneStarterImagery(scan: ProjectScan, sourceText: () => Promise<string>): Promise<ProjectScan> {
   const prefix = `${STARTER_IMAGERY_DIR}/`;
   const present = scan.files.filter((f) => f.relativePath.startsWith(prefix));
   if (present.length === 0) return scan;
 
   const plan = planStarterImageryPrune(
     present.map((f) => f.relativePath.substring(prefix.length)),
-    await readProjectSourceText(scan.root)
+    await sourceText()
   );
 
   if (plan.refusedReason) {
@@ -266,6 +290,88 @@ async function pruneStarterImagery(scan: ProjectScan): Promise<ProjectScan> {
         rule: `${prefix}*`,
         source: 'unreferenced-imagery' as const,
         reason: `bundled stock photograph this project never references (${ALWAYS_KEPT.join(' and ')} always ship)`
+      }))
+    ]
+  };
+}
+
+/**
+ * EXP-017 AC4 — find files in the copy set that are byte-for-byte the same file.
+ *
+ * 🔴 **Size first, bytes second, and the order is the whole cost argument.** Hashing every file a
+ * project ships would read the stock-photograph library on every deploy for nothing; grouping by
+ * size first means the comparison only ever happens between files that could possibly be equal,
+ * which on a real project is a handful. Sizes are already known from the walk.
+ *
+ * The comparison itself is a full read of both, not a hash: there are at most a few pairs, a
+ * mismatch short-circuits on the first differing byte, and a digest would introduce a collision
+ * story into a decision about whether to delete somebody's font.
+ */
+async function findDuplicatePairs(files: readonly CopyCandidate[]): Promise<DuplicatePair[]> {
+  const bySize = new Map<number, CopyCandidate[]>();
+  for (const file of files) {
+    let size: number;
+    try {
+      size = filesystem.file(file.fullPath).size;
+    } catch {
+      continue; // Unreadable is not "duplicate"; the copy itself will report the real failure.
+    }
+    // A zero-byte file is equal to every other zero-byte file and worth nothing to deduplicate.
+    if (size === 0) continue;
+    const bucket = bySize.get(size);
+    if (bucket) bucket.push(file);
+    else bySize.set(size, [file]);
+  }
+
+  const pairs: DuplicatePair[] = [];
+  for (const [size, bucket] of bySize) {
+    if (bucket.length < 2) continue;
+    const contents = new Map<CopyCandidate, Buffer>();
+    for (const file of bucket) {
+      try {
+        contents.set(file, await filesystem.readBinaryFile(file.fullPath));
+      } catch {
+        /* see above */
+      }
+    }
+    const seen: CopyCandidate[] = [];
+    for (const file of bucket) {
+      const data = contents.get(file);
+      if (!data) continue;
+      const twin = seen.find((other) => contents.get(other)?.equals(data));
+      if (!twin) {
+        seen.push(file);
+        continue;
+      }
+      // `null` means neither copy is a module file — two of the user's own, which this rule does
+      // not touch. See `duplicateAssets.ts`'s header for the spec that measured why.
+      const pair = survivorOf(twin.relativePath, file.relativePath);
+      if (pair) pairs.push({ ...pair, bytes: size });
+    }
+  }
+  return pairs.sort((a, b) => (a.drop < b.drop ? -1 : 1));
+}
+
+/** EXP-017 — leave out a proved duplicate nothing in the project refers to. */
+async function pruneDuplicateAssets(scan: ProjectScan, sourceText: () => Promise<string>): Promise<ProjectScan> {
+  const pairs = await findDuplicatePairs(scan.files);
+  if (pairs.length === 0) return scan;
+
+  const plan = planDuplicateAssetPrune(pairs, await sourceText());
+  if (plan.drop.length === 0) return { ...scan, duplicatesKept: plan.kept };
+
+  const drop = new Set(plan.drop.map((entry) => entry.path));
+  return {
+    ...scan,
+    duplicatesKept: plan.kept,
+    files: scan.files.filter((file) => !drop.has(file.relativePath)),
+    excluded: [
+      ...scan.excluded,
+      ...plan.drop.map((entry) => ({
+        path: entry.path,
+        rule: 'duplicate of a file this deploy already ships',
+        source: 'duplicate-asset' as const,
+        reason: `byte-for-byte identical to ${entry.keep} (${entry.bytes} B), and nothing in the project refers to it`
       }))
     ]
   };
@@ -297,7 +403,9 @@ async function scanProject(projectPath: string): Promise<ProjectScan> {
   });
 
   const { files, excluded } = await walk(root, matcher);
-  return pruneStarterImagery({ root, hasIgnoreFile, files, excluded });
+  const sourceText = projectSourceTextReader(root);
+  const scan: ProjectScan = { root, hasIgnoreFile, files, excluded, duplicatesKept: [] };
+  return pruneDuplicateAssets(await pruneStarterImagery(scan, sourceText), sourceText);
 }
 
 function toReport(scan: ProjectScan, staleExclusions: string[] = []): ProjectCopyReport {
@@ -306,6 +414,7 @@ function toReport(scan: ProjectScan, staleExclusions: string[] = []): ProjectCop
     copiedPaths: scan.files.map((file) => file.relativePath),
     excluded: scan.excluded,
     excludedByRule: summarise(scan.excluded),
+    duplicatesKept: scan.duplicatesKept,
     hasIgnoreFile: scan.hasIgnoreFile,
     staleExclusions,
     ...(scan.imageryPruneRefused ? { imageryPruneRefused: scan.imageryPruneRefused } : {})

@@ -103,7 +103,24 @@ export const EXIT = {
    * 200 serving last week's app are opposite situations: one is a deploy that has not landed, the
    * other is a deploy that has landed somewhere nobody is looking.
    */
-  stale: 10
+  stale: 10,
+  /**
+   * EXP-017 — `deploy` only: the NodeGX viewer build this installation would publish is a
+   * **development** build, and nothing was written.
+   *
+   * 🔴 Its own code, and not {@link EXIT.harness}, because the two are opposite statements about
+   * the same installation. `harness` means *there is no engine here, stop retrying* — nothing the
+   * caller does to the project or the arguments will change it. This one means *the engine is
+   * here and it is the wrong build of itself*, and it is fixed by one command
+   * (`npm run build:editor:_viewer`) that a pipeline can be taught to run. A pipeline that read
+   * this as 8 would give up on a box that is one build away from deploying.
+   *
+   * 🔴 And not {@link EXIT.deploy}, which is *the site that WAS written renders nothing*. This is
+   * a refusal taken before any byte is written, about a site that would have rendered perfectly —
+   * and carried 9.88 MB of the NodeGX viewer's own source to a public host. The two differ in
+   * what is on disk afterwards, which is the one thing a pipeline's next step depends on.
+   */
+  engine: 11
 } as const;
 
 export type ExitCode = (typeof EXIT)[keyof typeof EXIT];

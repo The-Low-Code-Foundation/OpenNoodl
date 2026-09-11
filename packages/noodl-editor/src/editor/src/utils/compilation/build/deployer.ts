@@ -139,6 +139,17 @@ export async function deployToFolder({
 function logCopyReport(report: ProjectCopyReport, direntry: string): void {
   console.log(`[deploy] ${direntry}: ${report.copiedCount} project file(s) copied. ${formatCopyReportSummary(report)}`);
 
+  // EXP-017 AC4 — a duplicate that had to ship anyway. Named, with the copy that made it one and
+  // the sentence saying why it could not be left out, because the fix is a one-line edit in the
+  // editor and nobody makes it while the bytes are invisible.
+  for (const kept of report.duplicatesKept) {
+    console.warn(
+      `[deploy] ! ${kept.path} (${kept.bytes} B) is byte-for-byte the same file as ${kept.keep}, ` +
+        `and both were published — ${kept.reason}. Point that reference at ${kept.keep} and the ` +
+        'second copy stops shipping.'
+    );
+  }
+
   if (report.excluded.length === 0) return;
 
   if (!report.hasIgnoreFile) {

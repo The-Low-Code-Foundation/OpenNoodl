@@ -35,6 +35,7 @@ import * as path from 'path';
 
 import { errorMessage } from '../errorMessage';
 import { checkTarget } from '../write/writeExport';
+import { ALLOW_DEV_ENGINE_FLAG } from './args';
 import { describeMissingEngine, resolveEngine } from './deployEngine';
 import {
   MANIFEST_NAME,
@@ -59,6 +60,8 @@ export interface DeployArgs {
   force: boolean;
   /** The path the site will be served from, spliced into `index.html`. `/` unless given. */
   baseUrl: string | null;
+  /** EXP-017 — publish a development build of the NodeGX viewer knowingly. */
+  allowDevelopmentEngine: boolean;
 }
 
 /** One excluded project file, as the copy step reported it. */
@@ -66,6 +69,23 @@ interface Excluded {
   path: string;
   rule: string;
   reason?: string;
+}
+
+/**
+ * EXP-017 — the viewer build the engine read, mirroring `noodl-preview/src/viewerBuild.ts`.
+ *
+ * Declared here for the same reason `EngineReport` is: importing the engine's module would put the
+ * editor's entire model graph into this package's type program. `hls015-deploy-grading.test.ts`
+ * drives the real engine and asserts these fields arrive.
+ */
+export interface EngineBuild {
+  path: string;
+  bytes: number;
+  lines: number;
+  sourceMapBytes: number;
+  licenseSibling: boolean;
+  kind: 'production' | 'development';
+  reasons: string[];
 }
 
 /**
@@ -79,8 +99,10 @@ interface Excluded {
  */
 export interface EngineReport {
   ok?: boolean;
-  stage?: 'usage' | 'runtime' | 'project' | 'target' | 'write';
+  stage?: 'usage' | 'runtime' | 'engine' | 'project' | 'target' | 'write';
   message?: string;
+  /** EXP-017 AC1 — which viewer build was copied, on a good run; what was refused, on `engine`. */
+  engine?: EngineBuild;
   projectName?: string;
   nodeTypes?: number;
   copied?: number;
@@ -121,6 +143,8 @@ function stageCode(stage: EngineReport['stage']): ExitCode {
       return EXIT.usage;
     case 'runtime':
       return EXIT.harness;
+    case 'engine':
+      return EXIT.engine;
     case 'project':
       return EXIT.project;
     case 'target':
@@ -156,6 +180,42 @@ export interface UpdateContext {
   entries: string[];
 }
 
+/** Human bytes. The engine's own copy of this is `viewerBuild.ts#formatBytes`; same rendering. */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(2)} MB` : `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+/**
+ * EXP-017 AC1 — the line every run prints saying which engine it picked up.
+ *
+ * 🔴 **On every run, in the summary a person reads.** The defect this closes was not that the
+ * deploy chose wrongly; it was that it said nothing at all, so *39 entries, exit 0* was the entire
+ * report of a run that had just written 14 MB of development bundle into a folder about to be
+ * uploaded. A reading that appears only when something is wrong is a reading nobody learns to
+ * look for — and on the run where it is wrong, the flag that permitted it has already been typed.
+ *
+ * Returns `[]` for an engine that said nothing, which is an older engine bundle against a newer
+ * front door: silence is the honest rendering of a field that is not there, and inventing
+ * "production" for it would be the one wrong answer.
+ */
+export function engineLines(engine: EngineBuild | undefined): string[] {
+  if (!engine) return [];
+  const map =
+    engine.sourceMapBytes > 0
+      ? `, of which ${formatBytes(engine.sourceMapBytes)} is an inline source map of the NodeGX viewer source`
+      : '';
+  if (engine.kind === 'production') {
+    return [`  engine: production build of the NodeGX viewer, ${formatBytes(engine.bytes)} — ${engine.path}`];
+  }
+  return [
+    `  ! engine: DEVELOPMENT build of the NodeGX viewer, ${formatBytes(engine.bytes)}${map} — ${engine.path}`,
+    '    It was published because --allow-development-engine was given. Anyone who opens the site',
+    '    can read the viewer source. Build the production one with: npm run build:editor:_viewer'
+  ];
+}
+
 /**
  * Turn the engine's report into an exit code and the words that go with it.
  *
@@ -167,6 +227,12 @@ export function gradeDeploy(report: EngineReport, outDir: string, update?: Updat
   if (report.ok !== true) {
     const code = stageCode(report.stage);
     const lines = [report.message ?? 'The deploy engine failed and said nothing.'];
+    // 🔴 EXP-017 — the refusal is taken before a byte is written, so it says the opposite of the
+    // `write` sentence below: this folder does NOT hold part of a site, and a caller that cleaned
+    // it up on the strength of a half-written-site warning would be deleting somebody's folder.
+    if (code === EXIT.engine) {
+      lines.push('', `Nothing was written to ${outDir}.`);
+    }
     if (code === EXIT.write) {
       // The loud one. `nodegx export` says the same thing for the same reason: a folder holding
       // part of an app builds nothing, and silence about that is how it gets uploaded.
@@ -217,6 +283,10 @@ export function gradeDeploy(report: EngineReport, outDir: string, update?: Updat
         `${roots ? roots.withRoots : 0} of ${roots ? roots.components : 0} components render.`
     );
   }
+
+  // EXP-017 AC1. Directly under the summary, above the exclusions, because it is a statement about
+  // the biggest single file in the folder and it is the one nothing else in the run mentions.
+  lines.push(...engineLines(report.engine));
 
   if (update?.recovered) {
     lines.push('  The unfinished deploy that was in this folder has been replaced.');
@@ -357,6 +427,7 @@ export async function runDeploy(args: DeployArgs, io: CliIO): Promise<ExitCode> 
 
   const engineArgs = [projectDir, outDir];
   if (args.baseUrl !== null) engineArgs.push('--base-url', args.baseUrl);
+  if (args.allowDevelopmentEngine) engineArgs.push(ALLOW_DEV_ENGINE_FLAG);
 
   let report: EngineReport;
   try {
@@ -364,6 +435,16 @@ export async function runDeploy(args: DeployArgs, io: CliIO): Promise<ExitCode> 
   } catch (error) {
     io.err(`${errorMessage(error)}\n`);
     return EXIT.write;
+  }
+
+  // 🔴 EXP-017 — the one failure that wrote NOTHING, so the one that must take its record back.
+  // Every other failure leaves `in-progress` in place deliberately, because the folder holds part
+  // of a site. Here the engine refused above its own first write, and an `in-progress` record left
+  // behind would make the NEXT run announce a recovery from a deploy that never started — the
+  // record would be the only evidence of a write, and it would be evidence of nothing.
+  if (report.ok !== true && report.stage === 'engine') {
+    if (previous) writeManifest(outDir, previous, fs);
+    else fs.rmSync(path.join(outDir, MANIFEST_NAME), { force: true });
   }
 
   // 🔴 The sweep happens only after the engine has said the write succeeded, and the manifest is

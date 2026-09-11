@@ -63,6 +63,7 @@ import { deployToFolder } from '@noodl-utils/compilation/build/deployer';
 import { gradeRoots, readDeployedRoots, type RootsReading } from './deployReading';
 import { bootstrapNodeLibrary } from './headless';
 import { readProjectForDeploy, resolveTarget, type ProjectFormat } from './loader';
+import { describeDevelopmentEngine, readViewerBuild, type ViewerBuildReading } from './viewerBuild';
 
 /**
  * The editor's runtime folder, addressed from **this file** rather than from the working
@@ -83,6 +84,8 @@ import { readProjectForDeploy, resolveTarget, type ProjectFormat } from './loade
  */
 export { gradeRoots, readDeployedRoots } from './deployReading';
 export type { RootsReading } from './deployReading';
+export { classifyViewerBuild, readViewerBuild, summariseViewerBuild } from './viewerBuild';
+export type { ViewerBuildReading } from './viewerBuild';
 
 export const EXTERNAL_DIR = path.resolve(__dirname, '../../noodl-editor/src/external');
 
@@ -104,6 +107,49 @@ export function assertDeployRuntime(): void {
     );
   }
 }
+
+/**
+ * EXP-017 — the viewer bundle a deploy copies verbatim into the folder somebody uploads.
+ *
+ * Addressed from {@link EXTERNAL_DIR}, which is this bundle's own location, so it is the file this
+ * engine would actually publish — including when `NODEGX_DEPLOY_CLI` pointed the command at a
+ * different checkout's engine, whose bundle this is and whose history the calling process has no
+ * way to read.
+ */
+export const VIEWER_BUNDLE = path.join(EXTERNAL_DIR, 'deploy', 'noodl.deploy.js');
+
+/**
+ * EXP-017 AC3 — what kind of build the viewer bundle on disk is, read from the bundle.
+ *
+ * Separate from {@link deployProject} so the front door can report it on every run without a
+ * deploy having happened, and so a spec can point it at a fixture.
+ */
+export function readDeployEngine(bundlePath: string = VIEWER_BUNDLE): ViewerBuildReading {
+  return readViewerBuild(bundlePath);
+}
+
+/**
+ * EXP-017 AC2 — thrown before a byte is written when the engine on disk is a development build.
+ *
+ * 🔴 **Before the write, not after it.** The whole defect is a folder that is fit to upload in
+ * every respect a person checks and carries 9.88 MB of NodeGX source in the one file nobody opens.
+ * A refusal that arrives after the folder exists has already produced the artefact it is warning
+ * about, and the next thing that happens to a folder full of a working site is that somebody
+ * uploads it.
+ *
+ * Carries the reading rather than only a sentence: the front door prints the same three readings
+ * on a refusal that it prints on a success, and re-deriving them from the message is how those two
+ * drift apart.
+ */
+export class DevelopmentEngineError extends Error {
+  constructor(readonly engine: ViewerBuildReading, flag: string) {
+    super(describeDevelopmentEngine(engine, flag));
+    this.name = 'DevelopmentEngineError';
+  }
+}
+
+/** The flag that ships a development engine knowingly. Named once; the refusal quotes it. */
+export const ALLOW_DEV_ENGINE_FLAG = '--allow-development-engine';
 
 /** Everything `nodegx deploy` needs to know about a run that finished. */
 export interface DeployOutcome {
@@ -130,6 +176,8 @@ export interface DeployOutcome {
   roots: RootsReading;
   /** The refusal, when the folder that was written would render nothing. */
   blank: string | null;
+  /** EXP-017 AC1 — which build of the viewer this deploy copied, read from the file it copied. */
+  engine: ViewerBuildReading;
   warnings: string[];
 }
 
@@ -143,8 +191,20 @@ export async function deployProject(options: {
   projectDir: string;
   outDir: string;
   baseUrl?: string;
+  /**
+   * EXP-017 AC2 — publish a development viewer build anyway. Off by default, and the default is
+   * the point: the dev build is what is on disk in every checkout where `npm run dev` has run.
+   */
+  allowDevelopmentEngine?: boolean;
 }): Promise<DeployOutcome> {
   assertDeployRuntime();
+
+  // 🔴 EXP-017 AC2 — FIRST, before `resolveTarget`, before the node library, and above all before
+  // anything writes. Reading 15 MB costs milliseconds; a folder that exists costs an upload.
+  const engine = readDeployEngine();
+  if (engine.kind === 'development' && !options.allowDevelopmentEngine) {
+    throw new DevelopmentEngineError(engine, ALLOW_DEV_ENGINE_FLAG);
+  }
 
   // 🔴 C68. Stated before anything reads it, and stated from this file's own location — see
   // EXTERNAL_DIR. Without this line the run below depends on the caller's working directory.
@@ -197,6 +257,16 @@ export async function deployProject(options: {
     written: written.slice().sort(),
     roots,
     blank: gradeRoots(roots),
-    warnings
+    engine,
+    // EXP-017 AC4 — a duplicate the copy step could not leave out reaches the person through the
+    // same channel every other deploy warning does, rather than only the editor's console.
+    warnings: [
+      ...warnings,
+      ...copyReport.duplicatesKept.map(
+        (kept) =>
+          `${kept.path} (${kept.bytes} B) is the same file as ${kept.keep} and both were published — ` +
+          `${kept.reason}. Point that reference at ${kept.keep} to stop shipping it twice.`
+      )
+    ]
   };
 }

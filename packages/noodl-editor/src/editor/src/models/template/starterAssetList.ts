@@ -33,9 +33,22 @@ export interface StarterAsset {
 const STARTER_ROOT = 'src/assets/starter-project/';
 
 /**
- * The four Inter weights the shipped element defaults reference, copied from the editor's own
- * bundled Inter rather than duplicated into the starter tree — they are the same files, and two
- * copies in one repo is two copies to keep in step.
+ * The four Inter weights the shipped element defaults reference.
+ *
+ * 🔴 **woff2, and in the starter tree — both halves changed with EXP-017.** They used to be the
+ * editor's own `src/assets/Inter/*.ttf`, on the argument that the same file should not exist twice
+ * in one repo. That argument was right about duplication and was paying **1.24 MB in every project
+ * this product creates and in every app anybody deploys from one**; the same four faces as woff2
+ * are 0.48 MB, a 61% saving on a payload that ships to strangers.
+ *
+ * The editor's own UI still loads the `.ttf` copies (`editor/index.html` preloads five of them),
+ * so the two are now genuinely different artefacts rather than two copies of one — which is what
+ * puts these in the starter tree beside the stylesheet that names them.
+ *
+ * ⚠️ **They are generated, and the generator is committed**: `scripts/library/ttf-to-woff2.js`,
+ * Node and `zlib` only, no dependency. That matters because the reason woff2 was refused in the
+ * first place was *"a font nobody can regenerate is worse than a larger one"* — a fair rule, and
+ * the way past it was to make them regenerable rather than to argue with it.
  */
 const INTER_WEIGHTS = ['Regular', 'Medium', 'SemiBold', 'Bold'];
 
@@ -45,8 +58,8 @@ export const STARTER_ASSETS: readonly StarterAsset[] = [
   { from: `${STARTER_ROOT}noodl_modules/inter/styles.css`, to: 'noodl_modules/inter/styles.css' },
   { from: 'src/assets/Inter/LICENSE.txt', to: 'noodl_modules/inter/LICENSE.txt' },
   ...INTER_WEIGHTS.map((weight) => ({
-    from: `src/assets/Inter/Inter-${weight}.ttf`,
-    to: `noodl_modules/inter/Inter-${weight}.ttf`
+    from: `${STARTER_ROOT}noodl_modules/inter/Inter-${weight}.woff2`,
+    to: `noodl_modules/inter/Inter-${weight}.woff2`
   })),
 
   // ── Lucide ─────────────────────────────────────────────────────────────────

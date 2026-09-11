@@ -26,7 +26,8 @@ describe('HLS-015 — parsing `nodegx deploy`', () => {
       projectDir: 'app',
       outDir: 'site',
       force: false,
-      baseUrl: null
+      baseUrl: null,
+      allowDevelopmentEngine: false
     });
   });
 

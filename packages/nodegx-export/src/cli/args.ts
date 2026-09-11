@@ -53,6 +53,14 @@ export type ParsedArgs =
        * the same question with nobody to ask.
        */
       baseUrl: string | null;
+      /**
+       * EXP-017 — publish a DEVELOPMENT build of the NodeGX viewer knowingly.
+       *
+       * Without it a development engine is refused (exit 11) before anything is written. The flag
+       * is spelled out rather than shortened because its whole job is to be read: what it permits
+       * is uploading the viewer's own source, as a 9.88 MB inline source map, to a public host.
+       */
+      allowDevelopmentEngine: boolean;
     }
   | {
       kind: 'live';
@@ -247,7 +255,8 @@ function parseRender(rest: readonly string[]): ParsedArgs {
 
 /** Options that take a value; a missing one is a usage error rather than a swallowed flag. */
 const DEPLOY_VALUE_OPTIONS = new Set(['--base-url']);
-const DEPLOY_FLAGS = new Set(['--force']);
+/** EXP-017 — named here and in `noodl-preview/src/deploy.ts`; `args.test.ts` asserts they match. */
+export const ALLOW_DEV_ENGINE_FLAG = '--allow-development-engine';
 
 /**
  * HLS-015 — `nodegx deploy <project> <output> [--force] [--base-url /path]`.
@@ -261,6 +270,7 @@ const DEPLOY_FLAGS = new Set(['--force']);
 function parseDeploy(rest: readonly string[]): ParsedArgs {
   let force = false;
   let baseUrl: string | null = null;
+  let allowDevelopmentEngine = false;
   const positional: string[] = [];
 
   for (let i = 0; i < rest.length; i++) {
@@ -276,8 +286,15 @@ function parseDeploy(rest: readonly string[]): ParsedArgs {
       baseUrl = value;
       continue;
     }
-    if (DEPLOY_FLAGS.has(arg)) {
+    if (arg === '--force') {
       force = true;
+      continue;
+    }
+    // ⚠️ Its own branch, not a second member of a flag SET. The set this replaced set `force` for
+    // whatever was in it, so a second entry would have turned `--allow-development-engine` into a
+    // silent `--force` — one flag quietly granting another's permission is the shape of this trap.
+    if (arg === ALLOW_DEV_ENGINE_FLAG) {
+      allowDevelopmentEngine = true;
       continue;
     }
     if (arg.startsWith('-')) return { kind: 'usage', problem: `Unknown option: ${arg}.` };
@@ -293,7 +310,14 @@ function parseDeploy(rest: readonly string[]): ParsedArgs {
   }
   if (positional.length > 2) return { kind: 'usage', problem: `Too many folders: ${positional.join(', ')}.` };
 
-  return { kind: 'deploy', projectDir: positional[0], outDir: positional[1], force, baseUrl };
+  return {
+    kind: 'deploy',
+    projectDir: positional[0],
+    outDir: positional[1],
+    force,
+    baseUrl,
+    allowDevelopmentEngine
+  };
 }
 
 /**
@@ -358,6 +382,11 @@ Options
                            the same names are overwritten; nothing else is touched.
   --base-url <path>        deploy: the path the site is served from, when it is not the root of a
                            domain (\`--base-url /app/\`). Without it every asset URL is absolute.
+  --allow-development-engine
+                           deploy: publish a DEVELOPMENT build of the NodeGX viewer. That build
+                           carries a ~9.9 MB inline source map — the viewer's own source — which
+                           a deploy copies verbatim onto your host. Without this flag such a
+                           build is refused (exit 11) and nothing is written.
   --port <n>               serve: the port to listen on (default 8575).
   --share                  serve: also accept connections from other machines on this network.
                            Prints a URL containing a token; without the token nothing is served.
@@ -386,6 +415,7 @@ Exit codes
   8  render/deploy: this installation has no render harness or deploy engine (see below)
   9  deploy: the site that was written would render nothing — it is not fit to upload
  10  live: the served site is not the build you compared it against, or is not a NodeGX site
+ 11  deploy: the NodeGX viewer build here is a DEVELOPMENT build — nothing was written
 
 ⚠️ \`nodegx serve\` listens on 127.0.0.1 unless you pass --share or --host. That is a decision, not
 a default that something else can change: nothing but those two flags reaches another interface.
@@ -393,6 +423,12 @@ a default that something else can change: nothing but those two flags reaches an
 ⚠️ \`nodegx deploy\` needs the NodeGX deploy engine — the editor's model engine and the ~15 MB
 NodeGX interpreter — which is NOT part of this package. It works from a NodeGX checkout with the
 engine built, or set NODEGX_DEPLOY_CLI to one. \`nodegx export\` needs none of it.
+
+⚠️ \`nodegx deploy\` copies whichever NodeGX viewer build is on disk, and every run says which one
+it picked up. On a checkout where \`npm run dev\` has run, that is the DEVELOPMENT build: 14 MB, of
+which ~9.9 MB is an inline source map of the viewer's source. A deploy copies it verbatim, so
+uploading the folder publishes that source. Such a build is refused before anything is written;
+\`npm run build:editor:_viewer\` replaces it with the production one.
 
 ⚠️ \`nodegx deploy\` publishes your project folder as well as your app. Everything beside
 nodegx.project.json ships unless a default rule or your .noodlignore excludes it — the run says
