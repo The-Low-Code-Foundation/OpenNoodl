@@ -32,6 +32,60 @@
       "fromProperty": "chosen",
       "toId": "lnGoContact",
       "toProperty": "go"
+    },
+    {
+      "fromId": "lnPeriodMonthly",
+      "fromProperty": "onClick",
+      "toId": "lnPeriod",
+      "toProperty": "to-monthly"
+    },
+    {
+      "fromId": "lnPeriodYearly",
+      "fromProperty": "onClick",
+      "toId": "lnPeriod",
+      "toProperty": "to-yearly"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "freePrice",
+      "toId": "lnPlanFree",
+      "toProperty": "price"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "paidPrice",
+      "toId": "lnPlanPaid",
+      "toProperty": "price"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "note",
+      "toId": "lnPeriodNote",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "mBg",
+      "toId": "lnPeriodMonthly",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "mFg",
+      "toId": "lnPeriodMonthly",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "yBg",
+      "toId": "lnPeriodYearly",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "lnPeriod",
+      "fromProperty": "yFg",
+      "toId": "lnPeriodYearly",
+      "toProperty": "color"
     }
   ]
 }

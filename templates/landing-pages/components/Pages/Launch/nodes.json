@@ -113,7 +113,7 @@
         "cssClassName": "site-contact"
       },
       "x": 220,
-      "y": 11440
+      "y": 11920
     },
     {
       "id": "lnContact",
@@ -126,7 +126,7 @@
         "button": "Count me in"
       },
       "x": 280,
-      "y": 11560
+      "y": 12040
     },
     {
       "id": "lnFooter",
@@ -134,7 +134,7 @@
       "label": "The foot of the page",
       "parent": "lnGround",
       "x": 160,
-      "y": 11680
+      "y": 12160
     },
     {
       "id": "lnGoContact",
@@ -1422,7 +1422,9 @@
       "parent": "lnPricing",
       "children": [
         "lnPricingHead",
-        "lnPlans"
+        "lnPeriodRow",
+        "lnPlans",
+        "lnPeriodNote"
       ],
       "parameters": {
         "width": {
@@ -1500,6 +1502,123 @@
       "y": 8680
     },
     {
+      "id": "lnPeriodRow",
+      "type": "Group",
+      "label": "Monthly or yearly",
+      "parent": "lnPricingShell",
+      "children": [
+        "lnPeriodMonthly",
+        "lnPeriodYearly"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-1)",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)",
+        "paddingLeft": "var(--space-1)",
+        "paddingRight": "var(--space-1)",
+        "backgroundColor": "var(--muted)",
+        "borderRadius": "var(--radius-full)"
+      },
+      "x": 340,
+      "y": 8800
+    },
+    {
+      "id": "lnPeriodMonthly",
+      "type": "net.noodl.controls.button",
+      "label": "Monthly",
+      "parent": "lnPeriodRow",
+      "parameters": {
+        "label": "Monthly",
+        "sizeMode": "contentSize",
+        "borderStyle": "none",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "backgroundColor": "transparent",
+        "color": "var(--muted-foreground)",
+        "cssClassName": "pill pressable"
+      },
+      "x": 400,
+      "y": 8920
+    },
+    {
+      "id": "lnPeriodYearly",
+      "type": "net.noodl.controls.button",
+      "label": "Yearly",
+      "parent": "lnPeriodRow",
+      "parameters": {
+        "label": "Yearly",
+        "sizeMode": "contentSize",
+        "borderStyle": "none",
+        "borderRadius": "var(--radius-full)",
+        "paddingTop": "var(--space-2)",
+        "paddingBottom": "var(--space-2)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "backgroundColor": "transparent",
+        "color": "var(--muted-foreground)",
+        "cssClassName": "pill pressable"
+      },
+      "x": 400,
+      "y": 9040
+    },
+    {
+      "id": "lnPeriodNote",
+      "type": "Text",
+      "label": "EDIT — what the yearly price actually saves them",
+      "parent": "lnPricingShell",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "textAlignX": "center"
+      },
+      "x": 340,
+      "y": 9760
+    },
+    {
+      "id": "lnPeriod",
+      "type": "States",
+      "label": "EDIT — the two prices, monthly and yearly",
+      "parameters": {
+        "states": "monthly,yearly",
+        "values": "freePrice,paidPrice,note,mBg,mFg,yBg,yFg",
+        "type-freePrice": "string",
+        "type-paidPrice": "string",
+        "type-note": "string",
+        "type-mBg": "color",
+        "type-mFg": "color",
+        "type-yBg": "color",
+        "type-yFg": "color",
+        "value-monthly-freePrice": "Free",
+        "value-yearly-freePrice": "Free",
+        "value-monthly-paidPrice": "The number, a month",
+        "value-yearly-paidPrice": "The number, a year",
+        "value-monthly-note": "Say what a month costs. If you have not decided, say “pricing when we launch”.",
+        "value-yearly-note": "Say what a year costs, and what that saves against paying monthly.",
+        "value-monthly-mBg": "var(--surface-raised)",
+        "value-yearly-mBg": "transparent",
+        "value-monthly-mFg": "var(--foreground)",
+        "value-yearly-mFg": "var(--muted-foreground)",
+        "value-monthly-yBg": "transparent",
+        "value-yearly-yBg": "var(--surface-raised)",
+        "value-monthly-yFg": "var(--muted-foreground)",
+        "value-yearly-yFg": "var(--foreground)",
+        "useTransitions": false
+      },
+      "x": 770,
+      "y": 9400
+    },
+    {
       "id": "lnPlans",
       "type": "net.noodl.visual.columns",
       "label": "Two plans",
@@ -1530,7 +1649,7 @@
         }
       },
       "x": 340,
-      "y": 8800
+      "y": 9160
     },
     {
       "id": "lnPlanFreeCell",
@@ -1549,7 +1668,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 8920
+      "y": 9280
     },
     {
       "id": "lnPlanFree",
@@ -1558,7 +1677,6 @@
       "parent": "lnPlanFreeCell",
       "parameters": {
         "name": "While it is in beta",
-        "price": "Free",
         "line": "For everyone who joins before launch.",
         "point1": "Everything it does today",
         "point2": "A say in what it does next",
@@ -1569,7 +1687,7 @@
         "ink": "var(--foreground)"
       },
       "x": 460,
-      "y": 9040
+      "y": 9400
     },
     {
       "id": "lnPlanPaidCell",
@@ -1588,7 +1706,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 9160
+      "y": 9520
     },
     {
       "id": "lnPlanPaid",
@@ -1597,8 +1715,7 @@
       "parent": "lnPlanPaidCell",
       "parameters": {
         "name": "After launch",
-        "price": "The number goes here",
-        "line": "Per month, or per year, or per seat — say which.",
+        "line": "Everything in the first plan, and the thing people pay for.",
         "point1": "Everything in the first plan",
         "point2": "The thing the paid plan adds",
         "point3": "The other thing it adds",
@@ -1608,7 +1725,7 @@
         "ink": "var(--primary-foreground)"
       },
       "x": 460,
-      "y": 9280
+      "y": 9640
     },
     {
       "id": "lnFaq",
@@ -1639,7 +1756,7 @@
         "cssClassName": "section-lnFaq"
       },
       "x": 220,
-      "y": 9400
+      "y": 9880
     },
     {
       "id": "lnFaqShell",
@@ -1667,7 +1784,7 @@
         "rowGap": "var(--space-6)"
       },
       "x": 280,
-      "y": 9520
+      "y": 10000
     },
     {
       "id": "lnFaqHead",
@@ -1689,7 +1806,7 @@
         "paddingBottom": "var(--space-10)"
       },
       "x": 340,
-      "y": 9640
+      "y": 10120
     },
     {
       "id": "lnFaqEyebrow",
@@ -1706,7 +1823,7 @@
         "as": "span"
       },
       "x": 400,
-      "y": 9760
+      "y": 10240
     },
     {
       "id": "lnFaqHeading",
@@ -1723,7 +1840,7 @@
         "as": "h2"
       },
       "x": 400,
-      "y": 9880
+      "y": 10360
     },
     {
       "id": "lnFaqColumns",
@@ -1756,7 +1873,7 @@
         }
       },
       "x": 340,
-      "y": 10000
+      "y": 10480
     },
     {
       "id": "lnFaqLeft",
@@ -1776,7 +1893,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 10120
+      "y": 10600
     },
     {
       "id": "lnFaqRight",
@@ -1796,7 +1913,7 @@
         "flexDirection": "column"
       },
       "x": 400,
-      "y": 10480
+      "y": 10960
     },
     {
       "id": "lnFaq1",
@@ -1808,7 +1925,7 @@
         "answer": "The honest answer, in two sentences. If the answer is “not yet”, say so and say when."
       },
       "x": 460,
-      "y": 10240
+      "y": 10720
     },
     {
       "id": "lnFaq2",
@@ -1820,7 +1937,7 @@
         "answer": "Where it lives, who can see it, and how they get it out again."
       },
       "x": 460,
-      "y": 10360
+      "y": 10840
     },
     {
       "id": "lnFaq3",
@@ -1832,7 +1949,7 @@
         "answer": "The next thing they will hear from you, and roughly when."
       },
       "x": 460,
-      "y": 10600
+      "y": 11080
     },
     {
       "id": "lnFaq4",
@@ -1844,7 +1961,7 @@
         "answer": "How to cancel, and what happens to what they made."
       },
       "x": 460,
-      "y": 10720
+      "y": 11200
     },
     {
       "id": "lnCta",
@@ -1868,7 +1985,7 @@
         "as": "section"
       },
       "x": 220,
-      "y": 10840
+      "y": 11320
     },
     {
       "id": "lnCtaShell",
@@ -1898,7 +2015,7 @@
         "alignItems": "center"
       },
       "x": 280,
-      "y": 10960
+      "y": 11440
     },
     {
       "id": "lnCtaHeading",
@@ -1916,7 +2033,7 @@
         "textAlignX": "center"
       },
       "x": 340,
-      "y": 11080
+      "y": 11560
     },
     {
       "id": "lnCtaLead",
@@ -1935,7 +2052,7 @@
         "textAlignX": "center"
       },
       "x": 340,
-      "y": 11200
+      "y": 11680
     },
     {
       "id": "lnCtaButton",
@@ -1957,7 +2074,7 @@
         "sizeMode": "contentSize"
       },
       "x": 340,
-      "y": 11320
+      "y": 11800
     }
   ],
   "visualRoots": [

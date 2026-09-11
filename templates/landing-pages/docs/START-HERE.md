@@ -56,14 +56,14 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the badge on the hero** | Open today until six |
 | **EDIT — the first reason** | icon: leaf · title: The first reason · line: Where things come from, who makes them, what you refuse to do. |
 | **EDIT — the first regular’s words** | quote: “A sentence or two a customer actually said. Pull it from a review if you have one.” · name: Their name · role: A regular since whenever · portrait: noodl_modules/starter-imagery/avatar-3.webp · alt: A woman smiling in a hooded coat |
-| **EDIT — the first thing you sell** | picture: noodl_modules/starter-imagery/food-bread.webp · alt: Sourdough loaves · title: The first thing · line: One line on it: what it is, when it is ready, what it costs. |
+| **EDIT — the first thing you sell** | picture: noodl_modules/starter-imagery/food-bread.webp · alt: Sourdough loaves · title: The first thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the headline** | What you make, and why people cross town for it |
 | **EDIT — the line under the headline** | One sentence on the place itself: the street it is on, the people behind the counter, what it smells like at eight in the morning. |
 | **EDIT — the second reason** | icon: heart · title: The second reason · line: The people. Say who is behind the counter and how long they have been. |
 | **EDIT — the second regular’s words** | quote: “Another one. Real words beat polished ones; leave the typos in if you like.” · name: Their name · role: A regular since whenever · portrait: noodl_modules/starter-imagery/avatar-1.webp · alt: A young man laughing |
-| **EDIT — the second thing you sell** | picture: noodl_modules/starter-imagery/food-plate.webp · alt: A plated dish · title: The second thing · line: One line on it: what it is, when it is ready, what it costs. |
+| **EDIT — the second thing you sell** | picture: noodl_modules/starter-imagery/food-plate.webp · alt: A plated dish · title: The second thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the third reason** | icon: truck · title: The third reason · line: Something practical: delivery, parking, a room for a party. |
-| **EDIT — the third thing you sell** | picture: noodl_modules/starter-imagery/texture-coffee.webp · alt: Roasted coffee beans · title: The third thing · line: One line on it: what it is, when it is ready, what it costs. |
+| **EDIT — the third thing you sell** | picture: noodl_modules/starter-imagery/texture-coffee.webp · alt: Roasted coffee beans · title: The third thing · line: One line on it: what it is, when it is ready, what it costs. · detail: What is in it, where it comes from, and what happens if somebody wants twenty of them. |
 | **EDIT — the three nav links at the top** | nav1: What we make · nav1Target: section-bzOffer · nav2: Why here · nav2Target: section-bzWhy · nav3: Visit · nav3Target: section-bzVisit |
 | **EDIT — What we make — heading** | Three things people come in for |
 | **EDIT — Why here — heading** | Three reasons this is the place |
@@ -81,14 +81,14 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the badge on the hero** | Taking new projects from next month |
 | **EDIT — the first client’s words** | quote: “A sentence or two a client actually said about working with you. Ask them; most people are glad to.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-4.webp · alt: A man smiling, arms folded |
 | **EDIT — the first piece of work** | picture: noodl_modules/starter-imagery/work-leather-bench.webp · alt: A leather workbench with tools laid out · title: A piece of work · line: Who it was for, and what changed. |
-| **EDIT — the first service** | icon: pencil · title: The first service · line: One line on what it includes and what they get at the end. |
+| **EDIT — the first service** | icon: pencil · title: The first service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you. · deliverable: What lands in their inbox at the end, and in what form. |
 | **EDIT — the headline** | One line that says what you do, and who it is for |
 | **EDIT — the line under the headline** | Two sentences on the difference it makes for the people who hire you. Keep it plain; this is the first thing they read. |
 | **EDIT — the second client’s words** | quote: “Another client, in their own words. Two quotes is plenty; three is a wall.” · name: Their name · role: What they do, and where · portrait: noodl_modules/starter-imagery/avatar-5.webp · alt: A woman smiling outdoors |
 | **EDIT — the second piece of work** | picture: noodl_modules/starter-imagery/food-bakery.webp · alt: A bakery counter · title: Another piece of work · line: Who it was for, and what changed. |
-| **EDIT — the second service** | icon: layout-grid · title: The second service · line: One line on what it includes and what they get at the end. |
+| **EDIT — the second service** | icon: layout-grid · title: The second service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: The same three things for this one. If two services have the same answer here, they are probably one service. · deliverable: What they end up with, described as a thing rather than an activity. |
 | **EDIT — the third piece of work** | picture: noodl_modules/starter-imagery/people-desk.webp · alt: Someone working at a laptop by a window · title: A third piece of work · line: Who it was for, and what changed. |
-| **EDIT — the third service** | icon: line-chart · title: The third service · line: One line on what it includes and what they get at the end. |
+| **EDIT — the third service** | icon: line-chart · title: The third service · price: From — say a number, or “on a day rate” · line: One line on what it includes. · detail: Three services is the most a page like this can carry. If you have five, the other two belong on their own page. · deliverable: What they end up with, described as a thing rather than an activity. |
 | **EDIT — the three nav links at the top** | nav1: What I do · nav1Target: section-flServices · nav2: Work · nav2Target: section-flWork · nav3: About · nav3Target: section-flAbout |
 | **EDIT — What I do — heading** | Three things I can take off your plate |
 
@@ -103,7 +103,7 @@ text, or delete the node if it does not apply to you.
 | **EDIT — Questions — heading** | The things people ask before they sign up |
 | **EDIT — the badge on the hero** | Launching this spring |
 | **EDIT — the closing line** | Be first through the door |
-| **EDIT — the first plan** | name: While it is in beta · price: Free · line: For everyone who joins before launch. · point1: Everything it does today · point2: A say in what it does next · point3: Your price held when it launches · action: Get early access · ground: var(--surface) · edge: var(--border) · ink: var(--foreground) |
+| **EDIT — the first plan** | name: While it is in beta · line: For everyone who joins before launch. · point1: Everything it does today · point2: A say in what it does next · point3: Your price held when it launches · action: Get early access · ground: var(--surface) · edge: var(--border) · ink: var(--foreground) |
 | **EDIT — the first question** | question: The question people ask first · answer: The honest answer, in two sentences. If the answer is “not yet”, say so and say when. |
 | **EDIT — the first step** | number: 01 · title: The first step · line: What they do first, and how long it takes. This is the only step that costs them anything. |
 | **EDIT — The first thing — heading** | What it does, said as a benefit |
@@ -120,7 +120,7 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the number, third** | value: 11 min · label: Saved every time, on average |
 | **EDIT — The numbers — heading** | Three numbers you can stand behind |
 | **EDIT — The price — heading** | Say the number |
-| **EDIT — the second plan** | name: After launch · price: The number goes here · line: Per month, or per year, or per seat — say which. · point1: Everything in the first plan · point2: The thing the paid plan adds · point3: The other thing it adds · action: Join the list · ground: var(--foreground) · edge: var(--foreground) · ink: var(--primary-foreground) |
+| **EDIT — the second plan** | name: After launch · line: Everything in the first plan, and the thing people pay for. · point1: Everything in the first plan · point2: The thing the paid plan adds · point3: The other thing it adds · action: Join the list · ground: var(--foreground) · edge: var(--foreground) · ink: var(--primary-foreground) |
 | **EDIT — the second question** | question: Whether their data is safe · answer: Where it lives, who can see it, and how they get it out again. |
 | **EDIT — the second step** | number: 02 · title: The second step · line: What happens next, without them doing anything. |
 | **EDIT — The second thing — heading** | The second thing, as a benefit |
@@ -132,7 +132,9 @@ text, or delete the node if it does not apply to you.
 | **EDIT — the third question** | question: What happens after they sign up · answer: The next thing they will hear from you, and roughly when. |
 | **EDIT — the third step** | number: 03 · title: The third step · line: What they have at the end that they did not have before. |
 | **EDIT — the three nav links at the top** | nav1: What it does · nav1Target: section-lnFeatures · nav2: How it works · nav2Target: section-lnSteps · nav3: Price · nav3Target: section-lnPricing |
+| **EDIT — the two prices, monthly and yearly** | states: monthly,yearly · values: freePrice,paidPrice,note,mBg,mFg,yBg,yFg · type-freePrice: string · type-paidPrice: string · type-note: string · type-mBg: color · type-mFg: color · type-yBg: color · type-yFg: color · value-monthly-freePrice: Free · value-yearly-freePrice: Free · value-monthly-paidPrice: The number, a month · value-yearly-paidPrice: The number, a year · value-monthly-note: Say what a month costs. If you have not decided, say “pricing when we launch”. · value-yearly-note: Say what a year costs, and what that saves against paying monthly. · value-monthly-mBg: var(--surface-raised) · value-yearly-mBg: transparent · value-monthly-mFg: var(--foreground) · value-yearly-mFg: var(--muted-foreground) · value-monthly-yBg: transparent · value-yearly-yBg: var(--surface-raised) · value-monthly-yFg: var(--muted-foreground) · value-yearly-yFg: var(--foreground) |
 | **EDIT — What it does — heading** | Two things it does that nothing else does |
+| **EDIT — what the yearly price actually saves them** |  |
 
 ### `Site/Contact`
 

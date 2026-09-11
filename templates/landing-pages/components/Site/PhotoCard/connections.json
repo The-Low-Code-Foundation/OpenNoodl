@@ -26,6 +26,30 @@
       "fromProperty": "line",
       "toId": "pcLine",
       "toProperty": "text"
+    },
+    {
+      "fromId": "pcInputs",
+      "fromProperty": "detail",
+      "toId": "pcDetail",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "pcHead",
+      "fromProperty": "onClick",
+      "toId": "pcStates",
+      "toProperty": "toggle"
+    },
+    {
+      "fromId": "pcStates",
+      "fromProperty": "at-open",
+      "toId": "pcDetail",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "pcStates",
+      "fromProperty": "chevron",
+      "toId": "pcChevron",
+      "toProperty": "transformRotation"
     }
   ]
 }

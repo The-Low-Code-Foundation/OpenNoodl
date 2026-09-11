@@ -51,6 +51,14 @@
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
+    "Site/ServiceCard": {
+      "path": "Site/ServiceCard",
+      "type": "visual",
+      "nodeCount": 16,
+      "connectionCount": 10,
+      "modified": "2026-09-05T00:00:00.000Z",
+      "created": "2026-09-05T00:00:00.000Z"
+    },
     "Site/Step": {
       "path": "Site/Step",
       "type": "visual",
@@ -70,8 +78,8 @@
     "Site/PhotoCard": {
       "path": "Site/PhotoCard",
       "type": "visual",
-      "nodeCount": 6,
-      "connectionCount": 4,
+      "nodeCount": 10,
+      "connectionCount": 8,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -86,8 +94,8 @@
     "Site/FaqRow": {
       "path": "Site/FaqRow",
       "type": "visual",
-      "nodeCount": 4,
-      "connectionCount": 2,
+      "nodeCount": 7,
+      "connectionCount": 5,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     },
@@ -182,15 +190,15 @@
     "Pages/Launch": {
       "path": "Pages/Launch",
       "type": "page",
-      "nodeCount": 100,
-      "connectionCount": 5,
+      "nodeCount": 105,
+      "connectionCount": 14,
       "modified": "2026-09-05T00:00:00.000Z",
       "created": "2026-09-05T00:00:00.000Z"
     }
   },
   "stats": {
-    "totalComponents": 23,
-    "totalNodes": 405,
-    "totalConnections": 119
+    "totalComponents": 24,
+    "totalNodes": 433,
+    "totalConnections": 145
   }
 }

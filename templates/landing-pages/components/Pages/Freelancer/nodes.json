@@ -532,13 +532,16 @@
     },
     {
       "id": "flService1",
-      "type": "/Site/Feature",
+      "type": "/Site/ServiceCard",
       "label": "EDIT — the first service",
       "parent": "flService1Cell",
       "parameters": {
         "icon": "pencil",
         "title": "The first service",
-        "line": "One line on what it includes and what they get at the end."
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you.",
+        "deliverable": "What lands in their inbox at the end, and in what form."
       },
       "x": 460,
       "y": 2680
@@ -564,13 +567,16 @@
     },
     {
       "id": "flService2",
-      "type": "/Site/Feature",
+      "type": "/Site/ServiceCard",
       "label": "EDIT — the second service",
       "parent": "flService2Cell",
       "parameters": {
         "icon": "layout-grid",
         "title": "The second service",
-        "line": "One line on what it includes and what they get at the end."
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "The same three things for this one. If two services have the same answer here, they are probably one service.",
+        "deliverable": "What they end up with, described as a thing rather than an activity."
       },
       "x": 460,
       "y": 2920
@@ -596,13 +602,16 @@
     },
     {
       "id": "flService3",
-      "type": "/Site/Feature",
+      "type": "/Site/ServiceCard",
       "label": "EDIT — the third service",
       "parent": "flService3Cell",
       "parameters": {
         "icon": "line-chart",
         "title": "The third service",
-        "line": "One line on what it includes and what they get at the end."
+        "price": "From — say a number, or “on a day rate”",
+        "line": "One line on what it includes.",
+        "detail": "Three services is the most a page like this can carry. If you have five, the other two belong on their own page.",
+        "deliverable": "What they end up with, described as a thing rather than an activity."
       },
       "x": 460,
       "y": 3160

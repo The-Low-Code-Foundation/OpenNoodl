@@ -8,7 +8,7 @@
       "type": "Group",
       "label": "One question",
       "children": [
-        "fqQuestion",
+        "fqHead",
         "fqAnswer"
       ],
       "parameters": {
@@ -30,10 +30,34 @@
       "y": 40
     },
     {
+      "id": "fqHead",
+      "type": "Group",
+      "label": "The question, and the chevron",
+      "parent": "fqRow",
+      "children": [
+        "fqQuestion",
+        "fqChevron"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "flex-start",
+        "justifyContent": "space-between",
+        "columnGap": "var(--space-4)",
+        "cssClassName": "disclosure"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
       "id": "fqQuestion",
       "type": "Text",
       "label": "The question",
-      "parent": "fqRow",
+      "parent": "fqHead",
       "parameters": {
         "text": "",
         "fontSize": "var(--text-lg)",
@@ -42,8 +66,28 @@
         "color": "var(--foreground)",
         "as": "h3"
       },
-      "x": 100,
-      "y": 160
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "fqChevron",
+      "type": "net.noodl.visual.icon",
+      "label": "Open or closed",
+      "parent": "fqHead",
+      "parameters": {
+        "iconIconSource": {
+          "class": "lucide",
+          "code": "icon-chevron-down",
+          "codeAsClass": true
+        },
+        "iconSize": {
+          "value": 20,
+          "unit": "px"
+        },
+        "iconColor": "var(--muted-foreground)"
+      },
+      "x": 160,
+      "y": 400
     },
     {
       "id": "fqAnswer",
@@ -53,10 +97,26 @@
       "parameters": {
         "text": "",
         "fontSize": "var(--text-base)",
-        "color": "var(--muted-foreground)"
+        "color": "var(--muted-foreground)",
+        "mounted": false
       },
       "x": 100,
-      "y": 280
+      "y": 520
+    },
+    {
+      "id": "fqStates",
+      "type": "States",
+      "label": "Closed / open",
+      "parameters": {
+        "states": "closed,open",
+        "values": "chevron",
+        "type-chevron": "number",
+        "value-closed-chevron": 0,
+        "value-open-chevron": 180,
+        "useTransitions": true
+      },
+      "x": 410,
+      "y": 520
     },
     {
       "id": "fqInputs",
@@ -74,8 +134,8 @@
           "type": "string"
         }
       ],
-      "x": 350,
-      "y": 160
+      "x": 410,
+      "y": 280
     }
   ],
   "visualRoots": [

@@ -682,7 +682,8 @@
         "picture": "noodl_modules/starter-imagery/food-bread.webp",
         "alt": "Sourdough loaves",
         "title": "The first thing",
-        "line": "One line on it: what it is, when it is ready, what it costs."
+        "line": "One line on it: what it is, when it is ready, what it costs.",
+        "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
       },
       "x": 460,
       "y": 3520
@@ -715,7 +716,8 @@
         "picture": "noodl_modules/starter-imagery/food-plate.webp",
         "alt": "A plated dish",
         "title": "The second thing",
-        "line": "One line on it: what it is, when it is ready, what it costs."
+        "line": "One line on it: what it is, when it is ready, what it costs.",
+        "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
       },
       "x": 460,
       "y": 3760
@@ -748,7 +750,8 @@
         "picture": "noodl_modules/starter-imagery/texture-coffee.webp",
         "alt": "Roasted coffee beans",
         "title": "The third thing",
-        "line": "One line on it: what it is, when it is ready, what it costs."
+        "line": "One line on it: what it is, when it is ready, what it costs.",
+        "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
       },
       "x": 460,
       "y": 4000

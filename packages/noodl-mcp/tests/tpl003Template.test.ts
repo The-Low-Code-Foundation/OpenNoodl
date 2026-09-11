@@ -605,8 +605,22 @@ describe('TPL-003 — every placeholder is marked, and the note lists every mark
     expect(offenders).toEqual([]);
   });
 
-  it('every marked node is a Text, a String, an Image or an instance — something with words in it', () => {
-    const allowed = (t: string) => t === 'Text' || t === 'String' || t === 'Image' || t.startsWith('/');
+  /**
+   * ⚠️ **TPL-004 widened this, deliberately, and it is worth saying why rather
+   * than letting it read as a gate relaxed to fit.**
+   *
+   * The rule is *a marked node is something with words in it a person must
+   * replace*. Until TPL-004 every such node drew its own words. Two node types
+   * now hold copy without drawing it: a `Static Data` node whose JSON **is** the
+   * list of work on the page, and a `States` node carrying the two prices the
+   * period toggle switches between. Both are exactly what a person has to open
+   * to change what the page says, so both must be marked and must appear in
+   * `START-HERE.md`. The alternative — leaving them unmarked — is a template
+   * whose note does not mention where the prices live.
+   */
+  it('every marked node is a Text, a String, an Image, a data node or an instance — something with words in it', () => {
+    const WORD_BEARING = new Set(['Text', 'String', 'Image', 'Static Data', 'States']);
+    const allowed = (t: string) => WORD_BEARING.has(t) || t.startsWith('/');
     const odd = shipped.flatMap((c) => c.nodes.filter((n) => (n.label ?? '').startsWith(EDIT) && !allowed(n.type)).map((n) => `${c.legacyName} › ${n.id} (${n.type})`));
     expect(odd).toEqual([]);
   });

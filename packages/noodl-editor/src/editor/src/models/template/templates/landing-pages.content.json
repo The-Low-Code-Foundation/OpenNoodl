@@ -1194,6 +1194,434 @@
       }
     },
     {
+      "name": "/Site/ServiceCard",
+      "graph": {
+        "roots": [
+          {
+            "id": "svCard",
+            "type": "Group",
+            "children": [
+              {
+                "id": "svHead",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "svBadge",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "svGlyph",
+                        "type": "net.noodl.visual.icon",
+                        "children": [],
+                        "label": "The glyph",
+                        "x": 220,
+                        "y": 400,
+                        "parameters": {
+                          "iconIconSource": {
+                            "class": "lucide",
+                            "code": "icon-sparkles",
+                            "codeAsClass": true
+                          },
+                          "iconSize": {
+                            "value": 22,
+                            "unit": "px"
+                          },
+                          "iconColor": "var(--accent-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The badge",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "sizeMode": "explicit",
+                      "width": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "height": {
+                        "value": 44,
+                        "unit": "px"
+                      },
+                      "flexDirection": "column",
+                      "alignItems": "center",
+                      "justifyContent": "center",
+                      "backgroundColor": "var(--accent)",
+                      "borderRadius": "var(--radius-lg)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "svWords",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "svTitle",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What it is",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-xl)",
+                          "fontWeight": "var(--font-semibold)",
+                          "lineHeight": "var(--leading-snug)",
+                          "color": "var(--foreground)",
+                          "as": "h3"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "svPrice",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What it costs",
+                        "x": 220,
+                        "y": 760,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-sm)",
+                          "color": "var(--primary)",
+                          "fontWeight": "var(--font-semibold)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "svLine",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What it means for them",
+                        "x": 220,
+                        "y": 880,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-base)",
+                          "color": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The words",
+                    "x": 160,
+                    "y": 520,
+                    "parameters": {
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "column",
+                      "rowGap": "var(--space-1)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "svChevron",
+                    "type": "net.noodl.visual.icon",
+                    "children": [],
+                    "label": "Open or closed",
+                    "x": 160,
+                    "y": 1000,
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-chevron-down",
+                        "codeAsClass": true
+                      },
+                      "iconSize": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "iconColor": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "What it is, and the chevron",
+                "x": 100,
+                "y": 160,
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "row",
+                  "paddingLeft": "var(--space-5)",
+                  "paddingRight": "var(--space-5)",
+                  "paddingTop": "var(--space-5)",
+                  "paddingBottom": "var(--space-5)",
+                  "alignItems": "flex-start",
+                  "columnGap": "var(--space-4)",
+                  "cssClassName": "disclosure"
+                },
+                "ports": [],
+                "dynamicports": []
+              },
+              {
+                "id": "svDetail",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "svDetailText",
+                    "type": "Text",
+                    "children": [],
+                    "label": "How it works",
+                    "x": 160,
+                    "y": 1240,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "svGetLabel",
+                    "type": "Text",
+                    "children": [],
+                    "label": "What you get",
+                    "x": 160,
+                    "y": 1360,
+                    "parameters": {
+                      "text": "What you get",
+                      "fontSize": "var(--text-xs)",
+                      "fontWeight": "var(--font-semibold)",
+                      "letterSpacing": "var(--tracking-widest)",
+                      "textTransform": "uppercase",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "svGet",
+                    "type": "Text",
+                    "children": [],
+                    "label": "What they end up with",
+                    "x": 160,
+                    "y": 1480,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "The rest of it",
+                "x": 100,
+                "y": 1120,
+                "parameters": {
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "column",
+                  "rowGap": "var(--space-2)",
+                  "paddingLeft": "var(--space-5)",
+                  "paddingRight": "var(--space-5)",
+                  "paddingTop": "var(--space-5)",
+                  "paddingBottom": "var(--space-5)",
+                  "borderTopStyle": "solid",
+                  "borderTopWidth": "var(--border-1)",
+                  "borderTopColor": "var(--border-subtle)",
+                  "mounted": false
+                },
+                "ports": [],
+                "dynamicports": []
+              }
+            ],
+            "label": "One service",
+            "x": 40,
+            "y": 40,
+            "parameters": {
+              "width": {
+                "value": 100,
+                "unit": "%"
+              },
+              "sizeMode": "contentHeight",
+              "backgroundColor": "var(--surface)",
+              "borderRadius": "var(--radius-xl)",
+              "borderStyle": "solid",
+              "borderWidth": "var(--border-1)",
+              "borderColor": "var(--border)",
+              "clip": true,
+              "flexDirection": "column",
+              "cssClassName": "card-lift"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "svStates",
+            "type": "States",
+            "children": [],
+            "label": "Closed / open",
+            "x": 470,
+            "y": 1120,
+            "parameters": {
+              "states": "closed,open",
+              "values": "chevron",
+              "type-chevron": "number",
+              "value-closed-chevron": 0,
+              "value-open-chevron": 180,
+              "useTransitions": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "svInputs",
+            "type": "Component Inputs",
+            "children": [],
+            "label": "The service",
+            "x": 470,
+            "y": 640,
+            "parameters": {},
+            "ports": [
+              {
+                "name": "icon",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "title",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "price",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "line",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "detail",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "deliverable",
+                "plug": "output",
+                "type": "string"
+              }
+            ],
+            "dynamicports": []
+          },
+          {
+            "id": "svSource",
+            "type": "JavaScriptFunction",
+            "children": [],
+            "label": "The glyph, from its name",
+            "x": 470,
+            "y": 400,
+            "parameters": {
+              "functionScript": "Outputs.source = { class: 'lucide', code: 'icon-' + (Inputs.icon || 'sparkles'), codeAsClass: true };"
+            },
+            "ports": [
+              {
+                "name": "in-icon",
+                "displayName": "icon",
+                "plug": "input",
+                "type": "*",
+                "group": "Inputs"
+              },
+              {
+                "name": "out-source",
+                "displayName": "source",
+                "plug": "output",
+                "type": "*",
+                "group": "Outputs"
+              }
+            ],
+            "dynamicports": []
+          }
+        ],
+        "connections": [
+          {
+            "fromId": "svInputs",
+            "fromProperty": "title",
+            "toId": "svTitle",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "svInputs",
+            "fromProperty": "price",
+            "toId": "svPrice",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "svInputs",
+            "fromProperty": "line",
+            "toId": "svLine",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "svInputs",
+            "fromProperty": "detail",
+            "toId": "svDetailText",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "svInputs",
+            "fromProperty": "deliverable",
+            "toId": "svGet",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "svInputs",
+            "fromProperty": "icon",
+            "toId": "svSource",
+            "toProperty": "in-icon"
+          },
+          {
+            "fromId": "svSource",
+            "fromProperty": "out-source",
+            "toId": "svGlyph",
+            "toProperty": "iconIconSource"
+          },
+          {
+            "fromId": "svHead",
+            "fromProperty": "onClick",
+            "toId": "svStates",
+            "toProperty": "toggle"
+          },
+          {
+            "fromId": "svStates",
+            "fromProperty": "at-open",
+            "toId": "svDetail",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "svStates",
+            "fromProperty": "chevron",
+            "toId": "svChevron",
+            "toProperty": "transformRotation"
+          }
+        ],
+        "visualRoots": [
+          "svCard"
+        ]
+      }
+    },
+    {
       "name": "/Site/Step",
       "graph": {
         "roots": [
@@ -1524,19 +1952,64 @@
                 "type": "Group",
                 "children": [
                   {
-                    "id": "pcTitle",
-                    "type": "Text",
-                    "children": [],
-                    "label": "What it is",
+                    "id": "pcHead",
+                    "type": "Group",
+                    "children": [
+                      {
+                        "id": "pcTitle",
+                        "type": "Text",
+                        "children": [],
+                        "label": "What it is",
+                        "x": 220,
+                        "y": 520,
+                        "parameters": {
+                          "text": "",
+                          "fontSize": "var(--text-xl)",
+                          "fontWeight": "var(--font-semibold)",
+                          "lineHeight": "var(--leading-snug)",
+                          "color": "var(--foreground)",
+                          "as": "h3"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      },
+                      {
+                        "id": "pcChevron",
+                        "type": "net.noodl.visual.icon",
+                        "children": [],
+                        "label": "Open or closed",
+                        "x": 220,
+                        "y": 640,
+                        "parameters": {
+                          "iconIconSource": {
+                            "class": "lucide",
+                            "code": "icon-chevron-down",
+                            "codeAsClass": true
+                          },
+                          "iconSize": {
+                            "value": 18,
+                            "unit": "px"
+                          },
+                          "iconColor": "var(--muted-foreground)"
+                        },
+                        "ports": [],
+                        "dynamicports": []
+                      }
+                    ],
+                    "label": "The title, and the chevron",
                     "x": 160,
                     "y": 400,
                     "parameters": {
-                      "text": "",
-                      "fontSize": "var(--text-xl)",
-                      "fontWeight": "var(--font-semibold)",
-                      "lineHeight": "var(--leading-snug)",
-                      "color": "var(--foreground)",
-                      "as": "h3"
+                      "width": {
+                        "value": 100,
+                        "unit": "%"
+                      },
+                      "sizeMode": "contentHeight",
+                      "flexDirection": "row",
+                      "alignItems": "center",
+                      "justifyContent": "space-between",
+                      "columnGap": "var(--space-3)",
+                      "cssClassName": "disclosure"
                     },
                     "ports": [],
                     "dynamicports": []
@@ -1547,11 +2020,27 @@
                     "children": [],
                     "label": "A line about it",
                     "x": 160,
-                    "y": 520,
+                    "y": 760,
                     "parameters": {
                       "text": "",
                       "fontSize": "var(--text-sm)",
                       "color": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "pcDetail",
+                    "type": "Text",
+                    "children": [],
+                    "label": "The rest of it",
+                    "x": 160,
+                    "y": 880,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-base)",
+                      "color": "var(--muted-foreground)",
+                      "mounted": false
                     },
                     "ports": [],
                     "dynamicports": []
@@ -1592,7 +2081,26 @@
               "borderWidth": "var(--border-1)",
               "borderColor": "var(--border)",
               "clip": true,
-              "flexDirection": "column"
+              "flexDirection": "column",
+              "cssClassName": "card-lift photo-zoom"
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
+            "id": "pcStates",
+            "type": "States",
+            "children": [],
+            "label": "Closed / open",
+            "x": 470,
+            "y": 880,
+            "parameters": {
+              "states": "closed,open",
+              "values": "chevron",
+              "type-chevron": "number",
+              "value-closed-chevron": 0,
+              "value-open-chevron": 180,
+              "useTransitions": true
             },
             "ports": [],
             "dynamicports": []
@@ -1602,7 +2110,7 @@
             "type": "Component Inputs",
             "children": [],
             "label": "The card",
-            "x": 410,
+            "x": 470,
             "y": 160,
             "parameters": {},
             "ports": [
@@ -1623,6 +2131,11 @@
               },
               {
                 "name": "line",
+                "plug": "output",
+                "type": "string"
+              },
+              {
+                "name": "detail",
                 "plug": "output",
                 "type": "string"
               }
@@ -1654,6 +2167,30 @@
             "fromProperty": "line",
             "toId": "pcLine",
             "toProperty": "text"
+          },
+          {
+            "fromId": "pcInputs",
+            "fromProperty": "detail",
+            "toId": "pcDetail",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "pcHead",
+            "fromProperty": "onClick",
+            "toId": "pcStates",
+            "toProperty": "toggle"
+          },
+          {
+            "fromId": "pcStates",
+            "fromProperty": "at-open",
+            "toId": "pcDetail",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "pcStates",
+            "fromProperty": "chevron",
+            "toId": "pcChevron",
+            "toProperty": "transformRotation"
           }
         ],
         "visualRoots": [
@@ -1937,19 +2474,64 @@
             "type": "Group",
             "children": [
               {
-                "id": "fqQuestion",
-                "type": "Text",
-                "children": [],
-                "label": "The question",
+                "id": "fqHead",
+                "type": "Group",
+                "children": [
+                  {
+                    "id": "fqQuestion",
+                    "type": "Text",
+                    "children": [],
+                    "label": "The question",
+                    "x": 160,
+                    "y": 280,
+                    "parameters": {
+                      "text": "",
+                      "fontSize": "var(--text-lg)",
+                      "fontWeight": "var(--font-semibold)",
+                      "lineHeight": "var(--leading-snug)",
+                      "color": "var(--foreground)",
+                      "as": "h3"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  },
+                  {
+                    "id": "fqChevron",
+                    "type": "net.noodl.visual.icon",
+                    "children": [],
+                    "label": "Open or closed",
+                    "x": 160,
+                    "y": 400,
+                    "parameters": {
+                      "iconIconSource": {
+                        "class": "lucide",
+                        "code": "icon-chevron-down",
+                        "codeAsClass": true
+                      },
+                      "iconSize": {
+                        "value": 20,
+                        "unit": "px"
+                      },
+                      "iconColor": "var(--muted-foreground)"
+                    },
+                    "ports": [],
+                    "dynamicports": []
+                  }
+                ],
+                "label": "The question, and the chevron",
                 "x": 100,
                 "y": 160,
                 "parameters": {
-                  "text": "",
-                  "fontSize": "var(--text-lg)",
-                  "fontWeight": "var(--font-semibold)",
-                  "lineHeight": "var(--leading-snug)",
-                  "color": "var(--foreground)",
-                  "as": "h3"
+                  "width": {
+                    "value": 100,
+                    "unit": "%"
+                  },
+                  "sizeMode": "contentHeight",
+                  "flexDirection": "row",
+                  "alignItems": "flex-start",
+                  "justifyContent": "space-between",
+                  "columnGap": "var(--space-4)",
+                  "cssClassName": "disclosure"
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1960,11 +2542,12 @@
                 "children": [],
                 "label": "The answer",
                 "x": 100,
-                "y": 280,
+                "y": 520,
                 "parameters": {
                   "text": "",
                   "fontSize": "var(--text-base)",
-                  "color": "var(--muted-foreground)"
+                  "color": "var(--muted-foreground)",
+                  "mounted": false
                 },
                 "ports": [],
                 "dynamicports": []
@@ -1992,12 +2575,30 @@
             "dynamicports": []
           },
           {
+            "id": "fqStates",
+            "type": "States",
+            "children": [],
+            "label": "Closed / open",
+            "x": 410,
+            "y": 520,
+            "parameters": {
+              "states": "closed,open",
+              "values": "chevron",
+              "type-chevron": "number",
+              "value-closed-chevron": 0,
+              "value-open-chevron": 180,
+              "useTransitions": true
+            },
+            "ports": [],
+            "dynamicports": []
+          },
+          {
             "id": "fqInputs",
             "type": "Component Inputs",
             "children": [],
             "label": "The question",
-            "x": 350,
-            "y": 160,
+            "x": 410,
+            "y": 280,
             "parameters": {},
             "ports": [
               {
@@ -2026,6 +2627,24 @@
             "fromProperty": "answer",
             "toId": "fqAnswer",
             "toProperty": "text"
+          },
+          {
+            "fromId": "fqHead",
+            "fromProperty": "onClick",
+            "toId": "fqStates",
+            "toProperty": "toggle"
+          },
+          {
+            "fromId": "fqStates",
+            "fromProperty": "at-open",
+            "toId": "fqAnswer",
+            "toProperty": "mounted"
+          },
+          {
+            "fromId": "fqStates",
+            "fromProperty": "chevron",
+            "toId": "fqChevron",
+            "toProperty": "transformRotation"
           }
         ],
         "visualRoots": [
@@ -4764,7 +5383,7 @@
                                     "children": [
                                       {
                                         "id": "flService1",
-                                        "type": "/Site/Feature",
+                                        "type": "/Site/ServiceCard",
                                         "children": [],
                                         "label": "EDIT — the first service",
                                         "x": 460,
@@ -4772,7 +5391,10 @@
                                         "parameters": {
                                           "icon": "pencil",
                                           "title": "The first service",
-                                          "line": "One line on what it includes and what they get at the end."
+                                          "price": "From — say a number, or “on a day rate”",
+                                          "line": "One line on what it includes.",
+                                          "detail": "How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you.",
+                                          "deliverable": "What lands in their inbox at the end, and in what form."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -4798,7 +5420,7 @@
                                     "children": [
                                       {
                                         "id": "flService2",
-                                        "type": "/Site/Feature",
+                                        "type": "/Site/ServiceCard",
                                         "children": [],
                                         "label": "EDIT — the second service",
                                         "x": 460,
@@ -4806,7 +5428,10 @@
                                         "parameters": {
                                           "icon": "layout-grid",
                                           "title": "The second service",
-                                          "line": "One line on what it includes and what they get at the end."
+                                          "price": "From — say a number, or “on a day rate”",
+                                          "line": "One line on what it includes.",
+                                          "detail": "The same three things for this one. If two services have the same answer here, they are probably one service.",
+                                          "deliverable": "What they end up with, described as a thing rather than an activity."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -4832,7 +5457,7 @@
                                     "children": [
                                       {
                                         "id": "flService3",
-                                        "type": "/Site/Feature",
+                                        "type": "/Site/ServiceCard",
                                         "children": [],
                                         "label": "EDIT — the third service",
                                         "x": 460,
@@ -4840,7 +5465,10 @@
                                         "parameters": {
                                           "icon": "line-chart",
                                           "title": "The third service",
-                                          "line": "One line on what it includes and what they get at the end."
+                                          "price": "From — say a number, or “on a day rate”",
+                                          "line": "One line on what it includes.",
+                                          "detail": "Three services is the most a page like this can carry. If you have five, the other two belong on their own page.",
+                                          "deliverable": "What they end up with, described as a thing rather than an activity."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -6263,7 +6891,8 @@
                                           "picture": "noodl_modules/starter-imagery/food-bread.webp",
                                           "alt": "Sourdough loaves",
                                           "title": "The first thing",
-                                          "line": "One line on it: what it is, when it is ready, what it costs."
+                                          "line": "One line on it: what it is, when it is ready, what it costs.",
+                                          "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -6298,7 +6927,8 @@
                                           "picture": "noodl_modules/starter-imagery/food-plate.webp",
                                           "alt": "A plated dish",
                                           "title": "The second thing",
-                                          "line": "One line on it: what it is, when it is ready, what it costs."
+                                          "line": "One line on it: what it is, when it is ready, what it costs.",
+                                          "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -6333,7 +6963,8 @@
                                           "picture": "noodl_modules/starter-imagery/texture-coffee.webp",
                                           "alt": "Roasted coffee beans",
                                           "title": "The third thing",
-                                          "line": "One line on it: what it is, when it is ready, what it costs."
+                                          "line": "One line on it: what it is, when it is ready, what it costs.",
+                                          "detail": "What is in it, where it comes from, and what happens if somebody wants twenty of them."
                                         },
                                         "ports": [],
                                         "dynamicports": []
@@ -8660,6 +9291,79 @@
                                 "dynamicports": []
                               },
                               {
+                                "id": "lnPeriodRow",
+                                "type": "Group",
+                                "children": [
+                                  {
+                                    "id": "lnPeriodMonthly",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Monthly",
+                                    "x": 400,
+                                    "y": 8920,
+                                    "parameters": {
+                                      "label": "Monthly",
+                                      "sizeMode": "contentSize",
+                                      "borderStyle": "none",
+                                      "borderRadius": "var(--radius-full)",
+                                      "paddingTop": "var(--space-2)",
+                                      "paddingBottom": "var(--space-2)",
+                                      "paddingLeft": "var(--space-5)",
+                                      "paddingRight": "var(--space-5)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-semibold)",
+                                      "backgroundColor": "transparent",
+                                      "color": "var(--muted-foreground)",
+                                      "cssClassName": "pill pressable"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  },
+                                  {
+                                    "id": "lnPeriodYearly",
+                                    "type": "net.noodl.controls.button",
+                                    "children": [],
+                                    "label": "Yearly",
+                                    "x": 400,
+                                    "y": 9040,
+                                    "parameters": {
+                                      "label": "Yearly",
+                                      "sizeMode": "contentSize",
+                                      "borderStyle": "none",
+                                      "borderRadius": "var(--radius-full)",
+                                      "paddingTop": "var(--space-2)",
+                                      "paddingBottom": "var(--space-2)",
+                                      "paddingLeft": "var(--space-5)",
+                                      "paddingRight": "var(--space-5)",
+                                      "fontSize": "var(--text-sm)",
+                                      "fontWeight": "var(--font-semibold)",
+                                      "backgroundColor": "transparent",
+                                      "color": "var(--muted-foreground)",
+                                      "cssClassName": "pill pressable"
+                                    },
+                                    "ports": [],
+                                    "dynamicports": []
+                                  }
+                                ],
+                                "label": "Monthly or yearly",
+                                "x": 340,
+                                "y": 8800,
+                                "parameters": {
+                                  "sizeMode": "contentSize",
+                                  "flexDirection": "row",
+                                  "alignItems": "center",
+                                  "columnGap": "var(--space-1)",
+                                  "paddingTop": "var(--space-1)",
+                                  "paddingBottom": "var(--space-1)",
+                                  "paddingLeft": "var(--space-1)",
+                                  "paddingRight": "var(--space-1)",
+                                  "backgroundColor": "var(--muted)",
+                                  "borderRadius": "var(--radius-full)"
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
                                 "id": "lnPlans",
                                 "type": "net.noodl.visual.columns",
                                 "children": [
@@ -8673,10 +9377,9 @@
                                         "children": [],
                                         "label": "EDIT — the first plan",
                                         "x": 460,
-                                        "y": 9040,
+                                        "y": 9400,
                                         "parameters": {
                                           "name": "While it is in beta",
-                                          "price": "Free",
                                           "line": "For everyone who joins before launch.",
                                           "point1": "Everything it does today",
                                           "point2": "A say in what it does next",
@@ -8692,7 +9395,7 @@
                                     ],
                                     "label": "The free plan — its cell",
                                     "x": 400,
-                                    "y": 8920,
+                                    "y": 9280,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -8714,11 +9417,10 @@
                                         "children": [],
                                         "label": "EDIT — the second plan",
                                         "x": 460,
-                                        "y": 9280,
+                                        "y": 9640,
                                         "parameters": {
                                           "name": "After launch",
-                                          "price": "The number goes here",
-                                          "line": "Per month, or per year, or per seat — say which.",
+                                          "line": "Everything in the first plan, and the thing people pay for.",
                                           "point1": "Everything in the first plan",
                                           "point2": "The thing the paid plan adds",
                                           "point3": "The other thing it adds",
@@ -8733,7 +9435,7 @@
                                     ],
                                     "label": "The paid plan — its cell",
                                     "x": 400,
-                                    "y": 9160,
+                                    "y": 9520,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -8748,7 +9450,7 @@
                                 ],
                                 "label": "Two plans",
                                 "x": 340,
-                                "y": 8800,
+                                "y": 9160,
                                 "parameters": {
                                   "layoutString": "1 1",
                                   "marginX": {
@@ -8769,6 +9471,22 @@
                                     "value": 24,
                                     "unit": "px"
                                   }
+                                },
+                                "ports": [],
+                                "dynamicports": []
+                              },
+                              {
+                                "id": "lnPeriodNote",
+                                "type": "Text",
+                                "children": [],
+                                "label": "EDIT — what the yearly price actually saves them",
+                                "x": 340,
+                                "y": 9760,
+                                "parameters": {
+                                  "text": "",
+                                  "fontSize": "var(--text-sm)",
+                                  "color": "var(--muted-foreground)",
+                                  "textAlignX": "center"
                                 },
                                 "ports": [],
                                 "dynamicports": []
@@ -8834,7 +9552,7 @@
                                     "children": [],
                                     "label": "Questions — eyebrow",
                                     "x": 400,
-                                    "y": 9760,
+                                    "y": 10240,
                                     "parameters": {
                                       "text": "Questions",
                                       "fontSize": "var(--text-xs)",
@@ -8853,7 +9571,7 @@
                                     "children": [],
                                     "label": "EDIT — Questions — heading",
                                     "x": 400,
-                                    "y": 9880,
+                                    "y": 10360,
                                     "parameters": {
                                       "text": "The things people ask before they sign up",
                                       "fontSize": "var(--text-3xl)",
@@ -8869,7 +9587,7 @@
                                 ],
                                 "label": "Questions — head",
                                 "x": 340,
-                                "y": 9640,
+                                "y": 10120,
                                 "parameters": {
                                   "width": {
                                     "value": 100,
@@ -8897,7 +9615,7 @@
                                         "children": [],
                                         "label": "EDIT — the first question",
                                         "x": 460,
-                                        "y": 10240,
+                                        "y": 10720,
                                         "parameters": {
                                           "question": "The question people ask first",
                                           "answer": "The honest answer, in two sentences. If the answer is “not yet”, say so and say when."
@@ -8911,7 +9629,7 @@
                                         "children": [],
                                         "label": "EDIT — the second question",
                                         "x": 460,
-                                        "y": 10360,
+                                        "y": 10840,
                                         "parameters": {
                                           "question": "Whether their data is safe",
                                           "answer": "Where it lives, who can see it, and how they get it out again."
@@ -8922,7 +9640,7 @@
                                     ],
                                     "label": "The left column",
                                     "x": 400,
-                                    "y": 10120,
+                                    "y": 10600,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -8944,7 +9662,7 @@
                                         "children": [],
                                         "label": "EDIT — the third question",
                                         "x": 460,
-                                        "y": 10600,
+                                        "y": 11080,
                                         "parameters": {
                                           "question": "What happens after they sign up",
                                           "answer": "The next thing they will hear from you, and roughly when."
@@ -8958,7 +9676,7 @@
                                         "children": [],
                                         "label": "EDIT — the fourth question",
                                         "x": 460,
-                                        "y": 10720,
+                                        "y": 11200,
                                         "parameters": {
                                           "question": "Whether they can leave",
                                           "answer": "How to cancel, and what happens to what they made."
@@ -8969,7 +9687,7 @@
                                     ],
                                     "label": "The right column",
                                     "x": 400,
-                                    "y": 10480,
+                                    "y": 10960,
                                     "parameters": {
                                       "width": {
                                         "value": 100,
@@ -8984,7 +9702,7 @@
                                 ],
                                 "label": "Two columns of questions",
                                 "x": 340,
-                                "y": 10000,
+                                "y": 10480,
                                 "parameters": {
                                   "layoutString": "1 1",
                                   "marginX": {
@@ -9012,7 +9730,7 @@
                             ],
                             "label": "Shell",
                             "x": 280,
-                            "y": 9520,
+                            "y": 10000,
                             "parameters": {
                               "width": {
                                 "value": 100,
@@ -9035,7 +9753,7 @@
                         ],
                         "label": "Questions",
                         "x": 220,
-                        "y": 9400,
+                        "y": 9880,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -9073,7 +9791,7 @@
                                 "children": [],
                                 "label": "EDIT — the closing line",
                                 "x": 340,
-                                "y": 11080,
+                                "y": 11560,
                                 "parameters": {
                                   "text": "Be first through the door",
                                   "fontSize": "var(--text-3xl)",
@@ -9093,7 +9811,7 @@
                                 "children": [],
                                 "label": "EDIT — the line under the closing line",
                                 "x": 340,
-                                "y": 11200,
+                                "y": 11680,
                                 "parameters": {
                                   "text": "One sentence on what the first people in get that nobody else will.",
                                   "fontSize": "var(--text-lg)",
@@ -9114,7 +9832,7 @@
                                 "children": [],
                                 "label": "Join the list",
                                 "x": 340,
-                                "y": 11320,
+                                "y": 11800,
                                 "parameters": {
                                   "label": "Join the list",
                                   "backgroundColor": "var(--primary-foreground)",
@@ -9135,7 +9853,7 @@
                             ],
                             "label": "Shell",
                             "x": 280,
-                            "y": 10960,
+                            "y": 11440,
                             "parameters": {
                               "width": {
                                 "value": 100,
@@ -9159,7 +9877,7 @@
                         ],
                         "label": "The closing band",
                         "x": 220,
-                        "y": 10840,
+                        "y": 11320,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -9186,7 +9904,7 @@
                             "children": [],
                             "label": "The contact band",
                             "x": 280,
-                            "y": 11560,
+                            "y": 12040,
                             "parameters": {
                               "heading": "Get early access",
                               "line": "Leave your name and a line about what you would use it for. The first people in get it first, and free.",
@@ -9198,7 +9916,7 @@
                         ],
                         "label": "Where \"Get in touch\" lands",
                         "x": 220,
-                        "y": 11440,
+                        "y": 11920,
                         "parameters": {
                           "width": {
                             "value": 100,
@@ -9233,7 +9951,7 @@
                     "children": [],
                     "label": "The foot of the page",
                     "x": 160,
-                    "y": 11680,
+                    "y": 12160,
                     "parameters": {},
                     "ports": [],
                     "dynamicports": []
@@ -9294,6 +10012,42 @@
             },
             "ports": [],
             "dynamicports": []
+          },
+          {
+            "id": "lnPeriod",
+            "type": "States",
+            "children": [],
+            "label": "EDIT — the two prices, monthly and yearly",
+            "x": 770,
+            "y": 9400,
+            "parameters": {
+              "states": "monthly,yearly",
+              "values": "freePrice,paidPrice,note,mBg,mFg,yBg,yFg",
+              "type-freePrice": "string",
+              "type-paidPrice": "string",
+              "type-note": "string",
+              "type-mBg": "color",
+              "type-mFg": "color",
+              "type-yBg": "color",
+              "type-yFg": "color",
+              "value-monthly-freePrice": "Free",
+              "value-yearly-freePrice": "Free",
+              "value-monthly-paidPrice": "The number, a month",
+              "value-yearly-paidPrice": "The number, a year",
+              "value-monthly-note": "Say what a month costs. If you have not decided, say “pricing when we launch”.",
+              "value-yearly-note": "Say what a year costs, and what that saves against paying monthly.",
+              "value-monthly-mBg": "var(--surface-raised)",
+              "value-yearly-mBg": "transparent",
+              "value-monthly-mFg": "var(--foreground)",
+              "value-yearly-mFg": "var(--muted-foreground)",
+              "value-monthly-yBg": "transparent",
+              "value-yearly-yBg": "var(--surface-raised)",
+              "value-monthly-yFg": "var(--muted-foreground)",
+              "value-yearly-yFg": "var(--foreground)",
+              "useTransitions": false
+            },
+            "ports": [],
+            "dynamicports": []
           }
         ],
         "connections": [
@@ -9326,6 +10080,60 @@
             "fromProperty": "chosen",
             "toId": "lnGoContact",
             "toProperty": "go"
+          },
+          {
+            "fromId": "lnPeriodMonthly",
+            "fromProperty": "onClick",
+            "toId": "lnPeriod",
+            "toProperty": "to-monthly"
+          },
+          {
+            "fromId": "lnPeriodYearly",
+            "fromProperty": "onClick",
+            "toId": "lnPeriod",
+            "toProperty": "to-yearly"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "freePrice",
+            "toId": "lnPlanFree",
+            "toProperty": "price"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "paidPrice",
+            "toId": "lnPlanPaid",
+            "toProperty": "price"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "note",
+            "toId": "lnPeriodNote",
+            "toProperty": "text"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "mBg",
+            "toId": "lnPeriodMonthly",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "mFg",
+            "toId": "lnPeriodMonthly",
+            "toProperty": "color"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "yBg",
+            "toId": "lnPeriodYearly",
+            "toProperty": "backgroundColor"
+          },
+          {
+            "fromId": "lnPeriod",
+            "fromProperty": "yFg",
+            "toId": "lnPeriodYearly",
+            "toProperty": "color"
           }
         ],
         "visualRoots": [

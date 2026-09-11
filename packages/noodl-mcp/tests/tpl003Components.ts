@@ -81,6 +81,7 @@ export const HEADER_COMPONENT = '/Site/Header';
 export const FOOTER_COMPONENT = '/Site/Footer';
 export const CONTACT_COMPONENT = '/Site/Contact';
 export const FEATURE_COMPONENT = '/Site/Feature';
+export const SERVICE_CARD_COMPONENT = '/Site/ServiceCard';
 export const STEP_COMPONENT = '/Site/Step';
 export const STAT_COMPONENT = '/Site/Stat';
 export const PHOTO_CARD_COMPONENT = '/Site/PhotoCard';
@@ -161,6 +162,8 @@ const ON_DARK = { color: 'var(--primary-foreground)' };
 
 const CARD = composition('card');
 const CARD_BODY = composition('cardBody');
+/** The card's padding laid out as a ROW. `rowGap` is never read on a row, and the door says so. */
+const { rowGap: _cardBodyRowGap, ...CARD_BODY_ROW } = CARD_BODY;
 
 /** The one centred container inside a band. `alignX` is what centres it — see `PAGE_GROUND` in TPL-001. */
 const SHELL = { ...composition('shell'), sizeMode: 'contentHeight', alignX: 'center', rowGap: 'var(--space-6)' };
@@ -230,6 +233,36 @@ const { width: _glassWidth, ...GLASS_STRIP } = composition('glassPanel');
 
 /** A pill on a dark ground — the composition as written. */
 const PILL = composition('badge');
+
+/**
+ * TPL-004 — the `States` node behind every row that opens: the FAQ answers, the
+ * expandable services, the things a business sells.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * 🔴 **One `States`, not a `Condition` pair.** Whether the detail is on screen
+ * and which way the chevron points are two faces of one fact; carried by two
+ * nodes they drift the first time one is rewired. The interface doctrine names
+ * the alternative as the pattern *"written badly"*.
+ *
+ * 🔴 **`mounted`, never `visible`.** `visible` sets `visibility: hidden` and
+ * **keeps the space** — a closed answer would still cost its full height, so a
+ * column of four closed questions would be as tall as four open ones and the
+ * accordion would look broken rather than closed. `mounted` removes the element.
+ *
+ * ⚠️ **The chevron turns and the panel does not.** `useTransitions` can tween a
+ * height, which is the prettier accordion — and a fixed pixel height for a
+ * paragraph that rewraps at 390px clips its own words. A card that opens
+ * instantly is a smaller failure than a card that eats its copy on a phone, so
+ * the motion is on the one thing whose size is known: a 20px chevron.
+ */
+const DISCLOSURE_STATES = {
+  states: 'closed,open',
+  values: 'chevron',
+  'type-chevron': 'number',
+  'value-closed-chevron': 0,
+  'value-open-chevron': 180,
+  useTransitions: true
+};
 
 function glyph(code: string): Record<string, unknown> {
   return { class: 'lucide', code: `icon-${code}`, codeAsClass: true };
@@ -787,10 +820,18 @@ const STAT: Tpl003Component = {
 
 // ── Site/PhotoCard — a photograph with a title under it ──────────────────────
 
+/**
+ * TPL-004 — a photograph, a line, and the rest of it behind a chevron.
+ *
+ * ⚠️ **`photo-zoom` needs the card's `clip`, and it has it.** The `card`
+ * composition sets `clip: true`, so the photograph can scale inside the rounded
+ * corners without spilling past them. Take the clip away and the hover grows a
+ * square photograph out of a rounded card.
+ */
 const PHOTO_CARD: Tpl003Component = {
   path: 'Site/PhotoCard',
   nodes: [
-    group('pcCard', 'One card', undefined, CARD, ['pcPhoto', 'pcBody']),
+    group('pcCard', 'One card', undefined, { ...CARD, cssClassName: 'card-lift photo-zoom' }, ['pcPhoto', 'pcBody']),
     {
       id: 'pcPhoto',
       type: 'Image',
@@ -800,16 +841,110 @@ const PHOTO_CARD: Tpl003Component = {
       // and three cards of different natural heights are the tell one level down.
       parameters: { ...composition('cardImage'), height: px(220), src: '', alt: '' }
     },
-    group('pcBody', 'The words', 'pcCard', { ...CARD_BODY, sizeMode: 'contentHeight' }, ['pcTitle', 'pcLine']),
-    text('pcTitle', 'What it is', 'pcBody', '', H_CARD),
+    group('pcBody', 'The words', 'pcCard', { ...CARD_BODY, sizeMode: 'contentHeight', rowGap: 'var(--space-2)' }, ['pcHead', 'pcLine', 'pcDetail']),
+    group(
+      'pcHead',
+      'The title, and the chevron',
+      'pcBody',
+      { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', columnGap: 'var(--space-3)', cssClassName: 'disclosure' },
+      ['pcTitle', 'pcChevron']
+    ),
+    text('pcTitle', 'What it is', 'pcHead', '', H_CARD),
+    icon('pcChevron', 'Open or closed', 'pcHead', 'chevron-down', 18, 'var(--muted-foreground)'),
     text('pcLine', 'A line about it', 'pcBody', '', T_META),
-    inputs('pcInputs', 'The card', ['picture', 'alt', 'title', 'line'])
+    text('pcDetail', 'The rest of it', 'pcBody', '', { ...T_BODY, color: 'var(--muted-foreground)', mounted: false }),
+    logic('pcStates', STATES_NODE, 'Closed / open', { ...DISCLOSURE_STATES }),
+    inputs('pcInputs', 'The card', ['picture', 'alt', 'title', 'line', 'detail'])
   ],
   connections: [
-    { fromId: 'pcInputs', fromProperty: 'picture', toId: 'pcPhoto', toProperty: 'src' },
-    { fromId: 'pcInputs', fromProperty: 'alt', toId: 'pcPhoto', toProperty: 'alt' },
-    { fromId: 'pcInputs', fromProperty: 'title', toId: 'pcTitle', toProperty: 'text' },
-    { fromId: 'pcInputs', fromProperty: 'line', toId: 'pcLine', toProperty: 'text' }
+    wire('pcInputs', 'picture', 'pcPhoto', 'src'),
+    wire('pcInputs', 'alt', 'pcPhoto', 'alt'),
+    wire('pcInputs', 'title', 'pcTitle', 'text'),
+    wire('pcInputs', 'line', 'pcLine', 'text'),
+    wire('pcInputs', 'detail', 'pcDetail', 'text'),
+    wire('pcHead', 'onClick', 'pcStates', 'toggle'),
+    wire('pcStates', 'at-open', 'pcDetail', 'mounted'),
+    wire('pcStates', 'chevron', 'pcChevron', 'transformRotation')
+  ]
+};
+
+// ── Site/ServiceCard — what one person sells, and the detail of it ───────────
+
+/**
+ * TPL-004. The freelancer page's three services were `Site/Feature`: a glyph, a
+ * title and one line, three times, and nothing else could ever be said about
+ * them. A service is the thing being sold, so it is the one place on that page
+ * where somebody actually has more to say — what is included, what they get at
+ * the end, what it costs — and a card that cannot hold it forces all of that
+ * into a nine-word line or off the page.
+ *
+ * So: the same glyph and title, plus a price line and a detail that opens.
+ * `Site/Feature` is untouched and still does what it does — a reason, a fact, a
+ * thing that genuinely is one line — on the business and launch pages.
+ */
+const SERVICE_CARD: Tpl003Component = {
+  path: 'Site/ServiceCard',
+  nodes: [
+    group('svCard', 'One service', undefined, { ...CARD, cssClassName: 'card-lift' }, ['svHead', 'svDetail']),
+    group(
+      'svHead',
+      'What it is, and the chevron',
+      'svCard',
+      { ...CARD_BODY_ROW, sizeMode: 'contentHeight', flexDirection: 'row', alignItems: 'flex-start', columnGap: 'var(--space-4)', cssClassName: 'disclosure' },
+      ['svBadge', 'svWords', 'svChevron']
+    ),
+    group('svBadge', 'The badge', 'svHead', BADGE_SQUARE, ['svGlyph']),
+    icon('svGlyph', 'The glyph', 'svBadge', 'sparkles', 22, 'var(--accent-foreground)'),
+    group('svWords', 'The words', 'svHead', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column', rowGap: 'var(--space-1)' }, ['svTitle', 'svPrice', 'svLine']),
+    text('svTitle', 'What it is', 'svWords', '', H_CARD),
+    text('svPrice', 'What it costs', 'svWords', '', { ...T_META, fontWeight: 'var(--font-semibold)', color: 'var(--primary)' }),
+    text('svLine', 'What it means for them', 'svWords', '', { ...T_BODY, color: 'var(--muted-foreground)' }),
+    icon('svChevron', 'Open or closed', 'svHead', 'chevron-down', 20, 'var(--muted-foreground)'),
+    group(
+      'svDetail',
+      'The rest of it',
+      'svCard',
+      {
+        ...CARD_BODY,
+        sizeMode: 'contentHeight',
+        flexDirection: 'column',
+        rowGap: 'var(--space-2)',
+        paddingTop: 'var(--space-5)',
+        borderTopStyle: 'solid',
+        borderTopWidth: 'var(--border-1)',
+        borderTopColor: 'var(--border-subtle)',
+        mounted: false
+      },
+      ['svDetailText', 'svGetLabel', 'svGet']
+    ),
+    text('svDetailText', 'How it works', 'svDetail', '', { ...T_BODY, color: 'var(--foreground)' }),
+    text('svGetLabel', 'What you get', 'svDetail', 'What you get', {
+      fontSize: 'var(--text-xs)',
+      fontWeight: 'var(--font-semibold)',
+      letterSpacing: 'var(--tracking-widest)',
+      textTransform: 'uppercase',
+      color: 'var(--muted-foreground)'
+    }),
+    text('svGet', 'What they end up with', 'svDetail', '', { ...T_BODY, color: 'var(--muted-foreground)' }),
+    logic('svStates', STATES_NODE, 'Closed / open', { ...DISCLOSURE_STATES }),
+    inputs('svInputs', 'The service', ['icon', 'title', 'price', 'line', 'detail', 'deliverable']),
+    // The same one-line trick `Site/Feature` uses: `iconIconSource` takes an
+    // object, which is not a value a string port can carry.
+    logic('svSource', FUNCTION_NODE, 'The glyph, from its name', {
+      functionScript: "Outputs.source = { class: 'lucide', code: 'icon-' + (Inputs.icon || 'sparkles'), codeAsClass: true };"
+    })
+  ],
+  connections: [
+    wire('svInputs', 'title', 'svTitle', 'text'),
+    wire('svInputs', 'price', 'svPrice', 'text'),
+    wire('svInputs', 'line', 'svLine', 'text'),
+    wire('svInputs', 'detail', 'svDetailText', 'text'),
+    wire('svInputs', 'deliverable', 'svGet', 'text'),
+    wire('svInputs', 'icon', 'svSource', 'in-icon'),
+    wire('svSource', 'out-source', 'svGlyph', 'iconIconSource'),
+    wire('svHead', 'onClick', 'svStates', 'toggle'),
+    wire('svStates', 'at-open', 'svDetail', 'mounted'),
+    wire('svStates', 'chevron', 'svChevron', 'transformRotation')
   ]
 };
 
@@ -853,8 +988,14 @@ const QUOTE: Tpl003Component = {
   ]
 };
 
-// ── Site/FaqRow — a question and its answer, ruled ───────────────────────────
+// ── Site/FaqRow — a question, and the answer under it ───────────────────────
 
+/**
+ * TPL-004 made the answer open. It used to be a question with its answer always
+ * under it — which is a list of paragraphs with some of the words in bold, not a
+ * set of questions. Eight of these on a page is a wall; eight questions a person
+ * can read in one glance and open the one they came for is the thing itself.
+ */
 const FAQ_ROW: Tpl003Component = {
   path: 'Site/FaqRow',
   nodes: [
@@ -863,15 +1004,27 @@ const FAQ_ROW: Tpl003Component = {
       'One question',
       undefined,
       { ...composition('ruled'), flexDirection: 'column', alignItems: 'flex-start', rowGap: 'var(--space-2)', paddingTop: 'var(--space-5)', paddingBottom: 'var(--space-5)' },
-      ['fqQuestion', 'fqAnswer']
+      ['fqHead', 'fqAnswer']
     ),
-    text('fqQuestion', 'The question', 'fqRow', '', { ...H_CARD, fontSize: 'var(--text-lg)' }),
-    text('fqAnswer', 'The answer', 'fqRow', '', { ...T_BODY, color: 'var(--muted-foreground)' }),
+    group(
+      'fqHead',
+      'The question, and the chevron',
+      'fqRow',
+      { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', columnGap: 'var(--space-4)', cssClassName: 'disclosure' },
+      ['fqQuestion', 'fqChevron']
+    ),
+    text('fqQuestion', 'The question', 'fqHead', '', { ...H_CARD, fontSize: 'var(--text-lg)' }),
+    icon('fqChevron', 'Open or closed', 'fqHead', 'chevron-down', 20, 'var(--muted-foreground)'),
+    text('fqAnswer', 'The answer', 'fqRow', '', { ...T_BODY, color: 'var(--muted-foreground)', mounted: false }),
+    logic('fqStates', STATES_NODE, 'Closed / open', { ...DISCLOSURE_STATES }),
     inputs('fqInputs', 'The question', ['question', 'answer'])
   ],
   connections: [
-    { fromId: 'fqInputs', fromProperty: 'question', toId: 'fqQuestion', toProperty: 'text' },
-    { fromId: 'fqInputs', fromProperty: 'answer', toId: 'fqAnswer', toProperty: 'text' }
+    wire('fqInputs', 'question', 'fqQuestion', 'text'),
+    wire('fqInputs', 'answer', 'fqAnswer', 'text'),
+    wire('fqHead', 'onClick', 'fqStates', 'toggle'),
+    wire('fqStates', 'at-open', 'fqAnswer', 'mounted'),
+    wire('fqStates', 'chevron', 'fqChevron', 'transformRotation')
   ]
 };
 
@@ -1593,9 +1746,45 @@ const FREELANCER: Tpl003Component = {
     }),
     ...section('flServices', 'flMain', 'paper', { eyebrow: 'What I do', heading: 'Three things I can take off your plate' }, ['flServicesGrid']),
     ...grid('flServicesGrid', 'flServicesShell', [
-      { id: 'flService1', type: FEATURE_COMPONENT, label: 'the first service', parameters: { icon: 'pencil', title: 'The first service', line: 'One line on what it includes and what they get at the end.' } },
-      { id: 'flService2', type: FEATURE_COMPONENT, label: 'the second service', parameters: { icon: 'layout-grid', title: 'The second service', line: 'One line on what it includes and what they get at the end.' } },
-      { id: 'flService3', type: FEATURE_COMPONENT, label: 'the third service', parameters: { icon: 'line-chart', title: 'The third service', line: 'One line on what it includes and what they get at the end.' } }
+      {
+        id: 'flService1',
+        type: SERVICE_CARD_COMPONENT,
+        label: 'the first service',
+        parameters: {
+          icon: 'pencil',
+          title: 'The first service',
+          price: 'From — say a number, or “on a day rate”',
+          line: 'One line on what it includes.',
+          detail: 'How the work actually goes: what you need from them at the start, how long it takes, how often they hear from you.',
+          deliverable: 'What lands in their inbox at the end, and in what form.'
+        }
+      },
+      {
+        id: 'flService2',
+        type: SERVICE_CARD_COMPONENT,
+        label: 'the second service',
+        parameters: {
+          icon: 'layout-grid',
+          title: 'The second service',
+          price: 'From — say a number, or “on a day rate”',
+          line: 'One line on what it includes.',
+          detail: 'The same three things for this one. If two services have the same answer here, they are probably one service.',
+          deliverable: 'What they end up with, described as a thing rather than an activity.'
+        }
+      },
+      {
+        id: 'flService3',
+        type: SERVICE_CARD_COMPONENT,
+        label: 'the third service',
+        parameters: {
+          icon: 'line-chart',
+          title: 'The third service',
+          price: 'From — say a number, or “on a day rate”',
+          line: 'One line on what it includes.',
+          detail: 'Three services is the most a page like this can carry. If you have five, the other two belong on their own page.',
+          deliverable: 'What they end up with, described as a thing rather than an activity.'
+        }
+      }
     ]),
     ...section('flWork', 'flMain', 'surface', { eyebrow: 'Recent work', heading: 'Three pieces of work you are proud of' }, ['flWorkGrid']),
     ...grid('flWorkGrid', 'flWorkShell', [
@@ -1710,9 +1899,9 @@ const BUSINESS: Tpl003Component = {
     ]),
     ...section('bzOffer', 'bzMain', 'paper', { eyebrow: 'What we make', heading: 'Three things people come in for' }, ['bzOfferGrid']),
     ...grid('bzOfferGrid', 'bzOfferShell', [
-      { id: 'bzOffer1', type: PHOTO_CARD_COMPONENT, label: 'the first thing you sell', parameters: { picture: photo('food-bread.webp'), alt: 'Sourdough loaves', title: 'The first thing', line: 'One line on it: what it is, when it is ready, what it costs.' } },
-      { id: 'bzOffer2', type: PHOTO_CARD_COMPONENT, label: 'the second thing you sell', parameters: { picture: photo('food-plate.webp'), alt: 'A plated dish', title: 'The second thing', line: 'One line on it: what it is, when it is ready, what it costs.' } },
-      { id: 'bzOffer3', type: PHOTO_CARD_COMPONENT, label: 'the third thing you sell', parameters: { picture: photo('texture-coffee.webp'), alt: 'Roasted coffee beans', title: 'The third thing', line: 'One line on it: what it is, when it is ready, what it costs.' } }
+      { id: 'bzOffer1', type: PHOTO_CARD_COMPONENT, label: 'the first thing you sell', parameters: { picture: photo('food-bread.webp'), alt: 'Sourdough loaves', title: 'The first thing', line: 'One line on it: what it is, when it is ready, what it costs.', detail: 'What is in it, where it comes from, and what happens if somebody wants twenty of them.' } },
+      { id: 'bzOffer2', type: PHOTO_CARD_COMPONENT, label: 'the second thing you sell', parameters: { picture: photo('food-plate.webp'), alt: 'A plated dish', title: 'The second thing', line: 'One line on it: what it is, when it is ready, what it costs.', detail: 'What is in it, where it comes from, and what happens if somebody wants twenty of them.' } },
+      { id: 'bzOffer3', type: PHOTO_CARD_COMPONENT, label: 'the third thing you sell', parameters: { picture: photo('texture-coffee.webp'), alt: 'Roasted coffee beans', title: 'The third thing', line: 'One line on it: what it is, when it is ready, what it costs.', detail: 'What is in it, where it comes from, and what happens if somebody wants twenty of them.' } }
     ]),
     ...section('bzWhy', 'bzMain', 'surface', { eyebrow: 'Why here', heading: 'Three reasons this is the place' }, ['bzWhyGrid']),
     ...grid('bzWhyGrid', 'bzWhyShell', [
@@ -1903,12 +2092,78 @@ const LAUNCH: Tpl003Component = {
     place('lnStep3', STEP_COMPONENT, `${EDIT}the third step`, 'lnStepsList', { number: '03', title: 'The third step', line: 'What they have at the end that they did not have before.' }),
 
     // ── The price, two ways, one of them in ink ───────────────────────────
-    ...section('lnPricing', 'lnMain', 'paper', { eyebrow: 'The price', heading: 'Say the number' }, ['lnPlans']),
+    ...section('lnPricing', 'lnMain', 'paper', { eyebrow: 'The price', heading: 'Say the number' }, ['lnPeriodRow', 'lnPlans', 'lnPeriodNote']),
+    // ── TPL-004: monthly or yearly, from one node ─────────────────────────
+    //
+    // 🔴 **Seven values on ONE `States`, and that is the point.** A price, a
+    // second price, a line under the table and the two pills' own colours are
+    // all the same fact — *which period is selected* — read five ways. Split
+    // across a `Condition` per colour and an `Expression` per price it is nine
+    // nodes that can disagree with each other; here there is one node and no
+    // arrangement of it that can show a yearly price beside a lit "Monthly".
+    // ⚠️ `padding` is not a Group port — there are four, and the door refused the
+    // shorthand. Likewise `borderWidth`/`borderColor` are inert on a button whose
+    // `borderStyle` is `none`, so `OUTLINE` cannot be spread here: these two are
+    // built from their own parameters, and `States` supplies both colours.
+    group('lnPeriodRow', 'Monthly or yearly', 'lnPricingShell', {
+      sizeMode: 'contentSize',
+      flexDirection: 'row',
+      alignItems: 'center',
+      columnGap: 'var(--space-1)',
+      paddingTop: 'var(--space-1)',
+      paddingBottom: 'var(--space-1)',
+      paddingLeft: 'var(--space-1)',
+      paddingRight: 'var(--space-1)',
+      backgroundColor: 'var(--muted)',
+      borderRadius: 'var(--radius-full)'
+    }, ['lnPeriodMonthly', 'lnPeriodYearly']),
+    ...['Monthly', 'Yearly'].map((period) =>
+      button(`lnPeriod${period}`, period, 'lnPeriodRow', {
+        sizeMode: 'contentSize',
+        borderStyle: 'none',
+        borderRadius: 'var(--radius-full)',
+        paddingTop: 'var(--space-2)',
+        paddingBottom: 'var(--space-2)',
+        paddingLeft: 'var(--space-5)',
+        paddingRight: 'var(--space-5)',
+        fontSize: 'var(--text-sm)',
+        fontWeight: 'var(--font-semibold)',
+        backgroundColor: 'transparent',
+        color: 'var(--muted-foreground)',
+        cssClassName: 'pill pressable'
+      })
+    ),
+    text('lnPeriodNote', `${EDIT}what the yearly price actually saves them`, 'lnPricingShell', '', { ...T_META, textAlignX: 'center' }),
+    logic('lnPeriod', STATES_NODE, `${EDIT}the two prices, monthly and yearly`, {
+      states: 'monthly,yearly',
+      values: 'freePrice,paidPrice,note,mBg,mFg,yBg,yFg',
+      'type-freePrice': 'string',
+      'type-paidPrice': 'string',
+      'type-note': 'string',
+      'type-mBg': 'color',
+      'type-mFg': 'color',
+      'type-yBg': 'color',
+      'type-yFg': 'color',
+      'value-monthly-freePrice': 'Free',
+      'value-yearly-freePrice': 'Free',
+      'value-monthly-paidPrice': 'The number, a month',
+      'value-yearly-paidPrice': 'The number, a year',
+      'value-monthly-note': 'Say what a month costs. If you have not decided, say “pricing when we launch”.',
+      'value-yearly-note': 'Say what a year costs, and what that saves against paying monthly.',
+      'value-monthly-mBg': 'var(--surface-raised)',
+      'value-yearly-mBg': 'transparent',
+      'value-monthly-mFg': 'var(--foreground)',
+      'value-yearly-mFg': 'var(--muted-foreground)',
+      'value-monthly-yBg': 'transparent',
+      'value-yearly-yBg': 'var(--surface-raised)',
+      'value-monthly-yFg': 'var(--muted-foreground)',
+      'value-yearly-yFg': 'var(--foreground)',
+      useTransitions: false
+    }),
     { id: 'lnPlans', type: COLUMNS_NODE, label: 'Two plans', parent: 'lnPricingShell', parameters: { ...composition('columnsTwoUp'), marginX: px(24), marginY: px(24) }, children: ['lnPlanFreeCell', 'lnPlanPaidCell'] },
     group('lnPlanFreeCell', 'The free plan — its cell', 'lnPlans', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column' }, ['lnPlanFree']),
     place('lnPlanFree', PLAN_COMPONENT, `${EDIT}the first plan`, 'lnPlanFreeCell', {
       name: 'While it is in beta',
-      price: 'Free',
       line: 'For everyone who joins before launch.',
       point1: 'Everything it does today',
       point2: 'A say in what it does next',
@@ -1921,8 +2176,7 @@ const LAUNCH: Tpl003Component = {
     group('lnPlanPaidCell', 'The paid plan — its cell', 'lnPlans', { width: pct(100), sizeMode: 'contentHeight', flexDirection: 'column' }, ['lnPlanPaid']),
     place('lnPlanPaid', PLAN_COMPONENT, `${EDIT}the second plan`, 'lnPlanPaidCell', {
       name: 'After launch',
-      price: 'The number goes here',
-      line: 'Per month, or per year, or per seat — say which.',
+      line: 'Everything in the first plan, and the thing people pay for.',
       point1: 'Everything in the first plan',
       point2: 'The thing the paid plan adds',
       point3: 'The other thing it adds',
@@ -1955,14 +2209,24 @@ const LAUNCH: Tpl003Component = {
     wire('lnCtaButton', 'onClick', 'lnGoContact', 'go'),
     // Both plans lead to the form: the price is a reason to sign up, not a checkout.
     wire('lnPlanFree', 'chosen', 'lnGoContact', 'go'),
-    wire('lnPlanPaid', 'chosen', 'lnGoContact', 'go')
+    wire('lnPlanPaid', 'chosen', 'lnGoContact', 'go'),
+    // TPL-004 — the period toggle, and the five things it decides.
+    wire('lnPeriodMonthly', 'onClick', 'lnPeriod', 'to-monthly'),
+    wire('lnPeriodYearly', 'onClick', 'lnPeriod', 'to-yearly'),
+    wire('lnPeriod', 'freePrice', 'lnPlanFree', 'price'),
+    wire('lnPeriod', 'paidPrice', 'lnPlanPaid', 'price'),
+    wire('lnPeriod', 'note', 'lnPeriodNote', 'text'),
+    wire('lnPeriod', 'mBg', 'lnPeriodMonthly', 'backgroundColor'),
+    wire('lnPeriod', 'mFg', 'lnPeriodMonthly', 'color'),
+    wire('lnPeriod', 'yBg', 'lnPeriodYearly', 'backgroundColor'),
+    wire('lnPeriod', 'yFg', 'lnPeriodYearly', 'color')
   ]
 };
 
 // ── Author order ─────────────────────────────────────────────────────────────
 
 /** The parts a page places, before the pages that place them. */
-export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, STEP, STAT, PHOTO_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
+export const TPL003_PARTS: Tpl003Component[] = [SCROLL_TO, SWITCHER, HEADER, FOOTER, FEATURE, SERVICE_CARD, STEP, STAT, PHOTO_CARD, QUOTE, FAQ_ROW, HOURS_ROW, EMAIL_CHECK, FIELD_PART, CONTACT, CHECK, MOCK_ROW, MOCK, BIG_STAT, PLAN];
 
 /** The pages. 🔴 The first one written becomes the router's start page, and it must be the freelancer look at `/`. */
 export const TPL003_PAGES: Tpl003Component[] = [FREELANCER, BUSINESS, LAUNCH];
