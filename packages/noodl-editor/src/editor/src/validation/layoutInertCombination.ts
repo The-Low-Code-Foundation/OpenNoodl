@@ -25,6 +25,15 @@
  *    The SAME wire into `width` on the same node works, because a percentage on the cross axis
  *    stays a real CSS length — which is why the discriminator is the axis and not the port.
  *
+ *  - **`column-children-split-a-fixed-height`** (FLD-005, #35): two or more children of a column
+ *    parent that HAS a definite height, each at the default `100%`. They do not multiply out —
+ *    `layout.ts` sets `flex-shrink: 1` on the same branch as `flex-grow` — they take an equal
+ *    SHARE, and the share replaces the height their content wanted. Measured
+ *    (`fld005ColumnMultipliesOut.test.ts`): five rows of one to five lines in an 800px parent come
+ *    back 160px each, and a `card` (which ships `clip: true`) in a 300px parent loses six of its
+ *    ten lines off the bottom. 🔴 The parent's definite height is the whole condition: without it
+ *    there is no free space, nothing grows, and the issue's own smallest graph renders correctly.
+ *
  *  - **`justify-content-distributes-nothing`** (D32): every visual node's `width` defaults to
  *    `100%` (`node-shared-port-definitions.ts`), and `layout.ts` turns a percentage width inside
  *    a `row` parent into `flexGrow`. So growing is what a child of a row does unless something
@@ -141,6 +150,29 @@ export function widthIsPercentage(value: unknown): boolean | undefined {
   return undefined;
 }
 
+/**
+ * Whether a resolved dimension is the port's own **`100%`** rather than a proportion somebody
+ * chose. FLD-005 is about the value nobody looked at: `width` and `height` both declare
+ * `default: 100, defaultUnit: '%'`, so a node that says nothing says `100%`.
+ *
+ * 🔴 An authored `40%` is NOT this defect and must not be reported as one. Measured on the corpus:
+ * `Erleah-2`'s login form is an 86vh column holding a `Logo` at `40%` and a `Data input` at the
+ * default — the author asked for two-fifths and got 40/(40+100), which is a real mistake about the
+ * arithmetic and is `wired-dimension-becomes-grow`'s family of sentence, not this one. Counting it
+ * here would make this rule's own message ("sized by the default 100%") false about the node it
+ * names, which is the one thing a diagnostic may never be.
+ */
+function isTheDefaultFullSize(value: unknown): boolean {
+  if (value === undefined || value === null || value === '') return true; // the port default: 100%
+  if (typeof value === 'number') return value === 100;
+  if (typeof value === 'object') {
+    const v = value as { value?: unknown; unit?: unknown };
+    return v.unit === '%' && v.value === 100;
+  }
+  if (typeof value === 'string') return /^\s*100\s*%\s*$/.test(value);
+  return false;
+}
+
 interface ResolvedChild {
   node: LayoutNode;
   /** `sizeMode` after the catalog default is merged under the authored bag. */
@@ -179,6 +211,12 @@ const D28_EXIT =
 const D32_EXIT =
   'Give every child that should hug its content sizeMode "contentSize" (or a px width) so free space exists to ' +
   'distribute — or drop justifyContent and let one growing child fill the row.';
+
+/** FLD-005's exit. The first half is what every shipped style composition now does. */
+const FLD005_EXIT =
+  'Give each child sizeMode "contentHeight" so its height comes from its own content and its width still ' +
+  'comes from the column — that is what every composition in the style vocabulary now ships — or take the ' +
+  'fixed height off this parent and let the column be as tall as what is in it.';
 
 /** FLD-004's exit, and it is the one the runtime half prints too. */
 const FLD004_EXIT =
@@ -267,7 +305,9 @@ function checkWiredMainAxisDimensions(
         `"${port}" on this ${child.type} is wired, and the parent stacks its children along that same axis ` +
         `(${axis === 'row' ? 'Layout: Horizontal' : 'Layout: Vertical'}). A bare number arriving here is read as a ` +
         `PERCENTAGE — dimension ports default to "%" — and a percentage on the parent's main axis becomes ` +
-        `flex-grow, which is a ratio against the siblings that also grow, not a ${axis === 'row' ? 'width' : 'height'}. ` +
+        `flex-grow, which is a ratio against the siblings that also grow, not a ${
+          axis === 'row' ? 'width' : 'height'
+        }. ` +
         `So the value arrives, the connection is live, and the box does not move. ${FLD004_EXIT}`,
       location: {
         component,
@@ -285,6 +325,106 @@ function checkWiredMainAxisDimensions(
 }
 
 /**
+ * Whether `parent` holds a height this rule can call **definite** — the only circumstance in which
+ * `flexGrow` has anything to distribute, and therefore the only circumstance in which FLD-005's
+ * defect exists at all.
+ *
+ * Definite here means stated on the node itself: a `sizeMode` that assigns `style.height`
+ * (`explicit` or `contentWidth`) together with a `height` that is NOT a percentage. A height
+ * inherited down a chain of explicit ancestors is definite too and is **not** detected — that
+ * needs the whole tree and this rule sees one parent, so it abstains, which is the quiet
+ * direction. A `Page` is not definite: measured, its content box is sized by its content, and the
+ * issue's own smallest graph renders correctly underneath one.
+ */
+function hasDefiniteHeight(
+  parent: LayoutNode,
+  catalog: CatalogIndex,
+  connected: ReadonlySet<string> | undefined
+): boolean {
+  if (connected?.has(`${parent.id}::sizeMode`) || connected?.has(`${parent.id}::height`)) return false;
+  const resolved = resolveAgainstDefaults(parent.parameters ?? {}, catalog.inputDefaults(parent.type));
+  const sizeMode = resolved['sizeMode'];
+  if (typeof sizeMode !== 'string' || !SIZE_MODES_READING.height.has(sizeMode)) return false;
+  return widthIsPercentage(resolved['height']) === false;
+}
+
+/**
+ * FLD-005 (#35) — children of a definite-height column sharing it out between them.
+ *
+ * Reported from the PARENT, once, because the definite height is the parent's fact and the repair
+ * is a decision about the column. The abstentions:
+ *
+ *  - the parent does not lay out on the column axis, or lays out on none (see {@link parentAxis});
+ *  - the parent's own height is not definite, which is the majority of every corpus and the state
+ *    in which nothing goes wrong — measured, not assumed;
+ *  - fewer than two children grow: one child filling a fixed band is the shipped idiom, and is
+ *    what `imageGround` is FOR;
+ *  - a child whose `sizeMode` never reads `height`, whose `height` is a real length, which is out
+ *    of flow, whose sizing is wired, or which is a component instance whose root is not in this
+ *    graph;
+ *  - a child carrying an authored proportion — `40%`, not `100%`. That author asked for a share
+ *    and got a slightly different share; this rule is about the share nobody asked for. See
+ *    {@link isTheDefaultFullSize}.
+ */
+function checkColumnChildrenSplitAFixedHeight(
+  parent: LayoutNode,
+  byId: Map<string, LayoutNode>,
+  component: string,
+  catalog: CatalogIndex,
+  connected: ReadonlySet<string> | undefined
+): Diagnostic[] {
+  if (parentAxis(parent, catalog) !== 'column') return [];
+  if (!hasDefiniteHeight(parent, catalog, connected)) return [];
+
+  const sharing: LayoutNode[] = [];
+  for (const id of parent.children ?? []) {
+    const child = byId.get(id);
+    if (!child) continue;
+    if (isComponentRef(child.type)) continue;
+    const type = catalog.getNode(child.type);
+    if (!type?.isVisual) continue;
+    if (connected?.has(`${child.id}::sizeMode`) || connected?.has(`${child.id}::height`)) continue;
+    if (connected?.has(`${child.id}::position`)) continue;
+
+    const resolved = resolveAgainstDefaults(child.parameters ?? {}, catalog.inputDefaults(child.type));
+    const position = resolved['position'];
+    if (position !== undefined && position !== 'relative') continue;
+    const sizeMode = resolved['sizeMode'];
+    if (typeof sizeMode !== 'string' || !SIZE_MODES_READING.height.has(sizeMode)) continue;
+    if (widthIsPercentage(resolved['height']) !== true) continue;
+    // 🔴 Only the port's own 100%. An authored proportion is a different mistake — see
+    // {@link isTheDefaultFullSize}.
+    if (!isTheDefaultFullSize(child.parameters?.['height'])) continue;
+    sharing.push(child);
+  }
+
+  if (sharing.length < 2) return [];
+
+  const names = sharing.map((c) => c.label || c.id).join(', ');
+  return [
+    {
+      code: DiagnosticCode.ColumnChildrenSplitAFixedHeight,
+      severity: 'warning',
+      message:
+        `This ${parent.type} has a fixed height and stacks its children (Layout: Vertical), and ${sharing.length} of ` +
+        `them (${names}) are sized by the default "100%" — which on the parent's own axis means "grow". They end up ` +
+        `with an EQUAL SHARE of the height, not the height of what is inside them: a one-line row and a five-line ` +
+        `row come out the same size. Anything taller than its share is not scrolled and not overflowed — a Group ` +
+        `with "clip" on simply cuts it off, with nothing reported. ${FLD005_EXIT}`,
+      location: {
+        component,
+        nodeId: parent.id,
+        nodeType: parent.type,
+        ...(parent.label ? { nodeLabel: parent.label } : {}),
+        port: 'height',
+        plug: 'input' as const
+      },
+      suggestion: 'sizeMode: "contentHeight"'
+    }
+  ];
+}
+
+/**
  * DEF-018 + DEF-020 — layout combinations in which a declared parameter does nothing, silently.
  */
 export function checkLayoutInertCombination(
@@ -298,6 +438,9 @@ export function checkLayoutInertCombination(
   for (const node of nodes) {
     // ── FLD-004: a number wired into the child's main-axis dimension ────────
     diagnostics.push(...checkWiredMainAxisDimensions(node, byId, component, catalog, connectedInputs));
+
+    // ── FLD-005: a definite-height column whose children share it out ───────
+    diagnostics.push(...checkColumnChildrenSplitAFixedHeight(node, byId, component, catalog, connectedInputs));
 
     // ── D28: a Columns child that keeps its own width ───────────────────────
     if (node.type === COLUMNS_TYPE) {
@@ -349,7 +492,10 @@ export function checkLayoutInertCombination(
       // justifyContent DOES distribute. Whether the cap binds depends on values this rule
       // cannot resolve, so a maxWidth child is unknowable, not growing.
       const maxWidth = childResolved['maxWidth'];
-      if ((maxWidth !== undefined && maxWidth !== null && maxWidth !== '') || connectedInputs?.has(`${child.id}::maxWidth`))
+      if (
+        (maxWidth !== undefined && maxWidth !== null && maxWidth !== '') ||
+        connectedInputs?.has(`${child.id}::maxWidth`)
+      )
         return false;
       return widthIsPercentage(childResolved['width']) === true;
     });

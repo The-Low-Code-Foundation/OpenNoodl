@@ -24,13 +24,12 @@
  *
  * @module scripts/def018-020-corpus-layout
  */
-
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { CatalogIndex } from '../packages/noodl-editor/src/editor/src/validation/CatalogIndex';
 import { connectedInputs } from '../packages/noodl-editor/src/editor/src/validation/authoredCandidate';
 import { defaultCatalog } from '../packages/noodl-editor/src/editor/src/validation/catalog';
+import { CatalogIndex } from '../packages/noodl-editor/src/editor/src/validation/CatalogIndex';
 import { DiagnosticCode } from '../packages/noodl-editor/src/editor/src/validation/diagnostics';
 import {
   checkLayoutInertCombination,
@@ -104,7 +103,9 @@ function readComponents(target: string): ReadComponent[] {
         const component = fs.existsSync(path.join(dir, 'component.json'))
           ? readJson(path.join(dir, 'component.json'))
           : {};
-        const nodesFile = fs.existsSync(path.join(dir, 'nodes.json')) ? readJson(path.join(dir, 'nodes.json')) : { nodes: [] };
+        const nodesFile = fs.existsSync(path.join(dir, 'nodes.json'))
+          ? readJson(path.join(dir, 'nodes.json'))
+          : { nodes: [] };
         const connections = fs.existsSync(path.join(dir, 'connections.json'))
           ? readJson(path.join(dir, 'connections.json'))
           : { connections: [] };
@@ -158,10 +159,19 @@ function main(): void {
   // D32 denominators.
   let rowGroups = 0;
   let distributingRows = 0;
+  // FLD-005 denominators. `columnGroups` is the population a rule keyed on the ISSUE'S OWN
+  // sentence would report — a column Group with two or more children and no sizeMode — and
+  // `fixedHeightColumns` is the one this rule actually reports. The gap between them is the
+  // measurement that decided the shape.
+  let columnGroups = 0;
+  let columnGroupsWithSiblings = 0;
+  let fixedHeightColumns = 0;
   const d28Lines: string[] = [];
   const d32Lines: string[] = [];
+  const f05Lines: string[] = [];
   const d28Projects = new Set<string>();
   const d32Projects = new Set<string>();
+  const f05Projects = new Set<string>();
 
   for (const dir of projects) {
     let components: ReadComponent[];
@@ -186,6 +196,19 @@ function main(): void {
           const j = n.parameters?.['justifyContent'];
           if (j === 'space-between' || j === 'space-around' || j === 'space-evenly') distributingRows++;
         }
+        if (
+          n.type === 'Group' &&
+          n.parameters?.['flexDirection'] !== 'row' &&
+          n.parameters?.['flexDirection'] !== 'none'
+        ) {
+          columnGroups++;
+          if ((n.children ?? []).length >= 2) columnGroupsWithSiblings++;
+          const h = n.parameters?.['height'] as { unit?: string } | undefined;
+          const sm = n.parameters?.['sizeMode'];
+          if ((sm === 'explicit' || sm === 'contentWidth') && h && typeof h === 'object' && h.unit && h.unit !== '%') {
+            fixedHeightColumns++;
+          }
+        }
       }
 
       const found = checkLayoutInertCombination(nodes, {
@@ -202,6 +225,10 @@ function main(): void {
           else d28DefaultHits++;
           d28Projects.add(projectName);
           d28Lines.push(`  [${authored ? 'authored' : 'type-default'}] ${where} (${d.location.nodeType})`);
+        } else if (d.code === DiagnosticCode.ColumnChildrenSplitAFixedHeight) {
+          f05Projects.add(projectName);
+          const m = d.message.match(/(\d+) of/);
+          f05Lines.push(`  [${m ? m[1] : '?'} sharing] ${where}`);
         } else if (d.code === DiagnosticCode.JustifyContentDistributesNothing) {
           d32Projects.add(projectName);
           const m = d.message.match(/(\d+) children/);
@@ -216,7 +243,9 @@ function main(): void {
   console.log(`D28 columns-child-keeps-own-width`);
   console.log(`  denominators: ${columnsNodes} Columns nodes, ${columnsChildren} direct children`);
   console.log(
-    `  firings: ${d28AuthoredHits + d28DefaultHits} (${d28AuthoredHits} authored sizeMode, ${d28DefaultHits} from the type default) in ${d28Projects.size} projects`
+    `  firings: ${
+      d28AuthoredHits + d28DefaultHits
+    } (${d28AuthoredHits} authored sizeMode, ${d28DefaultHits} from the type default) in ${d28Projects.size} projects`
   );
   for (const line of d28Lines) console.log(line);
   console.log('');
@@ -224,6 +253,14 @@ function main(): void {
   console.log(`  denominators: ${rowGroups} row Groups, ${distributingRows} with a distributing justifyContent`);
   console.log(`  firings: ${d32Lines.length} in ${d32Projects.size} projects`);
   for (const line of d32Lines) console.log(line);
+  console.log('');
+  console.log(`FLD-005 column-children-split-a-fixed-height`);
+  console.log(
+    `  denominators: ${columnGroups} column Groups, ${columnGroupsWithSiblings} with 2+ children, ` +
+      `${fixedHeightColumns} with a fixed (non-%) height`
+  );
+  console.log(`  firings: ${f05Lines.length} in ${f05Projects.size} projects`);
+  for (const line of f05Lines) console.log(line);
 }
 
 main();

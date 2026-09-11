@@ -774,6 +774,38 @@ export enum DiagnosticCode {
   WiredDimensionBecomesGrow = 'wired-dimension-becomes-grow',
 
   /**
+   * FLD-005 (P84 #35) — two or more children of a column parent that has a
+   * **definite** height, each of them sized `100%` by default: they do not
+   * multiply out, they take an **equal share of the parent**, and that share
+   * silently replaces whatever height their content wanted.
+   *
+   * `Group`'s `sizeMode` defaults to `explicit` and both dimension ports default
+   * to `100%` (`node-shared-port-definitions.ts`), so `layout.ts` stamps
+   * `height: 100%; flex-grow: 100` on any Group that does not say otherwise.
+   * Measured in real Chrome (`fld005ColumnMultipliesOut.test.ts`): five rows
+   * carrying one, two, three, four and five lines of text, inside an 800px
+   * parent, render at **160px each** — one line and five lines the same
+   * number, none of them the content's height. With a 300px parent and the
+   * `card` composition, which ships `clip: true`, the tallest row loses **six of
+   * its ten lines** off the bottom, with zero validation errors.
+   *
+   * 🔴 **The definite height on the parent is the whole condition, and it is why
+   * this is not a whole-corpus report.** `layout.ts` sets `flex-shrink: 1` on
+   * the same branch that sets `flex-grow`, so where no ancestor holds a definite
+   * height there is no free space, nothing grows, and every child lands at its
+   * content height — the issue's own smallest graph renders correctly, measured.
+   * That is also why the reporter's word for it, *"multiplies out"*, does not
+   * appear in the message: the page does not get taller, the content gets cut.
+   *
+   * Fires from the **parent**, once, at **warning** severity: the definite
+   * height is the parent's fact, and the repair is a decision about the column
+   * rather than about any one child. Deliberately not in
+   * `AUTHORED_BLOCKING_WARNINGS` on first ship, on this file's standing
+   * convention. See `layoutInertCombination.ts` for the abstentions.
+   */
+  ColumnChildrenSplitAFixedHeight = 'column-children-split-a-fixed-height',
+
+  /**
    * DEF-024 (P78 D36) — a `mounted`/`visible` input whose every writer is a
    * constant-condition `Condition`, and the only value those writers can push
    * is `true`: the element can be shown but never put away again within a page
@@ -1202,7 +1234,10 @@ export interface ValidationReport {
 
 // ─── Construction helpers ──────────────────────────────────────────────────────
 
-export function summarize(diagnostics: Diagnostic[], counters: { nodesChecked: number; endpointsChecked: number }): ValidationSummary {
+export function summarize(
+  diagnostics: Diagnostic[],
+  counters: { nodesChecked: number; endpointsChecked: number }
+): ValidationSummary {
   let errors = 0;
   let warnings = 0;
   let infos = 0;

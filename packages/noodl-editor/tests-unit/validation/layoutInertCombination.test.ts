@@ -17,7 +17,11 @@
  *    edit cannot promote silently (the `unlabelled-node` pattern).
  */
 
-import { authoredPreconditionDiagnostics, connectedInputs, isBlockingForAuthoredOutput } from '../../src/editor/src/validation/authoredCandidate';
+import {
+  authoredPreconditionDiagnostics,
+  connectedInputs,
+  isBlockingForAuthoredOutput
+} from '../../src/editor/src/validation/authoredCandidate';
 import { loadDefaultCatalog } from '../../src/editor/src/validation/catalog';
 import { DiagnosticCode, type Diagnostic } from '../../src/editor/src/validation/diagnostics';
 import {
@@ -41,7 +45,9 @@ function run(nodes: LayoutNode[], wired?: ReadonlySet<string>): Diagnostic[] {
   return checkLayoutInertCombination(nodes, { component: COMPONENT, catalog, connectedInputs: wired });
 }
 
-function columnsWith(children: Array<{ id: string; type?: string; parameters?: Record<string, unknown> }>): LayoutNode[] {
+function columnsWith(
+  children: Array<{ id: string; type?: string; parameters?: Record<string, unknown> }>
+): LayoutNode[] {
   return [
     {
       id: 'cols',
@@ -49,7 +55,26 @@ function columnsWith(children: Array<{ id: string; type?: string; parameters?: R
       parameters: { sizing: 'autoFit', minWidth: 120 },
       children: children.map((c) => c.id)
     } as LayoutNode,
-    ...children.map((c) => ({ id: c.id, type: c.type ?? BUTTON, parameters: c.parameters ?? {} }) as LayoutNode)
+    ...children.map((c) => ({ id: c.id, type: c.type ?? BUTTON, parameters: c.parameters ?? {} } as LayoutNode))
+  ];
+}
+
+/**
+ * FLD-005's shape: a column parent whose height is whatever `parent` says, holding `children`.
+ * The default parent is the defect's own — `sizeMode: 'explicit'` with a real px height.
+ */
+function fixedColumnWith(
+  children: Array<{ id: string; type?: string; parameters?: Record<string, unknown> }>,
+  parent: Record<string, unknown> = { sizeMode: 'explicit', height: { value: 800, unit: 'px' } }
+): LayoutNode[] {
+  return [
+    {
+      id: 'box',
+      type: 'Group',
+      parameters: { flexDirection: 'column', ...parent },
+      children: children.map((c) => c.id)
+    } as LayoutNode,
+    ...children.map((c) => ({ id: c.id, type: c.type ?? 'Group', parameters: c.parameters ?? {} } as LayoutNode))
   ];
 }
 
@@ -65,7 +90,7 @@ function rowWith(
       parameters: { flexDirection: 'row', justifyContent, ...rowParameters },
       children: children.map((c) => c.id)
     } as LayoutNode,
-    ...children.map((c) => ({ id: c.id, type: c.type ?? 'Text', parameters: c.parameters ?? {} }) as LayoutNode)
+    ...children.map((c) => ({ id: c.id, type: c.type ?? 'Text', parameters: c.parameters ?? {} } as LayoutNode))
   ];
 }
 
@@ -153,10 +178,7 @@ describe('DEF-020 — justify-content-distributes-nothing', () => {
   it('is silent when a child’s width is a px value — a fixed width does not grow', () => {
     expect(
       run(
-        rowWith('space-between', [
-          { id: 'left' },
-          { id: 'right', parameters: { width: { value: 240, unit: 'px' } } }
-        ])
+        rowWith('space-between', [{ id: 'left' }, { id: 'right', parameters: { width: { value: 240, unit: 'px' } } }])
       )
     ).toEqual([]);
   });
@@ -205,9 +227,7 @@ describe('DEF-020 — justify-content-distributes-nothing', () => {
   });
 
   it('does not count an absolutely-positioned child — out of flow, out of the distribution', () => {
-    expect(
-      run(rowWith('space-between', [{ id: 'a' }, { id: 'b', parameters: { position: 'absolute' } }]))
-    ).toEqual([]);
+    expect(run(rowWith('space-between', [{ id: 'a' }, { id: 'b', parameters: { position: 'absolute' } }]))).toEqual([]);
   });
 
   it('still fires with three growers — the floor is two, not exactly-two', () => {
@@ -256,8 +276,15 @@ describe('reached through the shared precondition set, and advisory on purpose',
   });
 
   it('neither code blocks authored output — advisory until a calibration earns promotion, and not silently', () => {
-    expect(isBlockingForAuthoredOutput({ code: DiagnosticCode.ColumnsChildKeepsOwnWidth, severity: 'warning' } as Diagnostic)).toBe(false);
-    expect(isBlockingForAuthoredOutput({ code: DiagnosticCode.JustifyContentDistributesNothing, severity: 'warning' } as Diagnostic)).toBe(false);
+    expect(
+      isBlockingForAuthoredOutput({ code: DiagnosticCode.ColumnsChildKeepsOwnWidth, severity: 'warning' } as Diagnostic)
+    ).toBe(false);
+    expect(
+      isBlockingForAuthoredOutput({
+        code: DiagnosticCode.JustifyContentDistributesNothing,
+        severity: 'warning'
+      } as Diagnostic)
+    ).toBe(false);
   });
 });
 
@@ -322,7 +349,12 @@ describe('FLD-004 — wired-dimension-becomes-grow', () => {
 
   it('abstains under a Columns — its children never receive a parentLayout at all (D28 owns that graph)', () => {
     const nodes: LayoutNode[] = [
-      { id: 'parent', type: COLUMNS, parameters: { sizing: 'autoFit', minWidth: 120 }, children: ['box'] } as LayoutNode,
+      {
+        id: 'parent',
+        type: COLUMNS,
+        parameters: { sizing: 'autoFit', minWidth: 120 },
+        children: ['box']
+      } as LayoutNode,
       { id: 'box', type: 'Group', parameters: {} } as LayoutNode
     ];
     expect(run(nodes, WIRED_HEIGHT)).toEqual([]);
@@ -372,7 +404,7 @@ describe('FLD-004 — wired-dimension-becomes-grow', () => {
     const ids = ['a', 'b', 'c'];
     const nodes: LayoutNode[] = [
       { id: 'parent', type: 'Group', parameters: { flexDirection: 'column' }, children: ids } as LayoutNode,
-      ...ids.map((id) => ({ id, type: 'Group', parameters: {} }) as LayoutNode)
+      ...ids.map((id) => ({ id, type: 'Group', parameters: {} } as LayoutNode))
     ];
     const found = run(nodes, new Set(ids.map((id) => `${id}::height`)));
     expect(found.map((d) => d.location.nodeId)).toEqual(ids);
@@ -385,6 +417,132 @@ describe('FLD-004 — wired-dimension-becomes-grow', () => {
     expect(run(stack('column'), wired).map((d) => d.code)).toEqual([DiagnosticCode.WiredDimensionBecomesGrow]);
     expect(
       isBlockingForAuthoredOutput({ code: DiagnosticCode.WiredDimensionBecomesGrow, severity: 'warning' } as Diagnostic)
+    ).toBe(false);
+  });
+
+  // ── FLD-005 (#35) — a definite-height column whose children share it out ──────────────────
+  //
+  // The runtime readings these stand on are in `noodl-mcp/tests/fld005ColumnMultipliesOut.test.ts`:
+  // five rows of one to five lines inside an 800px parent come back 160px each, and a `card` in a
+  // 300px parent loses six of its ten lines. The mutants each arm exists to redden:
+  //  - drop the `hasDefiniteHeight` guard → the content-height-parent arm reddens, and it is the
+  //    arm that keeps this rule off the whole corpus.
+  //  - drop the `>= 2` floor to `>= 1` → the single-child arm reddens.
+  //  - accept a px height on a child as growing → the px-child arm reddens.
+  //  - drop `resolveAgainstDefaults` → the bare-children arm reddens: the defect is entirely made
+  //    of DEFAULTS, so answering from the authored bag alone sees nothing at all.
+  //  - fire per child instead of per parent → the cardinality arm reddens.
+  //  - promote the code to `AUTHORED_BLOCKING_WARNINGS` → the severity arm reddens.
+
+  it('FLD-005 — two bare Groups in a fixed-height column are reported, once, on the parent', () => {
+    const found = run(fixedColumnWith([{ id: 'a' }, { id: 'b' }]));
+    expect(found.map((d) => d.code)).toEqual([DiagnosticCode.ColumnChildrenSplitAFixedHeight]);
+    expect(found[0].location.nodeId).toBe('box');
+    expect(found[0].location.port).toBe('height');
+    // The children are named, because "which ones" is the first thing the author asks.
+    expect(found[0].message).toContain('2 of');
+  });
+
+  it('FLD-005 BOTH ARMS — the same column whose children set contentHeight is silent', () => {
+    const found = run(
+      fixedColumnWith([
+        { id: 'a', parameters: { sizeMode: 'contentHeight', width: { value: 100, unit: '%' } } },
+        { id: 'b', parameters: { sizeMode: 'contentHeight', width: { value: 100, unit: '%' } } }
+      ])
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('FLD-005 — the parent WITHOUT a definite height is silent: there is no free space to share', () => {
+    // #35's own smallest graph. Measured in Chrome: every row lands at its content height and the
+    // page is the viewport. A rule that fired here would report the whole corpus for nothing.
+    const found = run(fixedColumnWith([{ id: 'a' }, { id: 'b' }], { sizeMode: 'contentHeight' }));
+    expect(found).toEqual([]);
+    // And the default parent — no sizeMode at all, which is the majority of every project.
+    expect(run(fixedColumnWith([{ id: 'a' }, { id: 'b' }], {}))).toEqual([]);
+  });
+
+  it('FLD-005 — a parent whose height is a PERCENTAGE is not definite either', () => {
+    const found = run(
+      fixedColumnWith([{ id: 'a' }, { id: 'b' }], { sizeMode: 'explicit', height: { value: 100, unit: '%' } })
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('FLD-005 — one growing child is the shipped idiom and is not reported', () => {
+    const found = run(fixedColumnWith([{ id: 'a' }]));
+    expect(found).toEqual([]);
+    // Two children, only one of which grows, is the same case.
+    expect(run(fixedColumnWith([{ id: 'a' }, { id: 'b', parameters: { sizeMode: 'contentHeight' } }]))).toEqual([]);
+  });
+
+  it('FLD-005 — a child with a real px height keeps it and does not grow', () => {
+    const found = run(
+      fixedColumnWith([
+        { id: 'a', parameters: { height: { value: 120, unit: 'px' } } },
+        { id: 'b', parameters: { height: { value: 120, unit: 'px' } } }
+      ])
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('FLD-005 — a row parent is not this rule: a percentage height there stays a length', () => {
+    const found = run(
+      fixedColumnWith([{ id: 'a' }, { id: 'b' }], {
+        flexDirection: 'row',
+        sizeMode: 'explicit',
+        height: { value: 800, unit: 'px' }
+      })
+    );
+    expect(found.some((d) => d.code === DiagnosticCode.ColumnChildrenSplitAFixedHeight)).toBe(false);
+  });
+
+  it('FLD-005 — a wired sizing port on a child makes it unknowable, not guilty', () => {
+    const nodes = fixedColumnWith([{ id: 'a' }, { id: 'b' }]);
+    const found = run(
+      nodes,
+      connectedInputs([{ fromId: 'x', fromProperty: 'v', toId: 'a', toProperty: 'height' }] as never)
+    );
+    expect(found.some((d) => d.code === DiagnosticCode.ColumnChildrenSplitAFixedHeight)).toBe(false);
+    // 🔴 And the neighbour DOES speak, which is the point of separating them: a wired height on
+    // the main axis is FLD-004's sentence, and one mistake gets one repair, not two.
+    expect(found.map((d) => d.code)).toEqual([DiagnosticCode.WiredDimensionBecomesGrow]);
+  });
+
+  it('FLD-005 — an out-of-flow child neither grows nor takes part', () => {
+    const found = run(
+      fixedColumnWith([
+        { id: 'a', parameters: { position: 'absolute' } },
+        { id: 'b', parameters: { position: 'absolute' } }
+      ])
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('FLD-005 — a component instance child is skipped: its root sizing is not in this graph', () => {
+    const found = run(
+      fixedColumnWith([
+        { id: 'a', type: '/Comps/Row' },
+        { id: 'b', type: '/Comps/Row' }
+      ])
+    );
+    expect(found).toEqual([]);
+  });
+
+  it('FLD-005 CARDINALITY — five sharing children are ONE report, not five', () => {
+    const found = run(fixedColumnWith([{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }]));
+    expect(found.length).toBe(1);
+    expect(found[0].message).toContain('5 of');
+  });
+
+  it('FLD-005 SEVERITY — a warning, and not blocking for authored output on first ship', () => {
+    const found = run(fixedColumnWith([{ id: 'a' }, { id: 'b' }]));
+    expect(found[0].severity).toBe('warning');
+    expect(
+      isBlockingForAuthoredOutput({
+        code: DiagnosticCode.ColumnChildrenSplitAFixedHeight,
+        severity: 'warning'
+      } as Diagnostic)
     ).toBe(false);
   });
 });
