@@ -4,11 +4,18 @@
 Read [README.md](./README.md) first — §2 carries the rulings; **R1 is answered (0.2.3)** and four
 still gate tasks.
 
-🔴 **READ §7 BEFORE ANYTHING ELSE.** CI was blind for 34 days, session 10 restored it, and it came
-back with **six red gates**. Three of them are one command each. That is now the largest pile of
-loose work attached to this phase and none of it is FLD work.
+🔴 **READ §8 BEFORE ANYTHING ELSE.** CI was blind for 34 days, session 10 restored it, and it came
+back with **six red gates**. Session 13 took **four** of them and left three, and none of that is
+FLD work. 🔴 **The phase still has NO ungated FLD task** — every remaining one is behind a ruling
+or a Linux box, and the rulings were re-derived from GitHub on 2026-09-11 with **none answered**.
 
-## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 12)
+🔴 **NOTHING IS PUSHED.** `origin/cline-dev` is at `aedcc4d79` (2026-09-10 20:07) and local is
+**21 commits ahead**. Every reading in §8 that says "CI" was taken on a commit that does not
+contain this phase's last three sessions — including `aedc51f64`'s minification, which §10(c) asks
+someone to watch the first CI run for. **A push is the single highest-value act available**, and it
+is Richard's to authorise.
+
+## 1. The board — re-derived from the task FILES, 2026-09-11 (end of session 13, UNCHANGED by it)
 
 Seventeen task files, each grepped for its own marker. **TEN built, ONE partly built, six never
 built.** That is the file count, not a copied status. Re-derive it, do not inherit this table:
@@ -58,15 +65,86 @@ needs **P13**. Do not start either without the ruling.
 | FLD-017 | The release stops shipping what it never runs | #42 | 🟢 **BUILT** `07f6a7e74` + `aedc51f64` — asar **−40.7%**, idle **2.42% → 0.14%** · ✅ **replied ×2 + CLOSED** | R5 ✅ |
 
 🔴 **ONE task is `🟡 PARTLY BUILT`: FLD-016.** All four fixes are in and AC2/AC4/AC5 are measured,
-but **AC1 and AC3 cannot be measured on any machine we have** — see §9. FLD-011 stopped being the
+but **AC1 and AC3 cannot be measured on any machine we have** — see §10. FLD-011 stopped being the
 other one in session 12.
 
 🔴 **There is now NO ungated FLD work left at all.** Every remaining task is behind a ruling
 (FLD-004/R4, FLD-005/P13, FLD-014/P25, FLD-015/R2+P9, FLD-003/R3, FLD-010/R6) or behind a Linux box
-(FLD-016). The next session's first job is therefore §7's red CI or a register row, **not** an FLD
+(FLD-016). The next session's first job is therefore §8's red CI or a register row, **not** an FLD
 task — unless a ruling has been answered in the meantime, in which case that ruling's task is the job.
 
-## 2. What session 12 built — FLD-011's last half, `01ea605cc`
+## 2. What session 13 did — four red gates, and THREE of them were a source of truth that moved
+
+**Session 13 built no FLD task, because §1 is right that there is no ungated one.** It took §8's
+red CI instead, which §5 had already ranked first. `b1ca71f5b` and `3fe956fd7`.
+
+🔴 **The headline is not that four gates went green. It is that the phase's own instructions for
+two of them were WRONG, and following them would have shipped a regression.**
+
+**`cloud-library:check` — the only one that was genuinely one command.** The artefact was last
+built 2026-08-30 (`ab17845d1`); `noodl.cloud.listusersinrole` landed 2026-08-31 in `ab6772587`
+(P80/DEF-005) and nothing regenerated after it. **181 insertions, 6 deletions — and all six
+deletions are the `-` half of five reworded descriptions plus one changed default**
+(`substring`'s End, `0` → `-1`), so nothing was clobbered. New ports `locale`, `roles`, `origin`.
+
+🔴 **`starter-iconset:check` was red BECAUSE the artefact had been hand-edited, so the documented
+fix would have UNDONE the work that made it red.** VIB-007 (`03c327c84`) put `icon-inbox`,
+`icon-recycle` and `icon-sprout` straight into the generated `manifest.json` — 212 → 215,
+deliberately — and never added them to `CURATED` in the generator. The fix is in the SOURCE list;
+**the manifest is byte-identical and this ships zero product difference.** Register **P36**.
+⚠️ Measured the hard way: an exploratory `node -e "require('./scripts/library/make-starter-iconset.js')"`
+**ran the script's main** and deleted all three. Restored from HEAD, verified 215 with all three
+present — and the damage diff was exactly those three lines, which is what proved they were the
+*whole* of the staleness. **Requiring a CLI script executes it.**
+
+**`@nodegx/node-kit-types` — the job that never reached `noodl-mcp`.** Reproduced locally at CI's
+exact reading (1 suite / 5 tests). Five failures, two members: `InputPortDefinition.placeholder`
+(FB-015) fails **four** of them, because the three `ReactInput*` types reach it through
+`Omit<InputPortDefinition, …>`; `NodeDefinitionOptions.wireDeclaredPortPrefix` (P77/SBR-008) is the
+fifth — **the same field that surfaced in the cloud-library regenerate the same morning, from the
+same cause.** → **4 suites / 82 tests, exit 0.**
+
+🔴 **Fixing it only moves lerna's stop, so the next package was measured too — and it was the same
+shape a third time.** `@nodegx/kit-scaffold` validates the tokens it emits against the editor's
+registry; HLS-001 (`4fd171fc7`, 2026-09-09) moved the vocabulary into
+`@nodegx/project-contract/tokens` and left `DefaultTokens.ts` a 12-line re-export. Repointed at
+`packages/nodegx-project-contract/tokens.ts` (192 names, identical format) → **5 suites / 68 tests,
+exit 0**. Register **P37**.
+
+🔴 **The instrument lesson, and it is the one to carry:** that spec has an `existsSync` probe whose
+own comment says *"fail rather than skip if the registry moves"* — and **the file went on EXISTING
+and stopped DECLARING, so that probe stayed green for two days.** The neighbouring
+`declared.size > 100` floor is what went red. **A probe on a file's PATH and a probe on its CONTENT
+fail in different circumstances, and only the content one survives a move that leaves a stub
+behind.** Comment corrected in place; floor kept; armed with a mutation (`--color-surface-2`, the
+exact fake the spec's own comment names) which reddens `unknown` toEqual `[]` and nothing else.
+
+🔴 **THE JOB DOES NOT GO GREEN, and the next session must not claim it will.** Letting lerna past
+`node-kit-types` lets it reach `noodl-mcp`, which carries **three known reds of its own**
+(`def018-def020-layout-drive`, `sbr009ThemeEditorDrive`, plus s12's floor). Expect *"Test (runtime,
+backend, viewer, mcp, preview)"* to go red **later in the list**, not green. What changes is that
+every package after `node-kit-types` gets graded in CI **at all**, for the first time.
+
+⚠️ **A peer session was live on this checkout throughout** (`noodl-mcp` CMP-007, phase 85, still
+uncommitted at the end). Both commits used explicit pathspecs and the peer's four files were
+verified untouched after each. **Never `git add -A` here.**
+
+### Readings, 2026-09-11, on top of `f89f805ab`
+
+| gate | reading | exit |
+|---|---|---|
+| `cloud-library:check` | was *stale*, now up to date | **1 → 0** |
+| `starter-iconset:check` | was *out of date*, now 215 curated glyphs | **1 → 0** |
+| `@nodegx/node-kit-types` | 1 failed/3 passed, 5/77 → **4 suites / 82 tests** | **1 → 0** |
+| `@nodegx/kit-scaffold` | 1 failed/4 passed, 1/67 → **5 suites / 68 tests** | **1 → 0** |
+| editor `test:ci` | **2978 specs, 4 failures, seed 44268** — the AIX-006 floor BY NAME, `test-results.json` written 17s before it was read, `gitHead` matching | 1 (floor) |
+| `test:main` | **448/448 suites, 7372/7372 tests** | 0 |
+| the 3 `tests-unit` specs importing `cloud-node-library.json` | 3 suites / 32 tests | 0 |
+
+⚠️ **`test:packages` was NOT run as a whole** — it includes `@noodl/mcp`, which the peer held with
+uncommitted edits, so the run would have graded their in-flight code and burned the box for nothing.
+
+## 3. What session 12 built — FLD-011's last half, `01ea605cc`
 
 **The routed-page sweep runs on four tabs. FLD-011 is 🟢, 6/6 ACs, and #40 is CLOSED** — the third
 issue this phase has closed by answering its second half rather than by arguing the first.
@@ -131,7 +209,7 @@ touches `withRenderedPage` itself). `tsc --noEmit` 0. `@nodegx/render-measure` 1
 page object **gained** three members and lost none, the raw `consoleErrors` array those callers slice
 themselves is untouched, and eight render-drive specs inside noodl-mcp exercise the primary-tab path.
 
-## 3. What session 11 built — FLD-017, `07f6a7e74` + `aedc51f64`
+## 4. What session 11 built — FLD-017, `07f6a7e74` + `aedc51f64`
 
 **#42 reported a 271 MB archive and a 4%-of-a-core idle launcher. Both were real. Neither cause was
 where the issue — or the task's own §2 — said it was.**
@@ -180,15 +258,18 @@ Gates: `test:main` **448 / 7,372, exit 0**; `typecheck:editor` 0; `typecheck:cor
 the identical set at HEAD** (proved with `git show HEAD:` over the changed file, md5 both ways).
 New spec `tests-unit/fld-017/primary-button-spinner.test.ts`, 4 tests, **two reverted arms run**.
 
-## 4. The next task to build
+## 5. The next task to build
 
 🔴 **The ungated pile is EMPTY. Session 12 took the last item in it.** Every remaining FLD task is
 behind a ruling or a Linux box, so the honest ranking is no longer a ranking of FLD tasks:
 
-1. 🔴 **§7's red CI**, and specifically the **two gates that are one command each** (`cloud-library:check`,
-   `starter-iconset:check`) — they would take the red from six to four. ⚠️ A regenerate is an
-   unperformed merge: `--out-dir` or `git diff` the artefact first, and check whose work made it stale.
-   **Nothing has looked at CI since `aedc51f64` added 40s to the renderer build** (§9(c)).
+0. 🔴 **A PUSH.** 21 commits, three sessions, none of it in CI. Every §8 reading attributed to CI
+   was taken on `aedcc4d79`. This is Richard's call and it costs one command — **ask for it first**,
+   because until it happens no CI claim in this document can be confirmed or refuted.
+1. 🔴 **`lessons:chain:self-test`** — the one remaining red gate a session can actually take.
+   *"A break this gate claims to catch went through it"*: 12 mutations, 2 not caught. It is a gate
+   hole, which means it needs reading, not a regenerate, and this phase has had good luck with
+   those. ✅ **Session 13 cleared the other four**; Lint and Typecheck are §10's decisions.
 2. **Register rows P32 and P34** — both small, both user-visible, both unowned, both proved against a
    shipped artefact rather than argued. P32: the canvas icons have never shipped in any release.
    P34: three images that 404 in `templates/members-area`.
@@ -205,15 +286,15 @@ shipped in any packaged release. Found by the R5 QA drive, proved pre-existing a
 
 🔴 **Gated and not to be started without the ruling:** FLD-004 (**R4**), FLD-005 (**P13**),
 FLD-014 (**P25 — does not fit the budget**), FLD-015 (**R2** + **P9 collision**).
-**FLD-016 needs a Linux box, not a ruling** — see §9.
+**FLD-016 needs a Linux box, not a ruling** — see §10.
 
-⚠️ **§7 is where the red CI is, and §4 above already puts it first.** It is not FLD
-work and it is not this phase's, and it is the reason a month of drift went unseen. Session 11 did
-not touch it — and it now has **one more reason to be read**: minification takes the renderer build
-from 58–73 s to 113 s, and the macOS runners are the ones that OOMed at 2048 MB
-(`scripts/webpackHeapCeiling.ts`). **Watch the first CI run after `aedc51f64`.**
+⚠️ **§8 is where the red CI is, and the list above still puts it first.** Session 13 took four of
+the six. The minification watch is still owed and still cannot be done: it takes the renderer build
+from 58–73 s to 113 s and the macOS runners are the ones that OOMed at 2048 MB
+(`scripts/webpackHeapCeiling.ts`) — **and `aedc51f64` is not pushed**, so there has been no first
+CI run after it to watch. That is item 0.
 
-## 5. 🔴 The reply gate — 20 sent, 4 owed, TWELVE closed
+## 6. 🔴 The reply gate — 20 sent, 4 owed, TWELVE closed
 
 Standing authorisation, 2026-09-10: post and close from Richard's account, **no ask**. Every reply
 carries (1) a first line saying it is an **automated reply generated from Claude** and (2) **the
@@ -250,7 +331,7 @@ is not the only kind owed.
 
 ⚠️ Do not count with `grep replied` — the table spells them **SENT**, and that grep undercounts.
 
-## 6. 🔴 What session 11 learned, and it is mostly about instruments
+## 7. 🔴 What session 11 learned, and it is mostly about instruments
 
 🔴 **`opacity: 0` is not "not rendered", and only `display: none` stops a CSS animation.** An
 invisible spinner mounted at startup and never removed was the whole of a 4%-of-a-core idle CPU
@@ -289,7 +370,7 @@ with it set a packaged Electron binary parses argv with **Node's** option parser
 wrapper keeps its `is-loading` class either way. Renamed to what it grades. **Run the second
 reverted arm — the one in the other direction.**
 
-## 7. 🔴 Gates — CI is alive again, and it came back with six red
+## 8. 🔴 Gates — six red, four taken by session 13, THREE left
 
 **`9b3017f8b` fixed the cause** (`package-lock.json` was missing `@nodegx/project-contract`, added
 2026-09-09 in `55f657b8a`). Pushed. Run **34512521036** is the first in 34 days to reach the gates.
@@ -301,17 +382,25 @@ they were exposed by it.
 | Test (platform-node) | 🟢 | — |
 | Check build artefacts | 🟢 | — |
 | Build (viewer + editor bundles) | 🟢 | — |
-| **Node catalog freshness** | 🔴 `cloud-library:check` — `cloud-node-library.json` **stale** | **one command**: `npm run cloud-library:generate`, commit |
-| **Library check (LIB-001)** | 🔴 `starter-iconset:check` — `manifest.json` **out of date** | **one command**: `node scripts/library/make-starter-iconset.js`, commit |
+| **Node catalog freshness** | ✅ **GREEN (s13, `b1ca71f5b`)** — regenerated; it really was one command | — |
+| **Library check (LIB-001)** | ✅ **GREEN (s13, `b1ca71f5b`)** — and 🔴 **NOT by the command this table used to name**, which would have deleted three glyphs. See §2 and register **P36** | — |
 | **Lint** | 🔴 `npm run tsfixme` — TSFixme **819 vs 582**, `any` **806 vs 415**, `@ts-nocheck` **4 vs 0** | 🔴 **a decision, not a command** — burn down or raise the baseline with a reviewer looking. See **P31** |
 | **Typecheck** | 🔴 `typecheck:backend-tests` **OOM, exit 134** (`FatalProcessOutOfMemory`, core dumped) | the known one — [[the-smallest-runner-fails-first-and-names-nothing]]; **cannot be reproduced locally** |
 | **Lesson bundles (FIX-027)** | 🔴 `lessons:chain:self-test` — *"a break this gate claims to catch went through it"*, **12 mutations, 2 not caught** | a gate hole; needs reading, not a regenerate |
-| **Test (runtime, backend, viewer, mcp, preview)** | 🔴 `@nodegx/node-kit-types` **1 suite / 5 tests failed**; lerna stops there, so **`noodl-mcp` never ran in CI** | unread |
-| **Test (editor)** | 🔴 exit 1, no summary line in the tail | unread — expect the AIX-006 floor plus whatever else |
+| **Test (runtime, backend, viewer, mcp, preview)** | 🟡 **`@nodegx/node-kit-types` and `@nodegx/kit-scaffold` both GREEN (s13, `3fe956fd7`)** — but 🔴 **the job will NOT be green**: lerna can now reach `noodl-mcp`, which has three known reds. Expect it to fail **later in the list**. The win is that every package after `node-kit-types` gets graded at all | measured locally; CI unproven (nothing pushed) |
+| **Test (editor)** | 🔴 exit 1 — ✅ **READ (s13): it is the documented AIX-006 floor and nothing else.** `2978 specs, 4 failures, seed 44268`, all four `AIX-006 style vocabulary` **by name**, on a `test-results.json` written 17s before it was read with a matching `gitHead`. 🔴 **So this job can never be green until AIX-006 is fixed or quarantined** — that is a decision nobody has made | a decision, not a command |
 
-🔴 **Two of these are one command and would take the red from six to four.** ⚠️ But a regenerate is
-an unperformed merge — `--out-dir` or `git diff` the artefact before committing it, and check whose
-work made it stale.
+🔴 **Session 13 took four of these. THREE remain, and not one of them is a command:**
+**Lint** (`tsfixme` — a baseline decision, §10(b)), **Typecheck** (`typecheck:backend-tests` OOM,
+[[the-smallest-runner-fails-first-and-names-nothing]], not reproducible locally), and **Lesson
+bundles** (`lessons:chain:self-test` — *"a break this gate claims to catch went through it"*,
+12 mutations, 2 not caught: **a gate hole, and the only one of the three a session can just take**).
+
+⚠️ **The advice that used to live here — "two of these are one command" — was half wrong, and the
+half that was wrong would have shipped a regression.** Keep the caution it carried and strengthen
+it: **a regenerate is an unperformed merge. `git log` the artefact, diff the regenerate, and ask
+whether a HUMAN edited the generated file** — because if they did, the generator is what is stale,
+not the artefact. Register **P36**.
 
 **Local readings from session 10, for comparison:**
 
@@ -329,7 +418,7 @@ work made it stale.
 - 🔴 `npx jest tests/toolDisclosure.test.ts` in `packages/noodl-mcp` prints the margin on a
   **passing** run. **8,275 of 8,280 — 5 tokens.** Check it BEFORE adding to the MCP surface. P25.
 
-## 8. 🔴 Rulings — TWO down, three still gating
+## 9. 🔴 Rulings — TWO down, four still gating, NONE answered since
 
 ✅ **R1 ANSWERED: 0.2.3, not split.** What is *published* is **0.2.2** (2026-09-07) — re-derive per
 issue with `gh release list`.
@@ -341,11 +430,21 @@ Still open: **R2** charts as a kit or core nodes · **R3** the Advanced Columns 
 the units-port fix ship in a patch · **R6** does FLD-010 include the lock (answered
 *"probably not"* in public on #41 — confirm). Full wording in [README.md](./README.md) §2.
 
+🔴 **Re-derived from GitHub 2026-09-11 (s13): NONE of the four has been answered.** #26, #35, #39
+and #43 are all OPEN and the most recent comment on each is our own automated reply. **Do not
+inherit that — re-check it**, because it is the one fact that would change the whole ranking, and
+it is two `gh issue view` calls.
+
 🔴 **R4 and P13 are now the phase's whole critical path.** Every remaining FLD task is behind a
 ruling, a collision or a Linux box except FLD-011's second half. **R4 has the most behind it:** it
 gates FLD-004, which in turn gates FLD-003, and it owes #26 a reply.
 
-## 9. 🔴 Three things for Richard
+## 10. 🔴 Things for Richard
+
+**(0) 🔴 A PUSH — this is the one that blocks everything else in this section.** `origin/cline-dev`
+is at `aedcc4d79` (2026-09-10 20:07); local is **21 commits ahead** across sessions 11, 12 and 13.
+Nothing in FLD-011, FLD-017, or session 13's four gate fixes has ever been seen by CI. (c) below
+asks someone to watch the first CI run after `aedc51f64` — **there has not been one.**
 
 **(a) FLD-016's AC1 and AC3 need a real Linux box, and AC3 has teeth.** Re-enabling Chromium's
 sandbox is a genuine behaviour change on older kernels and under restrictive AppArmor profiles.
@@ -384,7 +483,7 @@ minutes: `npm run build:bundles`, then
 ⚠️ Two stray untracked files sit at the repo root — `-d` and `2026-09-10 15:00`. Not session 11's;
 they look like the fallout of a mis-quoted command. Left alone.
 
-## 10. The end condition has not moved
+## 11. The end condition has not moved
 
 The phase closes when the issues are each **fixed and closed, or answered on the thread with the
 measurement that changed our mind**. Read the count off the register's §5, not off README §6's
@@ -392,4 +491,13 @@ measurement that changed our mind**. Read the count off the register's §5, not 
 
 **Twenty sent, four to go, TWELVE closed — and all four remaining are behind a RULING, not a build.**
 🔴 **Which means the phase can no longer be advanced by building.** #26 needs R4, #35 needs P13, #39
-needs R2+P9, #43 needs P25. Session 12 spent the last ungated build there was.
+needs R2+P9, #43 needs P25. Session 12 spent the last ungated build there was, and session 13
+confirmed it by re-deriving the board and the rulings before doing anything else.
+
+🔴 **So what a session here is actually for, until a ruling lands: the loose work the phase
+accumulated.** Session 13 is the model — it closed four red CI gates, added two register rows, and
+built no FLD task, because there was no FLD task to build. **What is left of that pile:**
+`lessons:chain:self-test` (a gate hole, takeable), P32 and P34 (small, user-visible, unowned), and
+two decisions that are Richard's (§10(b) the tsfixme baseline, and now the AIX-006 floor that keeps
+the editor CI job red forever). When that pile is empty too, say so and stop, rather than inventing
+FLD work behind a ruling.
