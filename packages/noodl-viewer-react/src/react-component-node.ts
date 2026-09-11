@@ -632,10 +632,34 @@ function defineRegularInputProp(input: ReactInputPropDefinition, name: string) {
       // prop was DELETED and the property fell back to its default.
       if (isTokenReference(value)) {
         props[name] = value;
-      } else if (value && value.value !== undefined) {
+      } else if (value && (value as { value?: unknown }).value !== undefined) {
         props[name] = value.value + value.unit;
-      } else {
+      } else if (value === undefined || value === null) {
+        // The explicit empty, and the one the editor sends when a parameter is cleared. The
+        // Empty-Value Contract's `null` clears; `undefined` here keeps the sibling setters'
+        // shipped meaning, because this is also the path the property panel uses to remove a
+        // value and abstaining there would leave a cleared parameter on screen until reload.
         delete props[name];
+      } else {
+        // FLD-004 (b), #26 — a value that is not a dimension at all: a bare number that did not
+        // merge into the port's unit, a string, an object with no magnitude in it.
+        //
+        // 🔴 It used to fall into the `delete` above, which removed the property AND the DECLARED
+        // DEFAULT with it, so one bad value on a wire cost the author the static value they had
+        // authored as well — *"accepted, then silently discarded"*, the exact third state #26 is
+        // about, and the reason the reporter's Group went to 100% rather than staying where they
+        // had put it. Abstaining keeps what is there, which is what every other port in the
+        // runtime does with a value it cannot use.
+        //
+        // Said out loud rather than swallowed, on `sizeMode`'s precedent a few lines away in
+        // `node-shared-port-definitions.ts`: a port that quietly ignores a live connection is the
+        // defect, not the fix. Raised from here, where the port has a name and the node has an id.
+        this.raiseRuntimeError(
+          'dimensions/not-a-dimension',
+          `"${input.displayName || name}" was sent ${JSON.stringify(value)}, which is not a size. A size is a ` +
+            '{value, unit} object — "400" alone is only a size on a port that already holds one, because a bare ' +
+            'number is merged into the unit the port is currently using. The previous value is kept.'
+        );
       }
       if (input.onChange) {
         input.onChange.call(this, value);
