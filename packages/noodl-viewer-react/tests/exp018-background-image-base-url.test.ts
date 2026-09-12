@@ -43,11 +43,33 @@
 
 import sharedPorts from '../src/node-shared-port-definitions';
 import { resolveMediaSource } from '../src/nodes/visual/media-source';
+import type { ReactNodeDefinition } from '../src/react-component-node';
 
 const BASE = '/templates/business-landing-page/';
 const PICTURE = 'noodl_modules/starter-imagery/work-machine-shop.webp';
 
 declare const globalThis: Record<string, unknown>;
+
+/**
+ * The parts of a node definition these arms touch: the `set` handlers `addBackgroundInputs`
+ * registers, and the layer composer it attaches.
+ *
+ * `ReactNodeDefinition` additionally demands `name` and `getReactComponent`, which no port `set`
+ * ever reads — so the stub is cast once, at the call boundary, rather than typed `any`. Six `any`s
+ * here is exactly what the tsfixme ratchet exists to stop (PLAT-003), and the cast is narrower
+ * than the thing it replaces: it names precisely which two fields the arms rely on.
+ */
+type BackgroundPorts = {
+  methods: Record<string, (...args: unknown[]) => unknown>;
+  inputs: Record<string, { set(this: unknown, value: unknown): void }>;
+};
+
+/** A definition carrying the REAL background ports, built the way a visual node builds them. */
+function makeDefinition(): BackgroundPorts {
+  const definition = { methods: {} } as unknown as BackgroundPorts;
+  sharedPorts.addBackgroundInputs(definition as unknown as ReactNodeDefinition);
+  return definition;
+}
 
 /** The node a Group presents to these ports: the two style sinks and its own `_internal`. */
 function makeHost(methods: Record<string, unknown>) {
@@ -74,10 +96,9 @@ function makeHost(methods: Record<string, unknown>) {
  * host so the layer string is built exactly as it is at runtime.
  */
 function writeBackgroundImage(value: unknown, baseUrl?: string): string | undefined {
-  const definition: any = { methods: {} };
-  sharedPorts.addBackgroundInputs(definition);
+  const definition = makeDefinition();
 
-  const host: any = makeHost({
+  const host = makeHost({
     _updateBackgroundLayers: definition.methods._updateBackgroundLayers
   });
 
@@ -137,9 +158,8 @@ describe('EXP-018 — backgroundImage under a deploy base URL', () => {
   it('does not throw when the runtime published no Env at all', () => {
     // `Noodl.Env` is present in every shipped viewer, but a throw inside a port's `set` takes the
     // whole node down, so the guard is asserted rather than assumed.
-    const definition: any = { methods: {} };
-    sharedPorts.addBackgroundInputs(definition);
-    const host: any = makeHost({ _updateBackgroundLayers: definition.methods._updateBackgroundLayers });
+    const definition = makeDefinition();
+    const host = makeHost({ _updateBackgroundLayers: definition.methods._updateBackgroundLayers });
 
     const previous = globalThis.Noodl;
     globalThis.Noodl = {};
@@ -167,9 +187,8 @@ describe('EXP-018 — backgroundImage under a deploy base URL', () => {
   it('composes the picture under a gradient scrim rather than replacing it', () => {
     // The hero is the two ports together; a fix that wrote `backgroundImage` directly would drop
     // the gradient, which is the failure `_updateBackgroundLayers` exists to prevent.
-    const definition: any = { methods: {} };
-    sharedPorts.addBackgroundInputs(definition);
-    const host: any = makeHost({ _updateBackgroundLayers: definition.methods._updateBackgroundLayers });
+    const definition = makeDefinition();
+    const host = makeHost({ _updateBackgroundLayers: definition.methods._updateBackgroundLayers });
 
     const previous = globalThis.Noodl;
     globalThis.Noodl = { Env: { BaseUrl: BASE } };
@@ -180,9 +199,9 @@ describe('EXP-018 — backgroundImage under a deploy base URL', () => {
       globalThis.Noodl = previous;
     }
 
-    expect(host.styles.backgroundImage).toBe(
+    expect(host.styles?.backgroundImage).toBe(
       `linear-gradient(#0003, #000c), url("${BASE}${PICTURE}")`
     );
-    expect(host.styles.backgroundRepeat).toBe('no-repeat');
+    expect(host.styles?.backgroundRepeat).toBe('no-repeat');
   });
 });
