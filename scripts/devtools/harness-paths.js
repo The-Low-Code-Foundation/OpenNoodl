@@ -93,8 +93,24 @@ const ENRICHED_CATALOG_JSON = resolveHarnessPath(
   path.join(PACKAGED_DATA, 'node-catalog-enriched.json')
 );
 
+/**
+ * Where the shipped default tokens are DECLARED.
+ *
+ * 🔴 **Repointed 2026-09-11 (TPL-005).** This named
+ * `StyleTokensModel/DefaultTokens.ts`, which HLS-001 reduced to a twelve-line
+ * re-export — the declarations moved to `@nodegx/project-contract/tokens`. The
+ * regex in `render-from-disk.js` therefore matched **nothing**, and the harness
+ * emitted `0 shipped defaults`: every `var(--space-*)`, `var(--radius-*)` and
+ * `var(--border-*)` in every rendered project resolved to empty. Pages came out
+ * with no padding and no gaps, and the harness looked like it had found a
+ * product-wide spacing defect. It is the exact "lying harness" its own comment
+ * in `render-from-disk.js` warns about, and the refactor walked straight into it.
+ *
+ * ⚠️ The packaged candidate is unchanged: a packaged install ships the file
+ * under its old name, and `firstExisting` prefers the checkout.
+ */
 const TOKENS_SRC = resolveHarnessPath(
-  'packages/noodl-editor/src/editor/src/models/StyleTokensModel/DefaultTokens.ts',
+  'packages/nodegx-project-contract/tokens.ts',
   path.join(PACKAGED_DATA, 'DefaultTokens.ts')
 );
 

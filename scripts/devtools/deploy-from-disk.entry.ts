@@ -90,6 +90,192 @@ function readV2(dir: string): { project: LegacyProject; warnings: string[] } {
   return { project: result.project as LegacyProject, warnings: result.warnings };
 }
 
+/**
+ * D44 — give the editor's nodes the ports only the runtime knows how to derive.
+ *
+ * ──────────────────────────────────────────────────────────────────────────────
+ * ## The defect this exists to fix
+ *
+ * `exportComponent` drops every connection `getConnectionHealth` calls
+ * unhealthy, and `con-no-target-port` is raised whenever `node.getPort(name)`
+ * comes back undefined. Four node families mint their ports inside a `setup()`
+ * guarded on the editor connection:
+ *
+ * ```js
+ * if (!context.editorConnection || !context.editorConnection.isRunningLocally()) return;
+ * …
+ * context.editorConnection.sendDynamicPorts(node.id, ports);
+ * ```
+ *
+ * `Expression` (its identifier inputs), `Set Variable` (`value`),
+ * `String Format` (its `{tag}` inputs) and `States` (`to-<state>` and every
+ * value output). In the editor the viewer runs those setups and pushes the
+ * ports back over the socket; **headless there is no viewer, so the ports never
+ * arrive and every wire into one is deleted** — measured at **39 of 136** on the
+ * pixel-game template, which then deployed with `state: "complete"`, exit 0, and
+ * a board that drew nothing but its exit tile.
+ *
+ * `NodeGraphModel` already says this verdict is wrong when nothing has pushed
+ * ports yet: *"For a runtime-discovered port that verdict is correct and
+ * temporary … The wire is fine; the editor does not know yet."* Headless it is
+ * permanent, because nothing is ever going to know.
+ *
+ * ## 🔴 Why this runs the real setups instead of deriving the ports again
+ *
+ * The rules are not simple — `states.ts` alone mints five port shapes per state
+ * and value — and a second copy of them here would be a copy that drifts, which
+ * is the failure `dynamicPortRules.ts` and the token vocabulary both have
+ * headers about. So this drives **the shipped `setup()` functions**: a probe
+ * runtime is created *with* an editor connection, which is the whole condition
+ * they are gated on, and their `sendDynamicPorts` calls are forwarded onto the
+ * editor's own nodes. No port logic is written here.
+ *
+ * ⚠️ **A second runtime, deliberately.** `bootstrapNodeLibrary()` builds one in
+ * `runDeployed` mode with no connection — exactly the mode that silences these
+ * setups — and it is the thing that populates `NodeLibrary`, so it cannot be
+ * changed to suit this without changing what every other headless consumer gets.
+ *
+ * ⚠️ **`Condition` and `Counter` are untouched** and that is the check that this
+ * is not a blanket "keep everything": their ports are statically declared, a
+ * missing one is a real defect, and a wire into it must still be dropped. The
+ * sabotage arm (`--sabotage`) proves that still happens.
+ *
+ * @returns a census, because a pass that reports nothing is a pass nobody can
+ *   tell ran — the same rule the health-guard block below follows.
+ */
+async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
+  types: string[];
+  nodesSeen: number;
+  nodesPorted: number;
+  portsAdded: number;
+  unmatched: number;
+}> {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const NoodlRuntime = require('@noodl/runtime');
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const registerViewerNodes = require('../../packages/noodl-viewer-react/src/register-nodes').default;
+
+  const pushed: Array<{ nodeId: string; ports: TSFixme[]; options?: TSFixme }> = [];
+
+  // The one condition the four setups are gated on, and nothing more than that.
+  /**
+   * 🔴 The runtime builds its OWN `editorConnection` and ignores any passed in
+   * (`noodl-runtime.ts`: `editorConnection: this.editorConnection`), so a stub
+   * handed to the constructor is never seen — measured as `0 onto 0/28 nodes`
+   * with every listener correctly registered and every emit landing.
+   *
+   * ⚠️ And it cannot simply be REPLACED afterwards either: the two capture
+   * styles disagree. `setvariablenode.ts` reads `context.editorConnection`
+   * at call time, while `states.ts` does `const editorConnection =
+   * context.editorConnection` at setup time — so replacing the property fixes
+   * the first family and not the second. **Patching the object the runtime
+   * already made is the only thing both see**, because it is one identity.
+   */
+  const probe = new NoodlRuntime({
+    type: 'browser',
+    dontCreateRootComponent: true,
+    platform: {
+      requestUpdate: (cb: () => void) => setTimeout(cb, 0),
+      getCurrentTime: () => 0,
+      objectToString: (o: unknown) => JSON.stringify(o)
+    }
+  });
+
+  const conn = probe.editorConnection as TSFixme;
+  // The built-in families' setups have already run under the constructor's
+  // `registerNodes(this)`, and their guard (`isRunningLocally()`) passed — so
+  // their listeners exist and this override is what their calls now reach.
+  conn.isRunningLocally = () => true;
+  conn.sendDynamicPorts = (nodeId: string, ports: TSFixme[], options?: TSFixme) => {
+    pushed.push({ nodeId, ports: ports || [], options });
+  };
+  // Nothing here has a canvas to warn at, and a throw would be attributed to
+  // the node rather than to this pass.
+  for (const quiet of ['sendWarning', 'clearWarning', 'sendWarnings', 'clearWarnings']) {
+    conn[quiet] = () => undefined;
+  }
+
+  // The VIEWER families (States among them) register here, and their setups
+  // capture the connection above — which is why the patch precedes this line.
+  registerViewerNodes(probe);
+
+  // Which types actually subscribed — read off the probe rather than listed
+  // here, so a family that gains or loses a lazy `setup()` changes this census
+  // instead of silently falling outside a hand-written list.
+  // `EventSender` keeps two maps and a setup may have used either.
+  const gm = probe.graphModel as TSFixme;
+  const eventNames = [...Object.keys(gm.listeners ?? {}), ...Object.keys(gm.listenersWithRefs ?? {})];
+  const types = [...new Set(eventNames)]
+    .filter((e) => e.indexOf('nodeAdded.') === 0)
+    .map((e) => e.slice('nodeAdded.'.length))
+    .sort();
+
+  if (process.env.DFD_DEBUG_PORTS) {
+    const k = 'nodeAdded.Set Variable';
+    process.stderr.write(
+      `[dbg] listeners[${k}]=${((gm.listeners ?? {})[k] ?? []).length} ` +
+        `withRefs=${(gm.listenersWithRefs ?? {})[k] ? (gm.listenersWithRefs[k] as TSFixme).size : 'none'} ` +
+        `ctxConn=${probe.context && probe.context.editorConnection ? 'set' : 'MISSING'} ` +
+        `runningLocally=${probe.context && probe.context.editorConnection ? probe.context.editorConnection.isRunningLocally() : 'n/a'}\n`
+    );
+  }
+
+  let nodesSeen = 0;
+  let nodesPorted = 0;
+  let portsAdded = 0;
+  let unmatched = 0;
+
+  const editorNodes = new Map<string, { node: TSFixme; component: string }>();
+  for (const comp of project.getComponents()) {
+    const walk = (list: TSFixme[]) => {
+      for (const n of list ?? []) {
+        editorNodes.set(n.id, { node: n, component: comp.name });
+        if (n.children) walk(n.children);
+      }
+    };
+    walk((comp.graph as TSFixme).roots);
+  }
+
+  for (const [, { node, component }] of editorNodes) {
+    const typeName = typeof node.type === 'string' ? node.type : node.type?.name;
+    if (!typeName || types.indexOf(typeName) === -1) continue;
+    nodesSeen++;
+    const before = pushed.length;
+    // 🔴 `await`, because `EventSender.emit` is async and awaits each listener.
+    // Without it the loop finished before a single port had been derived and the
+    // census read a confident `0 onto 0/0` — a pass that reported success at
+    // having done nothing.
+    // The shape the setups read: an id, the parameters they derive from, and a
+    // `parameterUpdated` subscription they register for later edits there are
+    // none of here.
+    await (probe.graphModel as TSFixme).emit('nodeAdded.' + typeName, {
+      id: node.id,
+      type: typeName,
+      parameters: node.parameters ?? {},
+      // `expression.ts` reads `node.component.name` to key its compile warning.
+      component: { name: component },
+      on: () => undefined,
+      off: () => undefined
+    });
+    if (pushed.length > before) nodesPorted++;
+    if (process.env.DFD_DEBUG_PORTS) {
+      process.stderr.write(`[dbg] emit nodeAdded.${JSON.stringify(typeName)} id=${node.id} -> pushed ${pushed.length - before}\n`);
+    }
+  }
+
+  for (const { nodeId, ports, options } of pushed) {
+    const found = editorNodes.get(nodeId);
+    if (!found || typeof found.node.setDynamicPorts !== 'function') {
+      unmatched++;
+      continue;
+    }
+    found.node.setDynamicPorts(ports, options);
+    portsAdded += ports.length;
+  }
+
+  return { types, nodesSeen, nodesPorted, portsAdded, unmatched };
+}
+
 function flag(name: string, fallback?: string): string | undefined {
   const i = process.argv.indexOf(name);
   return i === -1 ? fallback : process.argv[i + 1];
@@ -151,6 +337,10 @@ async function main() {
   // silently, for every component. Without this line the health filter is
   // inert and the export keeps every wire no matter how broken.
   if (!NodeLibrary.instance.isModuleRegistered(project)) NodeLibrary.instance.registerModule(project);
+
+  // 🔴 D44 — BEFORE the health pass, or it judges every runtime-discovered port
+  // missing and the export deletes the wire into it. See the function's header.
+  const dynPorts = await registerRuntimeDiscoveredPorts(project);
 
   const guards: Record<string, number> = {};
   const bump = (k: string) => (guards[k] = (guards[k] ?? 0) + 1);
@@ -258,6 +448,7 @@ async function main() {
     projectDir,
     outDir,
     nodeTypes,
+    dynamicPorts: dynPorts,
     componentsEvaluated: evaluated,
     healthGuards: guards,
     warningKeysAfterPass: warningsAfterPass,
@@ -283,6 +474,12 @@ async function main() {
   if (has('--json')) process.stdout.write(JSON.stringify(report, null, 2) + '\n');
   else {
     process.stdout.write(`node types           ${report.nodeTypes}\n`);
+    process.stdout.write(
+      `dynamic ports        ${report.dynamicPorts.portsAdded} onto ${report.dynamicPorts.nodesPorted}/${report.dynamicPorts.nodesSeen} nodes` +
+        ` (${report.dynamicPorts.types.join(', ') || 'no lazy types'})` +
+        (report.dynamicPorts.unmatched ? ` \u26a0 ${report.dynamicPorts.unmatched} unmatched` : '') +
+        '\n'
+    );
     process.stdout.write(`components evaluated ${report.componentsEvaluated} guards=${JSON.stringify(report.healthGuards)}\n`);
     process.stdout.write(`warning keys after   ${report.warningKeysAfterPass}\n`);
     process.stdout.write(`connections on graph ${report.totalOnGraph}\n`);

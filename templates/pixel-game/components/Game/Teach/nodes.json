@@ -1,0 +1,181 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "da672120-b343-54e5-8130-3d89fd0d3671",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "tcWrap",
+      "type": "Group",
+      "label": "How to play",
+      "children": [
+        "tcKeys",
+        "tcGlyphs"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "tcKeys",
+      "type": "Group",
+      "label": "The keys",
+      "parent": "tcWrap",
+      "children": [
+        "tcKeyUp",
+        "tcKeyDown",
+        "tcKeyLeft",
+        "tcKeyRight"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "center",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "tcKeyUp",
+      "type": "/Game/KeyCap",
+      "label": "The up key",
+      "parent": "tcKeys",
+      "parameters": {
+        "cap": "↑",
+        "what": "up",
+        "tone": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "tcKeyDown",
+      "type": "/Game/KeyCap",
+      "label": "The down key",
+      "parent": "tcKeys",
+      "parameters": {
+        "cap": "↓",
+        "what": "down",
+        "tone": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "tcKeyLeft",
+      "type": "/Game/KeyCap",
+      "label": "The left key",
+      "parent": "tcKeys",
+      "parameters": {
+        "cap": "←",
+        "what": "left",
+        "tone": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 520
+    },
+    {
+      "id": "tcKeyRight",
+      "type": "/Game/KeyCap",
+      "label": "The right key",
+      "parent": "tcKeys",
+      "parameters": {
+        "cap": "→",
+        "what": "right",
+        "tone": "var(--foreground)"
+      },
+      "x": 160,
+      "y": 640
+    },
+    {
+      "id": "tcGlyphs",
+      "type": "Group",
+      "label": "What the glyphs mean",
+      "parent": "tcWrap",
+      "children": [
+        "tcLegYou",
+        "tcLegCoin",
+        "tcLegFoe",
+        "tcLegOut"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "center",
+        "alignItems": "center",
+        "columnGap": "var(--space-6)",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 100,
+      "y": 760
+    },
+    {
+      "id": "tcLegYou",
+      "type": "/Game/KeyCap",
+      "label": "Legend — you",
+      "parent": "tcGlyphs",
+      "parameters": {
+        "cap": "◆",
+        "what": "you",
+        "tone": "var(--primary)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "tcLegCoin",
+      "type": "/Game/KeyCap",
+      "label": "Legend — a coin",
+      "parent": "tcGlyphs",
+      "parameters": {
+        "cap": "●",
+        "what": "a coin",
+        "tone": "var(--primary)"
+      },
+      "x": 160,
+      "y": 1000
+    },
+    {
+      "id": "tcLegFoe",
+      "type": "/Game/KeyCap",
+      "label": "Legend — steps when you do",
+      "parent": "tcGlyphs",
+      "parameters": {
+        "cap": "▲",
+        "what": "steps when you do",
+        "tone": "var(--destructive)"
+      },
+      "x": 160,
+      "y": 1120
+    },
+    {
+      "id": "tcLegOut",
+      "type": "/Game/KeyCap",
+      "label": "Legend — the way out",
+      "parent": "tcGlyphs",
+      "parameters": {
+        "cap": "▣",
+        "what": "the way out",
+        "tone": "var(--accent-foreground)"
+      },
+      "x": 160,
+      "y": 1240
+    }
+  ],
+  "visualRoots": [
+    "tcWrap"
+  ]
+}

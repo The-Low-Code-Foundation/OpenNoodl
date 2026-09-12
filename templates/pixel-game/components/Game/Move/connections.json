@@ -1,0 +1,103 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "aa77f91b-7f79-52e2-89ca-b1476e9ffd7d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "px",
+      "toId": "mvTx",
+      "toProperty": "px"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "dx",
+      "toId": "mvTx",
+      "toProperty": "dx"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "py",
+      "toId": "mvTy",
+      "toProperty": "py"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "dy",
+      "toId": "mvTy",
+      "toProperty": "dy"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "grid",
+      "toId": "mvWall",
+      "toProperty": "in-grid"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "gridWidth",
+      "toId": "mvWall",
+      "toProperty": "in-w"
+    },
+    {
+      "fromId": "mvTx",
+      "fromProperty": "result",
+      "toId": "mvWall",
+      "toProperty": "in-x"
+    },
+    {
+      "fromId": "mvTy",
+      "fromProperty": "result",
+      "toId": "mvWall",
+      "toProperty": "in-y"
+    },
+    {
+      "fromId": "mvWall",
+      "fromProperty": "out-blocked",
+      "toId": "mvGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "mvInputs",
+      "fromProperty": "go",
+      "toId": "mvGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "mvTx",
+      "fromProperty": "result",
+      "toId": "mvSetX",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "mvTy",
+      "fromProperty": "result",
+      "toId": "mvSetY",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "mvGate",
+      "fromProperty": "onfalse",
+      "toId": "mvSetX",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "mvSetX",
+      "fromProperty": "done",
+      "toId": "mvSetY",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "mvSetY",
+      "fromProperty": "done",
+      "toId": "mvOutputs",
+      "toProperty": "moved"
+    },
+    {
+      "fromId": "mvGate",
+      "fromProperty": "ontrue",
+      "toId": "mvOutputs",
+      "toProperty": "refused"
+    }
+  ]
+}

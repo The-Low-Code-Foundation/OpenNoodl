@@ -1,0 +1,25 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "04d38a21-960c-5fb1-883b-3523bdf6b1cc",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "hearts",
+      "toId": "hdHearts",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "coins",
+      "toId": "hdCoins",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "hdInputs",
+      "fromProperty": "room",
+      "toId": "hdRoom",
+      "toProperty": "value"
+    }
+  ]
+}

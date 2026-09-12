@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "04d38a21-960c-5fb1-883b-3523bdf6b1cc",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hdRow",
+      "type": "Group",
+      "label": "The readings",
+      "children": [
+        "hdHearts",
+        "hdCoins",
+        "hdRoom"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "justifyContent": "center",
+        "alignItems": "center",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "hdHearts",
+      "type": "/Game/Stat",
+      "label": "Hearts",
+      "parent": "hdRow",
+      "parameters": {
+        "label": "Hearts",
+        "tone": "var(--destructive)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "hdCoins",
+      "type": "/Game/Stat",
+      "label": "Coins",
+      "parent": "hdRow",
+      "parameters": {
+        "label": "Coins",
+        "tone": "var(--primary)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "hdRoom",
+      "type": "/Game/Stat",
+      "label": "Room",
+      "parent": "hdRow",
+      "parameters": {
+        "label": "Room",
+        "tone": "var(--accent-foreground)"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "hdInputs",
+      "type": "Component Inputs",
+      "label": "The readings",
+      "ports": [
+        {
+          "name": "hearts",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "coins",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "room",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "hdRow"
+  ]
+}
