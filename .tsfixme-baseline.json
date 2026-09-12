@@ -6,10 +6,10 @@
   "exclude": [
     "packages/noodl-runtime/dist-types"
   ],
-  "commit": "428a066d3",
+  "commit": "23c23e4a1",
   "max": {
     "src": {
-      "TSFixme": 571,
+      "TSFixme": 563,
       "any": 439,
       "@ts-ignore": 17,
       "@ts-nocheck": 2,
@@ -130,7 +130,7 @@
       "@ts-expect-error": 4
     },
     "scripts": {
-      "TSFixme": 8,
+      "TSFixme": 0,
       "any": 46,
       "@ts-ignore": 1,
       "@ts-nocheck": 0,
@@ -3128,7 +3128,7 @@
       "@ts-expect-error": 0
     },
     "scripts/devtools/deploy-from-disk.entry.ts": {
-      "TSFixme": 8,
+      "TSFixme": 0,
       "any": 15,
       "@ts-ignore": 0,
       "@ts-nocheck": 0,
