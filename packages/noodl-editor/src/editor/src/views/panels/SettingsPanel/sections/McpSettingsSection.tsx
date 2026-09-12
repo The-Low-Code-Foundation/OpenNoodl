@@ -200,7 +200,15 @@ function McpServerRow({
  * One probe per editor session (GitHub Pages caches for ten minutes anyway), and a network failure
  * is indistinguishable from "not published" on purpose: both mean "do not offer a link".
  */
-const MCP_DOCS_PATH = 'docs/getting-started/ai-assisted-dev/mcp/';
+/**
+ * 🔴 LIB-008 — site-relative to `getDocsEndpoint()`, which now ends in `/docs`.
+ * This used to carry its own `docs/` prefix because the endpoint was a bare site
+ * root. Leaving it would have made the probe ask for `…/docs/docs/…`, which 404s
+ * exactly like today — and because the link renders only when the probe answers,
+ * that failure is invisible: MCP-004 could publish the page and this would stay
+ * silently off forever. The self-healing is the reason to get it right now.
+ */
+const MCP_DOCS_PATH = 'getting-started/ai-assisted-dev/mcp/';
 
 let docsProbe: Promise<string | null> | null = null;
 

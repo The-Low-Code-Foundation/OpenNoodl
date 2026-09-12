@@ -39,16 +39,18 @@ This is **not** the marketplace (ECO-002, gated on Gate G3 and community critica
 | B | [LIB-005](./LIB-005-IMPORT-UX.md) | Import experience overhaul | 1.5–2 wks | 🔵 Fable 5 |
 | B | [LIB-006](./LIB-006-LEGACY-IMPORT-ASSIST.md) | Legacy project import — best effort, honest report, AI repair | 1–1.5 wks | 🔵 Fable 5 |
 | C | [LIB-007](./LIB-007-PUBLISHING-THE-SHELF.md) | Publishing the shelf stops being a manual copy | — | ✅ **Opus 5 — COMPLETE 2026-09-11** ([notes](./LIB-007-NOTES.md), PR [#44](https://github.com/The-Low-Code-Foundation/NodeGX/pull/44)). Published from CI, content repo `cf873c1e3`: prefabs 42→46, modules 30→32, `--require-published` exit 0, and the release-notes caveat is deleted |
-| C | [LIB-008](./LIB-008-THE-DOCS-ORIGIN-IS-A-404.md) | Every documentation link in the shipped editor is a 404 | — | **UNASSIGNED** |
+| C | [LIB-008](./LIB-008-THE-DOCS-ORIGIN-IS-A-404.md) | Every documentation link in the shipped editor is a 404 | — | ✅ **Opus 5 — COMPLETE 2026-09-12** ([notes](./LIB-008-NOTES.md)). Origin repointed **and** the path derivation fixed — the task scoped the derivation out, and measured live only **30 of 159** legacy paths resolved, so a faithful fix would still have 404'd 129 nodes. Now 176/176. Driven capture on both surfaces, `docs:verify-origin` gates **both** endpoints in CI |
 
 🔴 **Sprint C was opened on 2026-09-11, the day v0.2.3 shipped, by two things that release
 exposed.** LIB-007 — ✅ **closed 2026-09-11**: six parts were authored, gated, drive-tested, named in
 the public release notes and **published nowhere**; the acceptance criterion was deleting the caveat
 that said so, and it is deleted, because a `workflow_dispatch` publish put all six on the live shelf.
-LIB-008: `getDocsEndpoint` still names a Pages site that was renamed on 2026-08-07 and is a hard
-404, so every in-editor docs link has been dead since. Both are the
+LIB-008 — ✅ **closed 2026-09-12**: `getDocsEndpoint` named a Pages site renamed on 2026-08-07, so
+every in-editor docs link had been dead since. Both are the
 same shape — *an origin moved and only some of the callers were told* — which is why they sit
-together. **No time estimates: dependency order only** (standing rule, phase 77).
+together. 🔴 **And LIB-008 had a third layer the spec did not see:** the origin was dead *and* the
+path derivation still addressed the old site's tree, so fixing only what the task scoped would have
+left 129 of 159 nodes 404ing while its own acceptance criteria passed. **No time estimates: dependency order only** (standing rule, phase 77).
 
 **Anytime fixes** (independent, land immediately, don't wait for their parent task): the import-from-URL untick bug (LIB-004 step 0), the `startsWith` loader bug (LIB-003 step 0), loud fetch failure in the library tabs (LIB-001 step 0).
 

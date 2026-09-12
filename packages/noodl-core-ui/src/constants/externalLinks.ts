@@ -19,9 +19,12 @@
  * this monorepo's own `docs-site/`, which has been publishing live since
  * 2026-08-07. The old `opennoodl-docs` origin is a 404 — its repo was renamed
  * and GitHub Pages, unlike git and the API, does not follow a rename redirect.
- * `getDocsEndpoint()` still carries the dead origin: it is not the same
- * one-line change, because its four call sites join paths (`/nodes/...`, the
- * MCP page) that the new site does not serve at those paths yet.
+ *
+ * 2026-09-11 (LIB-008): `getDocsEndpoint()` carried that dead origin all the way
+ * into 0.2.3 and has now been repointed here too. It was indeed not the same
+ * one-line change — its callers join paths, so it needed the site's `/docs`
+ * route base *and* a path derivation that matches how the new site names pages.
+ * `npm run docs:verify-origin` now gates both origins against the live sites.
  */
 export const EXTERNAL_LINKS = {
   docs: 'https://the-low-code-foundation.github.io/NodeGX/',

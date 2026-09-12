@@ -104,6 +104,7 @@
     "library:icons:check": "node scripts/library/make-monogram-icon.js --check",
     "library:verify-dist": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-dist.ts",
     "library:verify-origin": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-origin.ts",
+    "docs:verify-origin": "ts-node -P ./scripts/tsconfig.json ./scripts/docs/verify-origin.ts",
     "preview": "node packages/noodl-preview/build.mjs && node packages/noodl-preview/bin/noodl-preview.js",
     "typecheck": "tsc --noEmit",
     "typecheck:preview": "tsc -p packages/noodl-preview --noEmit",
