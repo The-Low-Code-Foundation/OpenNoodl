@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "5b6c8be6-bdc5-5f34-83d4-069c310cba44",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "srStory",
+      "fromProperty": "items",
+      "toId": "srPick",
+      "toProperty": "in-shipped"
+    },
+    {
+      "fromId": "srPasted",
+      "fromProperty": "value",
+      "toId": "srPick",
+      "toProperty": "in-pasted"
+    },
+    {
+      "fromId": "srPick",
+      "fromProperty": "success",
+      "toId": "srOutputs",
+      "toProperty": "ready"
+    },
+    {
+      "fromId": "srPick",
+      "fromProperty": "out-story",
+      "toId": "srOutputs",
+      "toProperty": "story"
+    },
+    {
+      "fromId": "srPick",
+      "fromProperty": "out-firstId",
+      "toId": "srOutputs",
+      "toProperty": "firstId"
+    },
+    {
+      "fromId": "srPick",
+      "fromProperty": "out-source",
+      "toId": "srOutputs",
+      "toProperty": "source"
+    },
+    {
+      "fromId": "srPick",
+      "fromProperty": "out-json",
+      "toId": "srOutputs",
+      "toProperty": "json"
+    }
+  ]
+}

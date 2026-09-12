@@ -12,6 +12,9 @@
  * the old path could not have been tested this way at all.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+
 import {
   formatInline,
   getNodeDocs,
@@ -23,8 +26,11 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const catalog = require('../../../noodl-types/src/node-catalog-enriched.json') as {
-  nodes: Array<{ typeName: string; docs?: string; isDeprecated?: boolean; enrichment?: unknown }>;
+  nodes: Array<{ typeName: string; category?: string; docs?: string; isDeprecated?: boolean; enrichment?: unknown }>;
 };
+
+/** The pages `scripts/generate-node-docs.js` actually wrote, on disk. */
+const DOCS_SITE_DOCS = path.resolve(__dirname, '../../../../docs-site/docs');
 
 describe('ALPHA-006 §1 — node docs from the bundled catalog', () => {
   describe('coverage', () => {
@@ -51,8 +57,13 @@ describe('ALPHA-006 §1 — node docs from the bundled catalog', () => {
         const docs = getNodeDocs(node.typeName);
         expect(docs).toBeDefined();
         expect(docs.summary.length).toBeGreaterThan(0);
-        // No page means no "read more", and the callers gate the link on it.
-        expect(docs.path).toBe('');
+        // 🔴 LIB-008 changed this row's expectation, and the change is the point.
+        // It used to assert `path === ''`, because the path was derived from the
+        // catalog's legacy `docs` URL and these nodes have none. But ALPHA-006 §3
+        // generates a page for *every* node from the same catalog, so "no legacy
+        // URL" never meant "no page" — it meant this bucket was the one group
+        // guaranteed to get no link despite having somewhere to link to.
+        expect(docs.path).not.toBe('');
       }
     });
 
@@ -74,11 +85,25 @@ describe('ALPHA-006 §1 — node docs from the bundled catalog', () => {
     });
   });
 
+  /**
+   * 🔴 LIB-008. This block is the gate that keeps `nodeDocsPath`'s slug rules in
+   * step with `scripts/generate-node-docs.js`'s — and it does it by reading the
+   * **generated pages on disk**, not by re-implementing the generator's slugify
+   * beside it. Two copies of a rule compared against each other agree by
+   * construction and prove nothing; compared against the artefact one of them
+   * produced, a drift in either is red.
+   *
+   * It is also the offline half of LIB-008's AC3. `docs:verify-origin` asks
+   * whether the live site serves these paths and needs egress to do it; this asks
+   * whether the paths name pages this repo actually publishes, and runs on every
+   * PR with no network at all. A rename inside `docs-site/` is caught here before
+   * it is ever deployed.
+   */
   describe('the "read more" path', () => {
     it('is site-relative, so the origin stays the caller`s decision', () => {
-      const path = nodeDocsPath('Group');
-      expect(path.startsWith('/')).toBe(true);
-      expect(path).not.toContain('http');
+      const docsPath = nodeDocsPath('Group');
+      expect(docsPath.startsWith('/')).toBe(true);
+      expect(docsPath).not.toContain('http');
     });
 
     it('never leaks the legacy host into a path', () => {
@@ -91,10 +116,40 @@ describe('ALPHA-006 §1 — node docs from the bundled catalog', () => {
       // Those suffixes addressed the raw source the old parser fetched; a
       // person following the link wants the page.
       for (const node of catalog.nodes) {
-        const path = nodeDocsPath(node.typeName);
-        expect(path.endsWith('.md')).toBe(false);
-        expect(path.startsWith('/#/')).toBe(false);
+        const docsPath = nodeDocsPath(node.typeName);
+        expect(docsPath.endsWith('.md')).toBe(false);
+        expect(docsPath.startsWith('/#/')).toBe(false);
       }
+    });
+
+    /**
+     * The row that matters. Measured against the live site on 2026-09-11, the old
+     * legacy-URL derivation resolved for **30 of 159** nodes; every other node's
+     * "read more" was a 404 *path* on a healthy origin — which is what a repoint
+     * alone would have left behind, looking fixed.
+     */
+    it('names a page the docs generator actually wrote, for every node', () => {
+      const missing: string[] = [];
+      for (const node of catalog.nodes) {
+        const docsPath = nodeDocsPath(node.typeName);
+        // `/nodes/logic/and` is authored at `docs-site/docs/nodes/logic/and.md`.
+        const onDisk = path.join(DOCS_SITE_DOCS, `${docsPath.replace(/^\//, '')}.md`);
+        if (!fs.existsSync(onDisk)) missing.push(`${node.typeName} -> ${docsPath}`);
+      }
+      expect(missing).toEqual([]);
+    });
+
+    /**
+     * 🔴 The negative control. Every row above is satisfied by a function that
+     * returns a path for a node it has never heard of, and `existsSync` over an
+     * empty list passes. This proves the gate above is discriminating: the
+     * derivation is wrong for a made-up category, and the check sees it.
+     */
+    it('the page check is discriminating, not vacuous', () => {
+      expect(catalog.nodes.length).toBeGreaterThan(100);
+      expect(fs.existsSync(path.join(DOCS_SITE_DOCS, 'nodes/not-a-category/not-a-node.md'))).toBe(false);
+      // And an unknown type still yields no link at all, rather than a plausible 404.
+      expect(nodeDocsPath('/App/SomeUserComponent')).toBe('');
     });
   });
 

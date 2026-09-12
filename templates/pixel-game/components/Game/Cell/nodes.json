@@ -1,0 +1,91 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "1b884b95-68b8-515e-881e-b5b7dc0f1a14",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "clTile",
+      "type": "Group",
+      "label": "One tile",
+      "children": [
+        "clGlyph"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 34,
+          "unit": "px"
+        },
+        "height": {
+          "value": 34,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "borderRadius": "var(--radius-sm)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "cssClassName": "game-cell"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "clGlyph",
+      "type": "Text",
+      "label": "What is on it",
+      "parent": "clTile",
+      "parameters": {
+        "text": "",
+        "fontSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "color": "var(--foreground)",
+        "fontFamily": "var(--font-mono)",
+        "lineHeight": 1,
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "clInputs",
+      "type": "Component Inputs",
+      "label": "The tile",
+      "ports": [
+        {
+          "name": "kind",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "glyph",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "ground",
+          "plug": "output",
+          "type": "color"
+        },
+        {
+          "name": "edge",
+          "plug": "output",
+          "type": "color"
+        },
+        {
+          "name": "ink",
+          "plug": "output",
+          "type": "color"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "clTile"
+  ]
+}

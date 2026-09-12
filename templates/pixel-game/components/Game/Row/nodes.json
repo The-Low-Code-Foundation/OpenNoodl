@@ -1,0 +1,52 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "38dfdff7-f695-5aca-8b84-788faf9e16ce",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rwRow",
+      "type": "Group",
+      "label": "One row",
+      "children": [
+        "rwCells"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-0-5)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rwCells",
+      "type": "For Each",
+      "label": "One tile per cell",
+      "parameters": {
+        "template": "/Game/Cell",
+        "templateType": "explicit"
+      },
+      "parent": "rwRow",
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rwInputs",
+      "type": "Component Inputs",
+      "label": "The row",
+      "ports": [
+        {
+          "name": "cells",
+          "plug": "output",
+          "type": "array"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "rwRow"
+  ]
+}

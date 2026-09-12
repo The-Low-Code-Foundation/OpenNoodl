@@ -44,8 +44,29 @@ import { registerLibraryTools } from './tools/libraryTools';
 import { registerLessonTools } from './tools/lessonTools';
 import { ToolDisclosure, recordTools, registerFindTools } from './tools/disclosure';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const PKG_VERSION: string = require('../package.json').version;
+/**
+ * The version this server reports in its MCP handshake.
+ *
+ * 🔴 **It used to be `@noodl/mcp`'s own `package.json` version, which has read `0.1.0` in every
+ * release ever cut.** So the handshake said `noodl-mcp 0.1.0` whether the bundle came from 0.1.0
+ * or 0.2.4, and "my MCP server is stuck on an old version" was a report nobody — user or
+ * maintainer — could confirm or refute. The bundle carries no other version marker either: the
+ * packaged directory holds the `.cjs` and a catalog, and no `package.json` at all.
+ *
+ * `build.mjs` now defines `__NODEGX_APP_VERSION__` from `noodl-editor`'s version at bundle time,
+ * so the server reports the release it shipped inside. That cannot drift, because nobody has to
+ * remember to bump it.
+ *
+ * ⚠️ `typeof` rather than a bare reference on purpose: under ts-jest and `npx tsx` the identifier
+ * is genuinely undeclared, and `typeof` on an undeclared name is the one form that does not throw.
+ * The `package.json` fallback is what a source run reports, and is why this is not a build-only
+ * constant.
+ */
+declare const __NODEGX_APP_VERSION__: string | undefined;
+
+const PKG_VERSION: string =
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  typeof __NODEGX_APP_VERSION__ === 'string' ? __NODEGX_APP_VERSION__ : require('../package.json').version;
 
 export interface ServerOptions {
   /**

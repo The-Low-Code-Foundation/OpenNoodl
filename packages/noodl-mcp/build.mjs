@@ -12,13 +12,28 @@
  * the spec's standing warning is that the two must not be *confused* — which one
  * `npm install` producing both worked directly against.
  */
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
 import esbuild from 'esbuild';
 
+/**
+ * The release this bundle is shipping inside, stamped into the server's MCP handshake.
+ *
+ * 🔴 `@noodl/mcp`'s own version has been `0.1.0` since the package was created and has never been
+ * bumped, so the handshake reported `0.1.0` from every release — which made "my MCP server is
+ * stuck on an old version" unanswerable. The packaged directory carries no `package.json` either,
+ * so there was no second place to look.
+ *
+ * Read from `noodl-editor` rather than from here because that is the number the user sees in the
+ * app and quotes in a bug report, and because taking it from a file somebody already has to bump
+ * every release is what stops the two drifting.
+ */
+const APP_VERSION = JSON.parse(readFileSync('../noodl-editor/package.json', 'utf8')).version;
+
 const common = {
+  define: { __NODEGX_APP_VERSION__: JSON.stringify(APP_VERSION) },
   bundle: true,
   platform: 'node',
   format: 'cjs',

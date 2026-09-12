@@ -73,6 +73,17 @@ failure this file's first house rule exists to prevent.
 | **D37** | 🔴 open — worked around in template (08-29, s15) | **DEF-025** (registered 08-29) | product | every person tapping the words beside a checkbox |
 | **D38** | ✅ fixed s15 — harness, not product | — | harness | (was: every drive asserting on a project string) |
 | **D39** | ✅ **RULED 08-29 by Richard — no change, and now pinned** | — | template | — (ruled: it stays one sentence) |
+| **D40** | 🔴 open (09-11, TPL-005 scoping) | **NONE — deliberately**, see the section | product (node library) | every person who wants anything in their app to happen repeatedly |
+| **D41** | 🔴 open (09-11, TPL-005 build) | **NONE** — needs a ruling on which arm is the bug | product (library modules) | anyone who installs a kit and finds its node missing |
+| **D42** | ✅ **FIXED 09-11 (TPL-005 build)** — `TOKENS_SRC` repointed at the contract package; 0 → 192 shipped defaults | — | harness | (was: every render drive in the repo, silently) |
+| **D43** | ⚠️ **DISPROVED AND REPLACED 09-12 (TPL-006 drive) — see D49.** The mechanism it named does not exist | — | — | (was: every graph that picks a state from a value instead of a signal) |
+| **D44** | 🟡 **open, and RESCOPED 09-11 — the shipped `nodegx deploy` CLI is NOT affected; 46 → 4 in the devtool** | **NONE** | tooling (`deploy-from-disk` devtool only) | anyone measuring a deploy with that devtool |
+| **D45** | ✅ fixed 09-11 — template-side, caught by D44 | — | template | (was: every player who ran out of hearts) |
+| **D46** | ✅ **FIXED 09-11 — found by RICHARD PLAYING IT** | — | template | (was: every player an enemy ever touched) |
+| **D47** | 🔴 open (09-11) | **NONE** | product (runtime ordering) | every graph whose gate reads a value from another branch |
+| **D49** | 🔴 open (09-12, TPL-006 drive) — **replaces D43** | **NONE** | product (node library) | every `States` node with a colour or a number on it, which is most of them |
+| **D50** | 🔴 open (09-12, TPL-006 build) | **NONE** | product (validator) | every author who spaces a wrapped list of pills the way the design doctrine tells them to |
+| **D51** | ✅ fixed 09-12 — repo-side, found by TPL-006 | — | harness/repo | (was: `typecheck:mcp` red for a day with nobody looking) |
 
 🔴 **D18/D19/D20 are the first rows created since the sweep, and they were already unowned within a
 day of the process being put in place.** That is the argument for the column, not an argument
@@ -1860,3 +1871,509 @@ afterwards (md5 match). Each of the four routes back to a reversal reddens its o
 ⚠️ The third and fourth exist because the first two do not cover the page. A node-type absence
 says nothing about a cloud function that is already an allowed type, and nothing at all about
 words — and "add the name" is likeliest to arrive as words.
+## D40 — 🔴 There is no ticker node. Nothing in NodeGX makes anything happen repeatedly without JavaScript.
+
+**Measured 2026-09-11**, while scoping [TPL-005](TPL-005-THE-PIXEL-GAME.md). Not from a hunch — from
+needing one and looking for it.
+
+**What was done:** grepped `Interval` and `requestAnimationFrame` across
+`packages/noodl-viewer-react/src/nodes/` and `packages/noodl-runtime/src/nodes/`, and read the one
+node whose name suggests it.
+
+**What happened:**
+
+- The only matches are a page **transition** and the **agent websocket** nodes. Neither is a ticker
+  and neither is reachable as one from a graph.
+- `noodl-viewer-react/src/nodes/std-library/timer.ts` is `name: 'Timer'`,
+  **`displayName: 'Delay'`** — a **one-shot**: `Duration`, `Start Delay`, `Start`, `Restart`,
+  `Stop`, `Started`, `Finished`. There is no repeat port and no tick output.
+- `Animate To Value` is `Target Value` / `Duration` / `Delay` / `Easing Curve` → `Current Value` /
+  `At Target Value`. It interpolates **one** value to a target. It is not a clock and cannot be read
+  as one.
+- ⚠️ **The library modules were checked too, so the absence is not an absence over the wrong
+  population.** Three of the 33 shipped modules call `setInterval` internally — `intl-format`
+  (refreshing a relative time), `mqtt-module` (reconnect), `lottie` (playback) — and **not one of
+  them exposes a tick or repeat signal to the graph**. No module is named for a timer, clock, tick
+  or interval.
+
+**Where it bites a person:** anything that has to happen on its own — a countdown, a poll for new
+data, an autoplaying carousel, an autosave, a clock, a game. Today the only route is a `Delay` whose
+`Finished` is wired back into its own `Restart` — **an idiom that is taught nowhere, that nothing
+validates, and whose stability under load has never been measured** — or `setInterval` inside a
+Function node, which moves the behaviour out of the graph and out of view. ⚠️ Note what
+[phase 44 §3.2](../phase-44-compute-ceiling/README.md) already records about the second route:
+*"`setInterval` outlives the request"* server-side. Nobody has checked what the browser one outlives.
+
+🔴 **This row's owner is `NONE`, and that is a decision rather than an oversight.** The house rule
+wants an owner; the standing rule wants tasks built rather than defects farmed. **It blocks no
+acceptance criterion of TPL-005** — the turn-based design was chosen precisely so that one keypress
+is one step and no loop is needed — so promoting it now would make a product investigation the first
+job of a template task, which is the exact failure the rule names. **The next free phase-80 id is
+`DEF-048`** if Richard wants it taken.
+
+⚠️ **Do not "fix" this with a Ticker node on the way past.** Two things need deciding first and
+neither is a coding question: whether a repeating signal is a node or a port on `Delay`, and what it
+does when the graph it lives in is navigated away from — which is the bug the
+`keyboard-shortcuts` module's README spends a whole section on, in the same shape.
+## D41 — 🔴 A library module's registration depends on which OTHER modules are installed beside it
+
+**Measured 2026-09-11** while building [TPL-005](TPL-005-THE-PIXEL-GAME.md), which wanted
+`nodegx.confetti` for the end of a run and could not have it.
+
+**What was done:** `extractProjectOverlay` (the MCP server's kit extractor — the same child process
+the door's catalog overlay comes from) run over three projects, then a fourth.
+
+**What happened:**
+
+| arm | modules installed | nodes registered | failures |
+|---|---|---|---|
+| A | `keyboard-shortcuts` alone | **1** (`keyboard-shortcuts.KeyboardShortcut`) | none |
+| B | `confetti` alone | **0** | `nodegx-confetti: registration failed: Cannot convert object to primitive value` |
+| C | both | **1** (the keyboard) | `nodegx-confetti` — same message |
+| D | **all 32 shipped library modules** | **37** from 24 kits | `noodl-chartjs`, `noodl-lottie`, `simple-tooltips` — and **`nodegx-confetti` is NOT among them** |
+
+🔴 **Confetti fails in a two-module project and registers cleanly in a thirty-two-module one.**
+That is the finding: registration is **co-tenancy dependent**, so "does this kit work" has no answer
+that is not also a question about what else is installed. And a template is a two-module project by
+construction — the arm where it does not work.
+
+✅ **One thing this is NOT, measured rather than assumed:** there is no blast radius. Arm C is the
+control — the keyboard's node survives confetti throwing right beside it — so a failing kit takes
+only itself down. ⚠️ An earlier reading of this said otherwise and was **my instrument, not the
+product**: the probe read `node.name` where the field is `typeName`, so every node came back as an
+empty string and one node printed as "(none)". The control pair is what corrected it.
+
+**Where it bites a person:** they install a kit from the shelf, its node is simply absent from the
+picker, and nothing anywhere says why. Three of the thirty-two are in that state in arm D.
+
+⬜ **Owner `NONE`, and it needs a ruling before it needs a fix**, because it is not yet clear which
+arm is the bug: whether `nodegx-confetti` is malformed and thirty-one other kits are papering over
+it, or the extractor's environment is under-built and the thirty-two-module arm is the only honest
+one. The three arm-D failures (`ReactCurrentOwner`, `fillStyle` on null, an `insertInto` style
+target) all read like a missing DOM/React environment, which points at the second.
+
+⚠️ **Do not "fix" this by making the extractor swallow more.** A kit that cannot register is exactly
+what a person needs told, and today they are told nothing.
+
+
+## D42 — ✅ FIXED (2026-09-11): the render harness emitted ZERO shipped design tokens, and looked like a product defect
+
+**Found 2026-09-11** while photographing TPL-005, and it is the harness lying about the product —
+the failure `render-from-disk.js`'s own comment warns about, from the direction it did not expect.
+
+**What was done:** read `--space-10` off `:root` in a rendered project, because the page had no
+padding anywhere.
+
+**What happened:** `--space-10`, `--space-6`, `--space-4`, `--space-0-5` and `--border-1` all read
+**`(UNDEFINED)`**. The harness's own log line said it plainly and nobody had read it:
+`[render] design tokens: 0 shipped defaults + 36 project override(s)`.
+
+**The mechanism.** `harness-paths.js` pointed `TOKENS_SRC` at
+`StyleTokensModel/DefaultTokens.ts` and the harness regex-matches `{ name: '--x', value: '…' }` out
+of it. **HLS-001 moved the declarations to `@nodegx/project-contract/tokens` and left that file as a
+twelve-line re-export**, so the regex matched nothing and every `var(--space-*)`, `var(--radius-*)`
+and `var(--border-*)` in every rendered project resolved to empty.
+
+🔴 **What it cost, and the general shape:** the page under measurement had no padding, no gaps and
+no border widths, so it read as a template-wide spacing defect — and the fix would have been to
+hardcode pixels into a template that was already correct. **A harness that under-reports the product
+invites you to "fix" the product to match it.** The tell was that the tokens were missing *at
+`:root`*, not anything about spacing.
+
+✅ **Fixed**: `TOKENS_SRC` now names `packages/nodegx-project-contract/tokens.ts`, whose
+declarations are in exactly the shape the regex already expected. **0 → 192 shipped defaults.** The
+packaged candidate is untouched, and `firstExisting` prefers the checkout.
+
+⚠️ **This was never TPL-005's to fix** and is recorded here because it was found here. It affects
+**every render drive in the repo** taken since HLS-001 landed, and any look-verdict from one of
+those is about a page with no spacing tokens.
+
+
+## D43 — 🔴 A value wired into a `States` node's `currentState` never changes its state
+
+**Measured 2026-09-11** in a real browser, building TPL-005's board.
+
+**What was done:** `Game/Cell` held a `States` node with six states (`floor,wall,coin,enemy,exit,player`)
+and three colour values, its `currentState` fed from the component's own `kind` input — the
+node-native shape, and the one that reads best in the property panel. 108 cells drawn.
+
+**What happened:** every one of the 108 tiles rendered the **first state's** colours. Sampling the
+distinct computed styles across the board returned exactly **one** entry:
+`bg rgb(23,26,46) / border rgb(29,33,56)` — `value-floor-ground` and `value-floor-edge`, on all of
+them. The board came out monochrome and the maze was not legible.
+
+✅ **The control, and it is what makes this a finding rather than a guess:** the same template's
+banner is a `States` node driven by **four `to-<state>` signals** (`to-playing`, `to-cleared`,
+`to-died`, `to-won`), and **it works** — driven in the browser, the banner reads "Room cleared." on
+an exit and "They got you." on a death, and clears on the next move. So it is not that States nodes
+are broken, not that the connections were misspelt, and not that dynamic ports never register:
+**signals into this node arrive and a value into `currentState` does not.**
+
+⚠️ Also true, and consistent: the `value-<state>-<value>` and `type-<value>` **parameters** are read
+correctly — which is why the floor colours appeared at all.
+
+**Where it bites a person:** the obvious way to drive a States node from data — one wire from the
+value that says which state you are in — silently does nothing, and the node sits in its first state
+looking like a node that is working.
+
+🔴 **The mechanism is NOT established and this row must not pretend otherwise.**
+`registerInputIfNeeded` (`node.ts:185`, overridden in `states.ts`) has a `currentState` branch, and
+its only call site in `node.ts` is `_onNodeModelParameterUpdated` — a **parameter** update, not a
+connection. That would explain it, except the `to-<state>` inputs are registered in the *same
+function* and those work, so the call site cannot be the whole story. 🔴 An earlier version of this
+row asserted the parameter-only mechanism as fact; the working control disproved it within the hour.
+**The measurement is solid, the explanation is open.**
+
+⬜ Worked around in the template rather than fixed: the board's legend is now one `Static Data` node
+the projection looks up, which is cheaper anyway — the States shape was three dynamic-port nodes per
+tile, 324 for one board.
+## D44 — 🔴 The headless deploy silently drops every connection into a dynamically-ported node, and exits 0
+
+**Measured 2026-09-11**, publishing TPL-005's demo page. 🔴 **It blocks that page and it is the
+reason nothing was published.**
+
+**What was done:** `scripts/devtools/deploy-from-disk.cjs templates/pixel-game --out … --base-url …`
+— the headless form of the editor's real `deployToFolder`. Rebuilt from source first, because the
+committed bundle was six days old.
+
+**What happened:** **exit 0**, a `.nodegx-deploy.json` saying `"state": "complete"`, and its own
+census reporting the damage to anyone who read it:
+
+```
+connections on graph 136
+connections deployed  97
+dropped by filter     39
+dropped by component  /Game/Move 16→10 (6),  /Pages/Play 106→73 (33)
+```
+
+**Then the artefact was served at its real base path and driven.** 0 console errors, the board drew
+its 108 cells — and **only the exit tile appeared**. No player, no coins, no walls, and the room
+readout said `/` instead of `1 / 5`. **A gutted app that loads clean.**
+
+### The mechanism, and it is exact
+
+Every one of the 39 targets a port that is **minted inside a `setup()` guarded on the editor
+connection**:
+
+```js
+if (!context.editorConnection || !context.editorConnection.isRunningLocally()) return;
+…
+context.editorConnection.sendDynamicPorts(node.id, ports);
+```
+
+`setvariablenode.ts:229`, `stringformat.ts:159`, plus `expression.ts` and `states.ts` by the same
+route. **Headlessly there is no editor connection, so those ports are never registered** — and
+`exportComponent` drops every connection `getConnectionHealth` calls unhealthy, which a connection
+to a non-existent target port is. The dropped set is exactly:
+
+| node family | ports dropped into |
+|---|---|
+| `Expression` | its identifier inputs (`mvTx.px`, `plAtExit.ex`, `plIsLast.lvl`, `plWasHit.hits`, `plIsDead.hearts`) |
+| `Set Variable` | `value`, on all six |
+| `String Format` | its format fields (`n`, `total`, `name`) |
+| `States` | `to-<state>` ×7 **and** its value outputs (`title`, `line`, `shown`, `tone`) |
+| a project component instance | its `Component Inputs`/`Outputs` ports (`plMoveUp.go`, `plMoveUp.moved`) |
+
+✅ **The control, and it is what stops this being reported as "the exporter is broken":** the
+**business landing page deployed from this same path is LIVE and correct** (`nodegx.io/templates/business-landing-page/`,
+HTTP 200), and its bundle carries **56 surviving connections into dynamic ports**. Its dynamic ports
+are the **Function** node's `in-*`/`out-*`, which come from parsing `functionScript` and need no
+editor connection. So the defect is specific to the four families above, not to dynamic ports as a
+class, and a project can deploy perfectly while another is gutted.
+
+⚠️ **This says nothing about the editor's own Deploy button**, where `editorConnection` exists and
+`isRunningLocally()` is true. Almost certainly fine there — **and that is a hypothesis, not a
+reading.** Nobody has deployed this project from a seat.
+
+🔴 **The worst part is the silence.** Exit 0, `state: "complete"`, no error, no warning, and a page
+that loads with zero console errors. The census is printed and nothing gates on it. **A deploy that
+drops 29% of a graph must not be able to exit 0** — that is the smallest honest fix and it is not the
+same as making the ports work.
+
+⬜ Owner `NONE`, 🔒 **needs a ruling** on which of three it is: give the headless context a recording
+`editorConnection` stub so the four `setup()`s run (root cause, but it changes the runtime context
+for every headless consumer, the MCP render path included); or make the filter trust a connection
+whose target node type is known to mint ports lazily; or, at minimum, **fail the deploy when the
+filter drops anything**. The third is a guard, not a fix, and it would have stopped this page
+shipping broken.
+
+
+## D45 — ✅ FIXED (2026-09-11): a Function port nothing in the script mentioned, wired and dead
+
+**Found by D44's diff** — it is the one drop of the forty that was **TPL-005's own bug**, not the
+tool's, and separating the two is the only reason the 39 above can be attributed cleanly.
+
+`plReloads.currentCount → plPickLevel.in-reload` carried the room restart after a death. **A
+`Function` node's ports come from its script** — reading `Inputs.reload` is the only thing that mints
+`in-reload` — and `PICK_LEVEL_SCRIPT` never mentioned it. The port never existed; the wire targeted
+nothing.
+
+🔴 **And it restarted correctly every single time under measurement.** `render-from-disk` lifts
+ports off the connections it finds, so the harness invented the port the product would not have. The
+death path was driven four times — hearts to zero, coins dropped, room reset — and **all four of
+those readings were of a mechanism that could not ship**. Same family as
+[[D42]](#d42--fixed-2026-09-11-the-render-harness-emitted-zero-shipped-design-tokens-and-looked-like-a-product-defect):
+the harness is more forgiving than the product, in a direction that hides a defect rather than
+inventing one.
+
+✅ Fixed by making the script read it (`Outputs.reload = Number(Inputs.reload) || 0;`), and
+🔴 **gated for the class, not the instance**: `tpl005Template.test.ts` §2 now asserts that **every
+`in-*`/`out-*` port any connection touches is named in that Function's own script**. The drop count
+went 40 → 39 on the next deploy, which is how the remaining 39 were attributed to D44.
+## D46 — ✅ FIXED (2026-09-11): an enemy that caught you hid under you and drained every heart
+
+**Richard, having played it:** *"when you 'hit' a red enemy square, a heart is lost, but then every
+move you make the enemy is like hidden behind you and moved the same way as you, so you lose all 3
+hearts and you can't do anything about it."*
+
+🔴 **Exactly right, and the gate was 56 green the whole time.** `stepEnemies` moved each enemy one
+tile toward the player. Once one *landed on* the player's tile, `dx = px - ex` and `dy` were both
+zero, so its candidate list was empty and it **stayed** — under the sprite, because the projection
+draws the player on top of an enemy. Then every move: you step away (distance 1), it steps onto you
+(distance 0), a heart goes. **Three presses to dead, the cause invisible, and nothing the player
+could do.**
+
+✅ **Fixed by a rule, not a patch: an enemy may never END its turn on your tile.** The two directions
+are now different events, deliberately:
+
+| what happened | cost | what becomes of it |
+|---|---|---|
+| it reached you | a heart | **it holds its ground** — you have to run |
+| you charged it | a heart | **it is gone** — you fought through |
+
+⚠️ **The symmetric version was tried first and rejected on measurement.** Removing the enemy in both
+directions fixed the drain and then made the game **un-losable**: each enemy costs at most one heart,
+so with three hearts only the three-enemy room could ever be failed and rooms 1–4 could not be lost
+at all. A pursuer surviving keeps the pressure; charging one keeps a one-wide corridor passable, so
+a room can never be sealed by a body.
+
+**Driven, both directions, on the turn:** attack → hearts 3→2 with the enemy still at (3,7); charge
+→ hearts 2→1 with the enemy gone; then five more moves at zero cost. And the thing that was
+impossible: **caught, then fled — hearts stopped falling and stayed stopped.**
+
+### ✅ And the two halves Richard also named
+
+- *"You also don't see any 'died' animation."* True, and worse than missing polish — **losing a
+  heart had no feedback at all**, so the only evidence was a number changing under the board while
+  the cause sat invisible under the sprite. The board now takes the enemy's colour and shakes for
+  260ms on a hit, and **holds** a slow pulse on a death (a flash would be over before the eye
+  arrived). Driven: `game-board-hit` on the hitting turn, `game-board-dead` on the fatal one,
+  `game-board-calm` on the next move. Reduced-motion keeps the colour and drops the movement —
+  the colour is the information.
+- *"the 5th room appears to be unsolvable."* Also true, and **not** about reachability: the walk gate
+  passed on that room then and passes now. It was **87% one-tile-wide corridor with only six
+  junctions, against three same-speed pursuers** — you cannot dodge past anything in a corridor, so
+  three of them pincer you. Redesigned as an open finale (29 junctions, 47% corridor) and **driven
+  to the exit with all three chasing, for one heart**. Gated by **junctions per enemy ≥ 4**, derived
+  from the room that was unplayable (2) and the four that were not (5, 8, 16, 9.7).
+
+🔴 **The lesson, and it is the one worth carrying:** 56 green specs, a clean render, zero console
+errors, and a game that could not be played. **Every one of these three was found by a person
+pressing keys**, and two of them are invisible to any instrument that does not.
+
+
+## D47 — 🔴 A gate whose condition arrives from a different branch than its `eval` reads a stale value
+
+**Measured 2026-09-11**, twice, while fixing D46 — and it is the reason that fix took three attempts
+rather than one.
+
+**What happened, both times:** the heart came off **one move after** the turn that hurt you, with
+the board flashing `calm` on the turn it should have shaken. Two different intermediates, same shape:
+
+| attempt | the gate's `condition` came from | the gate's `eval` came from | result |
+|---|---|---|---|
+| 1 | a reactive `Expression` (`hits + attacks > 0`) fed by two nodes | one of those two nodes' `success` | damage one turn late |
+| 2 | a `Function` reading the enemy list **back out of the Variable** just written | that `Set Variable`'s `done` | damage one turn late |
+
+✅ **The fix that worked, and the rule it gives:** collapse the whole decision into the single node
+whose `success` evaluates the gate, and wire its boolean output straight to `condition` — **nothing
+reactive, and no variable round-trip, between a gate's condition and its eval.** Three nodes became
+one; the damage has landed on the correct turn in every drive since.
+
+⚠️ **What this row does NOT claim.** The mechanism is not established, and two earlier readings of it
+were wrong: `Set Variable`'s `done` is documented as firing *"once every Variable node reading it has
+been notified"*, which should make attempt 2 safe, and the death gate has the *same* shape
+(`Expression` off `Counter.currentCount`, evaluated by that Counter's `countChanged`) and works
+correctly. So the ordering is not simply "values lose to signals". **The behaviour is reproducible
+and the explanation is open** — which is exactly why the rule above is phrased as a thing to avoid
+rather than a thing that is understood.
+
+⬜ Owner `NONE`. It blocks nothing now, and it is worth a runtime task: an author cannot tell these
+two shapes apart by looking, and the failing one renders perfectly.
+## 🔴 D44 — THE CORRECTION (2026-09-11): it is the DEVTOOL, not the shipped CLI
+
+**I reported D44 as *"anyone who deploys a project off the editor seat"* and that was wrong.**
+Measured afterwards, on the same project, both paths:
+
+| path | authored | deployed | dropped |
+|---|---|---|---|
+| **`nodegx deploy`** (shipped — `noodl-preview/src/deploy.ts`) | 139 | **139** | **0** |
+| `deploy-from-disk` devtool, before the fix | 139 | 93 | 46 |
+| `deploy-from-disk` devtool, after the fix | 139 | 135 | 4 |
+
+**Why the shipped CLI is untouched, and it is not because it is more careful.** `exportComponent`
+calls `flushEvaluateHealth()`, and `evaluateHealth()` **bails silently** unless the project is
+registered as a node-library module — which the editor does and `deploy.ts` does **not**. So in the
+shipped CLI the filter never runs, no `con-no-target-port` is ever recorded, and **every wire is
+kept whatever its state**. The devtool registers the module *deliberately*, to make the filter
+honest (its own header says so), and that is what exposed the missing ports.
+
+🔴 **So the two paths have opposite defects and neither is safe on its own:**
+
+- the **devtool** had an honest filter with no ports to judge against → it deleted 46 good wires;
+- the **shipped CLI** has ports it never checks → it will ship a **genuinely broken** wire just as
+  happily as a good one. That is the live half of C67's family and it is recorded below as **D48**.
+
+⚠️ **What made the wrong claim so easy:** the devtool is the more rigorous instrument, so its
+verdict *felt* like the product's. **An instrument that measures more than the product does not
+speak for the product** — and the control that settled it took one command.
+
+✅ **The devtool fix, kept:** `registerRuntimeDiscoveredPorts()` in `deploy-from-disk.entry.ts`
+creates a probe runtime, **patches the connection the runtime makes for itself** and drives the
+shipped `setup()` functions against the editor's nodes — **105 ports onto 17 nodes**, 46 → 4 dropped.
+Three things it cost, each worth knowing:
+
+1. `NoodlRuntime` **ignores `args.editorConnection`** and builds its own, so a stub handed to the
+   constructor is never seen — `0 onto 0/28` with every listener registered and every emit landing.
+2. The two capture styles disagree: `setvariablenode.ts` reads `context.editorConnection` at call
+   time, `states.ts` captures it at setup time — so **patching the object the runtime made** is the
+   only thing both see.
+3. `EventSender.emit` is **async** and awaits each listener. Without `await`, the pass finished
+   before a single port existed and reported a confident `0`.
+
+⬜ **The remaining 4** are `keyboard-shortcuts.KeyboardShortcut.pressed → Game/Move.go`: a **module**
+node type, and the headless library holds built-ins only, so its output port cannot resolve. The
+completion is to register the project's `noodl_modules` kits the way `noodl-mcp`'s kit extractor
+does. Not done — it stopped blocking anything the moment the shipped CLI was measured.
+
+
+## D48 — 🔴 The shipped `nodegx deploy` never evaluates connection health, so a broken wire ships silently
+
+**Measured 2026-09-11**, as the control that rescoped D44 — which is the only reason it was found.
+
+`exportComponent` drops every connection `getConnectionHealth` calls unhealthy, and settles the
+verdict first with `flushEvaluateHealth()`. But `evaluateHealth()` returns early unless the project
+is registered as a node-library module, and **`noodl-preview/src/deploy.ts` never registers it**.
+The devtool has a loud comment about exactly this guard and registers the module to defeat it;
+the shipped path does not.
+
+**So the CLI's filter is inert.** Every wire is exported whatever its state — which is why it
+deployed this template correctly, and equally why it would deploy a wire into a port that does not
+exist, a wire whose node is gone, or a wire with an unresolved end. The author is told nothing:
+`ok: true`, and a page that half works.
+
+⚠️ **This is not an argument for turning the guard on and shipping.** D44 is exactly what happens
+when the filter becomes honest in a process that has no dynamic ports: it deletes 46 correct wires.
+**The two must land together** — the ports first, the filter second — or the fix is worse than the
+defect. That ordering is the whole content of this row.
+
+⬜ Owner `NONE`. It has been true since HLS-015 shipped the CLI, and every `nodegx deploy` to date
+has been unfiltered.
+
+
+## D49 — 🔴 A `States` node with transitions ON never publishes a colour or a number. **This replaces D43.**
+
+**Measured 2026-09-12 in a real browser, with the control beside it** (TPL-006's `Story/Passage`).
+
+### What D43 said, and why it was wrong
+
+D43 read: *"a value wired into a States node's `currentState` never changes its state."* It was
+derived from TPL-005's `Game/Cell`, where a six-state node with three colour values drew the first
+state's colours on all 108 tiles.
+
+**The state changes.** Driven on TPL-006's reading page: one `Component Inputs.mode → States.currentState`
+wire, and the node's **`string`** value output changed on cue — the passage eyebrow read
+`You are here` and then `An ending`. D43's mechanism does not exist. It was also already
+contradicted by the artefact: **ten components in `library/prefabs` wire a value into `currentState`**
+(`toast /Show Toast`, both `xano` clients, `media-query`, `tab-bar /Tab Bar Item`,
+`table /Header Cell`, `advanced-columns`, `toggle-switch`, and two in `stripe`), four of them inside
+repeated rows.
+
+### What is actually broken
+
+**A `States` node publishes its `string` and `boolean` values on a state change and does not publish
+its `color` or `number` values at all — whenever `useTransitions` is true, which is the port's
+DEFAULT.**
+
+Two arms, identical but for that one parameter, each against a freshly restarted render server:
+
+| `useTransitions` | eyebrow (`string`) | ink (`color`) | left rule (`color`) |
+|---|---|---|---|
+| `true` (the default) | `You are here` → **`An ending`** | `rgb(99,88,72)` → **unchanged** | `rgb(201,188,166)` → **unchanged** |
+| `false` | `You are here` → **`An ending`** | → **`rgb(138,79,22)`** | → **`rgb(138,79,22)`** |
+
+And it is not a slow transition that was sampled too early. Sampled at **0, 60, 150, 320, 700 and
+1500 ms** after one state change with transitions on: the string flipped at 60 ms and **both colours
+read their previous value at every one of the six samples**. Nothing animates and nothing lands.
+
+🔴 **The failing arm is the one an author gets by not thinking about it.** `useTransitions` defaults
+to `true` (`states.ts`, `default: true`, and `initialize()` sets `_internal.useTransitions = true`),
+so a States node authored without touching that checkbox has dead colour outputs.
+
+⚠️ **Route-independent as far as this session measured**, and that is the correction to D43's whole
+frame: the failing thing is the value TYPE and the flag, not `currentState` versus `to-<state>`.
+`goToState` handles `boolean` and `string`/`textStyle` by assigning and flagging immediately, and
+sends every other type down the transition path (`states.ts`, the `goToState` value loop).
+⬜ **NOT measured: a `to-<state>` signal with transitions on.** This template has no such control —
+its own signal-driven States node carries only strings. See the prediction below; do not read this
+row as having tested it.
+
+### What it predicts about two templates that already shipped
+
+Cheap to check, and worth checking before either is shown to anybody:
+
+- **TPL-005's `plBoardStates` and `plBannerStates` set no `useTransitions`**, so it is `true`. Their
+  `string` values (`title`, `line`, `cls`) and `boolean` (`shown`) should work; their **`color`
+  values (`edge`, `tone`) should be dead**. That matches the record — Richard saw the banner text
+  and asked *"you also don't see any 'died' animation"*.
+- **TPL-003/TPL-004's `Site/FilterPill` sets `useTransitions: true` and drives three colours from an
+  `Expression → currentState`.** Predicted: the pill's selected look never changes. **TPL-004's AC8
+  click-drive has never been done**, so nobody has looked.
+
+### Where it bites a person
+
+Anywhere a `States` node is the component's brain and the thing it switches is a colour — which is
+the idiom CMP-001 §4 teaches and the prefab library is full of. The graph is right, the panel is
+right, the validator is silent, and the screen does not change.
+
+⬜ Owner `NONE`. **TPL-006 ships `useTransitions: false` on both its States nodes and the gate pins
+it**, with the reason in the parameter, so the template is correct while the product is not.
+
+## D50 — 🔴 `uncollapsible-multi-column` warns about a wrapped row of pills, and the fix it suggests is wrong
+
+**Measured 2026-09-12 on TPL-006's `Story/Sidebar`.** The door raises it on every build:
+
+> *This Group wraps a Repeater into a grid with its own gutter, and a wrapped Group cannot collapse
+> at any width: a wrapped flex row does not shrink its children, so each item keeps the width it was
+> given…* → `net.noodl.visual.columns`
+
+**The mechanism it names does not apply**: the repeated component is `contentSize`, so nothing gave
+the items a width and they wrap correctly at 390px. Following the suggestion — `Columns` `autoFit`
+at a 260–320px `minWidth` — would give every two-word tag a 300px column.
+
+🔴 **Arm A of the same check has exactly the exclusion Arm B is missing.** `responsiveArrangement.ts`
+skips Arm A when the container is content-width and calls it *"the exclusion that took the authored
+false-positive rate to zero"*; Arm B's only discriminator is whether a `columnGap` is set.
+
+⚠️ **And the shipped library is on the wrong side of the resulting trade.** `/Tags`,
+`/Multi Select/Pills` and `/Multi Select/Dropdown` all wrap a `For Each` of pills and all three
+escape this warning **only by setting no gap at all** — which is what the design doctrine tells
+authors not to do (*"use the gap ports, never margins on the children"*). So the check as written
+rewards the shape the doctrine calls wrong.
+
+⬜ Owner `NONE`. TPL-006 keeps the gap and its gate asserts **exactly this one warning on exactly
+this one component**, so a new warning reddens rather than hiding behind a known one.
+
+## D51 — ✅ `typecheck:mcp` was red for a day, because the jest run compiles with babel and never sees it
+
+**Measured and fixed 2026-09-12.** `tsc -p packages/noodl-mcp --noEmit` failed on
+`tpl005Components.ts:151-152` — `Property 'width' does not exist on type '{ sizeMode: string }'`,
+from a `contentSized()` helper whose spread TS narrows to a literal shape. It had been red since
+TPL-005 landed the helper on 09-11 and nobody ran the typecheck; the suite is green either way
+because jest transpiles with babel and does no type checking.
+
+TPL-006 copied the helper and therefore the error, which is how it was found. Both files now carry
+the `Record<string, unknown>` annotation and a comment saying why. **`typecheck:mcp` is clean.**
+
+⚠️ The general shape is worth more than the fix: **a green jest run is not a typecheck**, and a
+fixture file that only jest ever compiles has no gate on it at all unless somebody runs `tsc`.

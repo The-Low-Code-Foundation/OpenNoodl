@@ -1,5 +1,14 @@
 # LIB-008 — Every documentation link in the shipped editor is a 404
 
+> ✅ **CLOSED 2026-09-12. AC1–AC4 all met — see [LIB-008-NOTES.md](LIB-008-NOTES.md).**
+>
+> 🔴 **§4's scope line was wrong, and the notes say why.** "Rewriting the 159 catalog URLs" stayed
+> out, correctly. But the **derivation** was addressing the old site's tree: measured live, only
+> **30 of 159** legacy paths resolve. A repoint with the right suffix would still have 404'd for
+> 129 nodes while AC1/AC2 passed on the 30 that happen to agree — the same shape as the trap §3
+> names, one layer down. `nodeDocsPath()` now derives from the node's category and type name, the
+> way `generate-node-docs.js` names the pages: **176 of 176**.
+
 **Found while measuring LIB-007, and it is the same defect one door along.** `getContentEndpoint`
 was repointed after the content repo was renamed. `getDocsEndpoint` was not. It still names a
 GitHub Pages site that no longer exists, and it shipped that way in **0.2.3**.

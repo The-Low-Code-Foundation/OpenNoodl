@@ -39,8 +39,8 @@
  * without starting a renderer. The docs *origin* is deliberately not resolved
  * here: {@link nodeDocsPath} returns a site-relative path and the renderer call
  * sites join it to `getDocsEndpoint()`. That also keeps the legacy Noodl docs
- * host out of this file as a literal — the path is derived from whatever URL
- * the catalog holds, not string-replaced onto it.
+ * host out of this file as a literal — the path is built from the node's own
+ * type name and category, never string-replaced onto a URL.
  *
  * @module noodl-editor/utils/nodeDocs
  */
@@ -63,7 +63,10 @@ export interface NodeDocsContent {
   isDeprecated: boolean;
   /** Rendered HTML for the preview panes. Never empty when this object exists. */
   html: string;
-  /** Site-relative "read more" path, or `''` when the node has no page. */
+  /**
+   * Site-relative "read more" path. Non-empty for every node the catalog knows;
+   * `''` only for a type it does not (a local component, a prefab-provided node).
+   */
   path: string;
 }
 
@@ -124,25 +127,60 @@ function list(items: string[] | undefined): string {
 /* -------------------------------------------------------------------------- */
 
 /**
- * The catalog stores `docs` as an absolute URL on the legacy host, which is a
- * **stable key, not an address** — ALPHA-006 criterion 6 keeps the literal on the
- * node definitions and rewrites it at read time. Taking the pathname is that
- * rewrite: it works for any origin the field is ever given, and it means this
- * file never names the old host.
+ * The docs site's route for a node, as a **site-relative path** — the origin is
+ * the caller's decision (`getDocsEndpoint()`), which is what lets `useLocalDocs`
+ * repoint it and what keeps this module free of Electron.
+ *
+ * ## Why this is not derived from the catalog's `docs` URL
+ *
+ * It was, until LIB-008. The catalog's `docs` field is an absolute URL on the
+ * legacy host (`https://docs.noodl.net/nodes/logic/and`) and this function took
+ * its pathname, on the reasoning that the field is a *stable key, not an
+ * address* — ALPHA-006 criterion 6, which is still the right instinct about the
+ * field and was the wrong address to derive.
+ *
+ * 🔴 **Measured 2026-09-11 against the live site: 30 of the 159 catalog `docs`
+ * URLs resolve. The other 129 are a 404.** The old site's tree and this one's
+ * disagree, and they disagree by design: `scripts/generate-node-docs.js` writes
+ * one page per node at `nodes/<slug(category)>/<slug(typeName)>`, grouped by the
+ * **picker's own `category`** rather than by the old site's hand-made hierarchy,
+ * because the two contradicted each other (`Button` was `ui-controls` there and
+ * `Visual` here). `/nodes/logic/inverter` happens to agree; `/nodes/data/user/log-in`
+ * against `/nodes/cloud-services/net-noodl-user-log-in` does not, and nothing
+ * made it agree.
+ *
+ * So the path is derived the way the pages are named. That addresses **176 of
+ * 176** nodes — including the 17 that carry no `docs` URL at all and therefore
+ * used to render no "read more" link despite having had a generated page since
+ * ALPHA-006 §3.
+ *
+ * 🔴 **`slugify` below is a second copy of the generator's.** Two copies drift;
+ * this one is gated against the **artefact** rather than against the other copy —
+ * `tests-unit/alpha-006/nodeDocs.test.ts` asserts every catalog node's path names
+ * a file that `generate-node-docs.js` actually wrote under `docs-site/docs/`. A
+ * shared import was the alternative and is not available: the generator is a CJS
+ * script that requires `fs` at module scope, and this module is bundled into the
+ * renderer.
+ *
+ * The legacy host still never appears here as a literal, which was the other
+ * thing criterion 6 bought.
  */
-export function nodeDocsPath(typeName: string): string {
-  const raw = enrichedNode(typeName)?.docs;
-  if (!raw) return '';
+function slugify(text: string): string {
+  // Kept character-for-character in step with `scripts/generate-node-docs.js`.
+  return text
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .toLowerCase()
+    .replace(/^-+|-+$/g, '');
+}
 
-  try {
-    const { pathname } = new URL(raw);
-    // The old site served `…-short.md` fragments and `#/`-prefixed hash routes
-    // to the fetch protocol; a person following a link wants neither.
-    return pathname.replace(/^\/#\//, '/').replace(/(-short)?\.md$/, '');
-  } catch {
-    // Already relative.
-    return raw.startsWith('/') ? raw : `/${raw}`;
-  }
+export function nodeDocsPath(typeName: string): string {
+  const node = enrichedNode(typeName);
+  if (!node) return '';
+
+  // `generate-node-docs.js` buckets an absent category under this same label, so
+  // a node that never got one still has a page and still gets a link.
+  return `/nodes/${slugify(node.category || 'Uncategorised')}/${slugify(node.typeName)}`;
 }
 
 function renderHtml(

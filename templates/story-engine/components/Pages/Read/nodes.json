@@ -1,0 +1,670 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "7a4d8261-76c9-5dc3-8b75-e054141e5c29",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rdPage",
+      "type": "Page",
+      "label": "Read",
+      "children": [
+        "rdBand"
+      ],
+      "parameters": {
+        "title": "Read",
+        "urlPath": ""
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rdBand",
+      "type": "Group",
+      "label": "The page",
+      "parent": "rdPage",
+      "children": [
+        "rdShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rdShell",
+      "type": "Group",
+      "label": "The column",
+      "parent": "rdBand",
+      "children": [
+        "rdHead",
+        "rdPassage",
+        "rdChoiceCol",
+        "rdNote",
+        "rdMissing",
+        "rdSide",
+        "rdActions",
+        "rdFoot"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-8)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "rdHead",
+      "type": "Group",
+      "label": "What this is",
+      "parent": "rdShell",
+      "children": [
+        "rdEyebrow",
+        "rdSourceLine"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "rdEyebrow",
+      "type": "Text",
+      "label": "A NodeGX template",
+      "parent": "rdHead",
+      "parameters": {
+        "text": "An interactive story",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "rdSourceLine",
+      "type": "Text",
+      "label": "Which story this is",
+      "parent": "rdHead",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "rdPassage",
+      "type": "/Story/Passage",
+      "label": "The passage",
+      "parent": "rdShell",
+      "x": 220,
+      "y": 760
+    },
+    {
+      "id": "rdChoiceCol",
+      "type": "Group",
+      "label": "What you can do",
+      "parent": "rdShell",
+      "children": [
+        "rdChoices"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "rdChoices",
+      "type": "For Each",
+      "label": "One row per choice you can see",
+      "parameters": {
+        "template": "/Story/Choice",
+        "templateType": "explicit"
+      },
+      "parent": "rdChoiceCol",
+      "x": 280,
+      "y": 1000
+    },
+    {
+      "id": "rdNote",
+      "type": "Text",
+      "label": "What the page has to say",
+      "parent": "rdShell",
+      "parameters": {
+        "text": "",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        }
+      },
+      "x": 220,
+      "y": 1120
+    },
+    {
+      "id": "rdMissing",
+      "type": "Text",
+      "label": "The passage that is not there",
+      "parent": "rdShell",
+      "parameters": {
+        "text": "",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-base)",
+        "color": "var(--destructive)"
+      },
+      "x": 220,
+      "y": 1240
+    },
+    {
+      "id": "rdSide",
+      "type": "/Story/Sidebar",
+      "label": "What you carry",
+      "parent": "rdShell",
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "rdActions",
+      "type": "Group",
+      "label": "The two doors",
+      "parent": "rdShell",
+      "children": [
+        "rdRestart",
+        "rdToRemix"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "flexWrap": "wrap",
+        "columnGap": "var(--space-3)",
+        "rowGap": "var(--space-3)"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "rdRestart",
+      "type": "net.noodl.controls.button",
+      "label": "Start again",
+      "parent": "rdActions",
+      "parameters": {
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "label": "Start again",
+        "cssClassName": "pressable"
+      },
+      "x": 280,
+      "y": 1600
+    },
+    {
+      "id": "rdToRemix",
+      "type": "net.noodl.controls.button",
+      "label": "Write your own",
+      "parent": "rdActions",
+      "parameters": {
+        "backgroundColor": "transparent",
+        "color": "var(--foreground)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-control)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "fontSize": "var(--text-sm)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize",
+        "label": "Write your own story",
+        "cssClassName": "pressable"
+      },
+      "x": 280,
+      "y": 1720
+    },
+    {
+      "id": "rdFoot",
+      "type": "Text",
+      "label": "Where to start editing",
+      "parent": "rdShell",
+      "parameters": {
+        "text": "Every passage in this story is one list in the Story/Source component. Open it, and what you write is what people read.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)"
+      },
+      "x": 220,
+      "y": 1840
+    },
+    {
+      "id": "rdSrc",
+      "type": "/Story/Source",
+      "label": "The story being read",
+      "x": 530,
+      "y": 640
+    },
+    {
+      "id": "rdVarAt",
+      "type": "Variable2",
+      "label": "Which passage you are in",
+      "parameters": {
+        "name": "storyAt"
+      },
+      "x": 530,
+      "y": 1840
+    },
+    {
+      "id": "rdVarCarry",
+      "type": "Variable2",
+      "label": "What you are carrying",
+      "parameters": {
+        "name": "storyCarrying"
+      },
+      "x": 530,
+      "y": 1480
+    },
+    {
+      "id": "rdStart",
+      "type": "Static Data",
+      "label": "EDIT — what the reader already carries, if anything",
+      "parameters": {
+        "type": "json",
+        "json": "[]"
+      },
+      "x": 530,
+      "y": 1960
+    },
+    {
+      "id": "rdFind",
+      "type": "JavaScriptFunction",
+      "label": "The passage you are in",
+      "parameters": {
+        "functionScript": "const story = Inputs.story || [];\n// Where you are, or the beginning if you have not started. See the note above.\nconst at = String(Inputs.at || '') || String(Inputs.firstId || '');\n\nlet here = null;\nfor (let i = 0; i < story.length; i++) {\n  if (String((story[i] || {}).id) === at) {\n    here = story[i];\n    break;\n  }\n}\n\n// The id this seam SETTLED on, so nothing downstream has to re-derive the\n// fallback and disagree with it for a frame.\nOutputs.at = at;\n\nif (here === null) {\n  Outputs.found = false;\n  Outputs.title = '';\n  Outputs.text = '';\n  Outputs.choices = [];\n  Outputs.isEnding = false;\n  Outputs.missing = at;\n} else {\n  const choices = Array.isArray(here.choices) ? here.choices : [];\n  Outputs.found = true;\n  Outputs.title = String(here.title || '');\n  Outputs.text = String(here.text || '');\n  // A fresh array: Outputs publishes only on change.\n  Outputs.choices = choices.slice();\n  Outputs.isEnding = choices.length === 0;\n  Outputs.missing = '';\n}"
+      },
+      "x": 530,
+      "y": 760,
+      "ports": [
+        {
+          "name": "in-story",
+          "displayName": "story",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-at",
+          "displayName": "at",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-firstId",
+          "displayName": "firstId",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-at",
+          "displayName": "at",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-found",
+          "displayName": "found",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-title",
+          "displayName": "title",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-text",
+          "displayName": "text",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-choices",
+          "displayName": "choices",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-isEnding",
+          "displayName": "isEnding",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-missing",
+          "displayName": "missing",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "rdScreen",
+      "type": "JavaScriptFunction",
+      "label": "What you can see from here",
+      "parameters": {
+        "functionScript": "const choices = Inputs.choices || [];\nconst carrying = Inputs.carrying || [];\nconst at = String(Inputs.at || '');\nconst isEnding = Inputs.isEnding === true;\n\nconst have = {};\nfor (let i = 0; i < carrying.length; i++) {\n  const entry = carrying[i];\n  const name = typeof entry === 'string' ? entry : String((entry || {}).thing || '');\n  if (name !== '') have[name] = true;\n}\n\nconst rows = [];\nfor (let i = 0; i < choices.length; i++) {\n  const c = choices[i] || {};\n  const needs = String(c.requires || '');\n  // Absent, not greyed out. See the note above — this is the story, not the CSS.\n  if (needs !== '' && have[needs] !== true) continue;\n  rows.push({\n    id: at + '#' + i,\n    label: String(c.label || ''),\n    goto: String(c.goto || ''),\n    gives: String(c.gives || '')\n  });\n}\n\nOutputs.rows = rows;\nOutputs.carryCount = Object.keys(have).length;\n// 🔴 A passage that is not an ending and has nothing the reader can take. Every\n// choice it owns needs something they are not carrying, so the story stops here\n// and nothing in the data says it meant to.\nOutputs.stuck = !isEnding && rows.length === 0;"
+      },
+      "x": 530,
+      "y": 1000,
+      "ports": [
+        {
+          "name": "in-choices",
+          "displayName": "choices",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-carrying",
+          "displayName": "carrying",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-at",
+          "displayName": "at",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-isEnding",
+          "displayName": "isEnding",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-rows",
+          "displayName": "rows",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-carryCount",
+          "displayName": "carryCount",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-stuck",
+          "displayName": "stuck",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "rdCarry",
+      "type": "JavaScriptFunction",
+      "label": "Take what that choice gives you",
+      "parameters": {
+        "functionScript": "const carrying = Inputs.carrying || [];\nconst gift = String(Inputs.gift || '');\n\nconst out = [];\nconst seen = {};\nfor (let i = 0; i < carrying.length; i++) {\n  const entry = carrying[i];\n  const name = typeof entry === 'string' ? entry : String((entry || {}).thing || '');\n  if (name === '' || seen[name] === true) continue;\n  seen[name] = true;\n  out.push({ id: name, thing: name });\n}\n\nif (gift === '' || seen[gift] === true) {\n  Outputs.added = false;\n} else {\n  out.push({ id: gift, thing: gift });\n  Outputs.added = true;\n}\n\n// A fresh array every run: Outputs publishes only on change, and a mutated array\n// is the same object, so a reused one would never reach the graph.\nOutputs.carrying = out;",
+        "runOnChange-in-carrying": false,
+        "runOnChange-in-gift": false
+      },
+      "x": 530,
+      "y": 1120,
+      "ports": [
+        {
+          "name": "in-carrying",
+          "displayName": "carrying",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-gift",
+          "displayName": "gift",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-added",
+          "displayName": "added",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-carrying",
+          "displayName": "carrying",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "rdFoundGate",
+      "type": "Condition",
+      "label": "Is there a passage with that id?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 2080
+    },
+    {
+      "id": "rdEndGate",
+      "type": "Condition",
+      "label": "Is this an ending?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 2200
+    },
+    {
+      "id": "rdGiftGate",
+      "type": "Condition",
+      "label": "Was that something new?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 2320
+    },
+    {
+      "id": "rdStuckGate",
+      "type": "Condition",
+      "label": "Is there any way on from here?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 2440
+    },
+    {
+      "id": "rdLoadAt",
+      "type": "Set Variable",
+      "label": "Put the reader at the beginning",
+      "parameters": {
+        "name": "storyAt"
+      },
+      "x": 530,
+      "y": 1720
+    },
+    {
+      "id": "rdLoadCarry",
+      "type": "Set Variable",
+      "label": "Empty their hands",
+      "parameters": {
+        "name": "storyCarrying"
+      },
+      "x": 530,
+      "y": 2560
+    },
+    {
+      "id": "rdSetCarry",
+      "type": "Set Variable",
+      "label": "You are carrying that now",
+      "parameters": {
+        "name": "storyCarrying"
+      },
+      "x": 530,
+      "y": 2680
+    },
+    {
+      "id": "rdSetAt",
+      "type": "Set Variable",
+      "label": "You are in that passage now",
+      "parameters": {
+        "name": "storyAt"
+      },
+      "x": 530,
+      "y": 1240
+    },
+    {
+      "id": "rdMode",
+      "type": "States",
+      "label": "What the page has to say, in words",
+      "parameters": {
+        "states": "reading,ending,lost,stuck",
+        "currentState": "reading",
+        "values": "note,panel",
+        "type-note": "string",
+        "type-panel": "string",
+        "value-reading-note": "",
+        "value-reading-panel": "reading",
+        "value-ending-note": "That is an ending. Start again and the other roads are still there.",
+        "value-ending-panel": "ending",
+        "value-lost-note": "",
+        "value-lost-panel": "lost",
+        "value-stuck-note": "Every choice here needs something you are not carrying, so there is no way on. That is usually a \"requires\" that nothing \"gives\".",
+        "value-stuck-panel": "stuck",
+        "useTransitions": false
+      },
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "rdMissingFmt",
+      "type": "String Format",
+      "label": "The id that is missing, in a sentence",
+      "parameters": {
+        "format": "There is no passage with the id \"{id}\". Open Story/Source and look at the goto that points there."
+      },
+      "x": 530,
+      "y": 1360
+    },
+    {
+      "id": "rdHasCarry",
+      "type": "Expression",
+      "label": "Are you carrying anything?",
+      "parameters": {
+        "expression": "n > 0"
+      },
+      "x": 530,
+      "y": 1600
+    },
+    {
+      "id": "rdGoRemix",
+      "type": "RouterNavigate",
+      "label": "Go and write your own",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Remix"
+      },
+      "x": 530,
+      "y": 2800
+    }
+  ],
+  "visualRoots": [
+    "rdPage"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "1b884b95-68b8-515e-881e-b5b7dc0f1a14",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "clInputs",
+      "fromProperty": "glyph",
+      "toId": "clGlyph",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "clInputs",
+      "fromProperty": "ground",
+      "toId": "clTile",
+      "toProperty": "backgroundColor"
+    },
+    {
+      "fromId": "clInputs",
+      "fromProperty": "edge",
+      "toId": "clTile",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "clInputs",
+      "fromProperty": "ink",
+      "toId": "clGlyph",
+      "toProperty": "color"
+    }
+  ]
+}

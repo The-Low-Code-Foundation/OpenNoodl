@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7512f8dd-1891-5139-840f-8cb90d2ab58c",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "paInputs",
+      "fromProperty": "value",
+      "toId": "paBox",
+      "toProperty": "startValue"
+    },
+    {
+      "fromId": "paBox",
+      "fromProperty": "onTextChanged",
+      "toId": "paOutputs",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "paPlay",
+      "fromProperty": "onClick",
+      "toId": "paOutputs",
+      "toProperty": "play"
+    },
+    {
+      "fromId": "paBack",
+      "fromProperty": "onClick",
+      "toId": "paOutputs",
+      "toProperty": "back"
+    },
+    {
+      "fromId": "paInputs",
+      "fromProperty": "problem",
+      "toId": "paProblem",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "paInputs",
+      "fromProperty": "problem",
+      "toId": "paProblem",
+      "toProperty": "mounted"
+    }
+  ]
+}

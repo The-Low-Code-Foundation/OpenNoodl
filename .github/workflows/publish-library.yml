@@ -255,6 +255,30 @@ jobs:
             -- scripts/library/origin-baseline.json
           git push origin "$BRANCH"
 
+          # 🔴 The branch is pushed BEFORE this, and the publish is already done
+          # and already proved, so nothing here is allowed to fail the run.
+          #
+          # `gh pr create` is refused outright when the repository has "Allow
+          # GitHub Actions to create and approve pull requests" off — measured
+          # on the first real publish (run 34648841604):
+          #   GraphQL: GitHub Actions is not permitted to create or approve
+          #   pull requests (createPullRequest)
+          # That turned a publish which had succeeded, been proved against the
+          # served index, and left nothing to redo into a RED run. A red that
+          # means "everything worked" is the worst signal this workflow could
+          # emit, and §3 of the task is about exactly that kind of rot.
+          #
+          # Flipping the repo setting on would make this automatic, and it is
+          # deliberately NOT a prerequisite: the same toggle also lets a
+          # workflow APPROVE pull requests, which is a wider grant than
+          # publishing the shelf needs. So the failure degrades instead.
+          #
+          # ⚠️ Degrading is safe here ONLY because the staleness this PR fixes
+          # is itself gated: `library:verify-origin` on the next PR or push to
+          # main exits 1 with a STALE BASELINE line per entry and prints the
+          # exact edit. The unopened PR cannot rot silently — it has a second
+          # owner. Do not reuse this pattern where nothing else is watching.
+          set +e
           gh pr create \
             --title "chore(library): refresh origin-baseline after a publish" \
             --body "$(printf '%s\n' \
@@ -268,6 +292,22 @@ jobs:
               "" \
               "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")" \
             --head "$BRANCH" --base "${GITHUB_REF_NAME}"
+          PR_STATUS=$?
+          set -e
+
+          if [ "$PR_STATUS" -ne 0 ]; then
+            echo "::warning::The baseline branch '$BRANCH' was pushed, but opening its pull request failed."
+            echo "::warning::Open it here: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${BRANCH}?expand=1"
+            echo "::warning::Until it merges, library:verify-origin stays RED with a STALE BASELINE line per entry."
+            echo "::warning::The publish itself succeeded and was proved against the served index — nothing needs redoing."
+            {
+              echo "### ⚠️ The baseline pull request was not opened"
+              echo ""
+              echo "The publish **succeeded** and was proved against the live origin. Only the follow-up PR failed to open."
+              echo ""
+              echo "[Open it from the pushed branch](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${GITHUB_REF_NAME}...${BRANCH}?expand=1) — and write the \`\$comment\`, which is the WHY and is yours."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Dry run — nothing was published
         if: ${{ inputs.dry_run }}

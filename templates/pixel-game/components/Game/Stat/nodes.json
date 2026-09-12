@@ -1,0 +1,100 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "14a3dad0-0896-5a96-8bb8-74d86a7875cf",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "stTile",
+      "type": "Group",
+      "label": "One reading",
+      "children": [
+        "stLabel",
+        "stValue"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "clip": true,
+        "flexDirection": "column",
+        "rowGap": "var(--space-1)",
+        "paddingTop": "var(--space-3)",
+        "paddingBottom": "var(--space-3)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "alignItems": "center",
+        "minWidth": {
+          "value": 92,
+          "unit": "px"
+        }
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "stLabel",
+      "type": "Text",
+      "label": "What it is",
+      "parent": "stTile",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "stValue",
+      "type": "Text",
+      "label": "The number",
+      "parent": "stTile",
+      "parameters": {
+        "text": "",
+        "fontSize": {
+          "value": 26,
+          "unit": "px"
+        },
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": 1.1,
+        "color": "var(--foreground)",
+        "fontVariantNumeric": "tabular-nums",
+        "fontFamily": "var(--font-mono)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "stInputs",
+      "type": "Component Inputs",
+      "label": "The reading",
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "tone",
+          "plug": "output",
+          "type": "color"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "stTile"
+  ]
+}

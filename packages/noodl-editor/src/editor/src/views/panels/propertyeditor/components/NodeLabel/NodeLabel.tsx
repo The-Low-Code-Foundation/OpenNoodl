@@ -229,9 +229,10 @@ export function NodeLabel({ model, showHelp = true }: NodeLabelProps) {
       return;
     }
 
-    // The catalog stores the page as an absolute legacy URL; `nodeDocs.path` is
-    // the site-relative rewrite of it, joined here to the configured endpoint
-    // (which `useLocalDocs` may point at a local docs build).
+    // `nodeDocs.path` is site-relative — LIB-008: derived from the node's own
+    // category and type name, which is how the docs site names its pages —
+    // joined here to the configured endpoint (which `useLocalDocs` may point at
+    // a local docs build). The endpoint carries the site's `/docs` route base.
     if (!nodeDocs?.path) return;
 
     const docsUrl = getDocsEndpoint() + nodeDocs.path;

@@ -1,0 +1,167 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "aa77f91b-7f79-52e2-89ca-b1476e9ffd7d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "mvInputs",
+      "type": "Component Inputs",
+      "label": "The step",
+      "ports": [
+        {
+          "name": "go",
+          "plug": "output",
+          "type": "signal"
+        },
+        {
+          "name": "dx",
+          "plug": "output",
+          "type": "number"
+        },
+        {
+          "name": "dy",
+          "plug": "output",
+          "type": "number"
+        },
+        {
+          "name": "px",
+          "plug": "output",
+          "type": "number"
+        },
+        {
+          "name": "py",
+          "plug": "output",
+          "type": "number"
+        },
+        {
+          "name": "grid",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "gridWidth",
+          "plug": "output",
+          "type": "number"
+        }
+      ],
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "mvTx",
+      "type": "Expression",
+      "label": "The tile across",
+      "parameters": {
+        "expression": "px + dx"
+      },
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "mvTy",
+      "type": "Expression",
+      "label": "The tile down",
+      "parameters": {
+        "expression": "py + dy"
+      },
+      "x": 40,
+      "y": 280
+    },
+    {
+      "id": "mvWall",
+      "type": "JavaScriptFunction",
+      "label": "Is there a wall in the way?",
+      "parameters": {
+        "functionScript": "var rows = String(Inputs.grid || '').split('\\n');\nvar w = Number(Inputs.w) || 0;\nvar x = Number(Inputs.x);\nvar y = Number(Inputs.y);\n// 🔴 NaN FIRST, and it is not defensive padding — it is the bug this script\n// shipped with. At load nothing has written playerX yet, so \"px + dx\" is NaN,\n// and EVERY comparison against NaN is false: all four bounds checks passed and\n// the next line read rows[NaN].charAt(NaN). Eight thrown scripts before a\n// single key was pressed, and the board still drew perfectly.\nif (!Number.isFinite(x) || !Number.isFinite(y) || x < 0 || y < 0 || x >= w || y >= rows.length) {\n  Outputs.blocked = true;\n} else {\n  var ch = rows[y].charAt(x);\n  Outputs.blocked = ch === '#' || ch === '';\n}"
+      },
+      "x": 40,
+      "y": 400,
+      "ports": [
+        {
+          "name": "in-grid",
+          "displayName": "grid",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-w",
+          "displayName": "w",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-x",
+          "displayName": "x",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-y",
+          "displayName": "y",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-blocked",
+          "displayName": "blocked",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "mvGate",
+      "type": "Condition",
+      "label": "Can you walk there?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 40,
+      "y": 520
+    },
+    {
+      "id": "mvSetX",
+      "type": "Set Variable",
+      "label": "You are here now — across",
+      "parameters": {
+        "name": "playerX"
+      },
+      "x": 40,
+      "y": 640
+    },
+    {
+      "id": "mvSetY",
+      "type": "Set Variable",
+      "label": "You are here now — down",
+      "parameters": {
+        "name": "playerY"
+      },
+      "x": 40,
+      "y": 760
+    },
+    {
+      "id": "mvOutputs",
+      "type": "Component Outputs",
+      "label": "What happened",
+      "ports": [
+        {
+          "name": "moved",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "refused",
+          "plug": "input",
+          "type": "signal"
+        }
+      ],
+      "x": 40,
+      "y": 880
+    }
+  ]
+}

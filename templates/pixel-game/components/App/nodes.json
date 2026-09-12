@@ -1,0 +1,59 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "3b749ca7-c484-567d-8a95-2b4da25fe256",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "app_root",
+      "type": "Group",
+      "label": "App",
+      "children": [
+        "app_router"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "app_router",
+      "type": "Router",
+      "label": "Main router",
+      "parent": "app_root",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Play",
+          "routes": [
+            "/Pages/Play"
+          ]
+        }
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "app_css",
+      "type": "CSS Definition",
+      "label": "The board — motion, and the phone",
+      "parameters": {
+        "style": "/* The pixel dungeon — the three things a node port cannot say.\n   Everything a port CAN express is set on the node, not here. */\n\n.pressable { cursor: pointer; }\n\n/* 🔴 The BODY's ground, and it is not belt-and-braces — it is the fix for a\n   white band under the whole game. bodyScroll:true leaves #root static, so\n   anything below the content is the browser's own white, and measuring it said\n   so: body background-color read rgb(255,255,255) under a dark app. A Group's\n   backgroundColor cannot reach the body; only a stylesheet can.\n   (No backticks in this block: it lives inside a TS template literal, and a\n   backtick here ends the string 200 lines early.) */\nhtml, body { background: var(--background); }\n\n/* A tile settles into its new colour rather than snapping. 90ms is under the\n   ~100ms that reads as \"instant\", so the board still feels keyed rather than\n   animated. */\n.game-cell {\n  transition: background-color 90ms ease-out, border-color 90ms ease-out, color 90ms ease-out;\n}\n\n/* You, and the way out, breathe. An enemy does not — a thing that pulses reads\n   as alive and friendly, and this one is neither. */\n.game-you { animation: game-pulse 1.6s ease-in-out infinite; }\n.game-exit { animation: game-pulse 2.4s ease-in-out infinite; }\n@keyframes game-pulse {\n  0%, 100% { opacity: 1; }\n  50%      { opacity: 0.62; }\n}\n\n/* 🔴 A phone. The tile size is an inline style from the node's own width and\n   height ports, so shrinking it from a stylesheet needs !important. 12 tiles at\n   26px plus the gaps is 334px, which fits a portrait phone; at 34px it does not. */\n@media (max-width: 480px) {\n  .game-cell {\n    width: 26px !important;\n    height: 26px !important;\n  }\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .game-cell { transition: none; }\n  .game-you, .game-exit { animation: none; }\n  /* The coral edge still arrives — it is the information. Only the movement goes. */\n  .game-board-hit, .game-board-dead { animation: none; }\n}"
+      },
+      "x": 350,
+      "y": 40
+    }
+  ],
+  "visualRoots": [
+    "app_root"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "087c5322-2e89-57cd-81e8-e5eefa03811b",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "sbInputs",
+      "fromProperty": "things",
+      "toId": "sbPills",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "sbInputs",
+      "fromProperty": "hasThings",
+      "toId": "sbList",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "sbInputs",
+      "fromProperty": "hasThings",
+      "toId": "sbNot",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "sbNot",
+      "fromProperty": "result",
+      "toId": "sbEmpty",
+      "toProperty": "mounted"
+    }
+  ]
+}

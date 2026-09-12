@@ -1,0 +1,43 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "c7eaa04e-e4bd-5043-8b3a-7d5395c081ee",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "psInputs",
+      "fromProperty": "title",
+      "toId": "psTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "psInputs",
+      "fromProperty": "text",
+      "toId": "psText",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "psInputs",
+      "fromProperty": "mode",
+      "toId": "psLook",
+      "toProperty": "currentState"
+    },
+    {
+      "fromId": "psLook",
+      "fromProperty": "rule",
+      "toId": "psWrap",
+      "toProperty": "borderLeftColor"
+    },
+    {
+      "fromId": "psLook",
+      "fromProperty": "eyebrow",
+      "toId": "psEyebrow",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "psLook",
+      "fromProperty": "tone",
+      "toId": "psEyebrow",
+      "toProperty": "color"
+    }
+  ]
+}

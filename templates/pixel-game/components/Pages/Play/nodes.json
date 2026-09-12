@@ -1,0 +1,1000 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "f2eeb091-f9a8-5297-808d-7c75c5552241",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "plPage",
+      "type": "Page",
+      "label": "Play",
+      "children": [
+        "plWrap"
+      ],
+      "parameters": {
+        "title": "Pixel Dungeon",
+        "urlPath": "/"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "plWrap",
+      "type": "Group",
+      "label": "The screen",
+      "parent": "plPage",
+      "children": [
+        "plHead",
+        "plHud",
+        "plBoardFrame",
+        "plBanner",
+        "plTeach",
+        "plFoot"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-6)",
+        "paddingTop": "var(--space-10)",
+        "paddingBottom": "var(--space-10)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "plHead",
+      "type": "Group",
+      "label": "What this is",
+      "parent": "plWrap",
+      "children": [
+        "plEyebrow",
+        "plTitle",
+        "plRoom"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-1)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "plEyebrow",
+      "type": "Text",
+      "label": "A NodeGX template",
+      "parent": "plHead",
+      "parameters": {
+        "text": "A NodeGX template",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "plTitle",
+      "type": "Text",
+      "label": "EDIT — the name of your game",
+      "parent": "plHead",
+      "parameters": {
+        "text": "Pixel Dungeon",
+        "fontSize": "var(--display-lg)",
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": "var(--leading-none)",
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)",
+        "as": "h1",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 520
+    },
+    {
+      "id": "plRoom",
+      "type": "Text",
+      "label": "Which room this is",
+      "parent": "plHead",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 560,
+          "unit": "px"
+        },
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 640
+    },
+    {
+      "id": "plHud",
+      "type": "/Game/Hud",
+      "label": "The readings",
+      "parent": "plWrap",
+      "x": 160,
+      "y": 760
+    },
+    {
+      "id": "plBoardFrame",
+      "type": "Group",
+      "label": "The board",
+      "parent": "plWrap",
+      "children": [
+        "plBoard"
+      ],
+      "parameters": {
+        "cssClassName": "game-board game-board-calm",
+        "sizeMode": "contentSize",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-4)",
+        "paddingRight": "var(--space-4)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-xl)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-strong)"
+      },
+      "x": 160,
+      "y": 880
+    },
+    {
+      "id": "plBoard",
+      "type": "Group",
+      "label": "The rows",
+      "parent": "plBoardFrame",
+      "children": [
+        "plRows"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-0-5)"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "plRows",
+      "type": "For Each",
+      "label": "One row per row of the room",
+      "parameters": {
+        "template": "/Game/Row",
+        "templateType": "explicit"
+      },
+      "parent": "plBoard",
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "plBanner",
+      "type": "Group",
+      "label": "What just happened",
+      "parent": "plWrap",
+      "children": [
+        "plBannerTitle",
+        "plBannerLine"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "rowGap": "var(--space-1)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "mounted": false
+      },
+      "x": 160,
+      "y": 1240
+    },
+    {
+      "id": "plBannerTitle",
+      "type": "Text",
+      "label": "The headline",
+      "parent": "plBanner",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 1360
+    },
+    {
+      "id": "plBannerLine",
+      "type": "Text",
+      "label": "What to do about it",
+      "parent": "plBanner",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-base)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 220,
+      "y": 1480
+    },
+    {
+      "id": "plTeach",
+      "type": "/Game/Teach",
+      "label": "How to play",
+      "parent": "plWrap",
+      "x": 160,
+      "y": 1600
+    },
+    {
+      "id": "plFoot",
+      "type": "Text",
+      "label": "Where to start editing",
+      "parent": "plWrap",
+      "parameters": {
+        "text": "The five rooms are one Static Data node — open it and add a sixth.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 1720
+    },
+    {
+      "id": "plLevels",
+      "type": "Static Data",
+      "label": "EDIT — the five rooms — this list IS the game",
+      "parameters": {
+        "type": "json",
+        "json": "[\n  {\n    \"name\": \"First steps\",\n    \"grid\": \"############\\n#@...c.....#\\n#.####.###.#\\n#.c..#....c#\\n#..#.#.###.#\\n#.##...#...#\\n#....###...#\\n#.c......>.#\\n############\"\n  },\n  {\n    \"name\": \"Company\",\n    \"grid\": \"############\\n#@....#...c#\\n#.###.#.##.#\\n#...#.#.#..#\\n#.#.#...#..#\\n#.#...#.c..#\\n#.#.###..#.#\\n#c..E....>.#\\n############\"\n  },\n  {\n    \"name\": \"Crossfire\",\n    \"grid\": \"############\\n#@..c#....E#\\n#.##.#.###.#\\n#..#...#c..#\\n#c.#.#.#.#.#\\n#..#.#...#.#\\n#.##.###.#.#\\n#E...c...>.#\\n############\"\n  },\n  {\n    \"name\": \"The long way\",\n    \"grid\": \"############\\n#@.#.......#\\n#..#.#####.#\\n##.#.#c..#.#\\n#..#.#.#.#c#\\n#.##.#.#.#.#\\n#....#.#.#.#\\n#.c..E.#.>.#\\n############\"\n  },\n  {\n    \"name\": \"Last light\",\n    \"grid\": \"############\\n#@..c....E.#\\n#.#..##..#.#\\n#.#.c..#.#c#\\n#....#.....#\\n#c##...##..#\\n#..#.E.#.#.#\\n#..c....>.E#\\n############\"\n  }\n]"
+      },
+      "x": 530,
+      "y": 1480
+    },
+    {
+      "id": "plLevel",
+      "type": "Counter",
+      "label": "Which room",
+      "parameters": {
+        "startValue": 1,
+        "limitsMin": 1,
+        "limitsMax": 5,
+        "limitsEnabled": true
+      },
+      "x": 530,
+      "y": 1600
+    },
+    {
+      "id": "plCoins",
+      "type": "Counter",
+      "label": "Coins you are carrying",
+      "parameters": {
+        "startValue": 0
+      },
+      "x": 530,
+      "y": 760
+    },
+    {
+      "id": "plHearts",
+      "type": "Counter",
+      "label": "Hearts",
+      "parameters": {
+        "startValue": 3,
+        "limitsMin": 0,
+        "limitsMax": 3,
+        "limitsEnabled": true
+      },
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "plReloads",
+      "type": "Counter",
+      "label": "How many times this room has restarted",
+      "parameters": {
+        "startValue": 0
+      },
+      "x": 530,
+      "y": 1720
+    },
+    {
+      "id": "plPickLevel",
+      "type": "JavaScriptFunction",
+      "label": "Read the room out of its string",
+      "parameters": {
+        "functionScript": "var levels = Inputs.levels || [];\nvar i = Math.max(1, Number(Inputs.index) || 1) - 1;\nvar lv = levels[i] || levels[0] || { name: '', grid: '' };\nvar grid = String(lv.grid || '');\nvar rows = grid.split('\\n');\nvar w = 0;\nfor (var r = 0; r < rows.length; r++) if (rows[r].length > w) w = rows[r].length;\n\nvar coins = [];\nvar enemies = [];\nvar start = { x: 1, y: 1 };\nvar exit = { x: 1, y: 1 };\nfor (var y = 0; y < rows.length; y++) {\n  for (var x = 0; x < rows[y].length; x++) {\n    var ch = rows[y].charAt(x);\n    if (ch === 'c') coins.push(x + ',' + y);\n    else if (ch === 'E') enemies.push(x + ',' + y);\n    else if (ch === '@') start = { x: x, y: y };\n    else if (ch === '>') exit = { x: x, y: y };\n  }\n}\n\nOutputs.grid = grid;\nOutputs.width = w;\nOutputs.height = rows.length;\nOutputs.roomName = String(lv.name || '');\nOutputs.startX = start.x;\nOutputs.startY = start.y;\nOutputs.exitX = exit.x;\nOutputs.exitY = exit.y;\n// A fresh array every run: Outputs publishes only on change, and a mutated\n// array is the same object, so a reused one would never reach the graph.\nOutputs.coins = coins.slice();\nOutputs.enemies = enemies.slice();\nOutputs.levelCount = levels.length;\n\n// 🔴 READ THE NUDGE, or the port it is wired to does not exist.\n// A Function node's ports come from THIS SCRIPT — reading Inputs.reload is the\n// only thing that mints \"in-reload\". The graph wired a Counter to it and the\n// script never mentioned it, so the port was never registered and the real\n// exporter dropped the connection: the room could never restart. The render\n// harness hid it by lifting ports off connections, so it worked under\n// measurement and would not have worked in the product.\nOutputs.reload = Number(Inputs.reload) || 0;"
+      },
+      "x": 530,
+      "y": 1840,
+      "ports": [
+        {
+          "name": "in-levels",
+          "displayName": "levels",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-index",
+          "displayName": "index",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-reload",
+          "displayName": "reload",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-grid",
+          "displayName": "grid",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-width",
+          "displayName": "width",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-height",
+          "displayName": "height",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-roomName",
+          "displayName": "roomName",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-startX",
+          "displayName": "startX",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-startY",
+          "displayName": "startY",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-exitX",
+          "displayName": "exitX",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-exitY",
+          "displayName": "exitY",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-coins",
+          "displayName": "coins",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-enemies",
+          "displayName": "enemies",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-levelCount",
+          "displayName": "levelCount",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-reload",
+          "displayName": "reload",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "plVarX",
+      "type": "Variable2",
+      "label": "You — across",
+      "parameters": {
+        "name": "playerX"
+      },
+      "x": 530,
+      "y": 1960
+    },
+    {
+      "id": "plVarY",
+      "type": "Variable2",
+      "label": "You — down",
+      "parameters": {
+        "name": "playerY"
+      },
+      "x": 530,
+      "y": 2080
+    },
+    {
+      "id": "plVarCoins",
+      "type": "Variable2",
+      "label": "Coins still on the floor",
+      "parameters": {
+        "name": "coinsLeft"
+      },
+      "x": 530,
+      "y": 2200
+    },
+    {
+      "id": "plVarEnemies",
+      "type": "Variable2",
+      "label": "Where they are",
+      "parameters": {
+        "name": "enemyTiles"
+      },
+      "x": 530,
+      "y": 2320
+    },
+    {
+      "id": "plLoadX",
+      "type": "Set Variable",
+      "label": "Put you at the start — across",
+      "parameters": {
+        "name": "playerX"
+      },
+      "x": 530,
+      "y": 2440
+    },
+    {
+      "id": "plLoadY",
+      "type": "Set Variable",
+      "label": "Put you at the start — down",
+      "parameters": {
+        "name": "playerY"
+      },
+      "x": 530,
+      "y": 2560
+    },
+    {
+      "id": "plLoadCoins",
+      "type": "Set Variable",
+      "label": "Lay the coins out",
+      "parameters": {
+        "name": "coinsLeft"
+      },
+      "x": 530,
+      "y": 2680
+    },
+    {
+      "id": "plLoadEnemies",
+      "type": "Set Variable",
+      "label": "Put them back where they started",
+      "parameters": {
+        "name": "enemyTiles"
+      },
+      "x": 530,
+      "y": 2800
+    },
+    {
+      "id": "plKeyUp",
+      "type": "keyboard-shortcuts.KeyboardShortcut",
+      "label": "The up key",
+      "parameters": {
+        "shortcut": "up, arrowup, w",
+        "allowRepeat": true,
+        "preventDefault": true,
+        "ignoreInTextFields": true
+      },
+      "x": 530,
+      "y": 2920
+    },
+    {
+      "id": "plKeyDown",
+      "type": "keyboard-shortcuts.KeyboardShortcut",
+      "label": "The down key",
+      "parameters": {
+        "shortcut": "down, arrowdown, s",
+        "allowRepeat": true,
+        "preventDefault": true,
+        "ignoreInTextFields": true
+      },
+      "x": 530,
+      "y": 3040
+    },
+    {
+      "id": "plKeyLeft",
+      "type": "keyboard-shortcuts.KeyboardShortcut",
+      "label": "The left key",
+      "parameters": {
+        "shortcut": "left, arrowleft, a",
+        "allowRepeat": true,
+        "preventDefault": true,
+        "ignoreInTextFields": true
+      },
+      "x": 530,
+      "y": 3160
+    },
+    {
+      "id": "plKeyRight",
+      "type": "keyboard-shortcuts.KeyboardShortcut",
+      "label": "The right key",
+      "parameters": {
+        "shortcut": "right, arrowright, d",
+        "allowRepeat": true,
+        "preventDefault": true,
+        "ignoreInTextFields": true
+      },
+      "x": 530,
+      "y": 3280
+    },
+    {
+      "id": "plMoveUp",
+      "type": "/Game/Move",
+      "label": "Step up",
+      "parameters": {
+        "dx": 0,
+        "dy": -1
+      },
+      "x": 530,
+      "y": 3400
+    },
+    {
+      "id": "plMoveDown",
+      "type": "/Game/Move",
+      "label": "Step down",
+      "parameters": {
+        "dx": 0,
+        "dy": 1
+      },
+      "x": 530,
+      "y": 3520
+    },
+    {
+      "id": "plMoveLeft",
+      "type": "/Game/Move",
+      "label": "Step left",
+      "parameters": {
+        "dx": -1,
+        "dy": 0
+      },
+      "x": 530,
+      "y": 3640
+    },
+    {
+      "id": "plMoveRight",
+      "type": "/Game/Move",
+      "label": "Step right",
+      "parameters": {
+        "dx": 1,
+        "dy": 0
+      },
+      "x": 530,
+      "y": 3760
+    },
+    {
+      "id": "plTakeCoin",
+      "type": "JavaScriptFunction",
+      "label": "Was there a coin on that tile?",
+      "parameters": {
+        "functionScript": "var coins = (Inputs.coins || []).slice();\nvar key = Number(Inputs.x) + ',' + Number(Inputs.y);\nvar at = coins.indexOf(key);\nif (at === -1) {\n  Outputs.taken = false;\n} else {\n  coins.splice(at, 1);\n  Outputs.taken = true;\n}\nOutputs.coins = coins;\nOutputs.left = coins.length;",
+        "runOnChange-in-coins": false,
+        "runOnChange-in-x": false,
+        "runOnChange-in-y": false
+      },
+      "x": 530,
+      "y": 3880,
+      "ports": [
+        {
+          "name": "in-coins",
+          "displayName": "coins",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-x",
+          "displayName": "x",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-y",
+          "displayName": "y",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-taken",
+          "displayName": "taken",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-coins",
+          "displayName": "coins",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-left",
+          "displayName": "left",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "plCoinGate",
+      "type": "Condition",
+      "label": "Take it?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 4000
+    },
+    {
+      "id": "plSetCoins",
+      "type": "Set Variable",
+      "label": "One fewer on the floor",
+      "parameters": {
+        "name": "coinsLeft"
+      },
+      "x": 530,
+      "y": 4120
+    },
+    {
+      "id": "plAtExit",
+      "type": "Expression",
+      "label": "Are you standing on the way out?",
+      "parameters": {
+        "expression": "x === ex && y === ey"
+      },
+      "x": 530,
+      "y": 4240
+    },
+    {
+      "id": "plExitGate",
+      "type": "Condition",
+      "label": "Is that the way out?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 4360
+    },
+    {
+      "id": "plIsLast",
+      "type": "Expression",
+      "label": "Was that the last room?",
+      "parameters": {
+        "expression": "lvl >= last"
+      },
+      "x": 530,
+      "y": 4480
+    },
+    {
+      "id": "plWinGate",
+      "type": "Condition",
+      "label": "The last room, or just this one?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 4600
+    },
+    {
+      "id": "plStepEnemies",
+      "type": "JavaScriptFunction",
+      "label": "The world takes its turn",
+      "parameters": {
+        "functionScript": "var rows = String(Inputs.grid || '').split('\\n');\nvar w = Number(Inputs.w) || 0;\nvar px = Number(Inputs.px);\nvar py = Number(Inputs.py);\n\nfunction wall(x, y) {\n  // Same NaN guard as Game/Move's: an un-loaded room makes every coordinate NaN.\n  if (!Number.isFinite(x) || !Number.isFinite(y)) return true;\n  if (x < 0 || y < 0 || x >= w || y >= rows.length) return true;\n  var ch = rows[y].charAt(x);\n  return ch === '#' || ch === '';\n}\n\nvar list = Inputs.enemies || [];\nvar out = [];\nvar claimed = {};\nvar hurt = false;\n\nfor (var i = 0; i < list.length; i++) {\n  var parts = String(list[i]).split(',');\n  var ex = Number(parts[0]);\n  var ey = Number(parts[1]);\n\n  // YOU CHARGED IT: it is already on your tile, because it will never step\n  // there itself. Costs a heart, and it is gone - which is what keeps a\n  // one-wide corridor passable instead of sealed by a body.\n  if (ex === px && ey === py) {\n    hurt = true;\n    continue;\n  }\n\n  var dx = px - ex;\n  var dy = py - ey;\n  var tries = [];\n  if (Math.abs(dx) >= Math.abs(dy)) {\n    if (dx !== 0) tries.push([ex + (dx > 0 ? 1 : -1), ey]);\n    if (dy !== 0) tries.push([ex, ey + (dy > 0 ? 1 : -1)]);\n  } else {\n    if (dy !== 0) tries.push([ex, ey + (dy > 0 ? 1 : -1)]);\n    if (dx !== 0) tries.push([ex + (dx > 0 ? 1 : -1), ey]);\n  }\n\n  var nx = ex;\n  var ny = ey;\n  for (var t = 0; t < tries.length; t++) {\n    var cx = tries[t][0];\n    var cy = tries[t][1];\n    if (wall(cx, cy)) continue;\n    if (claimed[cx + ',' + cy]) continue;\n    // IT REACHED YOU: an attack, and it HOLDS ITS GROUND. Never ending a turn\n    // on your tile is what makes the distance always at least one, so moving\n    // away always works.\n    if (cx === px && cy === py) {\n      hurt = true;\n      break;\n    }\n    nx = cx;\n    ny = cy;\n    break;\n  }\n  claimed[nx + ',' + ny] = true;\n  out.push(nx + ',' + ny);\n}\n\n// A fresh array, and one that CANNOT contain your own tile.\nOutputs.enemies = out;\nOutputs.hurt = hurt;",
+        "runOnChange-in-enemies": false,
+        "runOnChange-in-grid": false,
+        "runOnChange-in-w": false,
+        "runOnChange-in-px": false,
+        "runOnChange-in-py": false
+      },
+      "x": 530,
+      "y": 4720,
+      "ports": [
+        {
+          "name": "in-grid",
+          "displayName": "grid",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-w",
+          "displayName": "w",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-px",
+          "displayName": "px",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-py",
+          "displayName": "py",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-enemies",
+          "displayName": "enemies",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-enemies",
+          "displayName": "enemies",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-hurt",
+          "displayName": "hurt",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "plSetEnemies",
+      "type": "Set Variable",
+      "label": "Where they are now",
+      "parameters": {
+        "name": "enemyTiles"
+      },
+      "x": 530,
+      "y": 4840
+    },
+    {
+      "id": "plHitGate",
+      "type": "Condition",
+      "label": "Take a heart?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 4960
+    },
+    {
+      "id": "plIsDead",
+      "type": "Expression",
+      "label": "Out of hearts?",
+      "parameters": {
+        "expression": "hearts <= 0"
+      },
+      "x": 530,
+      "y": 5080
+    },
+    {
+      "id": "plDeathGate",
+      "type": "Condition",
+      "label": "Have they got you?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 5200
+    },
+    {
+      "id": "plBuildCells",
+      "type": "JavaScriptFunction",
+      "label": "Draw the room as it stands",
+      "parameters": {
+        "functionScript": "var rows = String(Inputs.grid || '').split('\\n');\n// The legend, as the page's own Static Data node wrote it. A kind with no row\n// falls back to the first, so an unknown kind draws as floor rather than as\n// nothing — an invisible tile is a hole in the board.\nvar palette = {};\nvar legend = Inputs.legend || [];\nfor (var p = 0; p < legend.length; p++) palette[String(legend[p].kind)] = legend[p];\nvar fallback = legend[0] || { ground: '', edge: '', ink: '' };\nvar w = Number(Inputs.w) || 0;\nvar px = Number(Inputs.px);\nvar py = Number(Inputs.py);\n\nvar coinAt = {};\nvar coins = Inputs.coins || [];\nfor (var i = 0; i < coins.length; i++) coinAt[String(coins[i])] = true;\n\nvar enemyAt = {};\nvar enemies = Inputs.enemies || [];\nfor (var j = 0; j < enemies.length; j++) enemyAt[String(enemies[j])] = true;\n\nvar out = [];\nfor (var y = 0; y < rows.length; y++) {\n  var cells = [];\n  for (var x = 0; x < w; x++) {\n    var ch = rows[y].charAt(x) || '#';\n    var kind = 'floor';\n    var glyph = '';\n    if (ch === '#') {\n      kind = 'wall';\n    } else if (x === px && y === py) {\n      kind = 'player';\n      glyph = '◆';\n    } else if (enemyAt[x + ',' + y]) {\n      kind = 'enemy';\n      glyph = '▲';\n    } else if (coinAt[x + ',' + y]) {\n      kind = 'coin';\n      glyph = '●';\n    } else if (ch === '>') {\n      kind = 'exit';\n      glyph = '▣';\n    }\n    var look = palette[kind] || fallback;\n    cells.push({\n      id: x + ',' + y,\n      kind: kind,\n      glyph: glyph,\n      ground: look.ground,\n      edge: look.edge,\n      ink: look.ink\n    });\n  }\n  out.push({ id: 'row' + y, cells: cells });\n}\nOutputs.rows = out;"
+      },
+      "x": 530,
+      "y": 1240,
+      "ports": [
+        {
+          "name": "in-grid",
+          "displayName": "grid",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-legend",
+          "displayName": "legend",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-w",
+          "displayName": "w",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-px",
+          "displayName": "px",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-py",
+          "displayName": "py",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-coins",
+          "displayName": "coins",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-enemies",
+          "displayName": "enemies",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-rows",
+          "displayName": "rows",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "plPalette",
+      "type": "Static Data",
+      "label": "EDIT — what each kind of tile looks like",
+      "parameters": {
+        "type": "json",
+        "json": "[\n  {\n    \"kind\": \"floor\",\n    \"ground\": \"var(--background)\",\n    \"edge\": \"var(--background)\",\n    \"ink\": \"var(--muted-foreground)\"\n  },\n  {\n    \"kind\": \"wall\",\n    \"ground\": \"var(--secondary)\",\n    \"edge\": \"var(--border-strong)\",\n    \"ink\": \"var(--secondary)\"\n  },\n  {\n    \"kind\": \"coin\",\n    \"ground\": \"var(--background)\",\n    \"edge\": \"var(--background)\",\n    \"ink\": \"var(--primary)\"\n  },\n  {\n    \"kind\": \"enemy\",\n    \"ground\": \"var(--background)\",\n    \"edge\": \"var(--destructive)\",\n    \"ink\": \"var(--destructive)\"\n  },\n  {\n    \"kind\": \"exit\",\n    \"ground\": \"var(--accent)\",\n    \"edge\": \"var(--accent-foreground)\",\n    \"ink\": \"var(--accent-foreground)\"\n  },\n  {\n    \"kind\": \"player\",\n    \"ground\": \"var(--background)\",\n    \"edge\": \"var(--primary)\",\n    \"ink\": \"var(--primary)\"\n  }\n]"
+      },
+      "x": 530,
+      "y": 5320
+    },
+    {
+      "id": "plBannerStates",
+      "type": "States",
+      "label": "What just happened, in words",
+      "parameters": {
+        "states": "playing,cleared,died,won",
+        "values": "title,line,shown,tone",
+        "type-title": "string",
+        "type-line": "string",
+        "type-shown": "boolean",
+        "type-tone": "color",
+        "value-playing-title": "",
+        "value-playing-line": "",
+        "value-playing-shown": false,
+        "value-playing-tone": "var(--foreground)",
+        "value-cleared-title": "Room cleared.",
+        "value-cleared-line": "The next one is busier. Keep moving.",
+        "value-cleared-shown": true,
+        "value-cleared-tone": "var(--primary)",
+        "value-died-title": "They got you.",
+        "value-died-line": "You dropped your coins and the room starts again. Move to go on.",
+        "value-died-shown": true,
+        "value-died-tone": "var(--destructive)",
+        "value-won-title": "Out, with all five behind you.",
+        "value-won-line": "That is the lot. Move to start another run.",
+        "value-won-shown": true,
+        "value-won-tone": "var(--accent-foreground)"
+      },
+      "x": 530,
+      "y": 1360
+    },
+    {
+      "id": "plBoardStates",
+      "type": "States",
+      "label": "What the board is doing",
+      "parameters": {
+        "states": "calm,hit,dead",
+        "values": "edge,cls",
+        "type-edge": "color",
+        "type-cls": "string",
+        "value-calm-edge": "var(--border-strong)",
+        "value-calm-cls": "game-board game-board-calm",
+        "value-hit-edge": "var(--destructive)",
+        "value-hit-cls": "game-board game-board-hit",
+        "value-dead-edge": "var(--destructive)",
+        "value-dead-cls": "game-board game-board-dead"
+      },
+      "x": 530,
+      "y": 1120
+    },
+    {
+      "id": "plRoomFmt",
+      "type": "String Format",
+      "label": "Room n of five",
+      "parameters": {
+        "format": "{n} / {total}"
+      },
+      "x": 530,
+      "y": 1000
+    },
+    {
+      "id": "plRoomName",
+      "type": "String Format",
+      "label": "The room, named",
+      "parameters": {
+        "format": "Room {n} — {name}"
+      },
+      "x": 530,
+      "y": 640
+    }
+  ],
+  "visualRoots": [
+    "plPage"
+  ]
+}

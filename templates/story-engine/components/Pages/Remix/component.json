@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "4e6712bb-cee9-5ad9-8bbb-cef50c671f7e",
+  "name": "Remix",
+  "path": "/Pages/Remix",
+  "type": "page",
+  "created": "2026-09-12T00:00:00.000Z",
+  "modified": "2026-09-12T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "2ba45188-2fdf-5e04-85b5-e43867b38203",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "kcRow",
+      "type": "Group",
+      "label": "One key",
+      "children": [
+        "kcCap",
+        "kcWhat"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "kcCap",
+      "type": "Group",
+      "label": "The key itself",
+      "parent": "kcRow",
+      "children": [
+        "kcCapText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minWidth": {
+          "value": 30,
+          "unit": "px"
+        },
+        "paddingTop": {
+          "value": 3,
+          "unit": "px"
+        },
+        "paddingBottom": {
+          "value": 3,
+          "unit": "px"
+        },
+        "paddingLeft": "var(--space-2)",
+        "paddingRight": "var(--space-2)",
+        "backgroundColor": "var(--surface-raised)",
+        "borderRadius": "var(--radius-sm)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border-strong)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "kcCapText",
+      "type": "Text",
+      "label": "The glyph on the key",
+      "parent": "kcCap",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--foreground)",
+        "fontFamily": "var(--font-mono)",
+        "sizeMode": "contentSize"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "kcWhat",
+      "type": "Text",
+      "label": "What it does",
+      "parent": "kcRow",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "kcInputs",
+      "type": "Component Inputs",
+      "label": "The key",
+      "ports": [
+        {
+          "name": "cap",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "what",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "tone",
+          "plug": "output",
+          "type": "color"
+        }
+      ],
+      "x": 410,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "kcRow"
+  ]
+}

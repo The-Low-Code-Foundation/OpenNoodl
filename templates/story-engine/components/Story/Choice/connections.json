@@ -1,0 +1,31 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "16b082fe-2127-554f-8800-5e8cac94af3d",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "chInputs",
+      "fromProperty": "label",
+      "toId": "chLabel",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "chInputs",
+      "fromProperty": "goto",
+      "toId": "chOutputs",
+      "toProperty": "goto"
+    },
+    {
+      "fromId": "chInputs",
+      "fromProperty": "gives",
+      "toId": "chOutputs",
+      "toProperty": "gives"
+    },
+    {
+      "fromId": "chRow",
+      "fromProperty": "onClick",
+      "toId": "chOutputs",
+      "toProperty": "picked"
+    }
+  ]
+}

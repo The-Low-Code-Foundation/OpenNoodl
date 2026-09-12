@@ -104,6 +104,7 @@
     "library:icons:check": "node scripts/library/make-monogram-icon.js --check",
     "library:verify-dist": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-dist.ts",
     "library:verify-origin": "ts-node -P ./scripts/tsconfig.json ./scripts/library/verify-origin.ts",
+    "docs:verify-origin": "ts-node -P ./scripts/tsconfig.json ./scripts/docs/verify-origin.ts",
     "preview": "node packages/noodl-preview/build.mjs && node packages/noodl-preview/bin/noodl-preview.js",
     "typecheck": "tsc --noEmit",
     "typecheck:preview": "tsc -p packages/noodl-preview --noEmit",
@@ -123,7 +124,9 @@
     "icons": "node scripts/generate-icons.js",
     "icons:check": "node scripts/generate-icons.js --check",
     "template:members": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-members-template.ts",
-    "template:landing": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-landing-template.ts"
+    "template:landing": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-landing-template.ts",
+    "template:pixel": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-pixel-template.ts",
+    "template:story": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-story-template.ts"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",

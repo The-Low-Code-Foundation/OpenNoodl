@@ -1,0 +1,661 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "f2eeb091-f9a8-5297-808d-7c75c5552241",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "plLevels",
+      "fromProperty": "items",
+      "toId": "plPickLevel",
+      "toProperty": "in-levels"
+    },
+    {
+      "fromId": "plLevel",
+      "fromProperty": "currentCount",
+      "toId": "plPickLevel",
+      "toProperty": "in-index"
+    },
+    {
+      "fromId": "plReloads",
+      "fromProperty": "currentCount",
+      "toId": "plPickLevel",
+      "toProperty": "in-reload"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-startX",
+      "toId": "plLoadX",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-startY",
+      "toId": "plLoadY",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-coins",
+      "toId": "plLoadCoins",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-enemies",
+      "toId": "plLoadEnemies",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "success",
+      "toId": "plLoadX",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plLoadX",
+      "fromProperty": "done",
+      "toId": "plLoadY",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plLoadY",
+      "fromProperty": "done",
+      "toId": "plLoadCoins",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plLoadCoins",
+      "fromProperty": "done",
+      "toId": "plLoadEnemies",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plLoadEnemies",
+      "fromProperty": "done",
+      "toId": "plHearts",
+      "toProperty": "reset"
+    },
+    {
+      "fromId": "plHearts",
+      "fromProperty": "currentCount",
+      "toId": "plHud",
+      "toProperty": "hearts"
+    },
+    {
+      "fromId": "plCoins",
+      "fromProperty": "currentCount",
+      "toId": "plHud",
+      "toProperty": "coins"
+    },
+    {
+      "fromId": "plLevel",
+      "fromProperty": "currentCount",
+      "toId": "plRoomFmt",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-levelCount",
+      "toId": "plRoomFmt",
+      "toProperty": "total"
+    },
+    {
+      "fromId": "plRoomFmt",
+      "fromProperty": "formatted",
+      "toId": "plHud",
+      "toProperty": "room"
+    },
+    {
+      "fromId": "plLevel",
+      "fromProperty": "currentCount",
+      "toId": "plRoomName",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-roomName",
+      "toId": "plRoomName",
+      "toProperty": "name"
+    },
+    {
+      "fromId": "plRoomName",
+      "fromProperty": "formatted",
+      "toId": "plRoom",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plKeyUp",
+      "fromProperty": "pressed",
+      "toId": "plMoveUp",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plMoveUp",
+      "toProperty": "px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plMoveUp",
+      "toProperty": "py"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plMoveUp",
+      "toProperty": "grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plMoveUp",
+      "toProperty": "gridWidth"
+    },
+    {
+      "fromId": "plMoveUp",
+      "fromProperty": "moved",
+      "toId": "plBannerStates",
+      "toProperty": "to-playing"
+    },
+    {
+      "fromId": "plMoveUp",
+      "fromProperty": "moved",
+      "toId": "plTakeCoin",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plMoveUp",
+      "fromProperty": "moved",
+      "toId": "plStepEnemies",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plKeyDown",
+      "fromProperty": "pressed",
+      "toId": "plMoveDown",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plMoveDown",
+      "toProperty": "px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plMoveDown",
+      "toProperty": "py"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plMoveDown",
+      "toProperty": "grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plMoveDown",
+      "toProperty": "gridWidth"
+    },
+    {
+      "fromId": "plMoveDown",
+      "fromProperty": "moved",
+      "toId": "plBannerStates",
+      "toProperty": "to-playing"
+    },
+    {
+      "fromId": "plMoveDown",
+      "fromProperty": "moved",
+      "toId": "plTakeCoin",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plMoveDown",
+      "fromProperty": "moved",
+      "toId": "plStepEnemies",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plKeyLeft",
+      "fromProperty": "pressed",
+      "toId": "plMoveLeft",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plMoveLeft",
+      "toProperty": "px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plMoveLeft",
+      "toProperty": "py"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plMoveLeft",
+      "toProperty": "grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plMoveLeft",
+      "toProperty": "gridWidth"
+    },
+    {
+      "fromId": "plMoveLeft",
+      "fromProperty": "moved",
+      "toId": "plBannerStates",
+      "toProperty": "to-playing"
+    },
+    {
+      "fromId": "plMoveLeft",
+      "fromProperty": "moved",
+      "toId": "plTakeCoin",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plMoveLeft",
+      "fromProperty": "moved",
+      "toId": "plStepEnemies",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plKeyRight",
+      "fromProperty": "pressed",
+      "toId": "plMoveRight",
+      "toProperty": "go"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plMoveRight",
+      "toProperty": "px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plMoveRight",
+      "toProperty": "py"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plMoveRight",
+      "toProperty": "grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plMoveRight",
+      "toProperty": "gridWidth"
+    },
+    {
+      "fromId": "plMoveRight",
+      "fromProperty": "moved",
+      "toId": "plBannerStates",
+      "toProperty": "to-playing"
+    },
+    {
+      "fromId": "plMoveRight",
+      "fromProperty": "moved",
+      "toId": "plTakeCoin",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plMoveRight",
+      "fromProperty": "moved",
+      "toId": "plStepEnemies",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "plVarCoins",
+      "fromProperty": "value",
+      "toId": "plTakeCoin",
+      "toProperty": "in-coins"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plTakeCoin",
+      "toProperty": "in-x"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plTakeCoin",
+      "toProperty": "in-y"
+    },
+    {
+      "fromId": "plTakeCoin",
+      "fromProperty": "out-taken",
+      "toId": "plCoinGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "plTakeCoin",
+      "fromProperty": "success",
+      "toId": "plCoinGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "plCoinGate",
+      "fromProperty": "ontrue",
+      "toId": "plCoins",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "plTakeCoin",
+      "fromProperty": "out-coins",
+      "toId": "plSetCoins",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plCoinGate",
+      "fromProperty": "ontrue",
+      "toId": "plSetCoins",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plAtExit",
+      "toProperty": "x"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plAtExit",
+      "toProperty": "y"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-exitX",
+      "toId": "plAtExit",
+      "toProperty": "ex"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-exitY",
+      "toId": "plAtExit",
+      "toProperty": "ey"
+    },
+    {
+      "fromId": "plAtExit",
+      "fromProperty": "result",
+      "toId": "plExitGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "plTakeCoin",
+      "fromProperty": "success",
+      "toId": "plExitGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "plExitGate",
+      "fromProperty": "ontrue",
+      "toId": "plWinGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "plLevel",
+      "fromProperty": "currentCount",
+      "toId": "plIsLast",
+      "toProperty": "lvl"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-levelCount",
+      "toId": "plIsLast",
+      "toProperty": "last"
+    },
+    {
+      "fromId": "plIsLast",
+      "fromProperty": "result",
+      "toId": "plWinGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "plWinGate",
+      "fromProperty": "ontrue",
+      "toId": "plBannerStates",
+      "toProperty": "to-won"
+    },
+    {
+      "fromId": "plWinGate",
+      "fromProperty": "onfalse",
+      "toId": "plLevel",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "plWinGate",
+      "fromProperty": "onfalse",
+      "toId": "plBannerStates",
+      "toProperty": "to-cleared"
+    },
+    {
+      "fromId": "plVarEnemies",
+      "fromProperty": "value",
+      "toId": "plStepEnemies",
+      "toProperty": "in-enemies"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plStepEnemies",
+      "toProperty": "in-grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plStepEnemies",
+      "toProperty": "in-w"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plStepEnemies",
+      "toProperty": "in-px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plStepEnemies",
+      "toProperty": "in-py"
+    },
+    {
+      "fromId": "plStepEnemies",
+      "fromProperty": "out-enemies",
+      "toId": "plSetEnemies",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "plStepEnemies",
+      "fromProperty": "success",
+      "toId": "plSetEnemies",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "plStepEnemies",
+      "fromProperty": "out-hurt",
+      "toId": "plHitGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "plStepEnemies",
+      "fromProperty": "success",
+      "toId": "plHitGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "plHitGate",
+      "fromProperty": "ontrue",
+      "toId": "plHearts",
+      "toProperty": "decrease"
+    },
+    {
+      "fromId": "plHearts",
+      "fromProperty": "currentCount",
+      "toId": "plIsDead",
+      "toProperty": "hearts"
+    },
+    {
+      "fromId": "plIsDead",
+      "fromProperty": "result",
+      "toId": "plDeathGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "plHearts",
+      "fromProperty": "countChanged",
+      "toId": "plDeathGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "plDeathGate",
+      "fromProperty": "ontrue",
+      "toId": "plCoins",
+      "toProperty": "reset"
+    },
+    {
+      "fromId": "plDeathGate",
+      "fromProperty": "ontrue",
+      "toId": "plReloads",
+      "toProperty": "increase"
+    },
+    {
+      "fromId": "plDeathGate",
+      "fromProperty": "ontrue",
+      "toId": "plBannerStates",
+      "toProperty": "to-died"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-grid",
+      "toId": "plBuildCells",
+      "toProperty": "in-grid"
+    },
+    {
+      "fromId": "plPickLevel",
+      "fromProperty": "out-width",
+      "toId": "plBuildCells",
+      "toProperty": "in-w"
+    },
+    {
+      "fromId": "plVarX",
+      "fromProperty": "value",
+      "toId": "plBuildCells",
+      "toProperty": "in-px"
+    },
+    {
+      "fromId": "plVarY",
+      "fromProperty": "value",
+      "toId": "plBuildCells",
+      "toProperty": "in-py"
+    },
+    {
+      "fromId": "plVarCoins",
+      "fromProperty": "value",
+      "toId": "plBuildCells",
+      "toProperty": "in-coins"
+    },
+    {
+      "fromId": "plVarEnemies",
+      "fromProperty": "value",
+      "toId": "plBuildCells",
+      "toProperty": "in-enemies"
+    },
+    {
+      "fromId": "plPalette",
+      "fromProperty": "items",
+      "toId": "plBuildCells",
+      "toProperty": "in-legend"
+    },
+    {
+      "fromId": "plBuildCells",
+      "fromProperty": "out-rows",
+      "toId": "plRows",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "plBannerStates",
+      "fromProperty": "title",
+      "toId": "plBannerTitle",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plBannerStates",
+      "fromProperty": "line",
+      "toId": "plBannerLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "plBannerStates",
+      "fromProperty": "shown",
+      "toId": "plBanner",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "plBannerStates",
+      "fromProperty": "tone",
+      "toId": "plBannerTitle",
+      "toProperty": "color"
+    },
+    {
+      "fromId": "plMoveUp",
+      "fromProperty": "moved",
+      "toId": "plBoardStates",
+      "toProperty": "to-calm"
+    },
+    {
+      "fromId": "plMoveDown",
+      "fromProperty": "moved",
+      "toId": "plBoardStates",
+      "toProperty": "to-calm"
+    },
+    {
+      "fromId": "plMoveLeft",
+      "fromProperty": "moved",
+      "toId": "plBoardStates",
+      "toProperty": "to-calm"
+    },
+    {
+      "fromId": "plMoveRight",
+      "fromProperty": "moved",
+      "toId": "plBoardStates",
+      "toProperty": "to-calm"
+    },
+    {
+      "fromId": "plHitGate",
+      "fromProperty": "ontrue",
+      "toId": "plBoardStates",
+      "toProperty": "to-hit"
+    },
+    {
+      "fromId": "plDeathGate",
+      "fromProperty": "ontrue",
+      "toId": "plBoardStates",
+      "toProperty": "to-dead"
+    },
+    {
+      "fromId": "plBoardStates",
+      "fromProperty": "edge",
+      "toId": "plBoardFrame",
+      "toProperty": "borderColor"
+    },
+    {
+      "fromId": "plBoardStates",
+      "fromProperty": "cls",
+      "toId": "plBoardFrame",
+      "toProperty": "cssClassName"
+    }
+  ]
+}

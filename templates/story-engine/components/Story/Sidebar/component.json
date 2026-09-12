@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "087c5322-2e89-57cd-81e8-e5eefa03811b",
+  "name": "Sidebar",
+  "path": "/Story/Sidebar",
+  "type": "visual",
+  "created": "2026-09-12T00:00:00.000Z",
+  "modified": "2026-09-12T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}

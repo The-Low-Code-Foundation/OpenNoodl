@@ -233,6 +233,35 @@ jobs:
       # an id used to pass every gate with zero failures.
       - run: node scripts/node-catalog/validate-project.js --self-test
 
+  docs-origin:
+    name: Docs origin reachable (LIB-008)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      # 🔴 LIB-008. `getDocsEndpoint()` named a GitHub Pages site that stopped
+      # existing when `opennoodl-docs` was renamed on 2026-08-07 — Pages, unlike
+      # git and the API, does not follow a rename redirect — and it SHIPPED that
+      # way in 0.2.3. Every documentation link in the editor was a 404: 176 node
+      # pages, the property panel, the node picker, the MCP settings help link.
+      # Nothing measured it, so nothing said so.
+      #
+      # This resolves known pages through the editor's OWN `getDocsEndpoint()`
+      # and `getContentEndpoint()` — called, not copied, so a repoint is followed
+      # with no edit here — and reports three distinguishable verdicts:
+      # ORIGIN GONE (the rename shape), PATH MOVED (the shape a naive repoint
+      # leaves: right origin, wrong suffix), and UNAVAILABLE, which exits 2 and
+      # is never a pass.
+      #
+      # ⚠️ BOTH endpoints, deliberately. `getContentEndpoint` is healthy today and
+      # was equally healthy right up until a rename; a sweep covering only the one
+      # that broke would have learned nothing from what happened.
+      #
+      # It needs egress by construction, and it is a job of its own for the same
+      # reason `lessons` is: a red step hidden behind a green one earlier in the
+      # same job has already cost this release three findings.
+      - run: npm run docs:verify-origin
+
   library:
     name: Library check (LIB-001)
     runs-on: ubuntu-latest

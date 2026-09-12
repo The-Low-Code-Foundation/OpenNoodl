@@ -1,0 +1,139 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "087c5322-2e89-57cd-81e8-e5eefa03811b",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "sbWrap",
+      "type": "Group",
+      "label": "What you carry",
+      "children": [
+        "sbHead",
+        "sbList",
+        "sbEmpty"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "sbHead",
+      "type": "Text",
+      "label": "The heading",
+      "parent": "sbWrap",
+      "parameters": {
+        "text": "What you carry",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "sbList",
+      "type": "Group",
+      "label": "The things",
+      "parent": "sbWrap",
+      "children": [
+        "sbPills"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "alignItems": "center",
+        "columnGap": "var(--space-2)",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "sbPills",
+      "type": "For Each",
+      "label": "One pill per thing",
+      "parameters": {
+        "template": "/Story/Carried",
+        "templateType": "explicit"
+      },
+      "parent": "sbList",
+      "x": 160,
+      "y": 400
+    },
+    {
+      "id": "sbEmpty",
+      "type": "Text",
+      "label": "When you carry nothing",
+      "parent": "sbWrap",
+      "parameters": {
+        "text": "Nothing yet. Some choices hand you something, and some only appear once you are carrying it.",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight"
+      },
+      "x": 100,
+      "y": 520
+    },
+    {
+      "id": "sbNot",
+      "type": "Inverter",
+      "label": "And when it is empty",
+      "parameters": {},
+      "x": 410,
+      "y": 520
+    },
+    {
+      "id": "sbInputs",
+      "type": "Component Inputs",
+      "label": "The inventory",
+      "ports": [
+        {
+          "name": "things",
+          "plug": "output",
+          "type": "array"
+        },
+        {
+          "name": "hasThings",
+          "plug": "output",
+          "type": "boolean"
+        }
+      ],
+      "x": 410,
+      "y": 400
+    }
+  ],
+  "visualRoots": [
+    "sbWrap"
+  ]
+}

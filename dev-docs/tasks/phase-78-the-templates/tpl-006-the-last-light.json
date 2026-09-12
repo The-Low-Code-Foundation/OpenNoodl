@@ -1,0 +1,55 @@
+[
+  {
+    "id": "start",
+    "title": "The lamp-room",
+    "text": "Rain on the skylight. The lamp sits cold in its housing, wick trimmed, ready since yesterday.\n\nAldis is not here. His coat is on the hook and it is still wet.",
+    "choices": [
+      { "label": "Read the log", "goto": "log", "gives": "what Aldis wrote" },
+      { "label": "Go down to the store", "goto": "store" },
+      { "label": "Take the stairs to the gallery", "goto": "gallery" }
+    ]
+  },
+  {
+    "id": "log",
+    "title": "Thirty years of weather",
+    "text": "He writes small and he writes every day. Wind, glass, swell. Who passed, and what it cost.\n\nSomewhere in March: south stair rotten through, have written to the Board twice.\n\nThe last entry is four o'clock and it stops in the middle of a word. Boat off the Skerry standing too far in. No answer to the horn. Taking the north stair down to\n\nThe pen is uncapped beside it.",
+    "choices": [
+      { "label": "Go down to the store", "goto": "store" },
+      { "label": "Take the stairs to the gallery", "goto": "gallery" }
+    ]
+  },
+  {
+    "id": "store",
+    "title": "The boat store",
+    "text": "Paraffin, and a spare pane wrapped in sacking. The oil lamp is under the bench on the third shelf where it has always been.\n\nAldis's boots are still on the peg. Whatever he went down in, he went down in his shoes.",
+    "choices": [
+      { "label": "Read the log", "goto": "log", "gives": "what Aldis wrote" },
+      { "label": "Take the stairs to the gallery", "goto": "gallery" }
+    ]
+  },
+  {
+    "id": "gallery",
+    "title": "The gallery",
+    "text": "The wind takes the door out of your hand. Below, the sea goes over the Skerry in long white sheets.\n\nThere is a light on the water. It sits where no light should sit, and it is not moving the way a boat under way moves.\n\nThen a shout from the rocks under the north stair. Twice. The second one is weaker.\n\nYou are afraid. What frightens you is how long you stand there doing the arithmetic.",
+    "choices": [
+      { "label": "Light the lamp", "goto": "ending-light" },
+      { "label": "Go down to the rocks", "goto": "ending-man" },
+      { "label": "Light the oil lamp first, then take the north stair", "goto": "ending-both", "requires": "what Aldis wrote" }
+    ]
+  },
+  {
+    "id": "ending-light",
+    "title": "What the light is for",
+    "text": "You light it. The beam goes out and swings and on the third pass the boat comes round hard and finds the channel.\n\nFour men you will never meet go home.\n\nThe tide drops at six. Aldis is at the foot of the north stair, and he is still holding the horn."
+  },
+  {
+    "id": "ending-man",
+    "title": "What you carry up",
+    "text": "You go down. The stair is wet, the rock is worse, and he is heavier than a man that thin has any right to be.\n\nYou get him up to the lamp-room. He is breathing. His leg is wrong below the knee.\n\nBehind you, out in the dark, the Skerry takes the boat. You hear it go. There is nothing to see, because there is no light."
+  },
+  {
+    "id": "ending-both",
+    "title": "The north stair",
+    "text": "The oil lamp is under the bench on the third shelf, where the log says it lives. Lit, carried up, hung on the gallery rail: four minutes.\n\nThen the north stair, because the log says the south one is rotten through and he has been writing to the Board about it since March.\n\nThe boat comes round. You get him up.\n\nHe does not thank you. He lies on the lamp-room floor with his leg strapped, looking at the ceiling, and says: thirty years, and a relief off the boat reads my log and does it in twenty minutes.\n\nThe supply does not come for three days. It is a small room."
+  }
+]

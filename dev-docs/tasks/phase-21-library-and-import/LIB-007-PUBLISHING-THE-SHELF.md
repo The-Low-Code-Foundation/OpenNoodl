@@ -1,5 +1,12 @@
 # LIB-007 — Publishing the shelf stops being a manual copy
 
+> ✅ **CLOSED 2026-09-11. All five ACs met.** Published from CI — content repo `cf873c1e3`,
+> from NodeGX `52578dd78`, [run 34648841604](https://github.com/The-Low-Code-Foundation/NodeGX/actions/runs/34648841604).
+> Prefabs 42→46, modules 30→32 **at the served index**; `library:verify-origin --require-published`
+> exit 0; the caveat below is deleted from the release notes. What happened, and the two things
+> this spec's build notes got wrong, is in [LIB-007-NOTES.md](./LIB-007-NOTES.md) §"What was still
+> owed" and in [PROGRESS.md](./PROGRESS.md) §Log.
+
 **0.2.3 shipped six parts nobody can install.** They are authored, gated, rendered, drive-tested
 and named in the public release notes — and absent from the origin the editor actually fetches.
 The gap is not the work; the work is done. The gap is that publishing is a human copying a folder

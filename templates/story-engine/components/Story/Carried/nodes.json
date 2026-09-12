@@ -1,0 +1,63 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cd3e6561-72d3-57b0-8a9d-56d0d1fef8ef",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "caPill",
+      "type": "Group",
+      "label": "One thing you carry",
+      "children": [
+        "caText"
+      ],
+      "parameters": {
+        "sizeMode": "contentSize",
+        "flexDirection": "row",
+        "alignItems": "center",
+        "paddingTop": "var(--space-1)",
+        "paddingBottom": "var(--space-1)",
+        "paddingLeft": "var(--space-3)",
+        "paddingRight": "var(--space-3)",
+        "backgroundColor": "var(--accent)",
+        "borderRadius": "var(--radius-full)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--accent-foreground)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "caText",
+      "type": "Text",
+      "label": "What it is",
+      "parent": "caPill",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--accent-foreground)",
+        "fontWeight": "var(--font-medium)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "caInputs",
+      "type": "Component Inputs",
+      "label": "The thing",
+      "ports": [
+        {
+          "name": "thing",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 160
+    }
+  ],
+  "visualRoots": [
+    "caPill"
+  ]
+}

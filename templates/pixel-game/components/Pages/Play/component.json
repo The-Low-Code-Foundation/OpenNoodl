@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/component-v2.json",
+  "id": "f2eeb091-f9a8-5297-808d-7c75c5552241",
+  "name": "Play",
+  "path": "/Pages/Play",
+  "type": "page",
+  "created": "2026-09-11T00:00:00.000Z",
+  "modified": "2026-09-11T00:00:00.000Z",
+  "modifiedBy": "noodl-mcp"
+}
