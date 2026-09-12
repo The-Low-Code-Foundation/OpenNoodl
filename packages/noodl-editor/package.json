@@ -127,6 +127,14 @@
         "to": "noodl-mcp/node-catalog.json"
       },
       {
+        "from": "../noodl-mcp/dist/kit-extract.cjs",
+        "to": "noodl-mcp/kit-extract.cjs"
+      },
+      {
+        "from": "../noodl-mcp/dist/cloud-bundle.cjs",
+        "to": "noodl-mcp/cloud-bundle.cjs"
+      },
+      {
         "from": "../nodegx-observe/dist/nodegx-observe.cjs",
         "to": "nodegx-observe/nodegx-observe.cjs"
       },
