@@ -13,22 +13,32 @@ empty shelf.
 By Richard's own ruling (R-templates, 2026-08-22) **he publishes**; a share button files a
 submission. So the blocker was never code.
 
-## 🔴 First task: find or re-make the list
+## ✅ First task: the list — FOUND 2026-09-11, and it was here all along
 
-Richard: *"the other ones from the list we made, can't remember where it is"*.
+~~**It is not in this repository.**~~ **It is, and it always was.** Two prior searches (this README's
+original text, and [RICHARD-RULINGS-2026-08-28 §9](../phase-75-0.2.1-the-feedback/RICHARD-RULINGS-2026-08-28.md))
+each concluded the list did not exist. **Both missed it in the same two places**, found 2026-09-11
+while scoping TPL-005:
 
-**It is not in this repository.** Searched this session: `phase-70`, `phase-71`, `phase-76`,
-`phase-77`, the P75 task files and the adjacent-markets research. The only concrete set referenced
-anywhere is **"Richard's eight 0.2.1 templates"** (P75 `TASKS.md`), which is cited but **never
-enumerated** — and P75 separately records that **three of those eight have no honest category** in
-the ruled vocabulary.
+- **The order**, ruled by Richard 2026-08-26 — [`phase-76/README.md:13-15`](../phase-76-the-site-builder/README.md#L13-L15),
+  written as a *parenthetical inside a sentence about why the site builder goes first*, which is why
+  grepping for "list" and "roster" never reached it.
+- **All eight, with their descriptions** — [`template-search.test.ts:121-190`](../../../packages/noodl-editor/tests-unit/fb-005/template-search.test.ts#L121-L190),
+  the FB-005 T4 search corpus, *"built from Richard's own roster"*.
 
-⬜ **T0 — ask Richard where the list lives, or re-make it with him in one sitting.** Everything else
-here is blocked on knowing what we are building.
+🔴 **A test fixture was the only enumeration of the product roster that existed** — the roster
+survived as search-relevance data because no document owned it. **It is now written down in
+[TPL-005 §0](TPL-005-THE-PIXEL-GAME.md), in full, with each template's status.**
+
+⚠️ **"Which were most exciting" has no answer in the record, and the build order is not one.** The
+site builder went first *because it was hardest*. The only signal of the kind Richard remembers is
+P75's finding that **`pixel-game`, `interactive-fiction` and `shared-canvas` are none of the six
+ruled categories** — they broke the vocabulary because they are the three that are neither a website
+nor a CRUD app. **That preference was legible only as a defect report.**
 
 ## Scope
 
-- ⬜ **T1** — the list (above).
+- ✅ **T1** — the list (above). **FOUND 2026-09-11**; enumerated in [TPL-005 §0](TPL-005-THE-PIXEL-GAME.md).
 - ⬜ **T2** — build the first small batch. Each template is a working project plus a couple of
   sentences of description (the shelf will not publish without them).
   - 🟢 **[TPL-001 — the members' area](TPL-001-THE-MEMBERS-AREA.md)**, `data-app`. **Built,
@@ -62,6 +72,20 @@ here is blocked on knowing what we are building.
     the questions, a stepping quote carousel on two pages and a monthly-yearly price toggle.
     21 → 28 components, 375 → 494 nodes, gate 40 → 50 tests, 0 validator errors.
     ⬜ **AC8 — the click-drive — is the only one left, and it is the one a render cannot meet.**
+  - 🟢 **[TPL-005 — the pixel game](TPL-005-THE-PIXEL-GAME.md)**, roster #3, **for 0.2.3**. **BUILT, GATED (50/50) AND DRIVEN in one session** — 9 components, 5 rooms, played end to end with real key events; AC7 (demo page) and AC8 (his look) are what is left. It found **four** defects: D40 no ticker, D41 kit registration is co-tenancy dependent, D42 the harness emitted 0 design tokens (**fixed**), D43 a wired `currentState` does nothing — 🔴 **D43 is DISPROVED and replaced by D49 (TPL-006, 09-12)**: the state does change, and what froze this board is a `States` node with `useTransitions` true — the DEFAULT — never publishing a colour. Committed 2026-09-12 as `84ca286e7`, having been left untracked.
+    Richard's ask, 2026-09-11: *"something cooler that will show off NodeGX's node graph and power"*,
+    explicitly **not a site template** — delivery is **a zip he shares plus a demo page on the
+    nodegx.io homepage**. Scoped with him as a **turn-based dungeon crawl**: a tile grid, arrow-key
+    movement, coins that raise a score, an exit, and enemies that step only when the person steps.
+    🔴 **Turn-based because there is no ticker node in the product** — `Timer` is a one-shot
+    `Delay`, and nothing in the std library or the runtime repeats, so a real-time loop would be an
+    unmeasured unknown at the bottom of a template. That absence is a **node-library finding for the
+    defects register, not something a template fixes**. The keyboard is the
+    `keyboard-shortcuts` library module and **must be vendored into the project** or the zip is
+    unresponsive on a clean machine. ⚠️ **Every AC here is one a render cannot meet** — a
+    screenshot cannot press a key. **Category stays blocked on T3** (`pixel-game` is none of the six
+    ruled slugs), which blocks *the shelf*, not this delivery.
+  - 🟢 **[TPL-006 — the story engine](TPL-006-THE-STORY-ENGINE.md)**, roster #7 (`interactive-fiction`). Richard's ask, 2026-09-11: *"another cool template … you can build anything with Claude Code today, fine, but **can you go in and edit it afterwards?**"* — picked from four pitches on his stated criterion, **how much new product a person gets per line of JSON edited**. **BUILT, GATED (62/62) AND DRIVEN 2026-09-12**, committed as `a2b53f9c0`: `templates/story-engine/`, 9 components, 88 nodes, **zero `noodl_modules`**, no backend, 0 validator errors, 0 console errors in a browser. Four verbs and no fifth (`goto`, `gives`, `requires`, and an absent `choices` array is an ending), and a `/remix` page whose box **opens holding the story that is playing** — Richard's ruling, *"it's the point"*. 🔴 **AC6 is proved by doing it**: rebuilt with a completely different story, every component graph diffed, **one parameter of one node differs**. It found **three** defects — **D49** (a `States` node with `useTransitions` true, the DEFAULT, never publishes a colour; this **disproves and replaces D43**), **D50** (`uncollapsible-multi-column` warns about content-sized pills and its suggested fix is wrong), **D51** (`typecheck:mcp` red for a day; fixed). **AC7 blocked on the inherited D44/D48 pair; AC8 is his look; the shelf is still blocked on T3.**
 - ⬜ **T3** — the **category question**: either extend the ruled vocabulary, or re-file the three
   templates that do not fit it. ⚠️ P75 already found the surface-level cost of getting this wrong —
   the card drew the machine slug `starter` at a person.

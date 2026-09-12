@@ -1,5 +1,157 @@
 # Phase 78 — next session
 
+> ### 🟢 2026-09-12 — TPL-006, THE STORY ENGINE: **BUILT, GATED, DRIVEN AND COMMITTED.**
+>
+> `templates/story-engine/` — 9 components, 88 nodes, 84 connections, **zero `noodl_modules`**, no
+> backend, **0 validator errors**, **62/62** on its own gate, `typecheck:mcp` clean, and **driven in a
+> real browser with 0 console errors**. Two commits: **`84ca286e7`** (TPL-005's build, which the
+> previous session left untracked and recorded as owed) and **`a2b53f9c0`** (TPL-006).
+> Full record: **[TPL-006](TPL-006-THE-STORY-ENGINE.md)**.
+>
+> **What it is:** a branching story where the whole creative work is one `Static Data` array in
+> `Story/Source`, and a `/remix` page whose box **opens holding the story that is playing** — paste
+> your own, press Read this story, it plays. Four verbs and no fifth: `goto`, `gives`, `requires`,
+> and an absent `choices` array is an ending.
+>
+> 🔴 **AC6 is the one that grades the pitch, and §8 proves it by DOING it.** The template is rebuilt
+> with a completely different story and every component's graph is diffed: **exactly one component
+> differs, and inside it exactly one parameter of one node.** All 20 passage titles, texts and choice
+> labels occur in exactly one parameter — checked in both the raw and JSON-escaped spelling, because
+> checking only the raw form found **13 of 20** and would have read seven leaked paragraphs as clean.
+>
+> ---
+>
+> ## 🔴 THE FIRST JOB IS ONE OF TWO THINGS, AND BOTH ARE CHEAP. DECIDE, DO NOT INHERIT.
+>
+> **(a) D49's two-word fix on TPL-005 and TPL-004, which nobody has driven.**
+> **(b) TPL-004's AC8 click-drive**, which has been the banner below since 09-11.
+> They are the same job by another name — see the prediction. Do (a) first; it is smaller and it
+> tells you what (b) will find.
+>
+> ### 🔴 D43 IS DISPROVED. D49 REPLACES IT, AND IT IS BIGGER THAN D43 WAS.
+>
+> D43 read *"a value wired into `States.currentState` never changes its state."* **It does** —
+> measured in a browser on `Story/Passage`, whose `string` value output changed on cue. Ten shipped
+> `library/prefabs` components do that wire, four of them inside repeated rows.
+>
+> **What is actually broken:** a `States` node with **`useTransitions` true — the port's DEFAULT** —
+> publishes its `string` and `boolean` values on a state change and **never publishes a `color` or a
+> `number` at all.** Two arms, identical but for that parameter, each against a **freshly restarted**
+> render server:
+>
+> | `useTransitions` | eyebrow (`string`) | ink (`color`) | rule (`color`) |
+> |---|---|---|---|
+> | `true` (default) | changed | **unchanged** | **unchanged** |
+> | `false` | changed | changed | changed |
+>
+> Sampled at 0, 60, 150, 320, 700 and 1500 ms: the string flipped at 60 ms and both colours read
+> their previous value at **every** sample. Nothing animates and nothing lands.
+> Full row: **[D49](DEFECTS-THE-TEMPLATES-FOUND.md)**.
+>
+> 🔴 **IT PREDICTS TWO BROKEN TEMPLATES AND NEITHER PREDICTION IS MEASURED:**
+> 1. **TPL-005** — `plBoardStates` and `plBannerStates` set no `useTransitions`, so it is `true`.
+>    Their strings and boolean work; their **colours (`edge`, `tone`) should be dead**. Consistent
+>    with Richard seeing the banner text and asking *"you also don't see any 'died' animation."*
+> 2. **TPL-003/TPL-004** — `Site/FilterPill` sets `useTransitions: true` and drives **three colours**
+>    from `Expression → currentState`. Predicted: **the selected pill's look never changes.**
+>    TPL-004's AC8 drive has never been done, so nobody has looked.
+>
+> ⬜ **NOT measured by this session: a `to-<state>` SIGNAL with transitions on.** TPL-006's own
+> signal-driven States node carries only strings, so it is not a control for that arm. **Do not read
+> D49 as having tested it.** Measuring it is one `to-` wire and one colour value.
+>
+> ---
+>
+> ## 🔴 THE INSTRUMENT TRAP THAT NEARLY SHIPPED THREE FALSE FINDINGS
+>
+> **`render-from-disk.js` builds its HTML ONCE AT STARTUP** (`buildHtml` is called outside the
+> request handler, line 525) **and serves that snapshot for the life of the process.** Three rebuilds
+> were driven against a stale server and produced three confident, wrong readings — including a
+> "transitions are not the cause" that was the exact opposite of the truth.
+> 🔴 **RESTART THE SERVER BETWEEN ARMS.** `goto` is not enough; neither is a hard reload.
+>
+> ⚠️ And `drive-page.js eval` takes a **statement body**, not an expression: it wraps the argument in
+> `(() => { … })()`, so `document.title` returns `{}` and you need `return document.title`. Four
+> silent empty results before that was spotted.
+>
+> ---
+>
+> ## What is left on TPL-006, and what is NOT claimed
+>
+> - 🔴 **AC7 — the demo page. BLOCKED, and it is the inherited D44/D48 pair, not a new blocker.**
+>   **This template is more exposed than TPL-005**: its engine is `Expression`, `Set Variable`,
+>   `String Format`, `States` and — the one nothing has measured — a `For Each`'s `itemOutput-*` /
+>   `itemOutputSignal-*` ports, every one minted in a `setup()` guarded on the editor connection.
+>   **Do not publish a build whose own census says it dropped wires.**
+> - ⬜ **AC8 — Richard's look.** Four screenshots were taken at 1100×1400 and one of them changed the
+>   build (see below); he has not seen any of them.
+> - ⬜ **Not opened from a zip on a second machine**, and not run through the shipped `nodegx deploy`.
+>   The drive was `render-from-disk` against the prepared artefact.
+> - 🙋 **The category slug is still Richard's and now blocks the shelf for TWO templates.**
+>   `interactive-fiction` and `pixel-game` are both outside the six ruled slugs. Phase-78 `T3`.
+> - 🙋 **The demo story's subject is still overturnable** — *The Last Light* ships, and switching to
+>   the support-desk variant costs the prose and **one file** (`STORY_FILE`), nothing structural.
+>
+> ## Three defects this build found, all filed with measurements
+>
+> - **[D49](DEFECTS-THE-TEMPLATES-FOUND.md)** — above. Replaces D43. Owner `NONE`.
+> - **[D50](DEFECTS-THE-TEMPLATES-FOUND.md)** — `uncollapsible-multi-column` Arm B lacks Arm A's
+>   content-size exclusion, so a wrapped row of **content-sized** pills is warned about and the
+>   suggested `Columns autoFit` would give every two-word tag a 300px column. The shipped library's
+>   `/Tags`, `/Multi Select/Pills` and `/Multi Select/Dropdown` escape it **only by setting no gap**,
+>   which is what the design doctrine tells authors not to do. TPL-006's gate asserts **exactly this
+>   one warning on exactly this one component**, so a new one reddens. Owner `NONE`.
+> - **[D51](DEFECTS-THE-TEMPLATES-FOUND.md)** — ✅ fixed. `typecheck:mcp` had been red for a day on
+>   `tpl005Components.ts`; jest transpiles with babel and never type-checks, so nothing said so.
+>   🔴 **A green jest run is not a typecheck.**
+>
+> ## Two things the DOORS taught this build
+>
+> - 🔴 **Two pages that link to each other cannot be authored in one pass.** `create_component`
+>   **refuses** a `RouterNavigate.target` naming a component that does not exist yet
+>   (`unresolved-navigation` → *"rejected — nothing was written"*), and the order cannot be swapped
+>   because `nextStartPage` gives home to the **first page registered**. TPL-006 writes `Pages/Read`,
+>   then `Pages/Remix`, then adds the one door as a two-operation `update_component` delta
+>   (`READ_REMIX_DOOR`). The gate asserts the wire is in the artefact.
+> - 🔴 **A `Text` with `sizeMode: 'contentSize'` renders `white-space: pre` and DOES NOT WRAP**
+>   (`Text.tsx:79-85`). Every other template in this repo sets `contentSize` on almost every `Text`
+>   because their strings are short. Prose nodes must be `contentHeight`. `PROSE_NODES` names all six
+>   and the gate checks them.
+>
+> ## 🔴 Three defects only LOOKING found, on a green gate
+>
+> 1. **D49** — the gate was green and the panel never changed colour.
+> 2. **A dead-end passage was labelled "A passage that is not there."** Two different data mistakes
+>    wearing one label sends a person looking for the wrong bug. `Story/Passage` grew a fourth state.
+> 3. **`visible` reserves its box.** Two empty lines left ~130px of hole on the reading page. The
+>    design doctrine's *"falsiness is free conditional rendering"* names `visible`; for a line that
+>    must **collapse** the port is `mounted` — which is what TPL-005 recorded from the other side.
+>
+> ## The suite, honestly
+>
+> `packages/noodl-mcp`: **1738/1745, 5 suites red, exit 1.** `tpl006Template.test.ts` is **62/62**
+> and `typecheck:mcp` is clean. The five red are `tpl001Template`, `cmp001InterfaceDoctrine`,
+> `cmp004Parts`, `nodeDocBudget`, `provision` — **none of them imports anything from tpl005* or
+> tpl006***, checked. Three were named as already-red at HEAD by the previous session;
+> `cmp004Parts` and `provision` were **not**, and ⚠️ **this session did not bisect them.**
+> 🔴 `cmp004Parts` asserts a byte-for-byte re-export from committed prefab source, and
+> **`library/prefabs/form-fields/project/project.json` is modified in the working tree with an mtime
+> of 09-11 14:50** — before this session and before TPL-005's. It is **left uncommitted on purpose**:
+> it is nobody-here's and re-exporting it is a decision, not a tidy-up.
+>
+> ⚠️ **HEAD moved during this session** — the peer landed `7a769f0f1` (LIB-008), `548a21d05` and
+> `9245e3c22` (EXP-018) and **`c4986ece7` `chore(release): v0.2.4`**. **TPL-005 and TPL-006 are NOT
+> in 0.2.4.**
+>
+> ## How to run it
+>
+>     npm run template:story                 # regenerate templates/story-engine/
+>     cd packages/noodl-mcp && npx jest --runTestsByPath tests/tpl006Template.test.ts
+>     node scripts/devtools/render-from-disk.js templates/story-engine --port 8593
+>     node scripts/devtools/drive-page.js start http://127.0.0.1:8593/ --width 1100 --height 1400
+>
+> 🔴 Restart the render server after every regenerate. See the instrument trap above.
+
 > ### 🟡 2026-09-11 — TPL-004: AC1–AC7 BUILT AND GATED. **AC8 — THE CLICK-DRIVE — IS THE JOB.**
 >
 > Richard: *"improving the default landing page template we ship with the editor"*. He ruled
