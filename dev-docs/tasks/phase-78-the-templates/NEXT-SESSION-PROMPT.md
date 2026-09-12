@@ -160,11 +160,21 @@
 > `io/ProjectExporter`. **Type `nodesOf`/`connectionsOf` once and twenty call sites stop needing a
 > cast.** The one thing genuinely untyped is `LegacyNode.ports` (`unknown[]`, honestly so).
 >
-> ⬜ **Still red as this session ends: `+8 TSFixme` in `scripts/devtools/deploy-from-disk.entry.ts`,
-> and a PEER IS MID-FLIGHT ON IT.** Do not edit that file without checking with them first — this
-> session started on it and found it already half-typed underneath, twice. The four shapes it reaches
-> into cannot be typed by import (that pulls Electron into a headless script) but type fine
-> structurally, and the surface it touches is tiny. **Do not raise the baseline for them.**
+> ✅ **RESOLVED — the gate is GREEN at `4fcb39157`, with NO baseline raise.** The `+8 TSFixme` in
+> `scripts/devtools/deploy-from-disk.entry.ts` are typed. `npm run tsfixme` exits 0 and the baseline
+> is back at its original `src TSFixme: 563`.
+>
+> 🔴 **And the "PEER IS MID-FLIGHT ON IT / half-typed underneath, twice" above was two sessions
+> editing one file at the same time, each seeing the other's unfinished work.** It ended the way that
+> always ends: `23c23e4a1` is a `git commit <pathspec>` that **swept the other session's uncommitted
+> typing into itself**, under a message that claims those 8 were deliberately left and justifies a
+> baseline raise for them. The raise was real and then unearned within minutes. `4fcb39157` drops it
+> and corrects the record rather than rewriting a commit already on the branch.
+> ⚠️ **A pathspec commit scopes by PATH, not by authorship** — it is not a safe way to commit "only
+> my files" on a shared checkout while a peer is live in the same path. The thing that caught it was
+> re-measuring *after* committing: the ratchet said *"8 fewer markers than the baseline"*, which is
+> only possible if the tree moved under the measurement the message was written from.
+> **Typing credit for those 8 belongs to the peer session, not to `23c23e4a1`'s author.**
 >
 > ⚠️ **And `library/prefabs/form-fields/project/project.json` is still modified and uncommitted**
 > (mtime 09-11 14:50, predating both sessions). It reddens `cmp004Parts`, which asserts a
