@@ -143,6 +143,34 @@
 > `9245e3c22` (EXP-018) and **`c4986ece7` `chore(release): v0.2.4`**. **TPL-005 and TPL-006 are NOT
 > in 0.2.4.**
 >
+> ## 🔴 THE LINT GATE IS A RATCHET, AND A TEMPLATE GATE WALKS STRAIGHT INTO IT
+>
+> `npm run tsfixme` counts `any` / `TSFixme` / `@ts-ignore` per population and **fails if any count
+> rises above the committed baseline**. Both phase-78 template gates tripped it the moment they
+> landed (+34 and +14 `any`), which turned the required Lint check red on `cline-dev` and **blocked
+> the v0.2.4 release merge** until it was fixed. A peer session caught it and said so.
+>
+> 🔴 **Run `npm run tsfixme` before you commit a new gate.** `typecheck:mcp` and a green jest run
+> both pass with a file full of `any`; this is the only thing that does not.
+>
+> ✅ **Fixed by typing, not by raising the baseline** (`7d82b3b01` for TPL-006; the peer took
+> `tpl005Template.test.ts`). The whole debt was one root cause: reading `built.project` untyped. The
+> types already exist and are precise — `LegacyProject.components` → `LegacyComponent[]`,
+> `graph.roots` → `LegacyNode[]`, `graph.connections` → `LegacyConnection[]`, all exported from
+> `io/ProjectExporter`. **Type `nodesOf`/`connectionsOf` once and twenty call sites stop needing a
+> cast.** The one thing genuinely untyped is `LegacyNode.ports` (`unknown[]`, honestly so).
+>
+> ⬜ **Still red as this session ends: `+8 TSFixme` in `scripts/devtools/deploy-from-disk.entry.ts`,
+> and a PEER IS MID-FLIGHT ON IT.** Do not edit that file without checking with them first — this
+> session started on it and found it already half-typed underneath, twice. The four shapes it reaches
+> into cannot be typed by import (that pulls Electron into a headless script) but type fine
+> structurally, and the surface it touches is tiny. **Do not raise the baseline for them.**
+>
+> ⚠️ **And `library/prefabs/form-fields/project/project.json` is still modified and uncommitted**
+> (mtime 09-11 14:50, predating both sessions). It reddens `cmp004Parts`, which asserts a
+> byte-for-byte re-export from committed prefab source. Nobody currently working owns it; somebody
+> has to decide re-export or revert.
+>
 > ## How to run it
 >
 >     npm run template:story                 # regenerate templates/story-engine/
