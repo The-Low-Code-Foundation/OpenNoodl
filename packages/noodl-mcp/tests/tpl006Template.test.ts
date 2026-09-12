@@ -34,6 +34,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
+import type {
+  LegacyComponent,
+  LegacyConnection,
+  LegacyNode
+} from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+
 import {
   CHOICE_COMPONENT,
   FUNCTION_SEAMS,
@@ -75,28 +81,48 @@ const STORY: Passage[] = JSON.parse(readStoryJson());
 
 let built: AuthoredTemplate;
 
+/**
+ * One declared port on a `Component Inputs` / `Component Outputs` node.
+ *
+ * `LegacyNode.ports` is `unknown[]`, and honestly so — the legacy format carries
+ * several port shapes. This is the one this template authors, named here rather
+ * than asserted at each of the three reads.
+ */
+interface AuthoredPort {
+  name: string;
+  plug?: string;
+  type?: string | { name?: string };
+}
+
+/** Every component in the authored project. */
+function componentsOf(): LegacyComponent[] {
+  return built.project.components ?? [];
+}
+
 /** Every node in the authored project, by component legacy name. */
-function nodesOf(component: string): Array<Record<string, any>> {
-  const found = (built.project.components ?? []).find((c: any) => c.name === component);
+function nodesOf(component: string): LegacyNode[] {
+  const found = componentsOf().find((c) => c.name === component);
   if (!found) {
-    throw new Error(
-      `no component "${component}" — the project has: ${(built.project.components ?? []).map((c: any) => c.name).join(', ')}`
-    );
+    throw new Error(`no component "${component}" — the project has: ${componentsOf().map((c) => c.name).join(', ')}`);
   }
-  const out: Array<Record<string, any>> = [];
-  const walk = (list: any[]) => {
+  const out: LegacyNode[] = [];
+  const walk = (list: LegacyNode[]) => {
     for (const n of list ?? []) {
       out.push(n);
       if (n.children) walk(n.children);
     }
   };
-  walk([(found as any).graph?.roots ?? []].flat());
+  walk(found.graph?.roots ?? []);
   return out;
 }
 
-function connectionsOf(component: string): Array<Record<string, any>> {
-  const found = (built.project.components ?? []).find((c: any) => c.name === component);
-  return ((found as any)?.graph?.connections ?? []) as Array<Record<string, any>>;
+function connectionsOf(component: string): LegacyConnection[] {
+  return componentsOf().find((c) => c.name === component)?.graph?.connections ?? [];
+}
+
+/** The ports a `Component Inputs`/`Outputs` node declares, typed once. */
+function portsOf(node: LegacyNode): AuthoredPort[] {
+  return (node.ports ?? []) as AuthoredPort[];
 }
 
 beforeAll(async () => {
@@ -215,9 +241,9 @@ describe('TPL-006 §2 — the engine is in the graph, not in a script', () => {
   it('every Condition in the template is a declared gate — no branch is undocumented', () => {
     const declared = new Set(GATE_NODES.map((g) => `${g.component}::${g.id}`));
     const found: string[] = [];
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.type === 'Condition') found.push(`${(c as any).name}::${n.id}`);
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
+        if (n.type === 'Condition') found.push(`${c.name}::${n.id}`);
       }
     }
     expect(found.sort()).toEqual([...declared].sort());
@@ -226,9 +252,9 @@ describe('TPL-006 §2 — the engine is in the graph, not in a script', () => {
   it('the Function nodes are exactly the named seams', () => {
     const declared = new Set(FUNCTION_SEAMS.map((f) => `${f.component}::${f.id}`));
     const found: string[] = [];
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.type === 'JavaScriptFunction') found.push(`${(c as any).name}::${n.id}`);
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
+        if (n.type === 'JavaScriptFunction') found.push(`${c.name}::${n.id}`);
       }
     }
     expect(found.sort()).toEqual([...declared].sort());
@@ -313,7 +339,7 @@ describe('TPL-006 §2 — the engine is in the graph, not in a script', () => {
     const published = new Set(
       nodesOf(CHOICE_COMPONENT)
         .filter((n) => n.type === 'Component Outputs')
-        .flatMap((n) => (n.ports ?? []).map((p: any) => String(p.name)))
+        .flatMap((n) => portsOf(n).map((p) => p.name))
     );
     for (const name of ['picked', 'goto', 'gives']) expect(published).toContain(name);
   });
@@ -495,9 +521,7 @@ describe('TPL-006 §3 — the writes are sequenced, not raced', () => {
     // Both preconditions the ten shipped instances share, and that TPL-005 lacked.
     expect(String(look!.parameters?.states ?? '').length).toBeGreaterThan(0);
     expect(look!.parameters?.currentState).toBe('reading');
-    const port = (nodesOf(PASSAGE_COMPONENT).find((n) => n.id === 'psInputs')!.ports ?? []).find(
-      (p: any) => p.name === 'mode'
-    );
+    const port = portsOf(nodesOf(PASSAGE_COMPONENT).find((n) => n.id === 'psInputs')!).find((p) => p.name === 'mode')!;
     const portType = typeof port.type === 'string' ? port.type : port.type?.name;
     expect(portType).toBe('*');
   });
@@ -516,9 +540,9 @@ describe('TPL-006 §3 — the writes are sequenced, not raced', () => {
    */
   it('every States node in the template has transitions OFF, because the default does not publish colours', () => {
     const found: Array<[string, unknown]> = [];
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.type === 'States') found.push([`${(c as any).name}::${n.id}`, n.parameters?.useTransitions]);
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
+        if (n.type === 'States') found.push([`${c.name}::${n.id}`, n.parameters?.useTransitions]);
       }
     }
     expect(found.length).toBeGreaterThanOrEqual(2);
@@ -549,9 +573,9 @@ describe('TPL-006 §4 — the prose wraps', () => {
     // 🔴 Two nodes set a font in this whole project. A project that sets
     // `fontFamily` on forty nodes has no type system left.
     const setters: string[] = [];
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.parameters?.fontFamily) setters.push(`${(c as any).name}::${n.id}`);
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
+        if (n.parameters?.fontFamily) setters.push(`${c.name}::${n.id}`);
       }
     }
     expect(setters.sort()).toEqual([`${PAGE_REMIX}::rxHelpExample`, `${PASSAGE_COMPONENT}::psText`, `${PASSAGE_COMPONENT}::psTitle`]);
@@ -610,10 +634,10 @@ describe('TPL-006 §5 — the contrast is recomputed, not quoted', () => {
     const brass: string[] = [];
     const teal: string[] = [];
     const red: string[] = [];
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
         const json = JSON.stringify(n.parameters ?? {});
-        const where = `${(c as any).name}::${n.id}`;
+        const where = `${c.name}::${n.id}`;
         if (json.includes(MEANING.choice)) brass.push(where);
         if (json.includes(MEANING.carried)) teal.push(where);
         if (json.includes(MEANING.broken)) red.push(where);
@@ -656,8 +680,8 @@ describe('TPL-006 §6 — the graph is an interpreter, not a story', () => {
     expect(needles.size).toBeGreaterThan(10);
 
     const carriers = new Map<string, Set<string>>();
-    for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
+    for (const c of componentsOf()) {
+      for (const n of nodesOf(c.name)) {
         for (const [key, raw] of Object.entries(n.parameters ?? {})) {
           if (typeof raw !== 'string') continue;
           for (const needle of needles) {
@@ -668,7 +692,7 @@ describe('TPL-006 §6 — the graph is an interpreter, not a story', () => {
             // leaked paragraphs as clean.
             const escaped = JSON.stringify(needle).slice(1, -1);
             if (!raw.includes(needle) && !raw.includes(escaped)) continue;
-            const where = `${(c as any).name}::${n.id}::${key}`;
+            const where = `${c.name}::${n.id}::${key}`;
             if (!carriers.has(where)) carriers.set(where, new Set());
             carriers.get(where)!.add(needle);
           }
@@ -801,30 +825,30 @@ describe('TPL-006 §8 — a stranger ships a different story by editing one para
     const swapped = await buildStoryTemplateProject({ storyJson: JSON.stringify(other, null, 2) });
 
     const differing: string[] = [];
-    for (const c of swapped.project.components ?? []) {
-      const name = (c as any).name;
-      const before = (built.project.components ?? []).find((x: any) => x.name === name);
+    for (const after of swapped.project.components ?? []) {
+      const before = componentsOf().find((c) => c.name === after.name);
       expect(before).toBeDefined();
-      if (JSON.stringify((before as any).graph) !== JSON.stringify((c as any).graph)) differing.push(name);
+      if (JSON.stringify(before!.graph) !== JSON.stringify(after.graph)) differing.push(after.name);
     }
     expect(differing).toEqual([SOURCE_COMPONENT]);
 
     // ...and inside that one component, exactly one parameter of one node.
-    const beforeSource = (built.project.components ?? []).find((x: any) => x.name === SOURCE_COMPONENT) as any;
-    const afterSource = (swapped.project.components ?? []).find((x: any) => x.name === SOURCE_COMPONENT) as any;
-    const flat = (component: any) => {
+    const flat = (component: LegacyComponent | undefined) => {
       const out = new Map<string, string>();
-      const walk = (list: any[]) => {
+      const walk = (list: LegacyNode[]) => {
         for (const n of list ?? []) {
           for (const [k, v] of Object.entries(n.parameters ?? {})) out.set(`${n.id}::${k}`, JSON.stringify(v));
           if (n.children) walk(n.children);
         }
       };
-      walk([component.graph?.roots ?? []].flat());
+      walk(component?.graph?.roots ?? []);
       return out;
     };
-    const a = flat(beforeSource);
-    const b = flat(afterSource);
+    const a = flat(componentsOf().find((c) => c.name === SOURCE_COMPONENT));
+    const b = flat((swapped.project.components ?? []).find((c) => c.name === SOURCE_COMPONENT));
+    // Both sides must actually have been found, or two empty maps agree perfectly.
+    expect(a.size).toBeGreaterThan(0);
+    expect(b.size).toBe(a.size);
     expect([...b.keys()].sort()).toEqual([...a.keys()].sort());
     const changed = [...a.keys()].filter((k) => a.get(k) !== b.get(k));
     expect(changed).toEqual(['srStory::json']);
