@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "cd3e6561-72d3-57b0-8a9d-56d0d1fef8ef",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "caInputs",
+      "fromProperty": "thing",
+      "toId": "caText",
+      "toProperty": "text"
+    }
+  ]
+}

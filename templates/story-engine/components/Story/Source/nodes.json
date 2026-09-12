@@ -1,0 +1,116 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "5b6c8be6-bdc5-5f34-83d4-069c310cba44",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "srStory",
+      "type": "Static Data",
+      "label": "EDIT — your story — every passage, in this one list",
+      "parameters": {
+        "type": "json",
+        "json": "[\n  {\n    \"id\": \"start\",\n    \"title\": \"The lamp-room\",\n    \"text\": \"Rain on the skylight. The lamp sits cold in its housing, wick trimmed, ready since yesterday.\\n\\nAldis is not here. His coat is on the hook and it is still wet.\",\n    \"choices\": [\n      {\n        \"label\": \"Read the log\",\n        \"goto\": \"log\",\n        \"gives\": \"what Aldis wrote\"\n      },\n      {\n        \"label\": \"Go down to the store\",\n        \"goto\": \"store\"\n      },\n      {\n        \"label\": \"Take the stairs to the gallery\",\n        \"goto\": \"gallery\"\n      }\n    ]\n  },\n  {\n    \"id\": \"log\",\n    \"title\": \"Thirty years of weather\",\n    \"text\": \"He writes small and he writes every day. Wind, glass, swell. Who passed, and what it cost.\\n\\nSomewhere in March: south stair rotten through, have written to the Board twice.\\n\\nThe last entry is four o'clock and it stops in the middle of a word. Boat off the Skerry standing too far in. No answer to the horn. Taking the north stair down to\\n\\nThe pen is uncapped beside it.\",\n    \"choices\": [\n      {\n        \"label\": \"Go down to the store\",\n        \"goto\": \"store\"\n      },\n      {\n        \"label\": \"Take the stairs to the gallery\",\n        \"goto\": \"gallery\"\n      }\n    ]\n  },\n  {\n    \"id\": \"store\",\n    \"title\": \"The boat store\",\n    \"text\": \"Paraffin, and a spare pane wrapped in sacking. The oil lamp is under the bench on the third shelf where it has always been.\\n\\nAldis's boots are still on the peg. Whatever he went down in, he went down in his shoes.\",\n    \"choices\": [\n      {\n        \"label\": \"Read the log\",\n        \"goto\": \"log\",\n        \"gives\": \"what Aldis wrote\"\n      },\n      {\n        \"label\": \"Take the stairs to the gallery\",\n        \"goto\": \"gallery\"\n      }\n    ]\n  },\n  {\n    \"id\": \"gallery\",\n    \"title\": \"The gallery\",\n    \"text\": \"The wind takes the door out of your hand. Below, the sea goes over the Skerry in long white sheets.\\n\\nThere is a light on the water. It sits where no light should sit, and it is not moving the way a boat under way moves.\\n\\nThen a shout from the rocks under the north stair. Twice. The second one is weaker.\\n\\nYou are afraid. What frightens you is how long you stand there doing the arithmetic.\",\n    \"choices\": [\n      {\n        \"label\": \"Light the lamp\",\n        \"goto\": \"ending-light\"\n      },\n      {\n        \"label\": \"Go down to the rocks\",\n        \"goto\": \"ending-man\"\n      },\n      {\n        \"label\": \"Light the oil lamp first, then take the north stair\",\n        \"goto\": \"ending-both\",\n        \"requires\": \"what Aldis wrote\"\n      }\n    ]\n  },\n  {\n    \"id\": \"ending-light\",\n    \"title\": \"What the light is for\",\n    \"text\": \"You light it. The beam goes out and swings and on the third pass the boat comes round hard and finds the channel.\\n\\nFour men you will never meet go home.\\n\\nThe tide drops at six. Aldis is at the foot of the north stair, and he is still holding the horn.\"\n  },\n  {\n    \"id\": \"ending-man\",\n    \"title\": \"What you carry up\",\n    \"text\": \"You go down. The stair is wet, the rock is worse, and he is heavier than a man that thin has any right to be.\\n\\nYou get him up to the lamp-room. He is breathing. His leg is wrong below the knee.\\n\\nBehind you, out in the dark, the Skerry takes the boat. You hear it go. There is nothing to see, because there is no light.\"\n  },\n  {\n    \"id\": \"ending-both\",\n    \"title\": \"The north stair\",\n    \"text\": \"The oil lamp is under the bench on the third shelf, where the log says it lives. Lit, carried up, hung on the gallery rail: four minutes.\\n\\nThen the north stair, because the log says the south one is rotten through and he has been writing to the Board about it since March.\\n\\nThe boat comes round. You get him up.\\n\\nHe does not thank you. He lies on the lamp-room floor with his leg strapped, looking at the ceiling, and says: thirty years, and a relief off the boat reads my log and does it in twenty minutes.\\n\\nThe supply does not come for three days. It is a small room.\"\n  }\n]"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "srPasted",
+      "type": "Variable2",
+      "label": "A story somebody pasted on the Remix page",
+      "parameters": {
+        "name": "storyPasted"
+      },
+      "x": 40,
+      "y": 160
+    },
+    {
+      "id": "srPick",
+      "type": "JavaScriptFunction",
+      "label": "Which story is being read",
+      "parameters": {
+        "functionScript": "const shipped = Inputs.shipped || [];\nconst pasted = Inputs.pasted || [];\nconst playing = pasted.length > 0 ? pasted : shipped;\n\n// Plain objects, rebuilt. Static Data hands out Model records, and JSON.stringify\n// of a Model is the record machinery rather than the story.\nconst plain = [];\nfor (let i = 0; i < playing.length; i++) {\n  const p = playing[i] || {};\n  const one = { id: String(p.id || ''), title: String(p.title || ''), text: String(p.text || '') };\n  // An absent choices array IS an ending, so the copy must not invent an empty one.\n  const choices = p.choices;\n  if (Array.isArray(choices) && choices.length > 0) {\n    const kept = [];\n    for (let c = 0; c < choices.length; c++) {\n      const ch = choices[c] || {};\n      const row = { label: String(ch.label || ''), goto: String(ch.goto || '') };\n      if (ch.gives) row.gives = String(ch.gives);\n      if (ch.requires) row.requires = String(ch.requires);\n      kept.push(row);\n    }\n    one.choices = kept;\n  }\n  plain.push(one);\n}\n\nOutputs.story = plain;\nOutputs.firstId = plain.length > 0 ? plain[0].id : '';\nOutputs.json = JSON.stringify(plain, null, 2);\n// One sentence rather than a name and a count on two ports: the page shows it\n// whole, and a port nobody reads is a port the next reader has to rule out.\nconst whose = pasted.length > 0 ? 'Your story' : 'The story this template ships with';\nOutputs.source = whose + ' — ' + plain.length + (plain.length === 1 ? ' passage' : ' passages');"
+      },
+      "x": 40,
+      "y": 280,
+      "ports": [
+        {
+          "name": "in-shipped",
+          "displayName": "shipped",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "in-pasted",
+          "displayName": "pasted",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-story",
+          "displayName": "story",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-firstId",
+          "displayName": "firstId",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-json",
+          "displayName": "json",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-source",
+          "displayName": "source",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "srOutputs",
+      "type": "Component Outputs",
+      "label": "The story",
+      "ports": [
+        {
+          "name": "ready",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "story",
+          "plug": "input",
+          "type": "array"
+        },
+        {
+          "name": "firstId",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "source",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "json",
+          "plug": "input",
+          "type": "string"
+        }
+      ],
+      "x": 40,
+      "y": 400
+    }
+  ]
+}

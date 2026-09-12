@@ -1,0 +1,159 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "c7eaa04e-e4bd-5043-8b3a-7d5395c081ee",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "psWrap",
+      "type": "Group",
+      "label": "One passage",
+      "children": [
+        "psEyebrow",
+        "psTitle",
+        "psText"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingLeft": "var(--space-6)",
+        "borderLeftStyle": "solid",
+        "borderLeftWidth": "var(--border-2)",
+        "borderLeftColor": "var(--border-strong)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "psEyebrow",
+      "type": "Text",
+      "label": "Where you are",
+      "parent": "psWrap",
+      "parameters": {
+        "text": "",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "psTitle",
+      "type": "Text",
+      "label": "The passage title",
+      "parent": "psWrap",
+      "parameters": {
+        "text": "",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": {
+          "value": 34,
+          "unit": "px"
+        },
+        "fontWeight": "var(--font-bold)",
+        "lineHeight": 1.2,
+        "letterSpacing": "var(--tracking-tighter)",
+        "color": "var(--foreground)",
+        "as": "h1",
+        "fontFamily": "var(--font-serif)"
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "psText",
+      "type": "Text",
+      "label": "The passage itself",
+      "parent": "psWrap",
+      "parameters": {
+        "text": "",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": {
+          "value": 19,
+          "unit": "px"
+        },
+        "color": "var(--foreground)",
+        "fontFamily": "var(--font-serif)",
+        "lineHeight": 1.72,
+        "maxWidth": {
+          "value": 680,
+          "unit": "px"
+        }
+      },
+      "x": 100,
+      "y": 400
+    },
+    {
+      "id": "psLook",
+      "type": "States",
+      "label": "Reading, an ending, or a passage that is not there",
+      "parameters": {
+        "states": "reading,ending,lost,stuck",
+        "currentState": "reading",
+        "values": "rule,eyebrow,tone",
+        "type-rule": "color",
+        "type-eyebrow": "string",
+        "type-tone": "color",
+        "value-reading-rule": "var(--border-strong)",
+        "value-reading-eyebrow": "You are here",
+        "value-reading-tone": "var(--muted-foreground)",
+        "value-ending-rule": "var(--primary)",
+        "value-ending-eyebrow": "An ending",
+        "value-ending-tone": "var(--primary)",
+        "value-lost-rule": "var(--destructive)",
+        "value-lost-eyebrow": "A passage that is not there",
+        "value-lost-tone": "var(--destructive)",
+        "value-stuck-rule": "var(--destructive)",
+        "value-stuck-eyebrow": "No way on from here",
+        "value-stuck-tone": "var(--destructive)",
+        "useTransitions": false
+      },
+      "x": 350,
+      "y": 40
+    },
+    {
+      "id": "psInputs",
+      "type": "Component Inputs",
+      "label": "The passage",
+      "ports": [
+        {
+          "name": "title",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "text",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "mode",
+          "plug": "output",
+          "type": "*"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    }
+  ],
+  "visualRoots": [
+    "psWrap"
+  ]
+}

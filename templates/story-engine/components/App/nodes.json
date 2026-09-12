@@ -1,0 +1,60 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "cb07c2cb-0d58-547e-8f88-274f2538a7b1",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "app_root",
+      "type": "Group",
+      "label": "App",
+      "children": [
+        "app_router"
+      ],
+      "parameters": {
+        "sizeMode": "explicit",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "height": {
+          "value": 100,
+          "unit": "%"
+        },
+        "backgroundColor": "var(--background)"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "app_router",
+      "type": "Router",
+      "label": "Main router",
+      "parent": "app_root",
+      "parameters": {
+        "name": "Main",
+        "pages": {
+          "startPage": "/Pages/Read",
+          "routes": [
+            "/Pages/Read",
+            "/Pages/Remix"
+          ]
+        }
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "app_css",
+      "type": "CSS Definition",
+      "label": "The page — the ground, the hover, the paste box",
+      "parameters": {
+        "style": "/* The story engine — the few things a node port cannot say.\n   Everything a port CAN express is set on the node, not here. */\n\n.pressable { cursor: pointer; }\n\n/* 🔴 The BODY's ground. A Group's backgroundColor cannot reach the body, so\n   anything below the content is the browser's own white — which on a warm paper\n   page reads as a seam across the screen. Only a stylesheet can paint it.\n   (No backticks in this block: it lives inside a TS template literal.) */\nhtml, body { background: var(--background); }\n\n/* A choice lifts slightly under the pointer and settles back. 120ms is slow\n   enough to be felt and fast enough not to be waited for. */\n.story-choice {\n  transition: background-color 120ms ease-out, border-color 120ms ease-out, transform 120ms ease-out;\n}\n.story-choice:hover {\n  background-color: var(--surface-raised);\n  border-color: var(--primary);\n  transform: translateX(2px);\n}\n\n/* The paste box is code, so it is set in the mono face and given room to breathe\n   between lines — a 400-line story in a 1.2 line-height box is unreadable. */\n.story-paste {\n  font-family: ui-monospace, SFMono-Regular, \"SF Mono\", Menlo, Consolas, monospace;\n  line-height: 1.55;\n  tab-size: 2;\n}\n\n@media (prefers-reduced-motion: reduce) {\n  .story-choice { transition: none; }\n  .story-choice:hover { transform: none; }\n}"
+      },
+      "x": 350,
+      "y": 40
+    }
+  ],
+  "visualRoots": [
+    "app_root"
+  ]
+}

@@ -1,0 +1,338 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "4e6712bb-cee9-5ad9-8bbb-cef50c671f7e",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "rxPage",
+      "type": "Page",
+      "label": "Remix",
+      "children": [
+        "rxBand"
+      ],
+      "parameters": {
+        "title": "Remix",
+        "urlPath": "remix"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "rxBand",
+      "type": "Group",
+      "label": "The page",
+      "parent": "rxPage",
+      "children": [
+        "rxShell"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "center",
+        "paddingTop": "var(--space-16)",
+        "paddingBottom": "var(--space-16)",
+        "backgroundColor": "var(--background)"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "rxShell",
+      "type": "Group",
+      "label": "The column",
+      "parent": "rxBand",
+      "children": [
+        "rxHead",
+        "rxPaster",
+        "rxHelp"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "maxWidth": {
+          "value": 760,
+          "unit": "px"
+        },
+        "flexDirection": "column",
+        "paddingLeft": "var(--space-6)",
+        "paddingRight": "var(--space-6)",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-8)"
+      },
+      "x": 160,
+      "y": 280
+    },
+    {
+      "id": "rxHead",
+      "type": "Group",
+      "label": "What this page is for",
+      "parent": "rxShell",
+      "children": [
+        "rxEyebrow",
+        "rxTitle",
+        "rxLead"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-2)"
+      },
+      "x": 220,
+      "y": 400
+    },
+    {
+      "id": "rxEyebrow",
+      "type": "Text",
+      "label": "Remix",
+      "parent": "rxHead",
+      "parameters": {
+        "text": "Remix",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--primary)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 520
+    },
+    {
+      "id": "rxTitle",
+      "type": "Text",
+      "label": "The heading",
+      "parent": "rxHead",
+      "parameters": {
+        "text": "Your story goes in this box",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-3xl)",
+        "fontWeight": "var(--font-semibold)",
+        "lineHeight": "var(--leading-tight)",
+        "letterSpacing": "var(--tracking-tight)",
+        "color": "var(--foreground)",
+        "as": "h2"
+      },
+      "x": 280,
+      "y": 640
+    },
+    {
+      "id": "rxLead",
+      "type": "Text",
+      "label": "What to do",
+      "parent": "rxHead",
+      "parameters": {
+        "text": "The box already holds the story that is playing, so you can read it, change a line, or select it all and replace it with your own. Press Read this story and it plays straight away — no editor, no rebuild, nothing to install.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-lg)",
+        "lineHeight": "var(--leading-relaxed)",
+        "color": "var(--muted-foreground)",
+        "maxWidth": {
+          "value": 680,
+          "unit": "px"
+        }
+      },
+      "x": 280,
+      "y": 760
+    },
+    {
+      "id": "rxPaster",
+      "type": "/Story/Paster",
+      "label": "The box and the buttons",
+      "parent": "rxShell",
+      "x": 220,
+      "y": 880
+    },
+    {
+      "id": "rxHelp",
+      "type": "Group",
+      "label": "The contract",
+      "parent": "rxShell",
+      "children": [
+        "rxHelpHead",
+        "rxHelpBody",
+        "rxHelpExample"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "column",
+        "alignItems": "flex-start",
+        "rowGap": "var(--space-3)",
+        "paddingTop": "var(--space-5)",
+        "paddingBottom": "var(--space-5)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "backgroundColor": "var(--surface)",
+        "borderRadius": "var(--radius-lg)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)"
+      },
+      "x": 220,
+      "y": 1000
+    },
+    {
+      "id": "rxHelpHead",
+      "type": "Text",
+      "label": "The heading",
+      "parent": "rxHelp",
+      "parameters": {
+        "text": "Four words, and there is no fifth",
+        "fontSize": "var(--text-xs)",
+        "fontWeight": "var(--font-semibold)",
+        "letterSpacing": "var(--tracking-widest)",
+        "textTransform": "uppercase",
+        "color": "var(--muted-foreground)",
+        "as": "span",
+        "sizeMode": "contentSize"
+      },
+      "x": 280,
+      "y": 1120
+    },
+    {
+      "id": "rxHelpBody",
+      "type": "Text",
+      "label": "The four words",
+      "parent": "rxHelp",
+      "parameters": {
+        "text": "goto — where a choice takes the reader.\ngives — hands them something, and it shows up in What you carry.\nrequires — the choice is invisible until they are carrying that thing. Not greyed out: absent.\nno choices at all — that passage is an ending.",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "lineHeight": 1.8
+      },
+      "x": 280,
+      "y": 1240
+    },
+    {
+      "id": "rxHelpExample",
+      "type": "Text",
+      "label": "A whole story, three passages long",
+      "parent": "rxHelp",
+      "parameters": {
+        "text": "[\n  {\n    \"id\": \"hall\",\n    \"title\": \"The hallway\",\n    \"text\": \"Two doors. One of them is warm to the touch.\",\n    \"choices\": [\n      { \"label\": \"Open the warm door\", \"goto\": \"kitchen\", \"gives\": \"a brass key\" },\n      { \"label\": \"Unlock the far door\", \"goto\": \"out\", \"requires\": \"a brass key\" }\n    ]\n  },\n  { \"id\": \"kitchen\", \"title\": \"The kitchen\", \"text\": \"A key on the hook.\", \"choices\": [\n      { \"label\": \"Go back\", \"goto\": \"hall\" } ] },\n  { \"id\": \"out\", \"title\": \"Outside\", \"text\": \"You are out. No choices: that is an ending.\" }\n]",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-sm)",
+        "color": "var(--muted-foreground)",
+        "fontFamily": "var(--font-mono)",
+        "lineHeight": 1.6
+      },
+      "x": 280,
+      "y": 1360
+    },
+    {
+      "id": "rxSrc",
+      "type": "/Story/Source",
+      "label": "The story that is playing",
+      "x": 530,
+      "y": 880
+    },
+    {
+      "id": "rxParse",
+      "type": "JavaScriptFunction",
+      "label": "Read what was pasted",
+      "parameters": {
+        "functionScript": "const raw = String(Inputs.text || '').trim();\n\nlet problem = '';\nlet parsed = null;\n\nif (raw === '') {\n  problem = 'The box is empty. Paste a story — a list of passages — and press Read this story.';\n} else {\n  try {\n    parsed = JSON.parse(raw);\n  } catch (e) {\n    problem = 'That is not valid JSON yet: ' + e.message;\n  }\n}\n\nif (problem === '' && !Array.isArray(parsed)) {\n  problem = 'A story is a list of passages, so the outermost brackets have to be [ ] rather than { }.';\n}\n\nconst rows = [];\nif (problem === '') {\n  const ids = {};\n  for (let i = 0; i < parsed.length; i++) {\n    const p = parsed[i] || {};\n    const id = String(p.id || '');\n    if (id === '') {\n      problem = 'Passage ' + (i + 1) + ' has no \"id\". Every passage needs one, because that is what a choice points at.';\n      break;\n    }\n    if (ids[id] === true) {\n      problem = 'Two passages are both called \"' + id + '\". Ids have to be unique or a choice cannot say which one it means.';\n      break;\n    }\n    ids[id] = true;\n    rows.push(p);\n  }\n\n  // The dangling goto: a story that loads, reads, and dead-ends three clicks in.\n  if (problem === '') {\n    for (let i = 0; i < rows.length && problem === ''; i++) {\n      const choices = Array.isArray(rows[i].choices) ? rows[i].choices : [];\n      for (let c = 0; c < choices.length; c++) {\n        const target = String((choices[c] || {}).goto || '');\n        if (target === '') {\n          problem = 'A choice in \"' + String(rows[i].id) + '\" has no \"goto\", so there is nowhere for it to lead.';\n          break;\n        }\n        if (ids[target] !== true) {\n          problem = 'A choice in \"' + String(rows[i].id) + '\" points at \"' + target + '\", and there is no passage with that id.';\n          break;\n        }\n      }\n    }\n  }\n\n  if (problem === '' && rows.length === 0) {\n    problem = 'That is an empty list. A story needs at least one passage.';\n  }\n}\n\nOutputs.ok = problem === '';\nOutputs.problem = problem;\n// A fresh array either way, and empty when it could not be read — so a bad paste\n// can never half-replace the story that is playing.\nOutputs.story = problem === '' ? rows.slice() : [];",
+        "runOnChange-in-text": false
+      },
+      "x": 530,
+      "y": 1000,
+      "ports": [
+        {
+          "name": "in-text",
+          "displayName": "text",
+          "plug": "input",
+          "type": "*",
+          "group": "Inputs"
+        },
+        {
+          "name": "out-ok",
+          "displayName": "ok",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-problem",
+          "displayName": "problem",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        },
+        {
+          "name": "out-story",
+          "displayName": "story",
+          "plug": "output",
+          "type": "*",
+          "group": "Outputs"
+        }
+      ]
+    },
+    {
+      "id": "rxOkGate",
+      "type": "Condition",
+      "label": "Is that a story?",
+      "parameters": {
+        "runOnChange-condition": false
+      },
+      "x": 530,
+      "y": 1240
+    },
+    {
+      "id": "rxSetPasted",
+      "type": "Set Variable",
+      "label": "That is the story now",
+      "parameters": {
+        "name": "storyPasted"
+      },
+      "x": 530,
+      "y": 1360
+    },
+    {
+      "id": "rxGoRead",
+      "type": "RouterNavigate",
+      "label": "Go and read it",
+      "parameters": {
+        "router": "Main",
+        "target": "/Pages/Read"
+      },
+      "x": 530,
+      "y": 1120
+    }
+  ],
+  "visualRoots": [
+    "rxPage"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "4e6712bb-cee9-5ad9-8bbb-cef50c671f7e",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "rxSrc",
+      "fromProperty": "json",
+      "toId": "rxPaster",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rxPaster",
+      "fromProperty": "text",
+      "toId": "rxParse",
+      "toProperty": "in-text"
+    },
+    {
+      "fromId": "rxPaster",
+      "fromProperty": "play",
+      "toId": "rxParse",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "rxParse",
+      "fromProperty": "out-ok",
+      "toId": "rxOkGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "rxParse",
+      "fromProperty": "success",
+      "toId": "rxOkGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "rxParse",
+      "fromProperty": "out-problem",
+      "toId": "rxPaster",
+      "toProperty": "problem"
+    },
+    {
+      "fromId": "rxParse",
+      "fromProperty": "out-story",
+      "toId": "rxSetPasted",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rxOkGate",
+      "fromProperty": "ontrue",
+      "toId": "rxSetPasted",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rxSetPasted",
+      "fromProperty": "done",
+      "toId": "rxGoRead",
+      "toProperty": "navigate"
+    },
+    {
+      "fromId": "rxPaster",
+      "fromProperty": "back",
+      "toId": "rxGoRead",
+      "toProperty": "navigate"
+    }
+  ]
+}

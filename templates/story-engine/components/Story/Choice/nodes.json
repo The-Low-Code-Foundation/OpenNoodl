@@ -1,0 +1,123 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/nodes-v2.json",
+  "componentId": "16b082fe-2127-554f-8800-5e8cac94af3d",
+  "version": 1,
+  "nodes": [
+    {
+      "id": "chRow",
+      "type": "Group",
+      "label": "One choice",
+      "children": [
+        "chMark",
+        "chLabel"
+      ],
+      "parameters": {
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "flexDirection": "row",
+        "alignItems": "flex-start",
+        "columnGap": "var(--space-3)",
+        "paddingTop": "var(--space-4)",
+        "paddingBottom": "var(--space-4)",
+        "paddingLeft": "var(--space-5)",
+        "paddingRight": "var(--space-5)",
+        "backgroundColor": "var(--surface)",
+        "borderStyle": "solid",
+        "borderWidth": "var(--border-1)",
+        "borderColor": "var(--border)",
+        "borderRadius": "var(--radius-md)",
+        "cssClassName": "story-choice pressable"
+      },
+      "x": 40,
+      "y": 40
+    },
+    {
+      "id": "chMark",
+      "type": "Text",
+      "label": "The marker",
+      "parent": "chRow",
+      "parameters": {
+        "text": "→",
+        "fontSize": "var(--text-base)",
+        "color": "var(--primary)",
+        "fontWeight": "var(--font-semibold)",
+        "sizeMode": "contentSize"
+      },
+      "x": 100,
+      "y": 160
+    },
+    {
+      "id": "chLabel",
+      "type": "Text",
+      "label": "What the choice says",
+      "parent": "chRow",
+      "parameters": {
+        "text": "",
+        "width": {
+          "value": 100,
+          "unit": "%"
+        },
+        "sizeMode": "contentHeight",
+        "fontSize": "var(--text-base)",
+        "color": "var(--foreground)",
+        "lineHeight": 1.5
+      },
+      "x": 100,
+      "y": 280
+    },
+    {
+      "id": "chInputs",
+      "type": "Component Inputs",
+      "label": "The choice",
+      "ports": [
+        {
+          "name": "label",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "goto",
+          "plug": "output",
+          "type": "string"
+        },
+        {
+          "name": "gives",
+          "plug": "output",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 280
+    },
+    {
+      "id": "chOutputs",
+      "type": "Component Outputs",
+      "label": "What was taken",
+      "ports": [
+        {
+          "name": "picked",
+          "plug": "input",
+          "type": "signal"
+        },
+        {
+          "name": "goto",
+          "plug": "input",
+          "type": "string"
+        },
+        {
+          "name": "gives",
+          "plug": "input",
+          "type": "string"
+        }
+      ],
+      "x": 350,
+      "y": 40
+    }
+  ],
+  "visualRoots": [
+    "chRow"
+  ]
+}

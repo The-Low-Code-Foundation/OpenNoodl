@@ -1,0 +1,283 @@
+{
+  "$schema": "https://opennoodl.dev/schemas/connections-v2.json",
+  "componentId": "7a4d8261-76c9-5dc3-8b75-e054141e5c29",
+  "version": 1,
+  "connections": [
+    {
+      "fromId": "rdSrc",
+      "fromProperty": "source",
+      "toId": "rdSourceLine",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rdSrc",
+      "fromProperty": "firstId",
+      "toId": "rdLoadAt",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rdSrc",
+      "fromProperty": "ready",
+      "toId": "rdLoadAt",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdLoadAt",
+      "fromProperty": "done",
+      "toId": "rdLoadCarry",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdStart",
+      "fromProperty": "items",
+      "toId": "rdLoadCarry",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rdRestart",
+      "fromProperty": "onClick",
+      "toId": "rdLoadAt",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdSrc",
+      "fromProperty": "story",
+      "toId": "rdFind",
+      "toProperty": "in-story"
+    },
+    {
+      "fromId": "rdSrc",
+      "fromProperty": "firstId",
+      "toId": "rdFind",
+      "toProperty": "in-firstId"
+    },
+    {
+      "fromId": "rdVarAt",
+      "fromProperty": "value",
+      "toId": "rdFind",
+      "toProperty": "in-at"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-title",
+      "toId": "rdPassage",
+      "toProperty": "title"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-text",
+      "toId": "rdPassage",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-choices",
+      "toId": "rdScreen",
+      "toProperty": "in-choices"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-isEnding",
+      "toId": "rdScreen",
+      "toProperty": "in-isEnding"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-at",
+      "toId": "rdScreen",
+      "toProperty": "in-at"
+    },
+    {
+      "fromId": "rdVarCarry",
+      "fromProperty": "value",
+      "toId": "rdScreen",
+      "toProperty": "in-carrying"
+    },
+    {
+      "fromId": "rdScreen",
+      "fromProperty": "out-rows",
+      "toId": "rdChoices",
+      "toProperty": "items"
+    },
+    {
+      "fromId": "rdVarCarry",
+      "fromProperty": "value",
+      "toId": "rdSide",
+      "toProperty": "things"
+    },
+    {
+      "fromId": "rdScreen",
+      "fromProperty": "out-carryCount",
+      "toId": "rdHasCarry",
+      "toProperty": "n"
+    },
+    {
+      "fromId": "rdHasCarry",
+      "fromProperty": "asBoolean",
+      "toId": "rdSide",
+      "toProperty": "hasThings"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-found",
+      "toId": "rdFoundGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "success",
+      "toId": "rdFoundGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "rdFoundGate",
+      "fromProperty": "onfalse",
+      "toId": "rdMode",
+      "toProperty": "to-lost"
+    },
+    {
+      "fromId": "rdFoundGate",
+      "fromProperty": "ontrue",
+      "toId": "rdEndGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-isEnding",
+      "toId": "rdEndGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "rdEndGate",
+      "fromProperty": "ontrue",
+      "toId": "rdMode",
+      "toProperty": "to-ending"
+    },
+    {
+      "fromId": "rdEndGate",
+      "fromProperty": "onfalse",
+      "toId": "rdMode",
+      "toProperty": "to-reading"
+    },
+    {
+      "fromId": "rdScreen",
+      "fromProperty": "out-stuck",
+      "toId": "rdStuckGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "rdScreen",
+      "fromProperty": "success",
+      "toId": "rdStuckGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "rdStuckGate",
+      "fromProperty": "ontrue",
+      "toId": "rdMode",
+      "toProperty": "to-stuck"
+    },
+    {
+      "fromId": "rdMode",
+      "fromProperty": "panel",
+      "toId": "rdPassage",
+      "toProperty": "mode"
+    },
+    {
+      "fromId": "rdMode",
+      "fromProperty": "note",
+      "toId": "rdNote",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rdMode",
+      "fromProperty": "note",
+      "toId": "rdNote",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-missing",
+      "toId": "rdMissingFmt",
+      "toProperty": "id"
+    },
+    {
+      "fromId": "rdMissingFmt",
+      "fromProperty": "formatted",
+      "toId": "rdMissing",
+      "toProperty": "text"
+    },
+    {
+      "fromId": "rdFind",
+      "fromProperty": "out-missing",
+      "toId": "rdMissing",
+      "toProperty": "mounted"
+    },
+    {
+      "fromId": "rdChoices",
+      "fromProperty": "itemOutput-gives",
+      "toId": "rdCarry",
+      "toProperty": "in-gift"
+    },
+    {
+      "fromId": "rdVarCarry",
+      "fromProperty": "value",
+      "toId": "rdCarry",
+      "toProperty": "in-carrying"
+    },
+    {
+      "fromId": "rdChoices",
+      "fromProperty": "itemOutputSignal-picked",
+      "toId": "rdCarry",
+      "toProperty": "run"
+    },
+    {
+      "fromId": "rdCarry",
+      "fromProperty": "out-added",
+      "toId": "rdGiftGate",
+      "toProperty": "condition"
+    },
+    {
+      "fromId": "rdCarry",
+      "fromProperty": "success",
+      "toId": "rdGiftGate",
+      "toProperty": "eval"
+    },
+    {
+      "fromId": "rdCarry",
+      "fromProperty": "out-carrying",
+      "toId": "rdSetCarry",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rdGiftGate",
+      "fromProperty": "ontrue",
+      "toId": "rdSetCarry",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdChoices",
+      "fromProperty": "itemOutput-goto",
+      "toId": "rdSetAt",
+      "toProperty": "value"
+    },
+    {
+      "fromId": "rdSetCarry",
+      "fromProperty": "done",
+      "toId": "rdSetAt",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdGiftGate",
+      "fromProperty": "onfalse",
+      "toId": "rdSetAt",
+      "toProperty": "do"
+    },
+    {
+      "fromId": "rdToRemix",
+      "fromProperty": "onClick",
+      "toId": "rdGoRemix",
+      "toProperty": "navigate"
+    }
+  ]
+}

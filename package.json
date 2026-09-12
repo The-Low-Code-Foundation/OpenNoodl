@@ -124,7 +124,9 @@
     "icons": "node scripts/generate-icons.js",
     "icons:check": "node scripts/generate-icons.js --check",
     "template:members": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-members-template.ts",
-    "template:landing": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-landing-template.ts"
+    "template:landing": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-landing-template.ts",
+    "template:pixel": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-pixel-template.ts",
+    "template:story": "ts-node -T -P ./scripts/tsconfig.json ./scripts/generate-story-template.ts"
   },
   "devDependencies": {
     "@ianvs/prettier-plugin-sort-imports": "^3.7.2",
