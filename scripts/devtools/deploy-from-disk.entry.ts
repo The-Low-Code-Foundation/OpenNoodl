@@ -50,6 +50,7 @@ import type {
   RoutesV2File,
   StylesV2File
 } from '../../packages/noodl-editor/src/editor/src/schemas';
+import { NodeGraphNode } from '@noodl-models/nodegraphmodel';
 import { ProjectModel } from '@noodl-models/projectmodel';
 import { deployToFolder } from '@noodl-utils/compilation/build/deployer';
 
@@ -88,6 +89,45 @@ function readV2(dir: string): { project: LegacyProject; warnings: string[] } {
     components
   });
   return { project: result.project as LegacyProject, warnings: result.warnings };
+}
+
+/**
+ * The runtime objects the port pass reaches into, described by the surface it actually touches.
+ *
+ * 🔴 **Structural on purpose, and that is why these are not imports.** The real `EditorConnection`,
+ * `EventSender` and the runtime's graph model drag Electron and the editor's view tree in behind
+ * them, and this file has to run under plain `ts-node`. That is what made all of this `TSFixme` —
+ * but "cannot be imported" is not "cannot be typed", and the surface used below is four methods
+ * and two maps.
+ *
+ * ⚠️ The port shapes are taken from `setDynamicPorts`, the method the collected ports are
+ * eventually handed to, rather than restated here — so a change to that signature is a compile
+ * error in this file instead of a runtime mismatch at the far end of the pass.
+ */
+type DynamicPorts = Parameters<NodeGraphNode['setDynamicPorts']>[0];
+type DynamicPortsOptions = Parameters<NodeGraphNode['setDynamicPorts']>[1];
+
+/**
+ * The four warning methods silenced below. A tuple rather than a bare `string[]` so a typo is a
+ * compile error: assigning through a mistyped key would otherwise add a property the runtime never
+ * calls, leaving the real method live and the canvas warning it was meant to suppress still firing.
+ */
+const QUIET_CONNECTION_METHODS = ['sendWarning', 'clearWarning', 'sendWarnings', 'clearWarnings'] as const;
+
+interface ProbeEditorConnection {
+  isRunningLocally(): boolean;
+  sendDynamicPorts(nodeId: string, ports: DynamicPorts, options?: DynamicPortsOptions): void;
+  sendWarning?: () => void;
+  clearWarning?: () => void;
+  sendWarnings?: () => void;
+  clearWarnings?: () => void;
+}
+
+/** `EventSender` keeps two listener maps, and a node family's `setup()` may have used either. */
+interface ProbeGraphModel {
+  listeners?: Record<string, unknown[]>;
+  listenersWithRefs?: Record<string, { size: number }>;
+  emit(event: string, args: unknown): Promise<unknown>;
 }
 
 /**
@@ -143,7 +183,7 @@ function readV2(dir: string): { project: LegacyProject; warnings: string[] } {
  * @returns a census, because a pass that reports nothing is a pass nobody can
  *   tell ran — the same rule the health-guard block below follows.
  */
-async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
+async function registerRuntimeDiscoveredPorts(project: ProjectModel): Promise<{
   types: string[];
   nodesSeen: number;
   nodesPorted: number;
@@ -155,7 +195,7 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const registerViewerNodes = require('../../packages/noodl-viewer-react/src/register-nodes').default;
 
-  const pushed: Array<{ nodeId: string; ports: TSFixme[]; options?: TSFixme }> = [];
+  const pushed: Array<{ nodeId: string; ports: DynamicPorts; options?: DynamicPortsOptions }> = [];
 
   // The one condition the four setups are gated on, and nothing more than that.
   /**
@@ -181,17 +221,17 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
     }
   });
 
-  const conn = probe.editorConnection as TSFixme;
+  const conn = probe.editorConnection as ProbeEditorConnection;
   // The built-in families' setups have already run under the constructor's
   // `registerNodes(this)`, and their guard (`isRunningLocally()`) passed — so
   // their listeners exist and this override is what their calls now reach.
   conn.isRunningLocally = () => true;
-  conn.sendDynamicPorts = (nodeId: string, ports: TSFixme[], options?: TSFixme) => {
+  conn.sendDynamicPorts = (nodeId: string, ports: DynamicPorts, options?: DynamicPortsOptions) => {
     pushed.push({ nodeId, ports: ports || [], options });
   };
   // Nothing here has a canvas to warn at, and a throw would be attributed to
   // the node rather than to this pass.
-  for (const quiet of ['sendWarning', 'clearWarning', 'sendWarnings', 'clearWarnings']) {
+  for (const quiet of QUIET_CONNECTION_METHODS) {
     conn[quiet] = () => undefined;
   }
 
@@ -203,7 +243,7 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
   // here, so a family that gains or loses a lazy `setup()` changes this census
   // instead of silently falling outside a hand-written list.
   // `EventSender` keeps two maps and a setup may have used either.
-  const gm = probe.graphModel as TSFixme;
+  const gm = probe.graphModel as ProbeGraphModel;
   const eventNames = [...Object.keys(gm.listeners ?? {}), ...Object.keys(gm.listenersWithRefs ?? {})];
   const types = [...new Set(eventNames)]
     .filter((e) => e.indexOf('nodeAdded.') === 0)
@@ -214,7 +254,7 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
     const k = 'nodeAdded.Set Variable';
     process.stderr.write(
       `[dbg] listeners[${k}]=${((gm.listeners ?? {})[k] ?? []).length} ` +
-        `withRefs=${(gm.listenersWithRefs ?? {})[k] ? (gm.listenersWithRefs[k] as TSFixme).size : 'none'} ` +
+        `withRefs=${(gm.listenersWithRefs ?? {})[k] ? (gm.listenersWithRefs ?? {})[k].size : 'none'} ` +
         `ctxConn=${probe.context && probe.context.editorConnection ? 'set' : 'MISSING'} ` +
         `runningLocally=${probe.context && probe.context.editorConnection ? probe.context.editorConnection.isRunningLocally() : 'n/a'}\n`
     );
@@ -225,15 +265,15 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
   let portsAdded = 0;
   let unmatched = 0;
 
-  const editorNodes = new Map<string, { node: TSFixme; component: string }>();
+  const editorNodes = new Map<string, { node: NodeGraphNode; component: string }>();
   for (const comp of project.getComponents()) {
-    const walk = (list: TSFixme[]) => {
+    const walk = (list: NodeGraphNode[]) => {
       for (const n of list ?? []) {
         editorNodes.set(n.id, { node: n, component: comp.name });
         if (n.children) walk(n.children);
       }
     };
-    walk((comp.graph as TSFixme).roots);
+    walk(comp.graph.roots);
   }
 
   for (const [, { node, component }] of editorNodes) {
@@ -248,7 +288,7 @@ async function registerRuntimeDiscoveredPorts(project: TSFixme): Promise<{
     // The shape the setups read: an id, the parameters they derive from, and a
     // `parameterUpdated` subscription they register for later edits there are
     // none of here.
-    await (probe.graphModel as TSFixme).emit('nodeAdded.' + typeName, {
+    await gm.emit('nodeAdded.' + typeName, {
       id: node.id,
       type: typeName,
       parameters: node.parameters ?? {},

@@ -47,6 +47,8 @@ import {
   VAR_X,
   VAR_Y
 } from './tpl005Components';
+import type { LegacyConnection, LegacyNode } from '../../noodl-editor/src/editor/src/io/ProjectExporter';
+
 import {
   AuthoredTemplate,
   buildPixelTemplateProject,
@@ -68,23 +70,23 @@ const OUTPUT = path.join(__dirname, '..', '..', '..', 'templates', TEMPLATE_ID);
 let built: AuthoredTemplate;
 
 /** Every node in the authored project, by component legacy name. */
-function nodesOf(component: string): Array<Record<string, any>> {
-  const found = (built.project.components ?? []).find((c: any) => c.name === component);
-  if (!found) throw new Error(`no component "${component}" — the project has: ${(built.project.components ?? []).map((c: any) => c.name).join(', ')}`);
-  const out: Array<Record<string, any>> = [];
-  const walk = (list: any[]) => {
+function nodesOf(component: string): LegacyNode[] {
+  const found = (built.project.components ?? []).find((c) => c.name === component);
+  if (!found) throw new Error(`no component "${component}" — the project has: ${(built.project.components ?? []).map((c) => c.name).join(', ')}`);
+  const out: LegacyNode[] = [];
+  const walk = (list: LegacyNode[]) => {
     for (const n of list ?? []) {
       out.push(n);
       if (n.children) walk(n.children);
     }
   };
-  walk([(found as any).graph?.roots ?? []].flat());
+  walk(found.graph?.roots ?? []);
   return out;
 }
 
-function connectionsOf(component: string): Array<Record<string, any>> {
-  const found = (built.project.components ?? []).find((c: any) => c.name === component);
-  return ((found as any)?.graph?.connections ?? []) as Array<Record<string, any>>;
+function connectionsOf(component: string): LegacyConnection[] {
+  const found = (built.project.components ?? []).find((c) => c.name === component);
+  return found?.graph?.connections ?? [];
 }
 
 beforeAll(async () => {
@@ -218,8 +220,8 @@ describe('TPL-005 §2 — the game is in the graph, not in a script', () => {
     const declared = new Set(GATE_NODES.map((g) => `${g.component}::${g.id}`));
     const found: string[] = [];
     for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.type === 'Condition') found.push(`${(c as any).name}::${n.id}`);
+      for (const n of nodesOf(c.name)) {
+        if (n.type === 'Condition') found.push(`${c.name}::${n.id}`);
       }
     }
     expect(found.sort()).toEqual([...declared].sort());
@@ -229,8 +231,8 @@ describe('TPL-005 §2 — the game is in the graph, not in a script', () => {
     const declared = new Set(FUNCTION_SEAMS.map((f) => `${f.component}::${f.id}`));
     const found: string[] = [];
     for (const c of built.project.components ?? []) {
-      for (const n of nodesOf((c as any).name)) {
-        if (n.type === 'JavaScriptFunction') found.push(`${(c as any).name}::${n.id}`);
+      for (const n of nodesOf(c.name)) {
+        if (n.type === 'JavaScriptFunction') found.push(`${c.name}::${n.id}`);
       }
     }
     expect(found.sort()).toEqual([...declared].sort());
