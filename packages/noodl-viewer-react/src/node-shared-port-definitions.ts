@@ -1690,7 +1690,30 @@ export default {
         allowVisualStates: true,
         set(value) {
           const internal = this._internal || (this._internal = {});
-          internal.backgroundImageUrl = resolveMediaSource(value);
+          let url = resolveMediaSource(value);
+
+          // A deploy served from a sub-path (`nodegx deploy --base-url /x/`) publishes that base
+          // as `Noodl.Env['BaseUrl']`. `resolveMediaSource` calls the runtime's `getAbsoluteUrl`,
+          // which reads a DIFFERENT name — `Noodl.baseUrl` — that nothing in the deploy ever sets,
+          // so it falls back to '/' and a project-relative picture resolves to the domain root.
+          // Image (`components/visual/Image/Image.tsx`) and Video apply the Env value themselves
+          // for exactly this reason; this port is the third channel and was missing it. Measured
+          // 2026-09-11 on nodegx.io/templates/business-landing-page/: `<img>` resolved under the
+          // sub-path and loaded, while this port's picture resolved to the root and 404'd.
+          // ⚠️ The fix cannot go in `resolveMediaSource` — Image would then prepend the base a
+          // second time, because the already-based URL still starts with '/'.
+          // ⚠️ `!url.startsWith(baseUrl)` is not belt-and-braces: without it, a value that already
+          // carries the base gains it twice (`/x/y/x/y/…`). An author deploying to a sub-path can
+          // reasonably type the full path into this port, and a wire can carry one. `Image.tsx`
+          // has no such guard and doubles in that case — a defect this port should not copy.
+          // Caught by exp018's "already carries the base" arm, which failed on the first version
+          // of this fix.
+          if (url && url.startsWith('/')) {
+            const baseUrl = Noodl.Env && Noodl.Env['BaseUrl'];
+            if (baseUrl && !url.startsWith(baseUrl)) url = baseUrl + url.substring(1);
+          }
+
+          internal.backgroundImageUrl = url;
           this._updateBackgroundLayers();
         }
       },
